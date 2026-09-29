@@ -8,7 +8,7 @@
  *
  * WHAT IT LOOKS FOR, and why each is checkable by a rule:
  *
- *   COLLAPSED     an entity whose slug is a whole proposition — `orange-logic-is-an-enterprise-dam`.
+ *   COLLAPSED     an entity whose slug is a whole proposition — `example-archive-is-an-enterprise-dam`.
  *                 The relation the sentence stated was never extracted; it became part of a NAME.
  *                 rdf/triple-shape.ts now rejects these at the door, so every one still in a graph
  *                 predates that guard.

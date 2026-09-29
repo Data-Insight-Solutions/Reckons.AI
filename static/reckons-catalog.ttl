@@ -1,0 +1,310 @@
+# =============================================================================
+# reckons-catalog.ttl — WHAT EACH GRAPH IS FOR (F113 graph-sets, phase 1; F222)
+#
+# Every graph under static/ that git tracks, subfolders included, is declared here once, with ONE role and, when a script
+# writes it, the script. A graph with no prov:wasGeneratedBy is maintained by hand.
+# scripts/offline/graph-catalog.ts --check fails when a graph is added, removed or
+# renamed without this file following, so the catalog cannot silently go stale.
+# Git-ignored files in static/ (docs-all.ttl, merged locally by
+# scripts/setup-reckons-workspace.sh) are build artifacts, not graphs, and are not listed.
+#
+# Standard vocabulary only, as F113 decided: dcat:Catalog for the set, void:Dataset
+# per graph, dcterms:type for the role (a SKOS concept below), PROV-O for relations.
+# prov:wasInfluencedBy links an OBSERVED graph to the DESIGN graph it is evidence
+# about: roadmap -> production, website -> website-status, codebase -> code-files.
+# =============================================================================
+@prefix dcat:    <http://www.w3.org/ns/dcat#> .
+@prefix void:    <http://rdfs.org/ns/void#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix graph:   <urn:reckons:graph/> .
+@prefix role:    <urn:reckons:graph-role/> .
+
+role:scheme a skos:ConceptScheme ;
+    skos:prefLabel "Graph roles" ;
+    skos:definition "What a graph is for. Each graph has exactly one." .
+
+role:design a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Design" ;
+    skos:definition "What is intended. Written by a person; every change to it is a decision someone made." .
+
+role:proposed a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Proposed" ;
+    skos:definition "A design not adopted yet. Nothing reads it; it exists to be decided on." .
+
+role:observed a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Observed" ;
+    skos:definition "What is actually so, recorded from the code, the site or the running system, ideally by a script. It is evidence about a design graph, not intent." .
+
+role:archive a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Archive" ;
+    skos:definition "Settled design moved out of the working plan so the plan stays legible. Still true; no longer being worked." .
+
+role:reference a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Reference" ;
+    skos:definition "Rules, vocabularies and research that other graphs are checked against or cite." .
+
+role:docs a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Docs" ;
+    skos:definition "The source of the published /docs pages. Pages are generated from it and never edited by hand." .
+
+role:starter a skos:Concept ;
+    skos:inScheme role:scheme ;
+    skos:prefLabel "Starter" ;
+    skos:definition "Graphs shipped to people as examples and first graphs." .
+
+graph:catalog a dcat:Catalog ;
+    dcterms:title "Reckons.AI graphs" ;
+    dcat:dataset graph:examples-readme ,
+        graph:examples-local-announcements ,
+        graph:examples-personal-notes ,
+        graph:default-kb ,
+        graph:reckons-shapes ,
+        graph:docs-architecture ,
+        graph:docs-coding-workflow ,
+        graph:docs-features ,
+        graph:docs-integrations-tech ,
+        graph:docs-llm ,
+        graph:docs-testing ,
+        graph:docs-timeline-ecosystem ,
+        graph:docs-tips-security ,
+        graph:docs-triples-rdf ,
+        graph:docs-use-cases ,
+        graph:docs-user-paths ,
+        graph:docs-why-reckons ,
+        graph:knowledge ,
+        graph:reckons-code-files ,
+        graph:reckons-catalog ,
+        graph:reckons-codebase ,
+        graph:reckons-competitive ,
+        graph:reckons-generation-tools ,
+        graph:reckons-jobs ,
+        graph:reckons-production ,
+        graph:reckons-roadmap ,
+        graph:reckons-safety-log ,
+        graph:reckons-sets-spec ,
+        graph:reckons-shipped ,
+        graph:reckons-standards ,
+        graph:reckons-terminology ,
+        graph:reckons-vocabulary ,
+        graph:starter-assets ,
+        graph:starter-everyday ,
+        graph:starter-guide ,
+        graph:starter-quickstart ,
+        graph:starter-turtles ,
+        graph:starter-visual-review ,
+        graph:website ,
+        graph:website-status .
+
+graph:docs-architecture a void:Dataset ;
+    dcterms:title "Docs: architecture" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-architecture.ttl" .
+
+graph:docs-coding-workflow a void:Dataset ;
+    dcterms:title "Docs: coding workflow" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-coding-workflow.ttl" .
+
+graph:docs-features a void:Dataset ;
+    dcterms:title "Docs: features" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-features.ttl" .
+
+graph:docs-integrations-tech a void:Dataset ;
+    dcterms:title "Docs: integrations tech" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-integrations-tech.ttl" .
+
+graph:docs-llm a void:Dataset ;
+    dcterms:title "Docs: llm" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-llm.ttl" .
+
+graph:docs-testing a void:Dataset ;
+    dcterms:title "Docs: testing" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-testing.ttl" .
+
+graph:docs-timeline-ecosystem a void:Dataset ;
+    dcterms:title "Docs: timeline ecosystem" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-timeline-ecosystem.ttl" .
+
+graph:docs-tips-security a void:Dataset ;
+    dcterms:title "Docs: tips security" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-tips-security.ttl" .
+
+graph:docs-triples-rdf a void:Dataset ;
+    dcterms:title "Docs: triples rdf" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-triples-rdf.ttl" .
+
+graph:docs-use-cases a void:Dataset ;
+    dcterms:title "Docs: use cases" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-use-cases.ttl" .
+
+graph:docs-user-paths a void:Dataset ;
+    dcterms:title "Docs: user paths" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-user-paths.ttl" .
+
+graph:docs-why-reckons a void:Dataset ;
+    dcterms:title "Docs: why reckons" ;
+    dcterms:type role:docs ;
+    dcterms:source "static/docs-why-reckons.ttl" .
+
+graph:knowledge a void:Dataset ;
+    dcterms:title "Published sample graph" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/knowledge.ttl" .
+
+graph:reckons-code-files a void:Dataset ;
+    dcterms:title "Code files and their imports" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-code-files.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/generate-file-graph.ts> ;
+    prov:wasInfluencedBy graph:reckons-codebase .
+
+graph:reckons-codebase a void:Dataset ;
+    dcterms:title "Codebase module map" ;
+    dcterms:type role:design ;
+    dcterms:source "static/reckons-codebase.ttl" .
+
+graph:reckons-competitive a void:Dataset ;
+    dcterms:title "Competitive research" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-competitive.ttl" .
+
+graph:reckons-generation-tools a void:Dataset ;
+    dcterms:title "Local generation tools catalogue" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-generation-tools.ttl" .
+
+graph:reckons-jobs a void:Dataset ;
+    dcterms:title "Offline jobs" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-jobs.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/jobs-graph.ts> .
+
+graph:reckons-production a void:Dataset ;
+    dcterms:title "Production status and test evidence" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-production.ttl" ;
+    prov:wasInfluencedBy graph:reckons-roadmap .
+
+graph:reckons-roadmap a void:Dataset ;
+    dcterms:title "Product design and roadmap" ;
+    dcterms:type role:design ;
+    dcterms:source "static/reckons-roadmap.ttl" .
+
+graph:reckons-safety-log a void:Dataset ;
+    dcterms:title "Safety attestation log" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-safety-log.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/safety-attestation.ts> .
+
+graph:reckons-sets-spec a void:Dataset ;
+    dcterms:title "Sets specification" ;
+    dcterms:type role:proposed ;
+    dcterms:source "static/reckons-sets-spec.ttl" .
+
+graph:reckons-shipped a void:Dataset ;
+    dcterms:title "Shipped work" ;
+    dcterms:type role:archive ;
+    dcterms:source "static/reckons-shipped.ttl" .
+
+graph:reckons-standards a void:Dataset ;
+    dcterms:title "Coding standards" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-standards.ttl" .
+
+graph:reckons-terminology a void:Dataset ;
+    dcterms:title "Terminology" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-terminology.ttl" .
+
+graph:reckons-vocabulary a void:Dataset ;
+    dcterms:title "Closed vocabularies (SKOS and SHACL)" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-vocabulary.ttl" .
+
+graph:starter-assets a void:Dataset ;
+    dcterms:title "Starter: assets" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-assets.ttl" .
+
+graph:starter-everyday a void:Dataset ;
+    dcterms:title "Starter: everyday" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-everyday.ttl" .
+
+graph:starter-guide a void:Dataset ;
+    dcterms:title "Starter: guide" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-guide.ttl" .
+
+graph:starter-quickstart a void:Dataset ;
+    dcterms:title "Starter: quickstart" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-quickstart.ttl" .
+
+graph:starter-turtles a void:Dataset ;
+    dcterms:title "Starter: turtles" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-turtles.ttl" .
+
+graph:starter-visual-review a void:Dataset ;
+    dcterms:title "Starter: visual review" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-visual-review.ttl" .
+
+graph:website a void:Dataset ;
+    dcterms:title "Website design" ;
+    dcterms:type role:design ;
+    dcterms:source "static/website.ttl" .
+
+graph:website-status a void:Dataset ;
+    dcterms:title "Docs site as observed" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/website-status.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/website-align.ts> ;
+    prov:wasInfluencedBy graph:website .
+graph:reckons-catalog a void:Dataset ;
+    dcterms:title "Graph catalog — what each graph is for" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/reckons-catalog.ttl" .
+
+graph:examples-readme a void:Dataset ;
+    dcterms:title "Example workspace graphs — what is tracked and why" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/README.ttl" .
+
+graph:examples-local-announcements a void:Dataset ;
+    dcterms:title "Example: local announcements" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/local-announcements.ttl" .
+
+graph:examples-personal-notes a void:Dataset ;
+    dcterms:title "Example: personal notes landing graph" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/personal-notes.ttl" .
+
+graph:default-kb a void:Dataset ;
+    dcterms:title "Default empty graph" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/kbs/default-kb/default-kb.ttl" .
+
+graph:reckons-shapes a void:Dataset ;
+    dcterms:title "SHACL shapes" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/shapes/reckons-shapes.ttl" .

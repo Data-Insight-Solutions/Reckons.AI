@@ -34,6 +34,14 @@
       "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
+      "name": "version-align",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/version-align.ts",
+      "desc": "The version number, the build and the graph cannot disagree. package.json must have a matching ktype:Release entity, and no source file may hardcode a version literal — the badge and Shelly both read __APP_VERSION__, injected by vite from package.json. BLOCKING because a wrong version on the landing page is a claim to every visitor, it is free to check, and it cannot be right by accident."
+    },
+    {
       "name": "landing-data-align",
       "tier": "script",
       "enabled": true,
@@ -123,6 +131,13 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/dead-weight.ts --pending",
       "desc": "Maintenance flag for ORPHANED and SUPERSEDED features: artifacts whose producing job is disabled, graph features whose files are all gone, unshipped plans whose files a shipped feature already owns, and modules of never-called exports rolled up per feature"
+    },
+    {
+      "name": "repo-hygiene",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/repo-hygiene.ts",
+      "desc": "What is TRACKED that should not be. The other sweeps read claims and generated content; none looks at the file tree, which is how a 4.5MB test artifact and a served .ttl.bak stayed in a public repo. Blocking: tracked-but-ignored (a .gitignore rule added after a commit does nothing, so the rule keeps failing silently) and backup artifacts. Advisory: files over 1MB, because a GLB model and an accident look identical to a rule."
     },
     {
       "name": "safety-attestation",
@@ -216,6 +231,13 @@
       "desc": "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)"
     },
     {
+      "name": "ux-impression",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/ux-impression.ts --url=${UX_IMPRESSION_URL:-https://reckons.ai} --width=${UX_IMPRESSION_WIDTH:-390} --height=${UX_IMPRESSION_HEIGHT:-844} --pending",
+      "desc": "Qualitative UX read of real screens by the local VLM: does this screen look crowded, is one thing clearly most important, does the text read comfortably. Asks only what no script can answer — touch targets, blank screens and contrast are measured deterministically by button-crawl and vision-local instead. Has NO golden set, so it is proposal-only and never blocking; run --calibrate first, which renders a deliberately terrible page and a deliberately clean one and refuses to report at all unless the model can tell them apart. Disabled by default: needs OLLAMA_BASE_URL and a reachable deploy."
+    },
+    {
       "name": "server-health",
       "tier": "script",
       "enabled": true,
@@ -280,6 +302,14 @@
       "desc": "F187: every skos:member must resolve to something that exists. A dangling member does not read to a reader as an error, it reads as a promise — the five-move sets named three entities that did not exist and the page said they were 'covered inside the pages above'."
     },
     {
+      "name": "set-complexity",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/set-complexity.ts --quiet",
+      "desc": "Matt, 2026-09-11: 'anything above and beyond standard triples is worth deep complexity analysis. Search and compute should not suffer greatly.' Measures what sets cost in storage, SEARCH CROWDING, compute and terms-to-learn, reporting plain sets, ordered sets and page blocks apart so they can be bought or refused separately."
+    },
+    {
       "name": "layer-risk",
       "tier": "script",
       "enabled": true,
@@ -323,7 +353,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/host-health.ts --pending",
-      "desc": "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks — disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units — pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts."
+      "desc": "Reusable read-only Linux device check. Aggregate-only stdout; detailed evidence and pending proposals stay in private state outside Git. Explicit unknown/skipped results, local policy, bounded commands, Docker exposure, patch evidence and physical-security checks. No device facts enter shared graphs."
     },
     {
       "name": "docs-review",
@@ -339,6 +369,35 @@
       "blocking": false,
       "cmd": "npx tsx scripts/offline/config-observer.ts --quiet",
       "desc": "F198: what the configuration CLAIMS, against what the logs SHOW. A config file is an unverifiable claim made by the party it benefits; this goes and finds the evidence. It never reads a status — every incident it exists for had a `success` somewhere — so it crosses a stage boundary or reports UNCHECKABLE."
+    },
+    {
+      "name": "term-usage",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/term-usage.ts --pending",
+      "desc": "F203. Every term in static/reckons-terminology.ttl counted against the source tree, each occurrence classified by binding class (free/contract/foreign) and register (standards/developer/user). The free count is the rename headroom; the contract count is a data migration. Also names the terms whose user-facing word is still UNDECIDED and how many occurrences each decision is holding."
+    },
+    {
+      "name": "naming-conventions",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/naming-conventions.ts",
+      "desc": "F204. Counts naming conventions in THIS codebase and in the upstream packages it is built on (SvelteKit, Svelte, Threlte, three.js), ranked by Matt's 2026-09-17 precedence: framework > library binding > upstream > an individual's style guide. A style guide's prose settles nothing; the shipped code does. Reports NO EVIDENCE rather than zero where a source is silent, so a silent source never casts a vote."
+    },
+    {
+      "name": "naming-ratchet",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/naming-conventions.ts --check",
+      "desc": "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing."
+    },
+    {
+      "name": "dependency-health",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/dependency-health.ts",
+      "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
     }
   ]
 }

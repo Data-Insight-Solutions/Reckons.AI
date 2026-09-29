@@ -12,10 +12,32 @@
 import { v4 as uuid } from 'uuid';
 import type { Statement } from './types';
 
+/*
+ * WRITES SKOS, READS BOTH (2026-09-11).
+ *
+ * This module shipped `ktype:EntitySet` + `kpred:has-member`; F187's src/lib/rdf/sets.ts chose
+ * `skos:Collection` + `skos:member`. Both were internally consistent, so nothing failed — sets made
+ * here were simply INVISIBLE to the sets layer that composes pages and to `set-integrity`.
+ *
+ * One vocabulary now, and it is the standard one, because the alternative is teaching every future
+ * reader two dialects. The legacy terms are still READ (graphs in the wild, and the two that ship
+ * in static/) and still EXPORTED as constants so existing importers keep compiling.
+ */
+const SKOS = 'http://www.w3.org/2004/02/skos/core#';
+export const COLLECTION = `${SKOS}Collection`;
+export const MEMBER = `${SKOS}member`;
+export const PREF_LABEL = `${SKOS}prefLabel`;
+/** F65's spelling. Read, never written. */
 export const ENTITY_SET_TYPE = 'urn:kbase:type/EntitySet';
+/** F65's spelling. Read, never written. */
 export const HAS_MEMBER = 'urn:kbase:predicate/has-member';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+
+/** True for either spelling of "groups entities". */
+function isMembership(predicate: string): boolean {
+  return predicate === MEMBER || predicate === HAS_MEMBER;
+}
 
 function isActive(s: Statement): boolean {
   return s.status !== 'rejected' && s.status !== 'superseded';
@@ -38,13 +60,19 @@ export function buildEntitySet(name: string, memberIris: string[]): { setIri: st
   };
   const s = { kind: 'iri' as const, value: setIri };
 
+  /*
+   * rdfs:label is emitted BESIDE skos:prefLabel, not instead of it. Every label reader in the app
+   * (the canvas, search, the node panel) looks for rdfs:label; dropping it to be tidy would make a
+   * new set render as a bare IRI. One extra triple per set, paid once, against a visible regression.
+   */
   const statements: Statement[] = [
-    { id: uuid(), s, p: { kind: 'iri', value: RDF_TYPE }, o: { kind: 'iri', value: ENTITY_SET_TYPE }, ...common },
+    { id: uuid(), s, p: { kind: 'iri', value: RDF_TYPE }, o: { kind: 'iri', value: COLLECTION }, ...common },
+    { id: uuid(), s, p: { kind: 'iri', value: PREF_LABEL }, o: { kind: 'literal', value: name }, ...common },
     { id: uuid(), s, p: { kind: 'iri', value: RDFS_LABEL }, o: { kind: 'literal', value: name }, ...common },
     ...memberIris.map((m) => ({
       id: uuid(),
       s,
-      p: { kind: 'iri' as const, value: HAS_MEMBER },
+      p: { kind: 'iri' as const, value: MEMBER },
       o: { kind: 'iri' as const, value: m },
       ...common,
     })),
@@ -55,14 +83,15 @@ export function buildEntitySet(name: string, memberIris: string[]): { setIri: st
 /** The member IRIs of the set `setIri`. */
 export function setMembers(setIri: string, statements: Statement[]): string[] {
   return statements
-    .filter((st) => st.s.kind === 'iri' && st.s.value === setIri && st.p.value === HAS_MEMBER && st.o.kind === 'iri' && isActive(st))
+    .filter((st) => st.s.kind === 'iri' && st.s.value === setIri && isMembership(st.p.value) && st.o.kind === 'iri' && isActive(st))
     .map((st) => st.o.value);
 }
 
 /** True when `iri` is an entity set. */
 export function isEntitySet(iri: string, statements: Statement[]): boolean {
   return statements.some(
-    (st) => st.s.kind === 'iri' && st.s.value === iri && st.p.value === RDF_TYPE && st.o.kind === 'iri' && st.o.value === ENTITY_SET_TYPE && isActive(st)
+    (st) => st.s.kind === 'iri' && st.s.value === iri && st.p.value === RDF_TYPE && st.o.kind === 'iri'
+      && (st.o.value === COLLECTION || st.o.value === ENTITY_SET_TYPE) && isActive(st)
   );
 }
 

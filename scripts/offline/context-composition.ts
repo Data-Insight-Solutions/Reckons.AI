@@ -36,9 +36,11 @@
  *    in prompt-audit.ts). Real tokenization differs, notably for code and JSON.
  *  - Images are counted as blocks but their token cost is not modelled.
  */
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
+import { execFileSync } from 'child_process';
 import { homedir } from 'os';
 import path from 'path';
+import { resolveTranscriptDir } from '../lib/transcript-dir';
 
 /** Project convention: ~1.33 tokens per word (mcp-server/src/index.ts estimateTokens). */
 const tokens = (s: string) => Math.round(s.split(/\s+/).filter(Boolean).length * 1.33);
@@ -48,7 +50,7 @@ const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('='
 const JSON_OUT = args.includes('--json');
 const top = Number(flag('top') ?? 12);
 const only = flag('session');
-const dir = flag('path') ?? path.join(homedir(), '.claude', 'projects', process.cwd().replace(/[/.]/g, '-'));
+const dir = flag('path') ?? resolveTranscriptDir();
 
 type Block = {
   category: string;   // human | assistant-text | thinking | tool-params | tool-result

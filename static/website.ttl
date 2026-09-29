@@ -136,9 +136,30 @@ ds:user-paths a void:Dataset ;
     dcterms:title "User paths" ;
     dcterms:source "docs-user-paths.ttl" .
 
+# Added 2026-09-16 with the graph itself (F205), in the same commit rather than a week later —
+# which is the whole point of the gate the note above describes. This is the one docs graph that
+# is openly PERSUASION rather than description, so it carries its own sources and dates.
+ds:why-reckons a void:Dataset ;
+    dcterms:title "Why Reckons.AI" ;
+    dcterms:source "docs-why-reckons.ttl" .
+
 # ── The pages ────────────────────────────────────────────────────────────────
 # Every page carries schema:abstract. Composition REFUSES a page without one, because a page
 # nobody can state the point of is precisely what the 269 auto-generated pages already are.
+
+# The comparison page (F205). Deliberately the FIRST thing in Learn: a reader who does not yet
+# know why they would want a knowledge graph is not served by being handed one. It claims the
+# whole why-reckons subtree. Note that the graph's editing history is deliberately NOT part of
+# that subtree — the rejected priority claim lives in the roadmap (F205 kpred:measured) as
+# knowledge, because a reader needs the argument rather than our corrections.
+site:why-reckons a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Learn" ;
+    schema:name "Why Reckons.AI" ;
+    schema:url <https://reckons.ai/docs/learn/why-reckons> ;
+    schema:position 0 ;
+    schema:abstract "Palantir, Databricks and Microsoft all sell an ontology layer built on RDF triples. This is the same technology with the invoice removed — and an honest account of what that costs you." ;
+    schema:isBasedOn ds:why-reckons .
 
 site:start-here a schema:WebPage ;
     schema:isPartOf site:docs ;

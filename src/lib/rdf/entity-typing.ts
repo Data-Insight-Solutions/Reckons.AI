@@ -5,7 +5,7 @@
  * types set, before a user reviews."
  *
  * WHAT ARRIVES TODAY. The extractor emits subject/predicate/object and nothing else. Every entity
- * it mints is untyped, so a review card says "orange-logic" with no answer to the first question a
+ * it mints is untyped, so a review card says "example-archive" with no answer to the first question a
  * person actually asks — WHAT IS THIS? Untyped entities also break things downstream that had no
  * business depending on the extractor's silence: the hub type gate cannot see them, entity shapes
  * cannot check them, and the graph renders them all as the same grey default.
@@ -31,7 +31,7 @@ import type { Statement } from './types';
 import { isIRI, isLit } from './types';
 import { RDF_TYPE, type EntityTypeDef } from './entity-types';
 
-/** Predicates whose object NAMES the subject's type. "orange-logic is-a company". */
+/** Predicates whose object NAMES the subject's type. "example-archive is-a company". */
 const TYPING_PREDICATES = new Set(
   ['is-a', 'isa', 'instance-of', 'type', 'kind-of', 'a'].map((p) => `urn:kbase:predicate/${p}`),
 );
@@ -128,7 +128,7 @@ export function surveyTypes(
   const undecided: UntypedEntity[] = [];
 
   for (const [entityIri, own] of facts) {
-    // 1. THE TEXT SAID SO. "Orange Logic is a company" is the strongest evidence there is, and it
+    // 1. THE TEXT SAID SO. "Example Archive is a company" is the strongest evidence there is, and it
     //    came from the source rather than from an inference over conventions.
     const stated = own.find((st) => {
       if (!TYPING_PREDICATES.has(st.p.value)) return false;

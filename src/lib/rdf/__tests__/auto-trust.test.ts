@@ -11,7 +11,7 @@ function st(
 ): Statement {
   return {
     id: `t${n++}`,
-    s: { kind: 'iri', value: 'urn:kbase:concept/orange-logic' },
+    s: { kind: 'iri', value: 'urn:kbase:concept/example-archive' },
     p: { kind: 'iri', value: predicate },
     o: object,
     g: { kind: 'iri', value: 'urn:kbase:graph/personal-notes' },
@@ -46,7 +46,7 @@ describe('the capture path asserts things about itself', () => {
 });
 
 describe('what a model READ OUT of a note still needs a human', () => {
-  it('"Orange Logic is an enterprise DAM" is not auto-trusted', () => {
+  it('"Example Archive is an enterprise DAM" is not auto-trusted', () => {
     // The worked example from the brief. Mundane is not the same as verified, and the claim came
     // from a language model reading a possibly-misheard transcript.
     const claim = st('urn:kbase:predicate/is-a', lit('Enterprise DAM'));

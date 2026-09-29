@@ -5,8 +5,7 @@ import {
   overlaps,
   previewWorldRadius,
   CAM_HALF_TAN,
-  type Positioned,
-} from '../preview-collage';
+  type Positioned, markerWorldRadius, glbWorldRadius, degreeScale, SELECTED_NODE_SCALE, focusRingRadius } from '../preview-collage';
 
 /** Matches the solver's default slop, so the checker tolerates exactly what the solver leaves. */
 const SLOP = 0.02;
@@ -239,5 +238,156 @@ describe('the O(n^2) guard', () => {
   it('runs when the graph is within budget', () => {
     const nodes = Array.from({ length: 10 }, (_, i) => at(`n${i}`, 0, 0));
     expect(resolveOverlaps(nodes, () => 1, { maxNodes: 50 })).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * GLB NODES, WHICH ARE THE CASE THAT WAS NOT COVERED.
+ *
+ * Matt reported models colliding on a real graph (2026-09-23) and I first claimed no automated
+ * test could reach it. That was wrong twice: resolveOverlaps is a pure exported function with
+ * this very test file beside it, and the app already ships an example model. The real defect was
+ * that both the radius map and this solver were gated on the collage modifier, so a GLB — whose
+ * world size is whatever its author exported, routinely an order of magnitude past a marker's
+ * 0.32 — was spaced as though it were a marker in every ordinary view.
+ *
+ * These assert the PROPERTY rather than a screenshot: given radii that differ by an order of
+ * magnitude, nothing ends up closer than the two radii it needs. A pixel comparison would catch
+ * a change; this catches the thing being wrong.
+ */
+describe('separation when radii differ by an order of magnitude (GLB beside markers)', () => {
+  const MARKER = 0.32;
+  const MODEL = 3.2; // a Meshy-scale export against a default marker
+
+  const radiusFor = (big: Set<string>) => (n: Positioned) => (big.has(n.key) ? MODEL : MARKER);
+
+  it('pushes a model clear of a marker sitting on top of it', () => {
+    const nodes = [at('model', 0, 0), at('marker', 0.1, 0)];
+    const big = new Set(['model']);
+    resolveOverlaps(nodes, radiusFor(big), { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeGreaterThanOrEqual(MODEL + MARKER - SLOP);
+  });
+
+  it('separates two models from each other, not just from markers', () => {
+    const nodes = [at('a', 0, 0), at('b', 0.5, 0.2)];
+    const big = new Set(['a', 'b']);
+    resolveOverlaps(nodes, radiusFor(big), { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeGreaterThanOrEqual(MODEL * 2 - SLOP);
+  });
+
+  it('leaves no overlapping pair in a mixed cluster', () => {
+    const nodes = [
+      at('m1', 0, 0), at('m2', 0.4, 0.1), at('m3', -0.3, 0.2),
+      at('n1', 0.1, -0.1), at('n2', -0.2, -0.3), at('n3', 0.2, 0.3),
+    ];
+    const big = new Set(['m1', 'm2', 'm3']);
+    const r = radiusFor(big);
+    resolveOverlaps(nodes, r, { strength: 1, iterations: 40 });
+    // overlaps() compares ONE pair, so check every pair and name the ones that fail.
+    const still: string[] = [];
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i + 1; j < nodes.length; j++)
+        if (overlaps(nodes[i], nodes[j], r, { tolerance: SLOP })) still.push(`${nodes[i].key}/${nodes[j].key}`);
+    expect(still).toEqual([]);
+  });
+
+  // The bug was never that separation is impossible — it is that nothing asked for it outside
+  // collage. A uniform radius spreads to 2*0.32 and calls it done, which is what the layout did
+  // to a model ten times that size.
+  it('a uniform marker radius leaves models overlapping, which is the defect', () => {
+    const nodes = [at('model-a', 0, 0), at('model-b', 0.1, 0)];
+    resolveOverlaps(nodes, () => MARKER, { strength: 1, iterations: 24 });
+    const d = Math.hypot(nodes[0].pos.x - nodes[1].pos.x, nodes[0].pos.y - nodes[1].pos.y, nodes[0].pos.z - nodes[1].pos.z);
+    expect(d).toBeLessThan(MODEL * 2); // spaced as markers — still colliding as models
+  });
+});
+
+
+/**
+ * THE RADIUS DERIVATION, which is where both GLB bugs actually lived.
+ *
+ * The solver above was already covered; the arithmetic that tells it how big each node is was
+ * not, because it sat inline in a .svelte file. It has now been wrong twice — once by giving
+ * every node a uniform radius (PR #281), once by applying the MARKER unit-sphere conversion to
+ * a model as well and under-reporting every GLB by about a factor of three (2026-09-24, "the
+ * GLB nodes need more space also"). Both were invisible to the solver's own tests, which
+ * happily separate whatever radii they are handed.
+ */
+describe('node layout radius derivation', () => {
+  it('a marker is the degree scale times the unit-sphere radius', () => {
+    expect(markerWorldRadius(0)).toBeCloseTo(degreeScale(0) * 0.32, 6);
+    expect(markerWorldRadius(7)).toBeCloseTo(degreeScale(7) * 0.32, 6);
+  });
+
+  it('a GLB does NOT get the marker conversion — that was the bug', () => {
+    // GraphNode draws the model at `scale * 0.8` with `scale` the RAW degree scale, so the
+    // world radius carries no 0.32. The old code multiplied it in and made every model a
+    // third of its drawn size.
+    const intrinsic = 2.5;
+    const s = degreeScale(3);
+    // model body (scale * 0.8) PLUS the lift GraphNode applies (scale * 0.55), because the
+    // reserved circle is centred on node.pos and the model is not.
+    expect(glbWorldRadius(intrinsic, 3)).toBeCloseTo(intrinsic * s * 0.8 + s * 0.55, 6);
+    // the old, wrong value — marker conversion applied to a model
+    expect(glbWorldRadius(intrinsic, 3)).not.toBeCloseTo(intrinsic * s * 0.32 * 0.8, 3);
+  });
+
+  it('a unit-radius model claims meaningfully more room than a marker of the same degree', () => {
+    // (0.8 + 0.55) / 0.32 = 4.21875 for a unit-radius model: body plus the draw lift, against
+    // the marker's unit sphere. The old code produced 0.8x — LESS than a marker — which is how
+    // models ended up with less room than the dots beside them.
+    const ratio = glbWorldRadius(1, 5) / markerWorldRadius(5);
+    expect(ratio).toBeCloseTo((0.8 + 0.55) / 0.32, 6);
+    expect(ratio).toBeGreaterThan(1);
+  });
+
+  it('radius grows with degree in both, and never goes backwards', () => {
+    for (let d = 0; d < 20; d++) {
+      expect(markerWorldRadius(d + 1)).toBeGreaterThan(markerWorldRadius(d));
+      expect(glbWorldRadius(1, d + 1)).toBeGreaterThan(glbWorldRadius(1, d));
+    }
+  });
+
+  it('the selection scale is the single shared figure, not a local copy', () => {
+    // Three call sites read this: the mesh, the DOM thumbnail and the layout radius. The bug
+    // was that only the first knew about it.
+    expect(SELECTED_NODE_SCALE).toBeGreaterThan(1);
+  });
+});
+
+
+describe('focus ring radius', () => {
+  const opts = { baseRing: 9, focusedRadius: 0.3, widestNode: 0.32, gap: 2.2 };
+
+  it('falls back to the plain hop spacing when nothing else binds', () => {
+    expect(focusRingRadius(1, 1, opts)).toBeCloseTo(9, 6);
+    expect(focusRingRadius(3, 1, opts)).toBeCloseTo(27, 6);
+  });
+
+  it('grows ring 1 so it starts OUTSIDE a large focused node', () => {
+    // The reported bug: neighbours sat on top of the focused node because the ring was a fixed
+    // distance from a POINT, and a selected model is nothing like a point.
+    const big = { ...opts, focusedRadius: 14 };
+    expect(focusRingRadius(1, 1, big)).toBeGreaterThan(14);
+    expect(focusRingRadius(1, 1, big)).toBeCloseTo(14 + 0.32 + 2.2, 6);
+  });
+
+  it('grows a busy ring so its members are not shoulder to shoulder', () => {
+    const crowded = focusRingRadius(1, 60, opts);
+    // 60 nodes each needing 2r + gap of arc cannot fit on a circle of radius 9.
+    expect(crowded).toBeGreaterThan(9);
+    expect(2 * Math.PI * crowded).toBeGreaterThanOrEqual(60 * (2 * opts.widestNode + opts.gap) - 1e-6);
+  });
+
+  it('never returns a ring inside its predecessor', () => {
+    for (let hop = 1; hop < 6; hop++) {
+      expect(focusRingRadius(hop + 1, 5, opts)).toBeGreaterThan(focusRingRadius(hop, 5, opts));
+    }
+  });
+
+  it('a single member does not inflate the ring', () => {
+    expect(focusRingRadius(2, 1, opts)).toBeCloseTo(focusRingRadius(2, 0, opts), 6);
   });
 });

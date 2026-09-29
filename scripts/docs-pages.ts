@@ -159,6 +159,7 @@ const SOURCES: ReadonlyArray<{
   { file: 'docs-coding-workflow.ttl', section: 'Coding Workflow' },
   { file: 'docs-testing.ttl', section: 'Testing' },
   { file: 'docs-user-paths.ttl', section: 'User Paths' },
+  { file: 'docs-why-reckons.ttl', section: 'Why Reckons.AI' },
   { file: 'starter-guide.ttl', section: 'Guide' },
   {
     file: 'reckons-roadmap.ttl',

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BM25Index } from '../bm25';
+import { BM25Index, structuralWeight } from '../bm25';
 import type { BM25Doc } from '../bm25';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -304,5 +304,45 @@ describe('BM25Index — result shape', () => {
     expect(typeof result.score).toBe('number');
     expect(result).toHaveProperty('doc');
     expect(result.doc).toBe(doc);
+  });
+});
+
+// ── Structural rows do not compete with facts ────────────────────────────────
+
+/*
+ * The regression these guard against is MEASURED, not hypothetical: before weighting,
+ * scripts/offline/set-complexity.ts found membership rows in the top 10 of 11 of 25 member-name
+ * queries, pushing a real fact out of the top 10 in 5 of them. A membership row repeats a name
+ * that every real fact about that member already carries, and adds nothing.
+ */
+describe('BM25Index — structural weighting', () => {
+  it('a membership row scores below a real fact with the same match', () => {
+    const fact = makeDoc({ id: 'fact', subject: 'aprimo', predicate: 'is-a', object: 'dam-vendor' });
+    const membership = makeDoc({ id: 'member', subject: 'shortlist', predicate: 'member', object: 'aprimo' });
+    const results = new BM25Index([membership, fact]).search('aprimo');
+    expect(results.map((r) => r.id)).toEqual(['fact', 'member']);
+  });
+
+  it('order machinery scores below membership, which scores below a fact', () => {
+    expect(structuralWeight('urn:kbase:predicate/member-order'))
+      .toBeLessThan(structuralWeight('http://www.w3.org/2004/02/skos/core#member'));
+    expect(structuralWeight('http://www.w3.org/2004/02/skos/core#member'))
+      .toBeLessThan(structuralWeight('urn:kbase:predicate/is-a'));
+    expect(structuralWeight('urn:kbase:predicate/is-a')).toBe(1);
+  });
+
+  it('recognizes both spellings of membership — the app writes one, F65 graphs the other', () => {
+    expect(structuralWeight('urn:kbase:predicate/has-member'))
+      .toBe(structuralWeight('http://www.w3.org/2004/02/skos/core#member'));
+  });
+
+  /*
+   * DOWNWEIGHTED, NOT DROPPED. Dropping membership from the index would make "what is in the
+   * shortlist" unanswerable by search — a worse failure than crowding, and the reason the fix is
+   * a weight rather than a filter.
+   */
+  it('a membership row is still FOUND when it is the only match', () => {
+    const membership = makeDoc({ id: 'member', subject: 'shortlist', predicate: 'member', object: 'aprimo' });
+    expect(new BM25Index([membership]).search('aprimo')).toHaveLength(1);
   });
 });

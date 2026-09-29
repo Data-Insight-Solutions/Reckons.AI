@@ -1,7 +1,7 @@
 ---
 title: "RDF (Resource Description Framework)"
 slug: "rdf"
-order: 1011
+order: 1015
 section: "Triples & RDF"
 parent: "triple-architecture"
 template: doc

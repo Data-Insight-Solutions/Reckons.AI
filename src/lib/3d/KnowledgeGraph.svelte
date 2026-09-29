@@ -17,8 +17,8 @@
   import { parseGraphDate, EVENT_DATE_PREDICATES } from '$lib/rdf/parse-date';
   import { buildNodeTimes, timelineRange, undatedCount } from '$lib/rdf/timeline-layout';
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
-  import { resolveOverlaps, previewWorldRadius } from './preview-collage';
-  import GraphNode from '$lib/components/GraphNode.svelte';
+  import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius, focusRingRadius } from './preview-collage';
+  import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
@@ -45,6 +45,8 @@
     timelineTimeSource = 'event' as 'event' | 'ingested',
     cameraSpec = null,
     previewKeys = null,
+    labelPriorityKeys = null,
+    viewportInsets = undefined,
     previewSizePx = 96,
     onselect = () => {},
     onhover = () => {},
@@ -87,6 +89,15 @@
      * eight layout values rather than being a ninth.
      */
     previewKeys?: Set<string> | null;
+    /** Keep key hubs labelled when ordinary distance/overlap culling would hide them. */
+    labelPriorityKeys?: Set<string> | null;
+    /**
+     * Pixels of canvas hidden behind floating panels on each side, so the graph is framed by what
+     * the user can SEE rather than by the canvas rectangle. Mirrors the 2D renderer's prop of the
+     * same name; measured 2026-09-18 at 372px on the left with Shelly and the filters open, which
+     * is 29% of a 1280px canvas and the reason the graph read as bunched.
+     */
+    viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
     /** On-screen size of a preview thumbnail in px (settings.nodePreviewSize). */
     previewSizePx?: number;
     onselect?: (key: string | null, ctrlKey?: boolean) => void;
@@ -141,6 +152,34 @@
 
   /** Set of node keys that have a KB Leap defined. */
   const leapKeys = $derived(leapNodeKeys(statements as Statement[]));
+
+  /**
+   * INTRINSIC WORLD RADIUS OF EACH DISTINCT GLB, measured once per URL.
+   *
+   * A plain marker is a unit sphere scaled by degree; a GLB is whatever size its author exported,
+   * and Meshy output is routinely an order of magnitude larger. The layout assumed 0.32 for every
+   * node, so models were spaced as though they were markers and overlapped exactly as much as
+   * their real size exceeded that guess.
+   *
+   * NOT FIXED BY TURNING UP REPULSION — measured 2026-09-18 and recorded on the viewportInsets
+   * prop below: sweeping REPEL, BASE_REST and CENTER "moved the spread by less than noise",
+   * because those scale the WHOLE layout and the camera simply refits. Zooming is not spreading.
+   * A per-node radius is different in kind: it changes RELATIVE spacing, which survives a refit.
+   */
+  const glbRadius = $state(new Map<string, number>());
+  $effect(() => {
+    const urls = new Set(entityIcon3dMap.values());
+    for (const url of urls) {
+      if (glbRadius.has(url)) continue;
+      glbRadius.set(url, 0); // claim it so concurrent frames do not re-request
+      loadGltfTemplate(url)
+        .then((scene) => {
+          const sphere = new THREE.Box3().setFromObject(scene).getBoundingSphere(new THREE.Sphere());
+          if (Number.isFinite(sphere.radius) && sphere.radius > 0) glbRadius.set(url, sphere.radius);
+        })
+        .catch(() => { /* a model that will not load simply keeps the marker radius */ });
+    }
+  });
 
   /** Per-entity GLB override: entity node key → glb URL (editor store + statement-level refs) */
   const entityIcon3dMap = $derived.by(() => {
@@ -201,13 +240,14 @@
   let previousCanvasHeight = 0;
   let previousCameraAspect = 0;
 
-  /** Fit a structured tree as a whole; its orphan lane is part of the visible composition too. */
-  function fitHierarchyCamera3D(anchors: Map<string, THREE.Vector3>) {
+  /** Frame structured layouts, including source clusters and a tree's orphan lane. */
+  function fitStructuredCamera3D(anchors: Map<string, THREE.Vector3>) {
     if (cameraSpec || anchors.size === 0 || !camera.current) return;
     const cam = camera.current as THREE.PerspectiveCamera;
     if (!cam.isPerspectiveCamera) return;
     const sphere = new THREE.Sphere();
     new THREE.Box3().setFromPoints([...anchors.values()]).getBoundingSphere(sphere);
+    if (layout === 'source') sphere.radius += 4; // anchors mark cluster centers, not their extent
     const previousTarget = orbitRef?.target ?? cameraTarget;
     const direction = cam.position.clone().sub(previousTarget);
     if (direction.lengthSq() === 0) direction.set(0, 0, 1);
@@ -351,10 +391,61 @@
 
   // ── Layout builders ─────────────────────────────────────────────────────────
 
-  const FOCUS_RING_R = 5.5; // world-units between hop rings
+  /**
+   * WORLD UNITS BETWEEN HOP RINGS, sized to the biggest thing on them.
+   *
+   * It was a flat 5.5, which predates nodes having real radii. A GLB can now legitimately claim
+   * several world units, so fixed rings put two of them on adjacent hops closer than either one
+   * is wide and the collision pass then fought the ring anchors it could not satisfy — the state
+   * Matt reported as "focus mode looks broken now. We need the radial spread and much further
+   * spread." Sizing the gap from the largest radius present makes the rings reachable, so the
+   * anchors and the separation pass agree instead of pulling against each other.
+   */
+  const focusRingR = $derived.by(() => {
+    let maxR = 0.32;
+    for (const n of nodes) {
+      const url = entityIcon3dMap.get(n.key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const r = intrinsic > 0 ? glbWorldRadius(intrinsic, n.degree) : markerWorldRadius(n.degree);
+      if (r > maxR) maxR = r;
+    }
+    return Math.max(9, maxR * 2.6 + 4);
+  });
 
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
     if (!selected) return { anchors: new Map(), radii: [], distances: new Map() };
+
+    /**
+     * RINGS SIZED FROM WHAT THEY MUST HOLD, not from a constant (Matt, 2026-09-24: "focus still
+     * leaves other nodes way too close to the focused node... We need layered rings out from the
+     * focused node").
+     *
+     * hop * focusRingR alone ignores two things that decide whether a ring is actually clear:
+     *
+     *   INSIDE IT — the focused node is drawn at SELECTED_NODE_SCALE and may be a GLB, so hop 1
+     *   has to start outside the focused node's own radius, not at a fixed 9 units from a point.
+     *   This is why neighbours appeared to sit on top of it however far the constant was pushed.
+     *
+     *   ON IT — n nodes on a circle need n * (2r + gap) of circumference between them, so a ring
+     *   with many members has to grow or they crowd shoulder to shoulder at the ring's own radius.
+     *
+     * Taking the max of the three keeps the layered look while guaranteeing both clearances.
+     */
+    const RING_GAP = 2.2;
+    const nodeRadiusOf = (key: string, degree: number) => {
+      const url = entityIcon3dMap.get(key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      const base = intrinsic > 0 ? glbWorldRadius(intrinsic, degree) : markerWorldRadius(degree);
+      return key === selected ? base * SELECTED_NODE_SCALE : base;
+    };
+    let widestNode = 0.32;
+    for (const n of nodes) widestNode = Math.max(widestNode, nodeRadiusOf(n.key, n.degree));
+    const focusedNode = nodes.find((n) => n.key === selected);
+    const focusedRadius = focusedNode ? nodeRadiusOf(focusedNode.key, focusedNode.degree) : 0.32;
+    const ringRadius = (hop: number, count: number) =>
+      focusRingRadius(hop, count, {
+        baseRing: focusRingR, focusedRadius, widestNode, gap: RING_GAP,
+      });
 
     // ── 1. BFS hop distances ─────────────────────────────────────────────────
     // Shared traversal (rdf/n-hop.ts) — this was a verbatim copy of the 2D version, and
@@ -419,7 +510,8 @@
           nodeKeys.forEach((k, i) => {
             const fa = nodeKeys.length === 1 ? midAngle : angle + (i + 0.5) * (sectorArc / nodeKeys.length);
             const zOff = (i % 2 === 0 ? 1 : -1) * 0.55;
-            anchors.set(k, new THREE.Vector3(FOCUS_RING_R * Math.cos(fa), FOCUS_RING_R * Math.sin(fa), zOff));
+            const r1 = ringRadius(1, totalDirect);
+            anchors.set(k, new THREE.Vector3(r1 * Math.cos(fa), r1 * Math.sin(fa), zOff));
             nodeAngle.set(k, fa);
           });
           angle += sectorArc;
@@ -449,7 +541,7 @@
         parentGroups.get(pk)!.push(k);
       }
 
-      const r = hop * FOCUS_RING_R;
+      const r = ringRadius(hop, hopNodes.length);
       for (const [pk, siblings] of parentGroups) {
         const base = pk === '__none__' ? 0 : (nodeAngle.get(pk) ?? 0);
         // Fan siblings symmetrically around the parent's angle, narrowing as hop increases
@@ -467,13 +559,18 @@
     // ── 5. Disconnected nodes: outer orbit ───────────────────────────────────
     const unreachable = nodes.filter(n => !anchors.has(n.key));
     unreachable.forEach((n, i) => {
-      const r = (maxD + 2.5) * FOCUS_RING_R;
+      const r = ringRadius(maxD + 1, unreachable.length) + focusRingR * 1.5;
       const theta = (2 * Math.PI * i) / Math.max(unreachable.length, 1);
       anchors.set(n.key, new THREE.Vector3(r * Math.cos(theta), r * Math.sin(theta), (i % 3 - 1) * 2));
     });
 
     const radii: number[] = [];
-    for (let d = 1; d <= maxD; d++) radii.push(d * FOCUS_RING_R);
+    for (let d = 1; d <= maxD; d++) {
+      const countAtHop = d === 1
+        ? totalDirect
+        : [...distances.values()].filter((x) => x === d).length;
+      radii.push(ringRadius(d, countAtHop));
+    }
     return { anchors, radii, distances };
   }
 
@@ -619,10 +716,37 @@
 
     const anchors = new Map<string, THREE.Vector3>();
     for (const hub of hubNodes) anchors.set(hub.key, hubAnchorPos.get(hub.key)!);
+    /**
+     * FAN EACH HUB'S MEMBERS AROUND IT, rather than stacking every one on the hub's own point
+     * (Matt, 2026-09-24: "Types layout is better spread than Hub currently").
+     *
+     * Every satellite used to be anchored to the IDENTICAL position — its hub — and then had to
+     * shove its way out against an anchorStrength of 0.78 pulling it back. Repulsion won that
+     * argument badly and unevenly, which is exactly why hub looked tighter than type: type
+     * distributes its members, hub piled them and hoped.
+     *
+     * Placement is a phyllotactic spiral (golden angle, radius as sqrt of index), which gives
+     * even density at any count without tuning a per-size ring — the same reason sunflowers use
+     * it. The anchors now describe the spread, so the springs no longer have to invent it.
+     */
+    const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+    const SAT_SPACING = 2.4;
+    const byHub = new Map<number, string[]>();
     for (const node of nodes) {
       if (hubKeySet.has(node.key)) continue;
       const idx = nodeHubIdx.get(node.key) ?? 0;
-      anchors.set(node.key, hubAnchorPos.get(hubNodes[idx].key)!.clone());
+      if (!byHub.has(idx)) byHub.set(idx, []);
+      byHub.get(idx)!.push(node.key);
+    }
+    for (const [idx, members] of byHub) {
+      const centre = hubAnchorPos.get(hubNodes[idx].key)!;
+      members.forEach((k, i) => {
+        const r = SAT_SPACING * Math.sqrt(i + 1);
+        const a = i * GOLDEN_ANGLE;
+        anchors.set(k, centre.clone().add(
+          new THREE.Vector3(r * Math.cos(a), r * Math.sin(a), ((i % 3) - 1) * 0.6),
+        ));
+      });
     }
 
     const nodeColors = new Map<string, string>();
@@ -952,6 +1076,7 @@
     } else if (layout === 'source') {
       const { anchors, markers, nodeColors } = buildSourceAnchors();
       activeAnchors = anchors;
+      fitStructuredCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.80;
@@ -962,7 +1087,13 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.82;
+      // PULL HARDER (Matt, 2026-09-24: "Type and Hub layouts need to 'pull' nodes harder to
+      // their destinations"). These two are CLUSTER layouts: the anchor IS the answer, and a
+      // weak pull left nodes negotiating with repulsion somewhere between their group and the
+      // next one, which reads as a blurry grouping rather than a decisive one. Safe to raise
+      // now that hub's anchors describe a real spread instead of stacking every member on one
+      // point — a strong pull toward a pile would only have made the pile tighter.
+      anchorStrength = 1.35;
       nodeColorMap = new Map(); // type colors come from typeDef, no override needed
       hubNodeKeys = [];
     } else if (layout === 'hub') {
@@ -970,7 +1101,7 @@
       activeAnchors = anchors;
       layoutMarkers = markers;
       layoutRingRadii = [];
-      anchorStrength = 0.78;
+      anchorStrength = 1.35; // see the note on the type layout above
       nodeColorMap = nodeColors;
       hubNodeKeys = hubKeys;
     } else if (layout === 'timeline') {
@@ -994,7 +1125,7 @@
         node.pos.copy(anchor);
         node.vel.set(0, 0, 0);
       }
-      fitHierarchyCamera3D(anchors);
+      fitStructuredCamera3D(anchors);
       layoutMarkers = markers;
       layoutRingRadii = [];
       anchorStrength = 0.85;
@@ -1075,7 +1206,9 @@
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
-    const BASE_REST  = 2.4;
+    // The free layout has no camera fit, so a longer rest is genuinely visible there where it
+    // would merely rescale a fitted layout (Matt: "free mode should be a bit more spread").
+    const BASE_REST  = layout === 'force' ? 3.4 : 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
     const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
@@ -1087,6 +1220,32 @@
     // itself, because a node pushed further from the camera immediately demands more room.
     const collageOn = !!previewKeys && previewKeys.size > 0 && !!camera.current && !!renderer;
     const radii = new Map<string, number>();
+    // GLB nodes need room in EVERY mode, not only when the collage modifier is on. The group is
+    // rendered at scale * 0.8 in GraphNode, so the world radius is the model's own bounding
+    // radius times that — which is what the springs and the collision pass below both read.
+    for (const n of nodes) {
+      const url = entityIcon3dMap.get(n.key);
+      const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
+      if (intrinsic > 0) {
+        /**
+         * THE GLB RADIUS WAS 0.32x TOO SMALL, AND THAT IS WHY MODELS STILL TOUCHED (Matt,
+         * 2026-09-24: "the GLB nodes need more space also", after "minor collision on the
+         * large tent 3d model").
+         *
+         * Derivation, because the two numbers here are easy to mix up. GraphNode draws a model
+         * as <T.Group scale={scale * 0.8}> where `scale` is the RAW degree scale
+         * (0.85 + 0.45*log2(1+degree)), so its world radius is intrinsic * raw * 0.8. A plain
+         * marker is a unit sphere of world radius 0.32 at scale 1, so ITS world radius is
+         * raw * 0.32 — and that 0.32 is a marker conversion, not part of the degree scale.
+         *
+         * The old line applied the marker conversion to the model as well
+         * (intrinsic * raw * 0.32 * 0.8), under-reporting every GLB by a factor of about three.
+         * The springs and the collision pass were both sizing a model a third of its drawn size,
+         * which is exactly as much room as it needed to still overlap.
+         */
+        radii.set(n.key, Math.max(markerWorldRadius(n.degree), glbWorldRadius(intrinsic, n.degree)));
+      }
+    }
     if (collageOn) {
       const camPos = camera.current!.position;
       const halfH = renderer!.domElement.clientHeight * 0.5;
@@ -1097,9 +1256,39 @@
           previewKeys!.has(n.key)
             // A thumbnail is a fixed pixel size, so the world room it needs grows with camera
             // distance — which is what keeps the separation honest at every zoom, not just one.
-            ? Math.max(base, previewWorldRadius(previewSizePx, camPos.distanceTo(n.pos), halfH))
+            // A SELECTED preview is drawn larger by the page, so the room it needs grows with
+            // it — sizing from the unselected px here is what let neighbours sit inside it.
+            ? Math.max(base, previewWorldRadius(
+                previewSizePx * (n.key === selected ? SELECTED_NODE_SCALE : 1),
+                camPos.distanceTo(n.pos), halfH))
             : base,
         );
+      }
+    }
+    /**
+     * THE SELECTED NODE GROWS AND THE LAYOUT HAD NO IDEA (Matt, 2026-09-24: "the node
+     * enlarges, but the other nodes around collide heavily").
+     *
+     * GraphNode.svelte draws a selected node at max(degreeScale, 1.0) * SELECTED_NODE_SCALE,
+     * while this map held only the UNSELECTED base — so the springs and the collision pass
+     * were both sizing a node that had already grown past them, and the neighbours stayed
+     * exactly where they were while it swelled through them.
+     *
+     * Putting the DRAWN size in here is the whole fix: radiusOf is read by the edge springs
+     * below AND by resolveOverlaps, so the neighbours both want the room and get pushed out
+     * of it. No new force, nothing to tune, and it turns the collision pass on for the frames
+     * where it is needed via the `radii.size > 0` guard that already exists.
+     *
+     * The ring is drawn at a further 1.6x and is deliberately NOT counted: clearing the node's
+     * body is the honest requirement, and clearing its halo too would shove the neighbourhood
+     * more than twice as far for a decoration.
+     */
+    if (selected) {
+      const sel = nodes.find((n) => n.key === selected);
+      if (sel) {
+        const degreeScale = 0.85 + 0.45 * Math.log2(1 + sel.degree);
+        const drawn = Math.max(degreeScale, 1.0) * SELECTED_NODE_SCALE;
+        radii.set(selected, Math.max(radii.get(selected) ?? 0, drawn * 0.32));
       }
     }
     const radiusOf = (n: { key: string }) => radii.get(n.key) ?? 0.32;
@@ -1125,7 +1314,11 @@
       // converging. Lengthening the rest so it never asks for less than the nodes occupy makes the
       // two agree, so the spread is where the layout WANTS to be instead of where it is forced.
       let rest = BASE_REST * e.semanticDist;
-      if (collageOn) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
+      // Was `if (collageOn)`. The rest length must never ask for less room than the two nodes
+      // occupy, and that is as true for a GLB as for a thumbnail — otherwise the spring pulls
+      // them together every frame while the collision pass shoves them apart, and the layout
+      // settles with visible overlap instead of converging.
+      if (collageOn || radii.size > 0) rest = Math.max(rest, radiusOf(e.a) + radiusOf(e.b));
       const f = (d - rest) * SPRING;
       e.a.vel.x += (dx / d) * f * fdt * 8; e.a.vel.y += (dy / d) * f * fdt * 8; e.a.vel.z += (dz / d) * f * fdt * 8;
       e.b.vel.x -= (dx / d) * f * fdt * 8; e.b.vel.y -= (dy / d) * f * fdt * 8; e.b.vel.z -= (dz / d) * f * fdt * 8;
@@ -1170,24 +1363,53 @@
     // wherever the springs balanced and simply overlap. "All visible" is a property, and a
     // property that must hold gets asserted, not approached — the same reason the date axis is
     // pinned rather than tuned.
-    if (collageOn) {
+    // Runs when ANYTHING claims room, not only under the collage modifier. Feeding GLB radii into
+    // the map above and teaching the springs to respect them is not enough on its own: repulsion
+    // is size-blind by design, so without this pass the models settle wherever the springs balance
+    // and simply overlap — which is the state Matt reported. The pass is the part that turns
+    // "wants to be apart" into "is apart".
+    if ((collageOn || radii.size > 0) && camera.current) {
       // The camera's right and up vectors, pulled from its world matrix. Separation happens in
       // THIS plane: pushing two nodes apart along the view axis satisfies the arithmetic and
       // changes nothing a viewer can see, which is exactly how the first version converged while
       // still painting a pile.
-      const m = camera.current!.matrixWorld.elements;
+      const m = camera.current.matrixWorld.elements;
       const basis = {
         right: { x: m[0], y: m[1], z: m[2] },
         up: { x: m[4], y: m[5], z: m[6] },
       };
+      /**
+       * GIVE IT THE NODES THAT CARRY A SIZE, because above its cap it does nothing at all.
+       *
+       * resolveOverlaps bails with `if (nodes.length > maxNodes) return 0` — and 0 is also
+       * what it returns when everything converged, so on a graph over 400 nodes the pass was
+       * silently a no-op and looked like success. With preview-all on, that is every node
+       * demanding a thumbnail's worth of room and nothing separating any of them, which is
+       * what Matt reported.
+       *
+       * The pass is O(n^2), so raising the cap is not the answer. The nodes that need it are
+       * the ones with a real radius — previews and GLBs — so hand it those, largest first if
+       * even they exceed the cap. Nodes left out keep the 0.32 default and are the ones whose
+       * overlap is least visible.
+       */
+      const OVERLAP_CAP = 400;
+      let separable = nodes;
+      if (nodes.length > OVERLAP_CAP && radii.size > 0) {
+        separable = nodes.filter((n) => radii.has(n.key));
+        if (separable.length > OVERLAP_CAP) {
+          separable = [...separable]
+            .sort((a, b) => radiusOf(b) - radiusOf(a))
+            .slice(0, OVERLAP_CAP);
+        }
+      }
       resolveOverlaps(
-        nodes,
+        separable,
         radiusOf,
         // Full strength, iterated to convergence. Easing (0.35, one pass) measurably lost to the
         // edge springs: on the 9-photo fixture it reported 16 overlapping pairs every frame and
         // painted a pile. Running last in the frame and converging is what turns "spread out a
         // bit" into the property the feature is named for.
-        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis },
+        { lockX: LOCK_TIMELINE_X, strength: 1, iterations: 12, basis, maxNodes: OVERLAP_CAP },
       );
     }
 
@@ -1235,6 +1457,20 @@
       const cam = camera.current as THREE.PerspectiveCamera;
       const canvasWidth = canvas.clientWidth;
       const canvasHeight = canvas.clientHeight;
+
+      /*
+       * FRAME THE FREE SPACE, NOT THE CANVAS. setViewOffset shifts the projection by a pixel
+       * amount without changing scale — the 3D equivalent of the 2D renderer's camX/camY nudge —
+       * so orbiting, zooming and hit-testing all keep working, because the camera itself has not
+       * moved. Clearing it when there is nothing to offset matters: a stale view offset survives
+       * a resize and skews every later frame.
+       */
+      const dx = (((viewportInsets?.left ?? 0) - (viewportInsets?.right ?? 0)) / 2);
+      const dy = (((viewportInsets?.top ?? 0) - (viewportInsets?.bottom ?? 0)) / 2);
+      if (cam.isPerspectiveCamera && canvasWidth > 0 && canvasHeight > 0) {
+        if (dx !== 0 || dy !== 0) cam.setViewOffset(canvasWidth, canvasHeight, -dx, -dy, canvasWidth, canvasHeight);
+        else if (cam.view?.enabled) cam.clearViewOffset();
+      }
       const aspect = cam.isPerspectiveCamera ? cam.aspect : 0;
       if (
         canvasWidth !== previousCanvasWidth ||
@@ -1246,8 +1482,8 @@
         previousCameraAspect = aspect;
         // Hierarchy framing depends on the limiting horizontal/vertical FOV. Re-fit after a
         // renderer resize (including rotation and split panes) without reheating the simulation.
-        if (layout === 'hierarchy' && activeAnchors.size > 0) {
-          fitHierarchyCamera3D(activeAnchors);
+        if ((layout === 'hierarchy' || layout === 'source') && activeAnchors.size > 0) {
+          fitStructuredCamera3D(activeAnchors);
         }
       }
 
@@ -1359,8 +1595,9 @@
           // on a 9-photo graph exactly one label survived and it was the one node without a photo.
           // The thumbnail is the content the user asked to see, not an incidental annotation.
           const hasPreview = (k: string) => previewKeys != null && previewKeys.has(k);
+          const hasPriorityLabel = (k: string) => labelPriorityKeys?.has(k) ?? false;
           const candidates = allProjected
-            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key))
+            .filter(e => e.adjDist <= cutoff || e.key === selected || e.key === targetKey || hasPreview(e.key) || hasPriorityLabel(e.key))
             .sort((a, b) => a.adjDist - b.adjDist);
 
           // Separate rawDist-sorted list for the occlusion check (closer nodes first).
@@ -1378,7 +1615,7 @@
             // shown deliberately. Occlusion and proximity dedup exist to stop TEXT from piling up;
             // applying them to a requested thumbnail silently drops the thing that was requested.
             // Overlap between the thumbnails themselves is the collision pass's job, not this one's.
-            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key);
+            const isSpecial = entry.key === selected || entry.key === targetKey || hasPreview(entry.key) || hasPriorityLabel(entry.key);
 
             // 1. Sphere-occlusion: skip if the label position falls inside a closer node's sphere.
             if (!isSpecial) {
@@ -1431,7 +1668,18 @@
 
     function onPointerDown(e: PointerEvent) {
       if (e.button !== 2) return; // right-click only
-      dragging = true;
+      /**
+       * DO NOT CLAIM THE DRAG BEFORE IT IS ESTABLISHED — this is the "timeline keeps moving
+       * after the right button is released" bug (Matt, 2026-09-24).
+       *
+       * `dragging = true` used to run HERE, above the `times.length === 0` bail below. On a
+       * graph with no timeline data that bail returned with dragging latched true and
+       * setPointerCapture never reached — and without capture, a pointerup that lands anywhere
+       * but this canvas never arrives, so nothing ever cleared the flag. Every subsequent mouse
+       * move then scrubbed the timeline with no button held, for the rest of the session.
+       *
+       * The flag is now set together with the capture, after every reason to bail has passed.
+       */
       startX = e.clientX;
       // Compute current data range for mapping pixel delta to time delta
       const nodeTime = new Map<string, number>();
@@ -1457,7 +1705,8 @@
       const dataMax = Math.max(...times);
       const dataRange = dataMax - dataMin || 1;
       startCenter = timelineCenter ?? (dataMin + dataRange / 2);
-      canvas!.setPointerCapture(e.pointerId);
+      dragging = true;
+      try { canvas!.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
     }
 
     function onPointerMove(e: PointerEvent) {
@@ -1493,21 +1742,47 @@
     }
 
     function onPointerUp(e: PointerEvent) {
+      endDrag(e.pointerId);
+    }
+
+    /**
+     * Same safety net as the 2D renderer. pointerup is not guaranteed to arrive for a RIGHT
+     * button: a native context menu that takes the pointer swallows it and the browser revokes
+     * the capture, firing lostpointercapture instead. Only listening for pointerup leaves the
+     * scrub running against a cursor with no button held.
+     */
+    function endDrag(pointerId?: number) {
       if (!dragging) return;
       dragging = false;
-      canvas!.releasePointerCapture(e.pointerId);
+      if (pointerId !== undefined) {
+        try { canvas!.releasePointerCapture(pointerId); } catch { /* already released */ }
+      }
     }
+    function onPointerCancel(e: PointerEvent) { endDrag(e.pointerId); }
+    function onLostPointerCapture() { endDrag(); }
 
     canvas.addEventListener('contextmenu', onContextMenu);
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerCancel);
+    canvas.addEventListener('lostpointercapture', onLostPointerCapture);
+    // THE RELEASE MAY NOT LAND ON THE CANVAS. Pointer capture normally guarantees it does, but
+    // capture can fail or never be taken, and then the pointerup goes to whatever is under the
+    // cursor. Listening on the window is what makes ending the drag independent of where the
+    // mouse happens to be, which is the property this gesture was missing.
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
 
     return () => {
       canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('lostpointercapture', onLostPointerCapture);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
     };
   });
 </script>

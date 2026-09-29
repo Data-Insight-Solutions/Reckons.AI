@@ -38,7 +38,7 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop-chrome',
-      testMatch: '**/graph-render.test.ts',
+      testMatch: ['**/graph-render.test.ts', '**/notes-production.test.ts'],
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },
@@ -46,7 +46,7 @@ export default defineConfig({
     },
     {
       name: 'pixel-7-ingest',
-      testMatch: '**/visual-contract.test.ts',
+      testMatch: ['**/visual-contract.test.ts', '**/notes-production.test.ts'],
       use: {
         ...devices['Pixel 7'],
         launchOptions: { args: ['--no-sandbox', '--disable-dev-shm-usage'] },

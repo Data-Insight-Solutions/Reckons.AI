@@ -1,7 +1,11 @@
 version: 2
+# target-branch: dev on every entry. Without it Dependabot opens PRs against the default branch,
+# main, which deploys on push, so every update bypassed dev -> staging -> main and had to be
+# retargeted by hand (nine on 2026-09-10, seven more open on 2026-09-29).
 updates:
   - package-ecosystem: npm
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -13,17 +17,20 @@ updates:
 
   - package-ecosystem: npm
     directory: /mcp-server
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
 
   - package-ecosystem: npm
     directory: /cli
+    target-branch: dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly

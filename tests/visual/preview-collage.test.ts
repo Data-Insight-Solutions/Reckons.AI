@@ -77,6 +77,28 @@ async function seedFixture(page: Page) {
 }
 
 /** Open the Previews dropdown and pick a mode. */
+/**
+ * Pick a layout from the "view" group.
+ *
+ * The chips live inside a Popover, so the trigger must be opened first — exactly what
+ * setPreviewMode below already does for its own group. The earlier version of the timeline step
+ * clicked `.tg-chip` directly: that class exists only in review/+page.svelte, and the chips here
+ * are `.chip` / `.chip.small` inside a closed popover, so the click waited out the full 180s
+ * timeout on a selector that could never match. The group heading is "view" rather than "force"
+ * or "layout" — see the comment at the markup, which renamed it deliberately.
+ */
+async function setLayout(page: Page, label: string) {
+  await page
+    .locator('.overlay-group')
+    .filter({ has: page.locator('.group-label', { hasText: /^\s*layout\s*$/i }) })
+    .locator('.chip')
+    .first()
+    .click();
+  await page.waitForTimeout(300);
+  await page.locator('.chip.small', { hasText: new RegExp(`^\\s*${label}\\s*$`, 'i') }).first().click();
+  await page.waitForTimeout(300);
+}
+
 async function setPreviewMode(page: Page, label: string) {
   await page.locator('.overlay-group', { hasText: /previews/i }).locator('.chip').first().click();
   await page.waitForTimeout(300);
@@ -225,7 +247,7 @@ test.describe('F133 — all previews', () => {
     await page.goto(APP);
     await page.waitForTimeout(4000);
 
-    await page.locator('.tg-chip', { hasText: /^\s*time\s*$/i }).first().click();
+    await setLayout(page, 'time');
     await page.waitForTimeout(3000);
     const datedX = (await thumbBoxes(page)).map((b) => Math.round(b.x));
     await screenshotTo(page, 'preview-collage', '04-timeline-previews-off');

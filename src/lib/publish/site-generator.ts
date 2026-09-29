@@ -14,6 +14,8 @@ import { marked } from 'marked';
 import type { Statement } from '../rdf/types';
 import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf/page';
 import { buildGraphJson } from './site-export';
+import { assertSitePath } from './output-path';
+import { localImageUrl, sanitizePageHtml, STATIC_SITE_CSP, themeColor, themeFont } from './output-policy';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -64,14 +66,14 @@ export function extractTheme(stmts: Statement[]): SiteTheme {
     stmts.find((s) => s.s.value === themeIri && s.p.value === `${SITE}${pred}`)?.o.value ?? null;
   return {
     title: val('title'),
-    logoUrl: val('logo'),
-    bg: val('bg') ?? DEFAULT_THEME.bg,
-    surface: val('surface') ?? DEFAULT_THEME.surface,
-    ink: val('ink') ?? DEFAULT_THEME.ink,
-    muted: val('muted') ?? DEFAULT_THEME.muted,
-    accent: val('accent') ?? DEFAULT_THEME.accent,
-    line: val('line') ?? DEFAULT_THEME.line,
-    font: val('font') ?? DEFAULT_THEME.font,
+    logoUrl: localImageUrl(val('logo')),
+    bg: themeColor(val('bg'), DEFAULT_THEME.bg),
+    surface: themeColor(val('surface'), DEFAULT_THEME.surface),
+    ink: themeColor(val('ink'), DEFAULT_THEME.ink),
+    muted: themeColor(val('muted'), DEFAULT_THEME.muted),
+    accent: themeColor(val('accent'), DEFAULT_THEME.accent),
+    line: themeColor(val('line'), DEFAULT_THEME.line),
+    font: themeFont(val('font'), DEFAULT_THEME.font),
   };
 }
 
@@ -89,9 +91,10 @@ function escapeHtml(s: string): string {
 
 /** Root-absolute URL for a page. Home → '/'; else /<section>/<slug>/. */
 function pageUrl(page: SitePage, homeIri: string | null): string {
+  assertSitePath(page.slug);
   if (page.iri === homeIri) return '/';
   const seg = page.section ? `${slugify(page.section)}/` : '';
-  return `/${seg}${page.slug}/`;
+  return `/${assertSitePath(`${seg}${page.slug}`)}/`;
 }
 
 /** Output file path for a page (clean URLs via directory index.html). */
@@ -130,7 +133,7 @@ function navHtml(pages: SitePage[], current: SitePage, homeIri: string | null): 
 
 function renderPage(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions): string {
   const byIri = new Map(pages.map((p) => [p.iri, p]));
-  const body = page.body?.trim() ? (marked.parse(page.body) as string) : `<p>${escapeHtml(page.excerpt)}</p>`;
+  const body = page.body?.trim() ? sanitizePageHtml(marked.parse(page.body) as string) : `<p>${escapeHtml(page.excerpt)}</p>`;
   const prev = page.prev ? byIri.get(page.prev) : null;
   const next = page.next ? byIri.get(page.next) : null;
   const nav = `
@@ -148,6 +151,8 @@ function renderPage(page: SitePage, pages: SitePage[], homeIri: string | null, t
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${STATIC_SITE_CSP}">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(page.title)} · ${siteTitle}</title>
 ${page.excerpt ? `<meta name="description" content="${escapeHtml(page.excerpt)}">` : ''}
@@ -207,7 +212,9 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
 
   const files: Record<string, string> = {};
   for (const page of pages) {
-    files[pagePath(page, homeIri)] = renderPage(page, pages, homeIri, theme, opts);
+    const output = pagePath(page, homeIri);
+    if (Object.hasOwn(files, output)) throw new Error('Duplicate site output path');
+    files[output] = renderPage(page, pages, homeIri, theme, opts);
   }
   // If there is no landing page at all, still guarantee an index.html so the site has a root.
   if (!files['index.html'] && pages.length > 0) {
@@ -251,6 +258,8 @@ export function regenerateChangedPages(
   const homeIri = home?.iri ?? null;
   const theme = extractTheme(stmts);
   const changed = new Set(changedIris);
+  const allPaths = pages.map(p => pagePath(p, homeIri));
+  if (new Set(allPaths).size !== allPaths.length) throw new Error('Duplicate site output path');
 
   const files: Record<string, string> = {};
   const regenerated: string[] = [];

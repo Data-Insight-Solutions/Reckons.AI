@@ -41,6 +41,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync
 import { execFileSync, spawnSync } from 'child_process';
 import { createHash } from 'crypto';
 import path from 'path';
+import { resolveTranscriptDir } from '../lib/transcript-dir';
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -70,7 +71,9 @@ function fixedTax(): { claudeMd: number; memory: number; handoff: number } {
   const t = (p: string) => (existsSync(p) ? tokens(readFileSync(p, 'utf8')) : 0);
   return {
     claudeMd: t('CLAUDE.md'),
-    memory: t(path.join(process.env.HOME ?? '', '.claude/projects/-home-matt-Github-tripleNotes/memory/MEMORY.md')),
+    // Derived, not hardcoded: the literal '-home-matt-Github-tripleNotes' read zero for every
+    // other developer and from every worktree, and scored it as "no memory file" rather than failing.
+    memory: t(path.join(resolveTranscriptDir(), 'memory', 'MEMORY.md')),
     handoff: t('HANDOFF.md'),
   };
 }

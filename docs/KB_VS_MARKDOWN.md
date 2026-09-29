@@ -39,7 +39,7 @@ tripleNotes/
 │
 ├── README.md                      # Project overview & quick start
 ├── SETUP.md                       # Installation & deployment guide
-├── AUDIT.md                       # Codebase audit, orphaned files, terminology
+├── (AUDIT.md and ROADMAP.md were removed 2026-09-23 — stale duplicates of the graphs)
 └── CLAUDE.md                      # AI agent instructions (Claude Code context)
 ```
 
@@ -256,7 +256,6 @@ No formal link graph. A reader must know which file to open. There is no equival
 | `docs/STYLE_GUIDE.md` | 226 | 8K | Brand & UI patterns |
 | `README.md` | 215 | 12K | Project overview |
 | `docs/LOCAL_HOME_FOLDER.md` | 215 | 12K | Local home folder |
-| `AUDIT.md` | 208 | 12K | Codebase audit |
 | `docs/MOBILE_CAPTURE.md` | 193 | 12K | Mobile capture |
 | `docs/N8N_INTEGRATION.md` | 157 | 8K | n8n cloud sync |
 | `docs/MODEL_TRAINING.md` | 148 | 8K | Model fine-tuning |

@@ -5,7 +5,7 @@
 ## node, click its thumbnail to expand large, click again for fullscreen. Turn on
 ## "assets → auto-expand" in the graph menu to open each as you move node to node.
 ##
-## Load it with Add-from-URL (no LLM): paste /starter-assets.ttl on the ingest tab.
+## Load it with Add-from-URL (no LLM): paste /starter-assets.ttl on the add tab.
 ## ---------------------------------------------------------------------------
 
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .

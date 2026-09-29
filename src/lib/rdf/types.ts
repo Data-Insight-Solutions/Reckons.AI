@@ -322,6 +322,12 @@ export type ExtractionStageName =
   | 'ground'
   | 'normalize'
   | 'type'
+  /**
+   * GROUPING (F187.3). Which extracted entities form a set — the fifth of the nine stages
+   * kb:staged-extraction names, and the first of the three that had nothing behind them.
+   * Deterministic: it recognizes groupings the graph already states, and proposes nothing else.
+   */
+  | 'group'
   | 'archive'
   | 'diff'
   | 'persist';

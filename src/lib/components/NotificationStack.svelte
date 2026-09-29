@@ -23,11 +23,14 @@
   // corner bell by DEFAULT on any non-home route, and let the user toggle it open per view.
   // `userToggle` is the per-view override; it resets whenever the route changes.
   let userToggle = $state<boolean | null>(null);
-  let lastPath = $state(page.url.pathname);
+  // Shallow replaceState updates page.state, while page.url can retain the navigation URL.
+  const perspective = $derived(page.state.graphPerspective ?? page.url.searchParams.get('perspective'));
+  const viewKey = $derived(`${page.url.pathname}:${perspective ?? 'statements'}`);
+  let lastPath = $state('');
   $effect(() => {
-    if (page.url.pathname !== lastPath) { lastPath = page.url.pathname; userToggle = null; }
+    if (viewKey !== lastPath) { lastPath = viewKey; userToggle = null; }
   });
-  const routeWantsCollapse = $derived(page.url.pathname !== '/');
+  const routeWantsCollapse = $derived(page.url.pathname !== '/' || perspective === 'sources');
   // An `important` notification forces the stack open: it is guidance the user must read NOW,
   // and a corner bell they have no reason to click is the same as not telling them.
   // An explicit user toggle still wins — if they closed it, respect that.

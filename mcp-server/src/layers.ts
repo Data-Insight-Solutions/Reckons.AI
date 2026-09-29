@@ -38,6 +38,29 @@ const STRUCTURAL_PROVENANCE = [
 ];
 
 /**
+ * Individual predicates that are provenance by construction, not by namespace.
+ *
+ * ADDED 2026-09-11, AND IT WAS A REAL MISCLASSIFICATION, not tidying. `kpred:extracted-from` sits
+ * under urn:kbase:predicate/ like every claim does, so it fell through to the `claim` fail-safe and
+ * every tool response has been filing "where this text came from" alongside what the graph knows.
+ * src/lib/rdf/captured-notes.ts already called it "a RECORD the extractor derived and can
+ * re-derive"; nothing had written that down where a script could read it.
+ *
+ * Surfaced by the set-derivation stage (F187.3): grouping by it proposed a set for three of four
+ * candidates on a real graph, all wrong. A bug in one feature found a misclassification affecting
+ * three.
+ *
+ * The same list exists in src/lib/rdf/set-derive.ts — deliberately duplicated, not imported, since
+ * a cross-package import is what broke CI on 2026-09-10. They must stay in step.
+ */
+const STRUCTURAL_PROVENANCE_PREDICATES = [
+  'urn:kbase:predicate/extracted-from',
+  'urn:kbase:predicate/assumption',
+  'urn:kbase:predicate/derived-from',
+  'urn:kbase:predicate/source',
+];
+
+/**
  * Predicates that ASK rather than assert.
  *
  * Kept minimal on purpose. kpred:open-question is the house term and carries 143 uses; everything
@@ -82,6 +105,7 @@ export function layerOf(predicate: string, map: LayerMap): Layer {
   const declared = map.declared.get(predicate);
   if (declared) return declared;
   if (STRUCTURAL_PROVENANCE.some((ns) => predicate.startsWith(ns))) return 'provenance';
+  if (STRUCTURAL_PROVENANCE_PREDICATES.includes(predicate)) return 'provenance';
   if (STRUCTURAL_QUESTION.includes(predicate)) return 'question';
   return 'claim';
 }

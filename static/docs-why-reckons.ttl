@@ -1,0 +1,274 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI Docs - Why Reckons.AI
+## ---------------------------------------------------------------------------
+## The positioning graph. What the enterprise semantic-layer vendors sell, what it
+## costs, and what is left when you remove the invoice.
+##
+## This file is persuasion, and says so. static/reckons-competitive.ttl exists to learn
+## from the neighbourhood and refuses to score points; this one is aimed at a reader
+## deciding whether to care. What it inherits from that file is the standard of evidence
+## rather than the neutrality. Every figure is sourced and dated, and every limitation of
+## ours sits in the same paragraph as the claim it weakens.
+##
+## House style for this file, which differs from the older graphs on purpose. No shouting:
+## emphasis is carried by sentence structure, not by capitalised words. Em dashes are
+## rationed to roughly one per paragraph. These pages are read by people deciding whether
+## this product is for them, and the older convention reads as a memo to ourselves.
+##
+## Children of the four topic hubs carry kpred:render-inline, so they compose into a few
+## substantial pages instead of nineteen thin ones. See earnsPage in scripts/docs-pages.ts.
+## ---------------------------------------------------------------------------
+## A claim this page must never make
+## ---------------------------------------------------------------------------
+## Do not write that the enterprise products came after Reckons.AI, or that they copied
+## this methodology. Checked on 2026-09-16 and false: our first commit is 2026-06-09, the
+## OntoBricks repository was created 2026-04-07 and released v0.1.1 on 2026-04-23, and
+## Fabric IQ was announced at Ignite 2025. Palantir, Stardog and Ontotext predate us by
+## years to decades.
+##
+## The evidence is kept as knowledge in static/reckons-roadmap.ttl under F205
+## kpred:measured, and is deliberately not published. A reader needs the argument, not our
+## editing history. The page leads with convergence instead, which is both true and
+## stronger.
+## ---------------------------------------------------------------------------
+
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix kb:     <urn:kbase:concept/> .
+@prefix hnav:   <urn:reckons:nav/> .
+@prefix why:    <urn:reckons:why/> .
+
+## KB Identity
+<urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0e-b00e-000000000014" .
+
+
+## =============================================================================
+## Navigation
+## =============================================================================
+
+@prefix nav: <urn:reckons:docs/nav/> .
+
+nav:BackToHubWhy
+    rdf:type            ktype:KnowledgeBase ;
+    rdfs:label          "Back to Documentation Hub" ;
+    skos:definition     "Return to the main documentation hub." ;
+    <urn:reckons:leap>          "a1b2c3d4-e5f6-4a00-b000-000000000000" ;
+    <urn:reckons:leap/label>    "Documentation Hub" .
+
+
+## =============================================================================
+## Root
+## =============================================================================
+
+why:WhyReckons
+    rdf:type            ktype:Concept , skos:Concept ;
+    rdfs:label          "Why Reckons.AI" ;
+    hnav:order          1 ;
+    skos:definition     "Enterprise technology without the subscription. The largest data platforms on earth have converged on one way of representing meaning: the RDF triple, which is just a sentence with three parts. They sell it to governments and banks for six and seven figures a year. Reckons.AI is that same representation, running on your own machine, under an MIT licence, with no account and no invoice." ;
+    kpred:principle     "The pitch is democratisation rather than novelty. We did not invent the triple and we are not first to productise it: the W3C standardised RDF in 1999 and the enterprise vendors have been shipping it for two decades. What is new is that the whole stack now fits in a browser tab, which is what makes giving it away possible." .
+
+
+## =============================================================================
+## What it actually is
+## =============================================================================
+
+why:CoreIsNoteTaking
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhyReckons ;
+    rdfs:label          "It is a notes app, and the extra step is the point" ;
+    hnav:order          2 ;
+    kpred:render-inline "true" ;
+    skos:definition     "The comparison with Palantir and Databricks is true, and it is not the product. Reckons.AI is a personal assistant that takes notes. You capture something by typing it, pasting it, or saying it out loud, and it works out the claims inside and asks you to confirm them. Everything else here, from the open standards to the 3D graph to the agent tooling, is what that extra step buys. None of it is the reason to open the app." ;
+    kpred:principle     "Saying this is not a notes app with extra steps was the wrong denial, and it stood on the docs welcome page until 2026-09-16. It is note-taking with extra steps, and the extra step is the product. Defending it by rejecting the category told a first-time reader that the thing they came for was the thing we refused to be." ;
+    kpred:honest-note   "This is the failure mode the product sits closest to, and it has been observed on real readers twice, on 2026-09-06 and again on 2026-09-08. Both times a careful first-time reader saw generic note-taking and storyboarding. The answer is not to argue harder that it is something else. It is to make capture effortless and let the difference show itself on the way out." .
+
+why:AccessibilityIsTheFeature
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:CoreIsNoteTaking ;
+    rdfs:label          "Accessibility is the feature, not a compliance chore" ;
+    hnav:order          3 ;
+    skos:definition     "If the cheapest way to get a thought into the graph is to say it out loud, then the graph is open to people who do not type comfortably, do not sit at a desk, or have both hands full. Speech-to-text runs on the device, so the easiest way in is also the most private one. That is the argument for democratisation reduced to a single interaction: an ontology you must be trained to edit is not available to most people even when it costs nothing." ;
+    kpred:principle     "Every barrier to capture is a barrier to entry, and they compound in the same direction. Needing an account, needing a keyboard, and needing to know what a predicate is are all the same kind of obstacle. Removing the invoice while leaving the vocabulary lesson in place would democratise nothing." ;
+    kpred:honest-note   "This is stated as a goal, not as a finished control. Whisper speech-to-text and Kokoro speech output both ship and are in production. A measured accessibility audit of the capture path, covering screen readers, keyboard-only use and touch target sizes across the mobile work, has not been done, so this is a commitment rather than an attestation." .
+
+why:TeachEntitiesByShowing
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:CoreIsNoteTaking ;
+    rdfs:label          "Teaching the shift from documents to things" ;
+    hnav:order          4 ;
+    skos:definition     "Nobody arrives thinking in entities and relationships, and asking them to is how a tool stays confined to researchers. The Sources view is where that is taught. It takes a document you already understand and shows what it became: the things named inside it, and how they connect. The shift in perspective is demonstrated on your own material rather than explained in a tutorial." ;
+    kpred:principle     "The perspective shift is the onboarding. Someone who has watched their own paragraph turn into four things and three relationships has learned the model, and no glossary achieves that." ;
+    kpred:decided       "Matt, 2026-09-16: note capture belongs inside the existing Add flow, as an enhancement of the note page rather than a separate top-level tab. A second place to write a note is a second thing to learn and a second thing to keep in step." .
+
+
+## =============================================================================
+## The enterprise field
+## =============================================================================
+
+why:EnterpriseConvergence
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhyReckons ;
+    rdfs:label          "Everybody arrived at the same answer" ;
+    hnav:order          5 ;
+    kpred:render-inline "true" ;
+    skos:definition     "Between Palantir's Ontology, Microsoft's Fabric IQ, Databricks' OntoBricks and the long-standing triplestores from Stardog and Ontotext, the industry has settled on one shape of answer and mostly rebranded it as an ontology or a semantic layer. Strip the branding and the machinery underneath is the same: typed things, typed relationships between them, and a store you can reason over. That is an RDF graph, whatever the brochure calls it. Every figure below was checked on 16 September 2026 and carries its source." ;
+    kpred:diagram       """flowchart LR
+  S["The same parts list<br/>RDF triples, OWL<br/>SHACL, MCP"]
+  S --> E["Reached through a contract,<br/>a capacity, or a sales call"]
+  S --> R["Reached through<br/>a browser tab"]
+  E --> E2["Palantir, Databricks, Microsoft,<br/>Stardog, Ontotext"]
+  R --> R2["Reckons.AI"]""" ;
+    kpred:diagram-caption "The technology is the same on both routes. What differs is who is allowed to reach it." ;
+    kpred:principle     "When five competing organisations independently build the same abstraction, the abstraction is probably right. Convergence is the evidence, and we are one of the things it converged on." .
+
+why:SharedMethodology
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "The shared parts list" ;
+    hnav:order          6 ;
+    skos:definition     "What Reckons.AI genuinely has in common with the enterprise stack: RDF triples as the unit of knowledge, Turtle as the format on disk, OWL and RDFS for classes and properties, PROV-O for provenance, and MCP so a language model can query the graph as a tool. These are W3C standards and an open protocol rather than our inventions, which is exactly why a file written by one of these systems can be read by another." ;
+    kpred:principle     "Portability is the point. A Turtle file is a W3C standard, so the graph you build here can be loaded into GraphDB, Stardog or any conformant triplestore. None of us own the format, and lock-in is a product decision rather than a technical necessity." .
+
+why:VendorPalantir
+    rdf:type            ktype:Reference , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "Palantir Foundry and its Ontology" ;
+    hnav:order          7 ;
+    skos:definition     "The product that made ontology a boardroom word. Foundry's Ontology layer models an organisation as objects, links and actions over its data, and everything above it, from dashboards to agents to automations, is written against that model rather than against raw tables." ;
+    kpred:website       "https://www.palantir.com/docs/foundry/" ;
+    kpred:pricing-model "Custom-negotiated enterprise contract, with no public rate card." ;
+    kpred:pricing-note  "Reported first contracts at mid-market and large enterprises land between roughly $500,000 and $2,000,000 a year. Pilots start near $200,000, and full enterprise or defence deployments exceed $10,000,000 a year. First-year implementation cost commonly matches or exceeds the subscription itself." ;
+    kpred:source        "https://redresscompliance.com/palantir-aip-foundry-guide.html" ;
+    kpred:honest-note   "These are third-party reported figures rather than a published price list, because Palantir does not publish one. Treat them as an order of magnitude. The shape of the number is the argument, not its precision." .
+
+why:VendorOntoBricks
+    rdf:type            ktype:Reference , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "OntoBricks, from Databricks Labs" ;
+    hnav:order          8 ;
+    skos:definition     "The closest twin to what we do. It turns Databricks Unity Catalog tables into a materialized knowledge graph: design an ontology in OWL, map it to tables with R2RML, materialize the triples into a Delta triple store, reason over them with OWL 2 RL, SWRL and SHACL, then query through a generated GraphQL API. Like us, it exposes the whole thing to a language model over MCP." ;
+    kpred:repo-url      "https://github.com/databrickslabs/ontobricks" ;
+    kpred:website       "https://ontobricks.org/" ;
+    kpred:license       "Databricks License, which is source-available rather than OSI open source. GitHub reports the licence as NOASSERTION." ;
+    kpred:copy-permitted "No. Under kb:license-gate, a non-OSI source-available licence does not authorize copying into an MIT project. Ideas only." ;
+    kpred:stars         367 ;
+    kpred:created-at    "2026-04-07"^^xsd:date ;
+    kpred:pricing-model "The app is free; the platform it requires is not. It deploys as a Databricks App and depends on Unity Catalog, a SQL Warehouse, Model Serving and Lakebase, all of which are consumption-billed." ;
+    kpred:validates     "This is the strongest single piece of evidence for convergence. An independent team at a major data platform, with no knowledge of this project, chose RDF triples, OWL, SHACL and MCP. Those are the same four choices Reckons.AI made, and two teams reaching one architecture separately is evidence the architecture is right." ;
+    kpred:honest-note   "OntoBricks is genuinely good, and its privacy story is real: Databricks states that your data and your triples never leave your workspace. The catch is not surveillance but prerequisite, because you must already be a Databricks customer for any of it to exist. It also predates Reckons.AI by two months, created 2026-04-07 against our 2026-06-09." ;
+    kpred:differs-from  "OntoBricks starts from warehouse tables you already have and derives a graph from their structure. Reckons.AI starts from your sources, meaning notes, PDFs, web pages, repositories and speech, and builds the graph as you review each claim. Theirs maps structure that exists; ours creates structure that does not." .
+
+why:VendorFabricIQ
+    rdf:type            ktype:Reference , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "Microsoft Fabric IQ" ;
+    hnav:order          9 ;
+    skos:definition     "Fabric's semantic intelligence layer. Its Ontology item defines enterprise concepts as entity types, properties and relationships over a native graph engine built for multi-hop reasoning, and feeds the data agents that answer business questions." ;
+    kpred:website       "https://learn.microsoft.com/en-us/fabric/iq/overview" ;
+    kpred:announced     "Announced at Ignite 2025 and generally available at Build 2026, with Ontology and some integrations still in preview." ;
+    kpred:pricing-model "Requires Microsoft Fabric capacity. Microsoft has stated that billing meters for the Ontology item begin in the first half of 2026." ;
+    kpred:source        "https://www.infoworld.com/article/4093181/microsoft-fabric-iq-adds-semantic-intelligence-layer-to-fabric.html" ;
+    kpred:honest-note   "Worth watching because it is the mass-market one. When Microsoft ships an ontology item to every Fabric tenant, the question of what a knowledge graph is stops being ours to answer from scratch, and the category gets explained to millions of people on somebody else's marketing budget." .
+
+why:VendorSpecialists
+    rdf:type            ktype:Reference , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "The specialists: Stardog and Ontotext GraphDB" ;
+    hnav:order          10 ;
+    skos:definition     "The mature RDF platforms, doing this properly since before it was fashionable. Both offer real SPARQL, real reasoning at scale and federation, which are things we do not have. Stardog sells a knowledge-graph-powered semantic layer under a commercial licence; Ontotext GraphDB, now part of Graphwise, is one of the longest-standing triplestores." ;
+    kpred:website       "https://graphdb.ontotext.com/documentation/master/licensing.html" ;
+    kpred:pricing-model "Stardog uses custom enterprise pricing reached through a sales conversation, with no published rate. GraphDB Enterprise is licensed per CPU core per machine, each cluster node licensed separately, and concurrent queries are capped at the number of cores you licensed." ;
+    kpred:licence-restriction "GraphDB has a genuinely free edition, capped at two concurrent queries, which from version 11.0 must be requested as a licence and installed by hand. Its licence cannot be used for a site or service operated for profit, or one that generates revenue directly or indirectly, including through advertising." ;
+    kpred:honest-note   "The free edition is the clearest contrast on this page, and it is about permission rather than price. GraphDB Free costs nothing and is forbidden in anything commercial. Reckons.AI is MIT, so you may build a business on it, fork it, resell it, or never mention us. Free of charge and free to use are different things." .
+
+why:WhereWeAreSmaller
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:EnterpriseConvergence ;
+    rdfs:label          "What the enterprise platforms do that we do not" ;
+    hnav:order          11 ;
+    skos:definition     "Said plainly, because the comparison is worthless without it. Reckons.AI has no SPARQL engine, so the standard query language for RDF is not implemented. Our reasoner is a small forward-chaining subset of RDFS and OWL covering subClassOf, subPropertyOf, sameAs and inverseOf, rather than the OWL 2 RL profile OntoBricks runs. Our SHACL shapes are advisory and enforced nowhere. We do not cluster, we do not scale to billions of statements, and we have no row-level governance or audit story." ;
+    kpred:honest-note   "Reckons.AI is version 0.2.0 with a single maintainer. If your problem is fifty million rows in a warehouse under a compliance regime, buy the enterprise product, because it is better at that and this page is not going to pretend otherwise." ;
+    kpred:principle     "State the weakness in the sentence that makes the claim. A comparison that lists only our wins is an advert, and readers discount adverts automatically." .
+
+
+## =============================================================================
+## What the money actually buys
+## =============================================================================
+
+why:WhatYouPayFor
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhyReckons ;
+    rdfs:label          "What the subscription actually buys" ;
+    hnav:order          12 ;
+    kpred:render-inline "true" ;
+    skos:definition     "Not the triples, which are a W3C standard anyone may use. The invoice buys scale, support, governance and somebody to sue. Those are real goods, worth real money to an organisation that needs them. What they are not is a prerequisite for representing what you know as typed, sourced, answerable facts." ;
+    kpred:principle     "The technology is not the moat; the operations are. Once the reasoning, the storage and the models all fit on a laptop, the only thing between a person and a working knowledge graph is a purchase order, and that is a barrier we can simply remove." ;
+    kpred:principle     "Every platform on this page requires an account with the vendor. Reckons.AI requires a browser. That is the whole argument, and it is an argument about who gets to participate." .
+
+why:NoSubscription
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhatYouPayFor ;
+    rdfs:label          "No account, no invoice, no operator" ;
+    hnav:order          13 ;
+    skos:definition     "Reckons.AI is MIT-licensed, runs in the browser against local storage, and works with no network connection. There is no login, no seat count, no usage meter, and no server we could bill you from even if we wanted to. Bring your own model: a cloud key if you want one, or a local model if you do not." ;
+    kpred:honest-note   "One genuine cost is worth naming. If you point the app at a cloud model provider, you pay that provider for tokens. We take nothing, but calling it free would be a lie if we let you assume the models were free too. The local WASM and Ollama backends exist precisely so the honest answer can be zero." .
+
+
+## =============================================================================
+## Against the open-source field
+## =============================================================================
+
+why:OpenSourceBreadth
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhyReckons ;
+    rdfs:label          "Why not just use an open-source tool?" ;
+    hnav:order          14 ;
+    kpred:render-inline "true" ;
+    skos:definition     "Because the field splits this problem in two and solves each half separately. The personal knowledge tools, including Logseq, SiYuan, Trilium and Obsidian, have spent years making capture effortless, but their graph is a backlink graph over documents: the nodes are pages and the links mean nothing in particular, so you cannot ask the graph a question. The RDF tools model meaning properly and assume you arrive with an ontology, a server and a SPARQL endpoint. Reckons.AI is the part in between, and it stands on the notes side of it. You capture the way you would anywhere else, and what comes back is a graph." ;
+    kpred:principle     "The gap is not another triplestore. It is the loop that turns unstructured sources into reviewed facts, with a person deciding what is true, and then a way to actually see the result." ;
+    kpred:honest-note   "The capture half is where they are ahead and where we have to match them, not where we differentiate. Logseq and Obsidian have spent years making it effortless to get a thought into the app. Friction we add at that step is not rigour, it is a reason to use something else, and a typed graph is worth nothing to someone who never got their note in." .
+
+why:CombinedCapabilities
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:OpenSourceBreadth ;
+    rdfs:label          "The combination is the product" ;
+    hnav:order          15 ;
+    skos:definition     "Individually, most of these exist elsewhere in open source. What is hard to find is all of them in one MIT-licensed app that opens offline. Listed in the order a person meets them: capture by typing, pasting or speaking, with speech-to-text in and speech out, both on the device; extraction that proposes triples using a local model or a cloud one; a review workflow where every fact carries its source and its status; a conversational agent grounded in your own graph; on-device embeddings for semantic search; ingest from repositories and the web; a 2D and 3D navigable graph whose nodes can carry an image, a video or an orbitable 3D model; an MCP server so external agents can query the graph; and publishing from the graph to a website." ;
+    kpred:evidence      "Statuses verified in static/reckons-shipped.ttl and static/reckons-roadmap.ttl on 2026-09-16. The core graph, multi-graph management, the MCP server, repository ingest, the browser extension, Whisper speech-to-text, Kokoro speech output, the chat agent and content safety are all in production. The image, video and 3D asset viewer is functional. Graph publishing is in progress." ;
+    kpred:principle     "The list is ordered by what a normal person needs first, deliberately. Leading with the 3D graph and the MCP server sells the product to people who already agree with it and tells everybody else this is not for them." ;
+    kpred:honest-note   "Saying nobody else combines these is a claim about the field we have surveyed, not about every repository on earth, and breadth is not automatically a virtue. A specialist tool that does one of these better than we do is a legitimate choice, and static/reckons-competitive.ttl names several that do." .
+
+why:TheVisualDifference
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:OpenSourceBreadth ;
+    rdfs:label          "A graph you can actually look at" ;
+    hnav:order          16 ;
+    skos:definition     "Enterprise ontology tools render boxes and arrows for data engineers, and note apps render a hairball nobody navigates by. Reckons.AI treats the graph as a place, with 3D navigation, hierarchical layouts, per-entity icons, and nodes that can carry a photograph, a video clip or an orbitable 3D model. An asset attaches to the thing it depicts, so the thing and the facts about it sit together." ;
+    kpred:principle     "Legibility is a feature rather than decoration. A graph that quietly teaches you how the pieces fit is worth more than one that impresses you with how complex your data is." ;
+    kpred:honest-note   "This is also the easiest thing here to dismiss as a gimmick, and for a pure data-engineering workflow that criticism is fair. It earns its place in exploration, and in explaining a graph to somebody who does not already think in triples." .
+
+why:OpenSourceRespect
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:OpenSourceBreadth ;
+    rdfs:label          "Where the open-source field beats us" ;
+    hnav:order          17 ;
+    skos:definition     "Logseq and SiYuan each have tens of thousands of stars and a maturity we do not approach. CodeFlow holds the local-first line more purely than we do, in a single HTML file with no build step and no server. SiYuan has solved self-hosted sync, which we currently answer with a no. These are recorded in static/reckons-competitive.ttl alongside what we intend to learn from each." ;
+    kpred:principle     "Competition here is healthy and open. A comparison that only flatters its author is not research, and the reader can tell." ;
+    kpred:relates-to    kb:competitive-landscape .
+
+
+## =============================================================================
+## The closing argument
+## =============================================================================
+
+why:Democratise
+    rdf:type            ktype:Concept , skos:Concept ;
+    skos:broader        why:WhyReckons ;
+    rdfs:label          "Democratise it" ;
+    hnav:order          18 ;
+    skos:definition     "Governments and banks pay millions a year to represent what they know as triples, because knowing what you know, and where each piece of it came from, turns out to be the thing that lets an organisation act. That capability has no business being restricted to organisations with a procurement department. The standards are open, the models run locally, and the storage is a file. Reckons.AI is what is left when you remove the invoice." ;
+    kpred:principle     "An unverifiable claim, made by the party it benefits, is not evidence. That applies to this page too, which is why every figure on it carries a source and a date." .
