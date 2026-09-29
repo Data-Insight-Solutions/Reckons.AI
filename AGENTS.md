@@ -200,6 +200,31 @@ Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-sma
 `qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
 for embeddings.
 
+### Reusable local security checks (F172.1)
+
+- Run `npm run host:check` for local device audits. This is a prebuilt script-tier capability,
+  not a reason to improvise host enumeration or install a monitoring server.
+- Default stdout contains aggregate counts only. Full evidence is written with mode 0600 under
+  `$XDG_STATE_HOME/reckons/security-audit/` (default `~/.local/state/`), outside any Git checkout.
+  `--pending` writes a private proposal snapshot there, never to the repository review queue.
+  Use `--details` only when the user requests device evidence in a private local session; never
+  paste that output into commits, PRs, public graphs, fixtures, or shared agent logs.
+- Configure deliberate listener exceptions and required mounts in the private file
+  `$XDG_CONFIG_HOME/reckons/host-health.json` (default `~/.config/`). Its optional fields are
+  `allowedListeners` (objects with `protocol`, `port`, and a nonempty `reason`) and
+  `criticalMounts` (absolute paths). Defaults grant no listener exceptions and require no mounts.
+- `--deep` opts into bounded package-integrity inspection. `--check` returns 1 for findings and
+  2 for unknown/skipped evidence; a default advisory run does not gate application CI on the host.
+  No probe uses sudo, changes settings, starts services, scans the LAN, or repairs anything.
+- For security audits and dependency work, run `npm run security:dependencies`. This explicit
+  online check submits dependency metadata to the configured npm registry and checks every
+  Git-tracked npm lockfile. Full versions, advisory links, inheritance and suggested fixes stay
+  in the private report; highlight high/critical findings and incomplete projects to the user.
+  Lockfile runtime/development placement is not proof of deployed reachability. A suggested fix
+  may conflict with overrides or require a major upgrade; review it before changing packages.
+- Share the generic capability and synthetic tests. Keep device inventories, private policy,
+  user paths, service names, security posture and raw scan artifacts out of public material.
+
 ### TTL-first documentation policy
 
 This project uses TTL knowledge bases as the primary documentation format. **Do NOT create new docs/*.md files.** Instead:

@@ -6,7 +6,7 @@
  * remove, or toggle jobs by editing that file (no code change). Jobs are offline
  * diagnostics, so a job that exits non-zero (e.g. branch-align finding drift)
  * does NOT stop the run — every job runs, and a summary prints at the end.
- * Findings are queued to reckons-workspace/knowledge.pending.jsonl for review.
+ * Each job declares its output destination; local device evidence stays in private state.
  *
  * Usage:
  *   npm run offline:all                    run all enabled jobs (script tier first)
@@ -97,7 +97,7 @@ for (const r of results) {
 const nonZero = results.filter((r) => !r.ok).length;
 console.log(
   `\n${results.length - nonZero}/${results.length} clean. ` +
-    'Findings queued to reckons-workspace/knowledge.pending.jsonl — review in Reckons.AI (Review tab → drain).',
+    'See each job for findings and their destination. Local device evidence stays in private state.',
 );
 
 // Advisory by default: a diagnostic that fails the build on every finding gets switched
