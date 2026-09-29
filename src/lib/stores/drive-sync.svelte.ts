@@ -10,8 +10,9 @@
  * v1 syncs the graph TTL (URL/inline images included). Binary sidecar assets
  * (preview blobs, GLB models) are a follow-up — they need per-file uploads.
  */
-import { db, KBaseDB } from '../storage/db';
-import { getRegistry } from '../storage/kb-registry';
+import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
+import { getRegistry, registerStableId } from '../storage/kb-registry';
+import { getOrCreateStableId } from '../storage/kb-fingerprint';
 import { settings } from './settings.svelte';
 
 const FOLDER_KEY = 'reckons:drive-folder';
@@ -132,7 +133,11 @@ async function serializeKb(kbId: string): Promise<{ ttl: string; assets: Collect
     const statements = await kbDb.statements.toArray();
     if (statements.length === 0 && kbId !== 'kbase') return null;
     const sources = await kbDb.sources.toArray();
-    const stableId = (await kbDb.settings.get('main'))?.kbStableId;
+    const savedSettings = await kbDb.settings.get('main');
+    const stableId = await getOrCreateStableId(savedSettings?.kbStableId, async (id) => {
+      await kbDb.settings.put({ ...DEFAULT_SETTINGS, ...savedSettings, kbStableId: id });
+    });
+    registerStableId(kbId, stableId, statements.length);
     const assets = (await collectAssets(kbDb)) as CollectedAsset[];
     // LOSSLESS export (F107.4): all statuses + provenance, so a re-pull cannot drop review state.
     const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + (await assetTriples(kbDb, assets as never));

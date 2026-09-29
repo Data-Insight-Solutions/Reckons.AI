@@ -70,6 +70,17 @@ describe('checkAssetSizes — the preflight', () => {
 });
 
 describe('formatBytes', () => {
+  it('keeps shell-shaped directory text in a single argument and rejects option-shaped projects', () => {
+    const dir = '/tmp/site $(touch SHOULD_NOT_EXIST); with spaces';
+    for (const id of ['cloudflare-pages', 'netlify'] as const) {
+      const cli = getTarget(id)!.cli!;
+      expect(cli.args(dir, 'example').some(arg => arg === dir || arg === `--dir=${dir}`)).toBe(true);
+      expect(cli.command(dir, 'example')).toContain(`'${id === 'netlify' ? '--dir=' : ''}${dir}'`);
+      for (const project of ['--help', 'site;echo bad', '$(echo bad)', 'site\nother']) {
+        expect(() => cli.args('/tmp/site', project)).toThrow();
+      }
+    }
+  });
   it('formats B / KB / MB', () => {
     expect(formatBytes(500)).toBe('500 B');
     expect(formatBytes(2048)).toBe('2.0 KB');

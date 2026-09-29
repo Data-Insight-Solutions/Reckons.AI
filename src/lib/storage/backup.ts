@@ -12,10 +12,11 @@
  * once per session; subsequent mutations trigger a debounced write with no prompts.
  */
 
-import { db, getSettings, type SettingsRecord } from './db';
+import { db, getSettings, DEFAULT_SETTINGS, type SettingsRecord } from './db';
 import { toTurtle, toTurtleFull } from '../rdf/serialize';
 import { kbFileSlug } from './kb-registry';
 import { redactSecrets } from '../safety/redact';
+import { selectProfileFields } from './settings-profile';
 
 // ── Settings profile ─────────────────────────────────────────────────────────
 //
@@ -113,7 +114,10 @@ export async function buildSettingsProfileJson(): Promise<string> {
   // Recursive final pass: the allowlist above excludes TOP-LEVEL secrets, but passes nested
   // objects (turtleSettings carries humeApiKey/humeSecretKey) through whole. Strip any
   // secret-named field at any depth so a "safe to share" profile truly carries no credential.
-  return JSON.stringify(redactSecrets(profile), null, 2);
+  return JSON.stringify({
+    _format: profile._format, _version: profile._version, exportedAt: profile.exportedAt,
+    ...redactSecrets(selectProfileFields(profile)),
+  }, null, 2);
 }
 
 /**
@@ -130,14 +134,23 @@ export async function exportSettingsProfile(): Promise<void> {
  * Returns null if the file is not a valid Reckons settings profile.
  * API keys are never included in a profile — existing keys are preserved on import.
  */
-export function parseSettingsProfile(json: string): Partial<SettingsRecord> | null {
+export function parseSettingsProfile(json: string, current: SettingsRecord = DEFAULT_SETTINGS): Partial<SettingsRecord> | null {
   try {
     const p = JSON.parse(json) as Partial<SettingsProfile> & { _format?: string };
-    if (p._format !== 'reckons-settings-profile') return null;
-    // Strip profile metadata; return only SettingsRecord-compatible fields
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _format, _version, exportedAt, ...rest } = p;
-    return rest as Partial<SettingsRecord>;
+    if (p?._format !== 'reckons-settings-profile' || p._version !== 1) return null;
+    const patch = selectProfileFields(p);
+    // A nested object is a preference patch, not a replacement of local credentials.
+    if (patch.turtleSettings) {
+      const t = patch.turtleSettings;
+      patch.turtleSettings = { ...current.turtleSettings, ...t,
+        position: { ...current.turtleSettings.position, ...t.position },
+        clickBindings: { ...current.turtleSettings.clickBindings, ...t.clickBindings },
+      };
+    }
+    if (patch.extensionHighlight && current.extensionHighlight) {
+      patch.extensionHighlight = { ...current.extensionHighlight, ...patch.extensionHighlight };
+    }
+    return patch;
   } catch {
     return null;
   }

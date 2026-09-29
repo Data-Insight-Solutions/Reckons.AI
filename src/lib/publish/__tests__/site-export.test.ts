@@ -136,7 +136,7 @@ describe('buildSiteFiles', () => {
     expect(Object.keys(files)).toContain('content/docs/install.md');
     expect(Object.keys(files)).not.toContain('content/secret.md'); // draft excluded
     expect(files['graph.json']).toContain('"overview"');
-    expect(files['admin/config.yml']).toContain('repo: me/site');
+    expect(files['admin/config.yml']).toContain('repo: "me/site"');
     expect(files['admin/index.html']).toContain('sveltia-cms');
   });
 
@@ -178,8 +178,8 @@ describe('sveltiaConfig', () => {
   it('wires the github backend and a matching pages collection', () => {
     const cfg = sveltiaConfig({ repo: 'me/site', branch: 'dev' });
     expect(cfg).toContain('name: github');
-    expect(cfg).toContain('repo: me/site');
-    expect(cfg).toContain('branch: dev');
+    expect(cfg).toContain('repo: "me/site"');
+    expect(cfg).toContain('branch: "dev"');
     expect(cfg).toContain('folder: content');
     for (const field of ['title', 'slug', 'order', 'section', 'template', 'status', 'nav', 'date', 'excerpt', 'body', 'generated']) {
       expect(cfg).toContain(`name: ${field}`);

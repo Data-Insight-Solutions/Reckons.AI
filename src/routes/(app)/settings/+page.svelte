@@ -581,7 +581,7 @@
     importProfileError = null;
     try {
       const text = await file.text();
-      const patch = parseSettingsProfile(text);
+      const patch = parseSettingsProfile(text, settings());
       if (!patch) { importProfileError = 'Not a valid Reckons.AI settings profile.'; return; }
       await updateSettings(patch);
       window.location.reload(); // sync all form fields from fresh DB state
@@ -622,7 +622,7 @@
     try {
       const text = await readFromWorkspace(WORKSPACE_PROFILE_FILE);
       if (!text) { wsProfileError = `No ${WORKSPACE_PROFILE_FILE} found in workspace.`; return; }
-      const patch = parseSettingsProfile(text);
+      const patch = parseSettingsProfile(text, settings());
       if (!patch) { wsProfileError = 'File found but is not a valid Reckons.AI settings profile.'; return; }
       await updateSettings(patch);
       window.location.reload();
@@ -1649,7 +1649,9 @@
           <strong>settings profile sync</strong>
           <p class="check-hint">
             Save <code>settings_profile.json</code> to your workspace and load it on any
-            browser or device. No API keys are included — those stay on this device.
+            browser or device. Credential fields are excluded and existing keys are preserved
+            when loading. Profiles still contain your prompts, graph description and service URLs;
+            review those before sharing.
           </p>
         </div>
         <div class="btn-group">

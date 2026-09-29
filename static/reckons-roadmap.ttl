@@ -4270,7 +4270,8 @@ kb:device-graph rdf:type       ktype:Feature ;
 kb:stabilization-trust-boundaries rdf:type ktype:Feature ;
                rdfs:label         "Production stabilization — integrity, trust boundaries, and maintainable delivery" ;
                kpred:feature-id   "F107" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "in-progress" ;
+               kpred:decided "2026-09-28: Matt selected this execution order: dependency remediation and recurring audit gates; secret-handling regression coverage; data-preservation contract tests; then publisher hardening. Deliver through a feature PR to dev. Device evidence remains outside this public repository. This increment does not complete every F107 subfeature." ;
                kpred:priority     "high" ;
                kpred:decided-on   "2026-07-21"^^xsd:date ;
                kpred:relates-to   kb:mission ;
@@ -4309,9 +4310,12 @@ kb:mcp-process-safety rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN every MCP child process uses execFile/spawn-style argument arrays with no shell interpolation; refs are validated and separated from options; runtime schemas reject malformed tool arguments; parse/deletion health is surfaced to callers; repository-wide process audit and adversarial injection tests block regressions; and the full MCP test suite runs as a required CI job." .
 
 kb:reproducible-delivery rdf:type ktype:Feature ;
+               kpred:progress "2026-09-29 follow-up: a fresh npm audit surfaced GHSA-3wwx-pv8p-q78v against undici 7.29.0 after the prior day's clean report. Raised the intentional override floor to ^7.29.1 (the compatible patched line); added an offline MockAgent request compatibility test. Registry results must always be dated, not treated as permanent security status." ;
                rdfs:label         "Reproducible toolchain, blocking quality gates, and executable documentation" ;
                kpred:feature-id   "F107.2" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:progress "2026-09-28 dependency increment: retain the ONNX AdmZip override and move it to 0.6.1; lock devalue at 5.9.4 and MCP development nanoid at 3.3.19. Full lockfile audits report zero known vulnerabilities for the app, MCP server and CLI on this date. Regression checks exercise ONNX extraction, destination symlinks and bogus declared ZIP size. A separate dependency-audit workflow fails on any advisory or audit error across all three lockfiles on PR/push and weekly schedules; schedules also audit dev. Scheduled execution begins only after the workflow reaches the default branch. This does not imply branch protection or completion of the larger toolchain programme." ;
+               kpred:tested-by "scripts/offline/__tests__/dependency-overrides.test.ts" ;
                kpred:priority     "high" ;
                kpred:part-of      kb:stabilization-trust-boundaries ;
                hnav:order         "2"^^xsd:integer ;
@@ -4338,6 +4342,10 @@ kb:canonical-graph-package rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN export to an empty database and re-import is semantically identical for confirmed, refined, pending, rejected and superseded statements, source records, stable IDs, review metadata and assets; malformed/partial packages fail validation without touching live data; format/version migration fixtures pass; and app, MCP, Drive and CLI use one shared parser/writer contract." .
 
 kb:transactional-sync-protocol rdf:type ktype:Feature ;
+               kpred:progress "2026-09-28: full Turtle now supplements RDF reification with validated version-1 metadata for review decisions, question routing, grounding flags, modification times, source linkage and extraction/repository metadata. Local extraction run records/IDs remain local. Invalid reified records now fail before replacing live data. Drive export persists/registers stable graph IDs, fixing duplicate imports when a display name differs from its slug. Browser contract tests exercise real IndexedDB and OPFS, simulated Drive transport, binary assets, malformed input, mid-write rollback and recovery snapshots. Changelog/extraction-run portability, asset recovery snapshots, versioned packages, conflict UI and full MCP/CLI conformance remain open." ;
+               kpred:tested-by "tests/e2e/sync-preservation.test.ts" ;
+               kpred:tested-by "src/lib/stores/__tests__/kb-import-roundtrip.test.ts" ;
+               kpred:decided "2026-09-28 increment: strengthen fidelity tests beyond status counts to review attribution, timestamps and source metadata; exercise folder and Drive transports with real serialization and browser IndexedDB; inject malformed imports and transaction write failures. Correct losses exposed by these tests. This is not the complete versioned graph package or conflict-review UI." ;
                rdfs:label         "Transactional workspace, Drive, and MCP interoperability" ;
                kpred:feature-id   "F107.4" ;
                kpred:has-status   "scaffolded" ;
@@ -4355,6 +4363,9 @@ kb:transactional-sync-protocol rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN last-seen revision state survives reload; first attach/reconnect shows direction and diff before destructive action; imports parse and validate into staging, back up live state, then commit all affected tables atomically with rollback; failures are user-visible; and shared contract tests drive the same fixtures through local folder, Drive and MCP while proving no statement status, source, provenance, changelog reference or asset is lost." .
 
 kb:credential-boundary rdf:type ktype:Feature ;
+               kpred:decided "2026-09-28 increment: validate profile imports against explicit nested field schemas; preserve existing credentials on import; prove profile downloads, workspace profile serialization and full Turtle backups do not serialize settings credentials. Synthetic sentinel tests cover hostile fields and malformed input. Arbitrary secrets embedded in user-authored graph text are outside settings redaction." ;
+               kpred:progress "2026-09-28 increment implemented: one allowlisted runtime schema covers profile downloads, workspace serialization and profile imports, rejects malformed known fields and credential-bearing endpoint URLs, and drops unknown fields. Nested preference imports merge into existing settings so local Hume credentials and missing preferences survive. Sentinel tests cover serialized profiles and full Turtle downloads. Profile UI describes prompts/descriptions/URLs as still personal. Arbitrary secrets in user-authored text, application-wide log redaction and complete settings classification/migration remain outside this increment." ;
+               kpred:tested-by "src/lib/storage/__tests__/settings-profile-secrets.test.ts" ;
                rdfs:label         "Credential classification and secret-safe exports" ;
                kpred:feature-id   "F107.5" ;
                kpred:has-status   "scaffolded" ;
@@ -4366,7 +4377,7 @@ kb:credential-boundary rdf:type ktype:Feature ;
                kpred:relates-to   kb:settings-polish ;
                kpred:relates-to   kb:settings-unified-integrations ;
                kpred:relates-to   kb:integration-plugin-sdk ;
-               kpred:description  "Give every setting a security classification and enforce it recursively at every boundary. The current safe-to-share profile serializes nested Turtle/Hume credentials, while build-time VITE provider keys become public bundle defaults. Profiles, backups, logs, workspace files and production bundles need positive allowlists and sentinel-secret tests, not comments or TypeScript interfaces that disappear at runtime." ;
+               kpred:description  "Give every setting a security classification and enforce it recursively at every boundary. Nested Turtle/Hume profile export credentials and build-time provider defaults were guarded in July; profile imports now also enforce explicit nested field allowlists and preserve local keys. Profiles, backups, logs, workspace files and production bundles need positive allowlists and sentinel-secret tests, not comments or TypeScript interfaces that disappear at runtime." ;
                kpred:principle    "A static client cannot keep an operator-wide secret. Runtime user-supplied credentials may be browser-persisted by explicit choice; real deployment credentials must never be compiled into a distributed bundle." ;
                kpred:remaining    "DONE WHEN every settings field is classified secret/sensitive/public; recursive schema-driven redaction covers every export, backup, log and workspace-profile path; sentinel-secret tests prove nested credentials cannot escape; a build guard rejects real provider secrets in app and extension bundles; legacy credentials migrate safely; and UI/docs state where each credential lives, where it is sent, and what a static client cannot protect." .
 
@@ -4384,9 +4395,14 @@ kb:settings-schema-roundtrip rdf:type ktype:Feature ;
                kpred:remaining    "DONE WHEN save(load(x)) preserves every non-ephemeral supported field; preferLocal, embedding model, analysis guidance/prompts, story, preview/asset settings, integrations, refresh, tutorial and n8n values all round-trip; old-version migrations pass fixtures; crafted profile keys cannot overwrite secrets; unknown future fields are preserved through a defined extension area or rejected loudly; and the manual partial-object persistence list is gone." .
 
 kb:untrusted-output-hardening rdf:type ktype:Feature ;
+               kpred:progress "2026-09-29 publisher increment: generated standalone pages use sanitize-html 2.17.7 with an explicit HTML/attribute allowlist, no script runtime, a restrictive CSP, validated theme values and same-site image URLs. Remote image/logo loading is now excluded; ordinary external links remain available. Static and source exports reject traversal and duplicate output paths. CLI output is staged under the working directory; existing directories must have a generator ownership manifest and no extra files or symlinks, so an unowned legacy output requires a new destination. Deploy runs execFileSync argument arrays. CMS is pinned to 0.222.1 with SHA-384 integrity. Filesystem containment assumes exclusive access during publishing; it is not a sandbox against a malicious local process racing directory swaps. Extension/QR hardening, source-renderer policy outside the standalone generator and broader F107.7 work remain open." ;
+               kpred:tested-by "scripts/__tests__/site-output.test.ts" ;
+               kpred:tested-by "src/lib/publish/__tests__/site-generator.test.ts" ;
+               kpred:tested-by "tests/e2e/publish-security.test.ts" ;
+               kpred:decided "2026-09-28 publisher increment: sanitize generated HTML with a maintained allowlist sanitizer and restrictive CSP; validate themes, local image URLs and output paths; reject destructive output roots and unowned existing directories; use shell-free deployment arguments; pin the external CMS version and integrity. Verify synthetic hostile content in a real browser and output containment on disk. QR/extension changes remain separate." ;
                rdfs:label         "Publisher, extension, QR, and CLI untrusted-input hardening" ;
                kpred:feature-id   "F107.7" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
                kpred:priority     "high" ;
                kpred:part-of      kb:stabilization-trust-boundaries ;
                hnav:order         "7"^^xsd:integer ;

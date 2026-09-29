@@ -1,12 +1,12 @@
 // @vitest-environment node
 
 import { createRequire } from 'node:module';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import sharp from 'sharp';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const temporaryDirectories: string[] = [];
 
@@ -35,6 +35,58 @@ afterEach(async () => {
 });
 
 describe('security dependency overrides', () => {
+  it('keeps patched Undici request handling compatible without network access', async () => {
+    const require = createRequire(import.meta.url);
+    expect(versionAtLeast(require('undici/package.json').version, '7.29.1')).toBe(true);
+    const { MockAgent, fetch } = require('undici');
+    const dispatcher = new MockAgent();
+    dispatcher.disableNetConnect();
+    dispatcher.get('https://example.test').intercept({ path: '/health' }).reply(200, 'healthy');
+    try {
+      const response = await fetch('https://example.test/health', { dispatcher });
+      expect(await response.text()).toBe('healthy');
+    } finally { await dispatcher.close(); }
+  });
+  it('refuses ZIP extraction through existing directory and file symlinks', async () => {
+    const require = createRequire(import.meta.url);
+    const AdmZip = require('adm-zip');
+    const directory = await makeTemporaryDirectory('reckons-zip-symlink-');
+    const destination = path.join(directory, 'destination');
+    const outside = path.join(directory, 'outside');
+    await mkdir(destination);
+    await mkdir(outside);
+    const protectedPath = path.join(outside, 'runtime.node');
+    await writeFile(protectedPath, 'original');
+    await symlink(outside, path.join(destination, 'native'), 'dir');
+    await symlink(protectedPath, path.join(destination, 'runtime.node'), 'file');
+    for (const name of ['native/runtime.node', 'runtime.node']) {
+      const archive = new AdmZip(Buffer.from(zipSync({ [name]: strToU8('replacement') })));
+      expect(() => archive.extractEntryTo(name, destination, true, true)).toThrow();
+      expect(await readFile(protectedPath, 'utf8')).toBe('original');
+    }
+  });
+
+  it('reads a stored ZIP entry without allocating its bogus declared size', () => {
+    const require = createRequire(import.meta.url);
+    const AdmZip = require('adm-zip');
+    const bytes = Buffer.from(zipSync({ 'small.txt': strToU8('small') }, { level: 0 }));
+    const central = bytes.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    bytes.writeUInt32LE(0x7fffffff, 22); // local uncompressed size
+    bytes.writeUInt32LE(0x7fffffff, central + 24);
+    const allocate = Buffer.alloc;
+    // Fail safely even if a future downgrade reintroduces the eager allocation.
+    const spy = vi.spyOn(Buffer, 'alloc').mockImplementation((size, ...args) => {
+      if (size > 1_000_000) throw new Error('test prevented oversized allocation');
+      return allocate(size, ...args);
+    });
+    try {
+      expect(new AdmZip(bytes).getEntry('small.txt').getData().toString()).toBe('small');
+      expect(spy.mock.calls.every(([size]) => size < 1_000_000)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('keeps the Sharp image operations used by Node tooling compatible', async () => {
     const require = createRequire(import.meta.url);
     const sharpPackage = JSON.parse(
@@ -86,7 +138,7 @@ describe('security dependency overrides', () => {
       getEntry(name: string): unknown;
     };
     const admZipPackage = onnxRequire('adm-zip/package.json') as { version: string };
-    expect(versionAtLeast(admZipPackage.version, '0.6.0')).toBe(true);
+    expect(versionAtLeast(admZipPackage.version, '0.6.1')).toBe(true);
 
     const workingDirectory = await makeTemporaryDirectory('reckons-adm-zip-');
     const archivePath = path.join(workingDirectory, 'runtime.nupkg');
