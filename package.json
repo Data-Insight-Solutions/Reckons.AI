@@ -174,7 +174,9 @@
     "landing:data": "npx tsx scripts/landing-data.ts",
     "docs:build:check": "npx tsx scripts/docs-build.ts --check",
     "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
-    "docs:review": "npx tsx scripts/offline/docs-review.ts"
+    "docs:review": "npx tsx scripts/offline/docs-review.ts",
+    "host:check": "tsx scripts/offline/host-health.ts",
+    "security:dependencies": "tsx scripts/offline/dependency-health.ts"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.112.1",

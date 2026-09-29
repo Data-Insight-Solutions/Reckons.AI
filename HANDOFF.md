@@ -1,3 +1,19 @@
+## 2026-09-28 — Private reusable security checks (F172.1)
+
+Branch: `fix/private-host-health`, based on `dev`. The user requested a reusable local device
+check for future agents and particular attention to dependency vulnerabilities, without exposing
+personal device details. `npm run host:check` now writes private evidence outside Git and prints
+aggregate counts. `--pending` stays private. `npm run security:dependencies` explicitly audits
+tracked npm lockfiles online and preserves versions, advisories, inheritance and top-level overrides.
+Both jobs and the usage contract are registered for future agents; no daemon or security setting
+is changed. Host observations and detailed audit reports belong outside this repository.
+
+Validation on 2026-09-28: type checks, unit suite, production build/verification, graph-lint and
+md-align pass locally (graph-lint retains existing advisory warnings). Synthetic tests cover report
+privacy, evidence uncertainty, unsafe output paths, Docker exposure and incomplete registry audits.
+Dependency audit findings remain open; this branch improves detection, not dependency versions or
+publisher trust boundaries. Check the PR's current CI before merging into `dev`.
+
 # Session handoff — read this first if you are picking up mid-stream
 
 **Current work — 2026-09-21:** `fix/public-example-privacy`, based on `origin/dev` at

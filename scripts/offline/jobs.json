@@ -353,7 +353,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/host-health.ts --pending",
-      "desc": "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks — disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units — pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts."
+      "desc": "Reusable read-only Linux device check. Aggregate-only stdout; detailed evidence and pending proposals stay in private state outside Git. Explicit unknown/skipped results, local policy, bounded commands, Docker exposure, patch evidence and physical-security checks. No device facts enter shared graphs."
     },
     {
       "name": "docs-review",
@@ -391,6 +391,13 @@
       "blocking": false,
       "cmd": "npx tsx scripts/offline/naming-conventions.ts --check",
       "desc": "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing."
+    },
+    {
+      "name": "dependency-health",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/dependency-health.ts",
+      "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
     }
   ]
 }

@@ -135,6 +135,15 @@ job:dead-weight rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:dependency-health rdf:type          ktype:OfflineJob ;
+    rdfs:label          "dependency-health" ;
+    skos:prefLabel      "dependency-health" ;
+    skos:definition     "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/dependency-health.ts" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:describe-entities rdf:type          ktype:OfflineJob ;
     rdfs:label          "describe-entities" ;
     skos:prefLabel      "describe-entities" ;
@@ -246,7 +255,7 @@ job:history-lessons rdf:type          ktype:OfflineJob ;
 job:host-health rdf:type          ktype:OfflineJob ;
     rdfs:label          "host-health" ;
     skos:prefLabel      "host-health" ;
-    skos:definition     "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks — disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units — pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts." ;
+    skos:definition     "Reusable read-only Linux device check. Aggregate-only stdout; detailed evidence and pending proposals stay in private state outside Git. Explicit unknown/skipped results, local policy, bounded commands, Docker exposure, patch evidence and physical-security checks. No device facts enter shared graphs." ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/host-health.ts --pending" ;
     kpred:job-enabled   "true" ;
@@ -512,9 +521,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 54 of them, 44 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 55 of them, 45 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
