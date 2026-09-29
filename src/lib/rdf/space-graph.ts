@@ -115,8 +115,8 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
   for (const set of sets) for (const m of set.memberIds) if (!setOf.has(m)) setOf.set(m, set.id);
 
   const liveSets = sets.filter((s) => s.memberIds.some((m) => spaces.some((sp) => sp.id === m)));
-  const innerOf = (n: number) => (n > 1 ? Math.max(44, 24 + n * 11) : 0);
-  const regionR = (n: number) => innerOf(n) + NODE_MAX + 26;
+  const innerOf = (n: number) => (n > 1 ? Math.max(50, 28 + n * 12) : 0);
+  const regionR = (n: number) => innerOf(n) + NODE_MAX + 32;
   // Place set centres so the LARGEST region, and the title drawn above it, stays inside the frame.
   const biggest = Math.max(0, ...liveSets.map((set) => regionR(spaces.filter((sp) => setOf.get(sp.id) === set.id).length)));
   const outer = liveSets.length > 1 ? Math.max(0, Math.min(width, height) / 2 - biggest - 24) : 0;
@@ -135,8 +135,8 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
       // A lone space labels below; a clustered one labels away from the cluster's centre.
       const [dx, dy] = members.length > 1 ? [Math.cos(a), Math.sin(a)] : [0, 1];
       const anchor = dx > 0.35 ? 'start' : dx < -0.35 ? 'end' : 'middle';
-      const lx = x + dx * (r + 6);
-      const ly = y + dy * (r + 6) + (anchor === 'middle' ? (dy >= 0 ? 12 : -2) : 4);
+      const lx = x + dx * (r + 8);
+      const ly = y + dy * (r + 8) + (anchor === 'middle' ? (dy >= 0 ? 16 : -4) : 6);
       nodes.push({
         id: sp.id, name: sp.name, setId: set.id,
         statementCount: sp.statementCount ?? 0,

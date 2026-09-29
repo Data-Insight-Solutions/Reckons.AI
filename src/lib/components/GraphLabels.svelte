@@ -70,14 +70,14 @@
       data-node-key={n.key}
       onclick={(event) => onselect(n.key, event.ctrlKey || event.metaKey)}
       transition:fade={{ duration: 220 }}
-      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
+      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 1};"
     >{@render labelContents(n)}</button>
   {:else}
     <div
       class="node-label-wrap"
       data-node-key={n.key}
       transition:fade={{ duration: 220 }}
-      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 0.85};"
+      style="--lx: {n.x}px; --ly: {n.y}px; --lfs: {labelFontSize}px; --lop: {n.opacity ?? 1};"
     >{@render labelContents(n)}</div>
   {/if}
 {/each}
@@ -105,11 +105,14 @@
     transform: translate(-50%, calc(-100% - 5px));
     font-size: var(--lfs, 11px);
     font-weight: 700;
-    /* --lop is the per-label distance opacity (0.25–0.85); base color alpha multiplied by it */
-    color: rgba(232, 234, 240, calc(var(--lop, 0.85) * 0.85));
+    /* A label is SHOWN or HIDDEN, never half-visible (Matt, 2026-09-29: semi-transparent labels
+       read badly). --lop is 1 or 0 and the opacity transition below does the fading, so a label
+       eases in and out as it gains or loses its place instead of sitting washed out. */
+    color: rgb(232, 234, 240);
+    opacity: var(--lop, 1);
     white-space: nowrap;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.6);
-    transition: transform 0.12s ease-out, color 0.18s ease-out, opacity 0.25s ease-out;
+    transition: transform 0.12s ease-out, color 0.18s ease-out, opacity 0.28s ease-out;
     letter-spacing: 0.02em;
     max-width: 220px;
     overflow: hidden;
