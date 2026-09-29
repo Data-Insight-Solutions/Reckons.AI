@@ -104,6 +104,22 @@ describe('populateKbFromTtl — lossless round-trip (F107.4)', () => {
     expect(superseded?.supersedes).toBe('st-refined');
   });
 
+  it('preserves review decisions, source linkage and source extraction metadata', async () => {
+    const input = [stmt({
+      id: 'reviewed', sourceId: 'src-a', g: iri('urn:example:provenance'),
+      updatedAt: 1_700_000_100_000, grounded: false, needsObject: true,
+      question: 'Which day?', blocks: ['urn:example:task'], verifiedBy: 'example-check',
+      verifiableBy: 'user', findingClass: 'drift', settledByDecision: 'decision-1',
+      settledBy: { actor: 'Example reviewer', channel: 'review', at: 1_700_000_100_000 },
+      answeredByGraph: 'example-graph', hopChain: ['origin', 'example-graph'],
+    })];
+    const inputSources = [{ ...sources[0], hash: 'example-hash', extractionBackend: 'mock', extractionModel: 'example-model' }];
+    const target = new FakeDB();
+    await populateKbFromTtl(target as any, 'Example', 'workspace://example.ttl', toTurtleFull(input, inputSources), new Map());
+    expect(await target.statements.toArray()).toEqual(input);
+    expect(await target.sources.toArray()).toEqual(inputSources);
+  });
+
   it('treats a plain external TTL as confirmed knowledge (legacy compatibility)', async () => {
     const plain = '<urn:kbase:concept/x> <urn:kbase:predicate/rel> <urn:kbase:concept/y> .';
     const target = new FakeDB('kbase');
@@ -114,6 +130,25 @@ describe('populateKbFromTtl — lossless round-trip (F107.4)', () => {
     expect(out[0].status).toBe('confirmed');
     // One synthetic source, as before — a plain file carries no provenance to preserve.
     expect(await target.sources.toArray()).toHaveLength(1);
+  });
+
+  it('rejects malformed portable metadata before clearing existing data', async () => {
+    const target = new FakeDB();
+    const original = stmt({ id: 'original' });
+    await target.statements.put(original);
+    const { importTurtleFull } = await import('../../rdf/import-ttl');
+    const good = toTurtleFull([original], sources);
+    for (const payload of [
+      { version: 2, fields: {} },
+      { version: 1, fields: { grounded: 'false' } },
+      { version: 1, fields: { settledBy: { actor: 'a', channel: 'b', at: 'yesterday' } } },
+    ]) {
+      const bad = good.replace(/meta:reviewMetadata .+ ;/, `meta:reviewMetadata ${JSON.stringify(JSON.stringify(payload))} ;`);
+      await expect(populateKbFromTtl(target as any, 'Example', 'fixture://bad', bad, new Map())).rejects.toThrow();
+      expect(await target.statements.toArray()).toEqual([original]);
+    }
+    const injected = good.replace(/meta:reviewMetadata .+ ;/, `meta:reviewMetadata ${JSON.stringify(JSON.stringify({ version: 1, fields: { id: 'forged', status: 'confirmed' } }))} ;`);
+    expect((await importTurtleFull(injected)).statements[0].id).toBe('original');
   });
 
   it('snapshots the prior state before a destructive replace, and can restore it', async () => {

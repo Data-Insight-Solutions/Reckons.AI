@@ -16,6 +16,47 @@ publisher trust boundaries. Check the PR's current CI before merging into `dev`.
 
 # Session handoff — read this first if you are picking up mid-stream
 
+**Current work — 2026-09-29:** `fix/security-stabilization`, based on `origin/dev` at
+`2edc6572`. Matt selected dependency remediation, credential coverage, data-preservation tests,
+then publisher hardening, in that order. All four increments are implemented and locally
+validated. [PR #292](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/292) targets
+**dev**; check its current CI results before merging, and Matt merges. The branch preview builds
+automatically; no merge or production promotion has been performed. The earlier private
+host-check service remains a separate PR #291.
+
+Implemented: dependency audit workflow for all three npm lockfiles; explicit nested profile
+allowlists, numeric bounds and credential-preserving imports; portable review/source metadata
+and stable Drive identities; real-browser transport and IndexedDB rollback tests; standalone
+HTML sanitization, CSP, validated output paths, owned/staged CLI output, shell-free deploy
+arguments and pinned CMS integrity. Remote images in generated static pages are now excluded.
+Existing output directories without the generator manifest require a new destination.
+No device evidence belongs in this PR.
+
+**Validation on 2026-09-29:** 3,276 unit tests across 229 files, 172 MCP tests and four browser
+security/preservation tests passed. Type check: zero errors or warnings. Production build,
+build verification, alignment, script type checks and provider-secret scan passed. Graph lint:
+zero errors, 15 pre-existing warnings. All three full npm lockfile audits report zero known
+vulnerabilities on this date. A fresh audit caught GHSA-3wwx-pv8p-q78v after the prior day's clean
+report; the undici override floor is now ^7.29.1 and the lock resolves 7.30.0. Audit results expire.
+One full run hit an existing workspace-cache timing timeout under local load; that test passed
+in isolation and the final complete suite passed with four workers.
+
+The initial local model review stalled and was stopped. A bounded review completed all 13
+selected production files with devstral-small-2: one numeric-range finding accepted and tested;
+23 emitted suggestions rejected after inspection. This was a focused review, not exhaustive
+model coverage. The startup script sweep passed 41/41 on the host-check branch; this branch's
+two blocking script jobs pass. Keep private review/audit evidence outside the public repository.
+
+Broader F107 remains open: complete credential classification/log coverage, versioned graph
+packages, changelog/extraction-run portability, asset snapshots, conflict UI and full MCP/CLI
+conformance, extension/QR hardening. User-authored profile text can still be personal. Exported
+source Markdown relies on its downstream renderer. Output-path protection assumes exclusive
+access during publishing, not a hostile local process racing the filesystem. The weekly
+workflow starts only when present on the default branch; adding it does not enforce branch
+protection.
+
+The entries below are historical handoffs; their branch and validation claims are dated.
+
 **Current work — 2026-09-21:** `fix/public-example-privacy`, based on `origin/dev` at
 `5aeb2ff`. Matt requested generic public examples only and removal of external-project material.
 The cleanup removes the project-specific grant example, its UI entry points and graph records,
