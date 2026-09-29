@@ -161,6 +161,7 @@ code:components  rdf:type     ktype:Concept ;
                  skos:broader code:repo ;
                  kpred:has-file "src/lib/components/NavBar.svelte" ;
                  kpred:has-file "src/lib/components/SpacesMap.svelte" ;
+                 kpred:has-file "src/lib/components/GraphCanvas.svelte" ;
                  kpred:has-file "src/lib/components/SearchBar.svelte" ;
                  kpred:has-file "src/lib/components/GraphNode.svelte" ;
                  kpred:has-file "src/lib/components/SnapPanel.svelte" ;

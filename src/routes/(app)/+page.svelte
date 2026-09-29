@@ -1,15 +1,16 @@
 <script lang="ts">
-  import { Canvas } from '@threlte/core';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
-  import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
   import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
   import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
   import { bestSuggestion } from '$lib/rdf/view-suggestions';
   import { statedCoordinates } from '$lib/rdf/map-layout';
-  import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import GraphCanvas from '$lib/components/GraphCanvas.svelte';
+  import type { ComponentProps } from 'svelte';
+  import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
+  import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
@@ -131,6 +132,20 @@
     { id: item.id, title: item.title, uri: '', kind: 'note' as const, ingestedAt: 0 }) ?? [] : sources());
   let statementsLayout = 'force';
   let sourcesLayout = 'source';
+  /** A node picked in the graph, from either renderer. Ctrl/Cmd adds to the multi-selection in Statements. */
+  function handleGraphSelect(k: string | null, ctrlKey?: boolean) {
+    if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
+    if (ctrlKey && k && perspective === 'statements') {
+      const next = new Set(multiSelected);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      multiSelected = next;
+    } else {
+      multiSelected = new Set();
+      navHistory = [];
+      selected = k;
+    }
+  }
+
   function switchPerspective(next: 'statements' | 'sources') {
     if (next === perspective) return;
     if (perspective === 'statements') statementsLayout = layout; else sourcesLayout = layout;
@@ -2019,6 +2034,72 @@
     await addStatements(stmts);
     showRelationUI = false;
   }
+
+  /*
+   * PROPS FOR THE ONE GRAPH CANVAS (F92). STABLE OBJECTS WITH GETTERS, NOT OBJECT LITERALS IN THE
+   * TEMPLATE. A literal is rebuilt whenever ANY value it reads changes, handing the renderer a fresh
+   * value for every prop at once; the renderers restart their layout on that and never report
+   * settled (caught by tests/e2e/provenance-view and ui-priority-regressions). A getter keeps each
+   * prop tracking only its own inputs, exactly as the inline attributes it replaces did.
+   */
+  const graphHighlighted = $derived([...highlightedSet]);
+  const graphProps2d: ComponentProps<typeof KnowledgeGraph2D> = {
+    get statements() { return visible; },
+    get topologyStatements() { return drawn; },
+    get flooredStatementIds() { return graphView.hidden.statementIds; },
+    get selected() { return selected; },
+    get layout() { return layout; },
+    get timelineZoom() { return timelineZoom; },
+    get timelineCenter() { return timelineCenter; },
+    get timelineTimeSource() { return timelineTimeSource; },
+    get sources() { return sceneSources; },
+    get labelPriorityKeys() { return sourceLabels; },
+    get viewportInsets() { return assetGutters; },
+    get showSourceNodes() { return perspective === 'statements' && detailLevel === 'all'; },
+    get targetKey() { return hoverTarget; },
+    onselect: handleGraphSelect,
+    onhover: (k) => (hoverTarget = k),
+    onlabelsmove: setNodeLabels,
+    onmarkersmove: (m) => { markerLabels = perspective === 'sources' ? [] : m; },
+    onsettledchange: (settled) => { graphSettled = settled; },
+    ontimelinepan: (c) => { timelineCenter = c; },
+    get nodeOrder() { return nodeOrder; },
+    onreorder: (order) => { nodeOrder = order; },
+    get highlighted() { return graphHighlighted; },
+    get dimMode() { return perspective === 'statements' && dimMode; },
+    get podMode() { return podMode; },
+    get ghostGraph() { return ghostGraph; },
+    get ghostAnchorKey() { return ghostAnchorKey; },
+    get flyToGhost() { return flyToGhost; },
+    onflyend: handleFlyEnd,
+    onarrivalstatus: (v) => (selectedIsArrival = v),
+  };
+  const graphProps3d: ComponentProps<typeof KnowledgeGraph> = {
+    get cameraSpec() { return cameraSpec; },
+    get statements() { return visible; },
+    get topologyStatements() { return drawn; },
+    get flooredStatementIds() { return graphView.hidden.statementIds; },
+    get selected() { return selected; },
+    get layout() { return layout; },
+    get timelineZoom() { return timelineZoom; },
+    get timelineCenter() { return timelineCenter; },
+    get timelineTimeSource() { return timelineTimeSource; },
+    get previewKeys() { return previewNodeKeys; },
+    get previewSizePx() { return nodePreviewSize; },
+    get sources() { return sceneSources; },
+    get labelPriorityKeys() { return sourceLabels; },
+    get viewportInsets() { return assetGutters; },
+    get targetKey() { return hoverTarget; },
+    onselect: handleGraphSelect,
+    onhover: (k) => (hoverTarget = k),
+    onlabelsmove: setNodeLabels,
+    onmarkersmove: (m) => { markerLabels = perspective === 'sources' ? [] : m; },
+    onsettledchange: (settled) => { graphSettled = settled; },
+    ontimelinepan: (c) => { timelineCenter = c; },
+    onready: () => (graph3DReady = true),
+    get highlighted() { return graphHighlighted; },
+    get dimMode() { return perspective === 'statements' && dimMode; },
+  };
 </script>
 
 <svelte:window onkeydown={(e) => {
@@ -2233,98 +2314,20 @@
     <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
   {:else if showingLanding}
     <LandingPage />
-  {:else if use2D || !webglAvailable}
-    <KnowledgeGraph2D
-      statements={visible}
-      topologyStatements={drawn}
-      flooredStatementIds={graphView.hidden.statementIds}
-      {selected}
-      {layout}
-      {timelineZoom}
-      {timelineCenter}
-      {timelineTimeSource}
-      sources={sceneSources}
-      labelPriorityKeys={sourceLabels}
-      viewportInsets={assetGutters}
-      showSourceNodes={perspective === 'statements' && detailLevel === 'all'}
-      targetKey={hoverTarget}
-      onselect={(k, ctrlKey) => {
-        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-        if (ctrlKey && k && perspective === 'statements') {
-          const next = new Set(multiSelected);
-          if (next.has(k)) next.delete(k); else next.add(k);
-          multiSelected = next;
-        } else {
-          multiSelected = new Set();
-          navHistory = [];
-          selected = k;
-        }
-      }}
-      onhover={(k) => (hoverTarget = k)}
-      onlabelsmove={setNodeLabels}
-      onmarkersmove={(m) => { markerLabels = perspective === 'sources' ? [] : m; }}
-      onsettledchange={(settled) => { graphSettled = settled; }}
-      ontimelinepan={(c) => { timelineCenter = c; }}
-      {nodeOrder}
-      onreorder={(order) => { nodeOrder = order; }}
-      highlighted={[...highlightedSet]}
-      dimMode={perspective === 'statements' && dimMode}
-      {podMode}
-      {ghostGraph}
-      {ghostAnchorKey}
-      {flyToGhost}
-      onflyend={handleFlyEnd}
-      onarrivalstatus={(v) => (selectedIsArrival = v)}
-    />
   {:else}
-    <svelte:boundary>
-      <Canvas>
-        <KnowledgeGraph
-          {cameraSpec}
-          statements={visible}
-          topologyStatements={drawn}
-          flooredStatementIds={graphView.hidden.statementIds}
-          {selected}
-          {layout}
-          {timelineZoom}
-          {timelineCenter}
-          {timelineTimeSource}
-          previewKeys={previewNodeKeys}
-          previewSizePx={nodePreviewSize}
-          sources={sceneSources}
-          labelPriorityKeys={sourceLabels}
-          viewportInsets={assetGutters}
-          targetKey={hoverTarget}
-          onselect={(k, ctrlKey) => {
-        if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-        if (ctrlKey && k && perspective === 'statements') {
-          const next = new Set(multiSelected);
-          if (next.has(k)) next.delete(k); else next.add(k);
-          multiSelected = next;
-        } else {
-          multiSelected = new Set();
-          navHistory = [];
-          selected = k;
-        }
-      }}
-          onhover={(k) => (hoverTarget = k)}
-          onlabelsmove={setNodeLabels}
-          onmarkersmove={(m) => { markerLabels = perspective === 'sources' ? [] : m; }}
-          onsettledchange={(settled) => { graphSettled = settled; }}
-          ontimelinepan={(c) => { timelineCenter = c; }}
-          onready={() => (graph3DReady = true)}
-          highlighted={[...highlightedSet]}
-          dimMode={perspective === 'statements' && dimMode}
-        />
-      </Canvas>
-      {#snippet failed(error)}
+    <GraphCanvas
+      renderer={use2D || !webglAvailable ? '2d' : '3d'}
+      props2d={graphProps2d}
+      props3d={graphProps3d}
+    >
+      {#snippet onFailure(error)}
         <div class="no-webgl">
           <p class="no-webgl-title mono">3D graph error</p>
           <p class="no-webgl-sub">{(error as Error)?.message ?? 'WebGL context could not be created.'}</p>
           <button class="cta" style="margin-top:0.75rem;" onclick={() => { use2D = true; resetPerfMonitor(); updateSettings({ prefer2D: true }); }}>switch to 2D view →</button>
         </div>
       {/snippet}
-    </svelte:boundary>
+    </GraphCanvas>
   {/if}
 
   </section>
