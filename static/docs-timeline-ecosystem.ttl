@@ -390,3 +390,19 @@ topic:SemanticWebPeople
     rdf:type            skos:Concept ;
     rdfs:label          "Who thought of it — people in this story" ;
     skos:definition     "A short list, and deliberately short: these are the people whose specific ideas this product rests on, not a hall of fame. Each entry says what they did that Reckons.AI actually uses." .
+
+## =============================================================================
+## THE ECOSYSTEM PAGE (Matt, 2026-09-29: retitle "Where it is going" as the
+## ecosystem). The address /docs/project/where-it-is-going is kept so existing
+## links still land. It used to be a composed alphabetical list of the same 31
+## entities the three pages below already carry; it now points at them, and at
+## the status page for what works in Reckons.AI itself.
+## =============================================================================
+
+guide:EcosystemAroundIt
+    rdf:type            ktype:Concept ;
+    rdfs:label          "The ecosystem around it" ;
+    kpred:page-section  "Project" ;
+    kpred:page-slug     "where-it-is-going" ;
+    skos:definition     "Reckons.AI is built on open standards that took the better part of three decades to settle. The timeline, the people and the organizations behind those standards each have a page of their own, linked below. For what works in Reckons.AI itself today and what is still planned, see What works today." ;
+    skos:related        topic:SemanticWebTimeline, topic:SemanticWebPeople, topic:SemanticWebOrganizations, guide:WhatWorksToday .

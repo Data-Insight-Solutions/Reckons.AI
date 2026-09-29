@@ -32,6 +32,7 @@ import { KBReader, search } from './kb.js';
 import { chat, extract, buildContext, type LLMConfig, type Provider } from './llm.js';
 import { detectAudioCaps, printAudioCaps, record, transcribe, speak, chime, cleanup, type AudioCaps } from './audio.js';
 import { cmdReview } from './review.js';
+import { matchCommand, describeMatch, readConfirmation } from './voice-commands.js';
 
 // ── Config file (.reckonsrc) ─────────────────────────────────────────────────
 
@@ -589,8 +590,41 @@ async function audioREPL(): Promise<void> {
 
     process.stderr.write(`  you: ${text}\n`);
 
-    // Check for exit commands
     const lower = text.toLowerCase().trim();
+
+    /*
+     * SPOKEN COMMANDS (F99). Recognised through voice-commands.ts rather than by string equality
+     * here, because speech-to-text mangles the exact terms this product cares about — "n8n" comes
+     * back as "Nate", observed in the real capture corpus. See that file for the alias table.
+     *
+     * A command that CHANGES something is spoken back and waits for a clear yes. A misheard
+     * sentence must never start an agent, save a note or publish a graph, and an unclear answer is
+     * treated as no — re-asking costs a sentence, guessing costs something real.
+     */
+    const cmd = matchCommand(text);
+    if (cmd?.confirm) {
+      const prompt = describeMatch(cmd);
+      out(prompt);
+      if (caps.tts) speak(prompt, caps, voice);
+      const reply = await record(caps);
+      const answer = reply ? await transcribe(reply, caps) : '';
+      const verdict = readConfirmation(answer ?? '');
+      if (verdict !== 'yes') {
+        const msg = verdict === 'no' ? 'Cancelled.' : 'I did not catch a clear yes, so I have not done it.';
+        out(msg);
+        if (caps.tts) speak(msg, caps, voice);
+        continue;
+      }
+      process.stderr.write(`  [confirmed] ${cmd.command.id}${cmd.arg ? `: ${cmd.arg}` : ''}\n`);
+      // The act handlers are not built yet. Saying so out loud is better than silently doing
+      // nothing after a person has just agreed to something.
+      const todo = `I understood ${cmd.command.id}, but that action is not built yet.`;
+      out(todo);
+      if (caps.tts) speak(todo, caps, voice);
+      continue;
+    }
+
+    // Check for exit commands
     if (lower === 'quit' || lower === 'exit' || lower === 'stop' || lower === 'goodbye') {
       const bye = 'Goodbye.';
       out(bye);
