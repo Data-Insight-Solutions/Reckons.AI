@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it.
 
-## Works today (36)
+## Works today (34)
 
 <p class="derived">Built and working. Production means also tested and in daily use.</p>
 
@@ -24,7 +24,6 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Content Safety](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Context Compression](../features/context-compression-features) · functional
 - [Cross-Graph Alignment](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
-- [Currents](../features/currents) · functional
 - [Diff Summary](../features/compare) · production — on the Compare — finding out where two people actually disagree page
 - [Disambiguation](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Entity Normalization](../features/entity-normalization) · production
@@ -41,7 +40,6 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Multi-Graph Management](../features/multi-kb) · production
 - [Passage Grounding](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Persona System](../features/shelly) · functional — on the Shelly (AI Assistant) page
-- [Pod View](../features/pod-view) · functional
 - [Predicate Manager](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Prefer-Local Routing](../features/prefer-local) · production
 - [Release Notes](../features/published-docs) · functional — on the Published Graph Site page
@@ -55,10 +53,12 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Turtle Export](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (1)
+## Partly built (3)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
+- [Currents](../features/currents) · scaffolded
+- [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress
 
 ## Not built yet (2)

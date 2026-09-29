@@ -377,7 +377,7 @@
       "factHash": "0326f80c66855fa5",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "24afb39c8550b25e"
+      "pageHash": "47f8f8981d01b937"
     },
     {
       "path": "features/entity-normalization",
@@ -458,7 +458,7 @@
       "factHash": "44f48d75b47289d7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "7afb1d0469eab570"
+      "pageHash": "6fd5df05bc1147aa"
     },
     {
       "path": "features/prefer-local",
@@ -539,7 +539,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "2a22cc7e94dfa4d4"
+      "pageHash": "fd80b734c7305c35"
     },
     {
       "path": "guide/who-makes-this",
@@ -755,7 +755,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "6e44910c2de2623f"
+      "pageHash": "49f71e969beef34f"
     },
     {
       "path": "testing/graph-review-story",
