@@ -22,6 +22,7 @@
  *   npx tsx scripts/offline/graph-catalog.ts --check   exit 1 on any problem (CI / npm run align)
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { Parser, type Quad } from 'n3';
 
@@ -43,6 +44,23 @@ export type CatalogEntry = {
   generators: string[];
   influencedBy: string[];
 };
+
+/**
+ * The graphs the catalog must cover: the .ttl files in static/ that GIT TRACKS. A git-ignored file
+ * there (docs-all.ttl, merged locally by the workspace setup script) is a build artifact that exists
+ * on one machine and not in CI, so listing the directory made the check pass locally and fail in CI.
+ * Falls back to the directory only when git is unavailable.
+ */
+export function trackedGraphFiles(): string[] {
+  try {
+    return execFileSync('git', ['ls-files', 'static/*.ttl'], { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+      .map((f) => f.replace(/^static\//, ''));
+  } catch {
+    return readdirSync('static').filter((f) => f.endsWith('.ttl'));
+  }
+}
 
 export function readCatalog(quads: Quad[]): { entries: CatalogEntry[]; roles: Map<string, string> } {
   const roles = new Map<string, string>();
@@ -107,7 +125,7 @@ export function checkCatalog(
 
 function main(): void {
   const quads = new Parser().parse(readFileSync(CATALOG_PATH, 'utf8'));
-  const files = readdirSync('static').filter((f) => f.endsWith('.ttl'));
+  const files = trackedGraphFiles();
   const problems = checkCatalog(quads, files, (p) => existsSync(path.resolve(p)));
 
   if (process.argv.includes('--check')) {

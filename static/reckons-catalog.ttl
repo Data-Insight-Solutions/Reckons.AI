@@ -1,10 +1,12 @@
 # =============================================================================
 # reckons-catalog.ttl — WHAT EACH GRAPH IS FOR (F113 graph-sets, phase 1; F222)
 #
-# Every graph in static/ is declared here once, with ONE role and, when a script
+# Every graph under static/ that git tracks, subfolders included, is declared here once, with ONE role and, when a script
 # writes it, the script. A graph with no prov:wasGeneratedBy is maintained by hand.
 # scripts/offline/graph-catalog.ts --check fails when a graph is added, removed or
 # renamed without this file following, so the catalog cannot silently go stale.
+# Git-ignored files in static/ (docs-all.ttl, merged locally by
+# scripts/setup-reckons-workspace.sh) are build artifacts, not graphs, and are not listed.
 #
 # Standard vocabulary only, as F113 decided: dcat:Catalog for the set, void:Dataset
 # per graph, dcterms:type for the role (a SKOS concept below), PROV-O for relations.
@@ -60,7 +62,11 @@ role:starter a skos:Concept ;
 
 graph:catalog a dcat:Catalog ;
     dcterms:title "Reckons.AI graphs" ;
-    dcat:dataset graph:docs-all ,
+    dcat:dataset graph:examples-readme ,
+        graph:examples-local-announcements ,
+        graph:examples-personal-notes ,
+        graph:default-kb ,
+        graph:reckons-shapes ,
         graph:docs-architecture ,
         graph:docs-coding-workflow ,
         graph:docs-features ,
@@ -96,12 +102,6 @@ graph:catalog a dcat:Catalog ;
         graph:starter-visual-review ,
         graph:website ,
         graph:website-status .
-
-graph:docs-all a void:Dataset ;
-    dcterms:title "Documentation hub (merged)" ;
-    dcterms:type role:docs ;
-    dcterms:source "static/docs-all.ttl" ;
-    prov:wasGeneratedBy <urn:reckons:script/scripts/setup-reckons-workspace.sh> .
 
 graph:docs-architecture a void:Dataset ;
     dcterms:title "Docs: architecture" ;
@@ -283,3 +283,28 @@ graph:reckons-catalog a void:Dataset ;
     dcterms:title "Graph catalog — what each graph is for" ;
     dcterms:type role:reference ;
     dcterms:source "static/reckons-catalog.ttl" .
+
+graph:examples-readme a void:Dataset ;
+    dcterms:title "Example workspace graphs — what is tracked and why" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/README.ttl" .
+
+graph:examples-local-announcements a void:Dataset ;
+    dcterms:title "Example: local announcements" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/local-announcements.ttl" .
+
+graph:examples-personal-notes a void:Dataset ;
+    dcterms:title "Example: personal notes landing graph" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/examples/personal-notes.ttl" .
+
+graph:default-kb a void:Dataset ;
+    dcterms:title "Default empty graph" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/kbs/default-kb/default-kb.ttl" .
+
+graph:reckons-shapes a void:Dataset ;
+    dcterms:title "SHACL shapes" ;
+    dcterms:type role:reference ;
+    dcterms:source "static/shapes/reckons-shapes.ttl" .

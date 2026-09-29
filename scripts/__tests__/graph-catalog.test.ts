@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { Parser } from 'n3';
-import { checkCatalog, CATALOG_PATH } from '../offline/graph-catalog';
+import { checkCatalog, trackedGraphFiles, CATALOG_PATH } from '../offline/graph-catalog';
 
 const HEAD = `@prefix dcterms: <http://purl.org/dc/terms/> .
 @prefix void: <http://rdfs.org/ns/void#> .
@@ -51,9 +51,9 @@ describe('checkCatalog', () => {
     ]));
   });
 
-  it('holds for the real catalog', () => {
+  it('holds for the real catalog, over the graphs git tracks', () => {
     const quads = new Parser().parse(readFileSync(CATALOG_PATH, 'utf8'));
-    const files = readdirSync('static').filter((f) => f.endsWith('.ttl'));
+    const files = trackedGraphFiles();
     expect(checkCatalog(quads, files, existsSync)).toEqual([]);
   });
 });
