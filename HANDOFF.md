@@ -3,8 +3,10 @@
 **Current work — 2026-09-29:** `fix/security-stabilization`, based on `origin/dev` at
 `2edc6572`. Matt selected dependency remediation, credential coverage, data-preservation tests,
 then publisher hardening, in that order. All four increments are implemented and locally
-validated. Land through a PR to **dev**; CI must pass and Matt merges. These changes are not
-merged or deployed. The earlier private host-check service remains a separate PR #291.
+validated. [PR #292](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/292) targets
+**dev**; check its current CI results before merging, and Matt merges. The branch preview builds
+automatically; no merge or production promotion has been performed. The earlier private
+host-check service remains a separate PR #291.
 
 Implemented: dependency audit workflow for all three npm lockfiles; explicit nested profile
 allowlists, numeric bounds and credential-preserving imports; portable review/source metadata
