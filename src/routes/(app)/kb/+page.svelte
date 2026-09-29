@@ -7,8 +7,13 @@
     deleteSource,
     statementsForSource,
     addStatements,
-    hotSwapData
+    hotSwapData,
+    loaded,
+    userStatements
   } from '$lib/stores/kb.svelte';
+  import SpacesMap from '$lib/components/SpacesMap.svelte';
+  import { leapTargetCounts, type SetInput, type SpaceInput } from '$lib/rdf/space-graph';
+  import { countLeapsInAllSpaces } from '$lib/storage/space-leaps';
   import { toTurtle, toNQuads, toTriG, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
@@ -32,6 +37,7 @@
   import { KB_CALENDAR_NAME } from '$lib/integrations/google/calendar';
   import {
     getRegistry,
+    recordLeapTargets,
     getCurrentKbId,
     switchToKb,
     removeKbFromRegistry,
@@ -205,6 +211,39 @@
    * within each set.
    */
   const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
+
+  /*
+   * THE SPACES MAP (F218 phase 1) reads the WHOLE registry, not the filtered list below, so the
+   * picture does not reshuffle as someone types into the filter box. One node per working graph: an
+   * archive belongs to its parent and is not a space of its own.
+   */
+  const mapSets = $derived(bucketIntoSets(groupGraphsWithArchives(localKbs), { ungroupedTitle: 'Ungrouped' }, localKbs));
+  const mapSetInputs = $derived<SetInput[]>(mapSets.map((set) => ({
+    id: set.id, title: set.title, basis: set.basis, memberIds: set.groups.map((g) => g.parent.id),
+  })));
+  const mapSpaces = $derived<SpaceInput[]>(mapSets.flatMap((set) => set.groups.map((g) => ({
+    id: g.parent.id, name: g.parent.name, stableId: g.parent.stableId,
+    statementCount: g.parent.id === currentKbId && loaded() ? userStatements().length : g.parent.statementCount,
+    leapTargets: g.parent.leapTargets,
+  }))));
+
+  // The space you are in is counted from memory, and only once it has loaded — recording before
+  // then would store "no leaps" for a space whose statements simply had not arrived yet.
+  $effect(() => {
+    if (!loaded()) return;
+    if (recordLeapTargets(currentKbId, leapTargetCounts(userStatements()))) localKbs = getRegistry();
+  });
+
+  let leapCounting = $state<{ done: number; total: number } | null>(null);
+  async function countAllLeaps() {
+    leapCounting = { done: 0, total: localKbs.length };
+    try {
+      await countLeapsInAllSpaces((done, total) => { leapCounting = { done, total }; });
+    } finally {
+      leapCounting = null;
+      localKbs = getRegistry();
+    }
+  }
 
   /*
    * Group by the folders the user actually made (kb:graph-sets, F113 `folder` basis).
@@ -800,6 +839,24 @@
     return new Date(ts).toLocaleDateString();
   }
 </script>
+
+<!-- ── Spaces map (F218) ───────────────────────────────────────────────────── -->
+{#if mapSpaces.length > 1}
+  <section class="section spaces-map-section">
+    <details open>
+      <summary class="section-head"><h3>spaces map</h3></summary>
+      <p class="section-hint">each space is a node; a line means leaps between two spaces, thicker for more. Spaces in one set sit together. Select a space to see its connections.</p>
+      <SpacesMap
+        spaces={mapSpaces}
+        sets={mapSetInputs}
+        currentId={currentKbId}
+        onOpen={handleSwitch}
+        onCountAll={countAllLeaps}
+        counting={leapCounting}
+      />
+    </details>
+  </section>
+{/if}
 
 <!-- ── KB Identity ─────────────────────────────────────────────────────────── -->
 <div class="kb-identity">
