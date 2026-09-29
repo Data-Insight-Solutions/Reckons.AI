@@ -110,10 +110,23 @@ for (const [iri, status] of statusOf) {
   unbuilt.push({ iri, label, status, needle: needle.toLowerCase() });
 }
 
+/**
+ * What a reader can see. Comments in a .svelte or .html surface never reach the page, and a
+ * comment quoting a decision ("Matt, 2026-09-16: the core is a functional personal assistant")
+ * failed this check on every run while claiming nothing to anyone. Markdown is all reader text.
+ */
+export function readerText(file: string, text: string): string {
+  if (file.endsWith('.md')) return text;
+  return text
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/(^|[^:"'`\\])\/\/[^\n]*/g, '$1');
+}
+
 // ── Check 1: is an unbuilt feature described as if it works? ────────────────
 for (const file of SURFACES) {
   if (!existsSync(file)) continue;
-  const text = readFileSync(file, 'utf8');
+  const text = readerText(file, readFileSync(file, 'utf8'));
   // Split into sentence-ish units so a hedge in a NEIGHBOURING sentence does not excuse this one.
   const sentences = text.split(/(?<=[.!?])\s+|\n{2,}/);
   for (const s of sentences) {
