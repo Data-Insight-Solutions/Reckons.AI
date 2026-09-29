@@ -11,15 +11,13 @@
     sets,
     currentId,
     onOpen,
-    onCountAll,
     counting = null,
   }: {
     spaces: SpaceInput[];
     sets: SetInput[];
     currentId: string;
     onOpen: (id: string) => void;
-    onCountAll: () => void;
-    /** Progress of an explicit count over every space, or null when idle. */
+    /** Progress of the background count over other spaces, or null when idle. */
     counting?: { done: number; total: number } | null;
   } = $props();
 
@@ -27,6 +25,7 @@
   const byId = $derived(new Map(graph.nodes.map((n) => [n.id, n])));
   let selectedId = $state<string | null>(null);
   const selected = $derived(selectedId ? byId.get(selectedId) ?? null : null);
+  const totalUnresolved = $derived(graph.nodes.reduce((sum, n) => sum + n.unresolvedLeaps, 0));
 
   const BASIS_LABEL: Record<string, string> = { derived: 'by name', folder: 'by folder', declared: 'declared', defined: 'your set' };
 
@@ -46,7 +45,7 @@
 
   function nodeAria(n: SpaceNode): string {
     const links = connectionsOf(n.id).length;
-    return `${n.name}: ${n.statementCount} statements, ${n.leapsCounted ? `${links} connected space${links === 1 ? '' : 's'}` : 'leaps not counted yet'}${n.id === currentId ? ', current space' : ''}`;
+    return `${n.name}: ${n.statementCount} statements, ${n.leapsCounted ? `${links} connected space${links === 1 ? '' : 's'}` : 'not read yet'}${n.id === currentId ? ', current space' : ''}`;
   }
 
   function onNodeKey(e: KeyboardEvent, id: string) {
@@ -58,11 +57,10 @@
 <div class="spaces-map">
   <p class="map-summary mono">
     {graph.nodes.length} space{graph.nodes.length === 1 ? '' : 's'} · {graph.edges.length} connection{graph.edges.length === 1 ? '' : 's'}
-    {#if graph.uncounted > 0}
-      · <span class="uncounted">leaps not counted in {graph.uncounted}</span>
-      <button class="count-all mono" onclick={onCountAll} disabled={counting !== null}>
-        {counting ? `counting ${counting.done}/${counting.total}…` : 'count leaps in every space'}
-      </button>
+    {#if counting}
+      · <span class="counting" role="status">reading leaps in other spaces… {counting.done}/{counting.total}</span>
+    {:else if graph.uncounted > 0}
+      · <span class="uncounted">{graph.uncounted} space{graph.uncounted === 1 ? '' : 's'} could not be read</span>
     {/if}
   </p>
 
@@ -119,7 +117,7 @@
       </div>
       <p class="mono detail-line">{selected.statementCount} statements</p>
       {#if !selected.leapsCounted}
-        <p class="detail-line muted">Leaps from this space have not been counted yet, so its connections are unknown rather than none.</p>
+        <p class="detail-line muted">This space has not been read yet, so its connections are unknown rather than none.</p>
       {:else if links.length === 0}
         <p class="detail-line muted">No leaps between this space and any other.</p>
       {:else}
@@ -139,8 +137,12 @@
         <button class="sm mono" onclick={() => onOpen(selected.id)}>open this space →</button>
       {/if}
     </div>
-  {:else if graph.edges.length === 0 && graph.uncounted === 0 && graph.nodes.length > 1}
-    <p class="detail-line muted">No leaps between your spaces yet. A leap is a node that links to another space; add one from a node's panel in the explorer.</p>
+  {:else if graph.edges.length === 0 && !counting && graph.nodes.length > 1}
+    <p class="detail-line muted">
+      No lines yet because none of these spaces links to another. A line appears when a node in one space
+      jumps to a different space: select a node in the explorer, choose <strong>+ add jump</strong>, and enter the
+      other space's graph ID.{#if totalUnresolved > 0} {totalUnresolved === 1 ? '1 jump points' : `${totalUnresolved} jumps point`} at a space that is not on this device.{/if}
+    </p>
   {/if}
 </div>
 
@@ -148,8 +150,7 @@
   .spaces-map { display: flex; flex-direction: column; gap: 0.5rem; }
   .map-summary { font-size: 0.75rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
   .uncounted { color: var(--warn); }
-  .count-all { font-size: 0.75rem; min-height: 44px; padding: 0 0.75rem; color: var(--accent); border: 1px solid var(--accent); border-radius: var(--rad-sm); background: transparent; cursor: pointer; }
-  .count-all:disabled { opacity: 0.6; cursor: progress; }
+  .counting { color: var(--accent); }
   .map-svg { width: 100%; max-width: 560px; height: auto; align-self: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); }
   .region circle { fill: var(--surface-2); stroke: var(--line); stroke-dasharray: 3 4; }
   .region-title { font-family: var(--font-mono); font-size: 18px; fill: var(--ink-2); }
