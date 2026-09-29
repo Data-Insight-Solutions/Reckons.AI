@@ -384,3 +384,22 @@ kb:mcp-server skos:altLabel "Model Context Protocol server" .
 kb:cross-kb-alignment skos:altLabel "align graphs" , "cross-KB alignment" .
 
 kb:comparison-view skos:altLabel "diff view" , "semantic diff" .
+
+# -- Recorded 2026-09-29 (F222 phase 2): two shipped capabilities the user docs described and the
+# roadmap never tracked. Found by mapping every docs capability to a roadmap entity; statuses are
+# from the code and tests named below, not from the docs' description of them.
+kb:ttl-export a ktype:Feature;
+    rdfs:label "Turtle export";
+    kpred:has-status "production";
+    kpred:description "Export a graph as a .ttl file, either clean for interoperability or with full reification metadata (status, source, confidence, timestamps, excerpts) so it round-trips.";
+    kpred:has-file "src/lib/rdf/serialize.ts";
+    kpred:tested-by "src/lib/rdf/__tests__/serialize.test.ts", "src/lib/rdf/__tests__/set-roundtrip.test.ts";
+    kpred:measured "RECORDED 2026-09-29, NOT NEW: the capability shipped long before; the roadmap simply had no entity for it, so the docs page could not say it works.".
+
+kb:graph-persona a ktype:Feature;
+    rdfs:label "Per-graph assistant persona";
+    kpred:has-status "functional";
+    kpred:description "A graph can carry its own assistant personality in the shelly: vocabulary (name, greeting, style, system prompt). It is read on import and written on export, so the persona travels with the .ttl file.";
+    kpred:has-file "src/lib/rdf/import-ttl.ts", "src/lib/rdf/serialize.ts";
+    kpred:tested-by "src/lib/rdf/__tests__/turtle-w3c.test.ts";
+    kpred:measured "RECORDED 2026-09-29, NOT NEW: shipped without a roadmap entity. Functional rather than production because the round-trip is tested but nothing measures how often a persona is used.".

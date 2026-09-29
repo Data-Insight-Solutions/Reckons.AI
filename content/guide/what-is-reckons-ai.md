@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 45 parts below.</p>
+<p class="derived">It has 45 parts below, 1 of which is not built yet.</p>
 
 ## In this section
 
@@ -63,7 +63,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="#open-source"><span class="card-title">Open Source (MIT)</span><span class="card-text">Reckons.AI is MIT-licensed.</span></a>
 <a class="card" href="#passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
 <a class="card" href="#predicate-manager"><span class="card-title">Predicate Manager</span><span class="card-text">View all predicates in your graph with usage counts.</span></a>
-<a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
+<a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-status">in-progress</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
 <a class="card" href="../features/review-system"><span class="card-title">Review — where your graph gets smaller and truer</span><span class="card-text">The step where you decide what is true.</span></a>
 <a class="card" href="../architecture/schema-constrained-extraction"><span class="card-title">Schema-Constrained Local Extraction</span><span class="card-text">Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.</span></a>
 <a class="card" href="../features/source-refresh"><span class="card-title">Source Refresh</span><span class="card-text">Generic refresh for url, repository, and calendar sources.</span></a>

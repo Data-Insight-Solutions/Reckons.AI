@@ -50,6 +50,11 @@ const GATES: Gate[] = [
     check: 'npx tsx scripts/offline/graph-catalog.ts --check',
   },
   {
+    name: 'docs status',
+    why: 'every capability the docs describe must show the status the roadmap gives it — one place a status is written, so a page cannot claim a feature works when the roadmap says it does not',
+    check: 'npx tsx scripts/offline/docs-status.ts --check',
+  },
+  {
     // Ordered BEFORE 'docs pages' on purpose: a missing diagram makes docs-pages.ts throw, so
     // without this gate the failure surfaces as a stack trace from the generator rather than as
     // the one-line instruction that actually fixes it.

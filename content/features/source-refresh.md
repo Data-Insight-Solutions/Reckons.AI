@@ -13,9 +13,11 @@ generated: "docs-kb"
 
 # Source Refresh
 
+> **Production** — built, tested, and in use.
+
 Generic refresh for url, repository, and calendar sources. Auto-refresh on open and on interval (configurable). Graph page refresh button. MCP tools: kb_list_sources and kb_request_refresh. Delta comparison shows what changed since last ingest.
 
-<p class="derived">It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
 
 ## In this section
 
