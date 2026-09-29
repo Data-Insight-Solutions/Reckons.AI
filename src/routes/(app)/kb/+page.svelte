@@ -13,7 +13,7 @@
   } from '$lib/stores/kb.svelte';
   import SpacesMap from '$lib/components/SpacesMap.svelte';
   import { leapTargetCounts, type SetInput, type SpaceInput } from '$lib/rdf/space-graph';
-  import { countLeapsInAllSpaces } from '$lib/storage/space-leaps';
+  import { countLeapsInSpaces, spacesNeedingCount } from '$lib/storage/space-leaps';
   import { toTurtle, toNQuads, toTriG, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
@@ -234,16 +234,26 @@
     if (recordLeapTargets(currentKbId, leapTargetCounts(userStatements()))) localKbs = getRegistry();
   });
 
+  /*
+   * Other spaces are counted in the BACKGROUND when the tab opens: only those never counted or written
+   * to since, one at a time, stopping if the page is left. There is no button to press — the map
+   * should simply be right (Matt, 2026-09-29, on a button that made the map look empty until pressed).
+   */
   let leapCounting = $state<{ done: number; total: number } | null>(null);
-  async function countAllLeaps() {
-    leapCounting = { done: 0, total: localKbs.length };
-    try {
-      await countLeapsInAllSpaces((done, total) => { leapCounting = { done, total }; });
-    } finally {
-      leapCounting = null;
-      localKbs = getRegistry();
-    }
-  }
+  let leaveSpacesTab = false;
+  // Each space is tried ONCE per visit. A space that cannot be read stays "needs counting", and
+  // without this the effect would retry it every time the previous pass finished, indefinitely.
+  const leapReadTried = new Set<string>();
+  onDestroy(() => { leaveSpacesTab = true; });
+  $effect(() => {
+    if (!loaded() || leapCounting) return;
+    const stale = spacesNeedingCount(getRegistry(), currentKbId).filter((space) => !leapReadTried.has(space.id));
+    for (const space of stale) leapReadTried.add(space.id);
+    if (!stale.length) return;
+    leapCounting = { done: 0, total: stale.length };
+    countLeapsInSpaces(stale, (done, total) => { leapCounting = { done, total }; }, () => leaveSpacesTab)
+      .finally(() => { leapCounting = null; if (!leaveSpacesTab) localKbs = getRegistry(); });
+  });
 
   /*
    * Group by the folders the user actually made (kb:graph-sets, F113 `folder` basis).
@@ -851,7 +861,6 @@
         sets={mapSetInputs}
         currentId={currentKbId}
         onOpen={handleSwitch}
-        onCountAll={countAllLeaps}
         counting={leapCounting}
       />
     </details>
