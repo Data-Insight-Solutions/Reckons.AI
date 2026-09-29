@@ -56,11 +56,15 @@
  *   … --pending                                                       queue the findings for review
  *   … --json                                                          machine-readable, for a test
  *
- * Needs OLLAMA_BASE_URL. Emits PROPOSALS only — it never writes source or TTL.
+ *   … --models=claude:claude-opus-5-5 --repeat=3                     a Claude arm (metered; see CLAUDE ARMS)
+ *
+ * Needs OLLAMA_BASE_URL for local models, ANTHROPIC_API_KEY for `claude:` arms. Emits PROPOSALS
+ * only — it never writes source or TTL.
  */
 import { readFileSync, existsSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
 import path from 'path';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract.js';
+import { extractWithClaude } from '../../src/lib/integrations/llm/claude.js';
 import type { ExtractedTriple } from '../../src/lib/integrations/llm/extractor.js';
 import {
   scoreSets, scoreOverlap, scoreTraps,
@@ -113,6 +117,32 @@ const CONDITIONS = arg('graph', 'none')
   .filter(Boolean);
 const BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const PENDING = path.join('reckons-workspace', 'knowledge.pending.jsonl');
+
+/*
+ * CLAUDE ARMS — `--models=claude:claude-opus-5-5,claude:claude-haiku-4-5`. Scored through
+ * `extractWithClaude`, the adapter the app itself calls, so the number is the app's number and not
+ * a harness reimplementation of it. Metered API: needs ANTHROPIC_API_KEY (a Claude Pro/Max plan
+ * issues none), and every run costs money, so tokens and an estimated cost are recorded per model.
+ *
+ * PRIVACY GUARD: every graph condition except `none` reads LADDER_GRAPH, which is the maintainer's
+ * private notes graph. A cloud arm is therefore refused anything but `--graph=none`, so only the
+ * synthetic corpus in tests/fixtures/notes-corpus leaves the machine.
+ *
+ * `--effort=low|medium|high|xhigh|max` sets output_config.effort on Claude arms only. Haiku 4.5
+ * rejects the field, so leave it off for that arm (run it separately).
+ */
+const EFFORT = arg('effort', '') as '' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+const CLAUDE_PREFIX = 'claude:';
+/** USD per million tokens, input / output. List prices; a model not listed gets no estimate rather than a guess. */
+const CLAUDE_PRICES: Record<string, [number, number]> = {
+  'claude-opus-5-5': [4, 20],
+  'claude-opus-5': [5, 25],
+  'claude-opus-4-8': [5, 25],
+  'claude-sonnet-5': [2, 10],
+  'claude-haiku-4-5': [1, 5],
+  'claude-haiku-4-5-20251001': [1, 5],
+};
+const usageByModel: Record<string, { calls: number; input: number; output: number; usd: number | null }> = {};
 
 /*
  * Graph-context conditions. `small` is the case Matt reported: a graph with a handful of entities,
@@ -498,6 +528,16 @@ async function main() {
   const specs = loadSpecs(CORPUS);
   const scores: Score[] = [];
 
+  if (MODELS.some((m) => m.startsWith(CLAUDE_PREFIX))) {
+    const refuse = (why: string) => {
+      console.error(`${R}Refusing Claude arms: ${why}${X}`);
+      process.exit(2);
+    };
+    if (!process.env.ANTHROPIC_API_KEY) refuse('ANTHROPIC_API_KEY is not set (metered API; a Claude subscription issues no key).');
+    if (CONDITIONS.some((c) => c !== 'none')) refuse(`--graph=${CONDITIONS.join(',')} would send the private notes graph to a cloud API. Use --graph=none.`);
+    if (THINKING) refuse('--thinking is the Ollama two-pass critic; it has no Claude path.');
+  }
+
   if (!JSON_OUT) {
     console.log(
       `\n${B}Extraction score${X} ${D}— ${Object.keys(specs).length} source(s) · ${MODELS.length} model(s) · graph ${CONDITIONS.join(', ')}${THINKING ? ' · THINKING MODE (two-pass)' : ''}${X}`,
@@ -516,16 +556,32 @@ async function main() {
         let criticAdded = 0;
         const t0 = Date.now();
         try {
-          const triples = await extractWithOllama(text, fileName.replace(/\.\w+$/, ''), {
-            model,
-            baseUrl: BASE_URL,
-            maxTokens: 4096,
-            graphContext: ctx.section || undefined,
-            thinking: THINKING,
-            onCritic: (info) => {
-              criticAdded = info.added;
-            },
-          });
+          const title = fileName.replace(/\.\w+$/, '');
+          const triples = model.startsWith(CLAUDE_PREFIX)
+            ? await extractWithClaude(text, title, {
+                apiKey: process.env.ANTHROPIC_API_KEY!,
+                model: model.slice(CLAUDE_PREFIX.length),
+                effort: EFFORT || undefined,
+                onUsage: (u) => {
+                  const id = model.slice(CLAUDE_PREFIX.length);
+                  const price = CLAUDE_PRICES[id];
+                  const acc = (usageByModel[model] ??= { calls: 0, input: 0, output: 0, usd: price ? 0 : null });
+                  acc.calls += 1;
+                  acc.input += u.input_tokens;
+                  acc.output += u.output_tokens;
+                  if (price && acc.usd !== null) acc.usd += (u.input_tokens * price[0] + u.output_tokens * price[1]) / 1e6;
+                },
+              })
+            : await extractWithOllama(text, title, {
+                model,
+                baseUrl: BASE_URL,
+                maxTokens: 4096,
+                graphContext: ctx.section || undefined,
+                thinking: THINKING,
+                onCritic: (info) => {
+                  criticAdded = info.added;
+                },
+              });
           const s = scoreOne(spec, triples, ctx);
           scores.push({ ...s, file: fileName, model, condition, run, criticAdded, seconds: (Date.now() - t0) / 1000 });
           if (!JSON_OUT) reportOne(scores[scores.length - 1], spec, ctx);
@@ -581,7 +637,7 @@ async function main() {
     const out = path.join(dir, `extraction-score_${stamp}.json`);
     writeFileSync(out, JSON.stringify({
       at: new Date().toISOString(), base: BASE_URL, models: MODELS, conditions: CONDITIONS,
-      repeat: REPEAT, thinking: THINKING, corpus: CORPUS, scores,
+      repeat: REPEAT, thinking: THINKING, effort: EFFORT || null, usage: usageByModel, corpus: CORPUS, scores,
     }, null, 2) + '\n', 'utf8');
     if (!JSON_OUT) console.log(`${D}Run saved to ${out}${X}`);
   } catch (e) {
@@ -594,6 +650,10 @@ async function main() {
     return;
   }
   summary(scores, specs);
+  for (const [m, u] of Object.entries(usageByModel)) {
+    const cost = u.usd === null ? 'no price listed' : `≈ $${u.usd.toFixed(4)} (list price)`;
+    console.log(`${D}${m}${EFFORT ? ` @ effort ${EFFORT}` : ''}: ${u.calls} call(s), ${u.input} in / ${u.output} out tokens, ${cost}${X}`);
+  }
   if (PENDING_OUT) queue(scores, specs);
 }
 

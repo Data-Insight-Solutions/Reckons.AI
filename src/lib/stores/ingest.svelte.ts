@@ -219,7 +219,7 @@ export async function ingest(
   // inspectable. Direct Turtle import is an explicit manual path, not a pretend model run.
   const executionBackend = turtleStatements ? 'manual' : backend;
   const executionModel = turtleStatements ? 'turtle-import' :
-    backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-4-7')                        :
+    backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-5-5')                        :
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
     backend === 'ollama'     ? ollamaModelFor('ingest', s)                               :

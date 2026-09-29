@@ -183,13 +183,17 @@ async function callLLM(prompt: string): Promise<string> {
       },
       body: JSON.stringify({
         model: apiModel || 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
+        // Thinking-by-default models (Opus 5 / 5.5, Sonnet 5, Fable) spend part of max_tokens on
+        // thinking; 2048 sized for the JSON reply alone truncates it.
+        max_tokens: /^claude-(opus-5|sonnet-5|fable|mythos)/.test(apiModel ?? '') ? 16_000 : 2048,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
     if (!res.ok) throw new Error(`Claude API ${res.status}: ${await res.text()}`);
     const data = await res.json();
-    return data.content[0].text;
+    if (data.stop_reason === 'refusal') throw new Error('Claude declined this request (stop_reason: refusal)');
+    // By type, not position: on thinking models content[0] is a thinking block.
+    return (data.content ?? []).filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('');
 
   } else if (apiProvider === 'openai') {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
