@@ -13,7 +13,8 @@
  * Drive sync, or on import — so a leap into a space never opened here would look unresolved.
  */
 import Dexie from 'dexie';
-import { KBaseDB } from './db';
+import { v4 as uuid } from 'uuid';
+import { KBaseDB, DEFAULT_SETTINGS } from './db';
 import { getRegistry, recordLeapTargets, registerStableId, type KbEntry } from './kb-registry';
 import { leapTargetCounts } from '../rdf/space-graph';
 import { LEAP_PRED } from '../rdf/kb-leap';
@@ -32,7 +33,16 @@ export async function countLeapsInSpace(id: string): Promise<{ counts: Record<st
   try {
     const leaps = (await db.statements.filter((s: Statement) => s.p.value === LEAP_PRED).toArray()) as Statement[];
     const settings = await db.settings.get('main');
-    return { counts: leapTargetCounts(leaps), stableId: settings?.kbStableId || undefined };
+    let stableId = settings?.kbStableId || undefined;
+    // A space without a stable id cannot be the target of any jump, so giving it one is always safe.
+    // Found on Matt's real registry: four spaces had none (imported from files that carried none,
+    // and never opened since). Opening a space mints one the same way; this just does not wait.
+    if (!stableId) {
+      stableId = uuid();
+      if (settings) await db.settings.update('main', { kbStableId: stableId });
+      else await db.settings.put({ ...DEFAULT_SETTINGS, kbStableId: stableId });
+    }
+    return { counts: leapTargetCounts(leaps), stableId };
   } finally {
     db.close();
   }
@@ -43,8 +53,9 @@ export async function countLeapsInSpace(id: string): Promise<{ counts: Record<st
  * space is left out — the Spaces tab counts it from memory.
  */
 export function spacesNeedingCount(entries: readonly KbEntry[], currentId: string): KbEntry[] {
+  // A space with no stable id is read too: reading it is what gives it one.
   return entries.filter((e) => e.id !== currentId && !e.archiveOf &&
-    (e.leapTargets === undefined || (e.lastModified ?? 0) > (e.leapsCountedAt ?? 0)));
+    (e.leapTargets === undefined || !e.stableId || (e.lastModified ?? 0) > (e.leapsCountedAt ?? 0)));
 }
 
 export type SpaceReadFailure = { id: string; name: string; reason: string; notOnDevice: boolean };
@@ -64,7 +75,8 @@ export async function countLeapsInSpaces(
     onProgress?.(i, spaces.length);
     try {
       const { counts, stableId } = await countLeapsInSpace(space.id);
-      if (stableId && !getRegistry().find((k) => k.id === space.id)?.stableId) registerStableId(space.id, stableId);
+      // The space's own settings are the truth; the registry is an index of them.
+      if (stableId && getRegistry().find((k) => k.id === space.id)?.stableId !== stableId) registerStableId(space.id, stableId);
       recordLeapTargets(space.id, counts);
       counted++;
     } catch (e) {
