@@ -152,17 +152,23 @@ export async function ingestNewKb(
   opts: { asPending?: boolean } = {},
 ): Promise<{ kbId: string; count: number } | null> {
   if (!data.ttl) return null;
-  const { createKb, registerStableId } = await import('../storage/kb-registry');
+  const { createKb, registerStableId, getRegistry } = await import('../storage/kb-registry');
+  // Adopt the file's stable id only if no other space already holds it: importing the same graph
+  // twice, or a copy of one, would otherwise give two spaces one id, and a jump to it could land on
+  // either. (Seen in the code, not in anyone's data: a suspected case on 2026-09-29 turned out to be
+  // two different ids sharing a 24-character prefix.) A space created here always gets an id.
+  const taken = !!meta.stableId && getRegistry().some((k) => k.stableId === meta.stableId);
+  const { v4: uuid } = await import('uuid');
+  const stableId = meta.stableId && !taken ? meta.stableId : uuid();
+  if (taken) console.warn(`[import] "${meta.name}" carries the stable id of a space already here; it was given a new one.`);
   const newKb = createKb(meta.name);
   const tempDb = new KBaseDB(newKb.id);
   try {
     await tempDb.open();
     await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: meta.name });
     const count = await populateKbFromTtl(tempDb, meta.name, sourceUri, data.ttl, data.assets, opts);
-    if (meta.stableId) {
-      await tempDb.settings.update('main', { kbStableId: meta.stableId });
-      registerStableId(newKb.id, meta.stableId, count);
-    }
+    await tempDb.settings.update('main', { kbStableId: stableId });
+    registerStableId(newKb.id, stableId, count);
     return { kbId: newKb.id, count };
   } finally {
     if (tempDb !== db) tempDb.close();
