@@ -14,8 +14,8 @@ classify ambiguous sites; pixel-equality gate first, VLM second).
 
 **Next, in order:** F203.4 batch 0 — `naming-ratchet` is red on `dev` (constant/camelCase 21 vs
 16, interface 284 vs 282); then the rename harness + a pixel mode for `visual-diff.ts`; then
-F203.3 edges from `term-usage.ts`. Open for Matt: F225 UI placement (proposed inside Reckoning,
-not a tab); Laya `adopt-agent-cli-backend` (subscription vs metered rails, provider terms unread).
+F203.3 edges from `term-usage.ts`. F225 is DEFERRED by Matt (speculative, low) — do not build it.
+Open for Matt: Laya `adopt-agent-cli-backend` (subscription vs metered rails, provider terms unread).
 
 **Validation, 2026-09-30:** 3,374 unit tests / 240 files; `npm run check` 0 errors; `npm audit`
 0 in all three lockfiles (after #320); graph-lint 0 errors (12 warnings); `align` aligned;
