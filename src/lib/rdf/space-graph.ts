@@ -52,6 +52,8 @@ export type SpaceNode = {
   x: number; y: number; r: number;
   /** Label position, pushed radially OUTWARD from the set's centre so labels in a cluster do not collide. */
   lx: number; ly: number; anchor: 'start' | 'middle' | 'end';
+  /** Unit direction from the set's centre to this space: which way its label points. */
+  dx: number; dy: number;
 };
 
 export type SpaceEdge = {
@@ -107,8 +109,7 @@ export function nodeRadius(count: number, maxCount: number): number {
  * own set order); each set's spaces sit on a small ring around that set's centre. A single set is
  * placed at the centre. The same input always yields the same picture.
  */
-export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly SetInput[], size = 560): SpaceGraph {
-  const width = size, height = size, cx = width / 2, cy = height / 2;
+export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly SetInput[], minSize = 560): SpaceGraph {
   const { edges, unresolved } = aggregateEdges(spaces);
   const maxCount = Math.max(0, ...spaces.map((s) => s.statementCount ?? 0));
   const setOf = new Map<string, string>();
@@ -116,10 +117,16 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
 
   const liveSets = sets.filter((s) => s.memberIds.some((m) => spaces.some((sp) => sp.id === m)));
   const innerOf = (n: number) => (n > 1 ? Math.max(50, 28 + n * 12) : 0);
-  const regionR = (n: number) => innerOf(n) + NODE_MAX + 32;
+  const regionR = (n: number) => innerOf(n) + NODE_MAX + 40;
   // Place set centres so the LARGEST region, and the title drawn above it, stays inside the frame.
   const biggest = Math.max(0, ...liveSets.map((set) => regionR(spaces.filter((sp) => setOf.get(sp.id) === set.id).length)));
-  const outer = liveSets.length > 1 ? Math.max(0, Math.min(width, height) / 2 - biggest - 24) : 0;
+  // THE DRAWING GROWS TO FIT; IT IS NOT SQUEEZED INTO A FIXED SQUARE. Set centres sit on a ring wide
+  // enough that neighbouring pools never overlap (adjacent centres are a chord apart), and the frame
+  // leaves room for each pool's title. The SVG then scales to its container.
+  const GAP = 28, MARGIN = 36;
+  const outer = liveSets.length > 1 ? (2 * biggest + GAP) / (2 * Math.sin(Math.PI / liveSets.length)) : 0;
+  const size = Math.max(minSize, Math.ceil(2 * (outer + biggest + MARGIN)));
+  const width = size, height = size, cx = width / 2, cy = height / 2;
   const regions: SetRegion[] = [];
   const nodes: SpaceNode[] = [];
 
@@ -142,7 +149,7 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
         statementCount: sp.statementCount ?? 0,
         leapsCounted: sp.leapTargets !== undefined,
         unresolvedLeaps: unresolved.get(sp.id) ?? 0,
-        x, y, r, lx, ly, anchor,
+        x, y, r, lx, ly, anchor, dx, dy,
       });
     });
     regions.push({ id: set.id, title: set.title, basis: set.basis, x: sx, y: sy, r: regionR(members.length), count: members.length });
@@ -154,4 +161,66 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
 /** Edge stroke width: grows with the square root of the leap count, capped so one edge cannot swamp the map. */
 export function edgeWidth(total: number): number {
   return Math.min(9, 1.5 + Math.sqrt(total) * 1.5);
+}
+
+/** The on-screen size the map is designed at. A larger drawing scales its marks by width / BASE_SIZE. */
+export const BASE_SIZE = 560;
+
+export type PlacedLabel = {
+  id: string; text: string; x: number; y: number; anchor: 'start' | 'middle' | 'end';
+  fontSize: number; shown: boolean;
+};
+
+/**
+ * Where each space's label goes, and whether it shows. The explorer's rule, one level up: the
+ * current, selected and pointed-at spaces are placed first, then the rest by size; a label that
+ * would overlap one already placed, a pool title, or the frame edge is hidden (it reappears when its
+ * starfish is pointed at or selected, and every starfish keeps its full name for assistive tech).
+ * Found on Matt's real 18-space registry (2026-09-29): labels in a 12-space pool ran into each
+ * other and off the left edge, which five invented spaces never showed.
+ */
+export function placeLabels(
+  graph: SpaceGraph,
+  priority: { currentId?: string; selectedId?: string | null; hoverId?: string | null } = {},
+  maxChars = 18,
+): PlacedLabel[] {
+  const k = graph.width / BASE_SIZE;
+  const fontSize = 19 * k;
+  const boxes: { x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (const r of graph.regions) {
+    const w = (r.title.length + 10) * fontSize * 0.55;
+    const ty = r.y - r.r - 8 * k;
+    boxes.push({ x1: r.x - w / 2, y1: ty - fontSize, x2: r.x + w / 2, y2: ty + 4 * k });
+  }
+  const rank = (n: SpaceNode) =>
+    n.id === priority.selectedId ? 0 : n.id === priority.hoverId ? 1 : n.id === priority.currentId ? 2 : 3;
+  const order = [...graph.nodes].sort((a, b) => rank(a) - rank(b) || b.statementCount - a.statementCount || a.id.localeCompare(b.id));
+  const placed = new Map<string, PlacedLabel>();
+  for (const n of order) {
+    const text = n.name.length > maxChars ? `${n.name.slice(0, maxChars - 1)}…` : n.name;
+    const off = n.r * k + 8 * k;
+    const w = text.length * fontSize * 0.56;
+    // Outward first, then below, above, right and left: a label hides only when every spot is taken.
+    const candidates: { x: number; y: number; anchor: 'start' | 'middle' | 'end' }[] = [
+      { x: n.x + n.dx * off, y: n.y + n.dy * off + (n.anchor === 'middle' ? (n.dy >= 0 ? fontSize * 0.85 : -fontSize * 0.2) : fontSize * 0.35), anchor: n.anchor },
+      { x: n.x, y: n.y + off + fontSize * 0.85, anchor: 'middle' },
+      { x: n.x, y: n.y - off - fontSize * 0.2, anchor: 'middle' },
+      { x: n.x + off, y: n.y + fontSize * 0.35, anchor: 'start' },
+      { x: n.x - off, y: n.y + fontSize * 0.35, anchor: 'end' },
+    ];
+    const boxOf = (c: (typeof candidates)[number]) => {
+      const x1 = c.anchor === 'start' ? c.x : c.anchor === 'end' ? c.x - w : c.x - w / 2;
+      return { x1, y1: c.y - fontSize, x2: x1 + w, y2: c.y + fontSize * 0.25 };
+    };
+    const fits = (b: { x1: number; y1: number; x2: number; y2: number }) =>
+      b.x1 >= 4 && b.x2 <= graph.width - 4 && b.y1 >= 4 && b.y2 <= graph.height - 4 &&
+      !boxes.some((o) => b.x1 < o.x2 && b.x2 > o.x1 && b.y1 < o.y2 && b.y2 > o.y1);
+    const forced = rank(n) < 3;
+    const chosen = candidates.find((c) => fits(boxOf(c)));
+    const at = chosen ?? candidates[0];
+    const shown = forced || chosen !== undefined;
+    if (shown) boxes.push(boxOf(at));
+    placed.set(n.id, { id: n.id, text, x: at.x, y: at.y, anchor: at.anchor, fontSize, shown });
+  }
+  return graph.nodes.map((n) => placed.get(n.id)!);
 }

@@ -240,6 +240,7 @@
    * should simply be right (Matt, 2026-09-29, on a button that made the map look empty until pressed).
    */
   let leapCounting = $state<{ done: number; total: number } | null>(null);
+  let leapReadFailures = $state<import('$lib/storage/space-leaps').SpaceReadFailure[]>([]);
   let leaveSpacesTab = false;
   // Each space is tried ONCE per visit. A space that cannot be read stays "needs counting", and
   // without this the effect would retry it every time the previous pass finished, indefinitely.
@@ -252,6 +253,7 @@
     if (!stale.length) return;
     leapCounting = { done: 0, total: stale.length };
     countLeapsInSpaces(stale, (done, total) => { leapCounting = { done, total }; }, () => leaveSpacesTab)
+      .then((result) => { leapReadFailures = [...leapReadFailures, ...result.failed]; })
       .finally(() => { leapCounting = null; if (!leaveSpacesTab) localKbs = getRegistry(); });
   });
 
@@ -855,13 +857,14 @@
   <section class="section spaces-map-section">
     <details open>
       <summary class="section-head"><h3>spaces map</h3></summary>
-      <p class="section-hint">each space is a node; a line means leaps between two spaces, thicker for more. Spaces in one set sit together. Select a space to see its connections.</p>
+      <p class="section-hint">each starfish is one of your spaces, bigger for more statements. A trail of bubbles means one space jumps to another, thicker for more jumps. Spaces in the same set share a tide pool. Select a starfish to see its connections.</p>
       <SpacesMap
         spaces={mapSpaces}
         sets={mapSetInputs}
         currentId={currentKbId}
         onOpen={handleSwitch}
         counting={leapCounting}
+        failures={leapReadFailures}
       />
     </details>
   </section>
