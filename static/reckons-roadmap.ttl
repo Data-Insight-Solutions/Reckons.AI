@@ -1736,7 +1736,8 @@ kb:local-panel rdf:type ktype:Feature ;
                kpred:measured     "THE WINDOW'S FIRST READING CONFIRMED THE COMPLAINT: at 10:46 on 2026-09-30 the Ollama log held 217 inference requests for the day, ALL of them in the previous hour — the part of the session after Matt asked. Nothing local had run that morning." ;
                kpred:honest-note  "ONE JUDGE, 30 ITEMS, ONE WORD. The labels are Opus's, from the marked line and six lines of context; the accuracy figures are a first calibration, not a benchmark. A second fixture on a different word (graph, set) is the next measurement before the policy is trusted for the rename." ;
                kpred:relates-to   kb:terminology-ontology ;
-               kpred:relates-to   kb:local-model-bench .
+               kpred:relates-to   kb:local-model-bench ;
+               kpred:measured     "2026-09-30, A SECOND TASK REFUTED THE TRUST POLICY'S GENERALITY. ui-copy.ts put 505 user-visible sentences to qwen3.6 x3: should this 'graph' (or 'knowledge base', or a script-string 'KB') read 'space'? 1,515 votes in 19 minutes; unanimous keep 324, majority keep 92, majority reword 38, 'space' ZERO times; 22 items failed on Ollama 500s (llama-server process errors under load). A keyword spot-check found at least 137 unanimous 'keep' answers on sentences such as 'Your graph is empty', 'back up every graph to disk' and 'Manage graphs', which kterm:knowledge-base's 2026-09-23 ruling says should say space. Unanimity measured the model's prior, not the answer — helped by a question that told it 'graph' stays right for 'the general idea of a knowledge graph'. RULE ADDED: every new task gets a small hand-labelled sample and a --labels score before its unanimous answers are taken. Nothing from the run was applied." .
 
 # -- Set summarization + Shelly curation (F101) ----------------------------------
 # NOT greenfield: the unbuilt remainder of F65 (entity sets), F96 (quick graph

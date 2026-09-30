@@ -284,10 +284,10 @@
       "path": "coding-workflow/local-panel",
       "entity": "urn:reckons:docs/coding-workflow/LocalPanel",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "99505d14f6f4c941",
-      "factCount": 6,
+      "factHash": "48dc373874c7c1c2",
+      "factCount": 7,
       "floor": "evidence",
-      "pageHash": "442c0a3c5f162a88"
+      "pageHash": "1269f57c1793fff5"
     },
     {
       "path": "coding-workflow/personal-context",

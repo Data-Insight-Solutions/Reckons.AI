@@ -27,7 +27,8 @@ AGREEMENT IS THE SIGNAL, AND IT WAS MEASURED BEFORE IT WAS TRUSTED. On 30 lines 
 
 **Honest Note**
 
-ONE CHECKER, 30 LINES, ONE WORD. The accuracy figures come from a single first calibration, not a benchmark. Letting a local model explore the code on its own (headless Claude Code pointed at Ollama) was also tried: it took two minutes, read 290,000 tokens and answered a counting question wrong. Handing the model the evidence works; asking it to go and find it does not.
+- AGREEMENT IS ONLY AS GOOD AS THE CALIBRATION FOR THAT TASK. The same afternoon, 505 sentences were put to the panel asking whether each 'graph' should read 'space'. It answered 'keep' unanimously 324 times and 'space' not once — and a spot-check found at least 137 of those unanimous answers to be sentences like 'Your graph is empty' and 'back up every graph to disk', which the product's own ruling says should say space. The model's prior that 'graph' is normal wording won three times out of three, helped by a question that offered it an easy way out. So every NEW task needs its own small hand-checked sample before its unanimous answers are trusted; none of that run's answers were applied.
+- ONE CHECKER, 30 LINES, ONE WORD. The accuracy figures come from a single first calibration, not a benchmark. Letting a local model explore the code on its own (headless Claude Code pointed at Ollama) was also tried: it took two minutes, read 290,000 tokens and answered a counting question wrong. Handing the model the evidence works; asking it to go and find it does not.
 
 ## What we found
 
