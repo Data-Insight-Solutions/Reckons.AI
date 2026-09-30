@@ -4,7 +4,7 @@
    * pair, sets as clusters. Layout and aggregation live in $lib/rdf/space-graph.ts; this file only
    * draws them. SVG with no dependencies and no simulation, so it is the same picture every time.
    */
-  import { buildSpaceGraph, edgeWidth, type SetInput, type SpaceInput, type SpaceNode } from '$lib/rdf/space-graph';
+  import { buildSpaceGraph, edgeWidth, placeLabels, BASE_SIZE, type SetInput, type SpaceInput, type SpaceNode } from '$lib/rdf/space-graph';
 
   let {
     spaces,
@@ -29,6 +29,10 @@
   const graph = $derived(buildSpaceGraph(spaces, sets));
   const byId = $derived(new Map(graph.nodes.map((n) => [n.id, n])));
   let selectedId = $state<string | null>(null);
+  let hoverId = $state<string | null>(null);
+  /** Marks keep their on-screen size however large the drawing grows to fit its pools. */
+  const k = $derived(graph.width / BASE_SIZE);
+  const labels = $derived(new Map(placeLabels(graph, { currentId, selectedId, hoverId }).map((l) => [l.id, l])));
   const selected = $derived(selectedId ? byId.get(selectedId) ?? null : null);
   const totalUnresolved = $derived(graph.nodes.reduce((sum, n) => sum + n.unresolvedLeaps, 0));
 
@@ -71,10 +75,6 @@
   // Fixed scenery, positioned in the drawing's own coordinates so it never shifts between visits.
   const BUBBLES = [0.12, 0.27, 0.46, 0.63, 0.81, 0.92].map((fx, i) => ({ fx, r: 2.5 + (i % 3) * 1.5, delay: i * 1.7, dur: 7 + (i % 4) * 1.5 }));
   const WEEDS = [0.06, 0.15, 0.86, 0.94].map((fx, i) => ({ fx, h: 70 + (i % 2) * 34, delay: i * 0.9 }));
-
-  function label(n: SpaceNode): string {
-    return n.name.length > 18 ? `${n.name.slice(0, 17)}…` : n.name;
-  }
 
   function nodeAria(n: SpaceNode): string {
     const links = connectionsOf(n.id).length;
@@ -142,8 +142,8 @@
     {#each graph.regions as region (region.id)}
       <g class="region" aria-hidden="true">
         <circle class="pool" cx={region.x} cy={region.y} r={region.r} />
-        <circle class="pool-rim" cx={region.x} cy={region.y} r={region.r} />
-        <text x={region.x} y={region.y - region.r - 8} text-anchor="middle" class="region-title">
+        <circle class="pool-rim" cx={region.x} cy={region.y} r={region.r} style={`stroke-width:${5 * k}px; stroke-dasharray:${2 * k} ${9 * k}`} />
+        <text x={region.x} y={region.y - region.r - 8 * k} text-anchor="middle" class="region-title" style={`font-size:${18 * k}px; stroke-width:${4 * k}px`}>
           {region.title}{#if BASIS_LABEL[region.basis]}<tspan class="region-basis"> · {BASIS_LABEL[region.basis]}</tspan>{/if}
         </text>
       </g>
@@ -156,8 +156,8 @@
         <!-- a connection is a trail of bubbles: nothing like a starfish arm -->
         <line
           x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-          stroke-width={edgeWidth(edge.total)}
-          stroke-dasharray={`0 ${edgeWidth(edge.total) * 2.2}`}
+          stroke-width={edgeWidth(edge.total) * k}
+          stroke-dasharray={`0 ${edgeWidth(edge.total) * k * 2.2}`}
           class="edge"
           class:edge-selected={selectedId === edge.a || selectedId === edge.b}
         >
@@ -167,6 +167,8 @@
     {/each}
 
     {#each graph.nodes as n (n.id)}
+      {@const R = n.r * k}
+      {@const L = labels.get(n.id)}
       <g
         class="node"
         class:current={n.id === currentId}
@@ -178,14 +180,20 @@
         aria-pressed={n.id === selectedId}
         onclick={() => (selectedId = selectedId === n.id ? null : n.id)}
         onkeydown={(e) => onNodeKey(e, n.id)}
+        onpointerenter={() => (hoverId = n.id)}
+        onpointerleave={() => { if (hoverId === n.id) hoverId = null; }}
+        onfocus={() => (hoverId = n.id)}
+        onblur={() => { if (hoverId === n.id) hoverId = null; }}
       >
-        <circle class="hit" cx={n.x} cy={n.y} r={Math.max(n.r + 6, 22)} />
-        {#if n.id === currentId || n.id === selectedId}<circle class="halo" cx={n.x} cy={n.y} r={n.r + 7} />{/if}
-        <path class="star" d={starPath(n.x, n.y, n.r)} fill={starColor(n.id)} />
-        <circle class="eye" cx={n.x - n.r * 0.2} cy={n.y - n.r * 0.05} r={Math.max(1.4, n.r * 0.09)} />
-        <circle class="eye" cx={n.x + n.r * 0.2} cy={n.y - n.r * 0.05} r={Math.max(1.4, n.r * 0.09)} />
-        <path class="smile" d={`M${n.x - n.r * 0.16},${n.y + n.r * 0.14} q${n.r * 0.16},${n.r * 0.14} ${n.r * 0.32},0`} />
-        <text x={n.lx} y={n.ly} text-anchor={n.anchor}>{label(n)}</text>
+        <circle class="hit" cx={n.x} cy={n.y} r={Math.max(R + 6 * k, 22 * k)} />
+        {#if n.id === currentId || n.id === selectedId}<circle class="halo" cx={n.x} cy={n.y} r={R + 7 * k} style={`stroke-width:${2.5 * k}px`} />{/if}
+        <path class="star" d={starPath(n.x, n.y, R)} fill={starColor(n.id)} style={`stroke-width:${1.5 * k}px`} />
+        <circle class="eye" cx={n.x - R * 0.2} cy={n.y - R * 0.05} r={Math.max(1.4 * k, R * 0.09)} />
+        <circle class="eye" cx={n.x + R * 0.2} cy={n.y - R * 0.05} r={Math.max(1.4 * k, R * 0.09)} />
+        <path class="smile" d={`M${n.x - R * 0.16},${n.y + R * 0.14} q${R * 0.16},${R * 0.14} ${R * 0.32},0`} style={`stroke-width:${1.3 * k}px`} />
+        {#if L}
+          <text x={L.x} y={L.y} text-anchor={L.anchor} class:label-hidden={!L.shown} style={`font-size:${L.fontSize}px; stroke-width:${4 * k}px`}>{L.text}</text>
+        {/if}
       </g>
     {/each}
   </svg>
@@ -245,22 +253,24 @@
   @keyframes sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
   @keyframes rise { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: 0.7; } 90% { opacity: 0.5; } 100% { transform: translateY(-520px); opacity: 0; } }
   .pool { fill: url(#tank-pool); }
-  .pool-rim { fill: none; stroke: #8d7b68; stroke-width: 5; stroke-dasharray: 2 9; stroke-linecap: round; opacity: 0.8; }
-  .region-title { font-family: var(--font-mono); font-size: 18px; fill: #e6fbff; paint-order: stroke; stroke: #06283a; stroke-width: 4px; }
-  .region-basis { fill: #9fd9e6; font-size: 15px; }
+  .pool-rim { fill: none; stroke: #8d7b68; stroke-linecap: round; opacity: 0.8; }
+  .region-title { font-family: var(--font-mono); fill: #e6fbff; paint-order: stroke; stroke: #06283a; }
+  .region-basis { fill: #9fd9e6; font-size: 0.83em; }
   .edge { stroke: #b2f1ff; stroke-opacity: 0.75; stroke-linecap: round; }
   .edge-selected { stroke: #ffffff; stroke-opacity: 1; }
   .node { cursor: pointer; outline: none; }
   .node .hit { fill: transparent; }
-  .star { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.5; stroke-linejoin: round; transition: transform 0.25s ease-out; transform-box: fill-box; transform-origin: center; }
+  .star { stroke: rgba(255, 255, 255, 0.55); stroke-linejoin: round; transition: transform 0.25s ease-out; transform-box: fill-box; transform-origin: center; }
   .node:hover .star, .node:focus-visible .star, .node.selected .star { transform: scale(1.12) rotate(8deg); }
   .node.uncounted .star { filter: saturate(0.35); stroke-dasharray: 3 3; }
-  .halo { fill: none; stroke: #fff6a8; stroke-width: 2.5; opacity: 0.85; }
+  .halo { fill: none; stroke: #fff6a8; opacity: 0.85; }
   .node:focus-visible .halo, .node:focus-visible .star { stroke: #ffffff; }
   .eye { fill: #3b2330; }
-  .smile { fill: none; stroke: #3b2330; stroke-width: 1.3; stroke-linecap: round; }
-  .node text { font-size: 19px; fill: #ffffff; pointer-events: none; paint-order: stroke; stroke: #06283a; stroke-width: 4px; }
+  .smile { fill: none; stroke: #3b2330; stroke-linecap: round; }
+  .node text { fill: #ffffff; pointer-events: none; paint-order: stroke; stroke: #06283a; opacity: 1; transition: opacity 0.28s ease-out; }
+  .node text.label-hidden { opacity: 0; }
   @media (prefers-reduced-motion: reduce) {
+    .node text { transition: none; }
     .weed, .bubble { animation: none; }
     .bubble { opacity: 0.35; }
     .star { transition: none; }
