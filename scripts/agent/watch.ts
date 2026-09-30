@@ -15,8 +15,15 @@
  *   npm run agent:watch -- --once       one snapshot, then exit
  *   npm run agent:watch -- --detail     more answers per run, with full reasons
  *   npm run agent:watch -- --statusline one short line, for a status bar
+ *
+ * The status line must return at once, and reading the day's Ollama log costs ~2 s (measured
+ * 2026-09-30), so --statusline reads a CACHED last-request time and, when the cache is over a
+ * minute old, refreshes it in a detached process that the status line never waits for.
  */
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ago, eventLogPath, foldRuns, parseGinLine, readEvents, type OllamaRequest, type RunView } from './local-activity.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -60,6 +67,42 @@ function serverRequests(): OllamaRequest[] | null {
   // journalctl exits 1 when the grep matches nothing; that is an empty day, not an unreadable log.
   if (r.error || (r.status !== 0 && r.status !== 1)) return null;
   return (r.stdout ?? '').split('\n').map(parseGinLine).filter((x): x is OllamaRequest => x !== null);
+}
+
+const CACHE_MAX_AGE_MS = 60_000;
+const cachePath = () => join(dirname(eventLogPath()), 'requests-cache.json');
+
+type RequestCache = { checkedAt: string; today: number; last?: { at: string; status: number; seconds: number; method: string; path: string }; unreadable?: boolean };
+
+function writeRequestCache(): void {
+  const reqs = serverRequests();
+  const last = reqs?.[reqs.length - 1];
+  const cache: RequestCache = reqs === null
+    ? { checkedAt: new Date().toISOString(), today: 0, unreadable: true }
+    : { checkedAt: new Date().toISOString(), today: reqs.length, last: last ? { ...last, at: last.at.toISOString() } : undefined };
+  mkdirSync(dirname(cachePath()), { recursive: true, mode: 0o700 });
+  writeFileSync(cachePath(), JSON.stringify(cache), { mode: 0o600 });
+}
+
+/** The cached requests, or null when unknown. Starts a background refresh when stale; never waits. */
+function cachedRequests(): OllamaRequest[] | null {
+  const path = cachePath();
+  let cache: RequestCache | undefined;
+  try {
+    if (existsSync(path)) cache = JSON.parse(readFileSync(path, 'utf8')) as RequestCache;
+  } catch {
+    /* rewritten below */
+  }
+  const stale = !cache || Date.now() - statSync(path).mtimeMs > CACHE_MAX_AGE_MS;
+  if (stale) {
+    try {
+      spawn(process.execPath, [...process.execArgv, fileURLToPath(import.meta.url), '--refresh-cache'], { detached: true, stdio: 'ignore' }).unref();
+    } catch {
+      /* the next redraw tries again */
+    }
+  }
+  if (!cache || cache.unreadable) return null;
+  return cache.last ? [{ ...cache.last, at: new Date(cache.last.at) }] : [];
 }
 
 export async function snapshot(): Promise<Snapshot> {
@@ -166,8 +209,15 @@ export function statusline(s: Snapshot, now = new Date()): string {
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  if (argv.includes('--refresh-cache')) {
+    writeRequestCache();
+    return;
+  }
   if (argv.includes('--statusline')) {
-    process.stdout.write(statusline(await snapshot()));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const runs = foldRuns(readEvents()).filter((r) => !r.finished || new Date(r.startedAt) >= today);
+    process.stdout.write(statusline({ ollama: await ollamaState(), gpus: [], requests: cachedRequests(), runs }));
     return;
   }
   const detail = argv.includes('--detail');
