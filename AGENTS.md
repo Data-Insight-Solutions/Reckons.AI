@@ -177,6 +177,7 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 | **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
 | **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree` | agent — local first-pass review |
 | **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **Any UI change, before calling it done** | `npm run visual:local -- --serve=http://localhost:<branch port> --paths=/kb` | script — the page on a COPY of your real browser data; private output, copy deleted |
 | **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
 | **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
 | **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |

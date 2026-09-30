@@ -125,6 +125,7 @@
     "offline:score": "npx tsx scripts/offline/extraction-score.ts",
     "secret:scan": "npx tsx scripts/offline/secret-scan.ts --ci",
     "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
+    "visual:local": "npx tsx scripts/offline/local-data-visual.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
     "safety:attest": "npx tsx scripts/offline/safety-attestation.ts",
     "safety:attest:record": "npx tsx scripts/offline/safety-attestation.ts --record",
