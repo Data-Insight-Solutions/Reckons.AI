@@ -238,9 +238,11 @@
     "cookie": "^0.7.0",
     "sharp": "$sharp",
     "adm-zip": "0.6.1",
-    "fast-uri": "^3.1.7",
+    "fast-uri": "^3.1.8",
     "postcss": "^8.5.23",
     "undici": "^7.29.1",
-    "browserslist": "^4.28.7"
+    "browserslist": "^4.28.7",
+    "brace-expansion@2": "^2.1.7",
+    "brace-expansion@5": "^5.0.12"
   }
 }

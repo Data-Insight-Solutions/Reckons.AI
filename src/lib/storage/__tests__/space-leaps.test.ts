@@ -9,10 +9,11 @@ describe('spacesNeedingCount', () => {
     const picked = spacesNeedingCount([
       e('current'),
       e('never'),
-      e('fresh', { leapTargets: {}, leapsCountedAt: 200, lastModified: 100 }),
-      e('stale', { leapTargets: { x: 1 }, leapsCountedAt: 100, lastModified: 200 }),
+      e('fresh', { stableId: 'f', leapTargets: {}, leapsCountedAt: 200, lastModified: 100 }),
+      e('stale', { stableId: 's', leapTargets: { x: 1 }, leapsCountedAt: 100, lastModified: 200 }),
       e('history', { archiveOf: 'current' }),
+      e('no-id', { leapTargets: {}, leapsCountedAt: 200, lastModified: 100 }),
     ], 'current');
-    expect(picked.map((s) => s.id)).toEqual(['never', 'stale']);
+    expect(picked.map((s) => s.id)).toEqual(['never', 'stale', 'no-id']);
   });
 });
