@@ -11,7 +11,7 @@ const object = (v: unknown): v is Record<string, unknown> => v !== null && typeo
 // Additive v1 metadata supplements the existing RDF reification. Only these
 // fields can be imported; JSON can never replace identity, terms or review status.
 // Extraction run records/IDs are local diagnostics and deliberately stay local.
-const statementFields = {
+const STATEMENT_FIELDS = {
   sourceId: text, updatedAt: number, grounded: bool, needsObject: bool, question: text,
   blocks: strings, verifiedBy: text, findingClass: oneOf('form', 'drift', 'defect'),
   verifiableBy: oneOf('code', 'test', 'source', 'user', 'unknown', 'external-graph'),
@@ -22,7 +22,7 @@ const statementFields = {
 
 const action = (v: unknown, keys: string[]) => object(v) && keys.every(k => text(v[k]))
   && number(v.confidence) && Object.keys(v).every(k => [...keys, 'confidence'].includes(k));
-const sourceFields = {
+const SOURCE_FIELDS = {
   hash: text, extractionBackend: text, extractionModel: text, analysisModel: text, analysisProvider: text,
   analysisTrigger: oneOf('manual', 'import', 'schedule'),
   analysisFocus: oneOf('enrich', 'merge', 'entity-types', 'delete', 'new-triples', 'align'),
@@ -46,7 +46,7 @@ function select(value: unknown, fields: Record<string, Validator>): Record<strin
 }
 
 export function encodePortableMetadata(value: Statement | Source, kind: 'statement' | 'source'): string {
-  return JSON.stringify({ version: 1, fields: select(value, kind === 'statement' ? statementFields : sourceFields) });
+  return JSON.stringify({ version: 1, fields: select(value, kind === 'statement' ? STATEMENT_FIELDS : SOURCE_FIELDS) });
 }
 
 export function decodePortableMetadata(value: string, kind: 'statement'): Partial<Statement>;
@@ -54,5 +54,5 @@ export function decodePortableMetadata(value: string, kind: 'source'): Partial<S
 export function decodePortableMetadata(value: string, kind: 'statement' | 'source'): Record<string, unknown> {
   const record = JSON.parse(value);
   if (!object(record) || record.version !== 1) throw new Error('Unsupported portable metadata version');
-  return select(record.fields, kind === 'statement' ? statementFields : sourceFields);
+  return select(record.fields, kind === 'statement' ? STATEMENT_FIELDS : SOURCE_FIELDS);
 }

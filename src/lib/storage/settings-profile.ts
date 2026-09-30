@@ -22,7 +22,7 @@ const endpoint = (v: unknown) => {
 // Explicit nested allowlists: a future credential field does not become portable
 // just because its name evades a secret-name heuristic. Type checks require each
 // supported public field to be classified when these settings types grow.
-const turtle = {
+const TURTLE = {
   name: text, greeting: text, personality: oneOf('helpful', 'witty', 'laid-back', 'sarcastic'),
   systemPrompt: text, responseStyle: oneOf('concise', 'detailed', 'conversational'),
   maxResponseWords: range(0), patienceLevel: range(0, 100), engagement: oneOf('low', 'medium', 'high'),
@@ -34,12 +34,12 @@ const turtle = {
   proactiveHelp: oneOf('never', 'errors-only', 'always'), showTutorialHints: bool, responseFrequency: range(0, 100),
 } satisfies Record<Exclude<keyof TurtleSettings, 'humeApiKey' | 'humeSecretKey'>, Rule>;
 
-const highlight = {
+const HIGHLIGHT = {
   conflictColor: text, reinforceColor: text, newColor: text, saturation: range(0, 100),
   labelFontSize: range(1, 256), labelHoverScale: range(0.1, 10), labelFontFamily: text,
 } satisfies Record<keyof HighlightSettings, Rule>;
 
-const profile = {
+const PROFILE = {
   kbTitle: text, kbDescription: text, preferredBackend: backend, ingestBackend: backend,
   analyzeBackend: analysisBackend, chatBackend: analysisBackend,
   diffSummaryBackend: analysisBackend, mergeAnalysisBackend: analysisBackend,
@@ -50,7 +50,7 @@ const profile = {
   openrouterModel: text, autoAnalyzeOnImport: bool, autoAnalyzeIntervalMinutes: range(0),
   embeddingThreshold: range(0, 1), autoConfirmHighConfidence: bool, uiScale: oneOf('sm', 'md', 'lg'),
   nodeLabelFontSize: range(1, 256), shellyCustomPrompt: text, humeConfigId: text,
-  turtleSettings: turtle, extensionHighlight: highlight,
+  turtleSettings: TURTLE, extensionHighlight: HIGHLIGHT,
 } satisfies Record<Exclude<keyof SettingsProfile, '_format' | '_version' | 'exportedAt'>, Rule>;
 
 function select(value: unknown, rules: Record<string, Rule>): Record<string, unknown> {
@@ -70,5 +70,5 @@ function select(value: unknown, rules: Record<string, Rule>): Record<string, unk
 
 /** Strip unknown/credential fields; reject malformed known fields before any write. */
 export function selectProfileFields(value: unknown): Partial<SettingsProfile> {
-  return select(value, profile);
+  return select(value, PROFILE);
 }
