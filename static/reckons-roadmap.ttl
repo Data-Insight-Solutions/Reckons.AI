@@ -4478,6 +4478,9 @@ kb:ui-visual-assurance rdf:type ktype:Feature ;
                kpred:constraint   "Build-time checks stay quick and deterministic. Exhaustive workflows, device/orientation matrices, screenshot review, and local-VLM/Ollama analysis run through explicit local scripts and publish reviewable artifacts; they do not silently become a multi-hour build gate." ;
                kpred:remaining    "DONE WHEN all five ordered parts meet their stated completion conditions; affected routes are reviewed from fresh production-build artifacts on desktop and Pixel-class mobile contexts; shell, graph, navigation, or typography changes pass the full local device/workflow suite; and no completion claim depends on swallowed browser errors, empty fixtures, stale screenshots, or an unreviewed VLM verdict." .
 
+kb:ui-visual-assurance kpred:measured "2026-09-29, INVENTED DATA PASSES WHAT REAL DATA FAILS. Matt: 'So its a test data issue? why are you not visual testing?' The Spaces map had been screenshot-checked only with 2 to 5 invented spaces; on a copy of his real 18-space registry it had clipped and overlapping labels, a 9px drawing and four spaces without stable ids. scripts/offline/local-data-visual.ts (npm run visual:local) now makes that check routine: it copies only the app origin's browser storage into a scratch profile, opens it headless in the same browser build that wrote it, can serve a branch under the origin, screenshots, and deletes the copy; output is private, owner-only and outside any checkout, and only local origins are accepted. AGENTS.md's RUN-THESE table lists it for every UI change." ;
+    kpred:has-file "scripts/offline/local-data-visual.ts" .
+
 kb:visual-evidence-integrity rdf:type ktype:Feature ;
                rdfs:label         "Visual evidence integrity — quick build contract and full local review" ;
                kpred:feature-id   "F108.1" ;
