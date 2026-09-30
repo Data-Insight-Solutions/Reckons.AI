@@ -177,6 +177,7 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 | **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
 | **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree` | agent — local first-pass review |
 | **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **You are about to judge many items one by one** (which meaning, which class, keep or split) | build a task file (items + one question + a JSON schema), then `npx tsx scripts/agent/local-panel.ts --task=task.json` — only non-unanimous items come back to you. `scripts/offline/term-senses.ts --word=node` is a worked example. Watch it (and every other local call) with `npm run agent:watch` | agent — local panel |
 | **Any UI change, before calling it done** | `npm run visual:local -- --serve=http://localhost:<branch port> --paths=/kb` | script — the page on a COPY of your real browser data; private output, copy deleted |
 | **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
 | **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |

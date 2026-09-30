@@ -145,6 +145,8 @@
     "claim-audit": "npx tsx scripts/offline/claim-audit.ts",
     "history:lessons": "npx tsx scripts/offline/history-lessons.ts",
     "agent:run": "npx tsx scripts/agent/runner.ts --graph reckons-workspace/tasks.ttl",
+    "agent:watch": "npx tsx scripts/agent/watch.ts",
+    "agent:panel": "npx tsx scripts/agent/local-panel.ts",
     "brief": "npx tsx scripts/brief.ts",
     "schedule": "npx tsx scripts/agent/schedule.ts --graph reckons-workspace/schedules.ttl",
     "orchestrate": "npx tsx scripts/agent/orchestrate.ts",
