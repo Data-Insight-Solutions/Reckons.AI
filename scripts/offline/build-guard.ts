@@ -124,6 +124,33 @@ if (!existsSync(path.join(DIR, 'sw.js'))) {
   warn('pwa', 'No sw.js in the build — the offline-first PWA service worker did not emit.');
 }
 
+// ── 5. No file exceeds the host's per-file limit. ──
+//
+// Cloudflare Pages refuses any single file over 25 MiB, and says so only on its own dashboard: the
+// PR shows "Build failed" and nothing else. Found 2026-09-30 when @huggingface/transformers 4.3.0
+// brought onnxruntime-web 1.31, whose ort-wasm-simd-threaded.asyncify.wasm is 26,861,777 bytes
+// (25.6 MiB; 1.26's was 22.5 MiB) — the preview failed while every GitHub check passed. Warn from
+// 20 MiB, so the next runtime bump is visible before it breaks a deploy.
+const HOST_FILE_LIMIT = 25 * 1024 * 1024;
+const HOST_FILE_WARN = 20 * 1024 * 1024;
+const everyFile = (d: string, out: string[] = []): string[] => {
+  for (const e of readdirSync(d)) {
+    const p = path.join(d, e);
+    if (statSync(p).isDirectory()) everyFile(p, out);
+    else out.push(p);
+  }
+  return out;
+};
+for (const f of everyFile(DIR)) {
+  const size = statSync(f).size;
+  const mib = (size / 1024 / 1024).toFixed(1);
+  if (size >= HOST_FILE_LIMIT) {
+    err('host-size', `${f} is ${mib} MiB — over Cloudflare Pages' 25 MiB per-file limit, so the deploy will fail. Pin or split the dependency that emits it.`);
+  } else if (size >= HOST_FILE_WARN) {
+    warn('host-size', `${f} is ${mib} MiB — within 5 MiB of Cloudflare Pages' 25 MiB per-file limit.`);
+  }
+}
+
 // ── Report ──
 const errors = findings.filter((f) => f.level === 'error');
 if (JSON_OUT) {
@@ -131,7 +158,7 @@ if (JSON_OUT) {
 } else {
   console.log(`${B}Build guard${X} ${D}— ./${DIR}${X}\n`);
   if (findings.length === 0) {
-    console.log(`${G}✓ production build verified${X} ${D}(no dev artifacts · minified · hashed · CSP present)${X}`);
+    console.log(`${G}✓ production build verified${X} ${D}(no dev artifacts · minified · hashed · CSP present · every file under 25 MiB)${X}`);
   } else {
     for (const f of findings) {
       const c = f.level === 'error' ? R : Y;
