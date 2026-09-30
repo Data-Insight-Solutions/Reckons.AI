@@ -15,16 +15,16 @@ function readInitial(): boolean {
   return localStorage.getItem(KEY) === 'true';
 }
 
-let _enabled = $state(readInitial());
+let enabled = $state(readInitial());
 
 /** Reactive getter — true when pod view should render arrivals distinctly. */
 export function podViewEnabled(): boolean {
-  return _enabled;
+  return enabled;
 }
 
 /** Set the preference (persists to localStorage). */
 export function setPodViewEnabled(on: boolean): void {
-  _enabled = on;
+  enabled = on;
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(KEY, on ? 'true' : 'false');
   }

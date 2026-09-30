@@ -7,40 +7,40 @@
  */
 import { db } from '../storage/db';
 
-let _overrides = $state(new Map<string, string>()); // IRI → objectURL
+let overrides = $state(new Map<string, string>()); // IRI → objectURL
 
 /** Reactive getter — returns the current IRI → object URL map. */
 export function gifOverrides(): Map<string, string> {
-  return _overrides;
+  return overrides;
 }
 
 /** Load all GIF overrides from IndexedDB, creating object URLs from stored Blobs. */
 export async function loadGifOverrides(): Promise<void> {
-  for (const url of _overrides.values()) URL.revokeObjectURL(url);
+  for (const url of overrides.values()) URL.revokeObjectURL(url);
   const rows = await db.entityGifs.toArray();
   const map = new Map<string, string>();
   for (const row of rows) {
     map.set(row.id, URL.createObjectURL(row.blob));
   }
-  _overrides = map;
+  overrides = map;
 }
 
 /** Persist a GIF for the given entity IRI. Blob is stored in IndexedDB. */
 export async function setGif(iri: string, blob: Blob, filename: string): Promise<void> {
   await db.entityGifs.put({ id: iri, blob, filename });
-  const old = _overrides.get(iri);
+  const old = overrides.get(iri);
   if (old) URL.revokeObjectURL(old);
-  _overrides = new Map(_overrides).set(iri, URL.createObjectURL(blob));
+  overrides = new Map(overrides).set(iri, URL.createObjectURL(blob));
 }
 
 /** Remove the GIF for the given entity IRI and revoke its object URL. */
 export async function clearGif(iri: string): Promise<void> {
   await db.entityGifs.delete(iri);
-  const old = _overrides.get(iri);
+  const old = overrides.get(iri);
   if (old) URL.revokeObjectURL(old);
-  const next = new Map(_overrides);
+  const next = new Map(overrides);
   next.delete(iri);
-  _overrides = next;
+  overrides = next;
 }
 
 /** Return the stored filename for a given IRI (for zip packaging). */

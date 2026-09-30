@@ -10,28 +10,28 @@
  * during LLM chat responses.
  */
 
-let _instance: any = null;
-let _loading: Promise<any> | null = null;
+let instance: any = null;
+let loading: Promise<any> | null = null;
 let _status: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
-let _progress = 0;
+let progress = 0;
 /** Phase distinguishes download from WASM initialization */
 let _phase: 'download' | 'init' = 'download';
-let _onStatus: ((s: typeof _status, pct: number, phase: typeof _phase) => void) | null = null;
+let onStatus: ((s: typeof _status, pct: number, phase: typeof _phase) => void) | null = null;
 
 import { DEFAULT_KOKORO_VOICE, KOKORO_VOICES } from './voice-catalog';
 
 /** Subscribe to load status changes */
 export function onKokoroStatus(cb: (status: typeof _status, pct: number, phase: typeof _phase) => void) {
-  _onStatus = cb;
-  cb(_status, _progress, _phase);
+  onStatus = cb;
+  cb(_status, progress, _phase);
 }
 
 function notify() {
-  _onStatus?.(_status, _progress, _phase);
+  onStatus?.(_status, progress, _phase);
 }
 
 export function kokoroStatus() { return _status; }
-export function kokoroProgress() { return _progress; }
+export function kokoroProgress() { return progress; }
 export function kokoroPhase() { return _phase; }
 
 async function loadModel(): Promise<any> {
@@ -41,14 +41,14 @@ async function loadModel(): Promise<any> {
     device: 'wasm',
     progress_callback: (p: any) => {
       if (p.status === 'progress' && p.total) {
-        _progress = Math.round((p.loaded / p.total) * 100);
+        progress = Math.round((p.loaded / p.total) * 100);
         _phase = 'download';
         notify();
       }
       // 'done' signals downloads finished; WASM session init starts next
       if (p.status === 'done') {
         _phase = 'init';
-        _progress = 100;
+        progress = 100;
         notify();
       }
       // 'initiate' with no prior progress means model is cached
@@ -66,16 +66,16 @@ async function loadModel(): Promise<any> {
  * Safe to call multiple times — only loads once.
  */
 export function warmup(): void {
-  if (_instance || _loading) return;
+  if (instance || loading) return;
   _status = 'loading';
-  _progress = 0;
+  progress = 0;
   notify();
 
-  _loading = loadModel()
+  loading = loadModel()
     .then((tts) => {
-      _instance = tts;
+      instance = tts;
       _status = 'ready';
-      _progress = 100;
+      progress = 100;
       notify();
       return tts;
     })
@@ -83,21 +83,21 @@ export function warmup(): void {
       console.error('[kokoro-tts] Failed to load model:', e);
       _status = 'error';
       notify();
-      _loading = null;
+      loading = null;
       throw e;
     });
 }
 
 /** Get the loaded TTS instance, or null if not ready */
 export function getInstance(): any | null {
-  return _instance;
+  return instance;
 }
 
 /** Wait for the model to be ready */
 export async function getReady(): Promise<any> {
-  if (_instance) return _instance;
-  if (!_loading) warmup();
-  return _loading;
+  if (instance) return instance;
+  if (!loading) warmup();
+  return loading;
 }
 
 /** Default voice — af_heart is the top-rated calm female voice */
@@ -127,7 +127,7 @@ export function speakStreaming(
     onError?: (e: unknown) => void;
   } = {}
 ): () => void {
-  const tts = _instance;
+  const tts = instance;
   if (!tts) {
     opts.onError?.(new Error('Kokoro model not loaded'));
     return () => {};

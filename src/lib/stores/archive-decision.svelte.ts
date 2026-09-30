@@ -22,30 +22,30 @@ interface PendingArchiveDecision extends ArchiveReferenceDecisionRequest {
 
 export class ArchiveDecisionUnavailableError extends Error {}
 
-let _queue = $state<PendingArchiveDecision[]>([]);
-let _mountCount = 0;
+let queue = $state<PendingArchiveDecision[]>([]);
+let mountCount = 0;
 
 export function pendingArchiveDecision(): PendingArchiveDecision | null {
-  return _queue[0] ?? null;
+  return queue[0] ?? null;
 }
 
 export function requestArchiveDecision(
   request: ArchiveReferenceDecisionRequest,
 ): Promise<ArchiveReferenceDecision> {
-  if (_mountCount <= 0) {
+  if (mountCount <= 0) {
     throw new ArchiveDecisionUnavailableError(
       'Archived entities were found, but the restore decision dialog is unavailable. Ingest was not saved.',
     );
   }
   return new Promise((resolve) => {
-    _queue = [..._queue, { ...request, resolve }];
+    queue = [...queue, { ...request, resolve }];
   });
 }
 
 export function resolveArchiveDecision(decision: ArchiveReferenceDecision): void {
-  const current = _queue[0];
+  const current = queue[0];
   if (!current) return;
-  _queue = _queue.slice(1);
+  queue = queue.slice(1);
   current.resolve(decision);
 }
 
@@ -56,16 +56,16 @@ export function resolveArchiveDecision(decision: ArchiveReferenceDecision): void
  * component failure therefore cannot strand an ingest promise.
  */
 export function mountArchiveDecisionDialog(): () => void {
-  _mountCount += 1;
+  mountCount += 1;
   let active = true;
   return () => {
     if (!active) return;
     active = false;
-    _mountCount = Math.max(0, _mountCount - 1);
-    if (_mountCount > 0) return;
+    mountCount = Math.max(0, mountCount - 1);
+    if (mountCount > 0) return;
 
-    const abandoned = _queue;
-    _queue = [];
+    const abandoned = queue;
+    queue = [];
     for (const request of abandoned) request.resolve('cancel');
   };
 }

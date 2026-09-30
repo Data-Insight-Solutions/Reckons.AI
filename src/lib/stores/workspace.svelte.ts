@@ -69,8 +69,8 @@ function legacyWorkspaceStores() {
 export const WORKSPACE_KB_FILE = 'knowledge.ttl';
 
 let _handle = $state<FileSystemDirectoryHandle | null>(null);
-let _name   = $state<string | null>(null);
-let _state  = $state<'none' | 'disconnected' | 'connected'>('none');
+let name   = $state<string | null>(null);
+let state  = $state<'none' | 'disconnected' | 'connected'>('none');
 let _lastSyncTime = $state<number | null>(null);
 let _syncedKbCount = $state(0);
 
@@ -111,12 +111,12 @@ const POLL_INTERVAL_MS = 10_000;
 /** path-key ("kbs/foo/foo.ttl") → last-seen content hash of that file. */
 const _seenHashes = new Map<string, string>();
 let _autoSyncEnabled = $state<boolean>(readAutoSyncPref());
-let _pollTimer: ReturnType<typeof setInterval> | null = null;
-let _pulling = false;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pulling = false;
 
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
-export function workspaceName(): string | null { return _name; }
-export function workspaceState(): 'none' | 'disconnected' | 'connected' { return _state; }
+export function workspaceName(): string | null { return name; }
+export function workspaceState(): 'none' | 'disconnected' | 'connected' { return state; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
 export function syncedKbCount(): number { return _syncedKbCount; }
 export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
@@ -178,8 +178,8 @@ export async function loadWorkspace(): Promise<void> {
   // App-level, with a one-time adoption of any handle an older version left in this graph's
   // own database. See app-db.ts: the handle describes the browser, not the graph.
   const row = await getWorkspaceRow(legacyWorkspaceStores());
-  if (!row) { _state = 'none'; return; }
-  _name = row.name;
+  if (!row) { state = 'none'; return; }
+  name = row.name;
   // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
   // that have not changed on disk instead of re-importing every KB.
   loadSeenHashes();
@@ -187,13 +187,13 @@ export async function loadWorkspace(): Promise<void> {
     const perm = await (row.handle as any).queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
-      _state = 'connected';
+      state = 'connected';
       onWorkspaceConnected();
     } else {
-      _state = 'disconnected';
+      state = 'disconnected';
     }
   } catch {
-    _state = 'disconnected';
+    state = 'disconnected';
   }
 }
 
@@ -223,8 +223,8 @@ export async function pickWorkspace(): Promise<boolean> {
       .showDirectoryPicker({ mode: 'readwrite' });
     await putWorkspaceRow(handle, handle.name, db.workspace);
     _handle = handle;
-    _name = handle.name;
-    _state = 'connected';
+    name = handle.name;
+    state = 'connected';
     await updateSettings({ workspaceName: handle.name });
     // Polling starts via handlePickWorkspace after its initial import/sync so we
     // don't race that flow; enable it here for the reconnect-less first link.
@@ -248,8 +248,8 @@ export async function reconnectWorkspace(): Promise<boolean> {
     const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
-      _name = row.name;
-      _state = 'connected';
+      name = row.name;
+      state = 'connected';
       onWorkspaceConnected();
       return true;
     }
@@ -266,8 +266,8 @@ export async function clearWorkspace(): Promise<void> {
   if (typeof localStorage !== 'undefined') localStorage.removeItem(seenHashesKey());
   await clearWorkspaceRow(legacyWorkspaceStores());
   _handle = null;
-  _name = null;
-  _state = 'none';
+  name = null;
+  state = 'none';
   _lastSyncTime = null;
   _syncedKbCount = 0;
   await updateSettings({ workspaceName: undefined });
@@ -440,9 +440,9 @@ export type WriteHold =
   | { held: true; reason: 'locked'; detail: string }
   | { held: true; reason: 'diverged'; detail: string };
 
-let _lastHold = $state<WriteHold>({ held: false });
+let lastHold = $state<WriteHold>({ held: false });
 /** The most recent reason a graph write was withheld, for the UI to surface. */
-export function lastWriteHold(): WriteHold { return _lastHold; }
+export function lastWriteHold(): WriteHold { return lastHold; }
 
 /**
  * Decide whether it is safe to overwrite `filename` with our version of it.
@@ -552,7 +552,7 @@ export async function writeKbToFolder(
     // HOLD, don't clobber. An unsafe write is deferred, not dropped: the file on disk stays as it
     // is, this graph keeps its state in IndexedDB, and the next pull reconciles the two properly.
     const hold = await holdWrite(kbDir, `${folderName}.ttl`, pathKey);
-    _lastHold = hold;
+    lastHold = hold;
     if (hold.held) {
       console.warn(`[workspace] write held for "${entry.name}": ${hold.detail} (${hold.reason})`);
       return false;
@@ -855,7 +855,7 @@ export async function syncAllKbs(): Promise<number> {
 //  1. kbs/{name}/ folder (multi-KB sync)
 //  2. knowledge.ttl (legacy MCP compat)
 
-let _wsExportTimer: ReturnType<typeof setTimeout> | null = null;
+let wsExportTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Schedule a workspace export after a KB mutation.
@@ -864,9 +864,9 @@ let _wsExportTimer: ReturnType<typeof setTimeout> | null = null;
  */
 export function scheduleWorkspaceTtlExport(): void {
   if (!_handle) return;
-  if (_wsExportTimer) clearTimeout(_wsExportTimer);
-  _wsExportTimer = setTimeout(() => {
-    _wsExportTimer = null;
+  if (wsExportTimer) clearTimeout(wsExportTimer);
+  wsExportTimer = setTimeout(() => {
+    wsExportTimer = null;
     _triggerWorkspaceTtlExport();
   }, 2000);
 }
@@ -1465,8 +1465,8 @@ export async function syncFolderPaths(): Promise<number> {
  * reflects the change without a page reload.
  */
 export async function pullFromWorkspace(): Promise<{ imported: string[]; updated: string[] }> {
-  if (!_handle || _pulling) return { imported: [], updated: [] };
-  _pulling = true;
+  if (!_handle || pulling) return { imported: [], updated: [] };
+  pulling = true;
   const imported: string[] = [];
   const updated: string[] = [];
   try {
@@ -1520,7 +1520,7 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
       }
     }
   } finally {
-    _pulling = false;
+    pulling = false;
   }
   return { imported, updated };
 }
@@ -1549,7 +1549,7 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
  * user with a silently dead sync.
  */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
-  if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
+  if (pollTimer || !_handle || typeof setInterval === 'undefined') return;
   // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
   // dictated into a ring reached knowledge.pending.jsonl on disk and then sat there until the
   // next page load or a manual refresh — the app was polling a folder while ignoring the one file
@@ -1560,7 +1560,7 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   // unhandled, so the one signal that capture is broken is a console message nobody wrote. The
   // timer itself survives either way; what is lost is the diagnostic, which on this path is the
   // difference between a note that failed loudly and a note that appears never to have arrived.
-  _pollTimer = setInterval(() => {
+  pollTimer = setInterval(() => {
     void pullFromWorkspace()
       .then(() => drainAndImportPending())
       .catch((e) => console.warn('[workspace] poll cycle failed:', e));
@@ -1568,7 +1568,7 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
 }
 
 export function stopWorkspacePolling(): void {
-  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
 /** Toggle auto-sync (persisted). Starts/stops polling to match. */
@@ -1583,8 +1583,8 @@ export function setAutoSync(on: boolean): void {
  *  native picker, so folder sync can be exercised in Playwright/headless. */
 export function __linkHandleForTest(handle: FileSystemDirectoryHandle): void {
   _handle = handle;
-  _name = handle.name;
-  _state = 'connected';
+  name = handle.name;
+  state = 'connected';
 }
 
 // DEV/test-only: expose the sync internals on window so Playwright can exercise
