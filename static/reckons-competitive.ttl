@@ -371,6 +371,27 @@ kb:ref-sv-table rdf:type       ktype:Reference ;
                kpred:evidence "IT DROPS INTO THE STACK WE ALREADY RUN. This repo depends on shadcn-svelte ^1.4.2 and bits-ui ^2.18.1, which is exactly what sv-table targets, so a component is copied source rather than a new runtime dependency and there is no upgrade coupling afterwards. The surfaces that would benefit already exist: the /review flat row list, where kb:graph-legibility still owes predicate and time filters; the align tab (kb:cross-kb-alignment); and the Compare diff table." ;
                kpred:constraint "AUDIT PER COMPONENT, DO NOT ADOPT WHOLESALE. Its package pins @tanstack/svelte-table at exactly 9.0.0 while npm latest is 9.1.2, and individual components carry their own dependencies — @dnd-kit/svelte, motion-sv, runed, torph — several of them very low-traffic packages. Copy the single component needed, read what it imports, and treat each transitive dependency as its own supply-chain decision rather than inheriting the demo site's full set." ;
                kpred:scope-decision "CANDIDATE SOURCE, NOT A DEPENDENCY. Take filters and pagination first if anything is taken at all. Row drag, column pinning and expandable sub-rows are features kb:review-attention would argue AGAINST on this product's review surfaces — granularity breeds rubber-stamping, and a table that can do everything invites a reviewer to accept all." .
+kb:ref-laya rdf:type          ktype:Reference ;
+               rdfs:label   "Laya (aayushch) — a local-first notification command center" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   37 ;
+               kpred:repo-url     "https://github.com/aayushch/laya" ;
+               kpred:license      "Apache-2.0" ;
+               kpred:copy-permitted "yes — Apache-2.0, attribution required (+ NOTICE, patent grant)" ;
+               kpred:stars        447 ;
+               kpred:language     "Python" ;
+               kpred:last-push    "2026-09-29"^^xsd:date ;
+               kpred:description  "A desktop app (Tauri v2 shell, SvelteKit + Svelte 5 runes UI, Python FastAPI engine) that pulls events from Slack, Gmail, GitHub, Jira, Linear, Notion, Outlook and Google Calendar through a local n8n instance. An LLM routes each event to a persona, drafts an action, and shows an Action Card the user approves before anything is sent back out. Storage is SQLite with FTS5 plus embedded ChromaDB; models go through LiteLLM (Ollama, LM Studio, Anthropic, OpenAI, Gemini). It exposes an MCP server of about 31 tools on 127.0.0.1:8420." ;
+               kpred:honest-note  "NOT a competitor. It has no triples, no ontology, no graph view, no publishing and no source ingest: entities are SQLite rows with a JSON platform_refs blob. What it shares with us is the stack (Svelte 5 runes, n8n as the integration layer, local models, MCP) and one conviction — a human approves before the model acts. It is recorded for four techniques, each smaller than the product, and because kpred:repo-url keeps its license watched." ;
+               kpred:honest-note  "Checked 2026-09-30 by reading code in a shallow clone, not by running it. Neither its 85 pytest files nor its 256 vitest cases were run here, and its CI (release, engine-deps, pages) does not run them either. Essentially one author: 390 of 396 commits." ;
+               kpred:worth-adopting kb:adopt-rank-fusion ;
+               kpred:worth-adopting kb:adopt-claim-source-list ;
+               kpred:worth-adopting kb:adopt-correction-rules ;
+               kpred:worth-adopting kb:adopt-agent-cli-backend ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:evidence     "A STORED LABEL THAT NO CODE READS IS NOT A CONTROL. Its README promises privacy-aware three-tier classification. The stager LLM does assign privacy_tier 1-3 and the UI shows it, but settings.privacy.tier3_processing (engine/laya/config.py:57) is read by nothing: no router or LLM-client path consults it, so tier-3 content goes to whichever model is configured. This is kb:honest-status's own failure mode in someone else's code, and it is recorded as a warning to us, not a criticism of them: our ethicsPreambleFor locality rule is the same kind of claim and stays honest only because a test pins it." ;
+               kpred:open-question "INTEGRATION, NOT COPYING, IS ALSO AVAILABLE. Laya's MCP server (get_entity, search_entities, get_omni_summary, semantic_search, per-space scoping) could be a SOURCE: a user running both could ingest Laya's cross-platform entities and summaries into a personal graph as pending facts. Its n8n ingestion workflows (n8n/workflows/*.json, Apache-2.0) cover platforms our n8n layer does not. Both would be opt-in, per-user integrations under kb:integration-plugin-sdk, never a core dependency. Worth building only if a user actually runs Laya — unasked, as of 2026-09-30." .
+
 # ── WHAT WE ADOPT ────────────────────────────────────────────────────────────
 # Each is a proposal against a roadmap entity, not a decision. Status stays
 # speculative until Matt rules on it (kb:honest-status).
@@ -486,6 +507,49 @@ kb:adopt-skill-router rdf:type ktype:Feature ;
                kpred:serves       kb:work-tiering ;
                kpred:evidence     "Identical economics to kb_compress, where the saving comes overwhelmingly from SELECTING the relevant slice rather than from compressing everything. scripts/offline/jobs.json is already a capability map of this shape for the offline tier, and it works." ;
                kpred:honest-note  "Whether our command set is actually large enough to need a router is unmeasured. Copying the pattern before the problem exists would be cargo cult; it is recorded as a shape to reach for if the set keeps growing." .
+
+kb:adopt-rank-fusion rdf:type ktype:Feature ;
+               rdfs:label   "Rank fusion — keyword and meaning in one search" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-laya ;
+               kpred:description  "Run BM25 and embedding search separately, then merge the two ranked lists with Reciprocal Rank Fusion: score(d) = sum over lists of 1/(60 + rank). It uses ranks only, so a BM25 score and a cosine similarity never have to be put on one scale, and a result either list finds can surface. Laya's version is one 20-line pure function (engine/laya/retrieval.py:56-86) that also falls back to plain keyword search when the vector side is unavailable." ;
+               kpred:serves       kb:node-synonyms ;
+               kpred:evidence     "IT IS THE NAMED GAP. kb:node-synonyms lists 'embedding-backed fallback ranking' as NOT BUILT, and kb:search-consistency measured the cause: BM25 in mcp-server/src/search.ts has no vocabulary expansion, so a synonym gap is fatal. On 2026-09-30 kb_search('hybrid search reciprocal rank fusion BM25 embedding') returned MigStyleGuide status 'hybrid' and five framework ranks, all matched on the word, none on the meaning. The app already ships the other half: BGE-small embeddings in src/lib/embed.ts, used today for merge, diff and normalization but never for search." ;
+               kpred:constraint   "THE MCP SERVER HAS NO EMBEDDING MODEL. The app embeds in the browser; mcp-server is plain Node with N3. The MCP side needs either vectors precomputed when the workspace is written, or an opt-in OLLAMA_BASE_URL embedding call (nomic-embed-text is installed here), and must keep BM25-only as the default that works with neither." ;
+               kpred:honest-note  "Unmeasured for us. Adopt it only with a before/after score on a fixed query set (the synonym cases kb:search-consistency already names), or it is a new moving part justified by one bad search." .
+
+kb:adopt-claim-source-list rdf:type ktype:Feature ;
+               rdfs:label   "Every summary claim lists every source it rests on" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-laya ;
+               kpred:description  "A generated summary line such as '8 PRs merged' must carry the ids of all eight sources, not one example (engine/laya/llm/prompts/omni.py, rule 7). The UI then builds the evidence view from the live state of those sources and never parses the model's sentence (ui/src/lib/components/omni/item/ClaimBreakdown.svelte): the prose is the claim, the id list is what it can be checked against." ;
+               kpred:serves       kb:async-digest ;
+               kpred:relates-to   kb:document-evidence-anchors ;
+               kpred:evidence     "kb:async-digest is functional but its primary artifact is hand-appended markdown, and its remaining work is an in-graph digest entity. A digest entry that names every statement it summarizes is checkable where prose is not: a reviewer can open the list, and a script can flag an entry whose sources were since rejected. That is the thesis applied to our own summaries — an unverifiable claim is not evidence." ;
+               kpred:constraint   "A MODEL CAN STILL LIST THE WRONG IDS. Laya enforces completeness by prompt instruction, not by check. Ours would need a deterministic pass: every listed id exists, and any count in the sentence equals the list length — a script-tier rule, per kb:work-tiering." .
+
+kb:adopt-correction-rules rdf:type ktype:Feature ;
+               rdfs:label   "Corrections become rules — reviewed ones" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-laya ;
+               kpred:description  "Laya turns a user's corrections into rules for next time. Priority and persona fixes become classification rules (engine/laya/pipeline/learn.py); link and unlink fixes become natural-language context rules injected into later prompts (pipeline/context_learn.py). Once enough accumulate, a threshold triggers an LLM pass that consolidates near-duplicates." ;
+               kpred:serves       kb:wf-review ;
+               kpred:relates-to   kb:review-attention ;
+               kpred:evidence     "Our review queue throws away its most useful signal. A rejected statement is recorded as rejected, but nothing tells the next extraction that this kind of statement gets rejected, so the same mistake returns for review. Rejections are labelled training data we already hold." ;
+               kpred:constraint   "THE LEARNED RULE MUST ITSELF BE A PROPOSAL. In Laya, a rule the model writes from corrections goes straight into future prompts, unreviewed. Here it would be a pending entry the user accepts, edits or rejects like any other, so that no model changes future behavior on its own. Rules that are checkable (a predicate never used with a literal object) should become validators instead of prompt text." .
+
+kb:adopt-agent-cli-backend rdf:type ktype:Feature ;
+               rdfs:label   "A coding-agent CLI as an inference backend" ;
+               kpred:part-of      kb:competitive-landscape ;
+               kpred:has-status   "speculative" ;
+               kpred:seen-in      kb:ref-laya ;
+               kpred:description  "Laya can route a task to an installed coding agent instead of an API. Model ids take the form agent/<id>/<model>. Claude Code gets the output schema natively through --json-schema; Codex, Gemini, Cursor and Pi get it as an instruction, and their output is parsed, validated and retried with the validation error fed back (engine/laya/llm/agent_backend.py, 638 lines). Usage is metered per time window (pipeline/agent_budget.py)." ;
+               kpred:serves       kb:llm-design ;
+               kpred:constraint   "NOT BROWSER-FEASIBLE. It spawns a local process, so it belongs in cli/ and scripts/offline/ only, never the static app." ;
+               kpred:open-question "MATT'S DECISION, AND IT IS NOT ONLY TECHNICAL. Dev tooling (subscriptions) and app inference (metered API) are separate rails in this project. Running extraction through a subscription CLI would blur that line. Whether each provider's terms permit it has not been checked, so it should not be assumed. Until someone reads those terms, this stays speculative." .
 
 # ── WHAT WE AVOID, AND WHY ───────────────────────────────────────────────────
 # The load-bearing half of this graph. A declined feature is a decision.
