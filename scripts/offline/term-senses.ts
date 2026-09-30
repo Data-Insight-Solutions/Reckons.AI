@@ -176,7 +176,7 @@ async function main(): Promise<void> {
 
   let result: PanelResult;
   try {
-    result = await runPanel(task, { models: flag('models')?.split(',').filter(Boolean), onProgress: (m) => console.error(m) });
+    result = await runPanel(task, { models: flag('models')?.split(',').filter(Boolean), onProgress: (m) => console.error(m), resultPath: out.replace(/\.json$/, '.result.json') });
   } catch (e) {
     console.error(`term-senses: ${(e as Error).message}`);
     process.exit(2);

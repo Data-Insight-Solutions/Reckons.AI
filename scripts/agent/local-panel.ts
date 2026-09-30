@@ -60,11 +60,15 @@
  *
  * A task file is a PanelTask (below). Requires OLLAMA_BASE_URL or a server on localhost:11434; if it
  * is down this says so and exits 2 — it never falls back to a cloud model.
+ *
+ * Every run and every vote is also logged to local-activity.ts's event log, so `npm run agent:watch`
+ * can show it live — a local run is a shell command, and never appears in Claude Code's agent list.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { logEvent } from './local-activity.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -264,7 +268,25 @@ function claudeCode(model: string, user: string, task: PanelTask): Promise<strin
   });
 }
 
-async function vote(engine: Engine, model: string, task: PanelTask, item: PanelItem, attempt: number): Promise<Vote> {
+/** The answer's first free-text field other than the one voted on — what the dashboard shows as "why". */
+export function reasonOf(answer: Record<string, unknown> | undefined, agreeOn: string): string | undefined {
+  if (!answer) return undefined;
+  const entry = Object.entries(answer).find(([k, v]) => k !== agreeOn && typeof v === 'string');
+  return entry ? String(entry[1]).slice(0, 160) : undefined;
+}
+
+async function vote(run: string, engine: Engine, model: string, task: PanelTask, item: PanelItem, attempt: number): Promise<Vote> {
+  const result = await castVote(engine, model, task, item, attempt);
+  logEvent({
+    kind: 'vote', run, at: new Date().toISOString(), model, item: item.id, ms: result.ms,
+    value: result.answer ? String(result.answer[task.agreeOn]) : undefined,
+    reason: reasonOf(result.answer, task.agreeOn),
+    error: result.error?.slice(0, 160),
+  });
+  return result;
+}
+
+async function castVote(engine: Engine, model: string, task: PanelTask, item: PanelItem, attempt: number): Promise<Vote> {
   const t0 = Date.now();
   const user = itemPrompt(task, item);
   try {
@@ -302,7 +324,7 @@ export async function availableModels(): Promise<string[]> {
 
 export async function runPanel(
   task: PanelTask,
-  opts: { models?: string[]; votes?: number; concurrency?: number; engine?: Engine; onProgress?: (msg: string) => void } = {},
+  opts: { models?: string[]; votes?: number; concurrency?: number; engine?: Engine; onProgress?: (msg: string) => void; resultPath?: string } = {},
 ): Promise<PanelResult> {
   const problems = validateTask(task);
   if (problems.length) throw new Error(`invalid task: ${problems.join('; ')}`);
@@ -314,11 +336,13 @@ export async function runPanel(
   // A single model needs several votes or there is nothing to agree; a panel gets one each.
   const votesPerModel = opts.votes ?? task.votesPerModel ?? (models.length === 1 ? DEFAULT_SELF_VOTES : 1);
   const started = Date.now();
+  const run = `${task.id}-${started.toString(36)}`;
+  logEvent({ kind: 'run-start', run, at: new Date(started).toISOString(), task: task.id, models, items: task.items.length, votesPerModel, engine, cwd: process.cwd() });
   const all: Vote[] = [];
   // Model by model, so each is loaded once rather than swapped per item.
   for (const model of models) {
     const t0 = Date.now();
-    const jobs = task.items.flatMap((item) => Array.from({ length: votesPerModel }, (_, a) => () => vote(engine, model, task, item, a)));
+    const jobs = task.items.flatMap((item) => Array.from({ length: votesPerModel }, (_, a) => () => vote(run, engine, model, task, item, a)));
     const votes = await pool(jobs, opts.concurrency ?? 2);
     all.push(...votes);
     const failed = votes.filter((v) => !v.answer).length;
@@ -327,6 +351,7 @@ export async function runPanel(
   const verdicts = task.items.map((item) => aggregate(item.id, all.filter((v) => v.item === item.id), task.agreeOn));
   const counts: Record<VerdictStatus, number> = { unanimous: 0, majority: 0, split: 0, failed: 0 };
   for (const v of verdicts) counts[v.status]++;
+  logEvent({ kind: 'run-end', run, at: new Date().toISOString(), ms: Date.now() - started, counts, resultPath: opts.resultPath });
   return { task: task.id, models, engine, startedAt: new Date(started).toISOString(), ms: Date.now() - started, counts, verdicts };
 }
 
@@ -398,6 +423,7 @@ async function main(): Promise<void> {
   }
   const task = JSON.parse(readFileSync(taskPath, 'utf8')) as PanelTask;
   const accept: Accept = flag('accept') === 'majority' ? 'majority' : 'unanimous';
+  const out = flag('out') ?? taskPath.replace(/\.json$/, '') + '.result.json';
   let result: PanelResult;
   try {
     result = await runPanel(task, {
@@ -406,12 +432,12 @@ async function main(): Promise<void> {
       concurrency: flag('concurrency') ? Number(flag('concurrency')) : undefined,
       engine: (flag('engine') as Engine | undefined) ?? 'ollama',
       onProgress: (m) => console.error(m),
+      resultPath: out,
     });
   } catch (e) {
     console.error(`local-panel: ${(e as Error).message}`);
     process.exit(2);
   }
-  const out = flag('out') ?? taskPath.replace(/\.json$/, '') + '.result.json';
   writeFileSync(out, JSON.stringify(result, null, 2));
   if (argv.includes('--json')) console.log(JSON.stringify(result));
   else console.log(`${summarize(result, task.agreeOn, 25, accept)}\nresult → ${out}`);
