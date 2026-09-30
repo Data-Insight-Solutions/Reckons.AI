@@ -1,7 +1,7 @@
 ## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
 
-**Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):**
-#320 audit fix (new brace-expansion/fast-uri advisories fail `Dependencies (.)` on EVERY PR) →
+**Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
+MERGED 2026-09-30. Remaining: #320 audit fix (new brace-expansion/fast-uri advisories fail `Dependencies (.)` on EVERY PR) →
 #317 e2e locator (the Spaces map's hidden "could not be read" list shadowed graph names; this
 is why #309/#310 failed E2E) → rerun CI on #308 #309 #310 → #318 Laya → #319 plan (stacked on #310).
 
@@ -11,6 +11,13 @@ spaces → assembled situation → target absences → built/partial/planned/abs
 F203.3 `kb:taxonomy-links` (terms have NO edges to code/roadmap/tests today), F203.4
 `kb:taxonomy-rename` (edits by TS language service + svelte2tsx = script tier; local models
 classify ambiguous sites; pixel-equality gate first, VLM second).
+
+**Local panel (#321, F74.7) — USE IT.** Matt: big tasks, small subscription budget. Before judging
+many items yourself, build a task file and run `scripts/agent/local-panel.ts` (default qwen3.6 × 3
+votes; only non-unanimous items come back). `scripts/offline/term-senses.ts --word=node` is the
+worked example for the taxonomy; fixture + `--labels` re-scores it. Headless Claude Code on a local
+model works (isolated `CLAUDE_CONFIG_DIR`) but was slow and wrong — ground by script instead.
+This session used ZERO local calls until Matt asked; do not repeat that.
 
 **Next, in order:** F203.4 batch 0 — `naming-ratchet` is red on `dev` (constant/camelCase 21 vs
 16, interface 284 vs 282); then the rename harness + a pixel mode for `visual-diff.ts`; then
