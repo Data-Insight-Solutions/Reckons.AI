@@ -1,5 +1,5 @@
 {
-  "built": 148,
+  "built": 152,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -215,7 +215,7 @@
       "factHash": "1f0b76bda12db1a5",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "dcd86b35c172d8c7"
+      "pageHash": "770d511e05d33e07"
     },
     {
       "path": "coding-workflow/agents-ask-the-graph",
@@ -260,7 +260,7 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "6f66aed6aaa634ea"
+      "pageHash": "b0569afb00600a14"
     },
     {
       "path": "coding-workflow/context-compression-coding-workflow",
@@ -281,6 +281,15 @@
       "pageHash": "1ea7ecd6585e0383"
     },
     {
+      "path": "coding-workflow/local-panel",
+      "entity": "urn:reckons:docs/coding-workflow/LocalPanel",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "99505d14f6f4c941",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "442c0a3c5f162a88"
+    },
+    {
       "path": "coding-workflow/personal-context",
       "entity": "urn:reckons:docs/coding-workflow/PersonalContext",
       "graph": "docs-coding-workflow.ttl",
@@ -288,6 +297,15 @@
       "factCount": 5,
       "floor": "evidence",
       "pageHash": "347f40c7c02ae283"
+    },
+    {
+      "path": "coding-workflow/rename-by-compiler",
+      "entity": "urn:reckons:docs/coding-workflow/RenameByCompiler",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "7e128e013c9fdca1",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "5bebb4eade2472be"
     },
     {
       "path": "coding-workflow/repo-ingest",
@@ -326,6 +344,15 @@
       "pageHash": "8e6c58039c522f44"
     },
     {
+      "path": "coding-workflow/taxonomy-management",
+      "entity": "urn:reckons:docs/coding-workflow/TaxonomyManagement",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "c0d0c8915f0aba2a",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "328b3231ced79e8d"
+    },
+    {
       "path": "coding-workflow/versus-dev-tooling",
       "entity": "urn:reckons:docs/coding-workflow/VersusDevTooling",
       "graph": "docs-coding-workflow.ttl",
@@ -333,6 +360,15 @@
       "factCount": 10,
       "floor": "evidence",
       "pageHash": "0c6041f3119c54a8"
+    },
+    {
+      "path": "coding-workflow/watch-local-models",
+      "entity": "urn:reckons:docs/coding-workflow/WatchLocalModels",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "7700e1b5a66fb748",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "d2a47215a569c62b"
     },
     {
       "path": "coding-workflow/work-tiering",
