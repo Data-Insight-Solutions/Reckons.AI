@@ -107,8 +107,7 @@ export function nodeRadius(count: number, maxCount: number): number {
  * own set order); each set's spaces sit on a small ring around that set's centre. A single set is
  * placed at the centre. The same input always yields the same picture.
  */
-export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly SetInput[], size = 560): SpaceGraph {
-  const width = size, height = size, cx = width / 2, cy = height / 2;
+export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly SetInput[], minSize = 560): SpaceGraph {
   const { edges, unresolved } = aggregateEdges(spaces);
   const maxCount = Math.max(0, ...spaces.map((s) => s.statementCount ?? 0));
   const setOf = new Map<string, string>();
@@ -116,10 +115,16 @@ export function buildSpaceGraph(spaces: readonly SpaceInput[], sets: readonly Se
 
   const liveSets = sets.filter((s) => s.memberIds.some((m) => spaces.some((sp) => sp.id === m)));
   const innerOf = (n: number) => (n > 1 ? Math.max(50, 28 + n * 12) : 0);
-  const regionR = (n: number) => innerOf(n) + NODE_MAX + 32;
+  const regionR = (n: number) => innerOf(n) + NODE_MAX + 40;
   // Place set centres so the LARGEST region, and the title drawn above it, stays inside the frame.
   const biggest = Math.max(0, ...liveSets.map((set) => regionR(spaces.filter((sp) => setOf.get(sp.id) === set.id).length)));
-  const outer = liveSets.length > 1 ? Math.max(0, Math.min(width, height) / 2 - biggest - 24) : 0;
+  // THE DRAWING GROWS TO FIT; IT IS NOT SQUEEZED INTO A FIXED SQUARE. Set centres sit on a ring wide
+  // enough that neighbouring pools never overlap (adjacent centres are a chord apart), and the frame
+  // leaves room for each pool's title. The SVG then scales to its container.
+  const GAP = 28, MARGIN = 36;
+  const outer = liveSets.length > 1 ? (2 * biggest + GAP) / (2 * Math.sin(Math.PI / liveSets.length)) : 0;
+  const size = Math.max(minSize, Math.ceil(2 * (outer + biggest + MARGIN)));
+  const width = size, height = size, cx = width / 2, cy = height / 2;
   const regions: SetRegion[] = [];
   const nodes: SpaceNode[] = [];
 

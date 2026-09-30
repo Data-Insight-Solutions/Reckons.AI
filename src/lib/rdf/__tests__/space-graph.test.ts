@@ -70,3 +70,22 @@ describe('sizes', () => {
     expect(edgeWidth(10_000)).toBe(9);
   });
 });
+
+describe('pools never overlap', () => {
+  it('grows the drawing so neighbouring sets keep their distance, for 2 to 7 sets', () => {
+    for (let n = 2; n <= 7; n++) {
+      const sets = Array.from({ length: n }, (_, i) => ({ id: `s${i}`, title: `Set ${i}`, basis: 'derived', memberIds: [`a${i}`, `b${i}`, `c${i}`] }));
+      const spaces = sets.flatMap((s) => s.memberIds.map((id) => ({ id, name: id, statementCount: 100 })));
+      const g = buildSpaceGraph(spaces, sets);
+      for (let i = 0; i < g.regions.length; i++) {
+        for (let j = i + 1; j < g.regions.length; j++) {
+          const a = g.regions[i], b = g.regions[j];
+          expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThanOrEqual(a.r + b.r);
+        }
+        const r = g.regions[i];
+        expect(r.x - r.r).toBeGreaterThanOrEqual(0);
+        expect(r.y - r.r - 20).toBeGreaterThanOrEqual(0); // room for the title above the pool
+      }
+    }
+  });
+});

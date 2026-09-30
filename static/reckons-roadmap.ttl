@@ -8172,6 +8172,8 @@ kb:meta-graph-view rdf:type ktype:Feature ;
                kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." ;
                kpred:priority     "high" .
 
+kb:meta-graph-view kpred:measured "2026-09-29, THE TANK: Matt asked for a cute undersea theme or a fish tank for the Spaces map, and the drawing now carries the metaphor he chose on 2026-09-23: each space is a starfish (a plump five-armed star with a face, sized by statements, coloured by a hash of its id) and each set is a pebble-rimmed tide pool, inside a tank of deep water over sand, with swaying seaweed, rising bubbles and light rays, all motion stopped under prefers-reduced-motion. The two traps recorded against the starfish are answered in the drawing: its arms are short and fixed so they read as a body, and a connection is a trail of bubbles that looks nothing like an arm, never called a current. The words on screen stay 'spaces' and 'sets'. The layout also stopped squeezing pools into a fixed square: set centres sit on a ring wide enough that neighbouring pools never overlap, and the drawing grows to fit (tested for 2 to 7 sets)." .
+
 # -- F219: Notification relevancy — time, queue pressure, and escalation ------
 kb:notification-relevancy rdf:type ktype:Feature ;
     rdfs:label "Notification relevancy — time-relative, queue-aware, escalating through Shelly" ;

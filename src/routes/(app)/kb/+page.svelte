@@ -855,7 +855,7 @@
   <section class="section spaces-map-section">
     <details open>
       <summary class="section-head"><h3>spaces map</h3></summary>
-      <p class="section-hint">each space is a node; a line means leaps between two spaces, thicker for more. Spaces in one set sit together. Select a space to see its connections.</p>
+      <p class="section-hint">each starfish is one of your spaces, bigger for more statements. A trail of bubbles means one space jumps to another, thicker for more jumps. Spaces in the same set share a tide pool. Select a starfish to see its connections.</p>
       <SpacesMap
         spaces={mapSpaces}
         sets={mapSetInputs}
