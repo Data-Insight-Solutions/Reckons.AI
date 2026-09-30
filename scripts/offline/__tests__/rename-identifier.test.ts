@@ -61,4 +61,9 @@ describe('topLevelDeclarations — only module scope, so a local of the same nam
   it('finds interfaces by name', () => {
     expect(topLevelDeclarations(sf, 'Foo')).toHaveLength(1);
   });
+
+  it('finds enums (accepted from the local review, 2026-09-30: they were silently skipped)', () => {
+    const e = ts.createSourceFile('e.ts', 'export enum Color { Red }\n', ts.ScriptTarget.Latest, true);
+    expect(topLevelDeclarations(e, 'Color')).toHaveLength(1);
+  });
 });

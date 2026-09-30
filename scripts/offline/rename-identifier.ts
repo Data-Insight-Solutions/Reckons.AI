@@ -63,7 +63,7 @@ export function topLevelDeclarations(sf: ts.SourceFile, name: string): ts.Node[]
   for (const st of sf.statements) {
     if (ts.isVariableStatement(st)) {
       for (const d of st.declarationList.declarations) if (ts.isIdentifier(d.name) && d.name.text === name) out.push(d.name);
-    } else if ((ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st)) && st.name?.text === name) {
+    } else if ((ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st) || ts.isEnumDeclaration(st)) && st.name?.text === name) {
       out.push(st.name);
     }
   }
