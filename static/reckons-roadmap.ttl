@@ -7931,7 +7931,7 @@ kb:taxonomy-links rdf:type ktype:Phase ;
 kb:taxonomy-rename rdf:type ktype:Phase ;
     rdfs:label "The taxonomy rename — planned in batches, run on local tiers, gated by zero visual change" ;
     kpred:feature-id "F203.4" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:priority "high" ;
     kpred:part-of kb:terminology-ontology ;
     kpred:decided "MATT, 2026-09-30: 'The large volume of refactor should be planned well, and executed mostly without cloud claude usage. Local models are decently capable on a clear objective, heavily visual testing can flag refactor (taxonomy consistency rename) regressions.'" ;
@@ -7945,6 +7945,9 @@ kb:taxonomy-rename rdf:type ktype:Phase ;
     kpred:honest-note "NOT BUILT (2026-09-30): no rename harness, no pixel mode, no classifier job. UNMEASURED: whether the local models classify 'node' reliably. Measure on a hand-labelled sample before trusting them, or the queue fills with noise that costs more to triage than the edits would have." ;
     kpred:depends-on kb:terminology-ontology ;
     kpred:depends-on kb:coding-standards ;
+    kpred:has-file "scripts/offline/rename-identifier.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/rename-identifier.test.ts" ;
+    kpred:progress "2026-09-30, BATCH 0 DONE (Matt chose the rename as the next main track). naming-ratchet, red on dev since before the day, is green: five camelCase module constants renamed to UPPER_SNAKE, three provenance-view.ts interfaces converted to type, App.PageState marked as an extension point, interface baseline lowered 282 -> 281. Every edit was made by scripts/offline/rename-identifier.ts through the TypeScript language service, not by hand or by a model — the first piece of this phase's harness. It refuses: a non-unique declaration, a taken new name, an interface that extends or merges, and an EXPORTED symbol named in any .svelte file (the language service cannot see inside .svelte; svelte2tsx support is the next step). One check it passed that text replacement would have failed: 'profile' occurs four times in settings-profile.ts and two are inside error strings, which it correctly left alone. NOT BUILT: svelte2tsx support, the pixel-equality mode for visual-diff.ts, seeded graph layout." ;
     kpred:relates-to kb:visual-acceptance ;
     kpred:relates-to kb:work-tiering .
 
