@@ -16,7 +16,7 @@
  * ~/.local/state/), like the host-check reports: vote reasons quote source lines and prompts, and a
  * working log is not something to commit by accident.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
@@ -40,9 +40,10 @@ export function logEvent(event: ActivityEvent, path = eventLogPath()): void {
   try {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     if (existsSync(path) && statSync(path).size > MAX_BYTES) {
-      // Keep the newer half rather than growing without bound or dropping everything.
-      const lines = readFileSync(path, 'utf8').split('\n');
-      writeFileSync(path, lines.slice(Math.floor(lines.length / 2)).join('\n'), { mode: 0o600 });
+      // Rotate by RENAME, which is atomic: a vote appended by a concurrent job lands in one file or
+      // the other. Reading and rewriting in place could drop one written in between (local review,
+      // 2026-09-30). One previous file is kept; the dashboard reads only the current one.
+      renameSync(path, `${path}.1`);
     }
     appendFileSync(path, `${JSON.stringify(event)}\n`, { mode: 0o600 });
   } catch {
