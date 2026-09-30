@@ -125,6 +125,7 @@
     "offline:score": "npx tsx scripts/offline/extraction-score.ts",
     "secret:scan": "npx tsx scripts/offline/secret-scan.ts --ci",
     "offline:economics": "npx tsx scripts/offline/graph-economics.ts",
+    "visual:local": "npx tsx scripts/offline/local-data-visual.ts",
     "offline:prompt-audit": "npx tsx scripts/offline/prompt-audit.ts",
     "safety:attest": "npx tsx scripts/offline/safety-attestation.ts",
     "safety:attest:record": "npx tsx scripts/offline/safety-attestation.ts --record",
@@ -239,9 +240,11 @@
     "cookie": "^0.7.0",
     "sharp": "$sharp",
     "adm-zip": "0.6.1",
-    "fast-uri": "^3.1.7",
+    "fast-uri": "^3.1.8",
     "postcss": "^8.5.23",
     "undici": "^7.29.1",
-    "browserslist": "^4.28.7"
+    "browserslist": "^4.28.7",
+    "brace-expansion@2": "^2.1.7",
+    "brace-expansion@5": "^5.0.12"
   }
 }

@@ -1,3 +1,95 @@
+## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
+
+**Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
+(audit fix: new brace-expansion/fast-uri advisories had failed `Dependencies (.)` on every PR)
+MERGED 2026-09-30. Remaining: #317 e2e locator (the Spaces map's hidden "could not be read" list
+shadowed graph names; why #309/#310 failed E2E) → #309 → #310 → #318 Laya → #319 plan (stacked on
+#310) → #321 local panel.
+
+**Matt's direction, 2026-09-30, now in the roadmap (#319):** the repo taxonomy is a main track
+alongside the Spaces map UI and source chunks. F225 `kb:feature-feasibility` (request → terms →
+spaces → assembled situation → target absences → built/partial/planned/absent → proposals/SOW),
+F203.3 `kb:taxonomy-links` (terms have NO edges to code/roadmap/tests today), F203.4
+`kb:taxonomy-rename` (edits by TS language service + svelte2tsx = script tier; local models
+classify ambiguous sites; pixel-equality gate first, VLM second).
+
+**Local panel (#321, F74.7) — USE IT.** Matt: big tasks, small subscription budget. Before judging
+many items yourself, build a task file and run `scripts/agent/local-panel.ts` (default qwen3.6 × 3
+votes; only non-unanimous items come back). `scripts/offline/term-senses.ts --word=node` is the
+worked example for the taxonomy; fixture + `--labels` re-scores it. Headless Claude Code on a local
+model works (isolated `CLAUDE_CONFIG_DIR`) but was slow and wrong — ground by script instead.
+This session used ZERO local calls until Matt asked; do not repeat that.
+
+**Next, in order:** F203.4 batch 0 — `naming-ratchet` is red on `dev` (constant/camelCase 21 vs
+16, interface 284 vs 282); then the rename harness + a pixel mode for `visual-diff.ts`; then
+F203.3 edges from `term-usage.ts`. F225 is DEFERRED by Matt (speculative, low) — do not build it.
+Open for Matt: Laya `adopt-agent-cli-backend` (subscription vs metered rails, provider terms unread).
+
+**Validation, 2026-09-30:** 3,374 unit tests / 240 files; `npm run check` 0 errors; `npm audit`
+0 in all three lockfiles (after #320); graph-lint 0 errors (12 warnings); `align` aligned;
+script sweep 40/41 (naming-ratchet, pre-existing). Full e2e not run locally; CI runs it.
+
+## 2026-09-29 — Opus 5.5 session: Spaces map, 0.2.5 plan, graph organization (Claude Code)
+
+**Working folder:** `/home/matt/Github/tripleNotes` stays on `dev` — Matt's `npm run dev` on :5173
+serves it. **Do all branch work in a git worktree** (`git worktree add <scratch> -b <branch> origin/dev`);
+switching branches in the main folder changed what Matt's running app showed without telling him.
+
+**Open PRs (base `dev`):** #308 stable ids (every space gets one; imports never adopt a taken one),
+#309 `npm run visual:local`. Both were in CI at hand-off; merge when green after
+`gh pr view <n> --json baseRefName`. Also open and untouched: #290 (ruleset), 7 Dependabot PRs aimed
+at `main` (#249 #252 #257 #258 #272 #273 #274 — future ones target `dev` since #294), #120 (July).
+
+**Merged to `dev` 2026-09-29:** #291 #292 (Codex security work), #293 Claude calls on Opus 5.5,
+#294 Dependabot→dev, #295 chunking claim corrected, #296 F221 source-corpus plan, #297 graph
+catalog (F113 ph.1 / F222), #298 docs status pages, #299 Spaces map, #300 ecosystem page,
+#301 0.2.5 plan, #302 solid labels, #303 background leap reading, #304 GraphCanvas (F92 step 1),
+#305 reviewer queue path, #306 e2e isolation, #307 tide-pool tank.
+
+### Remaining goals, in order
+
+1. **Spaces map — grouping and display options** (Matt: "by folder should be adjustable to by set,
+   or other grouping and display options"). Today each pool uses whatever basis its set has
+   (declared > defined > folder > name). Make the grouping a choice: by set, by folder, by name,
+   none; plus display options.
+2. **Ctrl/Cmd-click to multi-select spaces on the map, then "new set from selection"** (Matt's
+   goal, 2026-09-29). This is F218 phase 2, declared membership: the set must be stored as data
+   (`GraphSetDefinition` / `declaredSet` in `src/lib/storage/graph-sets.ts`, and ultimately a
+   `dcat:Catalog` per F113), shown differently from name- or folder-derived sets.
+3. **F92 step 2:** `/review` mounts `GraphCanvas`; then Spaces as a canvas mode with its own layout
+   (decided 2026-09-29; the SVG map stays as the fallback).
+4. **0.2.5 build order (decided):** shared canvas → F221 source corpus phase 1 (local PDF text via
+   pdf.js, originals kept in `sources/`, `chunks.ttl` per source, a notice when a source is cut at
+   12,000 characters — extraction still silently truncates today) → evidence anchors (F122.1) →
+   Source View UI (statement → exact chunk; source → full document → chunk → its statements) →
+   Spaces as a canvas mode. Proposals (F223, SHACL + `schema:Action`) are 0.2.6.
+5. **F224 SOW estimation** (Matt's key use case, recorded in the roadmap): a plain-language
+   customer request estimated against the engineering spaces. Needs several spaces as one scope
+   (F218 ph.4 / F214), requirement-to-existing-feature mapping, proposals, and estimates grounded
+   in the code graph's blast radius.
+6. **F222 phases 3–4:** a generated code dependency view; a generated HANDOFF.md (this file is
+   still hand-written, ~2k lines — move history to HANDOFF-ARCHIVE.md).
+7. **Smaller:** 32 offline scripts still write the relative `reckons-workspace/knowledge.pending.jsonl`
+   (worktree runs lose findings — see `scripts/offline/lib/main-workspace.ts`); the proposed
+   AGENTS.md fixes (kb-watch triggers, branch protection wording, "11 checks") were never applied;
+   the Claude model benchmark (`extraction-score.ts --models=claude:…`) needs a metered API key —
+   `claude-sonnet-5-5` / `claude-haiku-5-5` are unconfirmed, check the Models API before using them.
+
+### What this session learned (apply it)
+
+- **Check UI on real data, not invented data:** `npm run visual:local -- --serve=http://localhost:<port> --paths=/kb`.
+  Five invented spaces looked fine; Matt's 18 real ones did not.
+- **Put roadmap additions next to their entity, never at the end of the file** — four PRs collided
+  at end-of-file in one day.
+- **Read local-review findings from the main checkout's queue** (fixed for `code-review.ts` in #305).
+- **Compare full values before claiming a match** — a "duplicate stable id" was two ids sharing a
+  24-character prefix, compared on 8.
+- **On Node 22 the local e2e suite now runs** (147 tests); `publish-security.test.ts` skips below
+  Node 24, which CI uses.
+
+**Validation, 2026-09-29 (goes stale fast):** 3,379 unit tests; `npm run check` 0 errors;
+`npm run align` aligned; graph-lint 0 errors; desktop e2e 137 passed / 10 skipped.
+
 ## 2026-09-28 — Private reusable security checks (F172.1)
 
 Branch: `fix/private-host-health`, based on `dev`. The user requested a reusable local device
