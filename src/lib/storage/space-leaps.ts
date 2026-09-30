@@ -12,13 +12,22 @@
  * and the registry otherwise learns a space's id only when that space is opened on this device, via
  * Drive sync, or on import — so a leap into a space never opened here would look unresolved.
  */
+import Dexie from 'dexie';
 import { KBaseDB } from './db';
 import { getRegistry, recordLeapTargets, registerStableId, type KbEntry } from './kb-registry';
 import { leapTargetCounts } from '../rdf/space-graph';
 import { LEAP_PRED } from '../rdf/kb-leap';
 import type { Statement } from '../rdf/types';
 
+/** A space registered here whose database does not exist on this device (e.g. known only from a synced folder). */
+export class SpaceNotOnDevice extends Error {
+  constructor(id: string) { super(`no data for "${id}" on this device yet — open it once to load it`); this.name = 'SpaceNotOnDevice'; }
+}
+
 export async function countLeapsInSpace(id: string): Promise<{ counts: Record<string, number>; stableId?: string }> {
+  // Opening a database that does not exist CREATES it, empty. Check first, so reading the map never
+  // leaves behind an empty database for a space that lives only in a workspace folder or in Drive.
+  if (!(await Dexie.exists(id))) throw new SpaceNotOnDevice(id);
   const db = new KBaseDB(id);
   try {
     const leaps = (await db.statements.filter((s: Statement) => s.p.value === LEAP_PRED).toArray()) as Statement[];
@@ -38,6 +47,8 @@ export function spacesNeedingCount(entries: readonly KbEntry[], currentId: strin
     (e.leapTargets === undefined || (e.lastModified ?? 0) > (e.leapsCountedAt ?? 0)));
 }
 
+export type SpaceReadFailure = { id: string; name: string; reason: string; notOnDevice: boolean };
+
 const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 30));
 
 /** Count and record the given spaces, one at a time. A space that cannot be opened is skipped and reported. */
@@ -45,8 +56,8 @@ export async function countLeapsInSpaces(
   spaces: readonly KbEntry[],
   onProgress?: (done: number, total: number) => void,
   shouldStop: () => boolean = () => false,
-): Promise<{ counted: number; failed: string[] }> {
-  const failed: string[] = [];
+): Promise<{ counted: number; failed: SpaceReadFailure[] }> {
+  const failed: SpaceReadFailure[] = [];
   let counted = 0;
   for (const [i, space] of spaces.entries()) {
     if (shouldStop()) break;
@@ -56,8 +67,13 @@ export async function countLeapsInSpaces(
       if (stableId && !getRegistry().find((k) => k.id === space.id)?.stableId) registerStableId(space.id, stableId);
       recordLeapTargets(space.id, counts);
       counted++;
-    } catch {
-      failed.push(space.name);
+    } catch (e) {
+      // KEEP THE REASON. The first version dropped it, so "could not be read" was indistinguishable
+      // from "never tried" and 17 of Matt's 18 spaces failed with nothing to go on (2026-09-29).
+      const notOnDevice = e instanceof SpaceNotOnDevice;
+      const reason = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+      failed.push({ id: space.id, name: space.name, reason, notOnDevice });
+      if (!notOnDevice) console.warn(`[spaces map] could not read "${space.name}" (${space.id}):`, e);
     }
     await pause();
   }

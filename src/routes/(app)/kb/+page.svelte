@@ -240,6 +240,7 @@
    * should simply be right (Matt, 2026-09-29, on a button that made the map look empty until pressed).
    */
   let leapCounting = $state<{ done: number; total: number } | null>(null);
+  let leapReadFailures = $state<import('$lib/storage/space-leaps').SpaceReadFailure[]>([]);
   let leaveSpacesTab = false;
   // Each space is tried ONCE per visit. A space that cannot be read stays "needs counting", and
   // without this the effect would retry it every time the previous pass finished, indefinitely.
@@ -252,6 +253,7 @@
     if (!stale.length) return;
     leapCounting = { done: 0, total: stale.length };
     countLeapsInSpaces(stale, (done, total) => { leapCounting = { done, total }; }, () => leaveSpacesTab)
+      .then((result) => { leapReadFailures = [...leapReadFailures, ...result.failed]; })
       .finally(() => { leapCounting = null; if (!leaveSpacesTab) localKbs = getRegistry(); });
   });
 
@@ -862,6 +864,7 @@
         currentId={currentKbId}
         onOpen={handleSwitch}
         counting={leapCounting}
+        failures={leapReadFailures}
       />
     </details>
   </section>

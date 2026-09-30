@@ -12,6 +12,7 @@
     currentId,
     onOpen,
     counting = null,
+    failures = [],
   }: {
     spaces: SpaceInput[];
     sets: SetInput[];
@@ -19,7 +20,11 @@
     onOpen: (id: string) => void;
     /** Progress of the background count over other spaces, or null when idle. */
     counting?: { done: number; total: number } | null;
+    /** Spaces the background read could not open, each with its reason. */
+    failures?: { id: string; name: string; reason: string; notOnDevice: boolean }[];
   } = $props();
+  const notOnDevice = $derived(failures.filter((f) => f.notOnDevice));
+  const readErrors = $derived(failures.filter((f) => !f.notOnDevice));
 
   const graph = $derived(buildSpaceGraph(spaces, sets));
   const byId = $derived(new Map(graph.nodes.map((n) => [n.id, n])));
@@ -87,10 +92,24 @@
     {graph.nodes.length} space{graph.nodes.length === 1 ? '' : 's'} · {graph.edges.length} connection{graph.edges.length === 1 ? '' : 's'}
     {#if counting}
       · <span class="counting" role="status">reading leaps in other spaces… {counting.done}/{counting.total}</span>
-    {:else if graph.uncounted > 0}
-      · <span class="uncounted">{graph.uncounted} space{graph.uncounted === 1 ? '' : 's'} could not be read</span>
+    {:else if readErrors.length > 0}
+      · <span class="uncounted">{readErrors.length} space{readErrors.length === 1 ? '' : 's'} could not be read</span>
+    {/if}
+    {#if !counting && notOnDevice.length > 0}
+      · <span class="muted">{notOnDevice.length} not on this device yet</span>
     {/if}
   </p>
+
+  {#if !counting && failures.length > 0}
+    <details class="read-report">
+      <summary class="mono">why some spaces are not drawn with their connections</summary>
+      <ul>
+        {#each failures as f (f.id)}
+          <li><strong>{f.name}</strong> <span class="mono muted">{f.notOnDevice ? 'not on this device yet — open it once to load it' : f.reason}</span></li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
 
   <svg viewBox={`0 0 ${graph.width} ${graph.height}`} class="map-svg" role="group" aria-label="Map of your spaces and the leaps between them">
     <defs>
@@ -214,6 +233,9 @@
   .map-summary { font-size: 0.75rem; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0; }
   .uncounted { color: var(--warn); }
   .counting { color: var(--accent); }
+  .read-report { font-size: 0.75rem; color: var(--muted); }
+  .read-report summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+  .read-report ul { margin: 0.25rem 0 0; padding-left: 1rem; display: flex; flex-direction: column; gap: 0.2rem; }
   .map-svg { width: 100%; max-width: 560px; height: auto; align-self: center; border: 1px solid var(--line); border-radius: var(--rad); overflow: hidden; }
   .ray { fill: #bff6ff; opacity: 0.06; }
   .ray-2 { opacity: 0.045; }
