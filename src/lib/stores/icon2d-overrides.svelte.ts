@@ -6,11 +6,11 @@
  */
 import { db } from '../storage/db';
 
-let _overrides = $state(new Map<string, string>()); // IRI -> URL
+let overrides = $state(new Map<string, string>()); // IRI -> URL
 
 /** Reactive getter — returns current IRI -> URL map. */
 export function icon2dOverrides(): Map<string, string> {
-  return _overrides;
+  return overrides;
 }
 
 /** Load all icon2d overrides from IndexedDB on startup. */
@@ -20,19 +20,19 @@ export async function loadIcon2dOverrides(): Promise<void> {
   for (const row of rows) {
     map.set(row.id, row.url);
   }
-  _overrides = map;
+  overrides = map;
 }
 
 /** Store a 2D icon URL for the given entity IRI. */
 export async function setIcon2d(iri: string, url: string): Promise<void> {
   await db.icon2dOverrides.put({ id: iri, url });
-  _overrides = new Map(_overrides).set(iri, url);
+  overrides = new Map(overrides).set(iri, url);
 }
 
 /** Remove the 2D icon for the given entity IRI. */
 export async function clearIcon2d(iri: string): Promise<void> {
   await db.icon2dOverrides.delete(iri);
-  const next = new Map(_overrides);
+  const next = new Map(overrides);
   next.delete(iri);
-  _overrides = next;
+  overrides = next;
 }

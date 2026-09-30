@@ -9,26 +9,26 @@ import type { GraphLayout } from '$lib/rdf/view-suggestions';
 
 // ── Chat open state ───────────────────────────────────────────────────────────
 
-let _chatOpen = $state(false);
-let _openWithMessage = $state<string | null>(null);
+let chatOpen = $state(false);
+let openWithMessage = $state<string | null>(null);
 
 export function shellyChatOpen(): boolean {
-  return _chatOpen;
+  return chatOpen;
 }
 export function setShellyChatOpen(open: boolean) {
-  _chatOpen = open;
-  if (!open) _openWithMessage = null;
+  chatOpen = open;
+  if (!open) openWithMessage = null;
 }
 export function shellyOpenMessage(): string | null {
-  return _openWithMessage;
+  return openWithMessage;
 }
 /** Open Shelly chat, optionally forwarding a message. */
 export function requestShellyChat(message?: string) {
-  if (message) _openWithMessage = message;
-  _chatOpen = true;
+  if (message) openWithMessage = message;
+  chatOpen = true;
 }
 export function clearShellyOpen() {
-  _openWithMessage = null;
+  openWithMessage = null;
 }
 
 // ── View adjustments ──────────────────────────────────────────────────────────
@@ -57,64 +57,64 @@ export interface ViewAdjust {
   spotlight?: string[];
 }
 
-let _viewAdjust = $state<ViewAdjust | null>(null);
-let _spotlight = $state<string[]>([]);
+let viewAdjust = $state<ViewAdjust | null>(null);
+let spotlight = $state<string[]>([]);
 
 export function shellyViewAdjust(): ViewAdjust | null {
-  return _viewAdjust;
+  return viewAdjust;
 }
 export function shellySpotlight(): string[] {
-  return _spotlight;
+  return spotlight;
 }
 export function applyShellyViewAdjust(v: ViewAdjust) {
-  _viewAdjust = v;
-  if (v.spotlight !== undefined) _spotlight = v.spotlight.map(iri => `i:${iri}`);
+  viewAdjust = v;
+  if (v.spotlight !== undefined) spotlight = v.spotlight.map(iri => `i:${iri}`);
 }
 export function clearShellyViewAdjust() {
-  _viewAdjust = null;
+  viewAdjust = null;
 }
 export function clearShellySpotlight() {
-  _spotlight = [];
+  spotlight = [];
 }
 
 // ── Explore mode ──────────────────────────────────────────────────────────────
 
-let _exploring = $state(false);
+let exploring = $state(false);
 
 export function exploreOpen(): boolean {
-  return _exploring;
+  return exploring;
 }
 export function startExplore() {
-  _exploring = true;
-  _chatOpen = true;
+  exploring = true;
+  chatOpen = true;
 }
 export function stopExplore() {
-  _exploring = false;
-  _spotlight = [];
+  exploring = false;
+  spotlight = [];
 }
 
 // ── Story mode ───────────────────────────────────────────────────────────────
 
 let _storyId = $state<string | null>(null);
-let _storyAutoPlay = $state(false);
+let storyAutoPlay = $state(false);
 
 export function activeStoryId(): string | null {
   return _storyId;
 }
 export function storyAutoPlayRequested(): boolean {
-  return _storyAutoPlay;
+  return storyAutoPlay;
 }
 export function clearStoryAutoPlay() {
-  _storyAutoPlay = false;
+  storyAutoPlay = false;
 }
 export function startStory(storyId: string, autoPlay = false) {
   _storyId = storyId;
-  _storyAutoPlay = autoPlay;
-  _exploring = false;
-  _chatOpen = true;
+  storyAutoPlay = autoPlay;
+  exploring = false;
+  chatOpen = true;
 }
 export function stopStory() {
   _storyId = null;
-  _storyAutoPlay = false;
-  _spotlight = [];
+  storyAutoPlay = false;
+  spotlight = [];
 }

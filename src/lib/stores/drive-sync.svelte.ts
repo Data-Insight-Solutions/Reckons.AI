@@ -21,23 +21,23 @@ const DEFAULT_FOLDER_NAME = 'Reckons.AI';
 const PUSH_DEBOUNCE_MS = 5_000;   // network write — coalesce bursts of edits
 const POLL_INTERVAL_MS = 45_000;  // cloud pull — gentler than the local 10s poll
 
-let _folderId = $state<string | null>(null);
+let folderId = $state<string | null>(null);
 let _folderName = $state<string | null>(null);
-let _lastSync = $state<number | null>(null);
-let _syncedCount = $state(0);
-let _busy = $state(false);
-let _autoSync = $state<boolean>(readAutoSyncPref());
-let _pushTimer: ReturnType<typeof setTimeout> | null = null;
-let _pollTimer: ReturnType<typeof setInterval> | null = null;
+let lastSync = $state<number | null>(null);
+let syncedCount = $state(0);
+let busy = $state(false);
+let autoSync = $state<boolean>(readAutoSyncPref());
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
 /** file path-key → last-seen content hash, to skip re-pulling our own writes. */
 const _seenHashes = new Map<string, string>();
 
 export function driveFolderName(): string | null { return _folderName; }
-export function driveLinked(): boolean { return _folderId !== null; }
-export function driveLastSync(): number | null { return _lastSync; }
-export function driveSyncedCount(): number { return _syncedCount; }
-export function driveBusy(): boolean { return _busy; }
-export function driveAutoSync(): boolean { return _autoSync; }
+export function driveLinked(): boolean { return folderId !== null; }
+export function driveLastSync(): number | null { return lastSync; }
+export function driveSyncedCount(): number { return syncedCount; }
+export function driveBusy(): boolean { return busy; }
+export function driveAutoSync(): boolean { return autoSync; }
 /** True once a Google client id is configured (Settings → Integrations). */
 export function driveConfigured(): boolean { return !!settings().googleClientId; }
 
@@ -74,14 +74,14 @@ export function loadDriveFolder(): void {
     const raw = localStorage.getItem(FOLDER_KEY);
     if (!raw) return;
     const { id, name } = JSON.parse(raw);
-    _folderId = id ?? null;
+    folderId = id ?? null;
     _folderName = name ?? null;
   } catch { /* ignore */ }
 }
 
 function persistFolder(): void {
   if (typeof localStorage === 'undefined') return;
-  if (_folderId) localStorage.setItem(FOLDER_KEY, JSON.stringify({ id: _folderId, name: _folderName }));
+  if (folderId) localStorage.setItem(FOLDER_KEY, JSON.stringify({ id: folderId, name: _folderName }));
   else localStorage.removeItem(FOLDER_KEY);
 }
 
@@ -97,10 +97,10 @@ export async function linkDriveFolder(name: string = DEFAULT_FOLDER_NAME): Promi
     const { ensureFolder } = await import('../integrations/google/drive');
     await ensureAuth(clientId);
     const id = await ensureFolder(name);
-    _folderId = id;
+    folderId = id;
     _folderName = name;
     persistFolder();
-    if (_autoSync) startDrivePolling();
+    if (autoSync) startDrivePolling();
     return true;
   } catch (e) {
     console.error('[drive-sync] link failed:', e);
@@ -110,12 +110,12 @@ export async function linkDriveFolder(name: string = DEFAULT_FOLDER_NAME): Promi
 
 export function unlinkDrive(): void {
   stopDrivePolling();
-  if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
-  _folderId = null;
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+  folderId = null;
   _folderName = null;
-  _assetsFolderId = null;
-  _lastSync = null;
-  _syncedCount = 0;
+  assetsFolderId = null;
+  lastSync = null;
+  syncedCount = 0;
   _seenHashes.clear();
   persistFolder();
 }
@@ -147,14 +147,14 @@ async function serializeKb(kbId: string): Promise<{ ttl: string; assets: Collect
   }
 }
 
-let _assetsFolderId: string | null = null;
+let assetsFolderId: string | null = null;
 /** Find-or-create the shared `assets/` subfolder under the linked Drive folder. */
 async function ensureAssetsFolder(): Promise<string | null> {
-  if (!_folderId) return null;
-  if (_assetsFolderId) return _assetsFolderId;
+  if (!folderId) return null;
+  if (assetsFolderId) return assetsFolderId;
   const { ensureFolder } = await import('../integrations/google/drive');
-  _assetsFolderId = await ensureFolder('assets', _folderId);
-  return _assetsFolderId;
+  assetsFolderId = await ensureFolder('assets', folderId);
+  return assetsFolderId;
 }
 
 /** Sanitize a KB name into a safe Drive filename stem (mirrors the local layout). */
@@ -165,14 +165,14 @@ function fileStem(name: string, id: string): string {
 
 /** Push every registered KB out to the linked Drive folder. Returns files written. */
 export async function driveSyncPush(): Promise<number> {
-  if (!_folderId || _busy) return 0;
+  if (!folderId || busy) return 0;
   if (!(await ensureDriveAuth())) return 0;
-  _busy = true;
+  busy = true;
   try {
     const { listFolderTurtles, uploadTurtleToFolder, uploadBinaryToFolder, listFolderFiles } =
       await import('../integrations/google/drive');
     const { extToMime } = await import('../storage/kb-assets');
-    const existing = new Map((await listFolderTurtles(_folderId)).map((f) => [f.name, f.id]));
+    const existing = new Map((await listFolderTurtles(folderId)).map((f) => [f.name, f.id]));
     let pushed = 0;
     for (const entry of getRegistry()) {
       const ser = await serializeKb(entry.id);
@@ -180,7 +180,7 @@ export async function driveSyncPush(): Promise<number> {
       const stem = fileStem(entry.name, entry.id);
       const filename = `${stem}.ttl`;
       try {
-        await uploadTurtleToFolder(filename, ser.ttl, _folderId, existing.get(filename));
+        await uploadTurtleToFolder(filename, ser.ttl, folderId, existing.get(filename));
         _seenHashes.set(filename, hashString(ser.ttl)); // loop guard: don't re-pull our own write
 
         // Binary sidecar assets → a shared assets/ subfolder, KB-scoped filenames.
@@ -199,11 +199,11 @@ export async function driveSyncPush(): Promise<number> {
         console.warn(`[drive-sync] push failed for "${entry.name}":`, e);
       }
     }
-    _syncedCount = pushed;
-    _lastSync = Date.now();
+    syncedCount = pushed;
+    lastSync = Date.now();
     return pushed;
   } finally {
-    _busy = false;
+    busy = false;
   }
 }
 
@@ -215,9 +215,9 @@ export async function driveSyncPush(): Promise<number> {
 export async function driveSyncPull(): Promise<{ imported: string[]; updated: string[] }> {
   const imported: string[] = [];
   const updated: string[] = [];
-  if (!_folderId || _busy) return { imported, updated };
+  if (!folderId || busy) return { imported, updated };
   if (!(await ensureDriveAuth())) return { imported, updated };
-  _busy = true;
+  busy = true;
   try {
     const { listFolderTurtles, downloadFile } = await import('../integrations/google/drive');
     const { getCurrentKbId } = await import('../storage/kb-registry');
@@ -226,7 +226,7 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
     const currentId = getCurrentKbId();
     let activeChanged = false;
 
-    for (const file of await listFolderTurtles(_folderId)) {
+    for (const file of await listFolderTurtles(folderId)) {
       let ttl: string;
       try { ttl = await downloadFile(file.id); } catch { continue; }
       const h = hashString(ttl);
@@ -274,7 +274,7 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
     }
 
     if (imported.length || updated.length) {
-      _lastSync = Date.now();
+      lastSync = Date.now();
       if (activeChanged) {
         const { loadAll } = await import('./kb.svelte');
         await loadAll();
@@ -282,7 +282,7 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
     }
     return { imported, updated };
   } finally {
-    _busy = false;
+    busy = false;
   }
 }
 
@@ -297,25 +297,25 @@ export async function driveResyncNow(): Promise<{ imported: string[]; updated: s
 
 /** Debounced push after a KB mutation. No-op unless linked with auto-sync on. */
 export function scheduleDrivePush(): void {
-  if (!_folderId || !_autoSync) return;
-  if (_pushTimer) clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(() => { _pushTimer = null; void driveSyncPush(); }, PUSH_DEBOUNCE_MS);
+  if (!folderId || !autoSync) return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushTimer = null; void driveSyncPush(); }, PUSH_DEBOUNCE_MS);
 }
 
 /** Poll the Drive folder for external changes (idempotent). */
 export function startDrivePolling(ms: number = POLL_INTERVAL_MS): void {
-  if (_pollTimer || !_folderId || typeof setInterval === 'undefined') return;
-  _pollTimer = setInterval(() => { void driveSyncPull(); }, ms);
+  if (pollTimer || !folderId || typeof setInterval === 'undefined') return;
+  pollTimer = setInterval(() => { void driveSyncPull(); }, ms);
 }
 
 export function stopDrivePolling(): void {
-  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
 /** Toggle auto-sync (persisted). Starts/stops polling to match. */
 export function setDriveAutoSync(on: boolean): void {
-  _autoSync = on;
+  autoSync = on;
   if (typeof localStorage !== 'undefined') localStorage.setItem(AUTOSYNC_KEY, on ? 'true' : 'false');
-  if (on && _folderId) { void driveSyncPush().finally(() => startDrivePolling()); }
+  if (on && folderId) { void driveSyncPush().finally(() => startDrivePolling()); }
   else stopDrivePolling();
 }

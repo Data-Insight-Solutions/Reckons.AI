@@ -33,10 +33,10 @@ const DISMISSED_KEY = 'reckons:dismissed-tips';
 let _notifications = $state<AppNotification[]>([]);
 
 /** Reactive height of the rendered notification stack (px). Updated by NotificationStack. */
-let _stackHeight = $state(0);
+let stackHeight = $state(0);
 export const notificationStackHeight = {
-  get: () => _stackHeight,
-  set: (h: number) => { _stackHeight = h; },
+  get: () => stackHeight,
+  set: (h: number) => { stackHeight = h; },
 };
 
 function getDismissed(): Set<string> {
@@ -63,15 +63,15 @@ function saveDismissed(ids: Set<string>) {
  * are exempt, because the one case that must never be deferred is a warning about something going
  * wrong right now.
  */
-let _suppressed = $state(false);
+let suppressed = $state(false);
 
 /** Called by the page that knows whether the user is looking at the marketing landing. */
-export function setNotificationsSuppressed(v: boolean): void { _suppressed = v; }
+export function setNotificationsSuppressed(v: boolean): void { suppressed = v; }
 
-export function notificationsSuppressed(): boolean { return _suppressed; }
+export function notificationsSuppressed(): boolean { return suppressed; }
 
 export function notifications(): AppNotification[] {
-  return _suppressed ? _notifications.filter((n) => n.important) : _notifications;
+  return suppressed ? _notifications.filter((n) => n.important) : _notifications;
 }
 
 export function pushNotification(n: Omit<AppNotification, 'id'> & { id?: string }): void {

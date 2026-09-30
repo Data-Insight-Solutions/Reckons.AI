@@ -26,8 +26,8 @@ const QUERY = {
 } as const;
 
 let _breakpoint = $state<Breakpoint>('desktop');
-let _touch = $state(false);
-let _ready = $state(false);
+let touch = $state(false);
+let ready = $state(false);
 
 /** Current breakpoint band. */
 export function breakpoint(): Breakpoint {
@@ -55,11 +55,11 @@ export function isCompact(): boolean {
  * on this, not on width.
  */
 export function isTouch(): boolean {
-	return _touch;
+	return touch;
 }
 /** True once `matchMedia` has been read on the client; false during SSR/prerender. */
 export function viewportReady(): boolean {
-	return _ready;
+	return ready;
 }
 
 /**
@@ -72,7 +72,7 @@ export function resolveBreakpoint(mobileMatches: boolean, tabletMatches: boolean
 	return 'desktop';
 }
 
-let _teardown: (() => void) | null = null;
+let teardown: (() => void) | null = null;
 
 /**
  * Wire `matchMedia` listeners so the store tracks the live viewport. Idempotent
@@ -80,7 +80,7 @@ let _teardown: (() => void) | null = null;
  * layout's `onMount`; returns a teardown for the `onMount` cleanup.
  */
 export function initViewport(): () => void {
-	if (_teardown) return _teardown;
+	if (teardown) return teardown;
 	if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
 		return () => {};
 	}
@@ -89,18 +89,18 @@ export function initViewport(): () => void {
 	const mqTouch = window.matchMedia(QUERY.touch);
 	const sync = () => {
 		_breakpoint = resolveBreakpoint(mqMobile.matches, mqTablet.matches);
-		_touch = mqTouch.matches;
-		_ready = true;
+		touch = mqTouch.matches;
+		ready = true;
 	};
 	sync();
 	mqMobile.addEventListener('change', sync);
 	mqTablet.addEventListener('change', sync);
 	mqTouch.addEventListener('change', sync);
-	_teardown = () => {
+	teardown = () => {
 		mqMobile.removeEventListener('change', sync);
 		mqTablet.removeEventListener('change', sync);
 		mqTouch.removeEventListener('change', sync);
-		_teardown = null;
+		teardown = null;
 	};
-	return _teardown;
+	return teardown;
 }

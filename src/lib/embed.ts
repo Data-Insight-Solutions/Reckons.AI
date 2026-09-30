@@ -59,11 +59,11 @@ export function setEmbedConsentHandler(
 }
 
 /** Allow external code (settings) to override which model is used */
-let _modelOverride: string | null = null;
+let modelOverride: string | null = null;
 export function setEmbeddingModel(model: string | undefined) {
   const next = model || DEFAULT_MODEL;
-  if (next !== _modelOverride) {
-    _modelOverride = next;
+  if (next !== modelOverride) {
+    modelOverride = next;
     // If a different model was loaded, reset so next call loads the new one
     if (loadedModel && loadedModel !== next) {
       extractor = null;
@@ -73,7 +73,7 @@ export function setEmbeddingModel(model: string | undefined) {
 }
 
 function resolveModel(): string {
-  return _modelOverride || DEFAULT_MODEL;
+  return modelOverride || DEFAULT_MODEL;
 }
 
 async function isEmbedCached(model: string): Promise<boolean> {

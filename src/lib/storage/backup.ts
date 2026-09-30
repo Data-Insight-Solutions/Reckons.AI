@@ -158,19 +158,19 @@ export function parseSettingsProfile(json: string, current: SettingsRecord = DEF
 
 // ---- Auto-save state (in-memory; lost on page reload) ----
 
-let _autoSaveHandle: FileSystemFileHandle | null = null;
-let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autoSaveHandle: FileSystemFileHandle | null = null;
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function isAutoSaveSupported(): boolean {
   return typeof window !== 'undefined' && 'showSaveFilePicker' in window;
 }
 
 export function hasAutoSaveFile(): boolean {
-  return _autoSaveHandle !== null;
+  return autoSaveHandle !== null;
 }
 
 export function getAutoSaveFileName(): string | null {
-  return _autoSaveHandle?.name ?? null;
+  return autoSaveHandle?.name ?? null;
 }
 
 /**
@@ -180,7 +180,7 @@ export function getAutoSaveFileName(): string | null {
 export async function pickAutoSaveFile(): Promise<boolean> {
   if (!isAutoSaveSupported()) return false;
   try {
-    _autoSaveHandle = await (window as Window & typeof globalThis & {
+    autoSaveHandle = await (window as Window & typeof globalThis & {
       showSaveFilePicker(opts?: unknown): Promise<FileSystemFileHandle>
     }).showSaveFilePicker({
       suggestedName: `${kbFileSlug()}.ttl`,
@@ -193,8 +193,8 @@ export async function pickAutoSaveFile(): Promise<boolean> {
 }
 
 export function clearAutoSaveFile(): void {
-  _autoSaveHandle = null;
-  if (_autoSaveTimer) { clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }
+  autoSaveHandle = null;
+  if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 }
 
 /**
@@ -202,16 +202,16 @@ export function clearAutoSaveFile(): void {
  * Call this after every KB mutation (setStatus, addStatements, etc.)
  */
 export function scheduleAutoSave(): void {
-  if (!_autoSaveHandle) return;
-  if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
-  _autoSaveTimer = setTimeout(() => {
-    _autoSaveTimer = null;
+  if (!autoSaveHandle) return;
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null;
     triggerAutoSave();
   }, 2000);
 }
 
 async function triggerAutoSave(): Promise<void> {
-  if (!_autoSaveHandle) return;
+  if (!autoSaveHandle) return;
   try {
     const [statements, sources, settings] = await Promise.all([
       db.statements.toArray(),
@@ -219,7 +219,7 @@ async function triggerAutoSave(): Promise<void> {
       db.settings.get('main')
     ]);
     const turtle = toTurtleFull(statements, sources, { header: 'auto-save', kbStableId: settings?.kbStableId });
-    const writable = await _autoSaveHandle.createWritable();
+    const writable = await autoSaveHandle.createWritable();
     await writable.write(turtle);
     await writable.close();
   } catch (err) {

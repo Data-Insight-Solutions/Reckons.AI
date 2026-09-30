@@ -7,18 +7,18 @@
  */
 import { db } from '../storage/db';
 
-let _overrides = $state(new Map<string, string>());
+let overrides = $state(new Map<string, string>());
 
 /** Reactive getter — returns the current IRI → URL map. */
 export function glbOverrides(): Map<string, string> {
-  return _overrides;
+  return overrides;
 }
 
 /** Load all overrides from IndexedDB on startup. Also runs a one-time migration
  *  that moves any legacy KB_ICON3D triples out of the statement store. */
 export async function loadGlbOverrides(): Promise<void> {
   const rows = await db.glbOverrides.toArray();
-  _overrides = new Map(rows.map((r) => [r.id, r.url]));
+  overrides = new Map(rows.map((r) => [r.id, r.url]));
   await _migrateKbIcon3d();
 }
 
@@ -34,9 +34,9 @@ async function _migrateKbIcon3d(): Promise<void> {
   for (const stmt of stmts) {
     if (stmt.s.kind === 'iri' && stmt.o.kind === 'literal') {
       // Migrate value unless already locally overridden
-      if (!_overrides.has(stmt.s.value)) {
+      if (!overrides.has(stmt.s.value)) {
         await db.glbOverrides.put({ id: stmt.s.value, url: stmt.o.value });
-        _overrides = new Map(_overrides).set(stmt.s.value, stmt.o.value);
+        overrides = new Map(overrides).set(stmt.s.value, stmt.o.value);
       }
     }
     // Reject the KB statement regardless
@@ -47,13 +47,13 @@ async function _migrateKbIcon3d(): Promise<void> {
 /** Persist a GLB override for the given IRI. */
 export async function setGlb(iri: string, url: string): Promise<void> {
   await db.glbOverrides.put({ id: iri, url });
-  _overrides = new Map(_overrides).set(iri, url);
+  overrides = new Map(overrides).set(iri, url);
 }
 
 /** Remove the GLB override for the given IRI. */
 export async function clearGlb(iri: string): Promise<void> {
   await db.glbOverrides.delete(iri);
-  const next = new Map(_overrides);
+  const next = new Map(overrides);
   next.delete(iri);
-  _overrides = next;
+  overrides = next;
 }
