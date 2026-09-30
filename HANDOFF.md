@@ -1,9 +1,10 @@
 ## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
 
 **Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
-MERGED 2026-09-30. Remaining: #320 audit fix (new brace-expansion/fast-uri advisories fail `Dependencies (.)` on EVERY PR) →
-#317 e2e locator (the Spaces map's hidden "could not be read" list shadowed graph names; this
-is why #309/#310 failed E2E) → rerun CI on #308 #309 #310 → #318 Laya → #319 plan (stacked on #310).
+(audit fix: new brace-expansion/fast-uri advisories had failed `Dependencies (.)` on every PR)
+MERGED 2026-09-30. Remaining: #317 e2e locator (the Spaces map's hidden "could not be read" list
+shadowed graph names; why #309/#310 failed E2E) → #309 → #310 → #318 Laya → #319 plan (stacked on
+#310) → #321 local panel.
 
 **Matt's direction, 2026-09-30, now in the roadmap (#319):** the repo taxonomy is a main track
 alongside the Spaces map UI and source chunks. F225 `kb:feature-feasibility` (request → terms →
