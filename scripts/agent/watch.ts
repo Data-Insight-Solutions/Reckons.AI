@@ -9,6 +9,10 @@
  *      it counts every caller (the app, code-review.ts, another agent), not only the panel. A long
  *      silence is reported as silence, because "no local use at all" is the failure it exists to show.
  *   4. The local panel's runs: progress, disagreements so far, and the latest answers with reasons.
+ *   5. JOBS (scripts/agent/job-watch.ts): running now with attempt n/max, the last 5 finished, and any
+ *      OPEN CIRCUIT (a job that failed the same way max-attempts times and is now refused).
+ *      The task queue (runner.ts) is NOT shown: that file is a top-level script that process.exit()s
+ *      on import, so there is no side-effect-free reader to call.
  *
  * Usage:
  *   npm run agent:watch                 live, refreshing every 2 s (Ctrl-C to quit)
@@ -24,6 +28,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DEFAULT_MAX_ATTEMPTS, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
 import { ago, eventLogPath, foldRuns, parseGinLine, readEvents, type OllamaRequest, type RunView } from './local-activity.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -37,7 +42,19 @@ export type Snapshot = {
   /** null when the server log could not be read on this machine — unknown, not empty. */
   requests: OllamaRequest[] | null;
   runs: RunView[];
+  jobs?: JobsView;
 };
+
+export type JobsView = { running: CurrentJob[]; finished: HistRun[]; circuits: { name: string; count: number; signature: string }[] };
+
+export function jobsView(): JobsView {
+  const all = readRuns();
+  return {
+    running: readCurrent(),
+    finished: all.filter((r) => r.status !== 'reset').slice(-5),
+    circuits: openCircuits(all, DEFAULT_MAX_ATTEMPTS),
+  };
+}
 
 async function ollamaState(): Promise<Snapshot['ollama']> {
   try {
@@ -110,7 +127,7 @@ export async function snapshot(): Promise<Snapshot> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const runs = foldRuns(readEvents()).filter((r) => !r.finished || new Date(r.startedAt) >= today);
-  return { ollama, gpus: gpus(), requests: serverRequests(), runs };
+  return { ollama, gpus: gpus(), requests: serverRequests(), runs, jobs: jobsView() };
 }
 
 const color = !process.env.NO_COLOR && process.stdout.isTTY;
@@ -193,11 +210,32 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
       out.push(`     ${dim(v.model.split(':')[0])} ${v.item.slice(-48)} → ${answer}${why}`);
     }
   }
+  if (s.jobs) out.push('', ...renderJobs(s.jobs, now));
   return out.join('\n');
+}
+
+export function renderJobs(j: JobsView, now = new Date()): string[] {
+  const out = [`${bold('JOBS')} ${dim('scripts/agent/job-watch.ts · circuit breaker: the same failure repeated refuses the next run')}`];
+  for (const c of j.circuits) out.push(`  ${red('⛔ CIRCUIT OPEN')} ${bold(c.name)} — ${c.count} identical failures: ${c.signature} ${dim('(--reset to clear)')}`);
+  if (j.running.length === 0) out.push(`  ${dim('nothing running')}`);
+  for (const r of j.running) out.push(`  ${yellow('▶')} ${bold(r.name)}  ${secs(now.getTime() - new Date(r.started).getTime())} · attempt ${r.attempt}/${r.maxAttempts} · pid ${r.pid}`);
+  out.push(`  ${dim('queued: not shown (runner.ts has no side-effect-free queue reader)')}`);
+  if (j.finished.length === 0) out.push(`  ${dim('no finished runs recorded')}`);
+  for (const f of j.finished.slice().reverse()) {
+    const mark = f.status === 'passed' ? green('✓') : f.status === 'refused' ? yellow('⊘') : red('✗');
+    out.push(`  ${mark} ${bold(f.name ?? '?')} ${f.status} ${dim(ago(f.startedAt, now))} — ${(f.headline ?? '').slice(0, 90)}`);
+  }
+  return out;
 }
 
 /** One line for a status bar. Never more than ~60 characters, never an error. */
 export function statusline(s: Snapshot, now = new Date()): string {
+  const j = s.jobs;
+  const seg = j && (j.running.length || j.circuits.length) ? ` · jobs: ${[j.running.length ? `${j.running.length} running` : '', j.circuits.length ? `${j.circuits.length} circuit open` : ''].filter(Boolean).join(', ')}` : '';
+  return statuslineBase(s, now) + seg;
+}
+
+function statuslineBase(s: Snapshot, now: Date): string {
   if (!s.ollama.up) return 'local: ollama down';
   const active = s.runs.find((r) => !r.finished);
   if (active) return `local: ${active.task} ${active.done}/${active.total}${active.disagreements ? ` (${active.disagreements}≠)` : ''}`;
@@ -217,7 +255,9 @@ async function main(): Promise<void> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const runs = foldRuns(readEvents()).filter((r) => !r.finished || new Date(r.startedAt) >= today);
-    process.stdout.write(statusline({ ollama: await ollamaState(), gpus: [], requests: cachedRequests(), runs }));
+    // Jobs here are two small JSON reads (current.json, circuits.json) — never the TTL.
+    const jobs: JobsView = { running: readCurrent(), finished: [], circuits: Object.entries(readCircuitCache()).map(([name, c]) => ({ name, ...c })) };
+    process.stdout.write(statusline({ ollama: await ollamaState(), gpus: [], requests: cachedRequests(), runs, jobs }));
     return;
   }
   const detail = argv.includes('--detail');
