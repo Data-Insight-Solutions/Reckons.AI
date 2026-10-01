@@ -46,7 +46,6 @@
  * the moment where a person can supply it for nothing.
  */
 
-/** Who receives the output. The single most important property of a template. */
 /**
  * Quote one argument for bash so it is always a single literal word. Single quotes stop every
  * expansion ($, backticks, globbing, history); a single quote inside the value is closed, escaped
@@ -57,6 +56,7 @@ export function shellQuote(value: string): string {
   return "'" + value.replace(/'/g, "'\\''") + "'";
 }
 
+/** Who receives the output. The single most important property of a template. */
 export type Recipient =
   /** The graph's owner, and nobody else. A wrong result is an annoyance in your own inbox. */
   | 'owner'
