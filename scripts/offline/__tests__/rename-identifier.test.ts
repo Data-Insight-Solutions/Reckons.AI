@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import ts from 'typescript';
-import { applyEdits, isUsableName, planInterfaceToType, planRename, RenameSession, topLevelDeclarations, underscoreModuleState, type Edit } from '../rename-identifier';
+import { mapKbName, nameSegments, termCandidates, applyEdits, isUsableName, planInterfaceToType, planRename, RenameSession, topLevelDeclarations, underscoreModuleState, type Edit } from '../rename-identifier';
 
 const ROOT = '/virtual-project';
 const session = (files: Record<string, string>) => new RenameSession({ root: ROOT, memory: files });
@@ -132,5 +132,39 @@ describe('topLevelDeclarations — only module scope', () => {
   it('finds interfaces and enums (enums accepted from the local review, 2026-09-30)', () => {
     expect(topLevelDeclarations(sf, 'Foo')).toHaveLength(1);
     expect(topLevelDeclarations(sf, 'Color')).toHaveLength(1);
+  });
+});
+
+describe('mapKbName — whole-segment kb → knowledgeBase, case style kept', () => {
+  const to = (n: string) => { const m = mapKbName(n); return m.kind === 'rename' ? m.to : m.kind; };
+  it('maps camel, Pascal, UPPER_SNAKE and plural forms', () => {
+    expect(to('kbId')).toBe('knowledgeBaseId');
+    expect(to('kb')).toBe('knowledgeBase');
+    expect(to('kbs')).toBe('knowledgeBases');
+    expect(to('KbEntry')).toBe('KnowledgeBaseEntry');
+    expect(to('KBEntry')).toBe('KnowledgeBaseEntry');
+    expect(to('currentKb')).toBe('currentKnowledgeBase');
+    expect(to('listKbs')).toBe('listKnowledgeBases');
+    expect(to('kbStableId')).toBe('knowledgeBaseStableId');
+    expect(to('CURRENT_KB')).toBe('CURRENT_KNOWLEDGE_BASE');
+    expect(to('KB_IDS')).toBe('KNOWLEDGE_BASE_IDS');
+    expect(to('_kbCache')).toBe('_knowledgeBaseCache');
+  });
+  it('lists names that merely contain kb as ambiguous, and unrelated names as none', () => {
+    expect(to('kbase')).toBe('ambiguous');
+    expect(to('KBase')).toBe('ambiguous');
+    expect(to('kb_id')).toBe('ambiguous');
+    expect(to('stuff')).toBe('none');
+  });
+  it('segments names', () => { expect(nameSegments('kbStableId')).toEqual(['kb', 'Stable', 'Id']); });
+});
+
+describe('termCandidates', () => {
+  it('renames top-level only, counts nested as deferred, lists kbase as ambiguous', () => {
+    const s = session({ 'src/a.ts': 'export const kbId = 1;\nexport type KbEntry = { kbName: string };\nexport const kbase = 2;\nexport function f(kbArg: number) { return kbArg; }\n' });
+    const r = termCandidates(s, ['src/a.ts']);
+    expect(r.toRename.map((t) => `${t.name}>${t.to}`)).toEqual(['kbId>knowledgeBaseId', 'KbEntry>KnowledgeBaseEntry']);
+    expect(r.ambiguous.map((a) => a.name)).toEqual(['kbase']);
+    expect(r.deferred).toBe(2);
   });
 });

@@ -11,6 +11,13 @@
  *   --rename=<file>:<Name>:<NewName>     every reference, across the program's .ts files
  *   --interface-to-type=<file>:<Name>    `interface X {…}` → `type X = {…};` from the syntax tree
  *   --batch=underscore-module-state      F203.4 batch 1: every non-exported `let _x` in src/ → `x`
+ *   --batch=term --term=kb --dir=a,b     F203.4 batch 2: top-level declarations whose name has the WHOLE
+ *                                        segment kb (kbId, KbEntry, CURRENT_KB, kbs) → knowledgeBase…
+ *                                        Names merely containing "kb" (kbase) are listed AMBIGUOUS, never
+ *                                        renamed. Only top-level declarations are renamed; properties,
+ *                                        members, parameters and locals are counted as "deferred".
+ *                                        Extra guard: a name that also appears as a quoted string anywhere
+ *                                        in src/ is refused (it may be a stored key or serialized field).
  *
  * GUARDS, each refusing rather than guessing:
  *   - the declaration must be unique at the top level of its file;
@@ -292,6 +299,85 @@ export function underscoreModuleState(session: RenameSession, files: string[]): 
   return out;
 }
 
+/** Split a name into case segments: kbStableId → kb, Stable, Id; CURRENT_KB → CURRENT, KB. */
+export function nameSegments(name: string): string[] {
+  return name.split('_').flatMap((part) => part.match(/[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+/g) ?? []);
+}
+
+export type TermMapping = { kind: 'rename'; to: string } | { kind: 'ambiguous' } | { kind: 'none' };
+
+/**
+ * Map a name whose whole segment is `kb` to the knowledgeBase spelling, preserving its case style.
+ * Pure, so it is tested without a program. Mixed shapes it cannot map with certainty (lower_snake,
+ * `KBs`, `KBId` runs) are AMBIGUOUS rather than guessed.
+ */
+export function mapKbName(name: string): TermMapping {
+  if (!/kb/i.test(name)) return { kind: 'none' };
+  const ambiguous: TermMapping = { kind: 'ambiguous' };
+  const body = name.replace(/^_+/, '');
+  const lead = name.slice(0, name.length - body.length);
+  const upperSnake = !/[a-z]/.test(body);
+  if (upperSnake) {
+    const parts = body.split('_');
+    if (!parts.some((p) => p === 'KB' || p === 'KBS')) return ambiguous;
+    return { kind: 'rename', to: lead + parts.map((p) => (p === 'KB' ? 'KNOWLEDGE_BASE' : p === 'KBS' ? 'KNOWLEDGE_BASES' : p)).join('_') };
+  }
+  if (body.includes('_')) return ambiguous; // lower_snake or mixed: no certain target spelling
+  const segs = nameSegments(body);
+  if (segs.join('') !== body) return ambiguous; // digits or odd characters the splitter dropped
+  if (!segs.some((s) => /^kbs?$/i.test(s))) return ambiguous;
+  const out = segs.map((s, i) => {
+    const low = s.toLowerCase();
+    if (low !== 'kb' && low !== 'kbs') return s;
+    const plural = low === 'kbs';
+    if (i === 0 && s === low) return plural ? 'knowledgeBases' : 'knowledgeBase';
+    if (s === 'KB' || s === 'Kb' || s === 'kb' || s === 'Kbs') return plural ? 'KnowledgeBases' : 'KnowledgeBase';
+    return null;
+  });
+  if (out.includes(null)) return ambiguous;
+  return { kind: 'rename', to: lead + out.join('') };
+}
+
+export type TermScan = { toRename: { file: string; name: string; to: string }[]; ambiguous: { file: string; name: string }[]; deferred: number };
+
+/** Top-level declarations in `files` whose names carry the term; nested declarations are only counted. */
+export function termCandidates(session: RenameSession, files: string[]): TermScan {
+  const scan: TermScan = { toRename: [], ambiguous: [], deferred: 0 };
+  for (const file of files) {
+    const text = session.read(file);
+    if (text === undefined) continue;
+    const sf = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
+    const top = new Set<ts.Node>();
+    for (const st of sf.statements) {
+      if (ts.isVariableStatement(st)) st.declarationList.declarations.forEach((d) => ts.isIdentifier(d.name) && top.add(d.name));
+      else if ((ts.isInterfaceDeclaration(st) || ts.isTypeAliasDeclaration(st) || ts.isFunctionDeclaration(st) || ts.isClassDeclaration(st) || ts.isEnumDeclaration(st)) && st.name) top.add(st.name);
+    }
+    const visit = (n: ts.Node) => {
+      const nameNode = (n as { name?: ts.Node }).name;
+      const declares = ts.isVariableDeclaration(n) || ts.isParameter(n) || ts.isPropertyDeclaration(n) || ts.isPropertySignature(n) || ts.isPropertyAssignment(n) || ts.isMethodDeclaration(n) || ts.isMethodSignature(n) || ts.isFunctionDeclaration(n) || ts.isClassDeclaration(n) || ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n) || ts.isEnumDeclaration(n) || ts.isEnumMember(n) || ts.isGetAccessor(n) || ts.isSetAccessor(n);
+      if (declares && nameNode && ts.isIdentifier(nameNode) && /kb/i.test(nameNode.text)) {
+        if (top.has(nameNode)) {
+          const m = mapKbName(nameNode.text);
+          if (m.kind === 'rename') scan.toRename.push({ file, name: nameNode.text, to: m.to });
+          else if (m.kind === 'ambiguous') scan.ambiguous.push({ file, name: nameNode.text });
+        } else scan.deferred++;
+      }
+      ts.forEachChild(n, visit);
+    };
+    visit(sf);
+  }
+  return scan;
+}
+
+/** Files under src/ in which `name` appears as a quoted string: a possible stored key or serialized field. */
+function quotedAsString(root: string, name: string): string[] {
+  try {
+    return execFileSync('git', ['grep', '-lF', '-e', `'${name}'`, '-e', `"${name}"`, '-e', `\`${name}\``, '--', 'src'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 function main(): void {
   const argv = process.argv.slice(2);
   const flag = (n: string) => argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
@@ -331,8 +417,40 @@ function main(): void {
       }
       console.log(`batch underscore-module-state: ${targets.length} targets · ${done} renamed · ${refused.length} refused${dry ? ' (dry run, nothing written)' : ''}`);
       for (const r of refused) console.log(`  REFUSED ${r}`);
+    } else if (batch === 'term') {
+      if (flag('term') !== 'kb') throw new Error('--batch=term supports --term=kb only');
+      const dirs = (flag('dir') ?? '').split(',').filter(Boolean).map((d) => d.replace(/\/$/, ''));
+      if (!dirs.length) throw new Error('--batch=term needs --dir=<path>[,<path>…]');
+      const all = execFileSync('git', ['ls-files', 'src'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter((f) => /\.ts$/.test(f));
+      const rows: string[] = [];
+      const details: string[] = [];
+      let sumWould = 0;
+      for (const dir of dirs) {
+        const scan = termCandidates(session, all.filter((f) => f.startsWith(`${dir}/`)));
+        let done = 0;
+        const refused: string[] = [];
+        for (const t of scan.toRename) {
+          try {
+            const quoted = quotedAsString(ROOT, t.name);
+            if (quoted.length) throw new Error(`STORED-NAME GUARD: ${t.name} also appears as a quoted string (${quoted.slice(0, 2).join(', ')}) — possible persisted key`);
+            apply(planRename(session, t.file, t.name, t.to));
+            done++;
+          } catch (e) {
+            refused.push(`${t.file} ${t.name} -> ${t.to}: ${(e as Error).message}`);
+          }
+        }
+        sumWould += done;
+        rows.push(`| ${dir} | ${scan.toRename.length + scan.ambiguous.length} | ${done} | ${refused.length} | ${scan.ambiguous.length} | ${scan.deferred} |`);
+        for (const r of refused) details.push(`  REFUSED ${r}`);
+        for (const a of scan.ambiguous) details.push(`  AMBIGUOUS ${a.file} ${a.name}`);
+      }
+      console.log(`batch term=kb ${dry ? '(dry run, nothing written)' : '(applied)'}`);
+      console.log('| dir | candidates | would-rename | refused | ambiguous | deferred (non-top-level) |\n|---|---|---|---|---|---|');
+      for (const r of rows) console.log(r);
+      console.log(`total ${dry ? 'would-rename' : 'renamed'}: ${sumWould}`);
+      for (const d of details) console.log(d);
     } else {
-      throw new Error('Usage: --rename=<file>:<Name>:<NewName> | --interface-to-type=<file>:<Name> | --batch=underscore-module-state [--dry-run]');
+      throw new Error('Usage: --rename=<file>:<Name>:<NewName> | --interface-to-type=<file>:<Name> | --batch=underscore-module-state | --batch=term --term=kb --dir=<path> [--dry-run]');
     }
   } catch (e) {
     console.error(`rename-identifier: REFUSED — ${(e as Error).message}`);
