@@ -1,3 +1,35 @@
+## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
+
+**Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET
+subagent oversees and merges → Opus only by escalation (architecture, contested, safety/security/
+data loss). Haiku failed the overseer bench (#348: accepted the fail-open guard). Keep the main
+thread SHORT: #348 measured Opus per PR flat (0.50M→0.48M) because this thread grew; delegation
+only pays if the main session stays small. Start each session by queuing local work.
+
+**Merging:** merge-queue (#336) was running #333–#337, then a second queue waits to land #344 →
+#346 → #347 (`$scratch/merge-queue*.log`). Check what landed: `gh pr list --state merged --base dev`.
+Matt approved merging. Everything else is open, base dev, verify with `gh pr view <n> --json baseRefName`:
+#332 plan+F239–F241 (this PR) · #334 /review on GraphCanvas · #335 Spaces map e2e · #337 local-work
+reviewer (Sonnet) + SessionStart hook · #338 F74.6 ladder, F74.8, task sets, R3 · #339 script
+inventory · #340 rename batch 2a (`--batch=term`; blocker: .svelte references → svelte2tsx next)
+· #341 collab flow test (stacked #332) · #342 SECURITY shell-quoting fix — merge early, then flip
+#341's it.fails · #343 tasks-per-week tokens · #345 space watcher (stacked #341) · #348 bench.
+
+**In flight (Sonnet subagent, branch agent/session-queue, stacked on #347):** session-bound queue
+worker (heartbeat hook; runs only while a session is active), anacron-style catch-up schedules
+(voice notes, maintenance, align…), GPU guards (VRAM 90%, 83 °C, other-process load, PAUSE file),
+definitions as TTL with private ~/.config/reckons/device.ttl. When it lands: install the heartbeat
+hook from its PR body into .claude/settings.local.json, run `queue.ts seed-standard`.
+
+**Running on the GPUs now:** ~/.local/state/reckons/jobs/batch-2026-09-30.sh (local reviews of every
+unmerged branch, docs/graph upkeep, term-senses). Results → review queue → next session: ONE
+Sonnet overseer batch, filtered first. Stop it: `pkill -f batch-2026-09-30.sh`.
+
+**Waiting on Matt:** cron vs session queue (session queue replaces it); the review queue and
+decisions log are gitignored but "everything through git" was decided — public repo, his call;
+nvme1n1 SMART FAILED — replace before any F239 hosting; web search source for the research
+template; 0.2.5 scope (ship without Source View UI?).
+
 ## 2026-09-30 (late) — 0.2.5 started; merge queue built; nothing merged (Claude Code)
 
 **Nothing was merged this session.** The auto-mode classifier refused `merge-queue.ts` as
