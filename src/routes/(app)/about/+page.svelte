@@ -525,7 +525,7 @@
         <span class="compare-ref">(Roam, Logseq, Tana)</span>
         <p>Blocks with backlinks create an implicit graph, but every block is authored manually. No extraction, no conflict detection, no semantic diff.</p>
         <span class="compare-gap mono">Reckons.AI:</span>
-        <p>AI extracts triples from any source. Every fact carries provenance. Two KBs can be structurally diffed and merged.</p>
+        <p>AI extracts triples from any source. Every fact carries provenance. Two spaces can be structurally diffed and merged.</p>
       </div>
       <div class="compare-card">
         <strong class="compare-approach mono">AI memory tools</strong>
