@@ -47,18 +47,55 @@
 
   let analyzeOpen = $state(false);
   let moreOpen = $state(false);
+  let addOpen = $state(false);
   let hydrated = $state(false);
   let analyzeTrigger = $state<HTMLButtonElement>();
+  let addTrigger = $state<HTMLButtonElement>();
+  let addMenu = $state<HTMLDivElement>();
   let moreTrigger = $state<HTMLButtonElement>();
   let analyzeMenu = $state<HTMLDivElement>();
   let moreMenu = $state<HTMLDivElement>();
-  let activePopup = $state<'analyze' | 'more' | null>(null);
+  let activePopup = $state<'analyze' | 'more' | 'add' | null>(null);
+
+  /**
+   * The add quick menu (Matt, 2026-09-30). It leads with WHAT you are adding — "Add should display
+   * statement, set, space" — and a source comes first, because adding whole documents is the main
+   * goal. Below that, the channels a source can arrive through. Each entry opens the right place
+   * already set up (?mode= on /ingest, ?new=space on /kb), so the common ways in are one click from
+   * any page. Labels are the user register: "link" not "url", "space file" not "kb".
+   */
+  type AddAction = { href: string; label: string; glyph: string; hint: string };
+  const addGroups: { name: string; actions: AddAction[] }[] = [
+    {
+      name: 'new',
+      actions: [
+        { href: '/ingest?mode=document', label: 'source', glyph: '▤', hint: 'a whole document — its facts are read for review' },
+        { href: '/ingest?mode=triples', label: 'statement', glyph: '⟶', hint: 'a fact, written by hand' },
+        { href: '/?add=set', label: 'set', glyph: '⬡', hint: 'group nodes you select in your space' },
+        { href: '/kb?new=space', label: 'space', glyph: '◯', hint: 'a new, empty space' },
+      ],
+    },
+    {
+      name: 'from',
+      actions: [
+        { href: '/ingest?mode=note', label: 'note', glyph: '✎', hint: 'write or dictate' },
+        { href: '/ingest?mode=url', label: 'link', glyph: '↗', hint: 'a web page' },
+        { href: '/ingest?mode=folder', label: 'folder', glyph: '▭', hint: 'many files at once' },
+        { href: '/ingest?mode=repo', label: 'repository', glyph: '⑂', hint: 'a code repository' },
+        { href: '/ingest?mode=calendar', label: 'calendar', glyph: '▦', hint: 'events' },
+        { href: '/ingest?mode=reminder', label: 'reminder', glyph: '◷', hint: 'something due' },
+        { href: '/ingest?mode=kb', label: 'space file', glyph: '⬢', hint: 'a .ttl another space was exported to' },
+      ],
+    },
+  ];
+
+  const triggerFor = (kind: typeof activePopup) => (kind === 'analyze' ? analyzeTrigger : kind === 'more' ? moreTrigger : kind === 'add' ? addTrigger : null);
 
   onMount(() => { hydrated = true; });
 
-  async function focusFirstItem(kind: 'analyze' | 'more') {
+  async function focusFirstItem(kind: 'analyze' | 'more' | 'add') {
     await tick();
-    const menu = kind === 'analyze' ? analyzeMenu : moreMenu;
+    const menu = kind === 'analyze' ? analyzeMenu : kind === 'add' ? addMenu : moreMenu;
     menu?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus();
   }
 
@@ -67,6 +104,7 @@
     const opening = !analyzeOpen;
     analyzeOpen = opening;
     moreOpen = false;
+    addOpen = false;
     activePopup = opening ? 'analyze' : null;
     if (opening) await focusFirstItem('analyze');
   }
@@ -76,8 +114,25 @@
     const opening = !moreOpen;
     moreOpen = opening;
     analyzeOpen = false;
+    addOpen = false;
     activePopup = opening ? 'more' : null;
     if (opening) await focusFirstItem('more');
+  }
+
+  async function toggleAdd(e: MouseEvent) {
+    e.stopPropagation();
+    const opening = !addOpen;
+    addOpen = opening;
+    analyzeOpen = false;
+    moreOpen = false;
+    activePopup = opening ? 'add' : null;
+    if (opening) await focusFirstItem('add');
+  }
+
+  async function openAdd(href = '/ingest') {
+    addOpen = false;
+    activePopup = null;
+    await goto(href);
   }
 
   async function runAnalysis(type: AnalysisType) {
@@ -96,9 +151,10 @@
   }
 
   function closePopup(restoreFocus = false) {
-    const trigger = activePopup === 'analyze' ? analyzeTrigger : activePopup === 'more' ? moreTrigger : null;
+    const trigger = triggerFor(activePopup);
     analyzeOpen = false;
     moreOpen = false;
+    addOpen = false;
     activePopup = null;
     if (restoreFocus) queueMicrotask(() => trigger?.focus());
   }
@@ -122,7 +178,7 @@
       // focus to the trigger traps keyboard users for an extra keystroke and makes Tab behave like
       // Escape. Resolve the next visible control before the menu disappears, then move there after
       // Svelte removes the popup.
-      const trigger = activePopup === 'analyze' ? analyzeTrigger : activePopup === 'more' ? moreTrigger : null;
+      const trigger = triggerFor(activePopup);
       const focusable = [...document.querySelectorAll<HTMLElement>(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       )].filter((element) => {
@@ -145,7 +201,7 @@
   }
 
   function handleWindowKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && (analyzeOpen || moreOpen)) {
+    if (e.key === 'Escape' && (analyzeOpen || moreOpen || addOpen)) {
       e.preventDefault();
       closePopup(true);
     }
@@ -154,7 +210,7 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-{#if analyzeOpen || moreOpen}
+{#if analyzeOpen || moreOpen || addOpen}
   <button
     type="button"
     class="popup-scrim"
@@ -162,6 +218,35 @@
     tabindex="-1"
     onclick={() => closePopup(true)}
   ></button>
+{/if}
+
+{#if addOpen}
+  <div
+    id="add-actions-menu"
+    class="analyze-popup add-popup"
+    bind:this={addMenu}
+    role="menu"
+    tabindex="-1"
+    aria-label="Ways to add"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={handleMenuKeydown}
+  >
+    {#each addGroups as group, g}
+      {#if g > 0}<div class="popup-divider"></div>{/if}
+      <div class="popup-group mono" aria-hidden="true">{group.name}</div>
+      {#each group.actions as action}
+        <button class="popup-item" role="menuitem" onclick={() => openAdd(action.href)}>
+          <span class="popup-glyph">{action.glyph}</span>
+          <span class="add-text"><span class="popup-label">{action.label}</span><span class="add-hint">{action.hint}</span></span>
+        </button>
+      {/each}
+    {/each}
+    <div class="popup-divider"></div>
+    <button class="popup-item" role="menuitem" onclick={() => openAdd()}>
+      <span class="popup-glyph">＋</span>
+      <span class="add-text"><span class="popup-label">all ways to add…</span></span>
+    </button>
+  </div>
 {/if}
 
 {#if analyzeOpen}
@@ -234,6 +319,23 @@
   </a>
   <div class="divider"></div>
   {#each items.slice(1) as it, i}
+    {#if it.href === '/ingest'}
+      <!-- The add quick menu: one click from anywhere into a specific way of adding. -->
+      <button
+        bind:this={addTrigger}
+        class="nav-btn add-trigger"
+        class:active={addOpen || page.url.pathname.startsWith('/ingest')}
+        onclick={toggleAdd}
+        aria-label="add"
+        aria-haspopup="menu"
+        aria-expanded={addOpen}
+        aria-controls="add-actions-menu"
+        disabled={!hydrated}
+      >
+        <span class="glyph-wrap"><span class="glyph">{it.glyph}</span></span>
+        <span class="label">{it.label}</span>
+      </button>
+    {:else}
     <a
       href={it.href}
       aria-label={it.label}
@@ -254,6 +356,7 @@
       </span>
       <span class="label">{it.label}</span>
     </a>
+    {/if}
     {#if i === 1}
       <!-- Analyze popup button sits between review and reckon -->
       <button
@@ -738,5 +841,60 @@
     }
     .glyph { font-size: 1rem; }
     .glyph-svg :global(svg) { width: 1rem; height: 1.1rem; }
+  }
+  /* The add menu is a LIST, not the analyze strip: fifteen entries in a pill ran 900px wide and,
+     on a 390px phone, started 256px off-screen (checked in Chromium, 2026-09-30). */
+  .add-popup {
+    flex-direction: column;
+    align-items: stretch;
+    width: min(17rem, calc(100vw - 1rem));
+    max-height: calc(100dvh - 9rem);
+    overflow-y: auto;
+    border-radius: 16px;
+    padding: 0.4rem;
+  }
+  .add-popup .popup-item {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.7rem;
+    min-height: 44px;
+    padding: 0.35rem 0.7rem;
+    border-radius: 10px;
+    text-align: left;
+    width: 100%;
+  }
+  .add-popup .popup-divider {
+    width: auto;
+    height: 1px;
+    margin: 0.3rem 0.4rem;
+  }
+  .add-popup .popup-label {
+    font-size: 0.74rem;
+    color: var(--text, inherit);
+  }
+  .add-popup .popup-glyph {
+    width: 1.2rem;
+    text-align: center;
+  }
+  .add-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .add-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .popup-group {
+    padding: 0.35rem 0.7rem 0.15rem;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 </style>
