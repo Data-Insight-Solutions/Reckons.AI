@@ -6272,13 +6272,14 @@ kb:ai-as-teammates rdf:type ktype:Feature ;
     kpred:relates-to kb:async-orchestration ;
     kpred:relates-to kb:graph-goal .
 
-kb:connect-to-support rdf:type ktype:Feature ;
-    rdfs:label "Connect to support — a consented, local-model collaborator on a person's space" ;
+kb:supervised-compute-sharing rdf:type ktype:Feature ;
+    rdfs:label "Supervised compute sharing — a person connects to an operator's local models, for inference and as a consented collaborator on a space" ;
     kpred:feature-id "F239" ;
     kpred:has-status "speculative" ;
     kpred:priority "medium" ;
     kpred:decided "MATT, 2026-09-30 (considering, not decided): 'Could I at this work station provide analytical support through LLMs running on Ollama here locally, and be a collaborator on a space? The files would be synced in some fashion, but potentially that is a single host like myself on S3? Then I could watch for user inputs hitting space .ttls, and then interact collaboratively? I would even want to notify and encourage interactions from Shelly, to help guide user experience? This would be in a formal, connect to support with strict setup procedure for clear user acknowledgement of collaboration. Like through new registration in Indico server??'" ;
     kpred:description "A person who chooses to may connect one space to a support host: an operator's workstation running local models, which reads that space as it changes and answers with proposals the person reviews. The space is synced through a store the person consented to; the host never writes the person's statements, only its own proposals; Shelly may point the person at what arrived. Nothing about it is on by default." ;
+    kpred:decided "MATT, 2026-09-30, THE NAME: 'Supervised compute sharing with Reckons.AI might be a decent description.' Connect to support is the step a person takes; supervised compute sharing is what the feature is." ;
     kpred:decided "MATT, 2026-09-30, THE KEY MOTIVATOR: 'One key motivator for the connect to support would be to offload the heavy LLM usage to my local capabilities, even for other users.' So the first half of this feature is SHARED INFERENCE, and the collaborator watcher is the second half." ;
     kpred:measured "2026-09-30, READ FROM THE CODE: shared inference needs almost no app change. The existing 'reckons' provider (chatReckons in src/lib/integrations/llm/providers.ts) speaks the OpenAI-compatible /v1/chat/completions format with a bearer key and a configurable reckonsBaseUrl, and Ollama serves that same format at /v1/chat/completions. A person points reckonsBaseUrl at the support host and pastes a key. 'reckons' is not in LOCAL_PROVIDERS (src/lib/safety/content-policy.ts), so those prompts are classified remote and keep the ethics preamble, which is correct. NOT verified end to end: no request has been sent from the app to an Ollama /v1 endpoint through that provider." ;
     kpred:constraint "OLLAMA HAS NO AUTHENTICATION, SO IT MUST NEVER BE EXPOSED DIRECTLY. The host serves inference only behind a TLS reverse proxy that checks a per-person bearer key, rate-limits per key, sends CORS headers only to the app's origin, and logs usage per key without logging prompt content. A key is the revocation handle: deleting it ends that person's access without touching anyone else's." ;
