@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { page } from '$app/state';
   import {
     statements,
     sources,
@@ -151,7 +152,11 @@
   onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
-  let editingKbId = $state<string | null>(null);
+
+  // Opened from the nav's add quick menu: /kb?new=space arrives with the new-space form open.
+  $effect(() => {
+    if (page.url.searchParams.get('new') === 'space') untrack(() => { showNewKbForm = true; });
+  });  let editingKbId = $state<string | null>(null);
   let editingName = $state('');
   let compareSelection = $state<Set<string>>(new Set());
   let kbFilter = $state<'all' | 'bookmarked'>('all');
