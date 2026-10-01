@@ -6162,6 +6162,116 @@ kb:graph-goal rdf:type       ktype:Feature ;
                kpred:remaining    "Decide whether the description is ALSO interview material that sharpens over time, the way kb:growing-filter-set sharpens a grant profile one real requirement at a time. It is a much smaller change now that it is a text field rather than a vocabulary." ;
                kpred:relates-to   kb:growing-filter-set .
 
+
+# Matt, 2026-09-30, late session — ten directions, recorded before building (F229-F238).
+
+kb:statement-hover-emphasis rdf:type ktype:Feature ;
+    rdfs:label "Statement emphasis on hover — the edge and the object light up" ;
+    kpred:feature-id "F229" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think we need to make the statements show on the graph more prominently after you mouse over them. So, the edge connecting to the object and the object of the statement are highlighted in some way.'" ;
+    kpred:description "Hovering a statement (in a list, the node panel or review) highlights its edge and its object node on the canvas, so the fact and its place in the space are seen together." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:one-graph-canvas .
+
+kb:analyze-per-view rdf:type ktype:Feature ;
+    rdfs:label "Analyze actions differ per view, and say so" ;
+    kpred:feature-id "F230" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'The Analyze actions should be different on Add and Reckoning tabs. There should be a notification hint about analyze being different on different views, Explore, Add, Review, and Reckoning.'" ;
+    kpred:description "The nav analyze menu offers actions that fit the current view (Explore, Add, Review, Reckoning) instead of one fixed list, and a one-time notice explains that its contents change with the view." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." .
+
+kb:graphs-from-chat rdf:type ktype:Feature ;
+    rdfs:label "Spaces from an AI chat session — queryable, with provenance, not compressed away" ;
+    kpred:feature-id "F231" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to allow creating graphs from a AI chat session. The natural progression from needing to re-use the same chat thread, but its not compressed automatically, its query-able via MCP and retains provenance from the context.'" ;
+    kpred:description "A chat session becomes a source: its decisions and claims are extracted as pending statements into a space, each traced to the turn it came from, and the space is reachable over MCP. Reuse becomes a query against the space rather than reopening, or compacting, the thread." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:mcp-server ;
+    kpred:relates-to kb:source-corpus .
+
+kb:add-source-first-sync rdf:type ktype:Feature ;
+    rdfs:label "Add leads with a source, reaches sync settings, takes whole folders" ;
+    kpred:feature-id "F232" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'When doing Add we need to make it more prominent to add a Source, and we need to allow for access to the core sync settings from Add. Add could be a whole foldor of corpus and spaces in ttls'" ;
+    kpred:description "The Add page puts adding a source first, links to the sync settings in place, and accepts a whole folder holding a corpus and spaces as .ttl files in one action." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:source-corpus .
+
+kb:context-savings-experiment rdf:type ktype:Feature ;
+    rdfs:label "Experiment — quick note in, tasks out, tokens measured against a long thread" ;
+    kpred:feature-id "F233" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think I should do an experiment, maybe you can help or maybe I need to do manually. I need to say quick notes, it uses MCP to get to Reckons, and then that one note creates tasks. We need to measure savings across the current Reckons.AI context savings, and then also large context window token savings if the request targets specific graphs instead of a single long conversation. If I compact a series of thoughts, not all are related. Targeted MCP spaces retreival could curate the context for higher performance. Offline tasks can be utilized within this process and offer additional token savings.'" ;
+    kpred:description "A measured comparison on the same work: (a) one long conversation, compacted when needed; (b) quick voice notes through MCP into Reckons, each creating tasks, with the next session given only the spaces that matter (kb_compress over targeted spaces) and offline tiers doing what they can. Measure tokens per completed task and how often context was unrelated." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:session-tokens ;
+    kpred:relates-to kb:context-compression ;
+    kpred:relates-to kb:ios-note-capture .
+
+kb:review-research-offload rdf:type ktype:Feature ;
+    rdfs:label "Review can hand a question to a research agent, and records that it did" ;
+    kpred:feature-id "F234" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need a clear way during review to offload the answer to a research task agent. Review should still track what the user provided as context, and then mark the offload clearly and what service was used for the decision making.'" ;
+    kpred:description "From a review item, the person hands the open question to a research task agent. The item keeps the context the person gave, is marked as offloaded, and the answer that returns names the service and model that produced it — a decision with an agent in it says so." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:wf-review ;
+    kpred:relates-to kb:async-orchestration .
+
+kb:auto-decide-warning rdf:type ktype:Feature ;
+    rdfs:label "Auto-decide all carries a heavy warning; assignment to people is the enterprise answer" ;
+    kpred:feature-id "F235" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'Auto-decide all should have a hefty warning label... this is just LLM, we recommend manual review or targeted analyze actions. For future, AD enabled assignments as an enterprise feature. Assign the best person on your team, or available dept. or team if you don't know who knows best.'" ;
+    kpred:description "Before auto-deciding everything, a clear warning: these decisions come from a language model alone; manual review or targeted analyze actions are recommended. Later, for teams: assign a decision to the best person, or to a department or team when nobody knows who knows best." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:wf-review .
+
+kb:ai-task-human-review rdf:type ktype:Feature ;
+    rdfs:label "A human review step for AI tasks" ;
+    kpred:feature-id "F236" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to define a human review process for AI tasks, if chosen humans need to review or the human requesting would review the results and refine/re-order the work.'" ;
+    kpred:description "Every AI task names who reviews its result — a chosen person, or by default the person who asked — and that review can accept, refine, or re-order the remaining work. A task is done when its reviewer says so, not when the agent finishes." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:local-orchestration .
+
+kb:durable-desires rdf:type ktype:Feature ;
+    rdfs:label "Desires outlive the chat — wants are kept, dated and findable" ;
+    kpred:feature-id "F237" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think a way to track future desires and retain them beyond a single chat session/thread is a key benefit also.'" ;
+    kpred:description "What a person wants next — features, ideas, directions — is captured as dated entries in a space, not left in a chat transcript, so any later session (person or agent) can find, rank and act on it. This roadmap is the product doing that for itself." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:freeform-capture .
+
+kb:ai-as-teammates rdf:type ktype:Feature ;
+    rdfs:label "AI as teammates — work apart, leave notes, decide together" ;
+    kpred:feature-id "F238" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to decouple from the chat thread, interact with AI like teammates, letting eachother work while we work, leaving important notes for eachother and document sharing in many cases. Decisions, and discussion points as emphasis of conversations, not timestamps and menial labor together. Save the clear for later in many cases. Free your thought processes from a sitting session.'" ;
+    kpred:description "Person and agents work asynchronously against shared spaces: each leaves notes, questions and documents for the other; decisions and discussion points are the record, not a timestamped transcript; a session can end without losing anything, because nothing important lived only in it." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:measured "THE EVIDENCE MATT PASTED, 2026-09-30 (Claude Code usage panel, last 24 h on this machine): 97% of usage was at more than 150k tokens of context; 71% came from subagent-heavy sessions; 12% from /update-config. The session that recorded this entity is an example: one long thread carrying hours of unrelated work." ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:graph-goal .
+
 ## =============================================================================
 ## F143: Game development on a graph  (Matt, 2026-08-28)
 ## =============================================================================

@@ -1,3 +1,32 @@
+## 2026-09-30 (evening) — START HERE. This thread ended at >150k context; begin fresh.
+
+Matt's usage panel, 2026-09-30: 97% of usage at >150k context, 71% subagent-heavy. Read this,
+then `kb_search` the roadmap; do not try to reconstruct the old thread.
+
+**Open PRs, all base `dev`, none merged:** #326 source chunks (F221/F78) · #327 docs gate fix +
+release notes (F33.1) · #328 UI copy scanner (F203) · #329 Add quick menu (F228; plans F226/F227)
+· #330 send space to Files (F56.2) · #331 sync-conflict guard + QR plan (F56.3; stacked on #330)
+· this PR (F229-F238). Merge order: #330 before #331. Check CI, verify base, then merge.
+
+**Work in progress, not a PR:** `feat/free-layout-positions` — storage half done (hnav:x/y,
+`src/lib/rdf/node-positions.ts`, 6 tests). Remaining: in `KnowledgeGraph2D.svelte` add a
+`pinned` flag, left-drag on a node in layout 'force' moves + pins it (right-drag still pans),
+skip pinned nodes in the integration loop, a `pinnedPositions` prop keyed `i:<iri>` and an
+`onnodemove` callback; in `+page.svelte` feed `positionsFrom(statements)` and write with
+`positionWrites` → `updateStatement`/`addStatements`; an e2e drag test; 3D untouched.
+
+**Next, in Matt's order:** F226 statement routing (each fact to the spaces it belongs in, one
+shared source) → then pick among: open-from-QR link (F56.3, no new deps), S3 sync (aws4fetch),
+F229-F238. Matt's ten directions of the evening are F229-F238 in the roadmap, with his words.
+
+**Waiting on Matt:** nvme1n1 (Samsung 970 EVO Plus) reports SMART FAILED, spare 0% — back up
+and replace; an Entra app registration if OneDrive sync is wanted; adding `release-notes` to
+main's required checks; names for 11 store variables refused by rename batch 1; TypeScript 7.
+
+**Lessons (apply them):** a local-panel calibration holds for ONE task (UI-copy run answered
+"space" zero times and was wrong ≥137 times while unanimous) — label a sample first. Pass
+`model` to every Agent call. Check UI in a real browser at phone width before calling it done.
+
 ## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
 
 **Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
