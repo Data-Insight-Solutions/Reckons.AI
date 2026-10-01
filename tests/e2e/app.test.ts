@@ -21,7 +21,8 @@ test('app loads and shows navigation', async ({ page }) => {
   // (terminology sweep renamed ingest -> add; scope to <nav> to avoid picking
   // up unrelated "add" text elsewhere on the page).
   const nav = page.locator('nav');
-  await expect(nav.getByRole('link', { name: /^add$/i })).toBeVisible();
+  // "add" is a quick-menu button (2026-09-30), not a link.
+  await expect(nav.getByRole('button', { name: /^add$/i })).toBeVisible();
   await expect(nav.getByRole('link', { name: /review/i })).toBeVisible();
   await expect(nav.getByRole('link', { name: /settings/i })).toBeVisible();
 
