@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  attributeByBranch, branchOf, calibrationWindow, cleanCalibration, dedupeEntries, entryFromLine,
+  attributeByBranch, attributeByThread, inSession, branchOf, calibrationWindow, cleanCalibration, dedupeEntries, entryFromLine,
   filterWindow, groupTasksPerWeek, median, modelFamily, taskCosts, taskKind, tokensPerPercent,
   tasksPerWeek, weekStart, weigh, type Entry
 } from '../lib/usage-attribution';
@@ -103,5 +103,23 @@ describe('calibration math', () => {
     expect(g.overall.tasks).toBe(2);
     expect(g.byKind.map((r) => r.key).sort()).toEqual(['feat', 'fix']);
     expect(g.byFamily.find((r) => r.key === 'sonnet')!.tasksPerWeek).toBe(20);
+  });
+});
+
+describe('thread split and session scope', () => {
+  it('separates main-thread from subagent weight, per family', () => {
+    const r = attributeByThread([
+      { ...e('t', 'b', 100, 'opus') },
+      { ...e('t', 'b', 30, 'sonnet'), sub: true },
+      { ...e('t', 'b', 20, 'sonnet'), sub: true },
+    ]);
+    expect(r[0]).toMatchObject({ thread: 'main', weighted: 100 });
+    expect(r[1]).toMatchObject({ thread: 'subagents', weighted: 50 });
+    expect(r[1].byFamily.sonnet).toBe(50);
+  });
+  it('inSession matches the main file and its subagents, not other sessions', () => {
+    expect(inSession('/p/abc.jsonl', 'abc')).toBe(true);
+    expect(inSession('/p/abc/subagents/agent-1.jsonl', 'abc')).toBe(true);
+    expect(inSession('/p/abcd.jsonl', 'abc')).toBe(false);
   });
 });

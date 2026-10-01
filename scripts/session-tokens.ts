@@ -15,6 +15,7 @@
  *   npm run session:tokens -- --top=10  only the 10 heaviest sessions
  *   npm run session:tokens -- --path=/abs/dir/to/*.jsonl
  *   npm run session:tokens -- --by=branch [--since=ISO] [--until=ISO] [--top=N]
+ *   npm run session:tokens -- --by=thread --session=<id> [--since=ISO] [--until=ISO]   main vs subagents by model
  *   npm run session:tokens -- --calibrate        tasks per week (needs >=2 recorded percents)
  *   npm run session:tokens -- --record=<percent> record Claude Code's weekly usage % now
  */
@@ -23,7 +24,7 @@ import { homedir } from 'os';
 import path from 'path';
 import { resolveTranscriptDir } from './lib/transcript-dir';
 import {
-  FAMILIES, attributeByBranch, calibrationWindow, cleanCalibration, dedupeEntries, entryFromLine,
+  FAMILIES, attributeByBranch, attributeByThread, inSession, calibrationWindow, cleanCalibration, dedupeEntries, entryFromLine,
   filterWindow, groupTasksPerWeek, taskCosts, tokensPerPercent, type Entry
 } from './lib/usage-attribution';
 
@@ -35,6 +36,7 @@ const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('='
 const top = Number(flag('top') ?? 0);
 const dir = flag('path') ?? resolveTranscriptDir();
 
+const session = flag('session');
 const since = flag('since');
 const until = flag('until');
 const calibPath = path.join(process.env.XDG_STATE_HOME || path.join(homedir(), '.local', 'state'), 'reckons', 'usage-calibration.json');
@@ -67,18 +69,19 @@ function loadEntries(): Entry[] {
   let fs: string[];
   try { fs = walk(dir); } catch { console.error(`No transcripts at ${dir}\nPass --path=<dir> if your logs live elsewhere.`); process.exit(1); }
   const out: Entry[] = [];
+  if (session) fs = fs.filter((f) => inSession(f, session));
   for (const f of fs) for (const line of readFileSync(f, 'utf8').split('\n')) {
     if (!line) continue;
     let o: any; try { o = JSON.parse(line); } catch { continue; }
     const e = entryFromLine(o);
-    if (e) out.push(e);
+    if (e) out.push(f.includes(`${path.sep}subagents${path.sep}`) ? { ...e, sub: true } : e);
   }
   return filterWindow(dedupeEntries(out), since, until);
 }
 
 const kk = (n: number) => (n < 1e6 ? `${Math.round(n / 1000)}K` : `${(n / 1e6).toFixed(1)}M`);
 
-if (flag('by') === 'branch' || args.includes('--calibrate')) {
+if (flag('by') === 'branch' || flag('by') === 'thread' || args.includes('--calibrate')) {
   const entries = loadEntries();
   const window = `${since ?? 'start'} .. ${until ?? 'now'}`;
   if (flag('by') === 'branch') {
@@ -90,6 +93,12 @@ if (flag('by') === 'branch' || args.includes('--calibrate')) {
     for (const r of rows) console.log(`${r.branch.slice(0, 45).padEnd(46)}${kk(r.weighted).padStart(10)}  ${FAMILIES.map((f) => kk(r.byFamily[f]).padStart(8)).join('')}`);
     console.log('-'.repeat(88));
     console.log(`${'TOTAL'.padEnd(46)}${kk(grand).padStart(10)}  ${FAMILIES.map((f) => kk(entries.filter((e) => e.family === f).reduce((s, e) => s + e.weighted, 0)).padStart(8)).join('')}\n`);
+  }
+  if (flag('by') === 'thread') {
+    console.log(`\nWeighted tokens by thread (deduped per response)${session ? ` session ${session.slice(0, 8)}` : ''} ${window}\n`);
+    console.log(`${'thread'.padEnd(12)}${'weighted'.padStart(10)}  ${FAMILIES.map((f) => f.padStart(8)).join('')}`);
+    for (const r of attributeByThread(entries)) console.log(`${r.thread.padEnd(12)}${kk(r.weighted).padStart(10)}  ${FAMILIES.map((f) => kk(r.byFamily[f]).padStart(8)).join('')}`);
+    console.log();
   }
   if (args.includes('--calibrate')) {
     const calib = cleanCalibration(readCalibration());
