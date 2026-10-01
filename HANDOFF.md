@@ -1,3 +1,102 @@
+## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
+
+**Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET
+subagent oversees and merges → Opus only by escalation (architecture, contested, safety/security/
+data loss). Haiku failed the overseer bench (#348: accepted the fail-open guard). Keep the main
+thread SHORT: #348 measured Opus per PR flat (0.50M→0.48M) because this thread grew; delegation
+only pays if the main session stays small. Start each session by queuing local work.
+
+**Merging:** merge-queue (#336) was running #333–#337, then a second queue waits to land #344 →
+#346 → #347 (`$scratch/merge-queue*.log`). Check what landed: `gh pr list --state merged --base dev`.
+Matt approved merging. Everything else is open, base dev, verify with `gh pr view <n> --json baseRefName`:
+#332 plan+F239–F241 (this PR) · #334 /review on GraphCanvas · #335 Spaces map e2e · #337 local-work
+reviewer (Sonnet) + SessionStart hook · #338 F74.6 ladder, F74.8, task sets, R3 · #339 script
+inventory · #340 rename batch 2a (`--batch=term`; blocker: .svelte references → svelte2tsx next)
+· #341 collab flow test (stacked #332) · #342 SECURITY shell-quoting fix — merge early, then flip
+#341's it.fails · #343 tasks-per-week tokens · #345 space watcher (stacked #341) · #348 bench.
+
+**#349 (built, stacked on #347, unreviewed): session queue —** session-bound queue
+worker (heartbeat hook; runs only while a session is active), anacron-style catch-up schedules
+(voice notes, maintenance, align…), GPU guards (VRAM 90%, 83 °C, other-process load, PAUSE file),
+definitions as TTL with private ~/.config/reckons/device.ttl. When it lands: install the heartbeat
+hook from its PR body into .claude/settings.local.json, run `queue.ts seed-standard`.
+
+**Running on the GPUs now:** ~/.local/state/reckons/jobs/batch-2026-09-30.sh (local reviews of every
+unmerged branch, docs/graph upkeep, term-senses). Results → review queue → next session: ONE
+Sonnet overseer batch, filtered first. Stop it: `pkill -f batch-2026-09-30.sh`.
+
+**Waiting on Matt:** cron vs session queue (session queue replaces it); the review queue and
+decisions log are gitignored but "everything through git" was decided — public repo, his call;
+nvme1n1 SMART FAILED — replace before any F239 hosting; web search source for the research
+template; 0.2.5 scope (ship without Source View UI?).
+
+## 2026-09-30 (late) — 0.2.5 started; merge queue built; nothing merged (Claude Code)
+
+**Nothing was merged this session.** The auto-mode classifier refused `merge-queue.ts` as
+"merge without review". Matt either runs it himself or allows it:
+`npx tsx scripts/agent/merge-queue.ts 333 326 327 328 329 330 331 332 334 335 336 --keep-going`
+(script tier: base must be `dev`, updates stale branches from `dev`, waits for green, merges pinned
+to the checked commit; `--dry-run` first). The script is on #336 until that merges.
+
+**New PRs, all base `dev`:** #333 dompurify 3.4.16 (a new low advisory failed `Dependencies (.)` on
+#327–#332; merge it FIRST, then the others need `dev` merged in), #334 `/review` mounts
+`GraphCanvas` (F92 step 2, 0.2.5 item 1), #335 first Spaces map e2e (F218, 4 tests), #336 merge
+queue (F89). Also pushed: #329's Indico e2e helper now uses the add quick menu (its 3 E2E failures).
+
+**0.2.5 remaining, in order:** F221 IO half (write `chunks.ttl` into `sources/`, keep originals,
+pdf.js, extraction over chunks, persist F122.1 anchors) → Source View UI with e2e → Spaces phase 2
+(grouping choice, multi-select → declared set, canvas mode) → version bump, release notes, promote.
+Scope option for Matt: cut 0.2.5 without the Source View UI (dev is 100 commits past 0.2.0).
+
+**F239 supervised compute sharing (this PR):** Matt's idea, asynchronous and file-only — tasks and
+TTL in a shared store, his local models answer with proposals, no ports, no live API.
+
+**Matt's correction (apply it):** "WHY NOT OFFLOAD TO LOCAL AGENTS?" — this session polled CI and
+re-ran specs by hand for an hour. Start the queue and background runs, then read logs when they end.
+
+## 2026-09-30 (evening) — START HERE. This thread ended at >150k context; begin fresh.
+
+Matt's usage panel, 2026-09-30: 97% of usage at >150k context, 71% subagent-heavy. Read this,
+then `kb_search` the roadmap; do not try to reconstruct the old thread.
+
+**Open PRs, all base `dev`, none merged:** #326 source chunks (F221/F78) · #327 docs gate fix +
+release notes (F33.1) · #328 UI copy scanner (F203) · #329 Add quick menu (F228; plans F226/F227)
+· #330 send space to Files (F56.2) · #331 sync-conflict guard + QR plan (F56.3; stacked on #330)
+· this PR (F229-F238). Merge order: #330 before #331. Check CI, verify base, then merge.
+
+**Work in progress, not a PR:** `feat/free-layout-positions` — storage half done (hnav:x/y,
+`src/lib/rdf/node-positions.ts`, 6 tests). Remaining: in `KnowledgeGraph2D.svelte` add a
+`pinned` flag, left-drag on a node in layout 'force' moves + pins it (right-drag still pans),
+skip pinned nodes in the integration loop, a `pinnedPositions` prop keyed `i:<iri>` and an
+`onnodemove` callback; in `+page.svelte` feed `positionsFrom(statements)` and write with
+`positionWrites` → `updateStatement`/`addStatements`; an e2e drag test; 3D untouched.
+
+**Next, in Matt's order:** F226 statement routing (each fact to the spaces it belongs in, one
+shared source) → then pick among: open-from-QR link (F56.3, no new deps), S3 sync (aws4fetch),
+F229-F238. Matt's ten directions of the evening are F229-F238 in the roadmap, with his words.
+
+**Waiting on Matt:** nvme1n1 (Samsung 970 EVO Plus) reports SMART FAILED, spare 0% — back up
+and replace; an Entra app registration if OneDrive sync is wanted; adding `release-notes` to
+main's required checks; names for 11 store variables refused by rename batch 1; TypeScript 7.
+
+**New task from Matt's phone (pulled 2026-09-30 20:43, in the queue as a personal-notes capture):**
+"Create a new task for the local models (Qwen 3.6, Qwen Coder) to orchestrate tasks and merge to
+dev. The task involves creating new example spaces utilizing new features and updating old ones,
+including cleaning up example spaces (graphs, themes, backgrounds, etc.)." Plan it in the roadmap,
+then as a runner task (scripts/agent/runner.ts). Local models merging to dev is Matt's explicit
+instruction here — gate it on green CI and a verified base `dev`, never `main`. Measured today:
+local models do well when the evidence is handed to them and badly when left to explore, so ground
+each example-space job (which features, which files) by script first.
+
+**Also decided this evening:** stay on TypeScript 5.x and Threlte 8 (no TypeScript 7; close or
+narrow #258/#314 accordingly). No Google/Microsoft OAuth for sync — existing sync services, the
+share sheet, then S3. Release-notes becomes a required check on main once it reaches staging (#327).
+Small bug: `notes-pull.ts --dry-run` prints "drained 1 note(s)" though it writes nothing.
+
+**Lessons (apply them):** a local-panel calibration holds for ONE task (UI-copy run answered
+"space" zero times and was wrong ≥137 times while unanimous) — label a sample first. Pass
+`model` to every Agent call. Check UI in a real browser at phone width before calling it done.
+
 ## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
 
 **Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
