@@ -53,6 +53,8 @@ import {
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
+import { pushNotification } from './notifications.svelte';
+import { conflictNotice, separateConflictCopies } from '../storage/sync-conflicts';
 
 /**
  * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
@@ -719,7 +721,13 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
       const stableIdMatch = ttl?.match(/kbStableId[>"]\s+"([^"]+)"/);
       results.push({ folderName, path: p, meta: { name: folderName, stableId: stableIdMatch?.[1] } });
     }
-    return results;
+    // A sync service's conflict copy carries the original's stable id; never let it replace or
+    // duplicate the space silently (F56.2). Every caller of discovery gets this.
+    const { kept, conflicts } = separateConflictCopies(results);
+    for (const c of conflicts) {
+      pushNotification({ id: `sync-conflict-${c.stableId}`, type: 'warn', title: 'Two versions of one space', body: conflictNotice(c), important: true });
+    }
+    return kept;
   } catch {
     return [];
   }
