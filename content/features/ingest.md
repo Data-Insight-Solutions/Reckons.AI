@@ -31,6 +31,6 @@ Bulk import from Confluence spaces.
 
 Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity.
 
-### Text Chunking — **planned**
+### Text Chunking — **scaffolded**
 
 Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence.

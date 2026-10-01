@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-<p class="derived">It has 11 parts below, 3 of which are not built yet.</p>
+<p class="derived">It has 12 parts below, 4 of which are not built yet.</p>
 
 ## Why it is this way
 
@@ -39,5 +39,6 @@ Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the
 <a class="card" href="../coding-workflow/agent-orchestration"><span class="card-title">Agent orchestration — bring your own harness (PLANNED, not built)</span><span class="card-status">planned</span><span class="card-text">This does not exist yet.</span></a>
 <a class="card" href="../coding-workflow/scheduling"><span class="card-title">Task scheduling in the graph (PLANNED, not built)</span><span class="card-status">planned</span><span class="card-text">This does not exist yet.</span></a>
 <a class="card" href="../coding-workflow/avoided-rework"><span class="card-title">The saving is not compression — it is the feature you did not build twice</span><span class="card-text">The usual pitch for a knowledge graph in front of a coding agent is token compression: feed a dense subgraph instead of re-reading the repo.</span></a>
+<a class="card" href="../coding-workflow/taxonomy-management"><span class="card-title">Repository taxonomy — one word per meaning, in the code and on the screen</span><span class="card-status">in-progress</span><span class="card-text">A codebase drifts into using one word for several things and several words for one thing.</span></a>
 
 </div>

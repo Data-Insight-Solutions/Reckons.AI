@@ -53,17 +53,17 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Turtle Export](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (3)
+## Partly built (4)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
 - [Currents](../features/currents) · scaffolded
 - [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress
+- [Text Chunking](../features/ingest) · scaffolded — on the Ingest page
 
-## Not built yet (2)
+## Not built yet (1)
 
 <p class="derived">Planned or being considered. The pages describe what is intended, not what exists.</p>
 
 - [Confluence Migration](../features/confluence-migration) · planned
-- [Text Chunking](../features/ingest) · planned — on the Ingest page
