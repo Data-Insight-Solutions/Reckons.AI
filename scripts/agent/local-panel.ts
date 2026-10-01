@@ -66,7 +66,7 @@
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { hostname, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { logEvent } from './local-activity.js';
 
@@ -337,7 +337,19 @@ export async function runPanel(
   const votesPerModel = opts.votes ?? task.votesPerModel ?? (models.length === 1 ? DEFAULT_SELF_VOTES : 1);
   const started = Date.now();
   const run = `${task.id}-${started.toString(36)}`;
-  logEvent({ kind: 'run-start', run, at: new Date(started).toISOString(), task: task.id, models, items: task.items.length, votesPerModel, engine, cwd: process.cwd() });
+  logEvent({ kind: 'run-start', run, at: new Date(started).toISOString(), task: task.id, models, items: task.items.length, votesPerModel, engine, cwd: process.cwd(), pid: process.pid, host: hostname() });
+  // A killed run must say so, or the watch shows it live forever (observed 2026-10-01).
+  let ended = false;
+  const endRun = (failed: string): void => {
+    if (ended) return;
+    ended = true;
+    logEvent({ kind: 'run-end', run, at: new Date().toISOString(), ms: Date.now() - started, counts: {}, resultPath: opts.resultPath, failed });
+  };
+  const onInt = (): void => { endRun('interrupted'); process.exit(130); };
+  const onTerm = (): void => { endRun('interrupted'); process.exit(143); };
+  process.on('SIGINT', onInt);
+  process.on('SIGTERM', onTerm);
+  try {
   const all: Vote[] = [];
   // Model by model, so each is loaded once rather than swapped per item.
   for (const model of models) {
@@ -351,8 +363,16 @@ export async function runPanel(
   const verdicts = task.items.map((item) => aggregate(item.id, all.filter((v) => v.item === item.id), task.agreeOn));
   const counts: Record<VerdictStatus, number> = { unanimous: 0, majority: 0, split: 0, failed: 0 };
   for (const v of verdicts) counts[v.status]++;
+  ended = true;
   logEvent({ kind: 'run-end', run, at: new Date().toISOString(), ms: Date.now() - started, counts, resultPath: opts.resultPath });
   return { task: task.id, models, engine, startedAt: new Date(started).toISOString(), ms: Date.now() - started, counts, verdicts };
+  } catch (e) {
+    endRun((e as Error).message || 'error');
+    throw e;
+  } finally {
+    process.off('SIGINT', onInt);
+    process.off('SIGTERM', onTerm);
+  }
 }
 
 /** What is taken unread — see THE TRUST POLICY in the header. */

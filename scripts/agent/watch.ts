@@ -182,6 +182,8 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
         continue;
       }
       out.push(`  ${yellow('▶')} ${bold(r.task)}  ${r.done}/${r.total} votes · ${r.disagreements ? yellow(`${r.disagreements} disagreeing`) : '0 disagreeing'}${r.errors ? red(` · ${r.errors} errors`) : ''} · ${models} · ${secs(elapsed)}${eta !== undefined ? dim(` · ~${secs(eta)} left`) : ''}`);
+    } else if (r.abandoned) {
+      out.push(`  ${red('✗')} ${bold(r.task)}  ${r.done}/${r.total} votes · ${red('abandoned')} (no run-end; process gone) · ${models} · ${dim(ago(r.startedAt, now))}`);
     } else {
       const c = r.counts ?? {};
       out.push(`  ${r.failed ? red('✗') : green('✓')} ${bold(r.task)}  ${r.done} votes · unanimous ${c.unanimous ?? 0} · majority ${c.majority ?? 0} · split ${c.split ?? 0}${c.failed ? red(` · failed ${c.failed}`) : ''} · ${models} · ${secs(r.ms ?? 0)} · ${dim(ago(r.startedAt, now))}`);
