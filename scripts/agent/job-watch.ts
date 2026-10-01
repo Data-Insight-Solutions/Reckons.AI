@@ -32,7 +32,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_MAX_ATTEMPTS, DEFAULT_MAX_PER_HOUR, breakerDecision, failureSignature, openCircuits, readRuns,
-  runsTtlPath, setCircuitCache, stateDir, updateCurrent,
+  failureStreak, jobIri, runsTtlPath, setCircuitCache, slug, stateDir, updateCurrent, type HistRun,
 } from './job-state.js';
 
 export { stateDir, runsTtlPath };
@@ -153,7 +153,6 @@ export function validateVerdict(raw: unknown, log: string, exitCode: number): { 
 }
 
 const lit = (s: string): string => '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
-const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job';
 
 export const TTL_PREFIXES = [
   '@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .',
@@ -162,6 +161,7 @@ export const TTL_PREFIXES = [
   '@prefix ktype:  <urn:kbase:type/> .',
   '@prefix kpred:  <urn:kbase:predicate/> .',
   '@prefix jobrun: <urn:reckons:jobrun/> .',
+  '@prefix job:    <urn:reckons:job/> .',
 ].join('\n');
 
 export type RunRecord = {
@@ -181,6 +181,7 @@ export function runToTurtle(r: RunRecord): string {
     `rdfs:label ${lit(`${r.name} — ${r.verdict.status} (${r.startedAt.toISOString()})`)}`,
     `kpred:has-status ${lit(r.verdict.status)}`,
     `kpred:job-name ${lit(r.name)}`,
+    `kpred:of-job <${jobIri(r.name)}>`,
     `kpred:started ${lit(r.startedAt.toISOString())}^^xsd:dateTime`,
     `kpred:ended ${lit(r.endedAt.toISOString())}^^xsd:dateTime`,
     `kpred:exit-code ${Math.trunc(r.exitCode)}`,
@@ -193,6 +194,52 @@ export function runToTurtle(r: RunRecord): string {
   if (r.modelNote) p.push(`kpred:note ${lit(r.modelNote)}`);
   for (const f of r.verdict.findings) p.push(`kpred:finding ${lit(`${f.kind}: ${f.text} [log: ${f.evidence_line}]`)}`);
   return `${id}\n    ${p.join(' ;\n    ')} .\n`;
+}
+
+/**
+ * The JOB entity: one per --name, rewritten after every run, so the node a person opens holds the
+ * status (latest/previous run, attempt, circuit state, log path) instead of making them hunt through runs. Pure.
+ */
+export function jobToTurtle(name: string, runs: HistRun[], maxAttempts: number): string {
+  const mine = runs.filter((r) => r.name === name).sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+  const latest = mine[mine.length - 1];
+  const prev = mine[mine.length - 2];
+  const streak = failureStreak(mine);
+  const open = streak.count >= maxAttempts;
+  const lastLog = [...mine].reverse().find((r) => r.logPath)?.logPath;
+  const p = [
+    `rdf:type ktype:Job`,
+    `rdfs:label ${lit(name)}`,
+    `kpred:job-name ${lit(name)}`,
+    `kpred:circuit-state ${lit(open ? 'open' : 'closed')}`,
+    `kpred:max-attempts ${maxAttempts}`,
+  ];
+  if (latest) {
+    p.push(`kpred:has-status ${lit(latest.status)}`, `kpred:latest-run ${runEntityId(name, latest.startedAt)}`, `kpred:attempt ${streak.count + (open ? 0 : 1)}`);
+    if (latest.headline) p.push(`kpred:headline ${lit(latest.headline)}`);
+  }
+  if (prev) p.push(`kpred:previous-run ${runEntityId(name, prev.startedAt)}`);
+  if (open && streak.signature) p.push(`kpred:failure-signature ${lit(streak.signature)}`);
+  if (lastLog) p.push(`kpred:log-path ${lit(lastLog)}`);
+  return `job:${slug(name)}\n    ${p.join(' ;\n    ')} .\n`;
+}
+
+/** Replace this job's marked block in the file text, or append it; adds the job: prefix to older files. Pure. */
+export function upsertJobBlock(ttl: string, name: string, block: string): string {
+  const begin = `# job-begin ${slug(name)}`;
+  const end = `# job-end ${slug(name)}`;
+  const wrapped = `${begin}\n${block}${end}\n`;
+  let out = ttl;
+  if (!/@prefix job:/.test(out)) out = out.replace(/(@prefix jobrun:[^\n]*\n)/, '$1@prefix job:    <urn:reckons:job/> .\n');
+  const i = out.indexOf(begin);
+  const j = out.indexOf(end);
+  if (i >= 0 && j > i) return out.slice(0, i) + wrapped + out.slice(j + end.length + 1);
+  return out + '\n' + wrapped;
+}
+
+export function writeJob(ttlPath: string, name: string, runs: HistRun[], maxAttempts: number): void {
+  if (!existsSync(ttlPath)) return;
+  writeFileSync(ttlPath, upsertJobBlock(readFileSync(ttlPath, 'utf8'), name, jobToTurtle(name, runs, maxAttempts)));
 }
 
 export function appendRun(ttlPath: string, r: RunRecord): void {
@@ -262,6 +309,7 @@ async function main(): Promise<void> {
   };
   if (reset) {
     appendRun(runsTtlPath(), marker('reset', 'breaker reset by --reset'));
+    writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
     setCircuitCache(name, null);
     console.log(`${name}: breaker reset`);
     if (!cmd.length) process.exit(0);
@@ -270,6 +318,7 @@ async function main(): Promise<void> {
   const decision = breakerDecision(history, { maxAttempts, maxPerHour, now: new Date() });
   if (!decision.allow) {
     appendRun(runsTtlPath(), marker('refused', `refused: ${decision.reason}`.slice(0, 120), decision.attempt, decision.signature));
+    writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
     console.error(`job-watch: REFUSED ${name} — ${decision.reason}`);
     process.exit(3);
   }
@@ -313,6 +362,7 @@ async function main(): Promise<void> {
 
   const rec: RunRecord = { name, startedAt, endedAt, exitCode, logPath, verdict, modelUsed, modelNote: notes.length ? notes.join('; ').slice(0, 400) : undefined, attempt: decision.attempt, signature: failureSignature(log, exitCode) };
   appendRun(runsTtlPath(), rec);
+  writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
   const open = openCircuits(readRuns(), maxAttempts).find((c) => c.name === name);
   setCircuitCache(name, open ? { count: open.count, signature: open.signature } : null);
   if (open) console.error(`job-watch: circuit now OPEN for ${name} (${open.count} identical failures); the next run will be refused`);

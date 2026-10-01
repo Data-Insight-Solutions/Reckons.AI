@@ -28,7 +28,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_MAX_ATTEMPTS, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
+import { DEFAULT_MAX_ATTEMPTS, hyperlink, jobLink, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
 import { ago, eventLogPath, foldRuns, parseGinLine, readEvents, type OllamaRequest, type RunView } from './local-activity.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -214,16 +214,16 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
   return out.join('\n');
 }
 
-export function renderJobs(j: JobsView, now = new Date()): string[] {
+export function renderJobs(j: JobsView, now = new Date(), link = (name: string) => hyperlink(name, jobLink(name), color)): string[] {
   const out = [`${bold('JOBS')} ${dim('scripts/agent/job-watch.ts · circuit breaker: the same failure repeated refuses the next run')}`];
-  for (const c of j.circuits) out.push(`  ${red('⛔ CIRCUIT OPEN')} ${bold(c.name)} — ${c.count} identical failures: ${c.signature} ${dim('(--reset to clear)')}`);
+  for (const c of j.circuits) out.push(`  ${red('⛔ CIRCUIT OPEN')} ${bold(link(c.name))} — ${c.count} identical failures: ${c.signature} ${dim('(--reset to clear)')}`);
   if (j.running.length === 0) out.push(`  ${dim('nothing running')}`);
-  for (const r of j.running) out.push(`  ${yellow('▶')} ${bold(r.name)}  ${secs(now.getTime() - new Date(r.started).getTime())} · attempt ${r.attempt}/${r.maxAttempts} · pid ${r.pid}`);
+  for (const r of j.running) out.push(`  ${yellow('▶')} ${bold(link(r.name))}  ${secs(now.getTime() - new Date(r.started).getTime())} · attempt ${r.attempt}/${r.maxAttempts} · pid ${r.pid}`);
   out.push(`  ${dim('queued: not shown (runner.ts has no side-effect-free queue reader)')}`);
   if (j.finished.length === 0) out.push(`  ${dim('no finished runs recorded')}`);
   for (const f of j.finished.slice().reverse()) {
     const mark = f.status === 'passed' ? green('✓') : f.status === 'refused' ? yellow('⊘') : red('✗');
-    out.push(`  ${mark} ${bold(f.name ?? '?')} ${f.status} ${dim(ago(f.startedAt, now))} — ${(f.headline ?? '').slice(0, 90)}`);
+    out.push(`  ${mark} ${bold(f.name ? link(f.name) : '?')} ${f.status} ${dim(ago(f.startedAt, now))} — ${(f.headline ?? '').slice(0, 90)}`);
   }
   return out;
 }

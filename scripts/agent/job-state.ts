@@ -26,6 +26,27 @@ export const runsTtlPath = (): string => process.env.JOB_RUNS_TTL || path.join(m
 export const currentPath = (): string => path.join(stateDir(), 'current.json');
 export const circuitsPath = (): string => path.join(stateDir(), 'circuits.json');
 
+export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job';
+/** The stable entity for a job name: one per --name, where its status lives. */
+export const jobIri = (name: string): string => `urn:reckons:job/${slug(name)}`;
+
+/** The graph the app opens for job-runs.ttl: a loose .ttl in a linked workspace is named after its file. */
+export const JOBS_KB = 'job-runs';
+export const DEFAULT_APP_URL = 'http://localhost:5173';
+
+/**
+ * Deep link into the app: the main graph page reads ?kb= (graph, by id or name) and ?sel= (the
+ * selected node key). Pure. See src/routes/(app)/+layout.svelte and +page.svelte.
+ */
+export function jobLink(name: string, base: string = process.env.RECKONS_APP_URL || DEFAULT_APP_URL): string {
+  return `${base.replace(/\/+$/, '')}/?kb=${encodeURIComponent(JOBS_KB)}&sel=${encodeURIComponent(jobIri(name))}`;
+}
+
+/** OSC 8 terminal hyperlink; a plain "text (url)" when the terminal cannot be assumed to render it. Pure. */
+export function hyperlink(text: string, url: string, tty: boolean): string {
+  return tty ? `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\` : `${text} (${url})`;
+}
+
 // ── failure signature ──────────────────────────────────────────────────────
 
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
@@ -55,7 +76,7 @@ export function failureSignature(log: string, exitCode: number): string | undefi
 
 // ── breaker ────────────────────────────────────────────────────────────────
 
-export type HistRun = { name?: string; status: string; exitCode: number; signature?: string; startedAt: Date; endedAt?: Date; headline?: string };
+export type HistRun = { logPath?: string; name?: string; status: string; exitCode: number; signature?: string; startedAt: Date; endedAt?: Date; headline?: string };
 export type BreakerOpts = { maxAttempts: number; maxPerHour: number; now: Date };
 export type Decision = { allow: boolean; attempt: number; kind?: 'circuit' | 'hourly'; reason?: string; signature?: string };
 
@@ -166,7 +187,7 @@ export function parseRuns(ttl: string): HistRun[] {
   const runs: HistRun[] = [];
   for (const o of by.values()) {
     if (!o['job-name'] || !o.started) continue;
-    runs.push({ name: o['job-name'], status: o['has-status'] ?? '', exitCode: Number(o['exit-code'] ?? 1), signature: o['failure-signature'], startedAt: new Date(o.started), endedAt: o.ended ? new Date(o.ended) : undefined, headline: o.headline });
+    runs.push({ name: o['job-name'], status: o['has-status'] ?? '', exitCode: Number(o['exit-code'] ?? 1), signature: o['failure-signature'], logPath: o['log-path'], startedAt: new Date(o.started), endedAt: o.ended ? new Date(o.ended) : undefined, headline: o.headline });
   }
   return runs.sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
 }
