@@ -142,6 +142,10 @@ describe('a cut is never silent: the person is told, not just the console', () =
     toTurtle([good]);
     await flush();
     expect(pushed).toHaveLength(1); // clean export: no notification
+    toTurtle([good, bad]);
+    toTurtle([good, bad]);
+    await flush();
+    expect(pushed).toHaveLength(1); // autosave re-serializing the same graph: still told only once
     err.mockRestore();
   });
 

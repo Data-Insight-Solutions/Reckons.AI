@@ -25,9 +25,15 @@ export function notifyImportQuarantine(name: string | undefined, count: number):
   });
 }
 
+/** Autosave and sync serialize the same graph over and over; a fact that cannot be written would
+ *  otherwise raise a fresh "important" notice on every save. Say it once per count per session. */
+const announcedExportSkips = new Set<number>();
+
 export function notifyExportSkipped(count: number): Promise<void> {
+  if (announcedExportSkips.has(count)) return Promise.resolve();
+  announcedExportSkips.add(count);
   return notifyDataCut({
-    id: `export-skipped:${Date.now()}`,
+    id: `export-skipped:${count}`,
     title: `${count} fact${count === 1 ? '' : 's'} left out of this save`,
     body: `${count} fact${count === 1 ? ' has' : 's have'} an invalid subject (a value used as if it were an entity) and could not be written without making the whole file unreadable, so ${count === 1 ? 'it was' : 'they were'} left out of this export. They are still in your graph here.`,
   });
