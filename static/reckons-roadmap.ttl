@@ -2268,7 +2268,7 @@ kb:loop-safety rdf:type        ktype:Phase ;
                kpred:remaining    "Run outcomes as facts; lease expiry sweep; a rollback path for a merge that lands broken on main (production deploys from main)." .
 
 kb:loop-opus-review rdf:type ktype:Phase ;
-    rdfs:label "Phase 6 — local agents do the work; Opus reviews it as a subagent, in batches" ;
+    rdfs:label "Phase 6 — local agents do the work; a Sonnet subagent reviews and merges it, Opus by escalation" ;
     kpred:part-of kb:autonomous-loop ;
     hnav:order 6 ;
     kpred:has-status "in-progress" ;
