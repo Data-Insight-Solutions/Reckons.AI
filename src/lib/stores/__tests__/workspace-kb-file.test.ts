@@ -157,6 +157,19 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     expect(vt!.path).toEqual(['visual-tests.ttl']);
   });
 
+  it('a sync service\'s conflict copy is not listed as the space or as a second space (F56.2)', async () => {
+    const mod = await connectedWorkspace();
+    const kbs = await root.getDirectoryHandle('kbs', { create: true });
+    const work = await kbs.getDirectoryHandle('work', { create: true });
+    const id = '<urn:reckons:kb> <urn:reckons:meta/kbStableId> "same-id" .';
+    (await work.getFileHandle('work.ttl', { create: true })).content = id;
+    (await work.getFileHandle("work (Matt's conflicted copy 2026-09-30).ttl", { create: true })).content = id;
+
+    const folders = await mod.listKbFolders();
+    const matching = folders.filter((f) => f.meta.stableId === 'same-id');
+    expect(matching.map((f) => f.path.join('/'))).toEqual(['kbs/work/work.ttl']);
+  });
+
   it('listKbFolders discovers a .ttl in any nested directory', async () => {
     const mod = await connectedWorkspace();
     const sub = await root.getDirectoryHandle('reports', { create: true });
