@@ -2214,6 +2214,10 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-job-grouping ;
                kpred:has-phase    kb:loop-safety .
 
+kb:autonomous-loop kpred:has-file "scripts/agent/merge-queue.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/merge-queue.test.ts" ;
+    kpred:progress "2026-09-30, THE MERGE STEP AT SCRIPT TIER: scripts/agent/merge-queue.ts lands a list of PRs on dev in order, unattended. Per PR it refuses any base but dev (re-read immediately before merging), merges dev into a branch that does not contain dev's head before trusting its checks, waits for every check, and merges pinned to the checked head commit. A failure, conflict or timeout stops the queue and is named. Written because Matt saw a session spend an hour polling CI by hand and asked why it was not offloaded; every step is a rule, so no model is involved. NOT YET: it is started by hand with a PR list, not by the loop, and it does not resolve conflicts (graph TTL conflicts between PRs are the likely case)." .
+
 kb:loop-idea-inbox rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — ideas are a GRAPH, diffed against the roadmap" ;
                kpred:part-of      kb:autonomous-loop ;
