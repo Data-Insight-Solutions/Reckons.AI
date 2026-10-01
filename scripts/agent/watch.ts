@@ -30,6 +30,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_MAX_ATTEMPTS, hyperlink, jobLink, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
 import { attemptLevel, classify, elapsedLevel, fitArt, LEGEND, loadThresholds, median, TURTLE_FRAMES, worst, type Level, type Thresholds } from './watch-render.js';
+import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import { START_COMMAND, queueSegment, readDone, readQueueView, type QueueView } from './session-queue.js';
+import { doneSuccesses, dueAll, dueLabel, loadRecurring, mergeSuccesses, type Due } from './session-schedule.js';
 import { ago, eventLogPath, foldRuns, parseGinLine, readEvents, type OllamaRequest, type RunView } from './local-activity.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -44,6 +47,10 @@ export type Snapshot = {
   requests: OllamaRequest[] | null;
   runs: RunView[];
   jobs?: JobsView;
+  /** The session-queue worker's state (F74.7). Absent in old callers. */
+  queue?: QueueView;
+  /** Recurring jobs and when each is due; absent in --statusline, which reads no TTL. */
+  due?: Due[];
 };
 
 export type JobsView = {
@@ -140,12 +147,24 @@ function cachedRequests(): OllamaRequest[] | null {
   return cache.last ? [{ ...cache.last, at: new Date(cache.last.at) }] : [];
 }
 
+/** The worker file does not know the attempt; job-watch's current.json does. */
+function withAttempt(q: QueueView): QueueView {
+  if (q.kind !== 'working') return q;
+  const cur = readCurrent().find((c) => c.name === q.job);
+  return cur ? { ...q, attempt: cur.attempt, maxAttempts: cur.maxAttempts } : q;
+}
+
 export async function snapshot(): Promise<Snapshot> {
   const [ollama] = await Promise.all([ollamaState()]);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const runs = foldRuns(readEvents()).filter((r) => !r.finished || new Date(r.startedAt) >= today);
-  return { ollama, gpus: gpus(), requests: serverRequests(), runs, jobs: jobsView() };
+  let due: Due[] | undefined;
+  try {
+    const { jobs, successes } = loadRecurring(mainCheckoutRoot());
+    due = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(readDone())), Date.now());
+  } catch { /* an unreadable schedule graph is shown as no DUE line, not a crash */ }
+  return { ollama, gpus: gpus(), requests: serverRequests(), runs, jobs: jobsView(), queue: withAttempt(readQueueView(ollama.up)), due };
 }
 
 const color = !process.env.NO_COLOR && process.stdout.isTTY;
@@ -176,7 +195,7 @@ export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): st
   const lvl = (lv: Level, text: string) => (levels.push(lv), byLevel(lv, text));
   const out: string[] = [];
   out.push(`${bold('LOCAL MODELS')}  ${dim(now.toLocaleTimeString())}  ${dim('· npm run agent:watch · Ctrl-C quits')}`);
-  out.push('');
+  out.push(...renderQueue(s.queue, s.due, lvl, th), '');
 
   if (!s.ollama.up) out.push(`${bold('OLLAMA')}  ${lvl('bad', `DOWN — nothing answers at ${OLLAMA}`)}`);
   else {
@@ -243,6 +262,29 @@ export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): st
   return [...art.map((l, i) => (i < 3 ? bold(l) : l)), ...(art.length ? [''] : []), ...out].join('\n');
 }
 
+/** The prominent READY / WORKING / PAUSED line and the DUE line (F74.7). Never throws on missing parts. */
+export function renderQueue(q: QueueView | undefined, due: Due[] | undefined, lvl: (lv: Level, text: string) => string = byLevel, _th?: Thresholds): string[] {
+  const out: string[] = [];
+  const head = bold('LOCAL QUEUE');
+  if (q) {
+    switch (q.kind) {
+      case 'ready': out.push(`${head}  ${green('READY')} — session active, Ollama up, ${q.queued} job${q.queued === 1 ? '' : 's'} queued, worker not running ${dim(`→ ${START_COMMAND}`)}`); break;
+      case 'working': out.push(`${head}  ${yellow('WORKING')} — ${bold(q.job)}${q.attempt ? ` attempt ${q.attempt}/${q.maxAttempts}` : ''} · ${q.index}/${q.total} · ${Math.max(0, q.queued - 1)} remaining`); break;
+      case 'paused-idle': out.push(`${head}  ${dim(`PAUSED — no active session (${q.queued} queued; resumes when a prompt is submitted)`)}`); break;
+      case 'paused-ollama-down': out.push(`${head}  ${lvl('bad', `PAUSED — Ollama down (${q.queued} queued)`)}`); break;
+      case 'paused-manual': out.push(`${head}  ${lvl('warn', `PAUSED — manually (PAUSE file; npx tsx scripts/agent/queue.ts resume) · ${q.queued} queued`)}`); break;
+      case 'paused-resources': out.push(`${head}  ${lvl('warn', `PAUSED — GPU busy/hot/full: ${q.reason ?? 'over a limit'} · ${q.queued} queued`)}`); break;
+      case 'empty': out.push(`${head}  ${dim('EMPTY — nothing queued')}`); break;
+    }
+  }
+  if (due && due.length) {
+    const rank = (d: Due) => (d.due ? -(d.overdueMs ?? Infinity) : (d.dueInMs ?? 0));
+    const shown = due.slice().sort((a, b) => rank(a) - rank(b)).slice(0, 8);
+    out.push(`  due: ${shown.map((d) => (d.due ? lvl(d.level, dueLabel(d)) : dim(dueLabel(d)))).join(', ')}${due.length > shown.length ? dim(` +${due.length - shown.length} more`) : ''}`);
+  }
+  return out;
+}
+
 export function renderJobs(
   j: JobsView,
   now = new Date(),
@@ -273,7 +315,9 @@ export function renderJobs(
 export function statusline(s: Snapshot, now = new Date()): string {
   const j = s.jobs;
   const seg = j && (j.running.length || j.circuits.length) ? ` · jobs: ${[j.running.length ? `${j.running.length} running` : '', j.circuits.length ? `${j.circuits.length} circuit open` : ''].filter(Boolean).join(', ')}` : '';
-  return statuslineBase(s, now) + seg;
+  const base = statuslineBase(s, now) + seg;
+  // Queue segment first and short: `local: ready 12 · idle · last 4m ago`. Empty adds nothing.
+  return s.queue && s.queue.kind !== 'empty' && s.ollama.up ? `local: ${queueSegment(s.queue)} · ${base.replace(/^local: /, '')}` : base;
 }
 
 function statuslineBase(s: Snapshot, now: Date): string {
@@ -298,7 +342,8 @@ async function main(): Promise<void> {
     const runs = foldRuns(readEvents()).filter((r) => !r.finished || new Date(r.startedAt) >= today);
     // Jobs here are two small JSON reads (current.json, circuits.json) — never the TTL.
     const jobs: JobsView = { running: readCurrent(), finished: [], circuits: Object.entries(readCircuitCache()).map(([name, c]) => ({ name, ...c })) };
-    process.stdout.write(statusline({ ollama: await ollamaState(), gpus: [], requests: cachedRequests(), runs, jobs }));
+    const ollama = await ollamaState();
+    process.stdout.write(statusline({ ollama, gpus: [], requests: cachedRequests(), runs, jobs, queue: withAttempt(readQueueView(ollama.up)) }));
     return;
   }
   const detail = argv.includes('--detail');
