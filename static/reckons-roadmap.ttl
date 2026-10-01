@@ -6328,6 +6328,22 @@ kb:meeting-transcription rdf:type ktype:Feature ;
     kpred:relates-to kb:supervised-compute-sharing ;
     kpred:relates-to kb:indico-deliberation .
 
+kb:expertise-routing rdf:type ktype:Feature ;
+    rdfs:label "Expertise routing — who knows what, and a failed job escalates to the right person" ;
+    kpred:feature-id "F241" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to somehow track users and their subject matter expertise and then escalate job failures to the right SMEs, probably enterprise only, AD enabled.'" ;
+    kpred:description "An organization's people and their subject-matter expertise are statements in an organization space; when an agent job fails past its retry cap (the circuit breaker), or a step needs a person (F236), the escalation goes to the people whose expertise matches the job's subject, not to whoever is on the general queue. Enterprise tier, with identities from the organization's directory (Active Directory / Entra ID)." ;
+    kpred:principle "EXPERTISE IS EVIDENCED, NOT ONLY DECLARED. A person may state their areas, but the stronger signal is the record already in the graph: reviews they decided in a subject, deliverables they accepted, questions they answered and were confirmed. Declared and evidenced expertise are kept as different statements, so routing can prefer evidence and a reader can see which is which." ;
+    kpred:constraint "A PROFILE OF WHAT SOMEONE KNOWS IS PERSONAL DATA ABOUT THEM. Each person sees and can correct their own expertise statements; nothing about them is inferred silently; and the organization's policy (F21) decides who may read whose profile. Outside the enterprise tier, nobody is profiled." ;
+    kpred:constraint "THE DIRECTORY SUPPLIES IDENTITY AND GROUPS, NOT EXPERTISE. Active Directory knows who someone is and which groups they belong to; it does not know what they know. The directory link is for sign-in and for scoping who may be asked, and is an optional enterprise integration, never a dependency of the local-first app." ;
+    kpred:proposed "ROUTING: a failed job's subject (the entities and task type it touched) is matched against expertise statements; the top matches who are available receive the escalation with the job's one-line report and evidence; if nobody matches, it goes to the space's owner. Each escalation and its outcome are statements, so routing quality can be measured (was the right person asked?)." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Depends on identities existing at all, which today they do not beyond the device owner." ;
+    kpred:relates-to kb:enterprise-3ps ;
+    kpred:relates-to kb:ai-task-human-review ;
+    kpred:relates-to kb:supervised-compute-sharing .
+
 ## =============================================================================
 ## F143: Game development on a graph  (Matt, 2026-08-28)
 ## =============================================================================
