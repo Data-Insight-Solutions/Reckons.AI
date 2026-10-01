@@ -15,7 +15,7 @@ inventory · #340 rename batch 2a (`--batch=term`; blocker: .svelte references �
 · #341 collab flow test (stacked #332) · #342 SECURITY shell-quoting fix — merge early, then flip
 #341's it.fails · #343 tasks-per-week tokens · #345 space watcher (stacked #341) · #348 bench.
 
-**In flight (Sonnet subagent, branch agent/session-queue, stacked on #347):** session-bound queue
+**#349 (built, stacked on #347, unreviewed): session queue —** session-bound queue
 worker (heartbeat hook; runs only while a session is active), anacron-style catch-up schedules
 (voice notes, maintenance, align…), GPU guards (VRAM 90%, 83 °C, other-process load, PAUSE file),
 definitions as TTL with private ~/.config/reckons/device.ttl. When it lands: install the heartbeat
