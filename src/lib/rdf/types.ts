@@ -480,6 +480,8 @@ export function isMetaPredicate(predicateIri: string): boolean {
   if (TYPE_PRESENTATION_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
+  // nav:x and nav:y are where a person placed a node in the free layout (rdf/node-positions.ts)
+  if (predicateIri === `${NAV_PREFIX}x` || predicateIri === `${NAV_PREFIX}y`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders
   // via skos:broader/related/next/prev, which stay visible edges.
   if (predicateIri.startsWith(PAGE_PREFIX)) return true;
