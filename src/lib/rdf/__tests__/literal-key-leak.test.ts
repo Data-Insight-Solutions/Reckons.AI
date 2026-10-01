@@ -12,13 +12,14 @@ import {
 import { toTurtle, toTurtleFull, toTriG, toNQuads } from '../serialize';
 import { buildAliasStatements } from '../merge-aliases';
 import { importTurtleFull } from '../import-ttl';
+import { resetExportSkipNotices } from '../cut-notice';
 
 const pushed = vi.hoisted(() => [] as Array<{ title: string; body?: string; type: string }>);
 vi.mock('../../stores/notifications.svelte', () => ({
   pushNotification: (n: { title: string; body?: string; type: string }) => { pushed.push(n); },
 }));
 const flush = () => new Promise((r) => setTimeout(r, 0));
-beforeEach(() => { pushed.length = 0; });
+beforeEach(() => { pushed.length = 0; resetExportSkipNotices(); });
 
 const ALT = 'http://www.w3.org/2004/02/skos/core#altLabel';
 const G = { kind: 'iri', value: 'urn:kbase:source/manual' } as const;

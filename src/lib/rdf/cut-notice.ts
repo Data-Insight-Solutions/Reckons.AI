@@ -29,6 +29,11 @@ export function notifyImportQuarantine(name: string | undefined, count: number):
  *  otherwise raise a fresh "important" notice on every save. Say it once per count per session. */
 const announcedExportSkips = new Set<number>();
 
+/** Tests only: a fresh "session". */
+export function resetExportSkipNotices(): void {
+  announcedExportSkips.clear();
+}
+
 export function notifyExportSkipped(count: number): Promise<void> {
   if (announcedExportSkips.has(count)) return Promise.resolve();
   announcedExportSkips.add(count);
