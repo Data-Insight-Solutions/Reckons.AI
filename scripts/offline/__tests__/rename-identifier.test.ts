@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import ts from 'typescript';
-import { mapKbName, nameSegments, termCandidates, applyEdits, isUsableName, planInterfaceToType, planRename, RenameSession, topLevelDeclarations, underscoreModuleState, type Edit } from '../rename-identifier';
+import { quotedAsString, mapKbName, nameSegments, termCandidates, applyEdits, isUsableName, planInterfaceToType, planRename, RenameSession, topLevelDeclarations, underscoreModuleState, type Edit } from '../rename-identifier';
 
 const ROOT = '/virtual-project';
 const session = (files: Record<string, string>) => new RenameSession({ root: ROOT, memory: files });
@@ -167,4 +167,14 @@ describe('termCandidates', () => {
     expect(r.ambiguous.map((a) => a.name)).toEqual(['kbase']);
     expect(r.deferred).toBe(2);
   });
+});
+
+describe('quotedAsString — the stored-name guard fails closed', () => {
+  const failing = (status: number | undefined) => (() => { throw Object.assign(new Error('boom'), { status }); }) as never;
+  it('treats git grep exit 1 as no match', () => { expect(quotedAsString('/x', 'kbId', failing(1))).toEqual([]); });
+  it('REFUSES on any other failure', () => {
+    expect(() => quotedAsString('/x', 'kbId', failing(2))).toThrow(/STORED-NAME GUARD/);
+    expect(() => quotedAsString('/x', 'kbId', failing(undefined))).toThrow(/STORED-NAME GUARD/);
+  });
+  it('returns matching files on success', () => { expect(quotedAsString('/x', 'kbId', (() => 'a.ts\nb.ts\n') as never)).toEqual(['a.ts', 'b.ts']); });
 });

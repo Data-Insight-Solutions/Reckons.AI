@@ -370,11 +370,14 @@ export function termCandidates(session: RenameSession, files: string[]): TermSca
 }
 
 /** Files under src/ in which `name` appears as a quoted string: a possible stored key or serialized field. */
-function quotedAsString(root: string, name: string): string[] {
+export function quotedAsString(root: string, name: string, run: typeof execFileSync = execFileSync): string[] {
   try {
-    return execFileSync('git', ['grep', '-lF', '-e', `'${name}'`, '-e', `"${name}"`, '-e', `\`${name}\``, '--', 'src'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
-  } catch {
-    return [];
+    return (run('git', ['grep', '-lF', '-e', `'${name}'`, '-e', `"${name}"`, '-e', `\`${name}\``, '--', 'src'], { cwd: root, encoding: 'utf8' }) as string).split('\n').filter(Boolean);
+  } catch (e) {
+    // Exit status 1 is git grep's "no match". Anything else (other status, spawn failure) is a failed
+    // lookup, and a failed lookup must REFUSE the rename: the guard fails closed, never open.
+    if ((e as { status?: number }).status === 1) return [];
+    throw new Error(`STORED-NAME GUARD: lookup of ${name} failed (${(e as Error).message.split('\n')[0]}) — refusing rather than guessing`);
   }
 }
 
