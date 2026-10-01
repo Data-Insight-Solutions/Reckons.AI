@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { Canvas } from '@threlte/core';
   import { replaceState } from '$app/navigation';
   import { Popover } from 'bits-ui';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import GraphCanvas from '$lib/components/GraphCanvas.svelte';
+  import type { ComponentProps } from 'svelte';
   import CompareGraph from '$lib/components/CompareGraph.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import OverlayGraph from '$lib/components/OverlayGraph.svelte';
@@ -1380,6 +1381,41 @@
       previewLayout = layoutParam as PreviewLayout;
     }
   });
+  /*
+   * PROPS FOR THE ONE GRAPH CANVAS (F92 step 2). Stable objects with getters, as on / — an object
+   * literal in the template is rebuilt whenever any value it reads changes, and the renderers restart
+   * their layout on that and never report settled. The arrays are $derived for the same reason: a
+   * getter returning a fresh spread would be a new value on every read.
+   */
+  const previewHighlighted = $derived([...pendingKeys]);
+  const previewHighlightedEdges = $derived(focusedEdge ? [focusedEdge] : []);
+  const previewProps2d: ComponentProps<typeof KnowledgeGraph2D> = {
+    get statements() { return previewStatements; },
+    get selected() { return selected; },
+    get focusKey() { return focusKey; },
+    get layout() { return previewLayout; },
+    get nodeOrder() { return previewNodeOrder; },
+    get sources() { return sources(); },
+    onselect: (k) => selectFromGraph(k),
+    onhover: () => {},
+    onlabelsmove: () => {},
+    onmarkersmove: () => {},
+    onsettledchange: (settled) => { graphSettled = settled; },
+    get highlighted() { return previewHighlighted; },
+    get highlightedEdges() { return previewHighlightedEdges; },
+  };
+  const previewProps3d: ComponentProps<typeof KnowledgeGraph> = {
+    get statements() { return previewStatements; },
+    get selected() { return selected; },
+    get layout() { return previewLayout; },
+    get sources() { return sources(); },
+    onselect: (k) => selectFromGraph(k),
+    onhover: () => {},
+    onlabelsmove: (labels) => { nodeLabels = labels; },
+    onmarkersmove: () => {},
+    onsettledchange: (settled) => { graphSettled = settled; },
+    get highlighted() { return previewHighlighted; },
+  };
 </script>
 
 <div class="review-layout" class:dragging={isDragging}>
@@ -1640,44 +1676,18 @@
             <p class="mono">no statements to preview</p>
             <p class="mono small">ingest something to see changes here</p>
           </div>
-        {:else if use2D || !webglAvailable}
-          <KnowledgeGraph2D
-            statements={previewStatements}
-            {selected}
-            {focusKey}
-            layout={previewLayout}
-            nodeOrder={previewNodeOrder}
-            sources={sources()}
-            onselect={(k) => selectFromGraph(k)}
-            onhover={() => {}}
-            onlabelsmove={() => {}}
-            onmarkersmove={() => {}}
-            onsettledchange={(settled) => { graphSettled = settled; }}
-            highlighted={[...pendingKeys]}
-            highlightedEdges={focusedEdge ? [focusedEdge] : []}
-          />
         {:else}
-          <svelte:boundary>
-            <Canvas>
-              <KnowledgeGraph
-                statements={previewStatements}
-                {selected}
-                layout={previewLayout}
-                sources={sources()}
-                onselect={(k) => selectFromGraph(k)}
-                onhover={() => {}}
-                onlabelsmove={(labels) => { nodeLabels = labels; }}
-                onmarkersmove={() => {}}
-                onsettledchange={(settled) => { graphSettled = settled; }}
-                highlighted={[...pendingKeys]}
-              />
-            </Canvas>
-            {#snippet failed()}
+          <GraphCanvas
+            renderer={use2D || !webglAvailable ? '2d' : '3d'}
+            props2d={previewProps2d}
+            props3d={previewProps3d}
+          >
+            {#snippet onFailure()}
               <div class="graph-empty">
                 <p class="mono">3D failed — using 2D</p>
               </div>
             {/snippet}
-          </svelte:boundary>
+          </GraphCanvas>
         {/if}
       {:else if graphMode === 'compare'}
         {#if compareIncoming.length > 0}
@@ -2411,7 +2421,7 @@
           {/if}
         {:else if !alignLoading}
           <div class="empty-state">
-            <p>select KBs above to find alignment opportunities.</p>
+            <p>select spaces above to find alignment opportunities.</p>
           </div>
         {/if}
       {/if}

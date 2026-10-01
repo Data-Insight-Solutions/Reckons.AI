@@ -779,7 +779,7 @@
       <div class="enterprise-card">
         <span class="enterprise-icon">👥</span>
         <strong>People</strong>
-        <p>Role-based access controls. Team KBs with ownership, delegation, and audit trails. Know who contributed what, when.</p>
+        <p>Role-based access controls. Team spaces with ownership, delegation, and audit trails. Know who contributed what, when.</p>
       </div>
       <div class="enterprise-card">
         <span class="enterprise-icon">📜</span>

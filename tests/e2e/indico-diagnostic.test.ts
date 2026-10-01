@@ -27,11 +27,12 @@ async function configureIndico(page: import('@playwright/test').Page, serverUrl:
 
   // Follow the app's client-side navigation after saving. `page.goto()` starts a full document
   // replacement and could tear down the page while the IndexedDB settings write was still in
-  // flight, which made the next page intermittently read an empty Indico URL.
-  const addLink = page.locator('nav').getByRole('link', { name: /^add$/i });
+  // flight, which made the next page intermittently read an empty Indico URL. "add" in the nav
+  // opens a quick menu (F228); its "all ways to add…" entry is the client-side route to /ingest.
+  await page.locator('nav').getByRole('button', { name: /^add$/i }).click();
   await Promise.all([
     page.waitForURL((url) => url.pathname === '/ingest'),
-    addLink.click(),
+    page.getByRole('menuitem', { name: /all ways to add/i }).click(),
   ]);
   await page.getByRole('button', { name: /^calendar$/i }).first().click();
   await page.getByRole('button', { name: /^indico$/i }).first().click();

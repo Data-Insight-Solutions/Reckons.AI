@@ -170,6 +170,47 @@ kb:drive-folder-sync rdf:type ktype:Feature ;
                kpred:relates-to   kb:transactional-sync-protocol ;
                kpred:known-issue  "AUDIT 2026-07-21: 'feature-complete' above described surface coverage, NOT data safety. Sync exported a lossy confirmed/refined-only projection and reconnect could treat it as authoritative, clearing sources and losing pending/rejected statuses and provenance. PARTLY RESOLVED 2026-07-22 (F107.4 data-safety core): both backends now export lossless toTurtleFull for the round-tripped per-KB file, the shared import preserves all statuses + provenance, and any replace is snapshotted + transactional — so a reconnect no longer silently erases review state. REMAINING: last-seen hashes are still session-memory (no durable baseline) and there is no staged direction/diff before an existing-graph replace; sync is safer but not yet a fully trustworthy multi-writer backup until those Stage-2 pieces land." .
 
+# F56.2 — Matt, 2026-09-30: file sync with his iPhone, self-service.
+kb:self-service-sync rdf:type ktype:Feature ;
+    rdfs:label "Self-service device sync — the phone gets your spaces without anyone configuring a cloud" ;
+    kpred:feature-id "F56.2" ;
+    kpred:has-status "in-progress" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:drive-folder-sync ;
+    kpred:description "A person's spaces reach their phone without anyone configuring a cloud project: first by hand through the share sheet (built), then by one-tap connection to OneDrive or Google Drive through a single sync path shared by every provider." ;
+    kpred:decided "MATT, 2026-09-30: 'We need Google Drive sync or some sharing method with my iPhone... I want to enable self service file sync.' Then: 'Potentially easier to do OneDrive / SharePoint with my o365?'" ;
+    kpred:measured "WHY F56 IS NOT SELF-SERVICE, read from the code 2026-09-30: Drive folder sync works, but needs a Google OAuth Client ID that the USER creates in Google Cloud ('Set a Google Client ID in Settings first'); its one sign-in asks for Drive AND full Calendar together, and Calendar is a sensitive scope; and the token lives only in memory by design, so a phone asks again each session. iOS gives web apps no background sync, so any cloud sync runs while the app is open." ;
+    kpred:measured "WHAT THE PUBLISHERS REQUIRE, checked by web search 2026-09-30 and stated with its uncertainty: Google caps an unverified app that shows the unverified-app screen at 100 new users for the project's lifetime; sources disagree on whether drive.file alone triggers it. Microsoft shows a multi-tenant app without publisher verification as 'unverified' at consent, and many tenants block users from consenting to such apps — but a SINGLE-tenant registration in Matt's own Microsoft 365 tenant, with admin consent he grants himself, works at once." ;
+    kpred:scope-decision "BOTH, ORDERED BY WHAT EACH BLOCKS. (1) BUILT 2026-09-30, no account: the Spaces page sends the FULL space (every status and source, and the stable id) to the share sheet, where Save to Files reaches iCloud Drive, OneDrive or Google Drive, or downloads where there is no share sheet; '+ add → space file' brings it back and, by the stable id, updates the space instead of duplicating it — and the existing staleness guard refuses to let an older copy overwrite a newer space. (2) A sync-provider interface so local folder, Google Drive and OneDrive share ONE tested sync path and its conflict handling. (3) OneDrive / SharePoint through a single-tenant app in Matt's tenant, then Google one-tap with a Reckons-owned client asking drive.file only, Calendar requested only when the calendar is used." ;
+    kpred:decided "MATT, 2026-09-30, LATER: 'I fear recreating the wheel on file sharing is bad practice, we need to look for the easiest file sync services. Offering S3 bucket and developer options seems very reasonable if new cloud platform services are already needed.' THIS REPLACES THE ORDER ABOVE. Reckons is not a sync engine; it writes files where an existing service already syncs them. (0) DESKTOP, NO CODE: choose the workspace folder inside OneDrive, iCloud Drive, Dropbox, Google Drive for desktop or Syncthing — the service syncs it (Chromium desktop only; it is the File System Access API). (1) PHONE BY HAND: the share sheet (built). (2) DEVELOPER OPTION, AUTOMATIC: an S3-compatible bucket with the user's own keys — one implementation covers AWS S3, Cloudflare R2, Backblaze B2, MinIO and Wasabi — in the same kbs/<name>/<name>.ttl layout, signed with aws4fetch (MIT, zero dependencies) rather than a home-made signer. (3) THE CLI: rclone, which already speaks seventy-odd backends, pointed at the workspace folder. Consumer OAuth clouds only if users ask for them." ;
+    kpred:measured "THE NO-CODE ROUTE HAD A SILENT FAILURE, found 2026-09-30 before recommending it: workspace discovery reads EVERY .ttl under the folder, and a sync service's conflict copy (OneDrive appends the machine name, Dropbox '(… conflicted copy …)', iCloud ' 2', Google Drive ' (1)', Syncthing '.sync-conflict-…') carries the SAME kbStableId as the original — so it was either imported over the real space or listed as a second one, with nothing said. Guarded the same day: two files with one stable id are a conflict; the conventional file is kept, the copies are not imported or deleted, and a notice names them." ;
+    kpred:open-question "WHO REGISTERS THE CLOUD APP? A one-tap connection needs an app registered by the publisher — an Entra ID app (SPA, PKCE) for OneDrive, a Google OAuth client for Drive. Only Matt can create either, and their verification decides whether users outside his tenant, or beyond 100, can connect." ;
+    kpred:has-file "src/lib/storage/backup.ts" ;
+    kpred:tested-by "src/lib/storage/__tests__/backup.test.ts" ;
+    kpred:tested-by "tests/e2e/send-to-files.test.ts" ;
+    kpred:honest-note "The share-sheet path is manual: a person sends and opens the file. It is sync by hand, not sync. On iPhone it was not exercised on a real device here — headless Chromium has no share sheet, so the test covers the download fallback, and unit tests cover the share, cancel and refusal outcomes with a stubbed navigator." ;
+    kpred:relates-to kb:import-target-resolution ;
+    kpred:relates-to kb:integration-plugin-sdk ;
+    kpred:relates-to kb:tenet-no-account .
+
+kb:qr-transfer rdf:type ktype:Phase ;
+    rdfs:label "Animated QR — statements and small spaces from one screen to another, no network" ;
+    kpred:feature-id "F56.3" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:self-service-sync ;
+    kpred:decided "MATT, 2026-09-30: 'Could we potentially encode the ttl into a QR type image?' — then, on the measured sizes: 'That might be enough for a GIF and statements??'" ;
+    kpred:measured "SIZES, 2026-09-30, gzip (the compression browsers do natively): personal notes 201 KB raw -> 24 KB; the coding-workflow docs 26 -> 9 KB; terminology 48 -> 16 KB; the roadmap 1.57 MB -> 532 KB. One QR holds at most ~2.95 KB, and ~1 KB per frame scans reliably from a phone. So a set of statements or one entity is one to five frames; most spaces are 10-30 frames, a few seconds per loop at about 6 frames a second; the roadmap, ~500 frames, is not a QR job." ;
+    kpred:description "Choose statements (a set, an entity and its facts, the pending ones) or a whole small space; the app compresses the Turtle, splits it into numbered frames with a checksum, and plays them as an animated QR on screen. The other device's Reckons scanner reads frames in any order until it has them all — a missed frame comes round again — then decompresses, parses and imports. Optionally the same frames export as an animated GIF file that can be messaged or printed and scanned later." ;
+    kpred:principle "A SCANNED CODE IS UNTRUSTED INPUT (kb:untrusted-output-hardening, F107.7). Cap the decompressed size before inflating, parse strictly, run the content filter, and land every statement PENDING in a space the person chooses, with a source recording the transfer. Nothing scanned is confirmed by being scanned." ;
+    kpred:constraint "THE PHONE NEEDS AN IN-APP SCANNER. The iPhone Camera app reads one static QR and opens a link; it cannot assemble frames, and iOS Safari has no BarcodeDetector. Candidates checked 2026-09-30: zxing-wasm (MIT, updated September 2026) to decode, gifenc (MIT, last released 2022) for GIF files. Sending needs nothing new: qrcode is already a dependency and CompressionStream is built into the browser." ;
+    kpred:constraint "A QR ON SCREEN IS READABLE BY ANY CAMERA IN VIEW. Say so where the code is shown; an optional one-time key shown separately is a later step, not a claim." ;
+    kpred:decided "MATT, 2026-09-30: 'Opening Reckons.AI with the file contents generated from the QR code itself is awesome.' THE SIMPLEST FORM COMES FIRST: one static QR whose content is a link, https://reckons.ai/open#<compressed statements>. The iPhone Camera app reads a single QR and opens a link natively, so no scanner, install or account is needed on the receiving phone; the site decodes the fragment locally, and a URL fragment is never sent to the server. Capacity is one code — about 2.2 KB of compressed data after URL-safe encoding, roughly 6-10 KB of Turtle: a set, an entity, a few notes. Anyone can make such a link, so opening one ASKS before anything lands — which space, and every statement pending." ;
+    kpred:decided "MATT, 2026-09-30: 'Maybe even three.js objects could be stored within a QR code itself?' MEASURED: the app's mesh model (static/glb/Meshy_AI_Turtle_1.glb) is 3.67 MB and gzip barely shrinks it — about 3,560 frames, so meshes do not travel in a QR. What does: the PROCEDURAL description the app already keeps per entity type — a named geometry, a colour and parameters, a few bytes each — so a code can carry statements together with the 3D look that renders them, and the receiving app rebuilds the three.js objects. A real mesh travels as a link and a hash, not as bytes." ;
+    kpred:honest-note "PLANNED, NOTHING BUILT (2026-09-30)." ;
+    kpred:relates-to kb:untrusted-output-hardening ;
+    kpred:relates-to kb:entity-sets .
+
 kb:workspace-index rdf:type ktype:Feature ;
                rdfs:label   "Workspace index + session recovery" ;
                kpred:feature-id   "F57" ;
@@ -1445,7 +1486,9 @@ kb:conf-phase-4 rdf:type   ktype:Concept ;
 
 kb:text-chunking rdf:type ktype:Feature ;
                rdfs:label   "Text Chunking" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "src/lib/ingest/source-chunks.ts" ;
+               kpred:tested-by    "src/lib/ingest/__tests__/source-chunks.test.ts" ;
                kpred:feature-id   "F78" ;
                kpred:honest-note  "Renumbered F27->F78 (2026-07-12): it collided with kb:graph-publishing, which shipped as F27." ;
                kpred:description  "Sliding window chunking for sources exceeding the 12K char extraction limit. Context header per chunk (source title, chunk N of M). Cross-chunk deduplication by (subject, predicate, object). Benefits all source types, not just Confluence." ;
@@ -1455,7 +1498,8 @@ kb:text-chunking rdf:type ktype:Feature ;
                kpred:principle    "THE BUDGET IS PER EXTRACTOR AND IT IS MEASURED, NOT CHOSEN. A local model with an 8K context and Claude Opus 5.5 with 1M want very different chunk sizes, and a longer chunk is not automatically better: recall on a long input is an open question here. The budget is a parameter scored by scripts/offline/extraction-score.ts against a long-document fixture before any default is set." ;
                kpred:constraint   "OVERLAP IS CONTEXT, NOT CONTENT. A trailing block repeated into the next chunk gives the extractor continuity, but facts must not be counted twice: triples dedupe on (subject, predicate, object) across chunks and keep every evidence anchor they were found in." ;
                kpred:part-of      kb:source-corpus ;
-               kpred:depends-on   kb:wf-ingest .
+               kpred:depends-on   kb:wf-ingest ;
+               kpred:progress     "2026-09-30, THE CHUNKER EXISTS; EXTRACTION DOES NOT USE IT YET. chunkText splits at paragraph, then sentence, boundaries into chunks whose CONTENT ranges are disjoint and cover the text exactly, with overlap carried separately as contextStart (this entity's own rule: overlap is context, not content). Deterministic, so a chunk index is a stable reference for one version of a source. NOT BUILT: extraction over chunks, cross-chunk dedup, coverage per chunk." .
 
 kb:source-corpus rdf:type ktype:Feature ;
                rdfs:label   "Source corpus — originals kept, text derived, chunks indexed for building the graph" ;
@@ -1489,7 +1533,8 @@ kb:source-corpus rdf:type ktype:Feature ;
                kpred:relates-to   kb:source-as-subject ;
                kpred:relates-to   kb:ocr-provider-benchmark ;
                kpred:relates-to   kb:passage-grounding ;
-               kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." .
+               kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." ;
+               kpred:progress     "2026-09-30, FIRST SLICE (Matt: source chunking, ttl storage and chunk referencing are a current priority). BUILT in src/lib/ingest/source-chunks.ts, pure and shared by browser and CLI: (1) A CUT IS NO LONGER SILENT — EXTRACTION_TEXT_LIMIT is the single 12,000-character limit (extractor.ts and extract-critic.ts each hard-coded it), and ingest now raises an important notice naming how much of which source was read; (2) chunksToTurtle writes chunks.ttl in the decided vocabulary only — dcterms:isPartOf, schema:position, rdf:value, prov:wasDerivedFrom and a W3C Web Annotation oa:TextPositionSelector — no new kpred terms; (3) anchorExcerpt resolves a statement's verbatim excerpt to its chunk and exact span, exact or whitespace-normalized, and returns nothing rather than a guess. NOT BUILT: writing chunks.ttl into sources/ (the IO half), pdf.js, keeping the original, extraction over chunks, per-chunk coverage in the graph, and the Source View UI." .
 
 # -- Entity Normalization (F22) -------------------------------------------------
 
@@ -2596,6 +2641,7 @@ kb:one-graph-canvas rdf:type   ktype:Feature ;
 
 kb:one-graph-canvas kpred:progress "2026-09-29, STEP 1 BUILT (0.2.5 build order item 1, Matt's decision): src/lib/components/GraphCanvas.svelte owns the choice between the 2D and 3D renderers and the 3D error boundary, with an overlay slot, and / renders through it with no change in behaviour. The selection handler that / wrote out twice, once per renderer, is one function. Props are passed as STABLE objects with getters, not object literals in the template: the first attempt used literals, which rebuild whenever any input changes and hand the renderer a fresh value for every prop at once, and the renderers then never reported settled (5 e2e failures in provenance-view and ui-priority-regressions, fixed before commit). NOT YET: /review still mounts its own renderers (step 2); labels, node details and level-of-detail still live in the pages." ;
     kpred:has-file "src/lib/components/GraphCanvas.svelte" .
+kb:one-graph-canvas kpred:progress "2026-09-30, STEP 2 BUILT: /review's preview graph mounts GraphCanvas, so both pages that draw a statement graph choose the renderer and the 3D boundary in one place. Its props follow step 1's rule, stable objects with getters, and the two arrays it passes (pending nodes, the focused edge) are $derived so a getter never hands back a fresh array. Behaviour is unchanged on purpose, including the differences step 1 recorded (/review still passes no camera spec and shows its own 3D failure text). NOT YET: Compare and Overlay on /review keep their own components, and labels, node details and level of detail still live in the pages." .
 
 # -- F93: Video asset analysis — frame sampling + local video models ------------
 kb:video-asset-analysis rdf:type ktype:Feature ;
@@ -6166,6 +6212,188 @@ kb:graph-goal rdf:type       ktype:Feature ;
                kpred:remaining    "Decide whether the description is ALSO interview material that sharpens over time, the way kb:growing-filter-set sharpens a grant profile one real requirement at a time. It is a much smaller change now that it is a text field rather than a vocabulary." ;
                kpred:relates-to   kb:growing-filter-set .
 
+
+# Matt, 2026-09-30, late session — ten directions, recorded before building (F229-F238).
+
+kb:statement-hover-emphasis rdf:type ktype:Feature ;
+    rdfs:label "Statement emphasis on hover — the edge and the object light up" ;
+    kpred:feature-id "F229" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think we need to make the statements show on the graph more prominently after you mouse over them. So, the edge connecting to the object and the object of the statement are highlighted in some way.'" ;
+    kpred:description "Hovering a statement (in a list, the node panel or review) highlights its edge and its object node on the canvas, so the fact and its place in the space are seen together." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:one-graph-canvas .
+
+kb:analyze-per-view rdf:type ktype:Feature ;
+    rdfs:label "Analyze actions differ per view, and say so" ;
+    kpred:feature-id "F230" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'The Analyze actions should be different on Add and Reckoning tabs. There should be a notification hint about analyze being different on different views, Explore, Add, Review, and Reckoning.'" ;
+    kpred:description "The nav analyze menu offers actions that fit the current view (Explore, Add, Review, Reckoning) instead of one fixed list, and a one-time notice explains that its contents change with the view." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." .
+
+kb:graphs-from-chat rdf:type ktype:Feature ;
+    rdfs:label "Spaces from an AI chat session — queryable, with provenance, not compressed away" ;
+    kpred:feature-id "F231" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to allow creating graphs from a AI chat session. The natural progression from needing to re-use the same chat thread, but its not compressed automatically, its query-able via MCP and retains provenance from the context.'" ;
+    kpred:description "A chat session becomes a source: its decisions and claims are extracted as pending statements into a space, each traced to the turn it came from, and the space is reachable over MCP. Reuse becomes a query against the space rather than reopening, or compacting, the thread." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:mcp-server ;
+    kpred:relates-to kb:source-corpus .
+
+kb:add-source-first-sync rdf:type ktype:Feature ;
+    rdfs:label "Add leads with a source, reaches sync settings, takes whole folders" ;
+    kpred:feature-id "F232" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'When doing Add we need to make it more prominent to add a Source, and we need to allow for access to the core sync settings from Add. Add could be a whole foldor of corpus and spaces in ttls'" ;
+    kpred:description "The Add page puts adding a source first, links to the sync settings in place, and accepts a whole folder holding a corpus and spaces as .ttl files in one action." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:source-corpus .
+
+kb:context-savings-experiment rdf:type ktype:Feature ;
+    rdfs:label "Experiment — quick note in, tasks out, tokens measured against a long thread" ;
+    kpred:feature-id "F233" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think I should do an experiment, maybe you can help or maybe I need to do manually. I need to say quick notes, it uses MCP to get to Reckons, and then that one note creates tasks. We need to measure savings across the current Reckons.AI context savings, and then also large context window token savings if the request targets specific graphs instead of a single long conversation. If I compact a series of thoughts, not all are related. Targeted MCP spaces retreival could curate the context for higher performance. Offline tasks can be utilized within this process and offer additional token savings.'" ;
+    kpred:description "A measured comparison on the same work: (a) one long conversation, compacted when needed; (b) quick voice notes through MCP into Reckons, each creating tasks, with the next session given only the spaces that matter (kb_compress over targeted spaces) and offline tiers doing what they can. Measure tokens per completed task and how often context was unrelated." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:session-tokens ;
+    kpred:relates-to kb:context-compression ;
+    kpred:relates-to kb:ios-note-capture .
+
+kb:review-research-offload rdf:type ktype:Feature ;
+    rdfs:label "Review can hand a question to a research agent, and records that it did" ;
+    kpred:feature-id "F234" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need a clear way during review to offload the answer to a research task agent. Review should still track what the user provided as context, and then mark the offload clearly and what service was used for the decision making.'" ;
+    kpred:description "From a review item, the person hands the open question to a research task agent. The item keeps the context the person gave, is marked as offloaded, and the answer that returns names the service and model that produced it — a decision with an agent in it says so." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:wf-review ;
+    kpred:relates-to kb:async-orchestration .
+
+kb:auto-decide-warning rdf:type ktype:Feature ;
+    rdfs:label "Auto-decide all carries a heavy warning; assignment to people is the enterprise answer" ;
+    kpred:feature-id "F235" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'Auto-decide all should have a hefty warning label... this is just LLM, we recommend manual review or targeted analyze actions. For future, AD enabled assignments as an enterprise feature. Assign the best person on your team, or available dept. or team if you don't know who knows best.'" ;
+    kpred:description "Before auto-deciding everything, a clear warning: these decisions come from a language model alone; manual review or targeted analyze actions are recommended. Later, for teams: assign a decision to the best person, or to a department or team when nobody knows who knows best." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:wf-review .
+
+kb:ai-task-human-review rdf:type ktype:Feature ;
+    rdfs:label "A human review step for AI tasks" ;
+    kpred:feature-id "F236" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to define a human review process for AI tasks, if chosen humans need to review or the human requesting would review the results and refine/re-order the work.'" ;
+    kpred:description "Every AI task names who reviews its result — a chosen person, or by default the person who asked — and that review can accept, refine, or re-order the remaining work. A task is done when its reviewer says so, not when the agent finishes." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:local-orchestration .
+
+kb:durable-desires rdf:type ktype:Feature ;
+    rdfs:label "Desires outlive the chat — wants are kept, dated and findable" ;
+    kpred:feature-id "F237" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I think a way to track future desires and retain them beyond a single chat session/thread is a key benefit also.'" ;
+    kpred:description "What a person wants next — features, ideas, directions — is captured as dated entries in a space, not left in a chat transcript, so any later session (person or agent) can find, rank and act on it. This roadmap is the product doing that for itself." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:freeform-capture .
+
+kb:ai-as-teammates rdf:type ktype:Feature ;
+    rdfs:label "AI as teammates — work apart, leave notes, decide together" ;
+    kpred:feature-id "F238" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to decouple from the chat thread, interact with AI like teammates, letting eachother work while we work, leaving important notes for eachother and document sharing in many cases. Decisions, and discussion points as emphasis of conversations, not timestamps and menial labor together. Save the clear for later in many cases. Free your thought processes from a sitting session.'" ;
+    kpred:description "Person and agents work asynchronously against shared spaces: each leaves notes, questions and documents for the other; decisions and discussion points are the record, not a timestamped transcript; a session can end without losing anything, because nothing important lived only in it." ;
+    kpred:honest-note "NOT BUILT (2026-09-30). Recorded so it outlives the chat it was said in." ;
+    kpred:measured "THE EVIDENCE MATT PASTED, 2026-09-30 (Claude Code usage panel, last 24 h on this machine): 97% of usage was at more than 150k tokens of context; 71% came from subagent-heavy sessions; 12% from /update-config. The session that recorded this entity is an example: one long thread carrying hours of unrelated work." ;
+    kpred:relates-to kb:async-orchestration ;
+    kpred:relates-to kb:graph-goal .
+
+kb:supervised-compute-sharing rdf:type ktype:Feature ;
+    rdfs:label "Supervised compute sharing — asynchronous tasks on a space, answered by an operator's local models through shared files" ;
+    kpred:feature-id "F239" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30 (considering, not decided): 'Could I at this work station provide analytical support through LLMs running on Ollama here locally, and be a collaborator on a space? The files would be synced in some fashion, but potentially that is a single host like myself on S3? Then I could watch for user inputs hitting space .ttls, and then interact collaboratively? I would even want to notify and encourage interactions from Shelly, to help guide user experience? This would be in a formal, connect to support with strict setup procedure for clear user acknowledgement of collaboration. Like through new registration in Indico server??'" ;
+    kpred:description "A person who chooses to may connect one space to a support host: an operator's workstation running local models, which reads that space as it changes and answers with proposals the person reviews. The space is synced through a store the person consented to; the host never writes the person's statements, only its own proposals; Shelly may point the person at what arrived. Nothing about it is on by default." ;
+    kpred:decided "MATT, 2026-09-30, THE NAME: 'Supervised compute sharing with Reckons.AI might be a decent description.' Connect to support is the step a person takes; supervised compute sharing is what the feature is." ;
+    kpred:decided "MATT, 2026-09-30, THE KEY MOTIVATOR: 'One key motivator for the connect to support would be to offload the heavy LLM usage to my local capabilities, even for other users.' " ;
+    kpred:decided "MATT, 2026-09-30, THE SHAPE: 'I don't want direct connection over network ports and direct API. I'm thinking through the ttl files and task descriptions put in by users.' Then: 'Asynchronous.' So compute is shared ONLY through files: a person's app writes a task (a description plus the space's TTL it concerns) into the synced store; the host picks it up when it can, runs its local models, and writes the result back as proposals. No endpoint, no port, no live call. Considered and REJECTED the same evening: pointing the existing 'reckons' provider (an OpenAI-compatible chat API) at the host's Ollama behind an authenticating proxy. It would have worked with little code, and it is exactly the direct network API Matt does not want." ;
+    kpred:decided "MATT, 2026-09-30, THE NETWORK: 'Each collaborator would have their own Claude Code. I would install with them the Reckons.AI MCP, and they would configure my Indico server. Claude Code can be one important interface, and I can then collaborate running tasks it helps define, and then sub-agents oversee the work. This is like an AI-assisted outsourcing of compute to my machine. When a collaborative user has bucket-synced shared spaces, each space shared with specific people may be in different folders, but overall the interconnected agents can collaborate on shared space knowledge, providing new code, for a product designer, or other very advanced, expert-led model usage like content generation. Each expert can share their compute and service connections through providing deliverables to tasks.' So the unit of exchange is a TASK AND ITS DELIVERABLE: a collaborator's Claude Code helps define a task in a shared space, an expert's machine (local models, specialized models, their own service connections) picks it up and delivers into the space, and subagents oversee the delivery before the requester reviews it." ;
+    kpred:decided "MATT, 2026-09-30, THE REQUESTER: 'A more ignorant user that is my collaborator could request I, or my agents do a task for them.' So the requester need not be technical and needs no Claude Code: they write a REQUEST in their own words (from the app, or a form), with any files it concerns, into the shared space. The HOST's side does the planning: a local model drafts which registered task types would answer it and what each needs, a Sonnet overseer checks the plan, and the host person approves it before anything runs. The requester sees three things only: that the request was received, its status, and the deliverables to review. Their token cost is zero; the host's planning cost is kept low by drafting locally. FIRST TEST CASE: a collaborator asking for a graph about a grant opportunity." ;
+    kpred:decided "MATT, 2026-09-30, SOLUTION TEMPLATES RUN AUTOMATICALLY: 'Tasks should be identified if pre-defined solution templates are made for a task, that should run automatically. For simplistic research tasks, LLMs could utilize Reckons.AI analyze actions, and build a graph automatically. Human review can help further. This is for more simple space building, like a well documented set of requirements, or simple internet research topics with online agreement from multiple sources.' So when the host's planner matches a request to a solution template, the instance runs WITHOUT waiting for the host's approval; requests that match no template still wait for the host. This is safe only because every template's output arrives PENDING: review by the requester (and the host, where they choose) is the gate, not approval before the run." ;
+    kpred:proposed "THE FIRST TWO TEMPLATES. (1) REQUIREMENTS TO SPACE: given a well-documented requirements document, build a space from it with the app's own analyze actions, every statement anchored to its passage (F221 chunks, F122.1 anchors), every unclear requirement a partial fact (F32) rather than a guess. (2) CORROBORATED RESEARCH: given a simple topic, gather sources, extract statements per source, and propose a statement as a fact only when at least two INDEPENDENT sources agree on it; a claim from one source, or from sources sharing an owner or copying one another, arrives as a question naming its source. Sources and their agreement are recorded as provenance, so a reviewer sees why each statement was proposed." ;
+    kpred:constraint "AUTOMATIC IS EARNED PER TEMPLATE, NOT GRANTED BY THE PLANNER. A template may run unattended only if it is read-only toward the outside world (fetches, no posts, no messages), writes only pending statements into the requesting space, has a bounded cost (sources, chunks, model calls), and passes the F99.4 admission test in scripts/agent/task-templates.ts. The planner's match is itself a local-model judgment, so a low-confidence match falls back to the host's approval rather than running." ;
+    kpred:open-question "WHAT SEARCHES THE WEB FOR THE RESEARCH TEMPLATE? The local models have no search of their own. Options: a self-hosted search service on the host, a search API with a key, or the requester attaching the sources. Each has a different cost and privacy profile; none is chosen." ;
+    kpred:decided "MATT, 2026-09-30, A SPACE AS A PROJECT: 'A space could spawn a series of agents that report back, such that a definition of a space could provide complex project deliverables orchestrated through multiple steps via statements.' So a space can DEFINE a project in statements: its goal as a target state (an F223 SHACL shape the space must come to satisfy), its deliverables, and its steps, each step a task (F87 vocabulary: a registered task type, its inputs, what it depends on, and a done-when check). The host's watcher expands the definition into tasks in dependency order, dispatches each to the cheapest tier that can do it (F74.6), and each agent reports back AS STATEMENTS in the space, pending. A step is done when its check passes, the project when the space validates against its target shape: no agent declares the project finished, the graph does." ;
+    kpred:principle "THE PLAN AND ITS PROGRESS ARE THE SAME GRAPH. Because steps, their status and their outputs are statements in the space, a collaborator sees progress by opening the space, a stalled step is a statement nobody has closed, and a forgotten follow-on cannot exist unless someone deleted its task (task sets, kb:loop-definition-of-done). The orchestration needs no separate tracker." ;
+    kpred:principle "A SHARED TASK SELECTS FROM A REGISTRY; IT NEVER CARRIES A COMMAND. scripts/agent/runner.ts already names the danger: a task graph handed over by someone else is remote code execution if its commands run. So a task arriving from another person's space names a task TYPE from the host's pre-approved registry (the F99.4 shape in scripts/agent/task-templates.ts: type approved once by the host, each instance approved at run time) plus data. The host's own harness supplies every command. Text in a shared space is also untrusted INPUT to the host's models: it is grounded and validated like any other agent-tier input, and it can never widen what a task type may do." ;
+    kpred:principle "ONE SPACE, ONE FOLDER, ONE SET OF PEOPLE. Each shared space lives under its own bucket prefix with credentials scoped to the people it is shared with, so agents collaborate across spaces only through what each space's members can read. A deliverable records who and what produced it (person, machine, model, task type) as provenance, and it arrives pending: the requester's review decides whether it becomes part of the space." ;
+    kpred:principle "THE HOST ONLY EVER CONNECTS OUTWARD. It polls or is notified by the shared store and writes back to it; nothing listens on the workstation. That removes the whole class of exposure a served model brings (Ollama has no authentication of its own), and it makes the host's absence harmless: a task waits in the store until the host returns, and the person's app never blocks on it." ;
+    kpred:principle "A TASK IS A FILE WITH A LIFECYCLE, NOT A REQUEST. Each task carries an id, who asked, what it concerns (which space, which statements or sources), the question in the person's words, and a status the host advances: queued, claimed, done or refused, each with a time. A result names the task it answers. This is the same proposal-and-review loop the app already runs for agent-tier jobs, with the agent on someone else's machine." ;
+    kpred:principle "ONE WRITER PER FILE. The person's space files are written only by the person's app; the support host writes only its own proposals file in the same synced folder (the knowledge.pending.jsonl shape the app already drains). Two writers on one Turtle file is a sync conflict by construction; one writer per file makes conflicts impossible rather than resolved, and it keeps the host inside the proposal-only boundary every agent-tier job already obeys." ;
+    kpred:principle "CONSENT IS DATA THE HOST CHECKS, NOT A CHECKBOX IT REMEMBERS. Connecting writes a consent record into the space itself: who the support host is, what it may read, from when, and until when. The watcher refuses any space without a current record, and revoking is deleting the record and the storage credential, from the person's side, without asking the operator." ;
+    kpred:constraint "THIS MOVES A PERSON'S DATA OFF THEIR DEVICE AND ONTO SOMEONE ELSE'S. kb:tenet-private's local-only exemption from the ethics preamble does not apply to the host's prompts: the person's content is read by a party other than its author, so those prompts carry ETHICS_PREAMBLE as remote conversation does. The operator holds personal data and becomes responsible for it (retention, deletion, a breach), which is a COUNSEL-BRIEF.md matter before it is an engineering one." ;
+    kpred:constraint "STAYS INSIDE THE INTEGRATION BOUNDARY ONLY IF IT IS OPTIONAL AND PER-USER. The app stays static and offline-first; support is an integration a person connects, the same standing as n8n and Indico, never a backend the core app needs." ;
+    kpred:proposed "PHASES, ORDERED BY WHAT EACH BLOCKS: (1) the task and result file format and the single-writer folder layout (the person's app writes tasks and its own space files; the host writes results only), plus a host runner that claims queued tasks, grounds them by script, runs a local model and writes proposals, all testable over a local or Syncthing folder before any cloud store exists, testable over a local folder or Syncthing before any cloud store exists; (2) the in-space consent record, the Connect to support flow that writes it, and revocation; (3) the S3 transport already planned for sync (a bucket or prefix per person, credentials scoped to it); (4) Shelly raising what arrived and inviting the next task, through kb:notification-relevancy phase 3, rate-limited; (5) Indico registration as the formal agreement and identity, if the open question below resolves." ;
+    kpred:open-question "CAN INDICO CARRY THE AGREEMENT? An Indico registration form can require an explicit acknowledgement and gives the person a real account, which is what this lacks. But the integration today reads /export/ only, read-only by design (kb:indico-deliberation), and whether a registration's status is readable there is unverified. If it is not, the registration is the human agreement and the in-space consent record stays the thing the watcher enforces." ;
+    kpred:open-question "HOW MANY PEOPLE CAN ONE WORKSTATION SERVE? Two RTX 3090 Ti cards are 48 GB of VRAM. Asynchronous tasks change the question from concurrent users to tasks per hour, and a queue absorbs bursts that a live service would have to refuse. No throughput has been measured here and none should be promised until it is; the local panel and agent:watch already record per-call timings to measure it with." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Recorded so it outlives the chat it was said in. What exists that it would reuse: knowledge.pending.jsonl and drainWorkspacePending (proposals into review), the MCP server's file watcher, requestShellyChat, and the local-model harness in scripts/offline/." ;
+    kpred:relates-to kb:ai-as-teammates ;
+    kpred:relates-to kb:collaborative-kb ;
+    kpred:relates-to kb:indico-deliberation ;
+    kpred:relates-to kb:notification-relevancy ;
+        kpred:decided "MATT, 2026-09-30: 'Cloudflare R2 yes I like that, minimal costs hopefully.' The shared store is Cloudflare R2, reached through its S3-compatible API so the planned aws4fetch sync is unchanged. Cost is to be measured against R2's published allowance rather than assumed: storage, and Class A (write) and Class B (read) operations are what a polling host spends, so the host polls on a schedule or reacts to notifications rather than listing buckets in a tight loop." ;
+    kpred:remaining "WHAT ELSE IS NEEDED, 2026-09-30 (Matt asked for the full list). OUTSIDE THE PRODUCT: (1) a shared store; Cloudflare R2 is the likely fit (S3-compatible, so the planned aws4fetch sync works against it; a free allowance; no egress fees; the site already deploys on Cloudflare), AWS S3 the alternative; check current terms, which change. (2) Each collaborator's own Claude subscription for planning and review; their tokens, not the host's. (3) Collaborators' Indico accounts on the host's server, and the Reckons.AI MCP server installed with them. (4) A written agreement: what the host may read, retention, deletion, and that deliverables are proposals; a COUNSEL-BRIEF.md matter. (5) If it is paid, a payment path; none exists, and the product has no backend to hold one. (6) Host operations: the host disk reported SMART FAILED on 2026-09-30, so nobody else's data should land on that machine until it is replaced and backed up; GPU scheduling around the owner's own use; uptime expectations stated plainly (the queue absorbs absence, but a deliverable can be late). IN THE PRODUCT: (7) bucket sync (planned in F56); (8) per-space sharing with scoped credentials per member; (9) the in-space consent record and revocation; (10) the shared-task type registry and the host runner that claims tasks from synced folders; (11) deliverables arriving pending, with provenance (person, machine, model, task type); (12) the Sonnet overseer layer and the merge queue for code deliverables (F89); (13) notification and Shelly's raise when a deliverable arrives (F219); (14) meeting transcription into statements (F240). UNVERIFIED: whether the host's Indico exposes registrations or video meetings to the integration at all." ;
+    kpred:relates-to kb:meeting-transcription ;
+kpred:relates-to kb:workspace-sync .
+
+kb:meeting-transcription rdf:type ktype:Feature ;
+    rdfs:label "Meeting transcription — a recorded conversation becomes attributed, pending statements" ;
+    kpred:feature-id "F240" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'I think Indico has video conferencing, so maybe meeting transcription and automated statement gathering from transcript could be key.'" ;
+    kpred:description "A meeting's recording is transcribed on a local GPU, split by speaker, and run through extraction, so what was said arrives in the space as pending statements, each attributed to its speaker and anchored to its place in the transcript. Decisions and open questions from a meeting become graph entries instead of a forgotten recording." ;
+    kpred:proposed "PIPELINE: recording -> local speech-to-text (a large Whisper model fits one RTX 3090; the app already ships whisper-tiny for in-browser dictation) -> speaker diarization (who spoke when) -> the transcript kept as a source and chunked (F221, so a long meeting is never silently cut at 12,000 characters) -> extraction per chunk -> statements pending, each with its speaker as the asserting party and an anchor into the transcript (F122.1). Questions raised and not answered become partial facts (F32)." ;
+    kpred:constraint "RECORDING NEEDS EVERYONE'S CONSENT, FIRST. Some jurisdictions require every party to agree to a recording; the meeting must say it is recorded and transcribed before it starts, and a participant must be able to decline. A transcript is personal data about every speaker, not only the host." ;
+    kpred:constraint "A SPEAKER LABEL IS A GUESS UNTIL CONFIRMED. Diarization assigns turns to voices, not to names; attributing a statement to a named person is a claim the meeting's participants confirm in review, never a fact the model asserts." ;
+    kpred:open-question "WHERE DOES THE RECORDING COME FROM? Indico's videoconference support is, as far as is known here, a plugin that links rooms in an external service (Zoom being the common one) rather than hosting video itself; whether the host's server has such a plugin, and whether recordings are reachable, is unverified. A recording a participant uploads works regardless." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Exists to reuse: whisper STT in the browser, ingest extraction, partial facts, the review queue. Depends on F221 chunking and F122.1 anchors, both 0.2.5 work." ;
+    kpred:depends-on kb:source-corpus ;
+    kpred:depends-on kb:document-evidence-anchors ;
+    kpred:relates-to kb:supervised-compute-sharing ;
+    kpred:relates-to kb:indico-deliberation .
+
+kb:expertise-routing rdf:type ktype:Feature ;
+    rdfs:label "Expertise routing — who knows what, and a failed job escalates to the right person" ;
+    kpred:feature-id "F241" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'We need to somehow track users and their subject matter expertise and then escalate job failures to the right SMEs, probably enterprise only, AD enabled.'" ;
+    kpred:description "An organization's people and their subject-matter expertise are statements in an organization space; when an agent job fails past its retry cap (the circuit breaker), or a step needs a person (F236), the escalation goes to the people whose expertise matches the job's subject, not to whoever is on the general queue. Enterprise tier, with identities from the organization's directory (Active Directory / Entra ID)." ;
+    kpred:principle "EXPERTISE IS EVIDENCED, NOT ONLY DECLARED. A person may state their areas, but the stronger signal is the record already in the graph: reviews they decided in a subject, deliverables they accepted, questions they answered and were confirmed. Declared and evidenced expertise are kept as different statements, so routing can prefer evidence and a reader can see which is which." ;
+    kpred:constraint "A PROFILE OF WHAT SOMEONE KNOWS IS PERSONAL DATA ABOUT THEM. Each person sees and can correct their own expertise statements; nothing about them is inferred silently; and the organization's policy (F21) decides who may read whose profile. Outside the enterprise tier, nobody is profiled." ;
+    kpred:constraint "THE DIRECTORY SUPPLIES IDENTITY AND GROUPS, NOT EXPERTISE. Active Directory knows who someone is and which groups they belong to; it does not know what they know. The directory link is for sign-in and for scoping who may be asked, and is an optional enterprise integration, never a dependency of the local-first app." ;
+    kpred:proposed "ROUTING: a failed job's subject (the entities and task type it touched) is matched against expertise statements; the top matches who are available receive the escalation with the job's one-line report and evidence; if nobody matches, it goes to the space's owner. Each escalation and its outcome are statements, so routing quality can be measured (was the right person asked?)." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Depends on identities existing at all, which today they do not beyond the device owner." ;
+    kpred:relates-to kb:enterprise-3ps ;
+    kpred:relates-to kb:ai-task-human-review ;
+    kpred:relates-to kb:supervised-compute-sharing .
+
 ## =============================================================================
 ## F143: Game development on a graph  (Matt, 2026-08-28)
 ## =============================================================================
@@ -7039,6 +7267,32 @@ kb:personal-notes-routing rdf:type ktype:Feature ;
                kpred:decided "MATT, 2026-09-16: THE INBOX IS NOT A TAB. It shipped as a top-level `notes` item in the navigation beside `add`, which gave the product two answers to \"where do I write something down\" — /ingest already defaults to mode 'note'. The inbox is now src/lib/components/NotesInbox.svelte, rendered as a collapsed disclosure on the Add page under note mode and lazy-loaded so Dexie live queries cost nothing to someone who never opens it. The /notes route still renders the same component, unadvertised, so existing deep links and the two production smoke tests keep resolving." ;
                kpred:known-issue "EXTRACTION ONLY RUNS WHEN THE INBOX IS THE ACTIVE GRAPH, and that is a silent gap rather than a loud one (reviewed 2026-09-16). drainWorkspacePending routes every captured-note row to Personal Notes regardless of the open graph, but the enrichment trigger beside it is guarded by `captures.inboxId === currentKbId`. So a note dictated while any other graph is open is stored verbatim and is not read into facts until a drain happens with Personal Notes selected. The deferral is deliberate — the code says enrichment cannot authorize dissemination — but the consequence is that the step the product exists for stops happening and reports nothing. Measured on the synced graph the same day: 10 captured notes, 10 carrying extracted-at, 0 unextracted, 0 duplicate texts. The gap is latent, not currently biting." ;
                kpred:measured "THE SUSPECTED DUPLICATE VOICE CAPTURE IS THE DESIGN WORKING, NOT A BUG. scripts/notes-pull.ts documents at-least-once delivery on purpose: rows are written to disk and only then acked, so a crash between the two produces a duplicate rather than a lost note, and pending rows carry deterministic ids the app dedupes on import. The handoff's 19 queue rows for 13 unique subjects is that guarantee visible, and the graph confirms the dedupe holds. The only genuine duplicate voice surface was src/lib/components/VoiceInput.svelte, dead since the initial commit on 2026-06-09, self-described as SUPERSEDED and NOT YET IMPLEMENTED, with zero references in any code path. Deleted 2026-09-16." .
+
+# F226 — Matt, 2026-09-30: a note is several topics; route each STATEMENT to the spaces it belongs in.
+kb:statement-routing rdf:type ktype:Feature ;
+    rdfs:label "Statement routing — each fact to the spaces it is relevant to, one source shared" ;
+    kpred:feature-id "F226" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I did see review has bundled by time, but often my notes are different topics entirely.' Then: 'We need to search existing graphs for relevancy by statement, and this way we can separate the notes into different graphs, and even add statements to multiple graphs with the same identical source.' And he chose it as the NEXT work, before the source view." ;
+    kpred:description "After extraction, each pending statement from a captured note (or any source) is scored against every space the person has, and proposed for the ones it belongs in — possibly several. A statement that goes to two spaces is two copies with ONE source: the same source id, hash and text, so each space can trace the fact to the identical capture and a later correction to the source is visible from every space that used it. Review then groups by topic and destination, not by the minute the note was dictated." ;
+    kpred:principle "RELEVANCE IS PROPOSED, DESTINATION IS APPROVED. F177.1 already decided that a raw transcript cannot grant permission and that only an allowed space can receive a copy; routing proposes, a person approves each destination, and nothing lands in a space the person has not allowed." ;
+    kpred:scope-decision "REUSE, DO NOT REBUILD: src/lib/rdf/question-router.ts already ranks spaces for a question, and the Add page item at kb:ingest-routing asks to rank the registry by relatedness to the extracted triples. Score per statement with the same machinery (entity overlap first, then BM25 over each space's labels, embeddings only if measured to help). The local panel may judge borderline cases only after a hand-labelled sample calibrates it — a lesson paid for the same day, when unanimity measured the model's prior, not the answer." ;
+    kpred:honest-note "NOT BUILT (2026-09-30)." ;
+    kpred:depends-on kb:personal-notes-routing ;
+    kpred:relates-to kb:ingest-routing ;
+    kpred:relates-to kb:meta-graph-view ;
+    kpred:relates-to kb:local-panel .
+
+kb:add-quick-menu rdf:type ktype:Feature ;
+    rdfs:label "Add quick menu — what you are adding first, a source at the top" ;
+    kpred:feature-id "F228" ;
+    kpred:has-status "functional" ;
+    kpred:decided "MATT, 2026-09-30: 'Add should have a quick menu' (a menu on the nav's + add); 'Add should display statement, set, space, etc.'; 'Source of course, thats the main goal add whole documents.'" ;
+    kpred:description "The nav's + add opens a menu in two groups. NEW: source (a whole document), statement, set, space. FROM: note, link, folder, repository, calendar, reminder, space file. Each opens the right place already set up — /ingest?mode=…, /kb?new=space, and for a set a hint on the space, since a set is made from selected nodes — plus 'all ways to add…'. Keyboard: arrows, Home/End, Escape returns focus, Tab leaves in the natural direction, as the analyze menu does." ;
+    kpred:measured "CHECKED IN CHROMIUM, 2026-09-30, at 1280 and 390 wide. Reusing the analyze menu's horizontal strip made the fifteen entries 902px wide and, on the phone, started the menu 256px off-screen — source and statement unreachable. It is now a list at most 17rem wide, clamped to the viewport, rows at least 44px." ;
+    kpred:has-file "src/lib/components/NavBar.svelte" ;
+    kpred:tested-by "tests/e2e/ingest.test.ts" .
 
 ## =============================================================================
 ## F181-F184: session of 2026-09-06 (evening) — Matt's directions, recorded as
@@ -8248,7 +8502,9 @@ kb:meta-graph-view rdf:type ktype:Feature ;
     kpred:open-question "TWO TRAPS IN THE STARFISH RENDERING, BOTH WORTH DECIDING BEFORE IT IS DRAWN. (1) A starfish's ARMS read as connections and are not: arms are fixed at five and part of the body, while leap edges vary in number and thickness, so anything that draws edges as arms will contradict the weighting decision the moment a space has six neighbours. (2) 'Currents' is the obvious undersea word for a directional, variable-strength edge and IS ALREADY TAKEN — F29 uses it for streamed ingest arrivals. Reusing it here would overload a shipped term, which is the precise failure this vocabulary work exists to prevent; if edges need an undersea word it has to be a different one." ;
     kpred:honest-note "PLANNED, NOTHING BUILT (2026-09-23). What exists: leap triples, the registry, name-derived buckets, and an asset store with a models slot. What does not: any dcat:Catalog anywhere, any per-space model assignment, and any view above the single-space explorer. F113 — this feature's own dependency — is itself planned with nothing built, so phase 1 is scoped to derive from live data precisely so that it does not wait on it." ;
                kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." ;
-               kpred:priority     "high" .
+               kpred:priority     "high" ;
+    kpred:decided "MATT, 2026-09-30: 'There will then be a sources view for the spaces map.' Once statements from one source can land in several spaces (kb:statement-routing), a shared SOURCE is a relation between those spaces as real as a jump: the map gains a sources view drawing each source that feeds more than one space as a link between them, beside the jump links." ;
+    kpred:relates-to kb:statement-routing .
 
 kb:sow-estimation rdf:type ktype:Feature ;
     rdfs:label "Estimating a statement of work across spaces — a customer's request against what is already built" ;
@@ -8286,7 +8542,26 @@ kb:feature-feasibility rdf:type ktype:Feature ;
     kpred:depends-on kb:code-graph-edges ;
     kpred:relates-to kb:reckoning-composition ;
     kpred:relates-to kb:graph-proposals ;
-    kpred:relates-to kb:meta-graph-view .
+    kpred:relates-to kb:meta-graph-view ;
+    kpred:decided "MATT, 2026-09-30 (still deferred as a build): 'We should add to goal features on feasibility analysis completion, immediately develop or plan in larger scheduled development.' A finished feasibility reading ENDS IN A DECISION, not a report: the target states are added to the goal's features (kb:graph-goal), and each is either developed now or scheduled into a later sprint (kb:day-sprints)." ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:day-sprints .
+
+# F227 — Matt, 2026-09-30: work is scheduled in human days, and the business side shares the graph.
+kb:day-sprints rdf:type ktype:Feature ;
+    rdfs:label "Day sprints and a shared requirements space — decisions sized to a human day, business and technology in one vocabulary" ;
+    kpred:feature-id "F227" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'Scheduled tasks should go into day based scheduled task sprints. In a given 8 hours of human work, what decisions are necessary for the development of new technical features, or in technical feasibility analysis review. The BRD of the past had no direct repo tie in, within the conversation of business requirements and technical feasibility. Both business needs to share goals, and technology has documented limitations, there will be multitudes of helpful cross sharing if simply translation could occur for all technical business advantages, within a safe location and of mutual definition.'" ;
+    kpred:description "Two linked ideas. (1) THE UNIT OF SCHEDULING IS A HUMAN DAY OF DECISIONS, not a count of tasks: machines do the work between decisions, so a day's sprint is the set of decisions a person must make in about eight hours for the features and feasibility reviews in flight — ordered by what each unblocks (kb:partial-facts already ranks questions that way). (2) A REQUIREMENTS SPACE TIED TO THE REPOSITORY: business requirements live as statements in a space that shares goals with the engineering spaces, and each requirement is translated into the technical vocabulary (kb:terminology-translation) and back, so a limitation documented by engineering is readable by the business side and a business goal is traceable to code. A traditional BRD had no such tie." ;
+    kpred:principle "A SAFE LOCATION OF MUTUAL DEFINITION: the requirements space is shared under the same permission rules as any space (allowed destinations, review before a copy lands), and a term means one thing to both sides only after both have agreed its definition — translation is a lens with evidence, never a silent rewrite (kb:terminology-translation's own rule)." ;
+    kpred:honest-note "SPECULATIVE, RECORDED AS DIRECTION (2026-09-30). Nothing is built; scheduling itself (cw:Scheduling) is documented as planned, not built." ;
+    kpred:relates-to kb:feature-feasibility ;
+    kpred:relates-to kb:sow-estimation ;
+    kpred:relates-to kb:terminology-translation ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:partial-facts .
 
 kb:sow-estimation kpred:depends-on kb:feature-feasibility .
 
