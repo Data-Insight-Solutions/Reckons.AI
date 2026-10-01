@@ -47,6 +47,16 @@
  */
 
 /** Who receives the output. The single most important property of a template. */
+/**
+ * Quote one argument for bash so it is always a single literal word. Single quotes stop every
+ * expansion ($, backticks, globbing, history); a single quote inside the value is closed, escaped
+ * and reopened. JSON.stringify is NOT a shell quote: it yields double quotes, inside which bash
+ * still runs $(…) and `…`.
+ */
+export function shellQuote(value: string): string {
+  return "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
 export type Recipient =
   /** The graph's owner, and nobody else. A wrong result is an annoyance in your own inbox. */
   | 'owner'
@@ -134,9 +144,11 @@ export const TEMPLATES: readonly TaskTemplate[] = [
     effect: 'additive',
     outputIsReadable: true,
     worstCase: 'A useless or wrong document arrives in your own inbox, and you delete it.',
-    // The subject is passed as an ARGUMENT, never interpolated into a shell string, so a transcript
-    // cannot become part of the command itself.
-    command: (arg) => `npm run agent:document -- --subject=${JSON.stringify(arg)} --deliver=email-owner`,
+    // The subject is SHELL-QUOTED (shellQuote above), so a transcript cannot become part of the
+    // command itself. Until 2026-09-30 this comment claimed the subject was never interpolated into
+    // a shell string while the code did exactly that inside double quotes, where bash still expands
+    // $(…) and backticks; the runner executes this string with bash (runner.ts execSync).
+    command: (arg) => `npm run agent:document -- --subject=${shellQuote(arg)} --deliver=email-owner`,
   },
   {
     id: 'review-requirements',
@@ -149,7 +161,7 @@ export const TEMPLATES: readonly TaskTemplate[] = [
     effect: 'additive',
     outputIsReadable: true,
     worstCase: 'A report that misjudges a requirement. It is read by you before it informs anything, and it changes no state.',
-    command: (arg) => `npm run agent:requirements -- --against=${JSON.stringify(arg)} --deliver=email-owner`,
+    command: (arg) => `npm run agent:requirements -- --against=${shellQuote(arg)} --deliver=email-owner`,
   },
   {
     id: 'summarise-graph',
@@ -159,7 +171,7 @@ export const TEMPLATES: readonly TaskTemplate[] = [
     effect: 'additive',
     outputIsReadable: true,
     worstCase: 'A shallow summary in your inbox.',
-    command: (arg) => `npm run agent:summarise -- --scope=${JSON.stringify(arg)} --deliver=email-owner`,
+    command: (arg) => `npm run agent:summarise -- --scope=${shellQuote(arg)} --deliver=email-owner`,
   },
 ];
 
