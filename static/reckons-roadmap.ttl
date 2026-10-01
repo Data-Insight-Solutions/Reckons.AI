@@ -7040,6 +7040,32 @@ kb:personal-notes-routing rdf:type ktype:Feature ;
                kpred:known-issue "EXTRACTION ONLY RUNS WHEN THE INBOX IS THE ACTIVE GRAPH, and that is a silent gap rather than a loud one (reviewed 2026-09-16). drainWorkspacePending routes every captured-note row to Personal Notes regardless of the open graph, but the enrichment trigger beside it is guarded by `captures.inboxId === currentKbId`. So a note dictated while any other graph is open is stored verbatim and is not read into facts until a drain happens with Personal Notes selected. The deferral is deliberate — the code says enrichment cannot authorize dissemination — but the consequence is that the step the product exists for stops happening and reports nothing. Measured on the synced graph the same day: 10 captured notes, 10 carrying extracted-at, 0 unextracted, 0 duplicate texts. The gap is latent, not currently biting." ;
                kpred:measured "THE SUSPECTED DUPLICATE VOICE CAPTURE IS THE DESIGN WORKING, NOT A BUG. scripts/notes-pull.ts documents at-least-once delivery on purpose: rows are written to disk and only then acked, so a crash between the two produces a duplicate rather than a lost note, and pending rows carry deterministic ids the app dedupes on import. The handoff's 19 queue rows for 13 unique subjects is that guarantee visible, and the graph confirms the dedupe holds. The only genuine duplicate voice surface was src/lib/components/VoiceInput.svelte, dead since the initial commit on 2026-06-09, self-described as SUPERSEDED and NOT YET IMPLEMENTED, with zero references in any code path. Deleted 2026-09-16." .
 
+# F226 — Matt, 2026-09-30: a note is several topics; route each STATEMENT to the spaces it belongs in.
+kb:statement-routing rdf:type ktype:Feature ;
+    rdfs:label "Statement routing — each fact to the spaces it is relevant to, one source shared" ;
+    kpred:feature-id "F226" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:decided "MATT, 2026-09-30: 'I did see review has bundled by time, but often my notes are different topics entirely.' Then: 'We need to search existing graphs for relevancy by statement, and this way we can separate the notes into different graphs, and even add statements to multiple graphs with the same identical source.' And he chose it as the NEXT work, before the source view." ;
+    kpred:description "After extraction, each pending statement from a captured note (or any source) is scored against every space the person has, and proposed for the ones it belongs in — possibly several. A statement that goes to two spaces is two copies with ONE source: the same source id, hash and text, so each space can trace the fact to the identical capture and a later correction to the source is visible from every space that used it. Review then groups by topic and destination, not by the minute the note was dictated." ;
+    kpred:principle "RELEVANCE IS PROPOSED, DESTINATION IS APPROVED. F177.1 already decided that a raw transcript cannot grant permission and that only an allowed space can receive a copy; routing proposes, a person approves each destination, and nothing lands in a space the person has not allowed." ;
+    kpred:scope-decision "REUSE, DO NOT REBUILD: src/lib/rdf/question-router.ts already ranks spaces for a question, and the Add page item at kb:ingest-routing asks to rank the registry by relatedness to the extracted triples. Score per statement with the same machinery (entity overlap first, then BM25 over each space's labels, embeddings only if measured to help). The local panel may judge borderline cases only after a hand-labelled sample calibrates it — a lesson paid for the same day, when unanimity measured the model's prior, not the answer." ;
+    kpred:honest-note "NOT BUILT (2026-09-30)." ;
+    kpred:depends-on kb:personal-notes-routing ;
+    kpred:relates-to kb:ingest-routing ;
+    kpred:relates-to kb:meta-graph-view ;
+    kpred:relates-to kb:local-panel .
+
+kb:add-quick-menu rdf:type ktype:Feature ;
+    rdfs:label "Add quick menu — what you are adding first, a source at the top" ;
+    kpred:feature-id "F228" ;
+    kpred:has-status "functional" ;
+    kpred:decided "MATT, 2026-09-30: 'Add should have a quick menu' (a menu on the nav's + add); 'Add should display statement, set, space, etc.'; 'Source of course, thats the main goal add whole documents.'" ;
+    kpred:description "The nav's + add opens a menu in two groups. NEW: source (a whole document), statement, set, space. FROM: note, link, folder, repository, calendar, reminder, space file. Each opens the right place already set up — /ingest?mode=…, /kb?new=space, and for a set a hint on the space, since a set is made from selected nodes — plus 'all ways to add…'. Keyboard: arrows, Home/End, Escape returns focus, Tab leaves in the natural direction, as the analyze menu does." ;
+    kpred:measured "CHECKED IN CHROMIUM, 2026-09-30, at 1280 and 390 wide. Reusing the analyze menu's horizontal strip made the fifteen entries 902px wide and, on the phone, started the menu 256px off-screen — source and statement unreachable. It is now a list at most 17rem wide, clamped to the viewport, rows at least 44px." ;
+    kpred:has-file "src/lib/components/NavBar.svelte" ;
+    kpred:tested-by "tests/e2e/ingest.test.ts" .
+
 ## =============================================================================
 ## F181-F184: session of 2026-09-06 (evening) — Matt's directions, recorded as
 ## plan before any of it is built.
@@ -8248,7 +8274,9 @@ kb:meta-graph-view rdf:type ktype:Feature ;
     kpred:open-question "TWO TRAPS IN THE STARFISH RENDERING, BOTH WORTH DECIDING BEFORE IT IS DRAWN. (1) A starfish's ARMS read as connections and are not: arms are fixed at five and part of the body, while leap edges vary in number and thickness, so anything that draws edges as arms will contradict the weighting decision the moment a space has six neighbours. (2) 'Currents' is the obvious undersea word for a directional, variable-strength edge and IS ALREADY TAKEN — F29 uses it for streamed ingest arrivals. Reusing it here would overload a shipped term, which is the precise failure this vocabulary work exists to prevent; if edges need an undersea word it has to be a different one." ;
     kpred:honest-note "PLANNED, NOTHING BUILT (2026-09-23). What exists: leap triples, the registry, name-derived buckets, and an asset store with a models slot. What does not: any dcat:Catalog anywhere, any per-space model assignment, and any view above the single-space explorer. F113 — this feature's own dependency — is itself planned with nothing built, so phase 1 is scoped to derive from live data precisely so that it does not wait on it." ;
                kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." ;
-               kpred:priority     "high" .
+               kpred:priority     "high" ;
+    kpred:decided "MATT, 2026-09-30: 'There will then be a sources view for the spaces map.' Once statements from one source can land in several spaces (kb:statement-routing), a shared SOURCE is a relation between those spaces as real as a jump: the map gains a sources view drawing each source that feeds more than one space as a link between them, beside the jump links." ;
+    kpred:relates-to kb:statement-routing .
 
 kb:sow-estimation rdf:type ktype:Feature ;
     rdfs:label "Estimating a statement of work across spaces — a customer's request against what is already built" ;
@@ -8286,7 +8314,26 @@ kb:feature-feasibility rdf:type ktype:Feature ;
     kpred:depends-on kb:code-graph-edges ;
     kpred:relates-to kb:reckoning-composition ;
     kpred:relates-to kb:graph-proposals ;
-    kpred:relates-to kb:meta-graph-view .
+    kpred:relates-to kb:meta-graph-view ;
+    kpred:decided "MATT, 2026-09-30 (still deferred as a build): 'We should add to goal features on feasibility analysis completion, immediately develop or plan in larger scheduled development.' A finished feasibility reading ENDS IN A DECISION, not a report: the target states are added to the goal's features (kb:graph-goal), and each is either developed now or scheduled into a later sprint (kb:day-sprints)." ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:day-sprints .
+
+# F227 — Matt, 2026-09-30: work is scheduled in human days, and the business side shares the graph.
+kb:day-sprints rdf:type ktype:Feature ;
+    rdfs:label "Day sprints and a shared requirements space — decisions sized to a human day, business and technology in one vocabulary" ;
+    kpred:feature-id "F227" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'Scheduled tasks should go into day based scheduled task sprints. In a given 8 hours of human work, what decisions are necessary for the development of new technical features, or in technical feasibility analysis review. The BRD of the past had no direct repo tie in, within the conversation of business requirements and technical feasibility. Both business needs to share goals, and technology has documented limitations, there will be multitudes of helpful cross sharing if simply translation could occur for all technical business advantages, within a safe location and of mutual definition.'" ;
+    kpred:description "Two linked ideas. (1) THE UNIT OF SCHEDULING IS A HUMAN DAY OF DECISIONS, not a count of tasks: machines do the work between decisions, so a day's sprint is the set of decisions a person must make in about eight hours for the features and feasibility reviews in flight — ordered by what each unblocks (kb:partial-facts already ranks questions that way). (2) A REQUIREMENTS SPACE TIED TO THE REPOSITORY: business requirements live as statements in a space that shares goals with the engineering spaces, and each requirement is translated into the technical vocabulary (kb:terminology-translation) and back, so a limitation documented by engineering is readable by the business side and a business goal is traceable to code. A traditional BRD had no such tie." ;
+    kpred:principle "A SAFE LOCATION OF MUTUAL DEFINITION: the requirements space is shared under the same permission rules as any space (allowed destinations, review before a copy lands), and a term means one thing to both sides only after both have agreed its definition — translation is a lens with evidence, never a silent rewrite (kb:terminology-translation's own rule)." ;
+    kpred:honest-note "SPECULATIVE, RECORDED AS DIRECTION (2026-09-30). Nothing is built; scheduling itself (cw:Scheduling) is documented as planned, not built." ;
+    kpred:relates-to kb:feature-feasibility ;
+    kpred:relates-to kb:sow-estimation ;
+    kpred:relates-to kb:terminology-translation ;
+    kpred:relates-to kb:graph-goal ;
+    kpred:relates-to kb:partial-facts .
 
 kb:sow-estimation kpred:depends-on kb:feature-feasibility .
 
