@@ -5,6 +5,7 @@
   import AdaptivePanel from './AdaptivePanel.svelte';
   import StatementCard from './StatementCard.svelte';
   import ExtractionTrail from './ExtractionTrail.svelte';
+  import StatementEvidence from './StatementEvidence.svelte';
   import type { ExtractionRun, Source, Statement } from '$lib/rdf/types';
   import {
     buildProvenanceIndex, filterProvenanceIndex, projectProvenance, statementsForProvenanceNode,
@@ -215,6 +216,7 @@
             {#if statement.excerpt && statement.grounded !== false}
               <small>{statement.grounded === true ? 'Excerpt matched the source text.' : 'Excerpt retained; a source-text match was not recorded.'}</small>
             {/if}
+            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} />
           </div>
         {/each}
       </div>
