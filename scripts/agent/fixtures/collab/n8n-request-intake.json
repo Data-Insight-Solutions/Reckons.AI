@@ -1,0 +1,47 @@
+{
+  "name": "Reckons space request intake (TEMPLATE)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "REPLACE_WITH_UNGUESSABLE_PATH",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Request webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Builds requests/<id>.json for scripts/agent/space-watch.ts. The id is GENERATED here and never taken from the caller, so it cannot be a path. Text is only data; nothing here executes it.\nconst b = $input.first().json.body ?? {};\nconst text = String(b.text ?? b.message ?? '').trim().slice(0, 4000);\nif (!text) throw new Error('empty request');\nconst from = String(b.from ?? b.email ?? b.name ?? 'unknown').slice(0, 200);\nconst attachments = Array.isArray(b.attachments) ? b.attachments.filter((a) => typeof a === 'string' && /^[\\w.\\- ]{1,100}$/.test(a)) : [];\nconst id = 'req-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);\nconst at = new Date().toISOString();\nconst body = JSON.stringify({ id, from, text, attachments, at }, null, 2);\nconst binary = { data: await this.helpers.prepareBinaryData(Buffer.from(body, 'utf8'), id + '.json', 'application/json') };\nreturn [{ json: { id, ok: true }, binary }];"
+      },
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Build request file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=REPLACE_WITH_SPACE_FOLDER/requests/{{ $json.id }}.json",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Write requests file",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [480, 0]
+    }
+  ],
+  "connections": {
+    "Request webhook": { "main": [[{ "node": "Build request file", "type": "main", "index": 0 }]] },
+    "Build request file": { "main": [[{ "node": "Write requests file", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
