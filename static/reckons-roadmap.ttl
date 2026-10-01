@@ -193,6 +193,24 @@ kb:self-service-sync rdf:type ktype:Feature ;
     kpred:relates-to kb:integration-plugin-sdk ;
     kpred:relates-to kb:tenet-no-account .
 
+kb:qr-transfer rdf:type ktype:Phase ;
+    rdfs:label "Animated QR — statements and small spaces from one screen to another, no network" ;
+    kpred:feature-id "F56.3" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:self-service-sync ;
+    kpred:decided "MATT, 2026-09-30: 'Could we potentially encode the ttl into a QR type image?' — then, on the measured sizes: 'That might be enough for a GIF and statements??'" ;
+    kpred:measured "SIZES, 2026-09-30, gzip (the compression browsers do natively): personal notes 201 KB raw -> 24 KB; the coding-workflow docs 26 -> 9 KB; terminology 48 -> 16 KB; the roadmap 1.57 MB -> 532 KB. One QR holds at most ~2.95 KB, and ~1 KB per frame scans reliably from a phone. So a set of statements or one entity is one to five frames; most spaces are 10-30 frames, a few seconds per loop at about 6 frames a second; the roadmap, ~500 frames, is not a QR job." ;
+    kpred:description "Choose statements (a set, an entity and its facts, the pending ones) or a whole small space; the app compresses the Turtle, splits it into numbered frames with a checksum, and plays them as an animated QR on screen. The other device's Reckons scanner reads frames in any order until it has them all — a missed frame comes round again — then decompresses, parses and imports. Optionally the same frames export as an animated GIF file that can be messaged or printed and scanned later." ;
+    kpred:principle "A SCANNED CODE IS UNTRUSTED INPUT (kb:untrusted-output-hardening, F107.7). Cap the decompressed size before inflating, parse strictly, run the content filter, and land every statement PENDING in a space the person chooses, with a source recording the transfer. Nothing scanned is confirmed by being scanned." ;
+    kpred:constraint "THE PHONE NEEDS AN IN-APP SCANNER. The iPhone Camera app reads one static QR and opens a link; it cannot assemble frames, and iOS Safari has no BarcodeDetector. Candidates checked 2026-09-30: zxing-wasm (MIT, updated September 2026) to decode, gifenc (MIT, last released 2022) for GIF files. Sending needs nothing new: qrcode is already a dependency and CompressionStream is built into the browser." ;
+    kpred:constraint "A QR ON SCREEN IS READABLE BY ANY CAMERA IN VIEW. Say so where the code is shown; an optional one-time key shown separately is a later step, not a claim." ;
+    kpred:decided "MATT, 2026-09-30: 'Opening Reckons.AI with the file contents generated from the QR code itself is awesome.' THE SIMPLEST FORM COMES FIRST: one static QR whose content is a link, https://reckons.ai/open#<compressed statements>. The iPhone Camera app reads a single QR and opens a link natively, so no scanner, install or account is needed on the receiving phone; the site decodes the fragment locally, and a URL fragment is never sent to the server. Capacity is one code — about 2.2 KB of compressed data after URL-safe encoding, roughly 6-10 KB of Turtle: a set, an entity, a few notes. Anyone can make such a link, so opening one ASKS before anything lands — which space, and every statement pending." ;
+    kpred:decided "MATT, 2026-09-30: 'Maybe even three.js objects could be stored within a QR code itself?' MEASURED: the app's mesh model (static/glb/Meshy_AI_Turtle_1.glb) is 3.67 MB and gzip barely shrinks it — about 3,560 frames, so meshes do not travel in a QR. What does: the PROCEDURAL description the app already keeps per entity type — a named geometry, a colour and parameters, a few bytes each — so a code can carry statements together with the 3D look that renders them, and the receiving app rebuilds the three.js objects. A real mesh travels as a link and a hash, not as bytes." ;
+    kpred:honest-note "PLANNED, NOTHING BUILT (2026-09-30)." ;
+    kpred:relates-to kb:untrusted-output-hardening ;
+    kpred:relates-to kb:entity-sets .
+
 kb:workspace-index rdf:type ktype:Feature ;
                rdfs:label   "Workspace index + session recovery" ;
                kpred:feature-id   "F57" ;
