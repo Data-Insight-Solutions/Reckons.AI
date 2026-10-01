@@ -5419,6 +5419,19 @@ kb:model-routing-ledger rdf:type ktype:Feature ;
     kpred:scope-decision "FIRST SLICE LIVES INSIDE F136.1: record route choice and each extraction attempt in ExtractionRun, driven only by explicit overrides and deterministic validator failures. Generalise the contract to chat, merge and analysis after that path proves replayable. Evaluate the Switchyard sidecar only after the native contract and conformance corpus exist." ;
     kpred:remaining "DONE WHEN the same extraction fixture deterministically stays local on success and escalates only on a named validation failure; the UI/run record explains the chosen target and every attempt; no local source reaches cloud without an allowed policy edge; a failed primary remains visible after fallback; route replay selects the same target under the same policy/capabilities; and protocol-conformance fixtures expose any lossy adapter behavior." .
 
+kb:model-routing-ledger kpred:decided "MATT, 2026-09-30: 'Make sure to make it a habit to designate tasks to local agents. We should define better working local pipelines if a task is too difficult for qwen3.6 or similar LLMs... other specialized models can be brought in, just like new scripts can be made.' So a task that fails at its local rung ESCALATES BY RUNG, not straight to Opus: general local model (qwen3.6) -> specialized local model for the task's kind (qwen3-coder or devstral-small-2 for code, qwen2.5vl for images, nuextract for extraction, a larger general model such as qwen3:32b or gemma3:27b for hard judgment) -> a new deterministic script when the failure shows the rule is expressible -> a Sonnet or Haiku subagent -> Opus. Each attempt and its rung is recorded, so a task kind that keeps climbing is evidence for a new specialized model or script rather than for more Opus." ;
+    kpred:measured "2026-09-30, WHY THE LADDER IS NEEDED: in one session the GPUs sat idle for hours because nothing assigned work to them; when local code reviews did run, an Opus reviewer spent about 103k tokens rejecting all 9 of their decisions (14 rows, none still actionable). Both halves of the cost are routing failures: work not sent down, and unfiltered output sent up. A cheaper filter (script checks, a local panel vote) must sit between a local job and the Opus reviewer." .
+
+kb:script-consolidation rdf:type ktype:Feature ;
+    rdfs:label "Script consolidation — a regular maintenance pass over similar scripts and the npm run namespace" ;
+    kpred:feature-id "F74.8" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:work-tiering ;
+    kpred:decided "MATT, 2026-09-30: 'We need a regular maintenance item to analyze similar scripts, for consolidation. There are many scripts defined, and a limited namespace of one npm run terminology list.'" ;
+    kpred:description "A recurring job that lists every script under scripts/ and every npm run entry, and reports: scripts no npm entry or job reaches, npm entries that point at nothing, groups of scripts with overlapping names, imports or purpose comments, and npm names that break the namespace's own prefixes. Its output is proposals (merge these, rename this entry, retire that file), never edits." ;
+    kpred:proposed "TWO TIERS. Script tier finds the candidates deterministically: file inventory, npm entries, jobs.json, import graph, header-comment similarity. Agent tier (a local model) reads each candidate group and drafts one sentence on whether they do the same job; only groups it says overlap reach the Opus reviewer. Registered in scripts/offline/jobs.json so offline:all runs it." .
+
 # F136.1 — fenic lesson: the pipeline, not prompt text, is the durable artifact.
 kb:extraction-run-ledger rdf:type ktype:Feature ;
     rdfs:label "ExtractionRun ledger — typed, inspectable, rerunnable ingestion" ;
