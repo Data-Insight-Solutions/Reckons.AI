@@ -1445,7 +1445,9 @@ kb:conf-phase-4 rdf:type   ktype:Concept ;
 
 kb:text-chunking rdf:type ktype:Feature ;
                rdfs:label   "Text Chunking" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "scaffolded" ;
+               kpred:has-file     "src/lib/ingest/source-chunks.ts" ;
+               kpred:tested-by    "src/lib/ingest/__tests__/source-chunks.test.ts" ;
                kpred:feature-id   "F78" ;
                kpred:honest-note  "Renumbered F27->F78 (2026-07-12): it collided with kb:graph-publishing, which shipped as F27." ;
                kpred:description  "Sliding window chunking for sources exceeding the 12K char extraction limit. Context header per chunk (source title, chunk N of M). Cross-chunk deduplication by (subject, predicate, object). Benefits all source types, not just Confluence." ;
@@ -1455,7 +1457,8 @@ kb:text-chunking rdf:type ktype:Feature ;
                kpred:principle    "THE BUDGET IS PER EXTRACTOR AND IT IS MEASURED, NOT CHOSEN. A local model with an 8K context and Claude Opus 5.5 with 1M want very different chunk sizes, and a longer chunk is not automatically better: recall on a long input is an open question here. The budget is a parameter scored by scripts/offline/extraction-score.ts against a long-document fixture before any default is set." ;
                kpred:constraint   "OVERLAP IS CONTEXT, NOT CONTENT. A trailing block repeated into the next chunk gives the extractor continuity, but facts must not be counted twice: triples dedupe on (subject, predicate, object) across chunks and keep every evidence anchor they were found in." ;
                kpred:part-of      kb:source-corpus ;
-               kpred:depends-on   kb:wf-ingest .
+               kpred:depends-on   kb:wf-ingest ;
+               kpred:progress     "2026-09-30, THE CHUNKER EXISTS; EXTRACTION DOES NOT USE IT YET. chunkText splits at paragraph, then sentence, boundaries into chunks whose CONTENT ranges are disjoint and cover the text exactly, with overlap carried separately as contextStart (this entity's own rule: overlap is context, not content). Deterministic, so a chunk index is a stable reference for one version of a source. NOT BUILT: extraction over chunks, cross-chunk dedup, coverage per chunk." .
 
 kb:source-corpus rdf:type ktype:Feature ;
                rdfs:label   "Source corpus — originals kept, text derived, chunks indexed for building the graph" ;
@@ -1489,7 +1492,8 @@ kb:source-corpus rdf:type ktype:Feature ;
                kpred:relates-to   kb:source-as-subject ;
                kpred:relates-to   kb:ocr-provider-benchmark ;
                kpred:relates-to   kb:passage-grounding ;
-               kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." .
+               kpred:decided      "MATT, 2026-09-29: the source chunking .ttl and the meta-graph relations are big wins. We need a UI/UX around the meta-graph relations." ;
+               kpred:progress     "2026-09-30, FIRST SLICE (Matt: source chunking, ttl storage and chunk referencing are a current priority). BUILT in src/lib/ingest/source-chunks.ts, pure and shared by browser and CLI: (1) A CUT IS NO LONGER SILENT — EXTRACTION_TEXT_LIMIT is the single 12,000-character limit (extractor.ts and extract-critic.ts each hard-coded it), and ingest now raises an important notice naming how much of which source was read; (2) chunksToTurtle writes chunks.ttl in the decided vocabulary only — dcterms:isPartOf, schema:position, rdf:value, prov:wasDerivedFrom and a W3C Web Annotation oa:TextPositionSelector — no new kpred terms; (3) anchorExcerpt resolves a statement's verbatim excerpt to its chunk and exact span, exact or whitespace-normalized, and returns nothing rather than a guess. NOT BUILT: writing chunks.ttl into sources/ (the IO half), pdf.js, keeping the original, extraction over chunks, per-chunk coverage in the graph, and the Source View UI." .
 
 # -- Entity Normalization (F22) -------------------------------------------------
 
