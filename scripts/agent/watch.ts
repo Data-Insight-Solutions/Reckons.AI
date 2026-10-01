@@ -29,6 +29,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_MAX_ATTEMPTS, hyperlink, jobLink, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
+import { attemptLevel, classify, elapsedLevel, fitArt, LEGEND, loadThresholds, median, TURTLE_FRAMES, worst, type Level, type Thresholds } from './watch-render.js';
 import { ago, eventLogPath, foldRuns, parseGinLine, readEvents, type OllamaRequest, type RunView } from './local-activity.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -45,14 +46,31 @@ export type Snapshot = {
   jobs?: JobsView;
 };
 
-export type JobsView = { running: CurrentJob[]; finished: HistRun[]; circuits: { name: string; count: number; signature: string }[] };
+export type JobsView = {
+  running: CurrentJob[];
+  finished: HistRun[];
+  circuits: { name: string; count: number; signature: string }[];
+  /** Median duration (ms) of each job's earlier PASSED runs; absent in --statusline, which reads no history. */
+  medians?: Record<string, number>;
+  failuresLastHour?: number;
+};
 
 export function jobsView(): JobsView {
   const all = readRuns();
+  const durations = new Map<string, number[]>();
+  for (const r of all) if (r.name && r.status === 'passed' && r.endedAt) durations.set(r.name, [...(durations.get(r.name) ?? []), r.endedAt.getTime() - r.startedAt.getTime()]);
+  const medians: Record<string, number> = {};
+  for (const [n, d] of durations) {
+    const m = median(d);
+    if (m !== undefined && d.length >= 2) medians[n] = m;
+  }
+  const hourAgo = Date.now() - 3_600_000;
   return {
     running: readCurrent(),
     finished: all.filter((r) => r.status !== 'reset').slice(-5),
     circuits: openCircuits(all, DEFAULT_MAX_ATTEMPTS),
+    medians,
+    failuresLastHour: all.filter((r) => r.status === 'failed' && r.startedAt.getTime() >= hourAgo).length,
   };
 }
 
@@ -137,6 +155,8 @@ const bold = paint('1');
 const green = paint('32');
 const yellow = paint('33');
 const red = paint('31');
+const byLevel = (lv: Level, s: string) => (lv === 'bad' ? red(s) : lv === 'warn' ? yellow(s) : s);
+let swimFrame = 0;
 
 const gb = (bytes: number) => `${(bytes / 1e9).toFixed(1)} GB`;
 const secs = (ms: number) => (ms < 90_000 ? `${Math.round(ms / 1000)}s` : `${(ms / 60_000).toFixed(1)}m`);
@@ -147,12 +167,18 @@ function until(iso: string | undefined, now: Date): string {
   return s <= 0 ? 'unloading' : s < 90 ? `unloads in ${s}s` : `unloads in ${Math.round(s / 60)}m`;
 }
 
-export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean } = {}): string {
+export type RenderOpts = { detail?: boolean; thresholds?: Thresholds; /** terminal columns; art only when given */ width?: number; frame?: number };
+
+export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): string {
+  const th = opts.thresholds ?? loadThresholds();
+  const levels: Level[] = [];
+  /** Colour `text` by `lv` and remember the level, so the turtle's mood is the worst thing on screen. */
+  const lvl = (lv: Level, text: string) => (levels.push(lv), byLevel(lv, text));
   const out: string[] = [];
   out.push(`${bold('LOCAL MODELS')}  ${dim(now.toLocaleTimeString())}  ${dim('· npm run agent:watch · Ctrl-C quits')}`);
   out.push('');
 
-  if (!s.ollama.up) out.push(`${bold('OLLAMA')}  ${red(`DOWN — nothing answers at ${OLLAMA}`)}`);
+  if (!s.ollama.up) out.push(`${bold('OLLAMA')}  ${lvl('bad', `DOWN — nothing answers at ${OLLAMA}`)}`);
   else {
     out.push(`${bold('OLLAMA')}  v${s.ollama.version ?? '?'} at ${OLLAMA.replace(/^https?:\/\//, '')} · ${green('up')}`);
     if (s.ollama.loaded.length === 0) out.push(`  ${dim('no model loaded')}`);
@@ -162,7 +188,7 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
   }
 
   if (s.gpus.length) {
-    out.push(`${bold('GPU')}     ${s.gpus.map((g) => `${g.index}: ${g.name} ${g.util > 5 ? yellow(`${g.util}%`) : `${g.util}%`} ${(g.usedMiB / 1024).toFixed(1)}/${(g.totalMiB / 1024).toFixed(1)} GB`).join(' · ')}`);
+    out.push(`${bold('GPU')}     ${s.gpus.map((g) => `${g.index}: ${g.name} ${lvl(classify(g.util, th.gpuUtil), `${g.util}%`)} ${lvl(classify((g.usedMiB / g.totalMiB) * 100, th.vramPct), `${(g.usedMiB / 1024).toFixed(1)}/${(g.totalMiB / 1024).toFixed(1)} GB`)}`).join(' · ')}`);
   }
 
   out.push('');
@@ -174,9 +200,10 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
     const lastHour = s.requests.filter((r) => r.at.getTime() >= hourAgo);
     const last = s.requests[s.requests.length - 1];
     const busy = s.requests.reduce((t, r) => t + r.seconds, 0);
-    out.push(`  today ${s.requests.length} · last hour ${lastHour.length} · ${secs(busy * 1000)} of model time today`);
+    const p50 = median(s.requests.map((r) => r.seconds));
+    out.push(`  today ${s.requests.length} · last hour ${lastHour.length} · ${secs(busy * 1000)} of model time · latency p50 ${lvl(classify(p50, th.latencySec), `${(p50 ?? 0).toFixed(1)}s`)}`);
     const idleMs = now.getTime() - last.at.getTime();
-    const lastLine = `last ${ago(last.at, now)}: ${last.method} ${last.path} ${last.seconds.toFixed(1)}s${last.status === 200 ? '' : red(` ${last.status}`)}`;
+    const lastLine = `last ${ago(last.at, now)}: ${last.method} ${last.path} ${lvl(classify(last.seconds, th.latencySec), `${last.seconds.toFixed(1)}s`)}${last.status === 200 ? '' : red(` ${last.status}`)}`;
     out.push(`  ${idleMs > 30 * 60_000 ? yellow(`idle — ${lastLine}`) : lastLine}`);
     const byPath = new Map<string, number>();
     for (const r of s.requests) byPath.set(r.path, (byPath.get(r.path) ?? 0) + 1);
@@ -210,15 +237,29 @@ export function render(s: Snapshot, now = new Date(), opts: { detail?: boolean }
       out.push(`     ${dim(v.model.split(':')[0])} ${v.item.slice(-48)} → ${answer}${why}`);
     }
   }
-  if (s.jobs) out.push('', ...renderJobs(s.jobs, now));
-  return out.join('\n');
+  if (s.jobs) out.push('', ...renderJobs(s.jobs, now, undefined, th, lvl));
+  out.push('', dim(LEGEND));
+  const art = fitArt(opts.width, opts.frame ?? 0, worst(levels));
+  return [...art.map((l, i) => (i < 3 ? bold(l) : l)), ...(art.length ? [''] : []), ...out].join('\n');
 }
 
-export function renderJobs(j: JobsView, now = new Date(), link = (name: string) => hyperlink(name, jobLink(name), color)): string[] {
+export function renderJobs(
+  j: JobsView,
+  now = new Date(),
+  link = (name: string) => hyperlink(name, jobLink(name), color),
+  th: Thresholds = loadThresholds(),
+  lvl: (lv: Level, text: string) => string = byLevel,
+): string[] {
   const out = [`${bold('JOBS')} ${dim('scripts/agent/job-watch.ts · circuit breaker: the same failure repeated refuses the next run')}`];
-  for (const c of j.circuits) out.push(`  ${red('⛔ CIRCUIT OPEN')} ${bold(link(c.name))} — ${c.count} identical failures: ${c.signature} ${dim('(--reset to clear)')}`);
+  for (const c of j.circuits) out.push(`  ${lvl('bad', '⛔ CIRCUIT OPEN')} ${bold(link(c.name))} — ${c.count} identical failures: ${c.signature} ${dim('(--reset to clear)')}`);
   if (j.running.length === 0) out.push(`  ${dim('nothing running')}`);
-  for (const r of j.running) out.push(`  ${yellow('▶')} ${bold(link(r.name))}  ${secs(now.getTime() - new Date(r.started).getTime())} · attempt ${r.attempt}/${r.maxAttempts} · pid ${r.pid}`);
+  for (const r of j.running) {
+    const elapsed = now.getTime() - new Date(r.started).getTime();
+    const prev = j.medians?.[r.name];
+    const open = j.circuits.some((c) => c.name === r.name);
+    out.push(`  ${yellow('▶')} ${bold(link(r.name))}  ${lvl(elapsedLevel(elapsed, prev, th.jobElapsedRatio), secs(elapsed))}${prev ? dim(` (median ${secs(prev)})`) : ''} · ${lvl(attemptLevel(r.attempt, r.maxAttempts, open), `attempt ${r.attempt}/${r.maxAttempts}`)} · pid ${r.pid}`);
+  }
+  if (j.failuresLastHour !== undefined) out.push(`  failures in the last hour: ${lvl(classify(j.failuresLastHour, th.failuresLastHour), String(j.failuresLastHour))}`);
   out.push(`  ${dim('queued: not shown (runner.ts has no side-effect-free queue reader)')}`);
   if (j.finished.length === 0) out.push(`  ${dim('no finished runs recorded')}`);
   for (const f of j.finished.slice().reverse()) {
@@ -261,11 +302,17 @@ async function main(): Promise<void> {
     return;
   }
   const detail = argv.includes('--detail');
+  const thresholds = loadThresholds();
+  // Art only on a TTY. The swim cycle advances only when colour/animation is allowed (not NO_COLOR).
+  const width = process.stdout.isTTY ? process.stdout.columns : undefined;
   if (argv.includes('--once') || !process.stdout.isTTY) {
-    console.log(render(await snapshot(), new Date(), { detail }));
+    console.log(render(await snapshot(), new Date(), { detail, thresholds, width }));
     return;
   }
-  const draw = async () => process.stdout.write(`\x1b[2J\x1b[H${render(await snapshot(), new Date(), { detail })}\n`);
+  const draw = async () => {
+    const frame = process.env.NO_COLOR ? 0 : swimFrame++ % TURTLE_FRAMES;
+    process.stdout.write(`\x1b[2J\x1b[H${render(await snapshot(), new Date(), { detail, thresholds, width: process.stdout.columns, frame })}\n`);
+  };
   await draw();
   setInterval(() => void draw(), 2000);
 }
