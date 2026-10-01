@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { page } from '$app/state';
   import {
     statements,
     sources,
@@ -30,7 +31,7 @@
   } from '$lib/stores/workspace.svelte';
   import {
     isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
-    pickAutoSaveFile, clearAutoSaveFile
+    pickAutoSaveFile, clearAutoSaveFile, canShareFiles, sendSpaceToFiles
   } from '$lib/storage/backup';
   import { ensureAuth, isSignedIn } from '$lib/integrations/google/auth';
   import { uploadTurtle, listTurtleFiles, type DriveFile } from '$lib/integrations/google/drive';
@@ -151,7 +152,11 @@
   onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
-  let editingKbId = $state<string | null>(null);
+
+  // Opened from the nav's add quick menu: /kb?new=space arrives with the new-space form open.
+  $effect(() => {
+    if (page.url.searchParams.get('new') === 'space') untrack(() => { showNewKbForm = true; });
+  });  let editingKbId = $state<string | null>(null);
   let editingName = $state('');
   let compareSelection = $state<Set<string>>(new Set());
   let kbFilter = $state<'all' | 'bookmarked'>('all');
@@ -542,6 +547,16 @@
     a.download = name;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  // Device sync without an account (2026-09-30): the share sheet on a phone, a download elsewhere.
+  let shareMsg = $state('');
+  const shareSheet = typeof window !== 'undefined' && canShareFiles();
+  async function sendToFiles() {
+    const outcome = await sendSpaceToFiles(`${kbFileSlug()}.ttl`);
+    shareMsg = outcome === 'cancelled' ? '' : outcome === 'shared'
+      ? 'sent. on the other device: + add → space file, and pick it. it updates the space rather than copying it.'
+      : 'saved. on the other device: + add → space file, and pick it. it updates the space rather than copying it.';
   }
 
   function exportTurtle() {
@@ -1768,6 +1783,18 @@
       </button>
     {/if}
   </div>
+  <div class="row" style="margin-top: 0.5rem;">
+    <button onclick={sendToFiles} title="the complete space — every status and source — so it can be opened on another device">
+      {shareSheet ? '↗ send to Files or phone…' : '↓ full copy for another device (.ttl)'}
+    </button>
+  </div>
+  <p class="section-hint">
+    {shareSheet
+      ? 'opens the share sheet: choose save to files for iCloud Drive, OneDrive or Google Drive.'
+      : 'put the file in a folder your phone also sees — iCloud Drive, OneDrive or Google Drive.'}
+    to bring it back: <strong>+ add → space file</strong>. it updates the space instead of duplicating it.
+  </p>
+  {#if shareMsg}<p class="hint">{shareMsg}</p>{/if}
   {#if googleReady}
     <div class="row" style="margin-top: 0.5rem;">
       <button onclick={saveToDrive} disabled={driveUploading}>
