@@ -16,6 +16,8 @@
  *    list at all; its load is then unattributed, which counts as "other" (blocks), on purpose.
  *  - VRAM is read raw, so a model Ollama itself still holds (it unloads after its keep-alive) can
  *    pause the next job for a few minutes. It cannot deadlock: the hold ends when the model unloads.
+ *  - Non-Ollama memory is summed over all GPUs (the process list names no GPU) and a container's process
+ *    may be listed under a name that is not recognizable; any non-"ollama" name counts as foreign (blocks).
  *  - A single reading is a sample; it can pass a moment before a game launches.
  */
 import { execFile } from 'node:child_process';
@@ -23,8 +25,8 @@ import { loadDeviceConfig, type ThresholdOverride } from './device-config.js';
 
 export type Gpu = { index: number; util: number; usedMiB: number; totalMiB: number; tempC: number };
 export type ComputeApp = { pid: number; name: string; usedMiB: number };
-export type GpuLimits = { vramPct: number; tempC: number; otherUtilPct: number };
-export const DEFAULT_GPU_LIMITS: GpuLimits = { vramPct: 90, tempC: 83, otherUtilPct: 80 };
+export type GpuLimits = { vramPct: number; tempC: number; otherUtilPct: number; foreignVramMiB: number };
+export const DEFAULT_GPU_LIMITS: GpuLimits = { vramPct: 90, tempC: 83, otherUtilPct: 80, foreignVramMiB: 4096 };
 
 export const GPU_QUERY = ['--query-gpu=index,utilization.gpu,memory.used,memory.total,temperature.gpu', '--format=csv,noheader,nounits'];
 export const APPS_QUERY = ['--query-compute-apps=pid,process_name,used_memory', '--format=csv,noheader,nounits'];
@@ -59,7 +61,7 @@ export function parseApps(csv: string): ComputeApp[] | null {
 
 export const isOllamaProcess = (a: ComputeApp): boolean => /ollama/i.test(a.name);
 
-const LIMIT_METRIC: Record<keyof GpuLimits, string> = { vramPct: 'startVramPct', tempC: 'startTempC', otherUtilPct: 'startOtherUtilPct' };
+const LIMIT_METRIC: Record<keyof GpuLimits, string> = { vramPct: 'startVramPct', tempC: 'startTempC', otherUtilPct: 'startOtherUtilPct', foreignVramMiB: 'startForeignVramMiB' };
 
 /** Limits from resolved threshold statements (metric -> {limit}); anything not a finite number keeps the default. Pure. */
 export function mergeGpuLimits(over: Record<string, ThresholdOverride> | undefined, base: GpuLimits = DEFAULT_GPU_LIMITS): GpuLimits {
@@ -89,6 +91,13 @@ export function gpuVerdict(gpus: Gpu[] | null, apps: ComputeApp[] | null, limits
     if (pct >= limits.vramPct) return { ok: false, kind: 'full', reason: `GPU ${g.index} VRAM ${Math.round(pct)}% >= ${limits.vramPct}%` };
     if (g.tempC >= limits.tempC) return { ok: false, kind: 'hot', reason: `GPU ${g.index} at ${g.tempC} C >= ${limits.tempC} C` };
   }
+  // Memory held by non-Ollama compute processes (e.g. a WebODM container). The per-GPU percent check
+  // misses this when the load is spread over several GPUs (2026-10-01: ~23 GB of 48 GB held, each GPU
+  // under 90%, then a 24 GB model was loaded and Ollama crashed with "CUDA illegal memory access").
+  // The process list names no GPU, so this sums across GPUs. An unreadable list (apps null) is not
+  // blocked here: raw VRAM above still covers the full case, and unknown-list + load blocks below.
+  const foreignMiB = (apps ?? []).filter((a) => !isOllamaProcess(a)).reduce((n, a) => n + a.usedMiB, 0);
+  if (foreignMiB >= limits.foreignVramMiB) return { ok: false, kind: 'busy', reason: `non-Ollama GPU processes hold ${Math.round(foreignMiB)} MiB >= ${limits.foreignVramMiB} MiB` };
   const loaded = gpus.find((g) => g.util >= limits.otherUtilPct);
   if (loaded) {
     const onlyOllama = apps !== null && apps.length > 0 && apps.every(isOllamaProcess);

@@ -155,6 +155,7 @@ export function legacyWatchToTurtle(json: unknown, host: string): string {
   emit('startVramPct', [['limit', num(g.vramPct)]]);
   emit('startTempC', [['limit', num(g.tempC)]]);
   emit('startOtherUtilPct', [['limit', num(g.otherUtilPct)]]);
+  emit('startForeignVramMiB', [['limit', num(g.foreignVramMiB)]]);
   return lines.join('\n') + '\n';
 }
 

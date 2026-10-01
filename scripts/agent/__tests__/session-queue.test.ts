@@ -94,8 +94,16 @@ describe('what agent:watch shows', () => {
 describe('GPU start gate', () => {
   const g = (o: Partial<{ util: number; usedMiB: number; totalMiB: number; tempC: number }> = {}) => ({ index: 0, util: 10, usedMiB: 1000, totalMiB: 24000, tempC: 50, ...o });
   const ollama = [{ pid: 1, name: '/usr/local/bin/ollama', usedMiB: 5000 }];
-  const game = [{ pid: 2, name: 'game.exe', usedMiB: 5000 }];
+  const game = [{ pid: 2, name: 'game.exe', usedMiB: 2000 }];
   it('passes a quiet GPU', () => expect(gpuVerdict([g()], [], DEFAULT_GPU_LIMITS)).toEqual({ ok: true }));
+  it('blocks when a non-Ollama process (WebODM) holds VRAM spread over both GPUs, each under 90%', () => {
+    const webodm = [{ pid: 3, name: 'python3', usedMiB: 12000 }, { pid: 4, name: 'python3', usedMiB: 11000 }];
+    const two = [g({ usedMiB: 12000, totalMiB: 24576, util: 5 }), { ...g({ usedMiB: 11500, totalMiB: 24576, util: 5 }), index: 1 }];
+    expect(gpuVerdict(two, webodm)).toMatchObject({ ok: false, kind: 'busy' });
+    expect(gpuVerdict(two, [{ pid: 5, name: '[Not Found]', usedMiB: 8000 }]).ok).toBe(false);
+    expect(gpuVerdict([g()], [{ pid: 6, name: 'Xorg', usedMiB: 300 }]).ok).toBe(true);
+    expect(gpuVerdict([g()], [...ollama, { pid: 6, name: 'Xorg', usedMiB: 300 }]).ok).toBe(true); // Ollama's own memory is not foreign
+  });
   it('blocks VRAM >= 90%', () => {
     expect(gpuVerdict([g({ usedMiB: 21600 })], [])).toMatchObject({ ok: false, kind: 'full' });
     expect(gpuVerdict([g({ usedMiB: 21500 })], []).ok).toBe(true);

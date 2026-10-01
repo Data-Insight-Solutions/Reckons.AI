@@ -65,3 +65,8 @@
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 80 .
 
+# ... or when non-Ollama GPU processes (a WebODM container, a game) hold this many MiB in total
+<urn:reckons:threshold/startForeignVramMiB> a ktype:Threshold ;
+    rdfs:label "startForeignVramMiB" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 4096 .
