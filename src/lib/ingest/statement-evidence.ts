@@ -86,11 +86,11 @@ export function evidenceNotice(e: Evidence): string | null {
   if (e.kind === 'none') return 'This statement has no quoted excerpt, so there is no passage to show.';
   switch (e.reason) {
     case 'no-source-text':
-      return 'The full text of this source was not kept, so the exact passage cannot be shown. This is the quote that was saved with the statement.';
+      return 'The full text of this source was not kept, so the exact passage cannot be shown. The quote saved with the statement is the only evidence.';
     case 'not-in-source':
       return 'The quote saved with this statement was not found in the source when it was checked, so it is not shown as evidence.';
     case 'not-found':
-      return 'The saved quote could not be found in the source text that was kept (the source may have changed). This is the quote that was saved with the statement.';
+      return 'The saved quote could not be found in the source text that was kept (the source may have changed). The quote saved with the statement is the only evidence.';
   }
 }
 

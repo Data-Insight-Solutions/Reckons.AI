@@ -37,9 +37,8 @@
     </p>
     {#if evidence.kind === 'anchored'}
       <blockquote class="statement-evidence-text">{evidence.before}<mark class="statement-evidence-mark">{evidence.highlight}</mark>{evidence.after}</blockquote>
-    {:else if evidence.excerpt}
-      <blockquote class="statement-evidence-text">{evidence.excerpt}</blockquote>
     {/if}
+    <!-- Excerpt-only: the statement row above already shows the saved quote, so it is not repeated here. -->
     {#if notice}<p class="statement-evidence-note">{notice}</p>{/if}
     <p class="statement-evidence-note">{EVIDENCE_LIMITS_NOTE}</p>
   </section>
