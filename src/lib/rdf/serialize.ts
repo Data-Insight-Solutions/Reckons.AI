@@ -1,6 +1,6 @@
 import { encodePortableMetadata } from './portable-metadata';
 import type { Statement, Source, Term, NamedNode } from './types';
-import { isIRI, isLit, isBNode, termToString } from './types';
+import { isIRI, isLit, isBNode, termToString, hasLeakedTermKey } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
 
 /* ============================================================
@@ -25,6 +25,30 @@ export const DEFAULT_PREFIXES: Record<string, string> = {
 export const FULL_PREFIXES: Record<string, string> = {
   ...DEFAULT_PREFIXES
 };
+
+/**
+ * Drop statements whose subject/predicate/object/graph is an IRI shaped like a graph node key
+ * (`l:high||`). They cannot be written as Turtle/TriG/N-Quads that any parser reads back, and
+ * emitting one makes the WHOLE export unimportable (2026-09-10 incident). Skipping is loud — a
+ * console error plus a `# SKIPPED` comment in the file — never silent, and never fatal to the
+ * rest of the graph. The cause is a bug upstream; see looksLikeTermKey in types.ts.
+ */
+export function dropUnserializable<T extends Pick<Statement, 's' | 'p' | 'o' | 'g'>>(
+  statements: T[],
+): { kept: T[]; skipped: number } {
+  const kept = statements.filter((st) => !hasLeakedTermKey(st));
+  const skipped = statements.length - kept.length;
+  if (skipped > 0) {
+    console.error(
+      `[serialize] Skipped ${skipped} statement(s) whose IRI is a leaked graph node key ` +
+      `(e.g. <l:...|...|...>); writing them would produce Turtle that cannot be re-imported.`,
+    );
+  }
+  return { kept, skipped };
+}
+
+const skippedNote = (n: number): string[] =>
+  n > 0 ? [`# SKIPPED ${n} statement(s) with an unserializable (node-key) IRI — not exported`] : [];
 
 /** Try to shorten an IRI using prefix table; otherwise return full `<iri>` */
 function shorten(iri: string, prefixes: Record<string, string>): string {
@@ -100,7 +124,7 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
     header
   } = opts;
 
-  const kept = statements.filter((s) => includeStatuses.includes(s.status));
+  const { kept, skipped } = dropUnserializable(statements.filter((s) => includeStatuses.includes(s.status)));
 
   // Content advisory scan
   const advisory = scanForExportAdvisory(kept);
@@ -110,6 +134,7 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
   if (header) lines.push(...headerComment(header));
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${kept.length} statements`);
+  lines.push(...skippedNote(skipped));
   if (advisoryLines.length > 0) lines.push(...advisoryLines);
   lines.push('');
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
@@ -156,7 +181,7 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
  * ============================================================ */
 
 export function toNQuads(statements: Statement[]): string {
-  return statements
+  return dropUnserializable(statements).kept
     .map((st) => `${termToString(st.s)} ${termToString(st.p)} ${termToString(st.o)} ${termToString(st.g)} .`)
     .join('\n');
 }
@@ -190,9 +215,11 @@ export interface TriGOptions {
 /** Serialize statements to TriG, one named graph per SOURCE. Lossless: `g` survives. */
 export function toTriG(statements: Statement[], opts: TriGOptions = {}): string {
   const prefixes = opts.prefixes ?? DEFAULT_PREFIXES;
-  const keep = opts.includeStatuses
-    ? statements.filter((st) => opts.includeStatuses!.includes(st.status))
-    : statements;
+  const { kept: keep, skipped: trigSkipped } = dropUnserializable(
+    opts.includeStatuses
+      ? statements.filter((st) => opts.includeStatuses!.includes(st.status))
+      : statements,
+  );
 
   const lines: string[] = [];
   // MUST be a comment. This pushed the header raw until 2026-08-14, so any caller passing one
@@ -200,6 +227,7 @@ export function toTriG(statements: Statement[], opts: TriGOptions = {}): string 
   // a header, so the whole function looked covered while its first real caller was broken.
   // toTurtle and toTurtleFull both comment theirs; this was the odd one out.
   if (opts.header) lines.push(...headerComment(opts.header));
+  lines.push(...skippedNote(trigSkipped));
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
   lines.push('');
 
@@ -314,6 +342,8 @@ export function toTurtleFull(
   opts: Pick<TurtleOptions, 'header' | 'prefixes'> & { shellyPersona?: ShellyPersonaExport; kbStableId?: string } = {}
 ): string {
   const prefixes = { ...FULL_PREFIXES, ...(opts.prefixes ?? {}) };
+  const dropped = dropUnserializable(statements);
+  statements = dropped.kept;
 
   // Content advisory scan
   const advisory = scanForExportAdvisory(statements);
@@ -324,6 +354,7 @@ export function toTurtleFull(
   if (opts.header) lines.push(...headerComment(opts.header));
   lines.push(`# generated ${new Date().toISOString()}`);
   lines.push(`# ${statements.length} statements — full annotated export`);
+  lines.push(...skippedNote(dropped.skipped));
   if (advisoryLines.length > 0) lines.push(...advisoryLines);
   lines.push('');
   for (const [p, ns] of Object.entries(prefixes)) lines.push(`@prefix ${p}: <${ns}> .`);
