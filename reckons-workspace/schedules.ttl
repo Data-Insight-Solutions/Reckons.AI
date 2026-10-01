@@ -26,6 +26,7 @@ sched:reconcile rdf:type      ktype:Schedule ;
     rdfs:label      "Drop findings that fixed themselves" ;
     kpred:every     "6h" ;
     kpred:command   "npx tsx scripts/agent/reconcile.ts --apply" ;
+    kpred:tier      "script" ;
     kpred:enabled   "true" ;
     kpred:description "Re-run the deterministic checks and drop pending entries whose finding no longer reproduces. A review queue is an attention budget; padding it with resolved findings is how the one real item gets skipped. Conservative: only touches sources it can re-run and verify, never a question or a judgment. Runs BEFORE orchestrate so the triage sees a queue that reflects reality." .
 
@@ -33,6 +34,7 @@ sched:orchestrate rdf:type    ktype:Schedule ;
     rdfs:label      "Triage the queue for Opus" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/agent/orchestrate.ts" ;
+    kpred:tier      "script" ;
     kpred:enabled   "true" ;
     kpred:description "Prepare an orchestration briefing: route the pending queue by gate, draft candidate tasks for the machine-settleable work, and surface what actually needs a frontier decision. The output is a PROPOSAL an Opus session (or Matt) acts on — the script does the routing, the frontier tier does the judgment." .
 
@@ -40,6 +42,7 @@ sched:pull-notes rdf:type     ktype:Schedule ;
     rdfs:label      "Pull dictated notes down from n8n" ;
     kpred:every     "15m" ;
     kpred:command   "npx tsx scripts/notes-pull.ts" ;
+    kpred:tier      "script" ;
     kpred:enabled   "true" ;
     kpred:description "Drain the n8n data table into knowledge.pending.jsonl, where the app imports it within 10s and extracts it. NOTHING WAS DOING THIS: every drain until 2026-08-28 was run by hand, so a note dictated while nobody was at the keyboard simply waited. The buffer is deliberately at-least-once, so a duplicate on retry is harmless and a missed note is not." .
 
@@ -47,6 +50,7 @@ sched:offer-tasks rdf:type    ktype:Schedule ;
     rdfs:label      "Offer unauthorised tasks as documents" ;
     kpred:every     "1h" ;
     kpred:command   "npx tsx scripts/agent/tasks-export.ts --notify" ;
+    kpred:tier      "script" ;
     kpred:enabled   "true" ;
     kpred:description "Render every task still missing its effects or acceptance check as a markdown form, and deliver it through n8n (F162). It does NOT re-send: a document already on disk is skipped without delivering, so a task nobody has answered yet emails once rather than hourly. Answers return via tasks-import.ts as pending facts." .
 
@@ -54,6 +58,8 @@ sched:review-stars rdf:type   ktype:Schedule ;
     rdfs:label      "Review new GitHub stars" ;
     kpred:every     "24h" ;
     kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 15" ;
+    kpred:tier      "script" ;
+    kpred:network   "true" ;
     kpred:enabled   "true" ;
     kpred:description "Matt: 'Make it a regular task to review my github stars... I'm tired of copy pasting their links anyway.' A star is a judgement he already made, stranded on github.com. This brings the new ones in as licence-gated proposals. Incremental by starred_at and capped, because 659 stars proposed at once is a flooded queue rather than a feature." .
 
@@ -61,5 +67,144 @@ sched:integration-health rdf:type ktype:Schedule ;
     rdfs:label      "Check connected tools and versions" ;
     kpred:every     "168h" ;
     kpred:command   "npx tsx scripts/offline/integration-health.ts --pending" ;
+    kpred:tier      "script" ;
+    kpred:network   "true" ;
     kpred:enabled   "true" ;
     kpred:description "Matt: 'before usage at some interval it might be nice to check if new version is available'. Reports what is reachable, what is behind, and how many catalogued tools are actually invokable here. Weekly, because a version check that runs hourly is noise -- and only a SECURITY fix or an unreachable service raises attention." .
+
+# =============================================================================
+# Catch-up jobs for the SESSION WORKER (F74.7) — queued only while a Claude Code session is active.
+# =============================================================================
+# kpred:harness "session-worker" means scripts/agent/queue-worker.ts runs it (anacron model: when the
+# last SUCCESS is older than kpred:every, once, however many periods were missed); schedule.ts (cron)
+# skips it. kpred:tier "script" = no GPU, so the worker's GPU gate does not apply; anything without
+# a tier is treated as a GPU job. kpred:network "true" = it talks to the internet. This table is the
+# one place to adjust cadences.
+
+sched:offline-script-tier rdf:type ktype:Schedule ;
+    rdfs:label      "Script-tier offline checks" ;
+    kpred:every     "1d" ;
+    kpred:command   "npm run offline:all -- --tier=script" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "The free checks, daily." .
+
+sched:align rdf:type ktype:Schedule ;
+    rdfs:label      "Full alignment check" ;
+    kpred:every     "1d" ;
+    kpred:command   "npm run align" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Code against the graphs." .
+
+sched:graph-lint rdf:type ktype:Schedule ;
+    rdfs:label      "Graph lint" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/graph-lint.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Graph invariants." .
+
+sched:claim-audit rdf:type ktype:Schedule ;
+    rdfs:label      "Claim audit" ;
+    kpred:every     "1w" ;
+    kpred:command   "npx tsx scripts/offline/claim-audit.ts --pending" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Hand-written claims against the graph." .
+
+sched:safety-attestation rdf:type ktype:Schedule ;
+    rdfs:label      "Safety attestation" ;
+    kpred:every     "1w" ;
+    kpred:command   "npm run safety:attest" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Records the safety controls, including any failing one." .
+
+sched:security-dependencies rdf:type ktype:Schedule ;
+    rdfs:label      "Dependency security check" ;
+    kpred:every     "1w" ;
+    kpred:command   "npm run security:dependencies" ;
+    kpred:tier      "script" ;
+    kpred:network   "true" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Online: submits dependency metadata to the npm registry." .
+
+sched:session-tokens rdf:type ktype:Schedule ;
+    rdfs:label      "Session token summary" ;
+    kpred:every     "1d" ;
+    kpred:command   "npm run session:tokens -- --top=10" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Where the subscription budget went (the --by=branch grouping does not exist yet)." .
+
+sched:describe-entities rdf:type ktype:Schedule ;
+    rdfs:label      "Describe entities (local model)" ;
+    kpred:every     "1d" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=40" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: drafts kpred:description proposals." .
+
+sched:docs-review rdf:type ktype:Schedule ;
+    rdfs:label      "Review docs (local model)" ;
+    kpred:every     "1d" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/docs-review.ts --limit=30" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: proposals only." .
+
+sched:docs-expand rdf:type ktype:Schedule ;
+    rdfs:label      "Expand thin docs (local model)" ;
+    kpred:every     "1w" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/docs-expand.ts --limit=20" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: proposals only." .
+
+sched:distill-decisions rdf:type ktype:Schedule ;
+    rdfs:label      "Distill decisions (local model)" ;
+    kpred:every     "1w" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/distill-decisions.ts --limit=20 --pending" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: proposals only." .
+
+sched:layer-classify rdf:type ktype:Schedule ;
+    rdfs:label      "Classify layers (local model)" ;
+    kpred:every     "1w" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/layer-classify.ts" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: proposals only." .
+
+sched:extraction-score rdf:type ktype:Schedule ;
+    rdfs:label      "Score extraction (local model)" ;
+    kpred:every     "1w" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/extraction-score.ts --pending" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: proposals only." .
+
+sched:offline-all-agent rdf:type ktype:Schedule ;
+    rdfs:label      "Agent-tier offline jobs" ;
+    kpred:every     "1w" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npm run offline:all -- --tier=agent" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Agent tier: the full set of local-model jobs." .
+
