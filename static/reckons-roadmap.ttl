@@ -6272,6 +6272,27 @@ kb:ai-as-teammates rdf:type ktype:Feature ;
     kpred:relates-to kb:async-orchestration ;
     kpred:relates-to kb:graph-goal .
 
+kb:connect-to-support rdf:type ktype:Feature ;
+    rdfs:label "Connect to support — a consented, local-model collaborator on a person's space" ;
+    kpred:feature-id "F239" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30 (considering, not decided): 'Could I at this work station provide analytical support through LLMs running on Ollama here locally, and be a collaborator on a space? The files would be synced in some fashion, but potentially that is a single host like myself on S3? Then I could watch for user inputs hitting space .ttls, and then interact collaboratively? I would even want to notify and encourage interactions from Shelly, to help guide user experience? This would be in a formal, connect to support with strict setup procedure for clear user acknowledgement of collaboration. Like through new registration in Indico server??'" ;
+    kpred:description "A person who chooses to may connect one space to a support host: an operator's workstation running local models, which reads that space as it changes and answers with proposals the person reviews. The space is synced through a store the person consented to; the host never writes the person's statements, only its own proposals; Shelly may point the person at what arrived. Nothing about it is on by default." ;
+    kpred:principle "ONE WRITER PER FILE. The person's space files are written only by the person's app; the support host writes only its own proposals file in the same synced folder (the knowledge.pending.jsonl shape the app already drains). Two writers on one Turtle file is a sync conflict by construction; one writer per file makes conflicts impossible rather than resolved, and it keeps the host inside the proposal-only boundary every agent-tier job already obeys." ;
+    kpred:principle "CONSENT IS DATA THE HOST CHECKS, NOT A CHECKBOX IT REMEMBERS. Connecting writes a consent record into the space itself: who the support host is, what it may read, from when, and until when. The watcher refuses any space without a current record, and revoking is deleting the record and the storage credential, from the person's side, without asking the operator." ;
+    kpred:constraint "THIS MOVES A PERSON'S DATA OFF THEIR DEVICE AND ONTO SOMEONE ELSE'S. kb:tenet-private's local-only exemption from the ethics preamble does not apply to the host's prompts: the person's content is read by a party other than its author, so those prompts carry ETHICS_PREAMBLE as remote conversation does. The operator holds personal data and becomes responsible for it (retention, deletion, a breach), which is a COUNSEL-BRIEF.md matter before it is an engineering one." ;
+    kpred:constraint "STAYS INSIDE THE INTEGRATION BOUNDARY ONLY IF IT IS OPTIONAL AND PER-USER. The app stays static and offline-first; support is an integration a person connects, the same standing as n8n and Indico, never a backend the core app needs." ;
+    kpred:proposed "PHASES, ORDERED BY WHAT EACH BLOCKS: (1) the single-writer folder layout and a host watcher that diffs a synced space and emits proposals into its own file, testable over a local folder or Syncthing before any cloud store exists; (2) the in-space consent record, the Connect to support flow that writes it, and revocation; (3) the S3 transport already planned for sync (a bucket or prefix per person, credentials scoped to it); (4) Shelly raising what arrived, through kb:notification-relevancy phase 3, rate-limited; (5) Indico registration as the formal agreement and identity, if the open question below resolves." ;
+    kpred:open-question "CAN INDICO CARRY THE AGREEMENT? An Indico registration form can require an explicit acknowledgement and gives the person a real account, which is what this lacks. But the integration today reads /export/ only, read-only by design (kb:indico-deliberation), and whether a registration's status is readable there is unverified. If it is not, the registration is the human agreement and the in-space consent record stays the thing the watcher enforces." ;
+    kpred:open-question "HOW MANY PEOPLE CAN ONE WORKSTATION SERVE? Two RTX 3090 Ti cards are 48 GB of VRAM. Ollama serves a few requests in parallel per loaded model (OLLAMA_NUM_PARALLEL); claims of thousands of users come from batched servers such as vLLM, short requests and mostly idle users. A support watcher wakes on change, not per keystroke, so the expected load is small, but no number has been measured here and none should be promised until it is." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Recorded so it outlives the chat it was said in. What exists that it would reuse: knowledge.pending.jsonl and drainWorkspacePending (proposals into review), the MCP server's file watcher, requestShellyChat, and the local-model harness in scripts/offline/." ;
+    kpred:relates-to kb:ai-as-teammates ;
+    kpred:relates-to kb:collaborative-kb ;
+    kpred:relates-to kb:indico-deliberation ;
+    kpred:relates-to kb:notification-relevancy ;
+    kpred:relates-to kb:workspace-sync .
+
 ## =============================================================================
 ## F143: Game development on a graph  (Matt, 2026-08-28)
 ## =============================================================================
