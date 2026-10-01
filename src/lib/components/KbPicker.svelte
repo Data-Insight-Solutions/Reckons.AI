@@ -43,7 +43,7 @@
     </button>
   {/each}
   {#if kbs.length === 0}
-    <span class="kp-empty">no other KBs found</span>
+    <span class="kp-empty">no other spaces found</span>
   {/if}
 </div>
 

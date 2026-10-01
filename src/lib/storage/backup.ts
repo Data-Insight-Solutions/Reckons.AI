@@ -236,7 +236,8 @@ export async function exportKBClean(filename?: string): Promise<void> {
 }
 
 /** Full export — all statuses, annotated with status/confidence/sources + persona. */
-export async function exportKBFull(filename?: string): Promise<void> {
+/** The lossless Turtle of the current space: every status, source and the stable id. */
+export async function fullSpaceTurtle(): Promise<string> {
   const [statements, sources, settings] = await Promise.all([
     db.statements.toArray(),
     db.sources.toArray(),
@@ -252,11 +253,51 @@ export async function exportKBFull(filename?: string): Promise<void> {
     maxWords: ts.maxResponseWords > 0 ? ts.maxResponseWords : undefined
   } : undefined;
   const hasPersoanl = shellyPersona && Object.values(shellyPersona).some(v => v !== undefined);
-  downloadText(
-    toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId }),
-    filename ?? `kb_full_${dateStr()}.ttl`,
-    'text/turtle'
-  );
+  return toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId });
+}
+
+export async function exportKBFull(filename?: string): Promise<void> {
+  downloadText(await fullSpaceTurtle(), filename ?? `kb_full_${dateStr()}.ttl`, 'text/turtle');
+}
+
+/** True where the browser can hand a FILE to the system share sheet (iPhone/iPad Safari, Android). */
+export function canShareFiles(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function' || typeof File === 'undefined') return false;
+  try {
+    return navigator.canShare({ files: [new File([''], 'probe.ttl', { type: 'text/turtle' })] });
+  } catch {
+    return false;
+  }
+}
+
+export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled';
+
+/**
+ * Send a space to the phone's Files (Matt, 2026-09-30: file sync with the iPhone, self-service, no
+ * account). On a device with a share sheet this opens it, and "Save to Files" can put the file in
+ * iCloud Drive, OneDrive or Google Drive; elsewhere it downloads. It is the FULL export — every
+ * status, every source and the stable id — so opening the file on another device with
+ * + add → space file UPDATES that space instead of creating a duplicate (F127). A dismissed share
+ * sheet is reported as cancelled, never silently turned into a download.
+ */
+export async function sendSpaceToFiles(filename: string): Promise<ShareOutcome> {
+  return sendTextToFiles(await fullSpaceTurtle(), filename);
+}
+
+/** The share-or-download half, separate so it can be tested without a database. */
+export async function sendTextToFiles(content: string, filename: string): Promise<ShareOutcome> {
+  if (canShareFiles()) {
+    const file = new File([content], filename, { type: 'text/turtle' });
+    try {
+      await navigator.share({ files: [file], title: filename });
+      return 'shared';
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return 'cancelled';
+      // NotAllowedError and friends: the share sheet refused; fall through to a download.
+    }
+  }
+  downloadText(content, filename, 'text/turtle');
+  return 'downloaded';
 }
 
 /**

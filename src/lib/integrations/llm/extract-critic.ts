@@ -42,6 +42,7 @@
  */
 import type { ExtractedTriple } from './extractor';
 import { ethicsPreambleFor } from '../../safety/content-policy';
+import { EXTRACTION_TEXT_LIMIT } from '../../ingest/source-chunks';
 
 /*
  * GATED THE SAME WAY THE EXTRACTOR IS, and the first version was not.
@@ -104,7 +105,7 @@ export function buildCriticUserPrompt(
 
 Text:
 """
-${text.slice(0, 12_000)}
+${text.slice(0, EXTRACTION_TEXT_LIMIT)}
 """
 
 Already extracted (${known.length} triple${known.length === 1 ? '' : 's'}) — do NOT repeat any of these:

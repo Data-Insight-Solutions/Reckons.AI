@@ -1918,6 +1918,18 @@
   // ── Ctrl+click multi-select ──────────────────────────────────────────────
   let multiSelected = $state(new Set<string>());
 
+  // Opened from the nav's add quick menu (/?add=set). A set is made from nodes chosen here, so
+  // there is no form to open — say how, once, where the nodes are.
+  $effect(() => {
+    if ($page.url.searchParams.get('add') !== 'set') return;
+    untrack(() => pushNotification({
+      id: 'add-set-hint',
+      type: 'info',
+      title: 'Make a set',
+      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as set" in the panel.',
+    }));
+  });
+
   const multiSelectedList = $derived(
     [...multiSelected]
       .map(k => graphNodeList.find(n => n.key === k))
