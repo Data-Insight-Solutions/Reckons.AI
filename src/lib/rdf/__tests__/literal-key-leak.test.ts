@@ -4,7 +4,7 @@
  * "high" — a graph NODE ID used as a subject IRI. N3 rejects it, so the whole graph would not
  * re-import. Synthetic data only.
  */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Parser } from 'n3';
 import {
   termKey, lit, iri, looksLikeTermKey, iriFromNodeKey, hasLeakedTermKey, type Statement,
@@ -12,6 +12,13 @@ import {
 import { toTurtle, toTurtleFull, toTriG, toNQuads } from '../serialize';
 import { buildAliasStatements } from '../merge-aliases';
 import { importTurtleFull } from '../import-ttl';
+
+const pushed = vi.hoisted(() => [] as Array<{ title: string; body?: string; type: string }>);
+vi.mock('../../stores/notifications.svelte', () => ({
+  pushNotification: (n: { title: string; body?: string; type: string }) => { pushed.push(n); },
+}));
+const flush = () => new Promise((r) => setTimeout(r, 0));
+beforeEach(() => { pushed.length = 0; });
 
 const ALT = 'http://www.w3.org/2004/02/skos/core#altLabel';
 const G = { kind: 'iri', value: 'urn:kbase:source/manual' } as const;
@@ -120,5 +127,33 @@ describe('importing a file already damaged by the leak', () => {
 
   it('still throws for a file that is broken for another reason', async () => {
     await expect(importTurtleFull('<urn:a> <urn:b> .. garbage')).rejects.toThrow();
+  });
+});
+
+describe('a cut is never silent: the person is told, not just the console', () => {
+  it('export: skipped statements raise one notification per export', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const bad = st('b', { kind: 'iri', value: 'l:high||' }, ALT, lit('x'));
+    toTurtle([good, bad]);
+    await flush();
+    expect(pushed).toHaveLength(1);
+    expect(pushed[0].type).toBe('warn');
+    expect(pushed[0].title).toContain('1 fact left out');
+    toTurtle([good]);
+    await flush();
+    expect(pushed).toHaveLength(1); // clean export: no notification
+    err.mockRestore();
+  });
+
+  it('import (workspace/kb-import pass the file name): names the file, count, and that it is unchanged', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ttl = '<urn:a> <urn:b> "ok" .\n<l:high||> <http://www.w3.org/2004/02/skos/core#altLabel> "x" .\n';
+    await importTurtleFull(ttl, { name: 'my-private-graph.ttl' });
+    await flush();
+    expect(pushed).toHaveLength(1);
+    expect(pushed[0].body).toContain('my-private-graph.ttl');
+    expect(pushed[0].body).toContain('1 fact was set aside');
+    expect(pushed[0].body).toContain('file itself was not changed');
+    warn.mockRestore();
   });
 });

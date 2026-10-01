@@ -10,6 +10,7 @@ import { decodePortableMetadata } from './portable-metadata';
 
 import type { Statement, Source, Term, ReviewStatus } from './types';
 import { hasLeakedTermKey } from './types';
+import { notifyImportQuarantine } from './cut-notice';
 import { isAltitude } from './fact-altitude';
 
 // IRIs used in the annotated format
@@ -104,7 +105,7 @@ function n3ToTerm(term: any): Term | null {
  * Parse an annotated .ttl file back into Statement[] + Source[].
  * Falls back to treating plain (non-annotated) Turtle as confirmed statements.
  */
-export async function importTurtleFull(turtle: string): Promise<ImportResult> {
+export async function importTurtleFull(turtle: string, opts: { name?: string } = {}): Promise<ImportResult> {
   // Dynamic import keeps N3 out of SSR / initial bundle
   const { Parser } = await import('n3');
   // TriG, not Turtle: TriG is a strict superset (every .ttl is legal TriG), so this
@@ -311,6 +312,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       `(${quarantineOriginals.length} distinct: ${quarantined.samples.join(', ')}); the rest of the graph was imported.`,
     );
   }
+
+  if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
   return { statements, sources, cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }

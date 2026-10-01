@@ -1,5 +1,6 @@
 import { encodePortableMetadata } from './portable-metadata';
 import type { Statement, Source, Term, NamedNode } from './types';
+import { notifyExportSkipped } from './cut-notice';
 import { isIRI, isLit, isBNode, termToString, hasLeakedTermKey } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
 
@@ -43,6 +44,7 @@ export function dropUnserializable<T extends Pick<Statement, 's' | 'p' | 'o' | '
       `[serialize] Skipped ${skipped} statement(s) whose IRI is a leaked graph node key ` +
       `(e.g. <l:...|...|...>); writing them would produce Turtle that cannot be re-imported.`,
     );
+    void notifyExportSkipped(skipped);
   }
   return { kept, skipped };
 }
