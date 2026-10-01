@@ -23,6 +23,20 @@ F229-F238. Matt's ten directions of the evening are F229-F238 in the roadmap, wi
 and replace; an Entra app registration if OneDrive sync is wanted; adding `release-notes` to
 main's required checks; names for 11 store variables refused by rename batch 1; TypeScript 7.
 
+**New task from Matt's phone (pulled 2026-09-30 20:43, in the queue as a personal-notes capture):**
+"Create a new task for the local models (Qwen 3.6, Qwen Coder) to orchestrate tasks and merge to
+dev. The task involves creating new example spaces utilizing new features and updating old ones,
+including cleaning up example spaces (graphs, themes, backgrounds, etc.)." Plan it in the roadmap,
+then as a runner task (scripts/agent/runner.ts). Local models merging to dev is Matt's explicit
+instruction here — gate it on green CI and a verified base `dev`, never `main`. Measured today:
+local models do well when the evidence is handed to them and badly when left to explore, so ground
+each example-space job (which features, which files) by script first.
+
+**Also decided this evening:** stay on TypeScript 5.x and Threlte 8 (no TypeScript 7; close or
+narrow #258/#314 accordingly). No Google/Microsoft OAuth for sync — existing sync services, the
+share sheet, then S3. Release-notes becomes a required check on main once it reaches staging (#327).
+Small bug: `notes-pull.ts --dry-run` prints "drained 1 note(s)" though it writes nothing.
+
 **Lessons (apply them):** a local-panel calibration holds for ONE task (UI-copy run answered
 "space" zero times and was wrong ≥137 times while unanimous) — label a sample first. Pass
 `model` to every Agent call. Check UI in a real browser at phone width before calling it done.
