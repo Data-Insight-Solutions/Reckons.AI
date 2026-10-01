@@ -1,3 +1,27 @@
+## 2026-09-30 (late) — 0.2.5 started; merge queue built; nothing merged (Claude Code)
+
+**Nothing was merged this session.** The auto-mode classifier refused `merge-queue.ts` as
+"merge without review". Matt either runs it himself or allows it:
+`npx tsx scripts/agent/merge-queue.ts 333 326 327 328 329 330 331 332 334 335 336 --keep-going`
+(script tier: base must be `dev`, updates stale branches from `dev`, waits for green, merges pinned
+to the checked commit; `--dry-run` first). The script is on #336 until that merges.
+
+**New PRs, all base `dev`:** #333 dompurify 3.4.16 (a new low advisory failed `Dependencies (.)` on
+#327–#332; merge it FIRST, then the others need `dev` merged in), #334 `/review` mounts
+`GraphCanvas` (F92 step 2, 0.2.5 item 1), #335 first Spaces map e2e (F218, 4 tests), #336 merge
+queue (F89). Also pushed: #329's Indico e2e helper now uses the add quick menu (its 3 E2E failures).
+
+**0.2.5 remaining, in order:** F221 IO half (write `chunks.ttl` into `sources/`, keep originals,
+pdf.js, extraction over chunks, persist F122.1 anchors) → Source View UI with e2e → Spaces phase 2
+(grouping choice, multi-select → declared set, canvas mode) → version bump, release notes, promote.
+Scope option for Matt: cut 0.2.5 without the Source View UI (dev is 100 commits past 0.2.0).
+
+**F239 supervised compute sharing (this PR):** Matt's idea, asynchronous and file-only — tasks and
+TTL in a shared store, his local models answer with proposals, no ports, no live API.
+
+**Matt's correction (apply it):** "WHY NOT OFFLOAD TO LOCAL AGENTS?" — this session polled CI and
+re-ran specs by hand for an hour. Start the queue and background runs, then read logs when they end.
+
 ## 2026-09-30 (evening) — START HERE. This thread ended at >150k context; begin fresh.
 
 Matt's usage panel, 2026-09-30: 97% of usage at >150k context, 71% subagent-heavy. Read this,
