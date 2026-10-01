@@ -216,7 +216,7 @@
             {#if statement.excerpt && statement.grounded !== false}
               <small>{statement.grounded === true ? 'Excerpt matched the source text.' : 'Excerpt retained; a source-text match was not recorded.'}</small>
             {/if}
-            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} />
+            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} sourceHash={sources.find((s: Source) => s.id === statement.sourceId)?.hash} />
           </div>
         {/each}
       </div>

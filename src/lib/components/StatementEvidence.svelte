@@ -1,10 +1,11 @@
 <script lang="ts">
   import type { Statement } from '$lib/rdf/types';
   import { readSourceBaseline } from '$lib/stores/workspace.svelte';
+  import { readRetainedSourceText } from '$lib/stores/source-corpus';
   import { deriveEvidence, evidenceNotice, EVIDENCE_LIMITS_NOTE } from '$lib/ingest/statement-evidence';
 
   // Thin renderer: the derivation is in $lib/ingest/statement-evidence (pure, tested).
-  let { statement, sourceTitle } = $props<{ statement: Statement; sourceTitle: string }>();
+  let { statement, sourceTitle, sourceHash } = $props<{ statement: Statement; sourceTitle: string; sourceHash?: string }>();
 
   let sourceText = $state<string | null>(null);
   let loaded = $state(false);
@@ -14,8 +15,12 @@
     loaded = false;
     sourceText = null;
     let live = true;
-    readSourceBaseline(id)
-      .then((b) => { if (live) sourceText = b?.text ?? null; })
+    const hash = sourceHash;
+    // Prefer the retained corpus text (sources/<slug>-<hash8>/text.md); fall back to the review
+    // baseline; if neither exists the evidence section says so (deriveEvidence: no-source-text).
+    readRetainedSourceText(hash)
+      .then((t) => t ?? readSourceBaseline(id).then((b) => b?.text ?? null))
+      .then((t) => { if (live) sourceText = t; })
       .catch(() => {})
       .finally(() => { if (live) loaded = true; });
     return () => { live = false; };
