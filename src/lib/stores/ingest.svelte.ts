@@ -27,6 +27,7 @@ import { prepareStatementsForWrite, persistIngestBatch, statements as allStateme
 import { settings } from './settings.svelte';
 import { addSuggestion } from './disambiguation.svelte';
 import { pushNotification } from './notifications.svelte';
+import { coverageNotice, extractionCoverage } from '../ingest/source-chunks';
 import {
   cancelExtractionRun,
   completeExtractionRun,
@@ -213,6 +214,14 @@ export async function ingest(
     true; // ollama, wasm, mock, manual, chrome-ai need no key
   const backend = hasKey ? chosen : 'wasm';
   onProgress?.({ phase: 'extracting', backend });
+
+  // A cut is never silent (F221). Every backend reads at most EXTRACTION_TEXT_LIMIT characters;
+  // until 2026-09-30 the rest was dropped without a word, so a long source looked fully read.
+  // Direct Turtle import is not extraction and reads everything.
+  if (!turtleStatements) {
+    const notice = coverageNotice(title, extractionCoverage(text.length));
+    if (notice) pushNotification({ id: `coverage-${id}`, type: 'warn', title: 'Part of this source was not read', body: notice, important: true });
+  }
 
   // F136.1: capture the already-resolved CURRENT routing rule before work begins. This does not
   // introduce retries or alter the old fallback; it makes the existing choice and its locality

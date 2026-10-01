@@ -2421,7 +2421,7 @@
           {/if}
         {:else if !alignLoading}
           <div class="empty-state">
-            <p>select KBs above to find alignment opportunities.</p>
+            <p>select spaces above to find alignment opportunities.</p>
           </div>
         {/if}
       {/if}

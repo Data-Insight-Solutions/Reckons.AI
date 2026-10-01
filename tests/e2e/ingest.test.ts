@@ -76,13 +76,44 @@ test('vault tab renders when present', async ({ page }) => {
   }
 });
 
-test('ingest navigation link works from nav', async ({ page }) => {
-  // NavBar label for the ingest route is "add" (terminology sweep renamed
-  // ingest -> add); the underlying route is still /ingest.
-  const link = page.locator('nav').getByRole('link', { name: /^add$/i });
+test('the nav add quick menu reaches the Add page', async ({ page }) => {
+  // "add" in the nav opens a quick menu (Matt, 2026-09-30) rather than navigating; the route is
+  // still /ingest, reached through "all ways to add…".
+  const trigger = page.locator('nav').getByRole('button', { name: /^add$/i });
+  await trigger.click();
+  await expect(page.getByRole('menu', { name: 'Ways to add' })).toBeVisible();
   await Promise.all([
     page.waitForURL((url) => url.pathname === '/ingest'),
-    link.click(),
+    page.getByRole('menuitem', { name: /all ways to add/i }).click(),
   ]);
   await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 8_000 });
+});
+
+test('a quick-menu entry opens the Add page already in that mode', async ({ page }) => {
+  await page.locator('nav').getByRole('button', { name: /^add$/i }).click();
+  await Promise.all([
+    page.waitForURL((url) => url.pathname === '/ingest' && url.searchParams.get('mode') === 'url'),
+    page.getByRole('menuitem', { name: /link/i }).click(),
+  ]);
+  await expect(page.locator('.tabs button.active')).toHaveText(/^url$/i);
+});
+
+test('the quick menu leads with a source, which opens document mode', async ({ page }) => {
+  await page.locator('nav').getByRole('button', { name: /^add$/i }).click();
+  const items = page.getByRole('menu', { name: 'Ways to add' }).getByRole('menuitem');
+  await expect(items.first()).toHaveText(/source/);
+  await Promise.all([
+    page.waitForURL((url) => url.searchParams.get('mode') === 'document'),
+    items.first().click(),
+  ]);
+  await expect(page.locator('.tabs button.active')).toHaveText(/^document$/i);
+});
+
+test('the quick menu closes on Escape and returns focus to its trigger', async ({ page }) => {
+  const trigger = page.locator('nav').getByRole('button', { name: /^add$/i });
+  await trigger.click();
+  await expect(page.getByRole('menu', { name: 'Ways to add' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu', { name: 'Ways to add' })).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });

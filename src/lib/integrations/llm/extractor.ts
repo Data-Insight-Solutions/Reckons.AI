@@ -3,6 +3,7 @@ import { iri, lit } from '../../rdf/types';
 import { groundStatements } from '../../rdf/grounding';
 import { v4 as uuid } from 'uuid';
 import { ethicsPreambleFor } from '../../safety/content-policy';
+import { EXTRACTION_TEXT_LIMIT } from '../../ingest/source-chunks';
 
 // STRUCTURED PURPOSE (2026-08-14, Matt: "avoid injection of unnecessary tokens into processes
 // that don't need protections"). These prompts emit TRIPLES, and every triple written passes
@@ -115,7 +116,7 @@ export function buildExtractionUserPrompt(
 
 Text:
 """
-${text.slice(0, 12_000)}
+${text.slice(0, EXTRACTION_TEXT_LIMIT)}
 """
 ${vocabularySection}
 
