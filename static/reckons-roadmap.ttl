@@ -8703,3 +8703,61 @@ kb:release-0-2-5 rdf:type ktype:Release ;
     kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." .
 
 kb:meta-graph-view kpred:measured "2026-09-29, PHASE 1 CORRECTED AFTER MATT USED IT: 'I'm confused about the need for the button count leaps in every space, also no visual of the edges between spaces.' The map only counted the current space automatically, so on a real registry it drew no lines until the button was pressed. Other spaces are now read in the background when the Spaces tab opens (only those never read or written to since, one at a time, each tried once per visit), the button is gone, and each space's own stable id is read from its settings while it is read, so a jump into a space never opened on this device still resolves to a line. When there are no lines the map says why and names the node panel's '+ add jump'. Verified end to end in Chromium with two spaces created by the app and a jump written into one space's own database: one line drawn, no button, no page errors." .
+
+## =============================================================================
+## F242 — Rapier physics in the canvas (Matt, 2026-10-01)
+## =============================================================================
+
+kb:rapier-physics rdf:type ktype:Feature ;
+    rdfs:label "Rapier physics in the graph canvas — collision and interaction, lazy-loaded" ;
+    kpred:feature-id "F242" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:description "Bring the Rapier physics engine (WebAssembly, via @dimforge/rapier3d-compat or @threlte/rapier) into the shared graph canvas for the things a hand-written force loop does badly: collision between node markers, labels and preview images, a fixed timestep, and physical interaction (drag with momentum, grab and throw in VR/AR). Today the 3D and 2D graphs each run a hand-written force simulation, and the preview collage resolves overlap with its own pairwise O(n²) pass that stops early on a large graph." ;
+    kpred:decided "MATT, 2026-10-01: 'roadmap rapier incorporation', after weighing GSAP and Rapier for the Threlte canvas. Rapier goes on the roadmap; GSAP is deferred (see open-question)." ;
+    kpred:principle "RAPIER IS FOR COLLISION AND INTERACTION, NOT FOR THE LAYOUT. A graph layout needs all-pairs repulsion, springs on edges and a simulation that COOLS TO REST; a rigid-body engine has no n-body repulsion and is built to keep simulating. The layout stays a force simulation, and Rapier resolves contact on top of it. In particular Rapier does NOT fix kb:perf-crawl's known issue that the simulation oscillates instead of converging: that is damping and cooling in the current loop (or a move to d3-force-3d), and it is measured in phase 1 as its own arm." ;
+    kpred:principle "LAZY, OPTIONAL AND MEASURED. The engine is WebAssembly of roughly 1.5 to 2 MB, in a local-first app whose first load matters. It is loaded only when a view first needs it, never in the initial bundle, and the canvas behaves exactly as today when it is absent, disabled, or the device is too slow. Its cost is measured (bundle, frame time, settle time) before it is kept, under the complexity-budget rule." ;
+    kpred:principle "PHYSICS NEVER WRITES THE GRAPH. Positions a simulation produces are view state. A position becomes a fact only when a person deliberately pins it, never because a body came to rest somewhere. NOT BUILT (2026-10-01): dev has no pinned-position path yet; the branch feat/free-layout-positions holds unmerged work toward one (src/lib/rdf/node-positions.ts), with no open PR." ;
+    kpred:depends-on kb:one-graph-canvas ;
+    kpred:relates-to kb:perf-crawl ;
+    kpred:relates-to kb:spatial-force-layout ;
+    kpred:relates-to kb:graph-density-legibility ;
+    kpred:relates-to kb:vr-ar-shells ;
+    kpred:relates-to kb:game-engine-bridge ;
+    kpred:relates-to kb:ref-three-game-engine ;
+    kpred:has-phase kb:rapier-phase-1 ;
+    kpred:has-phase kb:rapier-phase-2 ;
+    kpred:has-phase kb:rapier-phase-3 ;
+    kpred:has-phase kb:rapier-phase-4 ;
+    kpred:open-question "GSAP, DEFERRED 2026-10-01. GSAP is strong at sequenced timelines (camera tours, guided step-throughs, choreographed arrival of new nodes), but svelte/motion's Tween and Spring already cover single motions and nothing planned needs sequencing yet. Its license became free in 2025 but is not an OSI open-source license and, as recalled when this was written, restricts use in tools competing with Webflow's visual site building. Reckons.AI is open source and publishes sites, so read the exact terms before adopting it. Revisit when a feature needs timelines." ;
+    kpred:remaining "Phase 1 first: nothing is added to package.json until the benchmark has recorded its numbers here." .
+
+kb:rapier-phase-1 rdf:type ktype:Phase ;
+    rdfs:label "F242.1 — Benchmark before adopting" ;
+    kpred:part-of kb:rapier-physics ;
+    hnav:order 1 ;
+    kpred:has-status "planned" ;
+    kpred:description "A script-tier benchmark over the starter guide and one large synthetic graph, reusing kb:perf-crawl's motion trace. Three arms: the current loop with a damping and cooling fix; d3-force-3d; and the current layout with Rapier resolving collision only. Record time to settle, frame time at p50 and p95, residual overlap between markers, and bytes added to the bundle. The numbers and the choice go into this entity before any code lands." .
+
+kb:rapier-phase-2 rdf:type ktype:Phase ;
+    rdfs:label "F242.2 — Collision: markers, labels, preview collage" ;
+    kpred:part-of kb:rapier-physics ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:description "Lazy-load Rapier inside GraphCanvas (kb:one-graph-canvas) once, for both pages that draw a graph. Node markers and label boxes become colliders so nothing overlaps at rest, and the preview collage's pairwise pass is replaced by the engine's broad phase, removing its early-stop cap. A setting turns it off, and the absent-or-disabled path is today's behaviour, covered by e2e. kb:perf-crawl asserts the frame-time budget with physics on." .
+
+kb:rapier-phase-3 rdf:type ktype:Phase ;
+    rdfs:label "F242.3 — Interaction: momentum, pinning, grab in VR/AR" ;
+    kpred:part-of kb:rapier-physics ;
+    hnav:order 3 ;
+    kpred:has-status "speculative" ;
+    kpred:description "Dragging a node carries momentum and settles; a node can be pinned and released. In the VR/AR views (kb:vr-ar-shells) a person can grab, throw and stack nodes and sets. A pin persists only as a position the person chose (see the NOT BUILT note on this feature's principle), never from where a body came to rest." .
+
+kb:rapier-phase-4 rdf:type ktype:Phase ;
+    rdfs:label "F242.4 — Shared with the game-engine bridge" ;
+    kpred:part-of kb:rapier-physics ;
+    hnav:order 4 ;
+    kpred:has-status "speculative" ;
+    kpred:description "The same physics world is what kb:game-engine-bridge exports into a TypeScript engine, since kb:ref-three-game-engine also uses Rapier. One physics dependency serves the canvas and the engine export, rather than two." .
+
+kb:game-engine-bridge kpred:relates-to kb:rapier-physics .
