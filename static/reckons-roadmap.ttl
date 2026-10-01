@@ -6299,7 +6299,26 @@ kb:supervised-compute-sharing rdf:type ktype:Feature ;
     kpred:relates-to kb:collaborative-kb ;
     kpred:relates-to kb:indico-deliberation ;
     kpred:relates-to kb:notification-relevancy ;
-    kpred:relates-to kb:workspace-sync .
+        kpred:remaining "WHAT ELSE IS NEEDED, 2026-09-30 (Matt asked for the full list). OUTSIDE THE PRODUCT: (1) a shared store; Cloudflare R2 is the likely fit (S3-compatible, so the planned aws4fetch sync works against it; a free allowance; no egress fees; the site already deploys on Cloudflare), AWS S3 the alternative; check current terms, which change. (2) Each collaborator's own Claude subscription for planning and review; their tokens, not the host's. (3) Collaborators' Indico accounts on the host's server, and the Reckons.AI MCP server installed with them. (4) A written agreement: what the host may read, retention, deletion, and that deliverables are proposals; a COUNSEL-BRIEF.md matter. (5) If it is paid, a payment path; none exists, and the product has no backend to hold one. (6) Host operations: the host disk reported SMART FAILED on 2026-09-30, so nobody else's data should land on that machine until it is replaced and backed up; GPU scheduling around the owner's own use; uptime expectations stated plainly (the queue absorbs absence, but a deliverable can be late). IN THE PRODUCT: (7) bucket sync (planned in F56); (8) per-space sharing with scoped credentials per member; (9) the in-space consent record and revocation; (10) the shared-task type registry and the host runner that claims tasks from synced folders; (11) deliverables arriving pending, with provenance (person, machine, model, task type); (12) the Sonnet overseer layer and the merge queue for code deliverables (F89); (13) notification and Shelly's raise when a deliverable arrives (F219); (14) meeting transcription into statements (F240). UNVERIFIED: whether the host's Indico exposes registrations or video meetings to the integration at all." ;
+    kpred:relates-to kb:meeting-transcription ;
+kpred:relates-to kb:workspace-sync .
+
+kb:meeting-transcription rdf:type ktype:Feature ;
+    rdfs:label "Meeting transcription — a recorded conversation becomes attributed, pending statements" ;
+    kpred:feature-id "F240" ;
+    kpred:has-status "speculative" ;
+    kpred:priority "medium" ;
+    kpred:decided "MATT, 2026-09-30: 'I think Indico has video conferencing, so maybe meeting transcription and automated statement gathering from transcript could be key.'" ;
+    kpred:description "A meeting's recording is transcribed on a local GPU, split by speaker, and run through extraction, so what was said arrives in the space as pending statements, each attributed to its speaker and anchored to its place in the transcript. Decisions and open questions from a meeting become graph entries instead of a forgotten recording." ;
+    kpred:proposed "PIPELINE: recording -> local speech-to-text (a large Whisper model fits one RTX 3090; the app already ships whisper-tiny for in-browser dictation) -> speaker diarization (who spoke when) -> the transcript kept as a source and chunked (F221, so a long meeting is never silently cut at 12,000 characters) -> extraction per chunk -> statements pending, each with its speaker as the asserting party and an anchor into the transcript (F122.1). Questions raised and not answered become partial facts (F32)." ;
+    kpred:constraint "RECORDING NEEDS EVERYONE'S CONSENT, FIRST. Some jurisdictions require every party to agree to a recording; the meeting must say it is recorded and transcribed before it starts, and a participant must be able to decline. A transcript is personal data about every speaker, not only the host." ;
+    kpred:constraint "A SPEAKER LABEL IS A GUESS UNTIL CONFIRMED. Diarization assigns turns to voices, not to names; attributing a statement to a named person is a claim the meeting's participants confirm in review, never a fact the model asserts." ;
+    kpred:open-question "WHERE DOES THE RECORDING COME FROM? Indico's videoconference support is, as far as is known here, a plugin that links rooms in an external service (Zoom being the common one) rather than hosting video itself; whether the host's server has such a plugin, and whether recordings are reachable, is unverified. A recording a participant uploads works regardless." ;
+    kpred:honest-note "NOTHING IS BUILT (2026-09-30). Exists to reuse: whisper STT in the browser, ingest extraction, partial facts, the review queue. Depends on F221 chunking and F122.1 anchors, both 0.2.5 work." ;
+    kpred:depends-on kb:source-corpus ;
+    kpred:depends-on kb:document-evidence-anchors ;
+    kpred:relates-to kb:supervised-compute-sharing ;
+    kpred:relates-to kb:indico-deliberation .
 
 ## =============================================================================
 ## F143: Game development on a graph  (Matt, 2026-08-28)
