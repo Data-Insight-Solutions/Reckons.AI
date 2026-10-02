@@ -51,6 +51,72 @@ async function seedProvenance(page: Page, prefer2D: boolean) {
   await expect(page.getByRole('group', { name: 'Graph perspective' })).toBeVisible({ timeout: 20_000 });
 }
 
+for (const width of [1280, 390]) {
+  test(`Statements node sources open their inspector despite filters at ${width}px`, async ({ page }, testInfo) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width, height: 844 });
+    await seedProvenance(page, true);
+    await page.evaluate(async () => {
+      const runtimeImport = (path: string) => import(/* @vite-ignore */ path);
+      const { notifications, dismissNotification } = await runtimeImport('/src/lib/stores/notifications.svelte.ts') as typeof import('../../src/lib/stores/notifications.svelte');
+      for (const notification of notifications()) dismissNotification(notification.id);
+      const { db } = await runtimeImport('/src/lib/storage/db.ts') as typeof import('../../src/lib/storage/db');
+      const { iri } = await runtimeImport('/src/lib/rdf/types.ts') as typeof import('../../src/lib/rdf/types');
+      const template = (await db.statements.get('alice-role'))!;
+      await db.statements.bulkPut([
+        ...['extra-3', 'missing/source', 'manual', ''].map((sourceId, n) => ({
+          ...template, id: `incoming-${n}`, sourceId, s: iri(`urn:provenance-test/Colleague-${n}`),
+          o: iri('urn:provenance-test/Alice'),
+        })),
+        { ...template, id: 'duplicate-source' },
+        { ...template, id: 'rejected-source', sourceId: 'extra-2', status: 'rejected' as const },
+        { ...template, id: 'superseded-source', sourceId: 'extra-1', status: 'superseded' as const },
+      ]);
+    });
+    await page.goto('/?sel=i%3Aurn%3Aprovenance-test%2FAlice&src=interview');
+    const nodeSources = page.getByRole('region', { name: 'Node sources' });
+    await expect(nodeSources.getByRole('button')).toHaveCount(7);
+    await expect(nodeSources.getByRole('button', { name: 'Show Field interview in Sources', exact: true })).toHaveCount(1);
+    await expect(nodeSources.getByRole('button', { name: 'Show Follow-up document in Sources', exact: true })).toBeVisible();
+    await expect(nodeSources.getByRole('button', { name: 'Show Imported team graph in Sources', exact: true })).toBeVisible();
+    await expect(nodeSources).not.toContainText('Older source 2');
+    await expect(nodeSources).not.toContainText('Older source 1');
+    await nodeSources.screenshot({ path: testInfo.outputPath('node-sources.png') });
+
+    // Fill the source picker and leave filters that would hide the older incoming source.
+    await page.locator('.np-close-btn').click();
+    await page.getByRole('button', { name: 'Sources', exact: true }).click();
+    if (width < 850) await page.locator('.source-picker > summary').click();
+    await page.getByLabel(/Older source 0/).check();
+    await page.getByLabel(/Older source 1/).check();
+    await page.locator('.filter-options > summary').click();
+    await page.getByLabel('Source kind').selectOption('document');
+    await page.getByLabel('Captured since').fill('2026-09-10');
+    await page.getByLabel('Statement review state').selectOption('pending');
+    await page.getByRole('searchbox', { name: 'Find a source' }).fill('no matching source');
+    await page.getByRole('button', { name: 'Statements', exact: true }).click();
+    await page.getByPlaceholder('search nodes or facts…').fill('Alice');
+    await page.locator('.sb-node-row').filter({ hasText: 'Alice' }).first().click();
+    await nodeSources.getByRole('button', { name: 'Show Older source 3 in Sources', exact: true }).click();
+    const details = page.getByRole('region', { name: 'Source details' });
+    await expect(page.locator('.perspective-switch button').filter({ hasText: /^Sources$/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(details.getByRole('heading', { name: 'Older source 3', exact: true })).toBeVisible();
+    await expect(details.locator('[data-statement-id="incoming-0"]')).toBeVisible();
+    await expect(page.locator('.source-picker > summary')).toContainText('1 selected');
+    await page.screenshot({ path: testInfo.outputPath('node-source-inspector.png') });
+
+    // Missing metadata, direct entry and unrecorded provenance stay inspectable with honest labels.
+    for (const title of ['Source details unavailable (missing/source)', 'Your own statements', 'Source not recorded']) {
+      await details.getByRole('button', { name: 'Close source details' }).click();
+      await page.getByRole('button', { name: 'Statements', exact: true }).click();
+      await page.getByPlaceholder('search nodes or facts…').fill('Alice');
+      await page.locator('.sb-node-row').filter({ hasText: 'Alice' }).first().click();
+      await nodeSources.getByRole('button', { name: `Show ${title} in Sources`, exact: true }).click();
+      await expect(details.getByRole('heading', { name: title, exact: true })).toBeVisible();
+    }
+  });
+}
+
 for (const prefer2D of [true, false]) {
   test(`provenance summaries, source trail and separate filters work in ${prefer2D ? '2D' : '3D'}`, async ({ page }, testInfo) => {
     test.setTimeout(90_000);

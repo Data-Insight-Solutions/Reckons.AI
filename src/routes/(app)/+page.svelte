@@ -20,7 +20,7 @@
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
   import SourcesExplorer from '$lib/components/SourcesExplorer.svelte';
   import { officialKbActive } from '$lib/stores/official-kb.svelte';
-  import { createProvenanceControls, type projectProvenance } from '$lib/rdf/provenance-view';
+  import { buildProvenanceIndex, createProvenanceControls, type projectProvenance } from '$lib/rdf/provenance-view';
   import RelationBuilder from '$lib/components/RelationBuilder.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -152,6 +152,16 @@
     perspective = next;
     layout = (next === 'sources' ? sourcesLayout : statementsLayout) as typeof layout;
     selected = null; multiSelected = new Set(); navHistory = [];
+  }
+  function showEntitySource(source: { id: string; key: string }) {
+    // An explicit jump must reveal its target even after the source picker was filtered or full.
+    provenanceControls = {
+      ...createProvenanceControls(),
+      presentation: provenanceControls.presentation,
+      selectedIds: [source.id], initialized: true,
+    };
+    switchPerspective('sources');
+    selected = source.key;
   }
   function selectGraphNode(key: string | null) {
     if (perspective === 'sources' && key) {
@@ -1104,22 +1114,17 @@
         status: s.status
       }));
 
-    // Show which sources contribute to this entity
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : null;
-    if (entityIri) {
-      const entitySrcIds = new Set(visible.filter(s => s.s.kind === 'iri' && s.s.value === entityIri && s.sourceId).map(s => s.sourceId));
-      for (const sid of entitySrcIds) {
-        const src = sources().find(s => s.id === sid);
-        incoming.push({
-          predicate: 'sourced-by',
-          source: src?.title ?? sid,
-          sourceKey: `src:${sid}`,
-          status: 'confirmed'
-        });
-      }
-    }
-
     return { label, typeDef, outgoing, incoming };
+  });
+
+  // Use all current claims touching the node, independent of graph filters and connection limits.
+  // The Sources index supplies the same deduplicated IDs, labels and missing-metadata fallbacks.
+  const nodeSources = $derived.by(() => {
+    if (perspective !== 'statements' || !selected || selected.startsWith('src:')) return [];
+    const related = statements().filter((s) =>
+      s.status !== 'rejected' && s.status !== 'superseded' &&
+      (termKey(s.s) === selected || termKey(s.o) === selected));
+    return buildProvenanceIndex(related, sources()).sources.filter((source) => source.statements.length > 0);
   });
 
   // ── Edge-zone / swipe actions ───────────────────────────────────────────────
@@ -2860,6 +2865,18 @@
       </div>
     {/if}
 
+    {#if nodeSources.length > 0}
+      <section class="np-sources" aria-label="Node sources">
+        <h4 class="np-conn-title mono">sources</h4>
+        {#each nodeSources as source (source.id)}
+          <button class="np-conn-row np-source-link" onclick={() => showEntitySource(source)}
+            aria-label={`Show ${source.title} in Sources`}>
+            <span class="conn-source">{source.title}</span><span aria-hidden="true">↗</span>
+          </button>
+        {/each}
+      </section>
+    {/if}
+
     <!-- Quick connections -->
     {#if info.outgoing.length > 0 || info.incoming.length > 0}
       <div class="np-connections">
@@ -3916,6 +3933,13 @@
   }
 
   /* Quick connections */
+  .np-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+  }
+  .np-source-link { justify-content: space-between; min-height: 44px; overflow-wrap: anywhere; }
   .np-connections {
     display: flex;
     flex-direction: column;

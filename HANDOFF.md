@@ -1,3 +1,20 @@
+## 2026-10-02 — Statements node source links (Codex)
+
+Branch: `fix/statements-node-source-links`, PR base `dev`. Node details now lists each source
+from current incoming/outgoing claims and opens that source's Sources inspector. Explicit jumps
+reset source selection and filters while retaining the presentation. The roadmap records
+`kb:statement-node-source-links` as functional on the branch, not deployed. Matt merges.
+
+Local validation on 2026-10-02: type check has zero errors/warnings; eight provenance unit tests
+pass; desktop and phone source-navigation checks pass; production build, build guard and `align`
+pass. Graph lint reports zero errors and 15 existing warnings. The 41 startup script jobs returned
+success with advisory findings. Copied-data visual checks on `/kb` and `/` have no page errors,
+with preview websocket and GPU screenshot warnings; private artifacts remain outside the repo.
+Local model review flagged an allegedly missing import already present at the top of the page;
+rejected after inspection. The phone test dismisses onboarding tips because an existing notification
+can cover the node-panel close button; that issue is queued as a separate graph proposal.
+Check the PR's live CI before merging; local results are not a claim about CI.
+
 ## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
 
 **Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET

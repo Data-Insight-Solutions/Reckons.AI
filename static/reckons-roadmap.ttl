@@ -41,6 +41,16 @@ kb:provenance-view rdf:type ktype:Feature ;
     kpred:done "2026-09-13: Sources uses the shared main 2D/3D graph and controls, plus Folders, List and Gallery browsers with the same source/group/entity details. Review filtering retains set keys and labels while restricting actual source contributions. Source layouts fit their clusters to the viewport; the mobile source picker retains its open state. Desktop and phone browser tests exercise all four presentations, member selection, extraction history and filter persistence." ;
     kpred:remaining "Not deployed. These are source inspection views, not the editable notebook or persistent free-form storyboard now prioritized under F177. Private workspace graphs are not public evaluation fixtures." .
 
+kb:statement-node-source-links rdf:type ktype:Feature ;
+    rdfs:label "Statements node details link to Sources" ;
+    kpred:has-status "functional" ;
+    kpred:description "Show the selected node's recorded sources in Statements details and open each source directly in the existing Sources inspector. Include incoming and outgoing retained claims regardless of Statements filters. An explicit source jump selects that source and clears Sources filters that could hide it." ;
+    kpred:decided "Matt, 2026-10-02: Node details in Statements view should have links to Sources view of the entity's sources." ;
+    kpred:done "2026-10-02: Statements details has a dedicated source list, deduplicated across current incoming and outgoing statements independently of graph filters. Each source opens its Sources inspector, replacing the source selection and clearing hiding filters while keeping the chosen presentation. Manual entries and unavailable metadata use the Sources inspector's existing labels. Desktop and phone browser checks cover navigation, filter reset, more than five sources, duplicates, and rejected or superseded exclusions. Built on a feature branch; not deployed." ;
+    kpred:depends-on kb:provenance-view ;
+    kpred:has-file "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "tests/e2e/provenance-view.test.ts" .
+
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
                schema:slogan     "Personal knowledge graph with LLM-powered triple extraction" ;
