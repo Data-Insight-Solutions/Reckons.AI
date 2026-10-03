@@ -2869,10 +2869,20 @@
       <section class="np-sources" aria-label="Node sources">
         <h4 class="np-conn-title mono">sources</h4>
         {#each nodeSources as source (source.id)}
-          <button class="np-conn-row np-source-link" onclick={() => showEntitySource(source)}
-            aria-label={`Show ${source.title} in Sources`}>
-            <span class="conn-source">{source.title}</span><span aria-hidden="true">↗</span>
-          </button>
+          <div data-source-id={source.id}>
+            <button class="np-conn-row np-source-link" onclick={() => showEntitySource(source)}
+              aria-label={`Show ${source.title} in Sources`}>
+              <span class="conn-source">{source.title}</span><span aria-hidden="true">↗</span>
+            </button>
+            <details class="np-atoms-details" open>
+              <summary>{source.statements.length} Atom{source.statements.length === 1 ? '' : 's'}</summary>
+              {#each source.statements as statement (statement.id)}
+                <div data-atom-id={statement.id} class="np-atom-wrapper">
+                  <StatementCard {statement} compact showGraph={false} />
+                </div>
+              {/each}
+            </details>
+          </div>
         {/each}
       </section>
     {/if}
@@ -3939,7 +3949,10 @@
     gap: 0.2rem;
     margin-bottom: 0.75rem;
   }
-  .np-source-link { justify-content: space-between; min-height: 44px; overflow-wrap: anywhere; }
+  .np-source-link { justify-content: space-between; width: 100%; min-height: 44px; overflow-wrap: anywhere; }
+  .np-atoms-details { margin: 0.2rem 0 0.6rem; border-left: 2px solid var(--line); padding-left: 0.5rem; }
+  .np-atoms-details summary { cursor: pointer; min-height: 44px; align-content: center; font-size: 0.75rem; color: var(--muted); }
+  .np-atom-wrapper { margin-top: 0.3rem; }
   .np-connections {
     display: flex;
     flex-direction: column;

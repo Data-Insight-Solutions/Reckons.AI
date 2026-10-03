@@ -51,6 +51,36 @@ kb:statement-node-source-links rdf:type ktype:Feature ;
     kpred:has-file "src/routes/(app)/+page.svelte" ;
     kpred:tested-by "tests/e2e/provenance-view.test.ts" .
 
+kb:source-atoms rdf:type ktype:Feature ;
+    rdfs:label "List the entity's Atoms beneath each source" ;
+    kpred:has-status "functional" ;
+    kpred:description "In Statements node details, group the selected entity's current subject-predicate-object claims beneath their recorded source. Atom is the technical thesaurus term for the existing semantic triple, not another storage layer. Reuse StatementCard and preserve the source-title jump to the Sources inspector." ;
+    kpred:decided "Matt, 2026-10-02: The Atoms (thesaurus technical term for the semantic triple) should be listed by each source. Use local agent jobs." ;
+    kpred:done "2026-10-02: Each source in node details has an initially expanded Atom list, with its count and original review statuses. Source-title navigation remains separate from collapsing the list. Desktop and phone checks verify source-specific subject/object joins, pending status, exclusion of unrelated or rejected/superseded records, collapse/expand and source navigation. A local qwen3-coder job drafted the markup; reviewed before applying. Built on the branch, not deployed." ;
+    kpred:depends-on kb:statement-node-source-links ;
+    kpred:has-file "src/routes/(app)/+page.svelte", "src/lib/components/StatementCard.svelte" ;
+    kpred:tested-by "tests/e2e/provenance-view.test.ts" .
+
+kb:erd-diagram-layout rdf:type ktype:Feature ;
+    rdfs:label "ERD diagram shapes and notation options in the layout menu" ;
+    kpred:has-status "planned" ;
+    kpred:description "Explore entity, relationship and attribute shapes plus ERD notation presets through the existing layout controls. Separate notation (what a shape or connector means) from arrangement (where nodes sit). Candidate notations are Chen and crow's-foot; candidate arrangements are orthogonal and hierarchical. The exact initial choices remain open." ;
+    kpred:decided "Matt, 2026-10-02: Consider adding a variety of ERD diagram shapes to the layouts list. Use local agent jobs." ;
+    kpred:constraint "RDF observations do not establish database keys, uniqueness, required participation or cardinality. Show such ERD markers only when explicit schema/constraint facts support them; otherwise show the relationship without invented constraints. Keep node identity, source links, selection, filtering and keyboard access consistent with the existing graph." ;
+    kpred:proposed "First make a small synthetic entity/relationship fixture with explicit constraints, prototype notation and connector routing in the shared canvas, then compare diagram legibility on desktop and phone before choosing presets. A swim-lane layout is a separate feature, not a substitute for ERD." ;
+    kpred:open-question "Which initial ERD notations and spatial arrangements should be offered? Clarification requested; no ERD implementation is claimed." ;
+    kpred:has-file "src/routes/(app)/+page.svelte", "src/lib/components/GraphCanvas.svelte" .
+
+kb:space-photorama rdf:type ktype:Feature ;
+    rdfs:label "Photorama — optional immersive backgrounds for a space" ;
+    kpred:has-status "planned" ;
+    kpred:description "A space can have an optional photographic environment around its graph. Start with an imported panoramic image for look-around viewing; add locally reconstructed Gaussian splats for positional parallax after separate reconstruction and rendering trials. A panorama is not reconstructed 3D geometry." ;
+    kpred:decided "Matt, 2026-10-02: I see the space as potentially having a 3D Photorama sort of background. Plan Stable Diffusion and other open-source generation and try local Gaussian splatting, using local agent jobs." ;
+    kpred:proposed "Phase 1: choose a per-space imported panorama with rotation, brightness and an off switch. Phase 2: evaluate a synthetic or licensed splat fixture with a Three.js-compatible renderer, then connect successful local reconstruction output. Phase 3: optional generated environment assets using the existing generation-task contract. Generation is optional; importing an existing asset should work independently." ;
+    kpred:constraint "The environment must preserve graph label contrast, graph picking and navigation; it must not change graph layout or assert scene imagery as knowledge. Keep 2D/static and reduced-motion fallbacks, cancelable loading and resource disposal. Record asset provenance and include the environment in the space package with its referenced assets. Set performance limits from measured trials on declared fixtures, rather than claiming unmeasured hardware support." ;
+    kpred:relates-to kb:gen-video-to-splat, kb:generation-coupling, kb:canonical-graph-package ;
+    kpred:remaining "Plan only. No panorama picker, splat renderer or generated space-background pipeline is implemented by this planning change." .
+
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
                schema:slogan     "Personal knowledge graph with LLM-powered triple extraction" ;
@@ -3625,11 +3655,15 @@ kb:mvg-prompt-box rdf:type ktype:Feature ;
 kb:mvg-image-gen rdf:type ktype:Feature ;
                rdfs:label    "Image generation (recolor / combine / collage)" ;
                kpred:feature-id   "F58.2" ;
-               kpred:has-status   "speculative" ;
+               kpred:has-status   "planned" ;
                hnav:order         "4"^^xsd:integer ;
                kpred:part-of      kb:meta-visual-generation ;
-               kpred:description  "Generate a raster/vector image from the graph: recolor a single source image from a hex fact, merge two or more entity images toward a goal stated in facts or a prompt, or collage a subgraph's images with layout hints from relationships. Requires a text/image->image provider — a cloud image model first; LOCAL diffusion (e.g. SD via WASM/ONNX or Ollama-hosted) is a research question. Reuses the per-entity asset stores (icon2d / preview blobs) as inputs." ;
-               kpred:open-question "Which image backend? Cloud (OpenAI Images / Stability / Replicate) for reach vs. a local diffusion model for the offline-first thesis — likely both, provider-pluggable like the LLM backends." .
+               kpred:description  "Generate images from a graph-grounded brief or selected image assets. Prefer optional user-owned local generation jobs: stable-diffusion.cpp for a CLI-first trial, with ComfyUI workflows and Hugging Face Diffusers as additional candidate runtimes. Deterministic recoloring and collage remain available as separate simpler operations. A browser does not execute shell commands; the existing host task runner invokes the selected tool and returns an asset for review." ;
+               kpred:decided "Matt, 2026-10-02: Plan Stable Diffusion and other open-source image generation. This supersedes the earlier cloud-first assumption; use the loose command/task coupling in F166 and local agent jobs for planning." ;
+               kpred:proposed "First run one bounded text-to-image job with a synthetic prompt and an explicitly chosen checkpoint. Record runtime and checkpoint versions/hashes, separate tool and model-weight terms, prompt, seed, dimensions, inputs and output hash. Acceptance requires successful exit, a decodable image with expected dimensions/format, a reproducible receipt and visual review. Then add image-to-image and alternate runtimes behind the same optional task contract." ;
+               kpred:relates-to kb:generation-coupling, kb:space-photorama ;
+               rdfs:seeAlso <https://github.com/leejet/stable-diffusion.cpp>, <https://docs.comfy.org/>, <https://huggingface.co/docs/diffusers/index> ;
+               kpred:remaining "Plan only; no image-generation command has been executed or integrated by this change. Open-source runtime code does not establish the terms of a model checkpoint." .
 
 kb:mvg-3d-gen rdf:type ktype:Feature ;
                rdfs:label    "3D asset generation (GLB) via Meshy" ;
@@ -3711,13 +3745,18 @@ kb:gen-orchestration rdf:type ktype:Feature ;
                kpred:relates-to   kb:integration-plugin-sdk .
 
 kb:gen-video-to-splat rdf:type ktype:Feature ;
-               rdfs:label    "360 video → 3D Gaussian splat" ;
+               rdfs:label    "Local Gaussian splatting — reconstruction and playback trials" ;
                kpred:feature-id   "F58.9" ;
-               kpred:has-status   "speculative" ;
+               kpred:has-status   "planned" ;
                kpred:part-of      kb:meta-visual-generation ;
                hnav:order         "6"^^xsd:integer ;
-               kpred:feasibility  "LOW / extreme — the stretch target. Link a 360 video and reconstruct a 3D Gaussian splat (à la nerfstudio / gsplat). Compute-heavy, almost certainly a server/GPU or a hosted service — conflicts with the no-server, offline-first stance until a provider or heavy sidecar exists. Roadmap-first; revisit as OSS splat tooling matures." ;
-               kpred:description  "Extreme asset generation: ingest a 360 / spherical video reference and produce a 3D Gaussian splat viewable in the graph. Depends on external reconstruction tooling (GPU); relates to the game-engine integration (F59.1) for rendering splats." ;
+               kpred:feasibility  "Unmeasured. Optional user-owned local GPU/CLI jobs are compatible with local-first; they are not a general application backend. Reconstruction and browser playback have separate dependencies and resource budgets, which require separate bounded trials." ;
+               kpred:description  "Evaluate local reconstruction from synthetic or permitted multi-view photographs/video with usable camera motion and poses, using Nerfstudio Splatfacto/gsplat as candidates. Independently test playback of a known splat fixture through a Three.js-compatible renderer such as Spark. A stationary 360 panorama supplies look-around imagery, not evidence for unseen 3D geometry." ;
+               kpred:decided "Matt, 2026-10-02: Try local Gaussian splatting and consider a 3D Photorama background for a space. Use local agent jobs. The previous claim that a local GPU process conflicts with local-first is superseded." ;
+               kpred:proposed "Trial A: load a synthetic or explicitly redistributable PLY/SPZ fixture locally, verify camera movement, graph picking, label legibility, disposal and static fallback, and measure frame time and memory for its recorded splat count. Trial B: in an isolated optional local tool environment, reconstruct a small calibrated multi-view fixture, recording input permissions/hash, poses, command/configuration, duration, resource use and output hash; verify the exported splat in the viewer. Report failed and skipped stages explicitly. Only then connect the result to per-space Photorama backgrounds." ;
+               rdfs:seeAlso <https://docs.nerf.studio/nerfology/methods/splat.html>, <https://github.com/sparkjsdev/spark> ;
+               kpred:remaining "Plan only. No reconstruction benchmark or browser splat renderer was built in this session; runtime availability and hardware suitability must be checked before the trial. No mandatory external game engine or hosted service is assumed." ;
+               kpred:relates-to kb:space-photorama, kb:generation-coupling ;
                kpred:relates-to   kb:int-game-engine .
 
 # -- Spatial / Map Force Layout (F59) ------------------------------------------

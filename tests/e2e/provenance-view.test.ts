@@ -81,6 +81,17 @@ for (const width of [1280, 390]) {
     await expect(nodeSources.getByRole('button', { name: 'Show Imported team graph in Sources', exact: true })).toBeVisible();
     await expect(nodeSources).not.toContainText('Older source 2');
     await expect(nodeSources).not.toContainText('Older source 1');
+    const interviewAtoms = nodeSources.locator('[data-source-id="interview"]');
+    await expect(interviewAtoms.locator('[data-atom-id]')).toHaveCount(2);
+    await expect(interviewAtoms.locator('[data-atom-id="alice-role"]')).toContainText('Engineer');
+    await expect(interviewAtoms).not.toContainText('Bob');
+    await expect(nodeSources.locator('[data-source-id="followup"] [data-atom-id="alice-note"]')).toContainText('pending');
+    await expect(nodeSources.locator('[data-source-id="import"] [data-atom-id="member-Alice"]')).toContainText('Alice');
+    await expect(nodeSources.locator('[data-atom-id="rejected-source"], [data-atom-id="superseded-source"]')).toHaveCount(0);
+    await interviewAtoms.locator('summary').click();
+    await expect(interviewAtoms.locator('[data-atom-id="alice-role"]')).not.toBeVisible();
+    await interviewAtoms.locator('summary').click();
+    await expect(interviewAtoms.locator('[data-atom-id="alice-role"]')).toBeVisible();
     await nodeSources.screenshot({ path: testInfo.outputPath('node-sources.png') });
 
     // Fill the source picker and leave filters that would hide the older incoming source.
