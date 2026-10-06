@@ -1,3 +1,36 @@
+## 2026-10-06 — START HERE. 0.2.5: backlog landing, Source View source side, reviewer refutes (Claude Code)
+
+**Matt approved (this session):** land every open dev PR, and the FULL 0.2.5 plan (Source View
+source side, then Spaces phase 2, then version bump + release notes).
+
+**Merge queue running** (`merge-queue.ts` from #336, started 22:2x UTC, `--keep-going`):
+#360 → #335…#356 → #358. #360 (deps) MERGED at `4059130`. Check what landed:
+`gh pr list --state merged --base dev --limit 30`; anything still open failed its re-run on
+updated dev and needs a look. Re-run the same command for stragglers (it skips merged PRs).
+
+**New PRs, base dev:**
+- **#360** deps (merged): sharp 0.35.5; overrides katex ^0.18.11 (past mermaid's ^0.16 range;
+  build-time diagrams only), global-agent ^4.1.3 (sprintf-js has NO patched release; global-agent
+  4 drops roarr), source-map-js ^1.2.2. Without it every updated PR failed `Dependencies`.
+- **#361** Source View source side (0.2.5 item 3), stacked on #351. Passages with per-status
+  yield, statements by status, unplaced list with reasons. `kb:source-corpus` → in-progress.
+  NOT built: "not read yet" marking (needs extraction over chunks), canvas highlighting.
+- **#362** local reviewer refutes findings the file disproves (missing-import, RDF repeated
+  predicate). Verified on real output. Not fixed: roadmap.ttl review times out every run.
+- **#358** got a test fix: its Atoms section repeated the fact text, so the e2e scopes to a
+  labelled "Node facts" region.
+
+**agent:watch ghost run** (Matt asked): `review-triage-2026-10-01-muppszft` died when qwen3.6's
+llama-server crashed; no `run-end`, so the watcher shows it live forever. The retry finished
+fine. #352 fixes it (pid + abandoned detection) and is in the queue.
+
+**Next: Spaces phase 2 (0.2.5 item 4) needs one decision from Matt first:** where a user's set
+membership lives. Nothing stores user-defined sets today (`declaredSet` is read, never written;
+/kb passes no `definitions`). (a) In each member space's own graph (`<urn:reckons:kb>
+dcterms:isPartOf <set>`), travelling with exports, like the 09-23 title/description decision,
+but it writes into spaces that are not open. (b) One workspace-level `dcat:Catalog`. Then
+grouping choice, and Spaces as a GraphCanvas mode. After that: version bump + release notes.
+
 ## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
 
 **Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET
