@@ -2260,6 +2260,10 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-safety ;
                kpred:has-phase    kb:loop-opus-review .
 
+kb:autonomous-loop kpred:has-file "scripts/agent/merge-queue.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/merge-queue.test.ts" ;
+    kpred:progress "2026-09-30, THE MERGE STEP AT SCRIPT TIER: scripts/agent/merge-queue.ts lands a list of PRs on dev in order, unattended. Per PR it refuses any base but dev (re-read immediately before merging), merges dev into a branch that does not contain dev's head before trusting its checks, waits for every check, and merges pinned to the checked head commit. A failure, conflict or timeout stops the queue and is named. Written because Matt saw a session spend an hour polling CI by hand and asked why it was not offloaded; every step is a rule, so no model is involved. NOT YET: it is started by hand with a PR list, not by the loop, and it does not resolve conflicts (graph TTL conflicts between PRs are the likely case)." .
+
 kb:loop-idea-inbox rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — ideas are a GRAPH, diffed against the roadmap" ;
                kpred:part-of      kb:autonomous-loop ;
@@ -8719,3 +8723,5 @@ kb:release-0-2-5 rdf:type ktype:Release ;
     kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." .
 
 kb:meta-graph-view kpred:measured "2026-09-29, PHASE 1 CORRECTED AFTER MATT USED IT: 'I'm confused about the need for the button count leaps in every space, also no visual of the edges between spaces.' The map only counted the current space automatically, so on a real registry it drew no lines until the button was pressed. Other spaces are now read in the background when the Spaces tab opens (only those never read or written to since, one at a time, each tried once per visit), the button is gone, and each space's own stable id is read from its settings while it is read, so a jump into a space never opened on this device still resolves to a line. When there are no lines the map says why and names the node panel's '+ add jump'. Verified end to end in Chromium with two spaces created by the app and a jump written into one space's own database: one line drawn, no button, no page errors." .
+kb:meta-graph-view kpred:tested-by "tests/e2e/spaces-map.test.ts" ;
+    kpred:measured "2026-09-30, THE FIRST BROWSER TEST: tests/e2e/spaces-map.test.ts writes two spaces the way the app does (registry entry plus each space's own database, through the app's own modules) with one jump between them, and one space registered with no database here. It checks that the line is drawn with no button pressed and carries a count per direction, that the space not on this device is described as not read rather than as unconnected, that selecting a space lists its connections and a connection selects that space, and keyboard selection. 4 tests, 12/12 over three repeats locally. NOT COVERED: grouping into tide pools by set, phone width, and the label size the 2026-09-29 note records as ~10px on a phone." .
