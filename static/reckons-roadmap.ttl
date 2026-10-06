@@ -2261,7 +2261,12 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-subagent-graphs ;
                kpred:has-phase    kb:loop-definition-of-done ;
                kpred:has-phase    kb:loop-job-grouping ;
-               kpred:has-phase    kb:loop-safety .
+               kpred:has-phase    kb:loop-safety ;
+               kpred:has-phase    kb:loop-opus-review .
+
+kb:autonomous-loop kpred:has-file "scripts/agent/merge-queue.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/merge-queue.test.ts" ;
+    kpred:progress "2026-09-30, THE MERGE STEP AT SCRIPT TIER: scripts/agent/merge-queue.ts lands a list of PRs on dev in order, unattended. Per PR it refuses any base but dev (re-read immediately before merging), merges dev into a branch that does not contain dev's head before trusting its checks, waits for every check, and merges pinned to the checked head commit. A failure, conflict or timeout stops the queue and is named. Written because Matt saw a session spend an hour polling CI by hand and asked why it was not offloaded; every step is a rule, so no model is involved. NOT YET: it is started by hand with a PR list, not by the loop, and it does not resolve conflicts (graph TTL conflicts between PRs are the likely case)." .
 
 kb:loop-idea-inbox rdf:type    ktype:Phase ;
                rdfs:label   "Phase 1 — ideas are a GRAPH, diffed against the roadmap" ;
@@ -2318,6 +2323,21 @@ kb:loop-safety rdf:type        ktype:Phase ;
                kpred:principle    "SILENCE MUST NEVER LOOK LIKE SUCCESS. Every run writes its outcome back, including 'I did nothing, and here is why'. A green log that is always green is not a record." ;
                kpred:principle    "A FINDING IS A CLAIM. A tool reporting a violation is a party with an interest in having found one. Verify the finding before acting on it — especially when acting on it means weakening a control." ;
                kpred:remaining    "Run outcomes as facts; lease expiry sweep; a rollback path for a merge that lands broken on main (production deploys from main)." .
+
+kb:loop-opus-review rdf:type ktype:Phase ;
+    rdfs:label "Phase 6 — local agents do the work; a Sonnet subagent reviews and merges it, Opus by escalation" ;
+    kpred:part-of kb:autonomous-loop ;
+    hnav:order 6 ;
+    kpred:has-status "in-progress" ;
+    kpred:decided "MATT, 2026-09-30: 'I want Opus to review local agent work, by default automatically as sub-agents and to not need to change chat sessions constantly.' And: 'your Opus credits are precious, be more conservative with your own token usage.'" ;
+    kpred:description "Local models produce the work (findings, drafts, proposals) and a local panel takes the first pass; what the panel cannot settle goes to a REVIEWER SUBAGENT (Sonnet, escalating to Opus; Matt, 2026-09-30), ten decisions at a time, which reads the evidence in its own context, records each verdict with kb_review_decide, and returns a few lines. The main session dispatches it and keeps only the summary, so a long day does not need a new chat to stay small." ;
+    kpred:principle "THE MAIN THREAD'S CONTEXT IS THE SCARCE THING, NOT ONLY OPUS'S TOKENS. A subagent's reading stays in the subagent; only its verdict returns. Review done in the main thread is what forced fresh sessions (2026-09-30: >150k context, 97% of usage)." ;
+    kpred:constraint "OPUS REVIEWS A BATCH, NEVER THE BACKLOG. On 2026-09-30 the queue held 552 decisions from 1,251 rows. Reviewing all of it with Opus would spend the budget this phase exists to protect. Script checks and the local panel go first; Opus sees what they leave, ten at a time, and a batch with nothing left for it is not dispatched." ;
+    kpred:has-file ".claude/agents/local-work-reviewer.md", "scripts/agent/review-backlog-hook.sh" ;
+    kpred:decided "MATT, 2026-09-30, CODE FROM LOCAL AGENTS: 'Maybe sub-agents just never merge, it only writes in a new branch and then Opus reviews and approves merges?' So a local agent MAY write source, but only on its own new branch, and it can never merge. The branch is the proposal: the same review gate as a queue row, in git's form. This amends the agent tier's no-source rule rather than discarding it; what a local agent still may not touch is any branch it did not create, and dev or main above all." ;
+    kpred:decided "MATT, 2026-09-30, THE MEDIUM: 'The agents ideally operate through git and Reckons.AI statements, all flat file git based, for software dev use cases like this.' So for software work every agent, local or Opus, coordinates only through the repository: tasks, findings, verdicts and approvals are statements in flat files (TTL and JSONL) committed to git, and work is commits on branches. No database, no service, no chat transcript is the record; git history is the audit trail, and a branch plus its statements is the whole hand-off." ;
+    kpred:principle "THE MERGE IS THE GATE, SO ONLY THE REVIEWER HOLDS IT. A local agent's branch reaches dev only after the reviewer subagent has read its diff and approved it, and then through scripts/agent/merge-queue.ts (base must be dev, CI green on a branch containing dev, merge pinned to the reviewed commit). Approval names the commit it reviewed, so a push after review voids it." ;
+    kpred:remaining "Pre-triage of the existing queue by the local panel, so the reviewer's batches are the residue rather than the raw rows; a runner task type that gives a local coding model a worktree on a fresh agent/* branch and nothing else; the reviewer reading a branch diff and recording an approval pinned to its head commit; merge-queue.ts refusing an agent/* branch without that approval. Until then, merges stay with Matt (the auto-mode classifier refused an unattended merge on 2026-09-30)." .
 
 # -- F88: Co-orchestration — Shelly and Claude Code, either side of the user -----
 #
@@ -8725,3 +8745,5 @@ kb:release-0-2-5 rdf:type ktype:Release ;
     kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." .
 
 kb:meta-graph-view kpred:measured "2026-09-29, PHASE 1 CORRECTED AFTER MATT USED IT: 'I'm confused about the need for the button count leaps in every space, also no visual of the edges between spaces.' The map only counted the current space automatically, so on a real registry it drew no lines until the button was pressed. Other spaces are now read in the background when the Spaces tab opens (only those never read or written to since, one at a time, each tried once per visit), the button is gone, and each space's own stable id is read from its settings while it is read, so a jump into a space never opened on this device still resolves to a line. When there are no lines the map says why and names the node panel's '+ add jump'. Verified end to end in Chromium with two spaces created by the app and a jump written into one space's own database: one line drawn, no button, no page errors." .
+kb:meta-graph-view kpred:tested-by "tests/e2e/spaces-map.test.ts" ;
+    kpred:measured "2026-09-30, THE FIRST BROWSER TEST: tests/e2e/spaces-map.test.ts writes two spaces the way the app does (registry entry plus each space's own database, through the app's own modules) with one jump between them, and one space registered with no database here. It checks that the line is drawn with no button pressed and carries a count per direction, that the space not on this device is described as not read rather than as unconnected, that selecting a space lists its connections and a connection selects that space, and keyboard selection. 4 tests, 12/12 over three repeats locally. NOT COVERED: grouping into tide pools by set, phone width, and the label size the 2026-09-29 note records as ~10px on a phone." .
