@@ -178,7 +178,9 @@ test('starter graph keeps prose and URL attributes off the canvas topology', asy
   await page.getByPlaceholder('search nodes or facts…').fill('Alex');
   await page.locator('.sb-node-row').filter({ hasText: 'Alex' }).first().click();
   await page.locator('.np-stmts-toggle').click();
-  await expect(page.getByText(/Wants a fair, even meet-up point/i)).toBeVisible();
+  // The same fact also appears under its source in "Node sources", so scope to the facts list.
+  const nodeFacts = page.getByRole('region', { name: 'Node facts' });
+  await expect(nodeFacts.getByText(/Wants a fair, even meet-up point/i)).toBeVisible();
 });
 
 test('successful mobile starter opens a legible, touch-safe guided tour', async ({ page }, testInfo) => {

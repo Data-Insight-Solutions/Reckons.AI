@@ -3189,7 +3189,7 @@
         <span class="np-stmts-arrow mono">{expandedTriples ? '▲' : '▼'}</span>
       </button>
       {#if expandedTriples}
-        <div class="stack">
+        <div class="stack" role="region" aria-label="Node facts">
           {#each selectedStatements as st (st.id)}
             <StatementCard
               statement={st}
