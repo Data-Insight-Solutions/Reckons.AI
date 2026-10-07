@@ -393,6 +393,14 @@
       "desc": "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing."
     },
     {
+      "name": "script-inventory",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/script-inventory.ts --pending",
+      "desc": "F74.8 script tier. Lists scripts nothing runs, npm/job entries pointing at missing files, likely-overlapping script groups and npm names that break their own prefix pattern. Proposals only: consolidation is a decision, not a check."
+    },
+    {
       "name": "dependency-health",
       "tier": "script",
       "enabled": false,
