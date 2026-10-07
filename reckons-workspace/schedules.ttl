@@ -208,3 +208,33 @@ sched:offline-all-agent rdf:type ktype:Schedule ;
     kpred:enabled   "true" ;
     kpred:description "Agent tier: the full set of local-model jobs." .
 
+
+# ── Terminology as a standing job (F203.6, Matt 2026-10-07: tiered cadence, mixed models,
+# safe batches as PRs, a CI ratchet). The daily half is already covered: term-usage --check is a
+# blocking script-tier job, so sched:offline-script-tier runs it every day with the others.
+sched:term-usage rdf:type ktype:Schedule ;
+    rdfs:label      "Terminology counts" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/term-usage.ts --pending" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Where every term is used and what renaming it would cost, queued as measurements for review. Daily." .
+
+sched:terminology-sweep rdf:type ktype:Schedule ;
+    rdfs:label      "Which meaning each ambiguous word carries" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies." .
+
+sched:rename-pr rdf:type ktype:Schedule ;
+    rdfs:label      "Safe rename batch as a pull request" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/agent/rename-pr.ts --term=kb" ;
+    kpred:tier      "script" ;
+    kpred:network   "true" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Applies the next safe kb rename batch in a fresh worktree, runs every gate, and opens a PR to dev only when all pass. Weekly. Talks to GitHub (push, PR)." .

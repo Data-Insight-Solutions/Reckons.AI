@@ -455,3 +455,15 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     skos:definition "A token-bearing URL that admits another DEVICE to this instance — the QR mobile-access path. It moves no graph data at all." ;
     skos:scopeNote "THE THIRD SENSE OF 'share', AND THE ONE MOST EASILY MISFILED. QRSharePanel calls navigator.share with the title 'Reckons.AI access link', so the operating system's own share sheet is used to hand over a CREDENTIAL. Leaking it is an authentication failure, not a content-disclosure one, so neither the export right nor the distribution gate is the right model for it — a content advisory on a credential would be nonsense, and so would a content gate." ;
     skos:related kterm:export-act, kterm:publish-act .
+
+# ── THE AMBIGUITY RATCHET (2026-10-07) ─────────────────────────────────────────
+# Matt: terminology is a standing maintenance job, and a new ambiguous use fails CI. For each
+# token with two or more meanings above, the count of FREE bare uses may fall, never rise.
+# Checked by scripts/offline/term-usage.ts --check (script tier, blocking). Lower a baseline in
+# the same commit as a cleanup; raise one only with a reason in the commit message.
+<urn:kbase:vocabulary/terminology>
+    kpred:term-ratchet "graph/free/4651" ;
+    kpred:term-ratchet "node/free/3143" ;
+    kpred:term-ratchet "export/free/371" ;
+    kpred:term-ratchet "share/free/178" ;
+    kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/." .

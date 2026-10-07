@@ -406,6 +406,28 @@
       "enabled": false,
       "cmd": "npx tsx scripts/offline/dependency-health.ts",
       "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
+    },
+    {
+      "name": "term-ratchet",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/term-usage.ts --check",
+      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
+    },
+    {
+      "name": "terminology-sweep",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/terminology-sweep.ts --sample=30",
+      "desc": "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU."
+    },
+    {
+      "name": "rename-pr",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/agent/rename-pr.ts --term=kb",
+      "desc": "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep."
     }
   ]
 }
