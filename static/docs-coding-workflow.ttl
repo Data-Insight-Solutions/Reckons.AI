@@ -241,3 +241,31 @@ cw:VersusDevTooling rdf:type   ktype:Concept ;
     kpred:honest-note   "AND THE COSTS, WHICH ARE REAL. Every specialist tool above is better at its own job, and a graph is a slower way to get their answer. The store has to be MAINTAINED — extraction recovers 53-63% of expected facts on a median run, so the rest is human work, and a graph nobody tends is worse than no graph because it looks authoritative. Claude Code with a CLAUDE.md is free, works today, and is the right answer for most repositories. This approach earns its keep when the knowledge outlives the session, the decisions have to be justified later, and several audiences — a person, an agent, a reader — need the same answer." ;
     kpred:honest-note   "DEPTH OF THIS COMPARISON: the tool categories above are drawn from READMEs read on 2026-09-08, not from running each product. The Claude Code figure is measured in this repository; the rest is a fair reading of what those tools say they do. Treat the category descriptions as accurate and the head-to-head as unmeasured, because it is." ;
     skos:related        cw:GitAnalysis .
+
+cw:HostCheck rdf:type          ktype:Concept ;
+    rdfs:label          "Checking your machine and dependencies, privately" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          109 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "npm run host:check reads the health of the Linux machine you develop on: listening ports, mounts and similar signals. It only reads, never changes a setting, and never scans your network. Each check reports pass, fail, unknown or skipped, so a check it could not run is never shown as a pass. npm run security:dependencies checks every npm lockfile in the repository against the registry's advisories." ;
+    kpred:principle     "WHAT YOUR MACHINE LOOKS LIKE STAYS ON YOUR MACHINE. The full report is written outside the repository, readable only by you; the terminal and any shared automation see counts only. Your own exceptions (a port you meant to open) live in a private file under ~/.config/reckons/." ;
+    kpred:honest-note   "LINUX ONLY, AND IT REPAIRS NOTHING. There is no macOS or Windows version, no background monitor, and no automatic fix. The dependency check shows that a vulnerable package is installed, not that your deployed app can reach it." ;
+    kpred:relates-to    kb:private-host-check .
+
+cw:UntrustedInput rdf:type     ktype:Concept ;
+    rdfs:label          "Treating every input as untrusted" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          110 ;
+    kpred:has-status    "scaffolded" ;
+    skos:definition     "Anything that arrives from outside can carry an attack: page titles, markdown, themes, model replies, archive contents, command-line arguments. The plan is for the site publisher, the browser extension, the QR code flow and the CLI to treat all of it as untrusted. Output is escaped or sanitized, file paths are kept inside a safe folder, and commands are run with their arguments passed separately rather than built as one string." ;
+    kpred:honest-note   "PARTLY DONE. Template arguments are now quoted for the shell rather than as JSON (a real injection, fixed in v0.2.5). The sanitizer allowlist for generated sites, path and cleanup limits, and pinned CMS code are not all in place yet, so treat a site generated from an untrusted graph with care." ;
+    kpred:relates-to    kb:untrusted-output-hardening .
+
+cw:ReproducibleBuilds rdf:type ktype:Concept ;
+    rdfs:label          "A fresh checkout that behaves like CI" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          111 ;
+    kpred:has-status    "scaffolded" ;
+    skos:definition     "The goal: clone the repository, install once, and every check, test and build runs the same on your machine as in CI, with nothing downloaded behind your back. That means one pinned package manager and Node version, every tool declared as a dependency, and quality gates that block a merge rather than warn." ;
+    kpred:honest-note   "NOT THERE YET. CI already blocks on type checks, unit tests, the build, graph lint and the page-drift check (md-align). Svelte warnings are not yet held at zero, coverage thresholds do not block, and the CLI, extension and cross-browser suites do not all run on every change." ;
+    kpred:relates-to    kb:reproducible-delivery .

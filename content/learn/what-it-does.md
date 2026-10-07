@@ -44,7 +44,7 @@ Paste text, point at a URL or a repository, drop in a PDF, subscribe a current t
 - [Ingest](../features/ingest)
 - [Currents](../features/currents)
 - [Whisper STT](../features/shelly) <span class="link-note">— on the Shelly (AI Assistant) page</span>
-- [Text Chunking](../features/ingest) <span class="link-note">— on the Ingest page</span>
+- [Text Chunking](../features/text-chunking)
 - [Confluence Migration](../features/confluence-migration)
 
 ### 2 · Work out the claims
@@ -52,7 +52,7 @@ Paste text, point at a URL or a repository, drop in a PDF, subscribe a current t
 A language model reads the source and PROPOSES triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite.
 
 - [LLM Backends](../features/llm-backends)
-- [Passage Grounding](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Passage Grounding](../features/passage-grounding)
 - [Prefer-Local Routing](../features/prefer-local)
 - [Entity Normalization](../features/entity-normalization)
 

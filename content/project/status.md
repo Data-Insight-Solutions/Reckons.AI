@@ -38,7 +38,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [MCP Workspace](../features/mcp-workspace) · production
 - [Model Cache Management](../features/llm-backends) · production — on the LLM Backends page
 - [Multi-Graph Management](../features/multi-kb) · production
-- [Passage Grounding](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
+- [Passage Grounding](../features/passage-grounding) · production
 - [Persona System](../features/shelly) · functional — on the Shelly (AI Assistant) page
 - [Predicate Manager](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Prefer-Local Routing](../features/prefer-local) · production
@@ -60,7 +60,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Currents](../features/currents) · scaffolded
 - [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress
-- [Text Chunking](../features/ingest) · scaffolded — on the Ingest page
+- [Text Chunking](../features/text-chunking) · scaffolded
 
 ## Not built yet (1)
 

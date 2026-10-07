@@ -1,5 +1,5 @@
 {
-  "built": 152,
+  "built": 159,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -260,7 +260,7 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "b0569afb00600a14"
+      "pageHash": "05d1e6afe2a948ea"
     },
     {
       "path": "coding-workflow/context-compression-coding-workflow",
@@ -279,6 +279,15 @@
       "factCount": 3,
       "floor": "evidence",
       "pageHash": "1ea7ecd6585e0383"
+    },
+    {
+      "path": "coding-workflow/host-check",
+      "entity": "urn:reckons:docs/coding-workflow/HostCheck",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "645980d8ae550a9e",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "98ef94c7ae85a4e4"
     },
     {
       "path": "coding-workflow/local-panel",
@@ -317,6 +326,15 @@
       "pageHash": "53e9c20d9a69c5c3"
     },
     {
+      "path": "coding-workflow/reproducible-builds",
+      "entity": "urn:reckons:docs/coding-workflow/ReproducibleBuilds",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "d41210aa7429dc60",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "1c5fe8aef058a1f4"
+    },
+    {
       "path": "coding-workflow/rolling-digest",
       "entity": "urn:reckons:docs/coding-workflow/RollingDigest",
       "graph": "docs-coding-workflow.ttl",
@@ -353,6 +371,15 @@
       "pageHash": "328b3231ced79e8d"
     },
     {
+      "path": "coding-workflow/untrusted-input",
+      "entity": "urn:reckons:docs/coding-workflow/UntrustedInput",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "da5c9fdce5530f6d",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "cc3b5efbe79d1f2d"
+    },
+    {
       "path": "coding-workflow/versus-dev-tooling",
       "entity": "urn:reckons:docs/coding-workflow/VersusDevTooling",
       "graph": "docs-coding-workflow.ttl",
@@ -378,6 +405,15 @@
       "factCount": 4,
       "floor": "evidence",
       "pageHash": "c3e8fd2b850e179b"
+    },
+    {
+      "path": "features/add-menu",
+      "entity": "urn:reckons:feature/AddMenu",
+      "graph": "docs-features.ttl",
+      "factHash": "0740bd31867bfdfb",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "06c7a1b54623c963"
     },
     {
       "path": "features/compare",
@@ -449,7 +485,7 @@
       "factHash": "335ec4ef594b2da1",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b1b01d7e289df8ae"
+      "pageHash": "f933cd57288582c7"
     },
     {
       "path": "features/kb-leap",
@@ -486,6 +522,24 @@
       "factCount": 2,
       "floor": "evidence",
       "pageHash": "8b29425a825e7115"
+    },
+    {
+      "path": "features/node-sources",
+      "entity": "urn:reckons:feature/NodeSources",
+      "graph": "docs-features.ttl",
+      "factHash": "a662b4613dfd6f09",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "dc7c5d091bef983f"
+    },
+    {
+      "path": "features/passage-grounding",
+      "entity": "urn:reckons:feature/PassageGrounding",
+      "graph": "docs-features.ttl",
+      "factHash": "d505068e4efd1090",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "6a256121f59d25ae"
     },
     {
       "path": "features/pod-view",
@@ -551,6 +605,15 @@
       "pageHash": "ce66a1d23913f70d"
     },
     {
+      "path": "features/text-chunking",
+      "entity": "urn:reckons:feature/TextChunking",
+      "graph": "docs-features.ttl",
+      "factHash": "cbb1c67122d6a9f6",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "ffd9ecd509eaada2"
+    },
+    {
       "path": "guide/getting-started",
       "entity": "urn:reckons:guide/GettingStarted",
       "graph": "starter-guide.ttl",
@@ -575,7 +638,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "fd80b734c7305c35"
+      "pageHash": "ef260a9a23531dab"
     },
     {
       "path": "guide/who-makes-this",
@@ -719,7 +782,7 @@
       "factHash": "8972e84d36c18ae7",
       "factCount": 10,
       "floor": "evidence",
-      "pageHash": "22299ff93ef598e6"
+      "pageHash": "272efb7129d9283d"
     },
     {
       "path": "llm/kb-grounded-accuracy",
@@ -791,7 +854,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "145f71e28d484315"
+      "pageHash": "287594b44cdab75f"
     },
     {
       "path": "project/where-it-is-going",
