@@ -11,6 +11,7 @@
 @prefix tech:   <urn:reckons:tech/> .
 @prefix guide:  <urn:reckons:guide/> .
 @prefix ktype:  <urn:kbase:type/> .
+@prefix kb:      <urn:kbase:concept/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix hnav:   <urn:reckons:nav/> .
 
@@ -171,7 +172,8 @@ int:N8nCurrentsMonitor
     rdfs:label          "Currents Monitor (n8n)" ;
     skos:definition     "n8n workflow (workflow-id qb9uPZ8GScAmuUOX) extending the Source Monitor pattern for Currents: fetches enabled currents on a 30-minute schedule, respecting each current's own cadence via a due-check against its last-fetched time. RSS/Atom currents use the RSS Read node; URL-kind currents fetch-and-hash like Source Monitor. Items are deduplicated per (url, graph) before insert, so re-running the sweep never creates duplicate arrivals. Exposes a register webhook (upsert current definitions) and an items webhook (pull new rows for a graph, optionally since a timestamp) that the app polls to populate pod-view arrivals." ;
     skos:broader        int:N8nCloudSync ;
-    skos:related        int:N8nSourceMonitor .
+    skos:related        int:N8nSourceMonitor ;
+    kpred:relates-to    kb:currents-phase-2 .
 
 int:N8nDataTables
     rdf:type            ktype:Concept ;

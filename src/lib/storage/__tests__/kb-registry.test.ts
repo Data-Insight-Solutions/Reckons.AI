@@ -56,7 +56,7 @@ afterEach(() => {
  * Create a KB and advance the fake clock by 1 ms so the next call gets a
  * distinct timestamp-based ID.
  */
-function mkKb(name: string) {
+function mkKnowledgeBase(name: string) {
   const entry = createKb(name);
   vi.advanceTimersByTime(1);
   return entry;
@@ -91,8 +91,8 @@ describe('getRegistry', () => {
   });
 
   it('returns stored entries alongside the default', () => {
-    mkKb('Alpha');
-    mkKb('Beta');
+    mkKnowledgeBase('Alpha');
+    mkKnowledgeBase('Beta');
     const reg = getRegistry();
     expect(reg.length).toBeGreaterThanOrEqual(3); // default + Alpha + Beta
   });
@@ -165,39 +165,39 @@ describe('subscribeRegistry', () => {
 
 describe('createKb', () => {
   it('returns a KbEntry with the given name', () => {
-    const entry = mkKb('My KB');
+    const entry = mkKnowledgeBase('My KB');
     expect(entry.name).toBe('My KB');
   });
 
   it('assigns an id that starts with "kbase_"', () => {
-    const entry = mkKb('Test');
+    const entry = mkKnowledgeBase('Test');
     expect(entry.id).toMatch(/^kbase_\d+$/);
   });
 
   it('persists the new entry so getRegistry reflects it', () => {
-    const entry = mkKb('Persisted');
+    const entry = mkKnowledgeBase('Persisted');
     const reg = getRegistry();
     expect(reg.find((k) => k.id === entry.id)).toBeDefined();
   });
 
   it('generates unique IDs for successive calls', () => {
-    const a = mkKb('First');
-    const b = mkKb('Second');
+    const a = mkKnowledgeBase('First');
+    const b = mkKnowledgeBase('Second');
     expect(a.id).not.toBe(b.id);
   });
 
   it('sets createdAt to a recent timestamp', () => {
     const before = Date.now();
-    const entry = mkKb('Timed');
+    const entry = mkKnowledgeBase('Timed');
     const after = Date.now();
     expect(entry.createdAt).toBeGreaterThanOrEqual(before);
     expect(entry.createdAt).toBeLessThanOrEqual(after);
   });
 
   it('allows multiple KBs to coexist', () => {
-    mkKb('KB One');
-    mkKb('KB Two');
-    mkKb('KB Three');
+    mkKnowledgeBase('KB One');
+    mkKnowledgeBase('KB Two');
+    mkKnowledgeBase('KB Three');
     const reg = getRegistry();
     const names = reg.map((k) => k.name);
     expect(names).toContain('KB One');
@@ -210,7 +210,7 @@ describe('createKb', () => {
 
 describe('updateKbName', () => {
   it('renames an existing KB', () => {
-    const entry = mkKb('Original');
+    const entry = mkKnowledgeBase('Original');
     updateKbName(entry.id, 'Renamed');
     const reg = getRegistry();
     const found = reg.find((k) => k.id === entry.id);
@@ -224,8 +224,8 @@ describe('updateKbName', () => {
   });
 
   it('only affects the targeted entry', () => {
-    const a = mkKb('Alpha');
-    const b = mkKb('Beta');
+    const a = mkKnowledgeBase('Alpha');
+    const b = mkKnowledgeBase('Beta');
     updateKbName(a.id, 'Alpha Renamed');
     const reg = getRegistry();
     expect(reg.find((k) => k.id === b.id)?.name).toBe('Beta');
@@ -236,7 +236,7 @@ describe('updateKbName', () => {
 
 describe('removeKbFromRegistry', () => {
   it('removes a KB that was added', () => {
-    const entry = mkKb('To Remove');
+    const entry = mkKnowledgeBase('To Remove');
     removeKbFromRegistry(entry.id);
     const reg = getRegistry();
     expect(reg.find((k) => k.id === entry.id)).toBeUndefined();
@@ -249,15 +249,15 @@ describe('removeKbFromRegistry', () => {
   });
 
   it('leaves other KBs intact', () => {
-    const a = mkKb('Keep Me');
-    const b = mkKb('Remove Me');
+    const a = mkKnowledgeBase('Keep Me');
+    const b = mkKnowledgeBase('Remove Me');
     removeKbFromRegistry(b.id);
     const reg = getRegistry();
     expect(reg.find((k) => k.id === a.id)).toBeDefined();
   });
 
   it('is idempotent — removing twice does not throw', () => {
-    const entry = mkKb('Twice');
+    const entry = mkKnowledgeBase('Twice');
     removeKbFromRegistry(entry.id);
     expect(() => removeKbFromRegistry(entry.id)).not.toThrow();
   });
@@ -290,7 +290,7 @@ describe('findKbByStableId', () => {
   });
 
   it('returns undefined when no stable IDs are registered', () => {
-    mkKb('No Stable ID');
+    mkKnowledgeBase('No Stable ID');
     expect(findKbByStableId('any-id')).toBeUndefined();
   });
 });
@@ -299,14 +299,14 @@ describe('findKbByStableId', () => {
 
 describe('registerStableId', () => {
   it('attaches a stable ID to an existing KB entry', () => {
-    const entry = mkKb('With Stable ID');
+    const entry = mkKnowledgeBase('With Stable ID');
     registerStableId(entry.id, 'urn:uuid:abc-123');
     const found = getRegistry().find((k) => k.id === entry.id);
     expect(found?.stableId).toBe('urn:uuid:abc-123');
   });
 
   it('allows findKbByStableId to locate the entry after registration', () => {
-    const entry = mkKb('Locatable');
+    const entry = mkKnowledgeBase('Locatable');
     registerStableId(entry.id, 'urn:uuid:locatable-99');
     const found = findKbByStableId('urn:uuid:locatable-99');
     expect(found).toBeDefined();
@@ -315,7 +315,7 @@ describe('registerStableId', () => {
   });
 
   it('optionally stores a statement count', () => {
-    const entry = mkKb('With Count');
+    const entry = mkKnowledgeBase('With Count');
     registerStableId(entry.id, 'urn:uuid:count-test', 42);
     const found = getRegistry().find((k) => k.id === entry.id);
     expect(found?.statementCount).toBe(42);
@@ -327,7 +327,7 @@ describe('registerStableId', () => {
   });
 
   it('overwrites a previously registered stable ID', () => {
-    const entry = mkKb('Update Stable');
+    const entry = mkKnowledgeBase('Update Stable');
     registerStableId(entry.id, 'urn:uuid:old');
     registerStableId(entry.id, 'urn:uuid:new');
     expect(findKbByStableId('urn:uuid:new')?.id).toBe(entry.id);
@@ -339,7 +339,7 @@ describe('registerStableId', () => {
 
 describe('updateKbEntry', () => {
   it('applies a partial patch to an existing entry', () => {
-    const entry = mkKb('Patch Target');
+    const entry = mkKnowledgeBase('Patch Target');
     updateKbEntry(entry.id, { description: 'A test KB', color: '#ff0000' });
     const found = getRegistry().find((k) => k.id === entry.id);
     expect(found?.description).toBe('A test KB');
@@ -347,7 +347,7 @@ describe('updateKbEntry', () => {
   });
 
   it('does not overwrite fields not included in the patch', () => {
-    const entry = mkKb('Partial Patch');
+    const entry = mkKnowledgeBase('Partial Patch');
     updateKbEntry(entry.id, { description: 'Only desc' });
     const found = getRegistry().find((k) => k.id === entry.id);
     expect(found?.name).toBe('Partial Patch');
@@ -362,14 +362,14 @@ describe('updateKbEntry', () => {
 
 describe('toggleBookmark', () => {
   it('bookmarks an unbookmarked entry and returns true', () => {
-    const entry = mkKb('Bookmark Me');
+    const entry = mkKnowledgeBase('Bookmark Me');
     const result = toggleBookmark(entry.id);
     expect(result).toBe(true);
     expect(getRegistry().find((k) => k.id === entry.id)?.bookmarked).toBe(true);
   });
 
   it('unbookmarks a bookmarked entry and returns false', () => {
-    const entry = mkKb('Unbookmark Me');
+    const entry = mkKnowledgeBase('Unbookmark Me');
     toggleBookmark(entry.id);  // on
     const result = toggleBookmark(entry.id); // off
     expect(result).toBe(false);
@@ -385,14 +385,14 @@ describe('toggleBookmark', () => {
 
 describe('getBookmarkedKbs', () => {
   it('returns an empty array when nothing is bookmarked', () => {
-    mkKb('Not bookmarked');
+    mkKnowledgeBase('Not bookmarked');
     expect(getBookmarkedKbs()).toHaveLength(0);
   });
 
   it('returns only bookmarked entries', () => {
-    const a = mkKb('Star A');
-    const b = mkKb('Star B');
-    mkKb('No Star C');
+    const a = mkKnowledgeBase('Star A');
+    const b = mkKnowledgeBase('Star B');
+    mkKnowledgeBase('No Star C');
     toggleBookmark(a.id);
     toggleBookmark(b.id);
     const bookmarked = getBookmarkedKbs();

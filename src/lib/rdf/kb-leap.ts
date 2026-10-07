@@ -19,7 +19,7 @@ export const LEAP_LABEL_PRED = 'urn:reckons:leap/label';  // optional human-read
 
 export type LeapKind = 'kb' | 'app' | 'url';
 
-export interface KbLeap {
+export interface KnowledgeBaseLeap {
   /** The raw target value (UUID, app path, or full URL). */
   target: string;
   /** What kind of leap this is. */
@@ -42,7 +42,7 @@ function isActive(s: Statement) {
 }
 
 /** Return the leap for a given entity node key (with or without `i:` prefix), or null. */
-export function getLeap(stmts: Statement[], nodeKey: string): KbLeap | null {
+export function getLeap(stmts: Statement[], nodeKey: string): KnowledgeBaseLeap | null {
   const iri = nodeKey.startsWith('i:') ? nodeKey.slice(2) : nodeKey;
   const targetSt = stmts.find(
     s => s.s.kind === 'iri' && s.s.value === iri && s.p.value === LEAP_PRED && isActive(s)

@@ -90,6 +90,15 @@ job:code-sprawl rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:codebase-coverage rdf:type          ktype:OfflineJob ;
+    rdfs:label          "codebase-coverage" ;
+    skos:prefLabel      "codebase-coverage" ;
+    skos:definition     "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/codebase-coverage.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:competitor-scan rdf:type          ktype:OfflineJob ;
     rdfs:label          "competitor-scan" ;
     skos:prefLabel      "competitor-scan" ;
@@ -369,6 +378,15 @@ job:queue-dedupe rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:rename-pr rdf:type          ktype:OfflineJob ;
+    rdfs:label          "rename-pr" ;
+    skos:prefLabel      "rename-pr" ;
+    skos:definition     "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/agent/rename-pr.ts --term=kb" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:repo-hygiene rdf:type          ktype:OfflineJob ;
     rdfs:label          "repo-hygiene" ;
     skos:prefLabel      "repo-hygiene" ;
@@ -486,6 +504,15 @@ job:tenet-align rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:term-ratchet rdf:type          ktype:OfflineJob ;
+    rdfs:label          "term-ratchet" ;
+    skos:prefLabel      "term-ratchet" ;
+    skos:definition     "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/term-usage.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:term-usage rdf:type          ktype:OfflineJob ;
     rdfs:label          "term-usage" ;
     skos:prefLabel      "term-usage" ;
@@ -493,6 +520,15 @@ job:term-usage rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/term-usage.ts --pending" ;
     kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
+job:terminology-sweep rdf:type          ktype:OfflineJob ;
+    rdfs:label          "terminology-sweep" ;
+    skos:prefLabel      "terminology-sweep" ;
+    skos:definition     "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
 job:untested-options rdf:type          ktype:OfflineJob ;
@@ -534,14 +570,14 @@ job:visual-diff rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:ux-impression, job:visual-diff .
+    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 57 of them, 47 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 61 of them, 50 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

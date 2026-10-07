@@ -61,7 +61,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="../features/mcp-workspace"><span class="card-title">MCP Workspace</span><span class="card-text">Reckons.AI uses its own MCP server to track product state.</span></a>
 <a class="card" href="../features/multi-kb"><span class="card-title">Multi-Graph Management</span><span class="card-text">Create, switch, rename, and delete independent knowledge graphs.</span></a>
 <a class="card" href="#open-source"><span class="card-title">Open Source (MIT)</span><span class="card-text">Reckons.AI is MIT-licensed.</span></a>
-<a class="card" href="#passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
+<a class="card" href="../features/passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
 <a class="card" href="#predicate-manager"><span class="card-title">Predicate Manager</span><span class="card-text">View all predicates in your graph with usage counts.</span></a>
 <a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-status">in-progress</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
 <a class="card" href="../features/review-system"><span class="card-title">Review — where your graph gets smaller and truer</span><span class="card-text">The step where you decide what is true.</span></a>
@@ -130,10 +130,6 @@ This is not just a feature -- it is a design philosophy. Your knowledge belongs 
 <h3 id="open-source">Open Source (MIT)</h3>
 
 Reckons.AI is MIT-licensed. Read the code, fork it, self-host it, run it offline forever. No proprietary lock-in, no subscription, no way to lose access to your own tool.
-
-<h3 id="passage-grounding">Passage Grounding</h3>
-
-Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry.
 
 <h3 id="predicate-manager">Predicate Manager</h3>
 

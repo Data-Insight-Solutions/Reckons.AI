@@ -23,6 +23,8 @@ import { consumeStoredMcpContext, type ConsumedMcpContext } from '../agent/mcp-c
 import { selectReviewBatch, type PriorReviewBatch } from '../agent/run-contract.js';
 import { chunkReviewDiff, discoverReviewFiles, renderReviewDiff, resolveReviewBase } from './lib/review-git.js';
 import { pendingQueuePath } from './lib/main-workspace.js';
+import { refuteFinding } from './lib/review-refute.js';
+import { ollamaStream } from './lib/ollama-stream.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -82,14 +84,9 @@ const SKIP = /(package-lock\.json|pnpm-lock|yarn\.lock|\.min\.|\.map$|\.svg$|\.p
 
 async function ollama(prompt: string): Promise<string> {
   try {
-    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { num_ctx: 16384, temperature: 0 } }),
-    });
-    if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-    const j = (await res.json()) as { response?: string };
-    const response = (j.response ?? '').trim();
+    // Streamed: waiting behind other GPU jobs is not a failure, silence mid-answer is (lib/ollama-stream.ts).
+    const { text } = await ollamaStream(OLLAMA, 'generate', { model: MODEL, prompt, options: { num_ctx: 16384, temperature: 0 } });
+    const response = text.trim();
     if (!response) throw new Error('Ollama returned an empty review response');
     return response;
   } catch (e: any) {
@@ -153,6 +150,7 @@ function writeReport(summary: {
   truncatedFiles: string[];
   flagged: number;
   suppressed: number;
+  refuted: number;
   failed: number;
 }) {
   if (!REPORT) return;
@@ -174,6 +172,8 @@ function writeReport(summary: {
     truncatedFiles: summary.truncatedFiles,
     flagged: summary.flagged,
     suppressed: summary.suppressed,
+    // Findings the file itself disproved (review-refute.ts); dropped before the cap, never queued.
+    refuted: summary.refuted,
     proposalCap: { total: MAX_FINDINGS, perFile: MAX_PER_FILE },
     failed: summary.failed,
     model: MODEL,
@@ -252,6 +252,7 @@ if (files.length === 0) {
     truncatedFiles: [],
     flagged: 0,
     suppressed: 0,
+    refuted: 0,
     failed: 0,
   });
   process.exit(0);
@@ -266,6 +267,7 @@ if (batch.start > 0) {
 }
 await warmUp();
 let flagged = 0, suppressed = 0, reviewed = 0, failed = 0;
+const refutations: string[] = [];
 const truncatedFiles: string[] = [];
 const proposals: Finding[] = [];
 
@@ -313,6 +315,15 @@ for (const file of files) {
         .filter((line) => line && !/^none\b/i.test(line) && line.length > 8));
     }
     reviewed++;
+    // VALIDATE: drop findings the file's own text disproves (review-refute.ts), out loud.
+    let source: string | null = null;
+    try { source = existsSync(file) ? readFileSync(file, 'utf8') : null; } catch { source = null; }
+    for (let i = fileFindings.length - 1; i >= 0; i--) {
+      const refutation = refuteFinding(file, fileFindings[i], source);
+      if (!refutation) continue;
+      refutations.push(`${fileFindings[i].slice(0, 160)}\n      → ${refutation.rule}: ${refutation.reason}`);
+      fileFindings.splice(i, 1);
+    }
     if (fileFindings.length === 0) {
       console.log(`clean${chunks.length > 1 ? ` (${chunks.length} complete chunks)` : ''}`);
       continue;
@@ -348,6 +359,10 @@ if (omitted) {
   );
 }
 if (suppressed) console.log(`⚠ ${suppressed} additional model observation(s) were suppressed by the ${MAX_FINDINGS}-total / ${MAX_PER_FILE}-per-file proposal cap.`);
+if (refutations.length) {
+  console.log(`✗ ${refutations.length} finding(s) refuted by rule and NOT queued (the file disproves them):`);
+  for (const r of refutations) console.log(`    ${r}`);
+}
 if (failed > 0) console.log(`⚠ ${failed} file(s) FAILED to review locally — check Ollama/${MODEL}, re-run or review those by hand.`);
 console.log('Findings are PROPOSALS: accept/reject in the Reckons.AI Review tab. Nothing was changed.');
 writeReport({
@@ -362,6 +377,7 @@ writeReport({
   truncatedFiles,
   flagged,
   suppressed,
+  refuted: refutations.length,
   failed,
 });
 const queued = queueFindings(proposals, {

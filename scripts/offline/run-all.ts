@@ -17,6 +17,7 @@
  *   npm run offline:all -- --gpu-wait-min=20   how long an agent job waits for a hot/full/busy GPU
  *                                              before it is skipped (0 = skip at once)
  *   npm run offline:all -- --no-gpu-gate   start agent jobs whatever the GPU state
+ *   npm run offline:all -- --no-backpressure   run agent jobs even when their proposals sit unreviewed
  *
  * Agent-tier jobs pass the same GPU gate as the session queue worker (scripts/agent/session-gpu.ts),
  * checked before EACH one; see scripts/offline/lib/gpu-wait.ts for how it differs on unknown state.
@@ -26,6 +27,9 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { readGpuVerdict } from '../agent/session-gpu.js';
 import { parseWaitMin, waitForGpu } from './lib/gpu-wait.js';
+import { openByProducer, tallyWorkspace } from './lib/proposal-tally.js';
+import { loadDeviceConfig } from '../agent/device-config.js';
+import { DEFAULT_HOLD_UNREVIEWED } from '../agent/session-schedule.js';
 
 /** F74.3 work tiering: `script` = deterministic, no LLM, zero tokens. `agent` = a local
  *  model filling a judgment hole inside a scripted harness; proposals only. */
@@ -47,6 +51,15 @@ const tier = argv.find((a) => a.startsWith('--tier='))?.split('=')[1] as Tier | 
 const LIST = argv.includes('--list');
 const CI = argv.includes('--ci');
 const GPU_GATE = !argv.includes('--no-gpu-gate');
+const HOLD_LIMIT = (() => {
+  try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
+  catch { return DEFAULT_HOLD_UNREVIEWED; }
+})();
+let unreviewedCache: Map<string, number> | undefined;
+/** Counted once per run, on the first agent job: it parses every workspace graph. */
+const unreviewed = (): Map<string, number> => (unreviewedCache ??= (() => {
+  try { return openByProducer(tallyWorkspace(path.resolve('.')).tallies); } catch { return new Map(); }
+})());
 const GPU_WAIT_MS = parseWaitMin(argv.find((a) => a.startsWith('--gpu-wait-min='))?.split('=')[1]) * 60_000;
 
 const jobsFile = path.resolve('scripts/offline/jobs.json');
@@ -88,6 +101,16 @@ const results: { name: string; ok: boolean; ms: number; blocking: boolean; skipp
 for (const job of selected) {
   console.log(`\n${B}▶ ${job.name}${X}${job.desc ? ` ${D}— ${job.desc}${X}` : ''}`);
   const blocking = job.blocking ?? false;
+  // BACK-PRESSURE (F74.9): the same rule as the session worker, per job, so a sweep cannot run a
+  // producer the worker is holding. A job named with --only is a person's explicit request: not held.
+  if ((job.tier ?? 'agent') === 'agent' && !only && !argv.includes('--no-backpressure')) {
+    const open = unreviewed().get(job.name) ?? 0;
+    if (open >= HOLD_LIMIT) {
+      results.push({ name: job.name, ok: false, ms: 0, blocking, skipped: `held, ${open} unreviewed proposals (limit ${HOLD_LIMIT})` });
+      console.log(`  ${Y}held: ${open} of its proposals are unreviewed (limit ${HOLD_LIMIT}); review some, or pass --only=${job.name}${X}`);
+      continue;
+    }
+  }
   if (GPU_GATE && (job.tier ?? 'agent') === 'agent') {
     const step = await waitForGpu(() => readGpuVerdict(), GPU_WAIT_MS, (s) => console.log(`  ${Y}${s}${X}`));
     if (step.act === 'run-unknown') console.log(`  ${Y}gpu gate: ${step.reason}; running WITHOUT the gate${X}`);

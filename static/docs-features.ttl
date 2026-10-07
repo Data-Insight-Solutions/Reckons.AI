@@ -307,8 +307,9 @@ feat:ConfluenceMigration
 feat:TextChunking
     rdf:type            ktype:Concept ;
     rdfs:label          "Text Chunking" ;
-    skos:definition     "Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence." ;
-    skos:broader        feat:Ingest .
+    skos:definition     "A long document is too big to read in one pass, so Reckons.AI reads it in overlapping pieces of about 12,000 characters. Each piece is labelled with the document title and its place (piece 3 of 8, for example), so nothing is read out of context. When two pieces produce the same fact, you see it once. This works for every kind of source." ;
+    skos:broader        feat:Ingest ;
+    kpred:relates-to    kb:text-chunking .
 
 
 ## =============================================================================
@@ -350,13 +351,15 @@ feat:Currents
     rdfs:label          "Currents" ;
     skos:definition     "Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:PodView .
+    skos:related        feat:PodView ;
+    kpred:relates-to    kb:currents .
 
 feat:PodView
     rdf:type            ktype:Concept ;
     rdfs:label          "Pod View" ;
     skos:definition     "Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." ;
-    skos:broader        feat:Currents .
+    skos:broader        feat:Currents ;
+    kpred:relates-to    kb:currents-phase-3 .
 
 ## =============================================================================
 ## Review Workbench (F30)
@@ -628,3 +631,25 @@ guide:WhatWorksToday
     kpred:render-as     "status-summary" ;
     kpred:status-not-applicable "The status page itself." ;
     skos:definition     "Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it." .
+
+## =============================================================================
+## Adding things, and where a fact came from (v0.2.5)
+## =============================================================================
+
+feat:AddMenu
+    rdf:type            ktype:Concept ;
+    rdfs:label          "The add menu" ;
+    skos:definition     "The + button at the top of every page opens a short menu of what you can add. Under New: a source (a whole document), a single statement, a set or a new space. Under From: a note, a link, a folder, a code repository, a calendar, a reminder or a space file. Each choice opens the right page already set up for it. The arrow keys move through the menu and Escape closes it." ;
+    skos:broader        feat:Ingest ;
+    skos:exactMatch     kb:add-quick-menu ;
+    kpred:relates-to    kb:add-quick-menu .
+
+feat:NodeSources
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Where a node's facts came from" ;
+    skos:definition     "Select a node and its details now show which sources its facts came from. Under each source are the facts that source gave, so you can see at a glance what came from where. Click a source's title to open it in Sources, where it is selected for you and any filter that would hide it is cleared. Facts are listed whichever direction they point, even when the Statements filters would hide them." ;
+    skos:broader        feat:PassageGrounding ;
+    skos:exactMatch     kb:statement-node-source-links ;
+    skos:broadMatch     kb:source-atoms ;
+    kpred:relates-to    kb:statement-node-source-links ;
+    kpred:relates-to    kb:source-atoms .

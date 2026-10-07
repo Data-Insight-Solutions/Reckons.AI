@@ -209,9 +209,9 @@ export function applyTypeGate(
 
 /* ---------- arrivals ---------- */
 
-export const KB_MENTIONED_IN = 'urn:kbase:predicate/mentioned-in';
-const KB_URL = 'urn:kbase:predicate/url';
-const KB_PUBLISHED_AT = 'urn:kbase:meta/published-at';
+export const KNOWLEDGE_BASE_MENTIONED_IN = 'urn:kbase:predicate/mentioned-in';
+const KNOWLEDGE_BASE_URL = 'urn:kbase:predicate/url';
+const KNOWLEDGE_BASE_PUBLISHED_AT = 'urn:kbase:meta/published-at';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const DOCUMENT_TYPE = 'urn:kbase:type/Document';
 
@@ -261,16 +261,16 @@ export function buildArrivalStatements(input: ArrivalInput): Statement[] {
   const out: Statement[] = [
     make(article, RDF_TYPE, iri(DOCUMENT_TYPE)),
     make(article, RDFS_LABEL, lit(input.title)),
-    make(article, KB_URL, lit(input.url), input.excerpt)
+    make(article, KNOWLEDGE_BASE_URL, lit(input.url), input.excerpt)
   ];
-  if (input.publishedAt) out.push(make(article, KB_PUBLISHED_AT, lit(input.publishedAt)));
+  if (input.publishedAt) out.push(make(article, KNOWLEDGE_BASE_PUBLISHED_AT, lit(input.publishedAt)));
 
   const linked = new Set<string>();
   for (const st of input.extracted) {
     const subj = st.s.value;
     if (subj === article || linked.has(subj)) continue;
     linked.add(subj);
-    out.push(make(subj, KB_MENTIONED_IN, iri(article)));
+    out.push(make(subj, KNOWLEDGE_BASE_MENTIONED_IN, iri(article)));
   }
   return [...out, ...input.extracted];
 }

@@ -13,7 +13,8 @@
  * GPU job runs at a time.
  *
  * Each job runs through job-watch.ts, so the circuit breaker and the TTL run report apply. A job
- * the breaker refuses (exit 3) is recorded as refused and leaves the queue; it does not loop.
+ * the breaker refuses (exit 3) is recorded as refused and leaves the queue, and its schedule is
+ * held (heldSchedules) until the breaker is reset; any failed or refused schedule rests 30 min.
  * Each pass it also enqueues recurring jobs that are overdue (session-schedule.ts), once each.
  *
  * Usage: npm run agent:queue-worker [-- --idle-minutes=20] [--poll-seconds=60] [--stay]
@@ -28,8 +29,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
 import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
+import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
-import { doneSuccesses, dueAll, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { loadDeviceConfig } from './device-config.js';
+import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
 
@@ -50,6 +54,21 @@ function runJob(job: QueueJob): Promise<number> {
   });
 }
 
+/** Open proposals per producer, recounted at most every 10 minutes: it parses every workspace graph. */
+let backlogCache: { at: number; open: Map<string, number> } | undefined;
+function backlog(root: string, now = Date.now()): Map<string, number> {
+  if (!backlogCache || now - backlogCache.at > 10 * 60_000) {
+    try { backlogCache = { at: now, open: openByProducer(tallyWorkspace(root).tallies) }; }
+    catch { backlogCache = { at: now, open: new Map() }; } // an unreadable workspace holds nothing, never everything
+  }
+  return backlogCache.open;
+}
+const holdLimit = (): number => {
+  try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
+  catch { return DEFAULT_HOLD_UNREVIEWED; }
+};
+let heldList: string[] = [];
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const num = (k: string, d: number) => { const v = Number(args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]); return Number.isFinite(v) && v > 0 ? v : d; };
@@ -65,14 +84,21 @@ async function main(): Promise<void> {
   process.on('SIGINT', bye);
   process.on('SIGTERM', bye);
   let lastState: WorkerState | undefined;
+  let lastHeld = '';
 
   while (!stop) {
     const fresh = heartbeatFresh(readHeartbeatMtime(), Date.now(), idleMinutes);
     const up = await ollamaUp();
     if (fresh) {
       const { jobs, successes } = loadRecurring(root);
-      const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(readDone())), Date.now());
-      const added = addJobs(selectDue(statuses, [])).add;
+      const done = readDone();
+      const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
+      // Back-pressure first, then breaker and backoff holds (their reasons win for the same job).
+      const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...heldSchedules(done, readCircuitCache(), Date.now())]);
+      heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
+      const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
+      if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
+      const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
       if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
     }
     const queue = orderQueue(readQueue());
@@ -86,13 +112,13 @@ async function main(): Promise<void> {
       lastState = step.state;
     }
     if (!step.startJob) {
-      writeWorker({ state: step.state, reason: step.reason });
+      writeWorker({ state: step.state, reason: step.reason, held: heldList });
       if (step.state === 'empty' && !stay) return;
       await sleep(pollMs);
       continue;
     }
     const job = pickNext(queue, gpuBlocked)!;
-    writeWorker({ state: 'working', job: job.name, index: finished + 1, total: finished + queue.length, });
+    writeWorker({ state: 'working', job: job.name, index: finished + 1, total: finished + queue.length, held: heldList });
     const code = await runJob(job);
     finished++;
     mutateQueue((jobs) => ({

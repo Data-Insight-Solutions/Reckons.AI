@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerStep, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
-import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, type Recurring } from '../session-schedule';
+import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
+import { renderQueue } from '../watch';
 
 const MIN = 60_000;
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
@@ -173,6 +174,37 @@ describe('catch-up schedules', () => {
     expect(dueStatus(rec('a'), now - 5 * every, now).level).toBe('bad');
     const picked = selectDue(dueAll([rec('a')], { a: now - 4 * every }, now), []);
     expect(picked).toHaveLength(1);
+  });
+  it('holds a schedule whose breaker is open, however long ago it failed (the 8,719-refusal loop)', () => {
+    const statuses = dueAll([rec('sched:safety'), rec('other')], {}, now);
+    const done = [{ ...job('sched:safety'), finishedAt: new Date(now - 10 * RETRY_BACKOFF_MS).toISOString(), outcome: 'refused' as const, exitCode: 3 }];
+    const held = heldSchedules(done, { 'sched:safety': { count: 3, signature: 'exit=1|x' } }, now);
+    expect(held.get('sched:safety')).toMatch(/circuit open.*--reset/);
+    expect(selectDue(statuses, [], undefined, 5, held).map((j) => j.name)).toEqual(['other']);
+  });
+  it('rests a failed or refused schedule for the backoff, then lets it retry; a pass is never held', () => {
+    const at = (min: number, outcome: 'passed' | 'failed' | 'refused') => ({ ...job('a'), finishedAt: new Date(now - min * 60_000).toISOString(), outcome });
+    expect(heldSchedules([at(5, 'failed')], {}, now).get('a')).toMatch(/failed 5 min ago/);
+    expect(heldSchedules([at(5, 'refused')], {}, now).has('a')).toBe(true);
+    expect(heldSchedules([at(31, 'failed')], {}, now).has('a')).toBe(false);
+    expect(heldSchedules([at(5, 'passed')], {}, now).has('a')).toBe(false);
+    // Only the LATEST attempt counts: a pass after a failure releases the hold.
+    expect(heldSchedules([at(10, 'failed'), at(2, 'passed')], {}, now).has('a')).toBe(false);
+  });
+  it('back-pressure holds an agent job over its own unreviewed limit, never a script job or an unmatched one', () => {
+    const agent = (n: string): Recurring => ({ ...rec(n, true), tier: 'agent' });
+    const open = new Map([['layer-classify', 435], ['docs-review', 49], ['graph-lint', 900]]);
+    const held = backlogHolds([agent('sched:layer-classify'), agent('sched:docs-review'), { ...rec('sched:graph-lint'), tier: 'script' }, agent('sched:offline-all-agent')], open, 50);
+    expect([...held.keys()]).toEqual(['sched:layer-classify']);
+    expect(held.get('sched:layer-classify')).toMatch(/435 unreviewed proposals \(limit 50\)/);
+    expect(backlogHolds([agent('sched:docs-review')], open, 49).has('sched:docs-review')).toBe(true);
+  });
+  it('the monitor shows what the worker holds, with reasons', () => {
+    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, heartbeatFresh: true, ollamaUp: true, manualPause: false });
+    expect(v.held).toEqual(['layer-classify: 435 unreviewed proposals (limit 50)']);
+    const lines = renderQueue(v, undefined, (_l, t) => t).join('\n');
+    expect(lines).toMatch(/held.*layer-classify: 435 unreviewed/);
+    expect(queueView({ queued: 0, worker: { state: 'empty' }, heartbeatFresh: true, ollamaUp: true, manualPause: false }).held).toBeUndefined();
   });
   it('does not enqueue what is queued or running, nor what is not due; carries the gpu flag', () => {
     const statuses = dueAll([rec('a'), rec('b'), rec('c', true), rec('fresh')], { fresh: now }, now);
