@@ -11,9 +11,7 @@
  * new hand-made drawing, not the app's artwork. QUEUE LENGTH has a threshold and a classifier but
  * nothing feeds it: runner.ts has no side-effect-free queue reader (see watch.ts header).
  */
-import { readFileSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { legacyHint, loadDeviceConfig } from './device-config.js';
 
 export type Level = 'ok' | 'warn' | 'bad';
 export type Band = { yellow: number; red: number };
@@ -41,8 +39,6 @@ export const DEFAULT_THRESHOLDS: Thresholds = {
   queueLength: { yellow: 5, red: 15 },
 };
 
-export const configPath = (): string => path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'reckons', 'watch.json');
-
 /** Override defaults per metric; ignores anything not a finite number or a known metric. Pure. */
 export function mergeThresholds(over: unknown, base: Thresholds = DEFAULT_THRESHOLDS): Thresholds {
   const out: Thresholds = JSON.parse(JSON.stringify(base));
@@ -56,9 +52,11 @@ export function mergeThresholds(over: unknown, base: Thresholds = DEFAULT_THRESH
   return out;
 }
 
-export function loadThresholds(file: string = configPath()): Thresholds {
+/** Defaults overlaid by the device graph (device-config.ts), per property. A broken graph yields the code defaults. */
+export function loadThresholds(): Thresholds {
   try {
-    return mergeThresholds(JSON.parse(readFileSync(file, 'utf8')));
+    legacyHint();
+    return mergeThresholds(loadDeviceConfig().thresholds);
   } catch {
     return mergeThresholds(undefined);
   }
@@ -89,7 +87,7 @@ export function elapsedLevel(elapsedMs: number, previousMedianMs: number | undef
 
 export const worst = (levels: Level[]): Level => (levels.includes('bad') ? 'bad' : levels.includes('warn') ? 'warn' : 'ok');
 
-export const LEGEND = 'green ok · yellow watch · red act now — limits: ~/.config/reckons/watch.json';
+export const LEGEND = 'green ok · yellow watch · red act now — limits: scripts/agent/defaults/device-defaults.ttl, per machine in ~/.config/reckons/device.ttl';
 
 // ── art ────────────────────────────────────────────────────────────────────
 
