@@ -124,7 +124,7 @@ type CollectedAsset = { entityIri: string; category: string; filename: string; d
 
 /** Serialize one KB to Turtle (graph statements + asset references) and collect
  *  its binary sidecar assets (preview/model/icon blobs). */
-async function serializeKb(kbId: string): Promise<{ ttl: string; assets: CollectedAsset[] } | null> {
+async function serializeKnowledgeBase(kbId: string): Promise<{ ttl: string; assets: CollectedAsset[] } | null> {
   const { toTurtleFull } = await import('../rdf/serialize');
   const { collectAssets, assetTriples } = await import('../storage/kb-assets');
   const kbDb = kbId === db.name ? db : new KBaseDB(kbId);
@@ -175,7 +175,7 @@ export async function driveSyncPush(): Promise<number> {
     const existing = new Map((await listFolderTurtles(folderId)).map((f) => [f.name, f.id]));
     let pushed = 0;
     for (const entry of getRegistry()) {
-      const ser = await serializeKb(entry.id);
+      const ser = await serializeKnowledgeBase(entry.id);
       if (ser == null) continue;
       const stem = fileStem(entry.name, entry.id);
       const filename = `${stem}.ttl`;
@@ -221,7 +221,7 @@ export async function driveSyncPull(): Promise<{ imported: string[]; updated: st
   try {
     const { listFolderTurtles, downloadFile } = await import('../integrations/google/drive');
     const { getCurrentKbId } = await import('../storage/kb-registry');
-    const { ingestNewKb, ingestExistingKb } = await import('./kb-import');
+    const { ingestNewKb, ingestExistingKnowledgeBase: ingestExistingKb } = await import('./kb-import');
     const registry = getRegistry();
     const currentId = getCurrentKbId();
     let activeChanged = false;
