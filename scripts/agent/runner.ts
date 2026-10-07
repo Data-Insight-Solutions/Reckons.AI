@@ -46,7 +46,7 @@ import path from 'path';
 import { Parser, Writer, DataFactory, type Quad } from 'n3';
 import { orderForModelBatching } from '../../src/lib/rdf/agent-task.js';
 import { collectMcpContext } from './mcp-context.js';
-import { captureGitState, runSucceeded } from './run-contract.js';
+import { captureStateFingerprint, runSucceeded } from './run-contract.js';
 import { atomicWriteFile, withFileLock } from './state-file.js';
 
 const { namedNode, literal, quad } = DataFactory;
@@ -195,6 +195,9 @@ interface Task {
   attempts?: number;
   /** Declared effects. The runner gates these before giving graph-authored shell to a process. */
   effects: string[];
+  /** Paths (relative to the runner's cwd) the task declares it touches. Fingerprinted into the
+   *  receipt when git is unavailable, so the knowledge lane never depends on a repository. */
+  touches: string[];
   /** A bounded graph query fetched through MCP before a local-agent task runs. */
   contextQuery?: string;
   contextBudget?: number;
@@ -244,6 +247,7 @@ const tasks: Task[] = [...taskIris].map((iri) => ({
   lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
   attempts: Number(one(iri, 'attempts') ?? 0) || 0,
   effects: many(iri, 'effect'),
+  touches: many(iri, 'touches'),
   contextQuery: one(iri, 'context-query'),
   contextBudget: Number(one(iri, 'context-budget') ?? 0) || undefined,
   waitingKeys: parseWaitingKeys(one(iri, 'waiting-keys')),
@@ -544,10 +548,10 @@ function writeReceipt(input: {
   const receiptPath = path.join(RECEIPTS_DIR, `${short}-${input.claimToken}-${stamp}.json`);
   try {
     const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
-    const git = captureGitState();
-    if (!git.available) throw new Error(`could not fingerprint git state: ${git.error}`);
+    // Never skip the receipt for want of a repository: the fingerprint says which kind it is.
+    const stateFingerprint = captureStateFingerprint({ declaredPaths: input.task.touches });
     atomicWriteFile(receiptPath, JSON.stringify({
-      schema: 'reckons.task-run-receipt/v1',
+      schema: 'reckons.task-run-receipt/v2',
       task: input.task.iri,
       runner: RUNNER_ID,
       claimToken: input.claimToken,
@@ -562,7 +566,9 @@ function writeReceipt(input: {
       verificationExit: input.verificationExit,
       verificationOutputSha256: input.verificationOutput === undefined ? undefined : sha256(input.verificationOutput),
       mcpContext: input.context,
-      git,
+      stateFingerprint,
+      // v1 compatibility: readers of the old `git` field still find it when the kind is git.
+      git: stateFingerprint.kind === 'git' ? { available: true, ...stateFingerprint, kind: undefined } : undefined,
     }, null, 2) + '\n');
     return receiptPath;
   } catch (e) {

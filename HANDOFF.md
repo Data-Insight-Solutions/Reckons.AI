@@ -1,3 +1,104 @@
+## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
+
+**Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
+(awareness is not access); fold source chunks into the space .ttl; outbound webhooks first, REST
+polling second (F243); LAN HTTPS by one-time CA / Tailscale / own domain, offline-first default
+(F244); agents in the app, per space in the Spaces tab and per device in Settings, no new tab
+(F245); 3D Spaces = the 0.2.5 canvas mode; localhost serves dev.
+
+**Done:** main checkout switched to `dev` (was a feature branch 44 behind); `npm install` run there.
+#352 ghost-run fix merged (restart `npm run agent:watch` to see it). Wispr Flow added as a
+competitor (#366).
+
+**Open PRs from this session, base dev:** #361 Source View source side (after #351) · #362 reviewer
+refutes · #363 self-contained spaces + space-size benches · #364 F243/F244/F245 + 3D Spaces ·
+#365 merge-queue `--sync-local` · #366 Wispr Flow · #367 rename batch 2b (42 names) · #368 katex
+^0.19.0 (#360 pinned a deprecated release). The merge queue was still landing #341… #358.
+
+**Measured (bench, RTX 3090, headless GPU):** render is the limit, not the file. 10k statements:
+browser import 4 s, 3D first frame 12 s, nothing settles. 100k: import ~150 s, one 2D frame ~80 s.
+Browser import is superlinear (Node parse is linear); next step is a CPU profile of that import.
+
+**Waiting on Matt:** install the heartbeat hook (`/hooks`; the classifier blocks me editing
+settings.local.json), then `queue.ts seed-standard` + `npm run agent:queue-worker -- --stay`;
+remove the `# reckons-schedule` cron line once the hook is in. Review queue: 39 batch proposals
+(docs-expand drafts carry jargon) + 4 terminology gaps (set, space, source, graph-as-data).
+
+## 2026-10-06 — START HERE. 0.2.5: backlog landing, Source View source side, reviewer refutes (Claude Code)
+
+**Matt approved (this session):** land every open dev PR, and the FULL 0.2.5 plan (Source View
+source side, then Spaces phase 2, then version bump + release notes).
+
+**Merge queue running** (`merge-queue.ts` from #336, started 22:2x UTC, `--keep-going`):
+#360 → #335…#356 → #358. #360 (deps) MERGED at `4059130`. Check what landed:
+`gh pr list --state merged --base dev --limit 30`; anything still open failed its re-run on
+updated dev and needs a look. Re-run the same command for stragglers (it skips merged PRs).
+
+**New PRs, base dev:**
+- **#360** deps (merged): sharp 0.35.5; overrides katex ^0.18.11 (past mermaid's ^0.16 range;
+  build-time diagrams only), global-agent ^4.1.3 (sprintf-js has NO patched release; global-agent
+  4 drops roarr), source-map-js ^1.2.2. Without it every updated PR failed `Dependencies`.
+- **#361** Source View source side (0.2.5 item 3), stacked on #351. Passages with per-status
+  yield, statements by status, unplaced list with reasons. `kb:source-corpus` → in-progress.
+  NOT built: "not read yet" marking (needs extraction over chunks), canvas highlighting.
+- **#362** local reviewer refutes findings the file disproves (missing-import, RDF repeated
+  predicate). Verified on real output. Not fixed: roadmap.ttl review times out every run.
+- **#358** got a test fix: its Atoms section repeated the fact text, so the e2e scopes to a
+  labelled "Node facts" region.
+
+**agent:watch ghost run** (Matt asked): `review-triage-2026-10-01-muppszft` died when qwen3.6's
+llama-server crashed; no `run-end`, so the watcher shows it live forever. The retry finished
+fine. #352 fixes it (pid + abandoned detection) and is in the queue.
+
+**Next: Spaces phase 2 (0.2.5 item 4) needs one decision from Matt first:** where a user's set
+membership lives. Nothing stores user-defined sets today (`declaredSet` is read, never written;
+/kb passes no `definitions`). (a) In each member space's own graph (`<urn:reckons:kb>
+dcterms:isPartOf <set>`), travelling with exports, like the 09-23 title/description decision,
+but it writes into spaces that are not open. (b) One workspace-level `dcat:Catalog`. Then
+grouping choice, and Spaces as a GraphCanvas mode. After that: version bump + release notes.
+## 2026-10-02 — Source Atoms and visual-generation plans (Codex)
+
+PR #358, branch `fix/statements-node-source-links`, base `dev`. The initial source-link commit
+`d428437` passed every CI check. Matt then added Atoms under each source, ERD options in the
+layout menu, local image generation, Gaussian splatting and a possible 3D Photorama background.
+The follow-up groups the selected entity's existing triples beneath each source using compact
+StatementCard, retaining statuses and source navigation. The technical alias Atom is recorded in
+the thesaurus without renaming serialized fields. Desktop and phone checks pass locally.
+
+The roadmap now plans ERD notation/arrangement options (exact initial choices remain open), a
+local CLI image-generation trial with ComfyUI/Diffusers alternatives, separate local splat
+reconstruction/playback trials, and optional per-space Photorama backgrounds. These are PLANS;
+no image-generation or reconstruction runtime was executed. Primary tool documentation was
+checked on 2026-10-02 and linked in the graph. Panoramas and reconstructed parallax are distinct.
+
+Local jobs were used: qwen3.6 failed three planning items with CUDA errors; qwen3-coder completed
+all four planning items plus a markup proposal and revision. Reviewed proposals are queued in
+the graph. Rejected: substituting swim-lanes for ERD, treating Atoms as a new data layer,
+discarding source navigation, invented performance guarantees and claiming a local GPU job
+conflicts with local-first. Local code-review findings were false positives (imports/completion
+notes already exist, RDF scope notes are repeatable, test records are isolated).
+Follow-up local checks on 2026-10-02: zero type errors/warnings, two source-navigation/Atom browser
+checks pass; graph lint and site alignment pass with existing graph warnings. Copied-data visual
+checks have no page errors and retain preview websocket/GPU warnings. Verify the latest PR head's
+CI before merge; the earlier green result applies only to `d428437`. Matt merges.
+
+## 2026-10-02 — Statements node source links (Codex)
+
+Branch: `fix/statements-node-source-links`, PR base `dev`. Node details now lists each source
+from current incoming/outgoing claims and opens that source's Sources inspector. Explicit jumps
+reset source selection and filters while retaining the presentation. The roadmap records
+`kb:statement-node-source-links` as functional on the branch, not deployed. Matt merges.
+
+Local validation on 2026-10-02: type check has zero errors/warnings; eight provenance unit tests
+pass; desktop and phone source-navigation checks pass; production build, build guard and `align`
+pass. Graph lint reports zero errors and 15 existing warnings. The 41 startup script jobs returned
+success with advisory findings. Copied-data visual checks on `/kb` and `/` have no page errors,
+with preview websocket and GPU screenshot warnings; private artifacts remain outside the repo.
+Local model review flagged an allegedly missing import already present at the top of the page;
+rejected after inspection. The phone test dismisses onboarding tips because an existing notification
+can cover the node-panel close button; that issue is queued as a separate graph proposal.
+Check the PR's live CI before merging; local results are not a claim about CI.
+
 ## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
 
 **Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET

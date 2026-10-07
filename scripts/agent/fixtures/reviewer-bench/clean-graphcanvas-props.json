@@ -1,0 +1,8 @@
+{
+  "id": "clean-graphcanvas-props",
+  "source": "PR #334 (review/+page.svelte): the props block, as merged",
+  "promptContext": "Review this Svelte 5 change. Context from the PR: \"/review's preview graph now mounts the shared GraphCanvas. Props are stable objects with getters, not object literals in the template, because a literal is rebuilt whenever any value it reads changes and the renderers restart their layout and never report settled. No intended behaviour change.\" Validation reported: 17/17 e2e, svelte-check 0 errors.\n\n```svelte\n  const previewHighlighted = $derived([...pendingKeys]);\n  const previewHighlightedEdges = $derived(focusedEdge ? [focusedEdge] : []);\n  const previewProps2d: ComponentProps<typeof KnowledgeGraph2D> = {\n    get statements() { return previewStatements; },\n    get selected() { return selected; },\n    get focusKey() { return focusKey; },\n    get layout() { return previewLayout; },\n    get nodeOrder() { return previewNodeOrder; },\n    get sources() { return sources(); },\n    onselect: (k) => selectFromGraph(k),\n    onhover: () => {},\n    onlabelsmove: () => {},\n    onmarkersmove: () => {},\n    onsettledchange: (settled) => { graphSettled = settled; },\n    get highlighted() { return previewHighlighted; },\n    get highlightedEdges() { return previewHighlightedEdges; },\n  };\n  ...\n  <GraphCanvas renderer={use2D || !webglAvailable ? '2d' : '3d'} props2d={previewProps2d} props3d={previewProps3d} />\n```",
+  "expected": {
+    "verdict": "accept"
+  }
+}
