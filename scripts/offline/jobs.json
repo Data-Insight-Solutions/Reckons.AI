@@ -393,11 +393,26 @@
       "desc": "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing."
     },
     {
+      "name": "script-inventory",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/script-inventory.ts --pending",
+      "desc": "F74.8 script tier. Lists scripts nothing runs, npm/job entries pointing at missing files, likely-overlapping script groups and npm names that break their own prefix pattern. Proposals only: consolidation is a decision, not a check."
+    },
+    {
       "name": "dependency-health",
       "tier": "script",
       "enabled": false,
       "cmd": "npx tsx scripts/offline/dependency-health.ts",
       "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
+    },
+    {
+      "name": "space-size",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts --profiles=s,m,l,xl --runs=3 --save",
+      "desc": "F107.10: what one large space .ttl costs to serialize, import (the app's importTurtleFull) and load into the MCP server's N3 store, at 1k to 100k statements, with and without source chunks folded in (Matt, 2026-10-06: fold the chunks in). Synthetic, seeded data. DISABLED in the sweep: it takes minutes and several GB of heap. Results go to tests/bench/results/ (git-ignored); record findings on kb:space-file-layout as dated kpred:measured lines."
     }
   ]
 }

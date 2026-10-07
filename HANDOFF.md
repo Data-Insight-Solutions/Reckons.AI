@@ -56,6 +56,48 @@ membership lives. Nothing stores user-defined sets today (`declaredSet` is read,
 dcterms:isPartOf <set>`), travelling with exports, like the 09-23 title/description decision,
 but it writes into spaces that are not open. (b) One workspace-level `dcat:Catalog`. Then
 grouping choice, and Spaces as a GraphCanvas mode. After that: version bump + release notes.
+## 2026-10-02 — Source Atoms and visual-generation plans (Codex)
+
+PR #358, branch `fix/statements-node-source-links`, base `dev`. The initial source-link commit
+`d428437` passed every CI check. Matt then added Atoms under each source, ERD options in the
+layout menu, local image generation, Gaussian splatting and a possible 3D Photorama background.
+The follow-up groups the selected entity's existing triples beneath each source using compact
+StatementCard, retaining statuses and source navigation. The technical alias Atom is recorded in
+the thesaurus without renaming serialized fields. Desktop and phone checks pass locally.
+
+The roadmap now plans ERD notation/arrangement options (exact initial choices remain open), a
+local CLI image-generation trial with ComfyUI/Diffusers alternatives, separate local splat
+reconstruction/playback trials, and optional per-space Photorama backgrounds. These are PLANS;
+no image-generation or reconstruction runtime was executed. Primary tool documentation was
+checked on 2026-10-02 and linked in the graph. Panoramas and reconstructed parallax are distinct.
+
+Local jobs were used: qwen3.6 failed three planning items with CUDA errors; qwen3-coder completed
+all four planning items plus a markup proposal and revision. Reviewed proposals are queued in
+the graph. Rejected: substituting swim-lanes for ERD, treating Atoms as a new data layer,
+discarding source navigation, invented performance guarantees and claiming a local GPU job
+conflicts with local-first. Local code-review findings were false positives (imports/completion
+notes already exist, RDF scope notes are repeatable, test records are isolated).
+Follow-up local checks on 2026-10-02: zero type errors/warnings, two source-navigation/Atom browser
+checks pass; graph lint and site alignment pass with existing graph warnings. Copied-data visual
+checks have no page errors and retain preview websocket/GPU warnings. Verify the latest PR head's
+CI before merge; the earlier green result applies only to `d428437`. Matt merges.
+
+## 2026-10-02 — Statements node source links (Codex)
+
+Branch: `fix/statements-node-source-links`, PR base `dev`. Node details now lists each source
+from current incoming/outgoing claims and opens that source's Sources inspector. Explicit jumps
+reset source selection and filters while retaining the presentation. The roadmap records
+`kb:statement-node-source-links` as functional on the branch, not deployed. Matt merges.
+
+Local validation on 2026-10-02: type check has zero errors/warnings; eight provenance unit tests
+pass; desktop and phone source-navigation checks pass; production build, build guard and `align`
+pass. Graph lint reports zero errors and 15 existing warnings. The 41 startup script jobs returned
+success with advisory findings. Copied-data visual checks on `/kb` and `/` have no page errors,
+with preview websocket and GPU screenshot warnings; private artifacts remain outside the repo.
+Local model review flagged an allegedly missing import already present at the top of the page;
+rejected after inspection. The phone test dismisses onboarding tips because an existing notification
+can cover the node-panel close button; that issue is queued as a separate graph proposal.
+Check the PR's live CI before merging; local results are not a claim about CI.
 
 ## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
 
