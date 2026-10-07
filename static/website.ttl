@@ -346,3 +346,11 @@ site:exclude-migration-tracker a skos:Concept ;
     rdfs:label "Markdown migration tracker" ;
     reckons:excludes-under <urn:reckons:arch/MigrationStatus> ;
     dcterms:description "Internal bookkeeping about which docs/*.md files in THIS repository have been migrated to TTL — entries like \"GUIDE.md -> Superseded\". Useful to a maintainer, meaningless to someone using Reckons.AI, and currently published as 16 public pages on /docs." .
+
+site:field-report-thirty-six-sentences a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Field reports" ;
+    schema:name "Thirty-six sentences" ;
+    schema:url <https://reckons.ai/docs/field-reports/thirty-six-sentences> ;
+    schema:position 91 ;
+    schema:abstract "One session on a $20-a-month plan: 36 short messages over 5.7 hours became 15 pull requests, with scripts and two local GPUs doing most of the work." .
