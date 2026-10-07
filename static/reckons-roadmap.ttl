@@ -8986,3 +8986,21 @@ kb:job-backpressure rdf:type ktype:Feature ;
                kpred:measured     "FIRST JOBS REVIEW, 2026-10-07 (scripts/offline/proposal-yield.ts): 2,651 proposals, 860 ruled on, 1,791 never looked at. Producers with ZERO ruled on: layer-classify 435, docs-review 170, extraction-score 133, stars-scan 81, docs-expand 67, distill-decisions 61, script-inventory 53, dead-weight 28. Five of those were among the 14 overdue schedules the queue worker enqueued the same evening. Running them adds to a pile no one reads; that is cost moved to triage, not work done (CLAUDE.md: offloading is not free)." ;
                kpred:remaining    "Not built. (1) The worker skips an agent-tier schedule while that producer's untriaged count is over a limit (device config, default 50), and agent:watch says so ('held: 435 unreviewed'). (2) A weekly script-tier jobs review (proposal-yield + script-inventory) whose summary the SessionStart hook surfaces, so the review happens in a session rather than relying on memory. (3) For the zero-yield producers, decide per job: demote to a script, sample (review 10, measure yield, then decide), or retire." ;
                kpred:relates-to   kb:local-panel .
+
+kb:ui-term-audit rdf:type ktype:Feature ;
+    rdfs:label "UI terms audit — engineering words and the wrong sense of a word, found on screen by rule" ;
+    kpred:feature-id "F203.7" ;
+    kpred:has-status "functional" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:terminology-ontology ;
+    kpred:has-file "scripts/offline/ui-terms.ts" ;
+    kpred:has-file "scripts/offline/lib/term-sense-rules.ts" ;
+    kpred:has-file "scripts/agent/fixtures/ui-copy-graph.labels.json" ;
+    kpred:tested-by "scripts/offline/__tests__/ui-terms.test.ts" ;
+    kpred:decided "MATT, 2026-10-07: 'We need to fix the taxonomy jobs, if they all failed that badly. If the UI displays backend engineering terms, or if the term isn't being used consistently, we should be able to detect and fix that.'" ;
+    kpred:description "Reads the visible text of every component with the Svelte compiler (ui-copy.ts) and checks it against static/reckons-terminology.ttl: jargon (kpred:ui-jargon plus every prefixed standards label, each with the concept's user word as the fix) and 'graph' in the sense of a space, decided by deterministic rules. A ratchet on template counts runs in CI; script strings are reported but not counted, because many are model prompts." ;
+    kpred:evidence "WHY RULES FIRST. The model-only job failed: on 2026-10-07 the local panel judged the 59 visible 'graph' strings on /kb 'keep' unanimously, and against hand labels it was right 3 times in 59. Unanimity measured consistency, not correctness. The labels are now a fixture every change is scored against." ;
+    kpred:measured "RULES, 2026-10-07: on the /kb fixture 47 right, 0 wrong, 12 undecided of 59 (the test requires zero wrong); on 18 held-out strings from other pages, labelled before the rules ran, 9 right, 1 wrong, 8 undecided. The miss was the landing page's 'exposes your graph to Claude Code', technical copy where the RDF sense is allowed: a question of which page, answered by declaring kpred:technical-surface, not by a rule." ;
+    kpred:measured "FIRST AUDIT, dev on 2026-10-07: 43 jargon words on screen (triples in merge review and settings, IRI on the main and add pages, mutation in settings, n-quads in the /kb export menu; About, the case study and the landing page use triple, SHACL, OWL and IndexedDB to explain), 108 uses of 'graph' meaning a space (notes inbox, Shelly's chat panel, the layout's 'back to my graph'), 75 undecided." ;
+    kpred:remaining "Declare technical surfaces (Matt's call: are About, the case study and the landing page written for a technical reader?). Fix the findings in batches with the ratchet lowered each time. Calibrate the panel on the fixture with the judged examples now in its prompt before taking any of its answers for the undecided. A rendered-page pass for text built at runtime (the first space is named 'Default Graph'). Reconcile 'statement': the terminology's user word is 'fact' while the UI's tab says Statements." ;
+    kpred:relates-to kb:local-panel .

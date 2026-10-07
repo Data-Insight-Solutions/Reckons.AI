@@ -191,3 +191,13 @@ cw:VersusDevTooling rdf:type   ktype:Concept ;
     kpred:honest-note   "AND THE COSTS, WHICH ARE REAL. Every specialist tool above is better at its own job, and a graph is a slower way to get their answer. The store has to be MAINTAINED — extraction recovers 53-63% of expected facts on a median run, so the rest is human work, and a graph nobody tends is worse than no graph because it looks authoritative. Claude Code with a CLAUDE.md is free, works today, and is the right answer for most repositories. This approach earns its keep when the knowledge outlives the session, the decisions have to be justified later, and several audiences — a person, an agent, a reader — need the same answer." ;
     kpred:honest-note   "DEPTH OF THIS COMPARISON: the tool categories above are drawn from READMEs read on 2026-09-08, not from running each product. The Claude Code figure is measured in this repository; the rest is a fair reading of what those tools say they do. Treat the category descriptions as accurate and the head-to-head as unmeasured, because it is." ;
     skos:related        cw:GitAnalysis .
+
+cw:UiTermsAudit rdf:type       ktype:Concept ;
+    rdfs:label          "Checking that the screen speaks the user's words" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          112 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "npm run offline:all includes ui-terms, which reads the text people actually see in every screen and checks it against the terminology graph. It flags words that describe how the product is built, such as triple or IRI, with the everyday word to use instead, and it finds 'graph' where the product means a space. A count of each may fall but never rise, so a new screen cannot add more." ;
+    kpred:principle     "RULES BEFORE MODELS, AND MODELS ONLY AFTER CALIBRATION. A local model asked the same question agreed with itself every time and was right 3 times in 59. The rules are scored against those 59 hand-labelled sentences and must make no mistakes on them." ;
+    kpred:honest-note   "TEXT BUILT WHILE THE APP RUNS IS NOT SEEN. A space named Default Graph by the app shows 'graph' on screen, but no source line says so; a pass over rendered pages is still to come." ;
+    kpred:relates-to    kb:ui-term-audit .

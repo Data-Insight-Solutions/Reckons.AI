@@ -413,6 +413,14 @@
       "enabled": false,
       "cmd": "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts --profiles=s,m,l,xl --runs=3 --save",
       "desc": "F107.10: what one large space .ttl costs to serialize, import (the app's importTurtleFull) and load into the MCP server's N3 store, at 1k to 100k statements, with and without source chunks folded in (Matt, 2026-10-06: fold the chunks in). Synthetic, seeded data. DISABLED in the sweep: it takes minutes and several GB of heap. Results go to tests/bench/results/ (git-ignored); record findings on kb:space-file-layout as dated kpred:measured lines."
+    },
+    {
+      "name": "ui-terms",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/ui-terms.ts --check",
+      "desc": "F203.7 UI terms ratchet (Matt, 2026-10-07: detect backend engineering terms on screen and inconsistent words). Visible template text only: jargon from kpred:ui-jargon and prefixed standards labels, and 'graph' meaning a space by rule (lib/term-sense-rules.ts). Counts may fall, never rise; baselines are kpred:ui-term-ratchet on the terminology scheme."
     }
   ]
 }
