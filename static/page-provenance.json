@@ -410,10 +410,10 @@
       "path": "features/add-menu",
       "entity": "urn:reckons:feature/AddMenu",
       "graph": "docs-features.ttl",
-      "factHash": "0740bd31867bfdfb",
-      "factCount": 1,
+      "factHash": "55f776935b6b145b",
+      "factCount": 2,
       "floor": "evidence",
-      "pageHash": "06c7a1b54623c963"
+      "pageHash": "f487d311fa532055"
     },
     {
       "path": "features/compare",
@@ -527,10 +527,10 @@
       "path": "features/node-sources",
       "entity": "urn:reckons:feature/NodeSources",
       "graph": "docs-features.ttl",
-      "factHash": "a662b4613dfd6f09",
-      "factCount": 1,
+      "factHash": "1b7e729ec7434ee5",
+      "factCount": 3,
       "floor": "evidence",
-      "pageHash": "dc7c5d091bef983f"
+      "pageHash": "da7e8ae337442812"
     },
     {
       "path": "features/passage-grounding",
@@ -854,7 +854,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "287594b44cdab75f"
+      "pageHash": "3b07f121ee6ed608"
     },
     {
       "path": "project/where-it-is-going",

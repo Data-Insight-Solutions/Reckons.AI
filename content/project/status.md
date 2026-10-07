@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it.
 
-## Works today (34)
+## Works today (36)
 
 <p class="derived">Built and working. Production means also tested and in daily use.</p>
 
@@ -50,7 +50,9 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Source Refresh](../features/source-refresh) · production
 - [Source Trust System](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Story System](../features/shelly) · production — on the Shelly (AI Assistant) page
+- [The add menu](../features/add-menu) · functional
 - [Turtle Export](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
+- [Where a node's facts came from](../features/node-sources) · functional
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
 ## Partly built (4)

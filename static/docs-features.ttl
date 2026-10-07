@@ -641,6 +641,7 @@ feat:AddMenu
     rdfs:label          "The add menu" ;
     skos:definition     "The + button at the top of every page opens a short menu of what you can add. Under New: a source (a whole document), a single statement, a set or a new space. Under From: a note, a link, a folder, a code repository, a calendar, a reminder or a space file. Each choice opens the right page already set up for it. The arrow keys move through the menu and Escape closes it." ;
     skos:broader        feat:Ingest ;
+    skos:exactMatch     kb:add-quick-menu ;
     kpred:relates-to    kb:add-quick-menu .
 
 feat:NodeSources
@@ -648,5 +649,7 @@ feat:NodeSources
     rdfs:label          "Where a node's facts came from" ;
     skos:definition     "Select a node and its details now show which sources its facts came from. Under each source are the facts that source gave, so you can see at a glance what came from where. Click a source's title to open it in Sources, where it is selected for you and any filter that would hide it is cleared. Facts are listed whichever direction they point, even when the Statements filters would hide them." ;
     skos:broader        feat:PassageGrounding ;
+    skos:exactMatch     kb:statement-node-source-links ;
+    skos:broadMatch     kb:source-atoms ;
     kpred:relates-to    kb:statement-node-source-links ;
     kpred:relates-to    kb:source-atoms .
