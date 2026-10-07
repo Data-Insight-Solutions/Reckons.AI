@@ -94,6 +94,8 @@ interface Sched {
   dueAt?: number;
   lastRun?: number;
   enabled: boolean;
+  /** kpred:harness "session-worker" = run by scripts/agent/queue-worker.ts (catch-up while a session is active), not by cron. */
+  runner?: string;
 }
 
 const schedules: Sched[] = [
@@ -106,10 +108,11 @@ const schedules: Sched[] = [
   dueAt: Number(one(iri, 'due-at') ?? 0) || undefined,
   lastRun: Number(one(iri, 'last-run') ?? 0) || undefined,
   enabled: one(iri, 'enabled') !== 'false',
+  runner: one(iri, 'harness'),
 }));
 
 const now = Date.now();
-const isDue = (s: Sched) => s.enabled && s.command && (FORCE || s.dueAt === undefined || now >= s.dueAt);
+const isDue = (s: Sched) => s.enabled && s.runner !== 'session-worker' && s.command && (FORCE || s.dueAt === undefined || now >= s.dueAt);
 
 function setState(iri: string, facts: Record<string, string>) {
   const keep = (existsSync(STATE) ? (new Parser().parse(readFileSync(STATE, 'utf8')) as Quad[]) : []).filter(

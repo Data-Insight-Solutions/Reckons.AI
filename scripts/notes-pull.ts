@@ -170,7 +170,8 @@ async function main(): Promise<void> {
   const run = async () => {
     try {
       const n = await drainOnce();
-      if (n > 0) console.log(`  ${new Date().toISOString()}  drained ${n} note(s) -> ${PENDING}`);
+      // --dry-run already printed what WOULD land; claiming it "drained" was false (HANDOFF bug).
+      if (n > 0 && !dryRun) console.log(`  ${new Date().toISOString()}  drained ${n} note(s) -> ${PENDING}`);
     } catch (e) {
       console.error(`  ${new Date().toISOString()}  ${e instanceof Error ? e.message : e}`);
     }
