@@ -8820,13 +8820,22 @@ kb:graph-proposals rdf:type ktype:Feature ;
 kb:release-0-2-5 rdf:type ktype:Release ;
     rdfs:label "v0.2.5" ;
     kpred:version "0.2.5" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:description "A more organized release, led by two features that make the graph's structure visible: the Spaces Map (the graph of graphs) and the Source View (a statement and the exact chunk it came from, in both directions)." ;
     kpred:decided "MATT, 2026-09-29: the Spaces Map and the Source View should be key features for a more organized 0.2.5." ;
     kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:source-corpus ;
     kpred:proposed "SCOPE, IN BUILD ORDER BY WHAT EACH BLOCKS: (1) kb:one-graph-canvas extraction, the shared viewport every later mode mounts on; (2) kb:source-corpus phases 1-2 plus the evidence layer (kb:document-evidence-anchors): originals kept, chunks.ttl, statement-to-chunk anchors, extraction over chunks; (3) the Source View UI on that data; (4) kb:meta-graph-view phase 2, declared set membership, and Spaces as a canvas mode. Proposals (kb:graph-proposals) and Add/Reckoning as overlays follow in the release after, once the canvas exists." ;
-    kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." .
+    kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." ;
+    kpred:decided "MATT, 2026-10-07: cut v0.2.5 from dev now, as clean and complete as it can be today, and document every shipped feature before it reaches main. Spaces phase 2 (the map as a canvas mode, ghost spaces) and the importer for source chunks folded into a space's file move to v0.2.6." ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:add-quick-menu ;
+    kpred:has-part kb:statement-node-source-links ;
+    kpred:has-part kb:source-atoms ;
+    kpred:has-part kb:local-panel ;
+    kpred:has-part kb:job-backpressure ;
+    kpred:progress "2026-10-07, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.5; release notes at content/releases/v0-2-5.md; promoted dev -> staging -> main as one set. Status becomes production when main carries it." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and verified on dev and staging; production is set by the follow-up after Matt merges staging into main" .
 
 kb:meta-graph-view kpred:measured "2026-09-29, PHASE 1 CORRECTED AFTER MATT USED IT: 'I'm confused about the need for the button count leaps in every space, also no visual of the edges between spaces.' The map only counted the current space automatically, so on a real registry it drew no lines until the button was pressed. Other spaces are now read in the background when the Spaces tab opens (only those never read or written to since, one at a time, each tried once per visit), the button is gone, and each space's own stable id is read from its settings while it is read, so a jump into a space never opened on this device still resolves to a line. When there are no lines the map says why and names the node panel's '+ add jump'. Verified end to end in Chromium with two spaces created by the app and a jump written into one space's own database: one line drawn, no button, no page errors." .
 
@@ -8982,3 +8991,13 @@ kb:job-backpressure rdf:type ktype:Feature ;
                kpred:measured     "FIRST JOBS REVIEW, 2026-10-07 (scripts/offline/proposal-yield.ts): 2,651 proposals, 860 ruled on, 1,791 never looked at. Producers with ZERO ruled on: layer-classify 435, docs-review 170, extraction-score 133, stars-scan 81, docs-expand 67, distill-decisions 61, script-inventory 53, dead-weight 28. Five of those were among the 14 overdue schedules the queue worker enqueued the same evening. Running them adds to a pile no one reads; that is cost moved to triage, not work done (CLAUDE.md: offloading is not free)." ;
                kpred:remaining    "Not built. (1) The worker skips an agent-tier schedule while that producer's untriaged count is over a limit (device config, default 50), and agent:watch says so ('held: 435 unreviewed'). (2) A weekly script-tier jobs review (proposal-yield + script-inventory) whose summary the SessionStart hook surfaces, so the review happens in a session rather than relying on memory. (3) For the zero-yield producers, decide per job: demote to a script, sample (review 10, measure yield, then decide), or retire." ;
                kpred:relates-to   kb:local-panel .
+
+kb:release-0-2-6 rdf:type ktype:Release ;
+    rdfs:label "v0.2.6" ;
+    kpred:version "0.2.6" ;
+    kpred:has-status "planned" ;
+    kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
+    kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:space-file-layout ;
+    kpred:has-part kb:graph-proposals .

@@ -346,3 +346,11 @@ site:exclude-migration-tracker a skos:Concept ;
     rdfs:label "Markdown migration tracker" ;
     reckons:excludes-under <urn:reckons:arch/MigrationStatus> ;
     dcterms:description "Internal bookkeeping about which docs/*.md files in THIS repository have been migrated to TTL — entries like \"GUIDE.md -> Superseded\". Useful to a maintainer, meaningless to someone using Reckons.AI, and currently published as 16 public pages on /docs." .
+
+site:release-notes-v0-2-5 a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.2.5" ;
+    schema:url <https://reckons.ai/docs/releases/v0-2-5> ;
+    schema:position 92 ;
+    schema:abstract "The Spaces map, the first half of the Source View, one shared graph canvas, and a local agent tier that does most of the repetitive work on your own hardware." .
