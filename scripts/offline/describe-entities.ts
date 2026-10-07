@@ -23,6 +23,7 @@ import path from 'path';
 import { Parser, type Quad } from 'n3';
 import { transactPendingQueue } from './pending-queue.js';
 import { readTextOr } from '../lib/read-file.js';
+import { ollamaStream } from './lib/ollama-stream.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -103,13 +104,8 @@ function groundingFor(subject: string): string {
 }
 
 async function ollama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { num_ctx: 16384, temperature: 0.2 } }),
-  });
-  if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-  return ((await res.json()) as { response?: string }).response?.trim() ?? '';
+  // Streamed, so a queue ahead of this call waits instead of timing out (lib/ollama-stream.ts).
+  return (await ollamaStream(OLLAMA, 'generate', { model: MODEL, prompt, options: { num_ctx: 16384, temperature: 0.2 } })).text.trim();
 }
 
 const NOW = new Date().toISOString();

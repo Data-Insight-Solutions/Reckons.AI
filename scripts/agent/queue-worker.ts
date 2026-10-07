@@ -13,7 +13,8 @@
  * GPU job runs at a time.
  *
  * Each job runs through job-watch.ts, so the circuit breaker and the TTL run report apply. A job
- * the breaker refuses (exit 3) is recorded as refused and leaves the queue; it does not loop.
+ * the breaker refuses (exit 3) is recorded as refused and leaves the queue, and its schedule is
+ * held (heldSchedules) until the breaker is reset; any failed or refused schedule rests 30 min.
  * Each pass it also enqueues recurring jobs that are overdue (session-schedule.ts), once each.
  *
  * Usage: npm run agent:queue-worker [-- --idle-minutes=20] [--poll-seconds=60] [--stay]
@@ -28,8 +29,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
 import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
+import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
-import { doneSuccesses, dueAll, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
 
@@ -65,14 +67,19 @@ async function main(): Promise<void> {
   process.on('SIGINT', bye);
   process.on('SIGTERM', bye);
   let lastState: WorkerState | undefined;
+  let lastHeld = '';
 
   while (!stop) {
     const fresh = heartbeatFresh(readHeartbeatMtime(), Date.now(), idleMinutes);
     const up = await ollamaUp();
     if (fresh) {
       const { jobs, successes } = loadRecurring(root);
-      const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(readDone())), Date.now());
-      const added = addJobs(selectDue(statuses, [])).add;
+      const done = readDone();
+      const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
+      const held = heldSchedules(done, readCircuitCache(), Date.now());
+      const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
+      if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
+      const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
       if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
     }
     const queue = orderQueue(readQueue());
