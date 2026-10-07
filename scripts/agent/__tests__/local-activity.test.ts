@@ -30,6 +30,9 @@ describe('parseGinLine — what counts as a local model being used', () => {
   });
 });
 
+// Pin the clock just after the synthetic events so existing cases are not read as stale.
+const fold = (events: ActivityEvent[], recent?: number) => foldRuns(events, recent, { now: new Date('2026-09-30T10:00:05.000Z'), host: 'h' });
+
 const start = (run: string, items = 2, models = ['m1'], votesPerModel = 3): ActivityEvent =>
   ({ kind: 'run-start', run, at: '2026-09-30T10:00:00.000Z', task: 'demo', models, items, votesPerModel, engine: 'ollama', cwd: '/' });
 const vote = (run: string, item: string, value?: string, error?: string): ActivityEvent =>
@@ -37,27 +40,27 @@ const vote = (run: string, item: string, value?: string, error?: string): Activi
 
 describe('foldRuns — progress and disagreements from the event log', () => {
   it('counts progress against items × models × votes', () => {
-    const [r] = foldRuns([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'x')]);
+    const [r] = fold([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'x')]);
     expect(r).toMatchObject({ total: 6, done: 2, finished: false, disagreements: 0 });
   });
 
   it('counts an item as disagreeing as soon as two different answers arrive', () => {
-    const [r] = foldRuns([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'y'), vote('r', 'b', 'x')]);
+    const [r] = fold([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'y'), vote('r', 'b', 'x')]);
     expect(r.disagreements).toBe(1);
   });
 
   it('counts errors, and an error is not an answer', () => {
-    const [r] = foldRuns([start('r'), vote('r', 'a', undefined, 'timeout'), vote('r', 'a', 'x')]);
+    const [r] = fold([start('r'), vote('r', 'a', undefined, 'timeout'), vote('r', 'a', 'x')]);
     expect(r).toMatchObject({ errors: 1, disagreements: 0 });
   });
 
   it('closes a run on run-end and keeps its counts and result path', () => {
-    const [r] = foldRuns([start('r'), { kind: 'run-end', run: 'r', at: '', ms: 5, counts: { unanimous: 2 }, resultPath: '/tmp/x.json' }]);
+    const [r] = fold([start('r'), { kind: 'run-end', run: 'r', at: '', ms: 5, counts: { unanimous: 2 }, resultPath: '/tmp/x.json' }]);
     expect(r).toMatchObject({ finished: true, counts: { unanimous: 2 }, resultPath: '/tmp/x.json' });
   });
 
   it('ignores votes for a run it never saw start', () => {
-    expect(foldRuns([vote('orphan', 'a', 'x')])).toEqual([]);
+    expect(fold([vote('orphan', 'a', 'x')])).toEqual([]);
   });
 });
 
@@ -107,12 +110,12 @@ describe('the dashboard says silence out loud', () => {
   });
 
   it('shows an active run in the status line, with disagreements', () => {
-    const runs = foldRuns([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'y')]);
+    const runs = fold([start('r'), vote('r', 'a', 'x'), vote('r', 'a', 'y')]);
     expect(statusline(snap({ runs }), now)).toBe('local: demo 2/6 (1≠)');
   });
 
   it('says a run at 0 votes is loading, not hung', () => {
-    const runs = foldRuns([start('r')]);
+    const runs = fold([start('r')]);
     expect(render(snap({ runs }), now)).toMatch(/loading the model into VRAM/);
   });
 });
@@ -123,5 +126,43 @@ describe('ago', () => {
     expect(ago(new Date('2026-09-30T11:59:30Z'), now)).toBe('30s ago');
     expect(ago(new Date('2026-09-30T11:30:00Z'), now)).toBe('30m ago');
     expect(ago(new Date('2026-09-30T09:00:00Z'), now)).toBe('3.0h ago');
+  });
+});
+
+describe('foldRuns — ghost runs (killed without a run-end)', () => {
+  const withPid = (pid: number, host = 'h'): ActivityEvent => ({ ...(start('r') as any), pid, host });
+  const later = new Date('2026-10-01T00:00:00.000Z');
+
+  it('marks a run abandoned when its pid on this host is gone', () => {
+    const [r] = foldRuns([withPid(4242), vote('r', 'a', 'x')], 8, { now: later, host: 'h', isAlive: () => false });
+    expect(r).toMatchObject({ finished: true, abandoned: true, failed: 'abandoned' });
+  });
+
+  it('keeps a run live while its pid is alive, however long it has been quiet', () => {
+    const [r] = foldRuns([withPid(4242), vote('r', 'a', 'x')], 8, { now: later, host: 'h', isAlive: (p) => p === 4242 });
+    expect(r).toMatchObject({ finished: false });
+    expect(r.abandoned).toBeUndefined();
+  });
+
+  it('marks an old event with no pid abandoned after 10 minutes of silence', () => {
+    const [r] = foldRuns([start('r'), vote('r', 'a', 'x')], 8, { now: later, host: 'h' });
+    expect(r.abandoned).toBe(true);
+  });
+
+  it('keeps a pid-less run live while votes are recent', () => {
+    const [r] = foldRuns([start('r'), vote('r', 'a', 'x')], 8, { now: new Date('2026-09-30T10:05:00.000Z'), host: 'h' });
+    expect(r).toMatchObject({ finished: false });
+  });
+
+  it('does not probe a pid from another host', () => {
+    const [r] = foldRuns([withPid(1, 'other'), vote('r', 'a', 'x')], 8, { now: new Date('2026-09-30T10:01:00.000Z'), host: 'h', isAlive: () => false });
+    expect(r.finished).toBe(false);
+  });
+
+  it('an interrupted run-end is finished and failed, not abandoned', () => {
+    const end: ActivityEvent = { kind: 'run-end', run: 'r', at: '2026-09-30T10:00:02.000Z', ms: 2000, counts: {}, failed: 'interrupted' };
+    const [r] = foldRuns([withPid(4242), vote('r', 'a', 'x'), end], 8, { now: later, host: 'h', isAlive: () => false });
+    expect(r).toMatchObject({ finished: true, failed: 'interrupted' });
+    expect(r.abandoned).toBeUndefined();
   });
 });
