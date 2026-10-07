@@ -162,8 +162,13 @@ const CONTROLS: Control[] = [
     label: 'The safety test suite passes',
     claim: 'The content-policy test suite is green as of this attestation.',
     check: () => {
-      const run = spawnSync(process.execPath, [projectFile('node_modules', 'vitest', 'vitest.mjs'), 'run', 'src/lib/safety'], { cwd: process.cwd(), encoding: 'utf8' });
-      const out = `${run.stdout ?? ''}`;
+      // Plain output, and colour codes stripped anyway. Under a VS Code terminal's environment vitest
+      // colours piped output ('Tests \x1b[22m \x1b[1m\x1b[32m48 passed'), the count no longer matched,
+      // and the queue worker's runs failed while every run from a plain shell passed (2026-10-07).
+      const run = spawnSync(process.execPath, [projectFile('node_modules', 'vitest', 'vitest.mjs'), 'run', 'src/lib/safety'], {
+        cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0' },
+      });
+      const out = `${run.stdout ?? ''}`.replace(/\x1b\[[0-9;]*m/g, '');
       const m = out.match(/Tests\s+(\d+)\s+passed/);
       const failed = /\d+\s+failed/.test(out);
       // When there is no count, say what vitest DID print. Observed 2026-10-07: three runs reported
