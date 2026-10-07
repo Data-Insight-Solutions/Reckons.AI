@@ -40,6 +40,7 @@
  *   npx tsx scripts/offline/term-usage.ts --term=node   one term, with its top files
  *   npx tsx scripts/offline/term-usage.ts --json        machine-readable
  *   npx tsx scripts/offline/term-usage.ts --pending      queue findings for review in Reckons.AI
+ *   npx tsx scripts/offline/term-usage.ts --check        the AMBIGUITY RATCHET (CI): see checkTermRatchets
  */
 
 import { Parser, type Quad } from 'n3';
@@ -56,6 +57,7 @@ const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes('--json');
 const PENDING_OUT = argv.includes('--pending');
 const ONLY_TERM = argv.find((a) => a.startsWith('--term='))?.slice('--term='.length);
+const CHECK = argv.includes('--check');
 
 const SKOS = 'http://www.w3.org/2004/02/skos/core#';
 const KPRED = 'urn:kbase:predicate/';
@@ -126,8 +128,22 @@ export const KEYWORD_EXCLUSIONS: Record<string, RegExp> = {
   group: /\brole\s*=\s*['"]group|<g\b|\bgroup\s*\(/,
 };
 
+/**
+ * Keywords that must be matched AT the occurrence, not in a window around it. `export` is the
+ * module keyword on thousands of lines, and a window rule would also discard the real identifier
+ * on the same line (`export function exportTurtle` holds one keyword and one term). Found
+ * 2026-10-07 by a mixed-model term-senses panel: devstral voted 'other' on `export default` and
+ * `export ... from` lines that the two other models filed as the export feature, and it was right —
+ * until then the export count, and its ratchet baseline, were mostly module syntax.
+ */
+export const KEYWORD_AT: Record<string, RegExp> = {
+  export: /^export\s+(?:default|const|let|var|function|async|class|type|interface|enum|abstract|declare|namespace|\{|\*)/,
+};
+
 /** Does the immediate context around this occurrence make it syntax rather than our term? */
 export function isKeywordUse(token: string, line: string, at: number): boolean {
+  const at_ = KEYWORD_AT[token];
+  if (at_ && !/[A-Za-z0-9_$.]/.test(line[at - 1] ?? '') && at_.test(line.slice(at))) return true;
   const rule = KEYWORD_EXCLUSIONS[token];
   if (!rule) return false;
   return rule.test(line.slice(Math.max(0, at - 32), at + 32));
@@ -295,6 +311,58 @@ export function emptyUsage(token: string, meanings: Term[] = []): TokenUsage {
   };
 }
 
+/**
+ * THE AMBIGUITY RATCHET (Matt, 2026-10-07: terminology is a standing maintenance job, and a new
+ * ambiguous use fails CI). For every token with two or more recorded meanings, the FREE count (bare
+ * uses a rename could still qualify) may fall but never rise. The baselines live beside the terms in
+ * static/reckons-terminology.ttl as `kpred:term-ratchet "<token>/free/<max>"`, the same shape as the
+ * naming ratchet's kpred:ratchet but a separate predicate, because naming-conventions.ts fails on
+ * any metric it does not measure. A token that BECOMES ambiguous (a second meaning was added) has no
+ * baseline yet and fails until one is recorded: deciding the baseline is the point of the gate.
+ */
+export type TermRatchet = { token: string; binding: BindingClass; max: number };
+
+export function readTermRatchets(ttl: string): TermRatchet[] {
+  const out: TermRatchet[] = [];
+  for (const m of ttl.matchAll(/kpred:term-ratchet\s+"([^"]+)"/g)) {
+    const [token, binding, max] = m[1].split('/');
+    const n = Number(max);
+    if (!token || !['free', 'contract', 'foreign'].includes(binding) || !Number.isInteger(n)) continue;
+    out.push({ token, binding: binding as BindingClass, max: n });
+  }
+  return out;
+}
+
+export type RatchetRow =
+  | { kind: 'over'; token: string; actual: number; max: number }
+  | { kind: 'under'; token: string; actual: number; max: number }
+  | { kind: 'at'; token: string; actual: number }
+  | { kind: 'unbaselined'; token: string; actual: number; meanings: number }
+  | { kind: 'stale'; token: string; max: number };
+
+/** Pure: compare measured usages against baselines. Only 'over' and 'unbaselined' fail. */
+export function checkTermRatchets(usages: TokenUsage[], ratchets: TermRatchet[]): RatchetRow[] {
+  const rows: RatchetRow[] = [];
+  const byToken = new Map(usages.map((u) => [u.token, u]));
+  for (const u of usages) {
+    if (u.meanings.length < 2) continue;
+    const r = ratchets.find((x) => x.token === u.token);
+    const actual = r ? u.binding[r.binding] : u.binding.free;
+    if (!r) rows.push({ kind: 'unbaselined', token: u.token, actual, meanings: u.meanings.length });
+    else if (actual > r.max) rows.push({ kind: 'over', token: u.token, actual, max: r.max });
+    else if (actual < r.max) rows.push({ kind: 'under', token: u.token, actual, max: r.max });
+    else rows.push({ kind: 'at', token: u.token, actual });
+  }
+  // A baseline for a token that is no longer ambiguous (or no longer exists) protects nothing.
+  for (const r of ratchets) {
+    const u = byToken.get(r.token);
+    if (!u || u.meanings.length < 2) rows.push({ kind: 'stale', token: r.token, max: r.max });
+  }
+  return rows;
+}
+
+export const ratchetFails = (rows: RatchetRow[]): boolean => rows.some((r) => r.kind === 'over' || r.kind === 'unbaselined');
+
 /** One file, line by line. Exported so a test can drive it without touching the filesystem. */
 export function scanText(text: string, file: string, tokens: Map<string, TokenUsage>): void {
   const isSvelte = file.endsWith('.svelte');
@@ -371,6 +439,20 @@ function main(): void {
   }
 
   const usages = [...tokens.values()].sort((a, b) => b.occurrences - a.occurrences);
+
+  if (CHECK) {
+    const rows = checkTermRatchets(usages, readTermRatchets(ttl));
+    console.log(C.bold('\nAMBIGUITY RATCHET — a word with several meanings may not gain bare uses'));
+    for (const r of rows) {
+      if (r.kind === 'over') console.log(`  ${C.red('✗')} ${r.token}: ${r.actual} free, baseline ${r.max} — ${C.red(`${r.actual - r.max} new`)}. Use a qualified name (see its meanings in static/reckons-terminology.ttl), or raise the baseline in the same commit and say why.`);
+      else if (r.kind === 'unbaselined') console.log(`  ${C.red('✗')} ${r.token}: ${r.meanings} meanings and no baseline. Add kpred:term-ratchet "${r.token}/free/${r.actual}" in static/reckons-terminology.ttl to start the ratchet.`);
+      else if (r.kind === 'under') console.log(`  ${C.yellow('!')} ${r.token}: ${r.actual} free, baseline ${r.max} ${C.dim('(lower the baseline to lock the cleanup in)')}`);
+      else if (r.kind === 'stale') console.log(`  ${C.yellow('!')} ${r.token}: baseline ${r.max} but the token is no longer ambiguous ${C.dim('(remove it)')}`);
+      else console.log(`  ${C.green('✓')} ${r.token}: ${r.actual} free, at baseline`);
+    }
+    console.log('');
+    process.exit(ratchetFails(rows) ? 1 : 0);
+  }
 
   if (JSON_OUT) {
     console.log(
