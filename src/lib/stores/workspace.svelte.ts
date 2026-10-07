@@ -55,6 +55,7 @@ import {
 } from '../rdf/pending-entry';
 import { pushNotification } from './notifications.svelte';
 import { conflictNotice, separateConflictCopies } from '../storage/sync-conflicts';
+import { CORPUS_DIR } from '../ingest/source-corpus';
 
 /**
  * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
@@ -628,7 +629,7 @@ async function writeAssetsToFolder(
  *  would otherwise flood discovery with stray `.ttl` fixtures when the linked
  *  folder is a real project root (e.g. a git repo). Hidden dirs (dot-prefixed:
  *  `.git`, `.svelte-kit`, `.cache`, …) are skipped separately below. */
-const WALK_SKIP_DIRS = new Set(['assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
+const WALK_SKIP_DIRS = new Set([CORPUS_DIR /* F221: chunks.ttl is a source corpus, never a graph */, 'assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
 
 /**
  * Workspace files that are AGENT INFRASTRUCTURE, not the user's knowledge.
@@ -1728,7 +1729,7 @@ export async function listModelFiles(repo: string, filePaths: string[]): Promise
 // package is redistribution of someone else's content.
 
 /** Directory name under the workspace root. Excluded from graph packages by construction. */
-export const SOURCES_DIR = 'sources';
+export const SOURCES_DIR = CORPUS_DIR;
 
 /**
  * One file per source id. Ids are app-generated, but this builds a path in the user's own
