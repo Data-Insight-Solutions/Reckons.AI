@@ -5,6 +5,8 @@
   import AdaptivePanel from './AdaptivePanel.svelte';
   import StatementCard from './StatementCard.svelte';
   import ExtractionTrail from './ExtractionTrail.svelte';
+  import StatementEvidence from './StatementEvidence.svelte';
+  import SourceDocument from './SourceDocument.svelte';
   import type { ExtractionRun, Source, Statement } from '$lib/rdf/types';
   import {
     buildProvenanceIndex, filterProvenanceIndex, projectProvenance, statementsForProvenanceNode,
@@ -181,6 +183,9 @@
         </div>
         <ExtractionTrail source={source.source} statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []}
           runs={runs.filter((run) => run.sourceId === source.id)} loading={loadingRuns} error={runError} />
+        <!-- Every statement of the source, whatever the review filter, so a passage's counts are its whole yield. -->
+        <SourceDocument sourceId={source.id} sourceHash={source.source?.hash}
+          statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []} onterm={selectNode} />
         <h4>Extracted entity groups</h4>
         {#each source.groups as group (group.key)}
           <button class="detail-row" onclick={() => selected = group.key}>{group.label} <span>{group.members.length} entities →</span></button>
@@ -215,6 +220,7 @@
             {#if statement.excerpt && statement.grounded !== false}
               <small>{statement.grounded === true ? 'Excerpt matched the source text.' : 'Excerpt retained; a source-text match was not recorded.'}</small>
             {/if}
+            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} sourceHash={sources.find((s: Source) => s.id === statement.sourceId)?.hash} />
           </div>
         {/each}
       </div>

@@ -1,0 +1,12 @@
+{
+  "id": "noisy-derived-performance",
+  "source": "PR #334 local review finding (rejected by the overseer)",
+  "promptContext": "A local model (qwen3-coder) reviewed the change below and reported one finding. Judge the FINDING.\n\nFINDING: \"The $derived declarations `previewHighlighted = $derived([...pendingKeys])` and `previewHighlightedEdges = $derived(focusedEdge ? [focusedEdge] : [])` spread into new arrays and will cause extra re-renders and a performance regression. Use the arrays directly.\"\n\nCODE (after):\n```svelte\n  const previewHighlighted = $derived([...pendingKeys]);\n  const previewHighlightedEdges = $derived(focusedEdge ? [focusedEdge] : []);\n  ...\n    get highlighted() { return previewHighlighted; },\n    get highlightedEdges() { return previewHighlightedEdges; },\n```\nCODE (before, in the template, evaluated on every render of the parent):\n```svelte\n  highlighted={[...pendingKeys]}\n  highlightedEdges={focusedEdge ? [focusedEdge] : []}\n```\nSvelte 5 $derived values are memoized and recompute only when the signals they read change.",
+  "expected": {
+    "verdict": "reject",
+    "mustMention": [
+      "memoized",
+      "recompute"
+    ]
+  }
+}
