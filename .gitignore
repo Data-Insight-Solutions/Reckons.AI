@@ -49,6 +49,9 @@ Thumbs.db
 # Track them; keep the local/private .claude state ignored.
 !.claude/commands/
 !.claude/commands/*.md
+# Project subagents (F89 kb:loop-opus-review) are loaded by Claude Code from this path, like commands.
+!.claude/agents/
+!.claude/agents/*.md
 
 # Local data / workspace
 mnt/
