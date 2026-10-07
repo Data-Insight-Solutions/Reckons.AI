@@ -464,8 +464,8 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # Checked by scripts/offline/term-usage.ts --check (script tier, blocking). Lower a baseline in
 # the same commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
-    kpred:term-ratchet "graph/free/4687" ;
+    kpred:term-ratchet "graph/free/4633" ;
     kpred:term-ratchet "node/free/3232" ;
     kpred:term-ratchet "export/free/389" ;
-    kpred:term-ratchet "share/free/178" ;
-    kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/; re-measured on dev the same evening when this check merged, after the Source View, coverage and release PRs landed (graph +27, node +73, export +18): a ratchet starts from the code it lands on. Raised again for #327 (graph +9, node +16): docs pages that QUOTE the words while explaining the terminology work, the tool and runtime names graph lint and Node, and the page title Where a node's facts came from, which uses the word the screen itself shows." .
+    kpred:term-ratchet "share/free/180" ;
+    kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/; re-measured on dev the same evening when this check merged, after the Source View, coverage and release PRs landed (graph +27, node +73, export +18): a ratchet starts from the code it lands on. Raised again for #327 (graph +9, node +16): docs pages that QUOTE the words while explaining the terminology work, the tool and runtime names graph lint and Node, and the page title Where a node's facts came from, which uses the word the screen itself shows. #386 lowered graph to 4633 (54 fewer: /kb now says space) and raised share by 2: 'share package' is kterm:share-package's own label, the user word that replaced 'graph package'." .
