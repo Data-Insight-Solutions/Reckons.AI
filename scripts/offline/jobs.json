@@ -406,6 +406,14 @@
       "enabled": false,
       "cmd": "npx tsx scripts/offline/dependency-health.ts",
       "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
+    },
+    {
+      "name": "codebase-coverage",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/codebase-coverage.ts --check",
+      "desc": "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides."
     }
   ]
 }
