@@ -464,8 +464,8 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # Checked by scripts/offline/term-usage.ts --check (script tier, blocking). Lower a baseline in
 # the same commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
-    kpred:term-ratchet "graph/free/4651" ;
-    kpred:term-ratchet "node/free/3143" ;
-    kpred:term-ratchet "export/free/371" ;
+    kpred:term-ratchet "graph/free/4678" ;
+    kpred:term-ratchet "node/free/3216" ;
+    kpred:term-ratchet "export/free/389" ;
     kpred:term-ratchet "share/free/178" ;
-    kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/." .
+    kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/; re-measured on dev the same evening when this check merged, after the Source View, coverage and release PRs landed (graph +27, node +73, export +18): a ratchet starts from the code it lands on." .
