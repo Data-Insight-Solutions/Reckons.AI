@@ -73,7 +73,7 @@ export interface ReAnalyzeResponse {
 
 // ── Shared helpers ──────────────────────────────────────────────────────────
 
-function kbHeader(kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+function knowledgeBaseHeader(kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
   const parts: string[] = [];
   if (kbTitle || kbDescription) {
     parts.push(`KNOWLEDGE BASE: ${kbTitle ?? 'Unnamed'}\nPURPOSE: ${kbDescription ?? '(not specified)'}`);
@@ -100,7 +100,7 @@ function entityBlock(entities: EntitySummary[]): string {
 // ── Focused prompt builders ─────────────────────────────────────────────────
 
 function buildNewTriplesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
-  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
+  return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph. Your ONLY task is to identify MISSING RELATIONS — new predicate triples that connect existing entities.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
 This graph is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this graph hasn't captured it yet. Your suggestions should surface connections that the graph *probably* should contain given its current focus, not everything that *could* be true in the world.
@@ -133,7 +133,7 @@ Return exactly:
 }
 
 function buildEnrichPrompt(entities: EntitySummary[], webContext: string, kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
-  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph using web search results.
+  return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are enriching an RDF knowledge graph using web search results.
 
 IMPORTANT — OPEN WORLD ASSUMPTION:
 This graph is deliberately scoped. Absence of a fact does NOT mean the fact is false — it means this graph hasn't captured it yet. Your job is to identify facts from the web search results that would meaningfully fill gaps in this graph's coverage, given its existing focus and entities.
@@ -175,7 +175,7 @@ Return exactly:
 }
 
 function buildMergePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
-  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are simplifying an RDF knowledge graph by finding DUPLICATE ENTITIES — nodes that represent the same real-world thing and should be merged into one.
+  return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are simplifying an RDF knowledge graph by finding DUPLICATE ENTITIES — nodes that represent the same real-world thing and should be merged into one.
 
 Signs of duplicates: same name in different case, abbreviation vs full name, spelling variants, same identifier in different formats.
 
@@ -210,7 +210,7 @@ function buildEntityTypesPrompt(entities: EntitySummary[], kbTitle?: string, kbD
     (t) => `  ${t.iri} | "${t.label}" — ${t.description}`
   ).join('\n');
 
-  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are correcting entity types in an RDF knowledge graph. Your ONLY task is to find MISTYPED or UNTYPED entities that need a type correction.
+  return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are correcting entity types in an RDF knowledge graph. Your ONLY task is to find MISTYPED or UNTYPED entities that need a type correction.
 
 Common errors:
 - A Document node typed as Concept
@@ -252,7 +252,7 @@ Return exactly:
 function buildDeletePrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
   const islands = entities.filter(e => e.isIsland).map(e => `  • ${e.label} (${e.iri})`).join('\n');
 
-  return `${kbHeader(kbTitle, kbDescription, analyzeGuidance)}You are pruning an RDF knowledge graph. Your ONLY task is to identify NOISE NODES — entities that should be deleted.
+  return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are pruning an RDF knowledge graph. Your ONLY task is to identify NOISE NODES — entities that should be deleted.
 
 PRIORITY ORDER (assess in this order):
 1. ISLAND NODES — low-connectivity nodes with few statements and a single source, especially if the label looks like a raw keyword, partial phrase, or accidental IRI.

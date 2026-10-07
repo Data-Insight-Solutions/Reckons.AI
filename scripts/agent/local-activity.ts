@@ -17,7 +17,7 @@
  * working log is not something to commit by accident.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 
 export function eventLogPath(): string {
@@ -26,7 +26,7 @@ export function eventLogPath(): string {
 }
 
 export type ActivityEvent =
-  | { kind: 'run-start'; run: string; at: string; task: string; models: string[]; items: number; votesPerModel: number; engine: string; cwd: string }
+  | { kind: 'run-start'; run: string; at: string; task: string; models: string[]; items: number; votesPerModel: number; engine: string; cwd: string; pid?: number; host?: string }
   | { kind: 'vote'; run: string; at: string; model: string; item: string; value?: string; reason?: string; error?: string; ms: number }
   | { kind: 'run-end'; run: string; at: string; ms: number; counts: Record<string, number>; resultPath?: string; failed?: string };
 
@@ -76,6 +76,8 @@ export type RunView = {
   /** Items with every vote in whose votes differ, plus items already showing two different values. */
   disagreements: number;
   finished: boolean;
+  /** No run-end, and the process is gone (or, for old events without a pid, silent too long). Implies finished. */
+  abandoned?: boolean;
   failed?: string;
   counts?: Record<string, number>;
   ms?: number;
@@ -84,8 +86,32 @@ export type RunView = {
 };
 
 /** Fold the log into one view per run, newest last. Pure, so the dashboard's numbers are tested. */
-export function foldRuns(events: ActivityEvent[], recentPerRun = 8): RunView[] {
+export type Liveness = {
+  now?: Date;
+  host?: string;
+  /** Is this pid alive on this host? Injectable so the fold stays pure. */
+  isAlive?: (pid: number) => boolean;
+  /** Old events carry no pid: a run silent for longer than this is taken as dead. */
+  staleMs?: number;
+};
+
+/** process.kill(pid, 0): ESRCH means gone; EPERM means it exists but is not ours. */
+export function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+export const STALE_RUN_MS = 10 * 60_000;
+
+export function foldRuns(events: ActivityEvent[], recentPerRun = 8, liveness: Liveness = {}): RunView[] {
+  const { now = new Date(), host = hostname(), isAlive = pidAlive, staleMs = STALE_RUN_MS } = liveness;
   const runs = new Map<string, RunView>();
+  const pids = new Map<string, { pid: number; host?: string }>();
+  const lastAt = new Map<string, string>();
   const values = new Map<string, Map<string, Set<string>>>();
   for (const e of events) {
     if (e.kind === 'run-start') {
@@ -95,10 +121,13 @@ export function foldRuns(events: ActivityEvent[], recentPerRun = 8): RunView[] {
         finished: false, recent: [],
       });
       values.set(e.run, new Map());
+      lastAt.set(e.run, e.at);
+      if (e.pid !== undefined) pids.set(e.run, { pid: e.pid, host: e.host });
       continue;
     }
     const view = runs.get(e.run);
     if (!view) continue;
+    lastAt.set(e.run, e.at);
     if (e.kind === 'vote') {
       view.done++;
       if (e.error) view.errors++;
@@ -117,6 +146,19 @@ export function foldRuns(events: ActivityEvent[], recentPerRun = 8): RunView[] {
       view.counts = e.counts;
       view.ms = e.ms;
       view.resultPath = e.resultPath;
+    }
+  }
+  for (const view of runs.values()) {
+    if (view.finished) continue;
+    const p = pids.get(view.run);
+    const dead = p && (p.host === undefined || p.host === host)
+      ? !isAlive(p.pid)
+      // Another host's pid cannot be probed, and old events have none: fall back to silence.
+      : now.getTime() - new Date(lastAt.get(view.run) ?? view.startedAt).getTime() > staleMs;
+    if (dead) {
+      view.finished = true;
+      view.abandoned = true;
+      view.failed = 'abandoned';
     }
   }
   return [...runs.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt));

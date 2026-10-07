@@ -501,3 +501,48 @@ kprio:low a skos:Concept ;
     skos:notation "low" ;
     hnav:order 3 ;
     skos:definition "Recorded so it is not lost, and deferring it costs nothing today." .
+
+# ── Device configuration (F74.7) ─────────────────────────────────────────────
+# Thresholds and recurring schedules are statements, so they are graphs: generic defaults in
+# scripts/agent/defaults/device-defaults.ttl and reckons-workspace/schedules.ttl, per-machine
+# overrides in the private ~/.config/reckons/device.ttl. Overrides win per property. Existing
+# predicates are reused (kpred:every, kpred:command, kpred:enabled, kpred:tier, kpred:harness,
+# rdfs:label); these are the only new ones.
+
+ktype:DeviceProfile a rdfs:Class ;
+    rdfs:label "device profile" ;
+    rdfs:comment "A machine (or every machine, hostname \"*\") that statements can be scoped to." .
+
+ktype:Threshold a rdfs:Class ;
+    rdfs:label "threshold" ;
+    rdfs:comment "A named limit. rdfs:label is the metric; kpred:yellow / kpred:red bound a colour band, kpred:limit is a single hard limit. Merged per property across defaults and device overrides, matched by label." .
+
+kpred:hostname a rdf:Property ;
+    rdfs:label "hostname" ;
+    rdfs:domain ktype:DeviceProfile ;
+    rdfs:comment "The machine name (os.hostname()) a device profile stands for; \"*\" is every machine. Trusts the OS hostname: a renamed machine falls back to the defaults." .
+
+kpred:device a rdf:Property ;
+    rdfs:label "device" ;
+    rdfs:range ktype:DeviceProfile ;
+    rdfs:comment "Scopes a statement group to one device profile. A group naming a profile for another host is ignored." .
+
+kpred:yellow a rdf:Property ;
+    rdfs:label "yellow at" ;
+    rdfs:domain ktype:Threshold ;
+    rdfs:comment "The value at or above which a reading is shown yellow (watch)." .
+
+kpred:red a rdf:Property ;
+    rdfs:label "red at" ;
+    rdfs:domain ktype:Threshold ;
+    rdfs:comment "The value at or above which a reading is shown red (act now)." .
+
+kpred:limit a rdf:Property ;
+    rdfs:label "limit" ;
+    rdfs:domain ktype:Threshold ;
+    rdfs:comment "A single hard limit: the worker starts nothing at or above it (GPU VRAM percent, temperature, other-process utilization)." .
+
+kpred:network a rdf:Property ;
+    rdfs:label "needs network" ;
+    rdfs:domain ktype:Schedule ;
+    rdfs:comment "\"true\" when the scheduled command talks to the internet (e.g. an advisory lookup), so the person can see which recurring jobs leave the machine." .
