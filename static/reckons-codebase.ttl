@@ -25,6 +25,7 @@
 ## =============================================================================
 
 code:repo  rdf:type     ktype:Concept ;
+             kpred:coverage-ratchet "unlinked/206" ;
            rdfs:label   "tripleNotes Repository" ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;
@@ -74,6 +75,70 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/current-ranking.ts" ;
           kpred:has-file "src/lib/rdf/page.ts" ;
           kpred:has-file "src/lib/rdf/archive.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/americanize.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/analysis-advisor.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/archive-guard.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/auto-trust.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/captured-notes.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/claims-context.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/co-hyponyms.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/decision-dependency.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/distill-options.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/entity-typing.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/hierarchy-sectors.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/intent-escalation.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/kb-context.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/multi-graph-query.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/multi-source-provenance.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/n-hop.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/option-cascade.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/parse-date.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/pending-entry.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/protected-entities.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/reanalysis.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/retention.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/review-routing.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/term-alternatives.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/trig.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/triple-shape.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/vocabulary-repair.test.ts" ;
+          kpred:has-file "src/lib/rdf/americanize.ts" ;
+          kpred:has-file "src/lib/rdf/analysis-advisor.ts" ;
+          kpred:has-file "src/lib/rdf/archive-guard.ts" ;
+          kpred:has-file "src/lib/rdf/auto-trust.ts" ;
+          kpred:has-file "src/lib/rdf/claims-context.ts" ;
+          kpred:has-file "src/lib/rdf/co-hyponyms.ts" ;
+          kpred:has-file "src/lib/rdf/entity-sets.ts" ;
+          kpred:has-file "src/lib/rdf/entity-typing.ts" ;
+          kpred:has-file "src/lib/rdf/finding-class.ts" ;
+          kpred:has-file "src/lib/rdf/ingest-aliases.ts" ;
+          kpred:has-file "src/lib/rdf/intent-escalation.ts" ;
+          kpred:has-file "src/lib/rdf/kb-context.ts" ;
+          kpred:has-file "src/lib/rdf/merge-aliases.ts" ;
+          kpred:has-file "src/lib/rdf/multi-graph-query.ts" ;
+          kpred:has-file "src/lib/rdf/n-hop.ts" ;
+          kpred:has-file "src/lib/rdf/option-cascade.ts" ;
+          kpred:has-file "src/lib/rdf/parse-date.ts" ;
+          kpred:has-file "src/lib/rdf/partition-run.ts" ;
+          kpred:has-file "src/lib/rdf/pending-entry.ts" ;
+          kpred:has-file "src/lib/rdf/personal-notes.ts" ;
+          kpred:has-file "src/lib/rdf/protected-entities.ts" ;
+          kpred:has-file "src/lib/rdf/reanalysis-run.ts" ;
+          kpred:has-file "src/lib/rdf/reanalysis.ts" ;
+          kpred:has-file "src/lib/rdf/retention.ts" ;
+          kpred:has-file "src/lib/rdf/review-routing.ts" ;
+          kpred:has-file "src/lib/rdf/scope-derive.ts" ;
+          kpred:has-file "src/lib/rdf/scope-justification.ts" ;
+          kpred:has-file "src/lib/rdf/scope.ts" ;
+          kpred:has-file "src/lib/rdf/source-cache.ts" ;
+          kpred:has-file "src/lib/rdf/term-alternatives.ts" ;
+          kpred:has-file "src/lib/rdf/terminology.ts" ;
+          kpred:has-file "src/lib/rdf/timeline-layout.ts" ;
+          kpred:has-file "src/lib/rdf/triage.ts" ;
+          kpred:has-file "src/lib/rdf/triple-shape.ts" ;
+          kpred:has-file "src/lib/rdf/type-shapes.ts" ;
+          kpred:has-file "src/lib/rdf/vocabulary-context.ts" ;
+          kpred:has-file "src/lib/rdf/vocabulary-repair.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents-persist.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/current-ranking.test.ts" ;
@@ -123,6 +188,18 @@ code:stores  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/stores/wasm-status.svelte.ts" ;
              kpred:has-file "src/lib/stores/workspace.svelte.ts" ;
              kpred:has-file "src/lib/stores/pod-view.svelte.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/archive-decision.test.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/download-consent.test.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/kb-ingest-atomic.test.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/notification-suppression.test.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/story-prompt.test.ts" ;
+             kpred:has-file "src/lib/stores/__tests__/viewport.test.ts" ;
+             kpred:has-file "src/lib/stores/archive-decision.svelte.ts" ;
+             kpred:has-file "src/lib/stores/drive-sync.svelte.ts" ;
+             kpred:has-file "src/lib/stores/feedback.svelte.ts" ;
+             kpred:has-file "src/lib/stores/kb-import.ts" ;
+             kpred:has-file "src/lib/stores/story-prompt.svelte.ts" ;
+             kpred:has-file "src/lib/stores/viewport.svelte.ts" ;
              kpred:tested-by "src/lib/stores/__tests__/entity-types.test.ts" ;
              kpred:tested-by "src/lib/stores/__tests__/source-refresh.test.ts" ;
              kpred:tested-by "src/lib/stores/__tests__/workspace-kb-file.test.ts" .
@@ -146,6 +223,26 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/kb-assets.ts" ;
               kpred:has-file "src/lib/storage/kb-fingerprint.ts" ;
               kpred:has-file "src/lib/storage/gif-package.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/app-db.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/graph-sets.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/kb-duplicate-choice.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/multi-graph-store.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/settings-persistence.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/space-leaps.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/sync-conflicts.test.ts" ;
+              kpred:has-file "src/lib/storage/app-db.ts" ;
+              kpred:has-file "src/lib/storage/archive-gallery.ts" ;
+              kpred:has-file "src/lib/storage/extraction-runs.ts" ;
+              kpred:has-file "src/lib/storage/graph-sets.ts" ;
+              kpred:has-file "src/lib/storage/kb-duplicate-choice.ts" ;
+              kpred:has-file "src/lib/storage/kb-import-target.ts" ;
+              kpred:has-file "src/lib/storage/kb-naming.ts" ;
+              kpred:has-file "src/lib/storage/kb-probe.ts" ;
+              kpred:has-file "src/lib/storage/kb-snapshots.ts" ;
+              kpred:has-file "src/lib/storage/multi-graph-store.ts" ;
+              kpred:has-file "src/lib/storage/personal-notes.ts" ;
+              kpred:has-file "src/lib/storage/preview-mode.ts" ;
+              kpred:has-file "src/lib/storage/sync-conflicts.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/kb-registry.test.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/backup.test.ts" ;
               kpred:tested-by "src/lib/storage/__tests__/semantic-export.test.ts" ;
@@ -193,7 +290,17 @@ code:components  rdf:type     ktype:Concept ;
                  kpred:has-file "src/lib/components/QRSharePanel.svelte" ;
                  kpred:has-file "src/lib/components/ShellyVoice.svelte" ;
                  kpred:has-file "src/lib/components/ui/Select.svelte" ;
-                 kpred:has-file "src/lib/components/ui/Tooltip.svelte" .
+                 kpred:has-file "src/lib/components/ui/Tooltip.svelte" ;
+                 kpred:has-file "src/lib/components/AdaptivePanel.svelte" ;
+                 kpred:has-file "src/lib/components/ArchiveReferenceDialog.svelte" ;
+                 kpred:has-file "src/lib/components/AssetGlbViewer.svelte" ;
+                 kpred:has-file "src/lib/components/ContactForm.svelte" ;
+                 kpred:has-file "src/lib/components/FeedbackDialog.svelte" ;
+                 kpred:has-file "src/lib/components/GraphLabels.svelte" ;
+                 kpred:has-file "src/lib/components/GraphPackagePanel.svelte" ;
+                 kpred:has-file "src/lib/components/GraphPreview.svelte" ;
+                 kpred:has-file "src/lib/components/NotesInbox.svelte" ;
+                 kpred:has-file "src/lib/components/Sheet.svelte" .
 
 ## =============================================================================
 ## src/lib/components/ui — shadcn-svelte Design System
@@ -241,6 +348,12 @@ code:publish  rdf:type     ktype:Concept ;
               skos:broader code:repo ;
               kpred:has-file "src/lib/publish/site-export.ts" ;
               kpred:has-file "src/lib/publish/site-import.ts" ;
+              kpred:has-file "src/lib/publish/__tests__/post-reckoning.test.ts" ;
+              kpred:has-file "src/lib/publish/__tests__/website-alignment.test.ts" ;
+              kpred:has-file "src/lib/publish/md-escape.ts" ;
+              kpred:has-file "src/lib/publish/post-reckoning.ts" ;
+              kpred:has-file "src/lib/publish/publish-gate.ts" ;
+              kpred:has-file "src/lib/publish/website-alignment.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 
@@ -285,6 +398,19 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/onnx-node-stub.js" ;
           kpred:has-file "src/lib/integrations/llm/ollama-extract.ts" ;
           kpred:has-file "src/lib/integrations/llm/prefer-local.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/ai-consent.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/device-capability.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/device-select.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/extract-critic.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/mock-chat.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/system-prompt-order.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/voice-opt-in.test.ts" ;
+          kpred:has-file "src/lib/integrations/llm/device-capability.ts" ;
+          kpred:has-file "src/lib/integrations/llm/device-select.ts" ;
+          kpred:has-file "src/lib/integrations/llm/extract-critic.ts" ;
+          kpred:has-file "src/lib/integrations/llm/model-for-task.ts" ;
+          kpred:has-file "src/lib/integrations/llm/voice-catalog.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/prefer-local.test.ts" .
@@ -313,7 +439,10 @@ code:indico  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/integrations/indico/sync.ts" ;
              kpred:has-file "src/lib/integrations/indico/types.ts" ;
              kpred:has-file "src/lib/integrations/indico/ical-parse.ts" ;
-             kpred:has-file "src/lib/integrations/indico/indico-rdf.ts" .
+             kpred:has-file "src/lib/integrations/indico/indico-rdf.ts" ;
+             kpred:has-file "src/lib/integrations/indico/__tests__/ical-proxy-consent.test.ts" ;
+             kpred:has-file "src/lib/integrations/indico/__tests__/timezone.test.ts" ;
+             kpred:has-file "src/lib/integrations/indico/reachability.ts" .
 
 code:parsers  rdf:type     ktype:Concept ;
               rdfs:label   "Content Parsers" ;
@@ -383,6 +512,8 @@ code:ingest-lib  rdf:type     ktype:Concept ;
                  kpred:has-file "src/lib/ingest/folder-scan.ts" ;
                  kpred:has-file "src/lib/ingest/archive-reference.ts" ;
                  kpred:has-file "src/lib/ingest/precomputed.ts" ;
+                 kpred:has-file "src/lib/ingest/__tests__/extraction-run.test.ts" ;
+                 kpred:has-file "src/lib/ingest/extraction-run.ts" ;
                  kpred:tested-by "src/lib/ingest/__tests__/archive-reference.test.ts" ;
                  kpred:tested-by "src/lib/ingest/__tests__/precomputed.test.ts" .
 
@@ -461,7 +592,9 @@ code:extension  rdf:type     ktype:Concept ;
                 kpred:has-file "src/extension/icons/icon16.png" ;
                 kpred:has-file "src/extension/icons/icon32.png" ;
                 kpred:has-file "src/extension/icons/icon48.png" ;
-                kpred:has-file "src/extension/icons/icon128.png" .
+                kpred:has-file "src/extension/icons/icon128.png" ;
+                kpred:has-file "src/extension/__tests__/capabilities.test.ts" ;
+                kpred:has-file "src/extension/capabilities.ts" .
 
 ## =============================================================================
 ## mcp-server — MCP Server (Standalone)
@@ -485,6 +618,14 @@ code:mcp-server  rdf:type     ktype:Concept ;
                  kpred:has-file "mcp-server/tsconfig.json" ;
                  kpred:has-file "mcp-server/vitest.config.ts" ;
                  kpred:has-file "mcp-server/README.md" ;
+                 kpred:has-file "mcp-server/src/__tests__/layers.test.ts" ;
+                 kpred:has-file "mcp-server/src/__tests__/pending-file.test.ts" ;
+                 kpred:has-file "mcp-server/src/__tests__/review-links.test.ts" ;
+                 kpred:has-file "mcp-server/src/compress.ts" ;
+                 kpred:has-file "mcp-server/src/layers.ts" ;
+                 kpred:has-file "mcp-server/src/pending-file.ts" ;
+                 kpred:has-file "mcp-server/src/review-links.ts" ;
+                 kpred:has-file "mcp-server/src/validate-args.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/ollama-client.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/local-llm.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/page-markdown.test.ts" ;
@@ -524,7 +665,13 @@ code:cli  rdf:type     ktype:Concept ;
           kpred:has-file "cli/src/llm.ts" ;
           kpred:has-file "cli/src/audio.ts" ;
           kpred:has-file "cli/package.json" ;
-          kpred:has-file "cli/tsconfig.json" .
+          kpred:has-file "cli/tsconfig.json" ;
+          kpred:has-file "cli/src/__tests__/voice-commands.test.ts" ;
+          kpred:has-file "cli/src/actor.ts" ;
+          kpred:has-file "cli/src/pending-file.ts" ;
+          kpred:has-file "cli/src/review-links.ts" ;
+          kpred:has-file "cli/src/review-session.ts" ;
+          kpred:has-file "cli/src/voice-commands.ts" .
 
 ## =============================================================================
 ## tests — Test Infrastructure
@@ -602,7 +749,15 @@ code:test-bench  rdf:type     ktype:Concept ;
                  kpred:has-file "tests/bench/scoring.test.ts" ;
                  kpred:has-file "tests/bench/landing-visual-score.ts" ;
                  kpred:has-file "tests/bench/fixtures/landing-page/brand-brief.md" ;
-                 kpred:has-file "tests/bench/fixtures/landing-page/brand-kb.ttl" .
+                 kpred:has-file "tests/bench/fixtures/landing-page/brand-kb.ttl" ;
+                 kpred:has-file "tests/bench/agentic-tasks.ts" ;
+                 kpred:has-file "tests/bench/coding-golden.ts" ;
+                 kpred:has-file "tests/bench/cost-golden.ts" ;
+                 kpred:has-file "tests/bench/decision-golden.ts" ;
+                 kpred:has-file "tests/bench/predicate-vocab-scoring.ts" ;
+                 kpred:has-file "tests/bench/run-decision-bench.ts" ;
+                 kpred:has-file "tests/bench/run-predicate-vocab-bench.ts" ;
+                 kpred:has-file "tests/bench/run-synonym-search-bench.ts" .
 
 ## =============================================================================
 ## static — Static Assets & Documentation KBs
