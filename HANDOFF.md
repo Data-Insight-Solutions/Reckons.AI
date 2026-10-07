@@ -1,3 +1,61 @@
+## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
+
+**Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
+(awareness is not access); fold source chunks into the space .ttl; outbound webhooks first, REST
+polling second (F243); LAN HTTPS by one-time CA / Tailscale / own domain, offline-first default
+(F244); agents in the app, per space in the Spaces tab and per device in Settings, no new tab
+(F245); 3D Spaces = the 0.2.5 canvas mode; localhost serves dev.
+
+**Done:** main checkout switched to `dev` (was a feature branch 44 behind); `npm install` run there.
+#352 ghost-run fix merged (restart `npm run agent:watch` to see it). Wispr Flow added as a
+competitor (#366).
+
+**Open PRs from this session, base dev:** #361 Source View source side (after #351) · #362 reviewer
+refutes · #363 self-contained spaces + space-size benches · #364 F243/F244/F245 + 3D Spaces ·
+#365 merge-queue `--sync-local` · #366 Wispr Flow · #367 rename batch 2b (42 names) · #368 katex
+^0.19.0 (#360 pinned a deprecated release). The merge queue was still landing #341… #358.
+
+**Measured (bench, RTX 3090, headless GPU):** render is the limit, not the file. 10k statements:
+browser import 4 s, 3D first frame 12 s, nothing settles. 100k: import ~150 s, one 2D frame ~80 s.
+Browser import is superlinear (Node parse is linear); next step is a CPU profile of that import.
+
+**Waiting on Matt:** install the heartbeat hook (`/hooks`; the classifier blocks me editing
+settings.local.json), then `queue.ts seed-standard` + `npm run agent:queue-worker -- --stay`;
+remove the `# reckons-schedule` cron line once the hook is in. Review queue: 39 batch proposals
+(docs-expand drafts carry jargon) + 4 terminology gaps (set, space, source, graph-as-data).
+
+## 2026-10-06 — START HERE. 0.2.5: backlog landing, Source View source side, reviewer refutes (Claude Code)
+
+**Matt approved (this session):** land every open dev PR, and the FULL 0.2.5 plan (Source View
+source side, then Spaces phase 2, then version bump + release notes).
+
+**Merge queue running** (`merge-queue.ts` from #336, started 22:2x UTC, `--keep-going`):
+#360 → #335…#356 → #358. #360 (deps) MERGED at `4059130`. Check what landed:
+`gh pr list --state merged --base dev --limit 30`; anything still open failed its re-run on
+updated dev and needs a look. Re-run the same command for stragglers (it skips merged PRs).
+
+**New PRs, base dev:**
+- **#360** deps (merged): sharp 0.35.5; overrides katex ^0.18.11 (past mermaid's ^0.16 range;
+  build-time diagrams only), global-agent ^4.1.3 (sprintf-js has NO patched release; global-agent
+  4 drops roarr), source-map-js ^1.2.2. Without it every updated PR failed `Dependencies`.
+- **#361** Source View source side (0.2.5 item 3), stacked on #351. Passages with per-status
+  yield, statements by status, unplaced list with reasons. `kb:source-corpus` → in-progress.
+  NOT built: "not read yet" marking (needs extraction over chunks), canvas highlighting.
+- **#362** local reviewer refutes findings the file disproves (missing-import, RDF repeated
+  predicate). Verified on real output. Not fixed: roadmap.ttl review times out every run.
+- **#358** got a test fix: its Atoms section repeated the fact text, so the e2e scopes to a
+  labelled "Node facts" region.
+
+**agent:watch ghost run** (Matt asked): `review-triage-2026-10-01-muppszft` died when qwen3.6's
+llama-server crashed; no `run-end`, so the watcher shows it live forever. The retry finished
+fine. #352 fixes it (pid + abandoned detection) and is in the queue.
+
+**Next: Spaces phase 2 (0.2.5 item 4) needs one decision from Matt first:** where a user's set
+membership lives. Nothing stores user-defined sets today (`declaredSet` is read, never written;
+/kb passes no `definitions`). (a) In each member space's own graph (`<urn:reckons:kb>
+dcterms:isPartOf <set>`), travelling with exports, like the 09-23 title/description decision,
+but it writes into spaces that are not open. (b) One workspace-level `dcat:Catalog`. Then
+grouping choice, and Spaces as a GraphCanvas mode. After that: version bump + release notes.
 ## 2026-10-02 — Source Atoms and visual-generation plans (Codex)
 
 PR #358, branch `fix/statements-node-source-links`, base `dev`. The initial source-link commit

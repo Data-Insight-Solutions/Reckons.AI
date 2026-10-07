@@ -459,6 +459,15 @@ job:shared-deps rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:space-size rdf:type          ktype:OfflineJob ;
+    rdfs:label          "space-size" ;
+    skos:prefLabel      "space-size" ;
+    skos:definition     "F107.10: what one large space .ttl costs to serialize, import (the app's importTurtleFull) and load into the MCP server's N3 store, at 1k to 100k statements, with and without source chunks folded in (Matt, 2026-10-06: fold the chunks in). Synthetic, seeded data. DISABLED in the sweep: it takes minutes and several GB of heap. Results go to tests/bench/results/ (git-ignored); record findings on kb:space-file-layout as dated kpred:measured lines." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts --profiles=s,m,l,xl --runs=3 --save" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:status-evidence rdf:type          ktype:OfflineJob ;
     rdfs:label          "status-evidence" ;
     skos:prefLabel      "status-evidence" ;
@@ -530,9 +539,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-usage, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 56 of them, 46 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 57 of them, 47 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
