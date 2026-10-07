@@ -1,5 +1,7 @@
 import { execFileSync, execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { lstatSync, readFileSync, readdirSync, readlinkSync } from 'node:fs';
+import path from 'node:path';
 
 export type RunReportKind = 'local-code-review' | 'button-crawl' | 'visual-diff';
 
@@ -146,6 +148,124 @@ const finiteCount = (value: unknown): number | null =>
 const validTime = (value: unknown): boolean =>
   typeof value === 'string' && value.length > 0 && Number.isFinite(Date.parse(value));
 const validSha256 = (value: unknown): boolean => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+
+/** One declared path, fingerprinted. Directories are hashed over their files (sorted, relative). */
+export interface DeclaredPathFingerprint {
+  path: string;
+  exists: boolean;
+  type?: 'file' | 'directory' | 'symlink' | 'other';
+  /** Files hashed under this path (1 for a file). */
+  files?: number;
+  /** For a file its content hash; for a directory a hash over `relative\0filehash` pairs. */
+  sha256?: string;
+  /** True when a directory had more files than MAX_FINGERPRINT_FILES; the hash then covers only
+   *  the first ones and must not be read as complete. */
+  truncated?: boolean;
+  /** Set when the path could not be read; the hash is then absent, not guessed. */
+  error?: string;
+}
+
+/** What a receipt records about the state the run happened against. `kind` says which one a
+ * reader got; none of them is a silent absence. */
+export type StateFingerprint =
+  | ({ kind: 'git' } & Omit<GitStateFingerprint, 'available'>)
+  | { kind: 'files'; reason: string; paths: DeclaredPathFingerprint[]; stateSha256: string }
+  | { kind: 'none'; reason: string };
+
+export const MAX_FINGERPRINT_FILES = 5000;
+
+const linkHash = (target: string) => sha256(`link\0${target}`);
+
+function fingerprintPath(root: string, declared: string): DeclaredPathFingerprint {
+  const abs = path.resolve(root, declared);
+  let st;
+  try { st = lstatSync(abs); } catch { return { path: declared, exists: false }; }
+  try {
+    if (st.isSymbolicLink()) {
+      return { path: declared, exists: true, type: 'symlink', files: 1, sha256: linkHash(readlinkSync(abs)) };
+    }
+    if (st.isFile()) {
+      return { path: declared, exists: true, type: 'file', files: 1, sha256: sha256(readFileSync(abs)) };
+    }
+    if (!st.isDirectory()) return { path: declared, exists: true, type: 'other' };
+    const rels: string[] = [];
+    let truncated = false;
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
+        if (rels.length >= MAX_FINGERPRINT_FILES) { truncated = true; return; }
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.isFile() || entry.isSymbolicLink()) rels.push(path.relative(abs, full));
+      }
+    };
+    walk(abs);
+    const lines = rels.map((rel) => {
+      const full = path.join(abs, rel);
+      const link = lstatSync(full).isSymbolicLink();
+      return `${rel}\0${link ? linkHash(readlinkSync(full)) : sha256(readFileSync(full))}`;
+    });
+    return {
+      path: declared, exists: true, type: 'directory', files: rels.length,
+      sha256: sha256(lines.join('\n')), ...(truncated ? { truncated: true } : {}),
+    };
+  } catch (e) {
+    return { path: declared, exists: true, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Fingerprint the state a run happened against WITHOUT requiring a repository.
+ *
+ * The knowledge lane runs against plain folders, so a missing repository must never cost the
+ * receipt. In a repository the git fingerprint is unchanged. Otherwise the files the task declares
+ * it touches (`kpred:touches`) are hashed; with none declared the result is `none`, which is
+ * written into the receipt and says so. `gitProbe` is injectable so tests never depend on the
+ * machine they run on. */
+export function captureStateFingerprint(opts: {
+  cwd?: string;
+  declaredPaths?: string[];
+  gitProbe?: (cwd: string) => GitStateFingerprint | UnavailableGitStateFingerprint;
+} = {}): StateFingerprint {
+  const cwd = opts.cwd ?? process.cwd();
+  const probe = opts.gitProbe ?? captureGitState;
+  let repo: GitStateFingerprint | UnavailableGitStateFingerprint;
+  try { repo = probe(cwd); } catch (e) { repo = { available: false, error: e instanceof Error ? e.message : String(e) }; }
+  if (repo.available) {
+    const { available: _available, ...rest } = repo;
+    return { kind: 'git', ...rest };
+  }
+  const note = `no usable git state (${repo.error.split('\n')[0].slice(0, 160)})`;
+  const declared = [...new Set((opts.declaredPaths ?? []).filter((p) => p.trim().length > 0))].sort();
+  if (declared.length === 0) {
+    return { kind: 'none', reason: `${note}; the task declares no kpred:touches paths, so no state is fingerprinted` };
+  }
+  const paths = declared.map((d) => fingerprintPath(cwd, d));
+  return {
+    kind: 'files',
+    reason: `${note}; fingerprinted the paths the task declares via kpred:touches`,
+    paths,
+    stateSha256: sha256(paths.map((p) => `${p.path}\0${p.exists}\0${p.sha256 ?? ''}`).join('\n')),
+  };
+}
+
+/** Validate the `stateFingerprint` of a receipt, whichever kind it is. */
+export function validateStateFingerprint(value: unknown): string[] {
+  const fp = object(value);
+  if (!fp) return ['stateFingerprint must be an object'];
+  if (fp.kind === 'git') {
+    return validSha256(fp.worktreeStateSha256) && typeof fp.head === 'string' && fp.head
+      ? [] : ['git fingerprint lacks head or worktreeStateSha256'];
+  }
+  if (fp.kind === 'files') {
+    const errors: string[] = [];
+    if (!Array.isArray(fp.paths) || fp.paths.length === 0) errors.push('files fingerprint has no paths');
+    if (!validSha256(fp.stateSha256)) errors.push('files fingerprint lacks stateSha256');
+    return errors;
+  }
+  if (fp.kind === 'none') {
+    return typeof fp.reason === 'string' && fp.reason ? [] : ['none fingerprint must state its reason'];
+  }
+  return ['stateFingerprint.kind must be git, files or none'];
+}
 
 /** Pure, deterministic validation for the three task-specific reports used as runner evidence. */
 export function validateRunReport(
