@@ -26,7 +26,7 @@
  *   npm run safety:attest -- --record  also append the dated record to the TTL log
  */
 import { readFileSync, existsSync, appendFileSync, writeFileSync, readdirSync, statSync } from 'fs';
-import { execFileSync } from 'child_process';
+import { execFileSync, spawnSync } from 'child_process';
 import path from 'path';
 
 const RECORD = process.argv.includes('--record');
@@ -50,8 +50,6 @@ const sh = (command: string, args: string[] = []): string => {
 const projectFile = (...segments: string[]) => path.join(process.cwd(), ...segments);
 const runProjectTypeScript = (script: string, ...args: string[]) =>
   sh(process.execPath, [projectFile('node_modules', 'tsx', 'dist', 'cli.mjs'), projectFile(script), ...args]);
-const runVitest = (...args: string[]) =>
-  sh(process.execPath, [projectFile('node_modules', 'vitest', 'vitest.mjs'), ...args]);
 
 interface Control {
   id: string;
@@ -164,10 +162,16 @@ const CONTROLS: Control[] = [
     label: 'The safety test suite passes',
     claim: 'The content-policy test suite is green as of this attestation.',
     check: () => {
-      const out = runVitest('run', 'src/lib/safety');
+      const run = spawnSync(process.execPath, [projectFile('node_modules', 'vitest', 'vitest.mjs'), 'run', 'src/lib/safety'], { cwd: process.cwd(), encoding: 'utf8' });
+      const out = `${run.stdout ?? ''}`;
       const m = out.match(/Tests\s+(\d+)\s+passed/);
       const failed = /\d+\s+failed/.test(out);
-      return { pass: !!m && !failed, evidence: m ? `${m[1]} tests passed` : 'could not determine test result' };
+      // When there is no count, say what vitest DID print. Observed 2026-10-07: three runs reported
+      // only 'could not determine test result', the output was discarded, and the cause was lost.
+      const lines = `${out}\n${run.stderr ?? ''}${run.error ? `\n${run.error.message}` : ''}`.replace(/\x1b\[[0-9;]*m/g, '').split('\n').map((l) => l.trim()).filter(Boolean);
+      const first = lines.find((l) => /error|fail|cannot|not found|ERR_/i.test(l));
+      const tail = [first, lines.at(-1)].filter((l, i, a) => l && a.indexOf(l) === i).join(' | ').slice(0, 300);
+      return { pass: !!m && !failed, evidence: m ? `${m[1]} tests passed` : `could not determine test result (exit ${run.status ?? 'none'}): ${tail || 'no output'}` };
     },
   },
   {
