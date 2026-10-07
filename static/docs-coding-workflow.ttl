@@ -269,3 +269,13 @@ cw:ReproducibleBuilds rdf:type ktype:Concept ;
     skos:definition     "The goal: clone the repository, install once, and every check, test and build runs the same on your machine as in CI, with nothing downloaded behind your back. That means one pinned package manager and Node version, every tool declared as a dependency, and quality gates that block a merge rather than warn." ;
     kpred:honest-note   "NOT THERE YET. CI already blocks on type checks, unit tests, the build, graph lint and the page-drift check (md-align). Svelte warnings are not yet held at zero, coverage thresholds do not block, and the CLI, extension and cross-browser suites do not all run on every change." ;
     kpred:relates-to    kb:reproducible-delivery .
+
+cw:TerminologyMaintenance rdf:type ktype:Concept ;
+    rdfs:label          "Keeping words consistent, as a standing job" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          113 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Some words in this codebase mean several different things: graph, node, export and share. Every day a check counts their plain, unqualified uses, and that count may fall but never rise, so new code cannot add more ambiguity without saying why. Once a week, three different local models vote on which meaning each use has, and only the uses they disagree on come back for a person. When a batch of names can be renamed safely, it arrives as a pull request to review, never as a direct change." ;
+    kpred:principle     "THE COUNT CAN BE RAISED, BUT ONLY WITH A REASON WRITTEN NEXT TO IT. On its first evening the baseline was raised three times, each with the reason recorded in the terminology graph: other work had landed first, docs that quote the words while explaining them, and a page title that uses the word the screen shows." ;
+    kpred:honest-note   "THE WEEKLY PARTS HAVE NOT RUN YET. The daily check blocks in CI today. The weekly vote is scheduled but has not run on its own, the automatic rename pull request has never been opened (its trial run stops before that step), and the third model chosen for the vote is not installed, so another stands in." ;
+    kpred:relates-to    kb:terminology-maintenance .

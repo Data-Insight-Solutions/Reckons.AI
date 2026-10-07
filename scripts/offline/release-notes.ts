@@ -19,7 +19,7 @@
  *   npx tsx scripts/offline/release-notes.ts [--base=origin/main] [--head=origin/staging] [--check-docs] [--json]
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Parser } from 'n3';
 
@@ -31,7 +31,7 @@ export const SHIPPED = new Set(['scaffolded', 'functional', 'production']);
 type Q = { subject: { value: string }; predicate: { value: string }; object: { value: string } };
 
 export type PullRequest = { number: number; title: string; date: string };
-export type FeatureState = { iri: string; featureId?: string; label: string; status?: string };
+export type FeatureState = { iri: string; featureId?: string; label: string; status?: string; version?: string };
 export type FeatureChange = FeatureState & { from?: string; docs: { entity: string; path?: string }[] };
 
 /** Merge commits in a range that record a pull request, in either wording this repository uses. */
@@ -63,10 +63,20 @@ export function featureStates(ttl: string): Map<string, FeatureState> {
     else if (p === `${KPRED}has-status`) out.set(q.subject.value, { ...get(q.subject.value), status: q.object.value });
   }
   for (const q of quads) {
+    if (q.predicate.value === `${KPRED}version` && out.has(q.subject.value)) out.get(q.subject.value)!.version = q.object.value;
+  }
+  for (const q of quads) {
     if (q.predicate.value === RDFS_LABEL && out.has(q.subject.value)) out.get(q.subject.value)!.label = q.object.value;
   }
   return out;
 }
+
+/**
+ * A RELEASE is documented by its release-notes page, not by a docs-graph entity: v0.2.5's own entity
+ * was listed as undocumented by the first real promotion check (2026-10-07) although
+ * content/releases/v0-2-5.md existed. "0.2.5" -> "releases/v0-2-5". Pure.
+ */
+export const releaseNotesPath = (version: string): string => `releases/v${version.replace(/\./g, '-')}`;
 
 /** New features, and features whose status moved, between two versions of the roadmap. */
 export function featureChanges(before: Map<string, FeatureState>, after: Map<string, FeatureState>): Omit<FeatureChange, 'docs'>[] {
@@ -152,7 +162,10 @@ function main(): void {
   }
   const changes: FeatureChange[] = featureChanges(featureStates(before), featureStates(after)).map((c) => ({
     ...c,
-    docs: (links.get(c.iri) ?? []).map((entity) => ({ entity, path: pathOf.get(entity) })),
+    docs: [
+      ...(links.get(c.iri) ?? []).map((entity) => ({ entity, path: pathOf.get(entity) })),
+      ...(c.version && existsSync(join(ROOT, 'content', `${releaseNotesPath(c.version)}.md`)) ? [{ entity: 'release notes', path: releaseNotesPath(c.version) }] : []),
+    ],
   }));
   const report = { base, head, prs: parsePullRequests(log), changes };
   if (argv.includes('--json')) console.log(JSON.stringify(report, null, 2));
