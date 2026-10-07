@@ -68,13 +68,13 @@ function legacyWorkspaceStores() {
 }
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
-export const WORKSPACE_KB_FILE = 'knowledge.ttl';
+export const WORKSPACE_KNOWLEDGE_BASE_FILE = 'knowledge.ttl';
 
 let _handle = $state<FileSystemDirectoryHandle | null>(null);
 let name   = $state<string | null>(null);
 let state  = $state<'none' | 'disconnected' | 'connected'>('none');
 let _lastSyncTime = $state<number | null>(null);
-let _syncedKbCount = $state(0);
+let _syncedKnowledgeBaseCount = $state(0);
 
 // ── Two-way sync state ───────────────────────────────────────────────────────
 //
@@ -120,7 +120,7 @@ export function workspaceHandle(): FileSystemDirectoryHandle | null { return _ha
 export function workspaceName(): string | null { return name; }
 export function workspaceState(): 'none' | 'disconnected' | 'connected' { return state; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
-export function syncedKbCount(): number { return _syncedKbCount; }
+export function syncedKbCount(): number { return _syncedKnowledgeBaseCount; }
 export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
 
 export function supportsWorkspace(): boolean {
@@ -271,7 +271,7 @@ export async function clearWorkspace(): Promise<void> {
   name = null;
   state = 'none';
   _lastSyncTime = null;
-  _syncedKbCount = 0;
+  _syncedKnowledgeBaseCount = 0;
   await updateSettings({ workspaceName: undefined });
 }
 
@@ -510,7 +510,7 @@ async function readFromDir(dir: FileSystemDirectoryHandle, filename: string): Pr
  * Read a KB's TTL from a folder, preferring `{folderName}.ttl` and falling
  * back to the legacy `kb.ttl` filename when the named file isn't present.
  */
-async function readKbTtl(dir: FileSystemDirectoryHandle, folderName: string): Promise<string | null> {
+async function readKnowledgeBaseTtl(dir: FileSystemDirectoryHandle, folderName: string): Promise<string | null> {
   const named = await readFromDir(dir, `${folderName}.ttl`);
   if (named !== null) return named;
   return readFromDir(dir, 'kb.ttl');
@@ -519,7 +519,7 @@ async function readKbTtl(dir: FileSystemDirectoryHandle, folderName: string): Pr
 // ── Multi-KB folder sync ─────────────────────────────────────────────────────
 
 /** Sanitize a KB name into a safe folder name. */
-function kbFolderName(name: string, id: string): string {
+function knowledgeBaseFolderName(name: string, id: string): string {
   const sanitized = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -529,7 +529,7 @@ function kbFolderName(name: string, id: string): string {
   return sanitized || id;
 }
 
-export type KbMeta = {
+export type KnowledgeBaseMeta = {
   stableId?: string;
   name: string;
 };
@@ -538,7 +538,7 @@ export type KbMeta = {
  * Write one KB's data to the workspace folder: kbs/{folderName}/{folderName}.ttl
  * Binary assets written to assets/{icons,previews,models}/ — directories only created when populated.
  */
-export async function writeKbToFolder(
+export async function writeKnowledgeBaseToFolder(
   entry: KbEntry,
   ttl: string,
   stableId?: string,
@@ -547,7 +547,7 @@ export async function writeKbToFolder(
   if (!_handle) return false;
   try {
     const kbsDir = await getOrCreateDir(_handle, 'kbs');
-    const folderName = kbFolderName(entry.name, entry.id);
+    const folderName = knowledgeBaseFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
     const pathKey = `kbs/${folderName}/${folderName}.ttl`;
 
@@ -593,7 +593,7 @@ export async function syncNotesGraphToWorkspace(id: string): Promise<boolean> {
     registerStableId(id, stableId, statements.length);
     const assets = await collectAssets(graph);
     const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + await assetTriples(graph, assets);
-    return await writeKbToFolder(entry, ttl, stableId, assets);
+    return await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
   } finally { graph.close(); }
 }
 
@@ -664,7 +664,7 @@ async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string
     } else if (
       entry.kind === 'file' &&
       entry.name.endsWith('.ttl') &&
-      entry.name !== WORKSPACE_KB_FILE &&
+      entry.name !== WORKSPACE_KNOWLEDGE_BASE_FILE &&
       !WALK_SKIP_FILES.has(entry.name)
     ) {
       // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a
@@ -695,7 +695,7 @@ export async function readTtlByPath(segs: string[]): Promise<string | null> {
  * named sibling exists so a KB isn't listed twice. Each entry carries the file
  * `path` so it can be read regardless of location.
  */
-export async function listKbFolders(): Promise<Array<{ folderName: string; path: string[]; meta: KbMeta }>> {
+export async function listKbFolders(): Promise<Array<{ folderName: string; path: string[]; meta: KnowledgeBaseMeta }>> {
   if (!_handle) return [];
   try {
     const paths: string[][] = [];
@@ -708,7 +708,7 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
       (dirFiles.get(d) ?? dirFiles.set(d, new Set()).get(d)!).add(p[p.length - 1]);
     }
 
-    const results: Array<{ folderName: string; path: string[]; meta: KbMeta }> = [];
+    const results: Array<{ folderName: string; path: string[]; meta: KnowledgeBaseMeta }> = [];
     for (const p of paths) {
       const file = p[p.length - 1];
       const dirSegs = p.slice(0, -1);
@@ -739,9 +739,9 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
  * `kb.ttl`) don't exist.
  * Also reads any binary assets from assets/{icons,previews,models}/ subdirectories.
  */
-export async function readKbFromFolder(folderName: string): Promise<{
+export async function readKnowledgeBaseFromFolder(folderName: string): Promise<{
   ttl: string;
-  meta: KbMeta;
+  meta: KnowledgeBaseMeta;
   assets: Map<string, Uint8Array>; // relative path ("assets/icons/foo.svg") → bytes
 } | null> {
   if (!_handle) return null;
@@ -749,11 +749,11 @@ export async function readKbFromFolder(folderName: string): Promise<{
     const kbsDir = await _handle.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle(folderName);
 
-    const ttl = await readKbTtl(kbDir, folderName);
+    const ttl = await readKnowledgeBaseTtl(kbDir, folderName);
     if (!ttl) return null;
 
     const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
-    const meta: KbMeta = {
+    const meta: KnowledgeBaseMeta = {
       name: folderName,
       stableId: stableIdMatch?.[1],
     };
@@ -835,7 +835,7 @@ export async function syncAllKbs(): Promise<number> {
       const assetTtl = await assetTriples(kbDb, assets);
       const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + assetTtl;
 
-      await writeKbToFolder(entry, ttl, stableId, assets);
+      await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
       synced++;
 
       // Close if it's not the active DB
@@ -849,10 +849,10 @@ export async function syncAllKbs(): Promise<number> {
   try {
     const statements = await db.statements.toArray();
     const ttl = toTurtle(statements);
-    await writeToWorkspace(WORKSPACE_KB_FILE, ttl);
+    await writeToWorkspace(WORKSPACE_KNOWLEDGE_BASE_FILE, ttl);
   } catch { /* best-effort */ }
 
-  _syncedKbCount = synced;
+  _syncedKnowledgeBaseCount = synced;
   _lastSyncTime = Date.now();
   return synced;
 }
@@ -889,7 +889,7 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
 
     // Legacy flat file for the MCP server stays a LOSSY confirmed/refined projection —
     // reification `stmt:` nodes would otherwise surface as spurious entities in the reader.
-    await writeToWorkspace(WORKSPACE_KB_FILE, toTurtle(statements));
+    await writeToWorkspace(WORKSPACE_KNOWLEDGE_BASE_FILE, toTurtle(statements));
 
     // The per-KB folder file is the one that gets re-imported, so it must be LOSSLESS
     // (all statuses + provenance) or a re-pull silently drops review state (F107.4).
@@ -901,7 +901,7 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
       const assets = await collectAssets(db);
       const assetTtl = await assetTriples(db, assets);
       const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId });
-      await writeKbToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
+      await writeKnowledgeBaseToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }
   } catch (err) {
@@ -1341,7 +1341,7 @@ export async function recordAnswer(answer: {
 // ── Import KBs from workspace ────────────────────────────────────────────────
 
 /** A `.ttl` discovered under the workspace, with its parsed metadata. */
-type FolderEntry = { folderName: string; path: string[]; meta: KbMeta };
+type FolderEntry = { folderName: string; path: string[]; meta: KnowledgeBaseMeta };
 
 /** Read a folder entry's TTL + assets (conventional folders carry binary assets;
  *  loose `.ttl` files anywhere are inline-only). */
@@ -1350,7 +1350,7 @@ async function readFolderData(
 ): Promise<{ ttl: string; assets: Map<string, Uint8Array> } | null> {
   const conventional = folder.path.length === 3 && folder.path[0] === 'kbs';
   if (conventional) {
-    const d = await readKbFromFolder(folder.folderName);
+    const d = await readKnowledgeBaseFromFolder(folder.folderName);
     return d ? { ttl: d.ttl, assets: d.assets } : null;
   }
   const ttl = await readTtlByPath(folder.path);
@@ -1359,7 +1359,7 @@ async function readFolderData(
 
 /** Import ONE freshly-discovered folder as a new KB. Returns statements written,
  *  or 0 if empty/unreadable. */
-async function importNewKb(folder: FolderEntry): Promise<number> {
+async function importNewKnowledgeBase(folder: FolderEntry): Promise<number> {
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
   const { ingestNewKb } = await import('./kb-import');
@@ -1369,10 +1369,10 @@ async function importNewKb(folder: FolderEntry): Promise<number> {
 }
 
 /** Re-import a changed folder into the EXISTING KB `kbId` (in place). */
-async function updateExistingKb(kbId: string, folder: FolderEntry): Promise<number> {
+async function updateExistingKnowledgeBase(kbId: string, folder: FolderEntry): Promise<number> {
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
-  const { ingestExistingKb } = await import('./kb-import');
+  const { ingestExistingKnowledgeBase: ingestExistingKb } = await import('./kb-import');
   const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
   return ingestExistingKb(kbId, data, folder.meta, uri);
 }
@@ -1406,7 +1406,7 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
       continue;
     }
     try {
-      const count = await importNewKb(folder);
+      const count = await importNewKnowledgeBase(folder);
       if (count === 0) { skipped.push(`${meta.name} (empty)`); continue; }
       // Baseline the hash so the poll loop won't immediately re-import it.
       markWritten(folder.path.join('/'), (await readTtlByPath(folder.path)) ?? '');
@@ -1503,13 +1503,13 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
 
       try {
         if (match) {
-          const count = await updateExistingKb(match.id, folder);
+          const count = await updateExistingKnowledgeBase(match.id, folder);
           if (count > 0) {
             updated.push(folder.meta.name);
             if (match.id === currentId) activeChanged = true;
           }
         } else {
-          const count = await importNewKb(folder);
+          const count = await importNewKnowledgeBase(folder);
           if (count > 0) imported.push(folder.meta.name);
         }
         _seenHashes.set(key, h);
@@ -1521,7 +1521,7 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
 
     if (imported.length || updated.length) {
       _lastSyncTime = Date.now();
-      _syncedKbCount = folders.length;
+      _syncedKnowledgeBaseCount = folders.length;
       if (activeChanged) {
         const { loadAll } = await import('./kb.svelte');
         await loadAll();

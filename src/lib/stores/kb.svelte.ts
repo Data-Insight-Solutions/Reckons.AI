@@ -9,7 +9,7 @@ import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
 import { scheduleDrivePush } from './drive-sync.svelte';
-import { officialKbActive, officialKbStatements, officialKbSources, deactivateOfficialKb } from './official-kb.svelte';
+import { officialKbActive, officialKnowledgeBaseStatements, officialKnowledgeBaseSources, deactivateOfficialKb } from './official-kb.svelte';
 import { filterBlockedStatements } from '../safety/content-policy';
 
 /**
@@ -53,10 +53,10 @@ export async function getTrustScore(sourceId: string): Promise<number> {
 }
 
 export function sources(): Source[] {
-  return officialKbActive() ? officialKbSources() : _sources;
+  return officialKbActive() ? officialKnowledgeBaseSources() : _sources;
 }
 export function statements(): Statement[] {
-  return officialKbActive() ? officialKbStatements() : _statements;
+  return officialKbActive() ? officialKnowledgeBaseStatements() : _statements;
 }
 /**
  * Existing entities (subject + object IRIs from live statements) as

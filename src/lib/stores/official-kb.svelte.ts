@@ -10,7 +10,7 @@
 import type { Statement, Source } from '../rdf/types';
 import { importTurtleFull } from '../rdf/import-ttl';
 
-const OFFICIAL_KB_FILE = '/starter-guide.ttl';
+const OFFICIAL_KNOWLEDGE_BASE_FILE = '/starter-guide.ttl';
 const OFFICIAL_SOURCE_ID = '__official_reckons_docs__';
 
 let active = $state(false);
@@ -21,10 +21,10 @@ let loading = $state(false);
 let error = $state<string | null>(null);
 
 export function officialKbActive(): boolean { return active; }
-export function officialKbStatements(): Statement[] { return statements; }
-export function officialKbSources(): Source[] { return sources; }
-export function officialKbLoaded(): boolean { return loaded; }
-export function officialKbLoading(): boolean { return loading; }
+export function officialKnowledgeBaseStatements(): Statement[] { return statements; }
+export function officialKnowledgeBaseSources(): Source[] { return sources; }
+export function officialKnowledgeBaseLoaded(): boolean { return loaded; }
+export function officialKnowledgeBaseLoading(): boolean { return loading; }
 /** Last load error, if the official KB failed to fetch/parse. Cleared on a successful load. */
 export function officialKbError(): string | null { return error; }
 
@@ -35,7 +35,7 @@ async function ensureLoaded(): Promise<void> {
   if (loaded || loading) return;
   loading = true;
   try {
-    const res = await fetch(OFFICIAL_KB_FILE);
+    const res = await fetch(OFFICIAL_KNOWLEDGE_BASE_FILE);
     if (!res.ok) throw new Error(`Failed to fetch official KB: ${res.status}`);
     const ttl = await res.text();
     const { statements: parsed } = await importTurtleFull(ttl);
@@ -60,9 +60,9 @@ async function ensureLoaded(): Promise<void> {
       // A successful fetch that yields no statements is still a failure for our
       // purposes — activating an empty KB would silently fall back to the landing
       // page (the graph route renders <LandingPage/> when visible.length === 0).
-      throw new Error(`Official KB parsed to 0 statements from ${OFFICIAL_KB_FILE}`);
+      throw new Error(`Official KB parsed to 0 statements from ${OFFICIAL_KNOWLEDGE_BASE_FILE}`);
     }
-    console.log(`[official-kb] Loaded ${stmts.length} statements from ${OFFICIAL_KB_FILE}`);
+    console.log(`[official-kb] Loaded ${stmts.length} statements from ${OFFICIAL_KNOWLEDGE_BASE_FILE}`);
     statements = stmts;
     sources = [source];
     loaded = true;
