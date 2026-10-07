@@ -77,6 +77,15 @@ export class RenameSession {
       const configPath = join(this.root, 'tsconfig.json');
       const config = ts.readConfigFile(configPath, ts.sys.readFile);
       const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, dirname(configPath));
+      // A broken config is not a smaller batch. In a fresh worktree .svelte-kit/tsconfig.json (which
+      // tsconfig.json extends, and which defines $lib) does not exist yet: every $lib import then
+      // fails to resolve and the safety checks refuse each name they cannot verify. Observed
+      // 2026-10-07: 19 renames instead of 42, every refusal reasonable-looking. Stop instead.
+      const configErrors = [...(config.error ? [config.error] : []), ...parsed.errors];
+      if (configErrors.length) {
+        const text = configErrors.map((d) => ts.flattenDiagnosticMessageText(d.messageText, ' ')).join('; ');
+        throw new Error(`tsconfig.json does not load cleanly (${text}). In a fresh checkout or worktree run \`npx svelte-kit sync\` first.`);
+      }
       files = parsed.fileNames.filter((f) => /\.[cm]?tsx?$/.test(f));
       options = parsed.options;
     }

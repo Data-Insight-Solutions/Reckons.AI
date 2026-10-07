@@ -21,7 +21,7 @@
  *
  *   STABLE ID — a durable identity minted with the graph and carried in its settings.
  *     A match means "this IS that graph, newer". Replacing in place is correct, and
- *     ingestExistingKb takes a recovery snapshot before it does so.
+ *     ingestExistingKnowledgeBase takes a recovery snapshot before it does so.
  *
  *   NAME — a label a human typed, or a filename. "roadmap.ttl" from two different projects
  *     collides trivially. A name match means "possibly the same graph", which is NOT

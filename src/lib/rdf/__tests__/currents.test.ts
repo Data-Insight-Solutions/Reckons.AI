@@ -8,7 +8,7 @@ import {
   normalizeTypeIri,
   CURRENTS_SUBJECT,
   CUR_ALLOWED_TYPE,
-  KB_MENTIONED_IN,
+  KNOWLEDGE_BASE_MENTIONED_IN,
   type CurrentsSettings
 } from '../currents';
 import { isMetaPredicate, iri, lit, type Statement } from '../types';
@@ -144,7 +144,7 @@ describe('buildArrivalStatements', () => {
   });
 
   it('links each extracted concept to the article via mentioned-in, once', () => {
-    const links = arrival.filter((s) => s.p.value === KB_MENTIONED_IN);
+    const links = arrival.filter((s) => s.p.value === KNOWLEDGE_BASE_MENTIONED_IN);
     expect(links).toHaveLength(1);
     expect(links[0].s.value).toBe('urn:kbase:concept/quantum-chip');
   });
@@ -159,7 +159,7 @@ describe('isMetaPredicate integration', () => {
   it('hides the whole currents namespace from graph edges', () => {
     expect(isMetaPredicate(CUR_ALLOWED_TYPE)).toBe(true);
     expect(isMetaPredicate('urn:reckons:meta/currents/sourceUrl')).toBe(true);
-    expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
+    expect(isMetaPredicate(KNOWLEDGE_BASE_MENTIONED_IN)).toBe(false);
   });
 
   it('keeps crawl telemetry out of the graph — a button caption is not an entity', () => {
@@ -169,7 +169,7 @@ describe('isMetaPredicate integration', () => {
     expect(isMetaPredicate('urn:reckons:test/finding')).toBe(true);
     expect(isMetaPredicate('urn:reckons:test/anything-else')).toBe(true);
     // Still an ordinary fact — the suppression is scoped to the telemetry namespace.
-    expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
+    expect(isMetaPredicate(KNOWLEDGE_BASE_MENTIONED_IN)).toBe(false);
     expect(isMetaPredicate('urn:kbase:predicate/tested-by')).toBe(false);
   });
 });

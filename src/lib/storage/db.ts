@@ -384,7 +384,7 @@ export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name
  * reconcile). `ttl` is a lossless `toTurtleFull` export (all statuses + provenance) so the
  * prior state is recoverable via `restoreKbSnapshot`. Pruned to the last few per KB.
  */
-export type KbSnapshotRow = {
+export type KnowledgeBaseSnapshotRow = {
   id: string;
   kbId: string;
   createdAt: number;
@@ -404,7 +404,7 @@ export class KBaseDB extends Dexie {
   workspace!: Table<WorkspaceRow, string>;
   entityGifs!: Table<EntityGifRow, string>;
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
-  kbSnapshots!: Table<KbSnapshotRow, string>;
+  kbSnapshots!: Table<KnowledgeBaseSnapshotRow, string>;
   extractionRuns!: Table<ExtractionRun, string>;
 
   constructor(name?: string) {
