@@ -10,6 +10,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   emptyUsage,
+  readTermRatchets,
+  checkTermRatchets,
+  ratchetFails,
   segmentsOf,
   singular,
   bindingOfLine,
@@ -195,5 +198,50 @@ describe('scanText', () => {
     scanText('<div class="node">x</div>\n', 'src/lib/components/X.svelte', tokens);
     expect(tokens.get('class')!.occurrences).toBe(0);
     expect(tokens.get('class')!.excluded).toBe(1);
+  });
+});
+
+describe('ambiguity ratchet (Matt, 2026-10-07)', () => {
+  const meaning = (id: string) => ({ iri: `urn:kbase:term/${id}`, id, prefLabel: id, binding: 'free' as const, tokens: [] });
+  const usage = (token: string, free: number, meanings = 2) => {
+    const u = emptyUsage(token, Array.from({ length: meanings }, (_, i) => meaning(`${token}-${i}`)));
+    u.binding.free = free;
+    return u;
+  };
+
+  it('reads kpred:term-ratchet baselines and skips malformed ones', () => {
+    const ttl = '<s> kpred:term-ratchet "node/free/10" ; kpred:term-ratchet "graph/nope/3" ; kpred:term-ratchet "x/free/1.5" .';
+    expect(readTermRatchets(ttl)).toEqual([{ token: 'node', binding: 'free', max: 10 }]);
+  });
+
+  it('fails only when an ambiguous word gains bare uses or has no baseline', () => {
+    const rows = checkTermRatchets(
+      [usage('node', 11), usage('graph', 5), usage('export', 3), usage('share', 9), usage('class', 99, 1)],
+      [{ token: 'node', binding: 'free', max: 10 }, { token: 'graph', binding: 'free', max: 6 },
+        { token: 'export', binding: 'free', max: 3 }, { token: 'gone', binding: 'free', max: 4 }],
+    );
+    expect(rows.map((r) => `${r.kind}:${r.token}`)).toEqual(['over:node', 'under:graph', 'at:export', 'unbaselined:share', 'stale:gone']);
+    expect(ratchetFails(rows)).toBe(true);
+    // A single-meaning word is never ratcheted, however common.
+    expect(rows.some((r) => r.token === 'class')).toBe(false);
+  });
+
+  it('passes when every ambiguous word is at or below its baseline', () => {
+    const rows = checkTermRatchets([usage('node', 9)], [{ token: 'node', binding: 'free', max: 10 }]);
+    expect(ratchetFails(rows)).toBe(false);
+  });
+});
+
+describe('the export keyword is syntax, the export feature is a term', () => {
+  it('excludes the module keyword at the occurrence and keeps identifiers on the same line', () => {
+    const line = 'export function exportTurtle(statements: Statement[]) {';
+    expect(isKeywordUse('export', line, 0)).toBe(true);
+    expect(isKeywordUse('export', line, line.indexOf('exportTurtle'))).toBe(false);
+    expect(isKeywordUse('export', "export { default } from './separator.svelte';", 0)).toBe(true);
+    expect(isKeywordUse('export', '  export default meta;', 2)).toBe(true);
+    // Not the keyword: the feature, a property, a string.
+    expect(isKeywordUse('export', 'const exported = await exportSpace(id);', 6)).toBe(false);
+    expect(isKeywordUse('export', 'settings.export = true;', 9)).toBe(false);
+    expect(isKeywordUse('export', "label: 'export this space'", 8)).toBe(false);
   });
 });
