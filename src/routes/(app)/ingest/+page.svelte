@@ -371,7 +371,7 @@
 
   // ── KB file import ────────────────────────────────────────────────────────────
   let kbFile = $state<File | null>(null);
-  let kbPreview = $state<{ stmts: number; isAnnotated: boolean } | null>(null);
+  let kbPreview = $state<{ stmts: number; isAnnotated: boolean; quarantined?: number } | null>(null);
   let kbParsing = $state(false);
 
   // GIF/GLB blobs extracted from a .zip import — applied on importKb()
@@ -424,11 +424,11 @@
         ttlText = await file.text();
       }
 
-      const { statements: rawStmts, cleanImportCount } = await importTurtleFull(ttlText);
+      const { statements: rawStmts, cleanImportCount, quarantined } = await importTurtleFull(ttlText);
       const active = rawStmts.filter(
         (s) => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending'
       );
-      kbPreview = { stmts: active.length, isAnnotated: cleanImportCount === 0 };
+      kbPreview = { stmts: active.length, isAnnotated: cleanImportCount === 0, quarantined: quarantined?.count };
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
       kbFile = null;
@@ -1474,6 +1474,9 @@
       <div class="kb-preview">
         <span class="kb-count mono">{kbPreview.stmts} fact{kbPreview.stmts !== 1 ? 's' : ''}</span>
         <span class="kb-badge mono">{kbPreview.isAnnotated ? 'annotated export' : 'plain turtle'}</span>
+        {#if kbPreview.quarantined}
+          <span class="kb-badge mono" role="status" title="This file was exported by a build that wrote a literal value as if it were an entity (an invalid IRI). Those facts are left out; everything else imports.">⚠ {kbPreview.quarantined} damaged fact{kbPreview.quarantined !== 1 ? 's' : ''} skipped</span>
+        {/if}
         {#if pendingGifImports.size > 0}
           <span class="kb-badge mono">{pendingGifImports.size} gif{pendingGifImports.size !== 1 ? 's' : ''}</span>
         {/if}
