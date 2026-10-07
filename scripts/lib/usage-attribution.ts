@@ -35,6 +35,7 @@ export type Entry = {
   family: Family;
   weighted: number;
   key?: string; // requestId|message.id, for dedupe
+  sub?: boolean; // true when read from a <session>/subagents/ transcript
 };
 
 export const weigh = (u: Usage): number =>
@@ -91,6 +92,22 @@ export function inWindow(ts: string, since?: string, until?: string): boolean {
 
 export const filterWindow = (es: Entry[], since?: string, until?: string): Entry[] =>
   es.filter((e) => inWindow(e.ts, since, until));
+
+/** Main thread vs subagents, by model family: the delegation split (Opus main + Sonnet subagents). */
+export type ThreadRow = { thread: 'main' | 'subagents'; weighted: number; byFamily: Record<Family, number> };
+export function attributeByThread(entries: Entry[]): ThreadRow[] {
+  const rows: ThreadRow[] = (['main', 'subagents'] as const).map((thread) => ({ thread, weighted: 0, byFamily: zeroFam() }));
+  for (const e of entries) {
+    const r = rows[e.sub ? 1 : 0];
+    r.weighted += e.weighted;
+    r.byFamily[e.family] += e.weighted;
+  }
+  return rows;
+}
+
+/** True when a transcript path belongs to the given session id (its main file or its subagents). */
+export const inSession = (file: string, session: string): boolean =>
+  file.split('/').some((seg) => seg === session || seg === `${session}.jsonl`);
 
 export type BranchRow = { branch: string; weighted: number; byFamily: Record<Family, number> };
 

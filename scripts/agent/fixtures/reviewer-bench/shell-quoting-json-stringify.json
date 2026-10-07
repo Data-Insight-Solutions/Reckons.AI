@@ -1,0 +1,12 @@
+{
+  "id": "shell-quoting-json-stringify",
+  "source": "PR #342 before the fix (task-templates.ts)",
+  "promptContext": "Review this change. The runner executes a template's command string with bash (child_process execSync). The argument comes from a voice transcript, i.e. untrusted text.\n\n```ts\n    // The subject is passed as an ARGUMENT, never interpolated into a shell string, so a transcript\n    // cannot become part of the command itself.\n    command: (arg) => `npm run agent:document -- --subject=${JSON.stringify(arg)} --deliver=email-owner`,\n```",
+  "expected": {
+    "verdict": "required-change",
+    "mustMention": [
+      "command substitution",
+      "shell"
+    ]
+  }
+}
