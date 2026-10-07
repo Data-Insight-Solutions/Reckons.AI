@@ -24,6 +24,14 @@
  *   npx tsx scripts/agent/merge-queue.ts 333 326 327            land them, in that order
  *   npx tsx scripts/agent/merge-queue.ts 333 326 --dry-run      report what each would do
  *   npx tsx scripts/agent/merge-queue.ts … --keep-going --poll=60 --timeout-min=60
+ *   npx tsx scripts/agent/merge-queue.ts … --sync-local=/path/to/checkout
+ *
+ * --sync-local: after each merge, fast-forward that checkout to the new dev, so the dev server
+ * running from it (localhost) shows what was just merged. Matt, 2026-10-07: "localhost should
+ * serve dev" — that day his localhost was 44 commits behind, because every merge happened on
+ * GitHub and nothing brought it back. Only a clean checkout ON dev with no local-only commits is
+ * moved; anything else is skipped with the reason. A lockfile change is REPORTED, never
+ * installed: worktrees and running servers may share that node_modules.
  */
 import { execFileSync } from 'node:child_process';
 
@@ -83,6 +91,18 @@ export function decide(pr: PrState): Action {
   return { kind: 'merge', why: `${pr.checks.length} check(s) passed` };
 }
 
+export type LocalCheckout = { branch: string; dirty: boolean; ahead: number; behind: number };
+export type SyncAction = { kind: 'sync' | 'skip' | 'current'; why: string };
+
+/** Whether to fast-forward a local checkout to the merged dev. Pure, so every branch is tested. */
+export function decideSync(c: LocalCheckout): SyncAction {
+  if (c.branch !== MERGE_BASE) return { kind: 'skip', why: `on "${c.branch || 'detached HEAD'}", not ${MERGE_BASE}` };
+  if (c.dirty) return { kind: 'skip', why: 'uncommitted changes' };
+  if (c.ahead > 0) return { kind: 'skip', why: `${c.ahead} local commit(s) not on origin/${MERGE_BASE}` };
+  if (c.behind === 0) return { kind: 'current', why: `already at origin/${MERGE_BASE}` };
+  return { kind: 'sync', why: `${c.behind} commit(s) behind` };
+}
+
 // ── IO ───────────────────────────────────────────────────────────────────────────────────────
 
 function sh(cmd: string, args: string[]): string {
@@ -103,10 +123,27 @@ function readPr(n: number): PrState {
   };
 }
 
+function syncLocal(dir: string): string {
+  const git = (...a: string[]) => sh('git', ['-C', dir, ...a]);
+  git('fetch', '-q', 'origin', MERGE_BASE);
+  const count = (range: string) => Number(git('rev-list', '--count', range));
+  const action = decideSync({
+    branch: git('branch', '--show-current'),
+    dirty: git('status', '--porcelain') !== '',
+    ahead: count(`origin/${MERGE_BASE}..HEAD`),
+    behind: count(`HEAD..origin/${MERGE_BASE}`),
+  });
+  if (action.kind !== 'sync') return `local ${dir}: ${action.kind === 'skip' ? 'NOT synced' : 'current'} (${action.why})`;
+  const before = git('rev-parse', 'HEAD');
+  git('merge', '-q', '--ff-only', `origin/${MERGE_BASE}`);
+  const lockChanged = git('diff', '--name-only', before, 'HEAD', '--', 'package-lock.json') !== '';
+  return `local ${dir}: synced (${action.why})${lockChanged ? ' — package-lock.json changed: run npm install there' : ''}`;
+}
+
 const log = (n: number, msg: string) => console.log(`${new Date().toISOString().slice(11, 19)}  #${n}  ${msg}`);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function land(n: number, opts: { dryRun: boolean; pollMs: number; timeoutMs: number }): Promise<'merged' | 'done' | 'failed'> {
+async function land(n: number, opts: { dryRun: boolean; pollMs: number; timeoutMs: number; syncLocal?: string }): Promise<'merged' | 'done' | 'failed'> {
   const deadline = Date.now() + opts.timeoutMs;
   let lastWhy = '';
   let updated = false;
@@ -141,6 +178,9 @@ async function land(n: number, opts: { dryRun: boolean; pollMs: number; timeoutM
         sh('gh', ['pr', 'merge', String(n), '--merge', '--match-head-commit', pr.headRefOid,
           '--subject', `Merge PR #${n}: ${pr.title}`]);
         log(n, `MERGED into ${MERGE_BASE} at ${pr.headRefOid.slice(0, 7)}`);
+        if (opts.syncLocal) {
+          try { log(n, syncLocal(opts.syncLocal)); } catch (e) { log(n, `local sync FAILED: ${(e as Error).message.split('\n')[0]}`); }
+        }
         return 'merged';
       }
     }
@@ -151,11 +191,12 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const flag = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
   const prs = args.filter((a) => /^\d+$/.test(a)).map(Number);
-  if (prs.length === 0) { console.error('usage: merge-queue.ts <pr> [<pr> …] [--dry-run] [--keep-going] [--poll=60] [--timeout-min=60]'); process.exit(2); }
+  if (prs.length === 0) { console.error('usage: merge-queue.ts <pr> [<pr> …] [--dry-run] [--keep-going] [--poll=60] [--timeout-min=60] [--sync-local=<checkout>]'); process.exit(2); }
   const opts = {
     dryRun: args.includes('--dry-run'),
     pollMs: Number(flag('poll') ?? 60) * 1000,
     timeoutMs: Number(flag('timeout-min') ?? 60) * 60_000,
+    syncLocal: flag('sync-local'),
   };
   const keepGoing = args.includes('--keep-going');
   const results: Array<[number, string]> = [];
