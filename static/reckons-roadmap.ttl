@@ -9018,3 +9018,16 @@ kb:ci-graph rdf:type ktype:Feature ;
 kb:release-0-2-6 kpred:has-part kb:ci-graph .
 
 kb:release-0-2-6 kpred:proposed "DRAFT SCOPE, 2026-10-07, for Matt to add to and refine from his staging reviews. In build order by what each blocks. (A) FINISH WHAT 0.2.5 STARTED: the importer recognizes chunk nodes so chunks can fold into a space's file (F107.10; blocks the Source View's second half and self-contained spaces); Spaces phase 2, the map as a canvas mode with ghost spaces and declared membership (F218); the shared canvas adopted on / (F92); evidence anchors that highlight the passage in the retained source (F122.1); proposals in the graph (F223). (B) PERFORMANCE, the largest measured limit: profile the superlinear browser import, density-aware labels and edges (F108.4), latency assertions in e2e (F140). (C) THE LOCAL TIER, HONESTLY: back-pressure parts 2-3, a script cleanup of stale and duplicate proposals and a keep/demote/retire decision per zero-yield job (F74.9); move the nine remaining stream:false callers; one GPU lease for every local caller; a recency index from git and a context benchmark scored by local models, the prerequisites of the research watch (F246). (D) AUDITORS: CI as a graph (F33.2), and a check that new user-facing words exist in the terminology (F203.6). (E) QUICK WIN: wire the Currents client so a current delivers arrivals again (kb:currents-client-unwired), returning F29.2 and F29.3 to functional. CANDIDATES, NOT YET IN: local host mode, LAN HTTPS and agents in the app (F243-F245); the Sveltia plugin and content lane (F47; Matt: not yet). OUT: the blog-manager persona (F247, speculative), Rapier physics (F242)." .
+
+kb:release-0-2-6 kpred:decided "MATT, 2026-10-07: wiring the Currents client (kb:currents-client-unwired) is worth doing in v0.2.6. Local host mode, LAN HTTPS and agents in the app go to a later v0.2.7 'reach' release. Draft plans for v0.2.6 go in now, with v0.2.5." ;
+    kpred:has-part kb:currents-client-unwired .
+
+kb:release-0-2-7 rdf:type ktype:Release ;
+    rdfs:label "v0.2.7" ;
+    kpred:version "0.2.7" ;
+    kpred:has-status "planned" ;
+    kpred:description "The reach release: Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
+    kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
+    kpred:has-part kb:local-host-mode ;
+    kpred:has-part kb:lan-https ;
+    kpred:has-part kb:agents-in-app .
