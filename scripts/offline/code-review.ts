@@ -24,6 +24,7 @@ import { selectReviewBatch, type PriorReviewBatch } from '../agent/run-contract.
 import { chunkReviewDiff, discoverReviewFiles, renderReviewDiff, resolveReviewBase } from './lib/review-git.js';
 import { pendingQueuePath } from './lib/main-workspace.js';
 import { refuteFinding } from './lib/review-refute.js';
+import { ollamaStream } from './lib/ollama-stream.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
@@ -83,14 +84,9 @@ const SKIP = /(package-lock\.json|pnpm-lock|yarn\.lock|\.min\.|\.map$|\.svg$|\.p
 
 async function ollama(prompt: string): Promise<string> {
   try {
-    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, prompt, stream: false, options: { num_ctx: 16384, temperature: 0 } }),
-    });
-    if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-    const j = (await res.json()) as { response?: string };
-    const response = (j.response ?? '').trim();
+    // Streamed: waiting behind other GPU jobs is not a failure, silence mid-answer is (lib/ollama-stream.ts).
+    const { text } = await ollamaStream(OLLAMA, 'generate', { model: MODEL, prompt, options: { num_ctx: 16384, temperature: 0 } });
+    const response = text.trim();
     if (!response) throw new Error('Ollama returned an empty review response');
     return response;
   } catch (e: any) {
