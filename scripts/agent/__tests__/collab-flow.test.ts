@@ -162,9 +162,9 @@ describe('stage 4 — a local model drafts a PLAN mapping the request to registe
   // flows into command(), and command() wraps it in JSON.stringify, which yields a double-quoted
   // string. Bash still expands $() and backticks inside double quotes, and runner.ts executes the
   // command with execSync(..., { shell: '/bin/bash' }). task-templates.ts says "never interpolated
-  // into a shell string" but it is. `it.fails` records the bug while it exists and flips red when
-  // someone fixes it (then delete the .fails).
-  it.fails('E (arg path, KNOWN BUG): command(arg) neutralises shell metacharacters in the argument', () => {
+  // into a shell string" but it was. FIXED by #342 (F99.4): arguments are now shell-quoted, so this
+  // runs as a plain `it` and guards the fix.
+  it('E (arg path, fixed in #342): command(arg) neutralises shell metacharacters in the argument', () => {
     const m = matchTemplate('generate a document about $(touch HOSTILE_MARKER) and `id`');
     expect(m, 'phrase-anchored hostile text does match a registry template').not.toBeNull();
     const cmd = m!.template.command(m!.arg);
