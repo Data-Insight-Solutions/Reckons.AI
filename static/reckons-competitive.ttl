@@ -968,3 +968,21 @@ kb:comp-flora rdf:type ktype:Competitor ;
                kpred:assessment   "WHAT IT IS NOT, IN MATT'S WORDS (2026-09-23): 'It is not ontology building, it is generative ai canvas.' So it does not compete on the review spine — no pending state, no human gating what enters — on provenance, on a portable standard format a user owns, or on local-first storage. Those are structural differences rather than feature gaps, and a demo will not surface them because they are properties of where the data lives and who approves it." ;
                kpred:honest-note  "ASSESSED FROM A DEMONSTRATION AND THE PUBLIC DOCS URL, NOT FROM USE. Nothing here is measured: no licence check, no storage-model verification, no test of whether assets or projects can be exported. Those are exactly the questions that decide how much of the above holds, and none has been asked yet. Treat this as a first reading to be corrected, not as a competitive finding." ;
                kpred:relates-to   kb:asset-generation .
+
+kb:ref-cyber-ocean rdf:type    ktype:Reference ;
+               rdfs:label   "SahilK-027/Cyber-Ocean — Three.js underwater scene: surface-sampled particles, flow field, post-processing" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   38 ;
+               kpred:repo-url     "https://github.com/SahilK-027/Cyber-Ocean" ;
+               kpred:license      "none" ;
+               kpred:copy-permitted "NO — the repository has no license file (GitHub API license: null, checked 2026-10-01), so all rights are reserved. Read it for technique only; every technique it uses has an MIT source (three.js examples, pmndrs postprocessing)." ;
+               kpred:stars        78 ;
+               kpred:language     "JavaScript" ;
+               kpred:last-push    "2026-06-24"^^xsd:date ;
+               kpred:description  "A live demo (cyber-ocean.vercel.app) that Matt shared on 2026-10-01: a dolphin rendered as particles sampled over its mesh surface (three.js MeshSurfaceSampler), particles drifting through a 3D flow field, and custom post-processing (chromatic aberration, glow, film grain), with a depth, velocity and position telemetry overlay. Model: 'Dolphin' by Alex_Pfe (Sketchfab, CC BY 4.0)." ;
+               kpred:principle    "THREE TECHNIQUES, THREE PLACES THEY FIT. (1) Surface sampling: entities already carry GLB models (meta/glbModel), so a node can render as a particle silhouette of its own model, a natural low-detail or far-distance form for kb:one-graph-canvas's level of detail. (2) Flow field: kb:currents is literally currents, so streamed arrivals can ride a current field instead of a straight drift in kb:undersea-pod-ui, which also gives kb:rapier-physics a job that is not layout (the field pushes, Rapier resolves contact). (3) Glow suits selection and new arrivals." ;
+               kpred:honest-note  "Chromatic aberration and film grain cost label legibility, which kb:graph-density-legibility exists to protect. Keep them off the working graph; at most an ambient or landing mode that honours prefers-reduced-motion. A 78-star personal demo is inspiration, not a dependency." ;
+               kpred:relates-to   kb:undersea-pod-ui ;
+               kpred:relates-to   kb:currents ;
+               kpred:relates-to   kb:rapier-physics ;
+               kpred:relates-to   kb:one-graph-canvas .
