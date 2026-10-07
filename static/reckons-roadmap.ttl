@@ -8938,3 +8938,47 @@ kb:source-corpus kpred:has-file "src/lib/ingest/source-corpus.ts" ;
     kpred:tested-by "src/lib/ingest/__tests__/source-document.test.ts" ;
     kpred:tested-by "src/lib/stores/__tests__/workspace-source-corpus.test.ts" ;
     kpred:tested-by "tests/e2e/source-document.test.ts" .
+# -- Research watch, blog-manager persona, job back-pressure (Matt, 2026-10-07) ------------------
+kb:research-watch rdf:type ktype:Feature ;
+               rdfs:label         "Research watch — a conservative assistant that notes key advances, gives highlights, then lets you dig in by chat" ;
+               kpred:feature-id   "F246" ;
+               kpred:description  "Watches a set of sources in a space and, when an event wakes it, proposes a few anchored highlights of what is genuinely new; you read the highlights, then open a chat on one of them with just that part of the graph in context." ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:decided      "MATT, 2026-10-07: 'I could picture a research assistant, that notes key advancements but is relatively conservative in its updates. I can't read 10 pages quickly, I want highlights and then chat to dig in to a discussion with a MCP enabled broad and deep knowledge, with less context usage.' Space sets and event triggers are the means: a watch is a set of sources in a space, a trigger is an event that wakes it." ;
+               kpred:principle    "CONSERVATIVE BY CONSTRUCTION. A watch PROPOSES, it never writes: each run emits at most a few highlights, each anchored to its source passage (F107 evidence anchors), into the review queue. A highlight that restates something the space already holds is dropped by a script before any person sees it. Silence is a valid run result." ;
+               kpred:principle    "HIGHLIGHTS FIRST, DEPTH ON REQUEST. The first screen is three to five highlights with why each matters; chat opens on one of them with that highlight's subgraph already loaded, and widens only when asked." ;
+               kpred:measured     "CONTEXT, MEASURED 2026-10-07 (no model calls). All 40 tracked graphs in static/ are ~485k tokens (364,569 words x 1.33), so 'broad and deep' cannot mean putting the graphs in context. kb_compress for 'what changed recently in local agent orchestration and what is still unbuilt' at budget 1500 returned 3 entities, 33 facts, ~972 tokens (0.2% of the corpus) — and MISSED the answer: it chose a 2026-09-08 audit, a tour step and a competitor, not kb:local-panel, which gained three progress notes that day. Selection is BM25 with no notion of recency. The cost-bench dry run's 'A1 ~2200 in' is a hard-coded estimate, not a measurement." ;
+               kpred:remaining    "Not built. (1) A recency-aware selection mode for kb_compress (dated kpred:progress / kpred:measured literals weighted by age) — the measurement above says this comes first, because highlights ARE recency. (2) A context benchmark that is a benchmark: fixed questions with known answer entities, arms = full graph / kb_search / kb_compress / kb_compress+recency, scored by answer-entity recall and tokens, answered by a LOCAL model so a full run costs nothing (tests/bench/run-cost-bench.ts --run is metered API). (3) Watch definition as a set in the space TTL (F107.10 layout) with sources and a trigger. (4) Triggers through kb:event-broker (F169). (5) Highlights view + chat seeded with one highlight." ;
+               kpred:depends-on   kb:research-run ;
+               kpred:depends-on   kb:event-broker ;
+               kpred:depends-on   kb:source-corpus ;
+               kpred:relates-to   kb:async-digest ;
+               kpred:relates-to   kb:publisher-subscriptions .
+
+kb:blog-manager-persona rdf:type ktype:Feature ;
+               rdfs:label         "Blog manager — a Shelly persona that carries a post from notes to published, in your brand and voice" ;
+               kpred:feature-id   "F247" ;
+               kpred:description  "A Shelly persona for running a blog: it drafts posts from your notes and research highlights, checks them against your brand and voice as recorded in the graph, and hands each draft to you for review before anything is published." ;
+               kpred:has-status   "speculative" ;
+               kpred:priority     "medium" ;
+               kpred:decided      "MATT, 2026-10-07: 'I see a blog manager as a persona that Shelly could take on, where the content publishing takes a lot of time and effort. brand and voice are important to say the least.'" ;
+               kpred:principle    "BRAND AND VOICE ARE DATA, NOT A PROMPT. A space holds its voice as reviewable statements (terms used and avoided, tone, audience, examples of on-voice and off-voice sentences), so a draft can be CHECKED against them by script where possible and by a local panel where not, and the person edits the voice by editing the graph." ;
+               kpred:principle    "A PERSONA PUBLISHES NOTHING ON ITS OWN. Drafts are proposals; publishing goes through the existing publish path and kb:publish-safety-gate, and a shared persona always carries the ethics preamble (content-policy: sharing carries it)." ;
+               kpred:remaining    "Not built; scope is Matt's to confirm (it changes what Shelly is). Builds on: graph publishing (WebPage nodes to content/*.md), kb_generate_page (graph-grounded drafts, proposal only), Shelly in Sveltia (F47), and the research watch (F246) as a source of what to write about. Open: where a persona is chosen (a Shelly mode, not a new tab), and a voice-check job." ;
+               kpred:relates-to   kb:graph-publishing ;
+               kpred:relates-to   kb:shelly-in-sveltia ;
+               kpred:relates-to   kb:publish-safety-gate ;
+               kpred:relates-to   kb:research-watch .
+
+kb:job-backpressure rdf:type ktype:Feature ;
+               rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
+               kpred:feature-id   "F74.9" ;
+               kpred:description  "Stops a local agent job from adding more proposals while the ones it already made sit unreviewed, and runs a regular review of the jobs list so that low-value jobs are demoted, sampled or retired." ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:work-tiering ;
+               kpred:decided      "MATT, 2026-10-07: 'I'd like you to regularly review the massive jobs list and look for improvements.' The first review is the measurement below." ;
+               kpred:measured     "FIRST JOBS REVIEW, 2026-10-07 (scripts/offline/proposal-yield.ts): 2,651 proposals, 860 ruled on, 1,791 never looked at. Producers with ZERO ruled on: layer-classify 435, docs-review 170, extraction-score 133, stars-scan 81, docs-expand 67, distill-decisions 61, script-inventory 53, dead-weight 28. Five of those were among the 14 overdue schedules the queue worker enqueued the same evening. Running them adds to a pile no one reads; that is cost moved to triage, not work done (CLAUDE.md: offloading is not free)." ;
+               kpred:remaining    "Not built. (1) The worker skips an agent-tier schedule while that producer's untriaged count is over a limit (device config, default 50), and agent:watch says so ('held: 435 unreviewed'). (2) A weekly script-tier jobs review (proposal-yield + script-inventory) whose summary the SessionStart hook surfaces, so the review happens in a session rather than relying on memory. (3) For the zero-yield producers, decide per job: demote to a script, sample (review 10, measure yield, then decide), or retire." ;
+               kpred:relates-to   kb:local-panel .
