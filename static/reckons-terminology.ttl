@@ -457,3 +457,17 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     skos:definition "A token-bearing URL that admits another DEVICE to this instance — the QR mobile-access path. It moves no graph data at all." ;
     skos:scopeNote "THE THIRD SENSE OF 'share', AND THE ONE MOST EASILY MISFILED. QRSharePanel calls navigator.share with the title 'Reckons.AI access link', so the operating system's own share sheet is used to hand over a CREDENTIAL. Leaking it is an authentication failure, not a content-disclosure one, so neither the export right nor the distribution gate is the right model for it — a content advisory on a credential would be nonsense, and so would a content gate." ;
     skos:related kterm:export-act, kterm:publish-act .
+
+# ── UI audit (F203.7, 2026-10-07) ─────────────────────────────────────────────────────────────
+# Read by scripts/offline/ui-terms.ts. JARGON: words a person using the product should not meet on
+# its screens, because each names how the product is BUILT rather than what the person does (Matt,
+# 2026-10-07: "If the UI displays backend engineering terms ... we should be able to detect and fix
+# that"). Standards names with a prefix (rdf:Statement, sh:PropertyShape) are added automatically
+# from kpred:standards-label. TECHNICAL SURFACES: files written for a technical reader, where the
+# jargon and the RDF sense of "graph" are allowed; empty until a person declares one, because which
+# pages are technical is a product decision, not a pattern.
+<urn:kbase:vocabulary/terminology>
+    kpred:ui-jargon "IndexedDB", "localStorage", "IRI", "URN", "triple", "reification", "reified",
+        "N-Quads", "TriG", "named graph", "SHACL", "RDFS", "OWL", "namespace", "mutation", "serialization" .
+# Baselines measured 2026-10-07 on dev (before #386 fixed /kb). The ratchet lets them fall, never rise.
+<urn:kbase:vocabulary/terminology> kpred:ui-term-ratchet "jargon/43", "graph-as-space/108" .

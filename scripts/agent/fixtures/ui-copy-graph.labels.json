@@ -1,0 +1,420 @@
+{
+ "word": "graph",
+ "question": "which sense: the space (a collection the user manages), the drawn picture (keep), a technical RDF term (keep), or a sentence to reword",
+ "labelledBy": "Opus, 2026-10-07, from the visible sentence and the terminology graph (kterm:graph-view user label space; kterm:named-graph foreign)",
+ "items": [
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:117:4622",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "graph package \u00b7 {\u2026}",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:161:6798",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "back up every graph to disk \u00b7 survives cache clears",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:64:2882",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "graph(s)",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:64:2913",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "graph(s) linked",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:67:3012",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "graph",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/GraphPackagePanel.svelte:84:3488",
+   "file": "src/lib/components/GraphPackagePanel.svelte",
+   "sentence": "graph",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/PredicateManager.svelte:41:1677",
+   "file": "src/lib/components/PredicateManager.svelte",
+   "sentence": "\" is a standard vocabulary term, not one of yours. Renaming it would rewrite it into Reckons.AI's namespace and the graph would stop meaning what it says.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/lib/components/SpacesMap.svelte:234:12160",
+   "file": "src/lib/components/SpacesMap.svelte",
+   "sentence": "No lines yet because none of these spaces links to another. A line appears when a node in one space jumps to a different space: select a node in the explorer, choose , and enter the other space's graph ID.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:899:37946",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graph title\u2026",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:908:38187",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "what is this graph about? (guides re-analysis prompts)",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:935:39098",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "other graphs",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:940:39313",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "switch to another graph, compare two, or start a new one. The section above edits the one you are in now.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:943:39486",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Graph filter",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:968:40296",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "filter graphs\u2026",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:969:40330",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Filter graphs by name, description or id",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:971:40427",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Sort graphs",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:975:40734",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Largest graph first",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:989:41196",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "new graph name\u2026",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:990:41233",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "New graph name",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1010:42032",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "align these graphs",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1023:42581",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Re-importing a source makes a NEW graph rather than updating the old one, so these names each cover more than one independent copy. They will disagree as soon as either is edited, and the name alone cannot tell you which you are in.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1080:45262",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1080:45286",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1084:45695",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Grouped by the sub-directory these graphs are synced from in your workspace folder. Moving a graph to another folder moves it here.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1084:45753",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Grouped by the sub-directory these graphs are synced from in your workspace folder. Moving a graph to another folder moves it here.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1122:47612",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Rename graph",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1139:48514",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "This is an archive. The graph it holds history for is no longer in this list, so it cannot be restored into its parent from here.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1156:49528",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "No statement count recorded \u2014 this graph has not been opened or saved yet",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1256:53828",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Archived is not deleted \u2014 facts move to a separate archive graph, listed below, and stay restorable. Nothing sweeps on its own; this runs only when you press it.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1315:56591",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "no bookmarked graphs yet. star a graph to bookmark it.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1315:56610",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "no bookmarked graphs yet. star a graph to bookmark it.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1322:56894",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "open a graph file",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1334:57275",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Opens it as its own graph, ready to read \u2014 nothing to review first. To a graph into this one fact by fact, use instead.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1335:57349",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Opens it as its own graph, ready to read \u2014 nothing to review first. To a graph into this one fact by fact, use instead.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1374:58970",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Opens the Add page \u2014 merges this graph into the current one, fact by fact",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1539:65758",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "view, rename, and merge predicates used in your graph.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1553:66288",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "define a guided tour for this graph. Shelly will walk visitors through these steps in the explore tab.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1595:68282",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "no story defined yet. create one to guide visitors through your graph.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1615:69049",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "recurring streams (rss / url / topic) that bring new arrivals into this graph. arrivals always land as pending facts \u2014 review them in the pod view.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1625:69529",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "\ud83d\udc0b pod view on the graph",
+   "label": "keep",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1643:70475",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "empty = every type allowed. gate applies only to brand-new entities; facts on entities already in the graph always flow through.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1735:74432",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graph package & sync",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1752:75248",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "author a post as a node in this graph, preview the markdown it produces, and export it into the site's content folder. building and deploying the site stay separate steps.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1763:75753",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "customize type icons, colors, geometries, and 3D models for graph nodes.",
+   "label": "keep",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1825:78392",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "paste another graph export; conflicts surface in review.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1838:79001",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "link a local folder to automatically back up all graphs. your data survives browser cache clears.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:1865:80181",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graphs synced",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:320:15796",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "LEFT ON DISK, so this is reversible by re-adding the graph \u2014 nothing is destroyed.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:350:16831",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Remove this graph from the list? Its IndexedDB data will remain but the entry will be unlinked.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:384:18172",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "This graph has no stable id yet \u2014 open it once so it can be registered.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:389:18465",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "Archived is not deleted \u2014 the facts move to a separate graph and can be restored.",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:486:22383",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "No facts found in that file \u2014 is it a Turtle graph?",
+   "label": "reword",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:530:23965",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "full graph export",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:563:25413",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "full graph export",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:577:26081",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "full graph export \u2014 lossless, one named graph per source",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:577:26116",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "full graph export \u2014 lossless, one named graph per source",
+   "label": "keep",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:585:26424",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graph + RDFS/OWL closure",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:749:32389",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graph",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  },
+  {
+   "id": "src/routes/(app)/kb/+page.svelte:759:32671",
+   "file": "src/routes/(app)/kb/+page.svelte",
+   "sentence": "graph",
+   "label": "space",
+   "panel_2026_10_07": "keep"
+  }
+ ]
+}
