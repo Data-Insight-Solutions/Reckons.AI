@@ -32,7 +32,7 @@ import { getRegistry, createKb, updateKbEntry } from './kb-registry';
 import type { Statement } from '$lib/rdf/types';
 
 /** Registry id of the archive graph linked to `parentStableId`, if it exists. */
-export function findArchiveKbId(parentStableId: string): string | null {
+export function findArchiveKnowledgeBaseId(parentStableId: string): string | null {
   return getRegistry().find((k) => k.archiveOf === parentStableId)?.id ?? null;
 }
 
@@ -42,7 +42,7 @@ const isArchiveMetadataRow = (statement: Statement) =>
 async function loadArchiveRows(parentStableId: string): Promise<Statement[]> {
   if (!parentStableId.trim()) throw new Error('Archive parent stable ID is required');
 
-  const archiveKbId = findArchiveKbId(parentStableId);
+  const archiveKbId = findArchiveKnowledgeBaseId(parentStableId);
   if (!archiveKbId) return [];
 
   const db = new KBaseDB(archiveKbId);
@@ -228,7 +228,7 @@ export async function restoreArchivedEntityForParent(
     throw new ArchivedEntityRestoreError('Working KB ID does not match the parent stable ID');
   }
 
-  const archiveKbId = findArchiveKbId(input.parentStableId);
+  const archiveKbId = findArchiveKnowledgeBaseId(input.parentStableId);
   if (!archiveKbId) {
     throw new ArchivedEntityRestoreError('No archive graph exists for this parent');
   }
