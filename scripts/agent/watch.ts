@@ -280,6 +280,7 @@ export function renderQueue(q: QueueView | undefined, due: Due[] | undefined, lv
       case 'paused-resources': out.push(`${head}  ${lvl('warn', `PAUSED — GPU busy/hot/full: ${q.reason ?? 'over a limit'} · ${q.queued} queued`)}`); break;
       case 'empty': out.push(`${head}  ${dim('EMPTY — nothing queued')}`); break;
     }
+    if (q.held?.length) out.push(`  ${lvl('warn', 'held')}: ${q.held.slice(0, 4).join(' · ')}${q.held.length > 4 ? dim(` +${q.held.length - 4} more`) : ''}`);
   }
   if (due && due.length) {
     const rank = (d: Due) => (d.due ? -(d.overdueMs ?? Infinity) : (d.dueInMs ?? 0));
