@@ -1,3 +1,29 @@
+## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
+
+**Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
+(awareness is not access); fold source chunks into the space .ttl; outbound webhooks first, REST
+polling second (F243); LAN HTTPS by one-time CA / Tailscale / own domain, offline-first default
+(F244); agents in the app, per space in the Spaces tab and per device in Settings, no new tab
+(F245); 3D Spaces = the 0.2.5 canvas mode; localhost serves dev.
+
+**Done:** main checkout switched to `dev` (was a feature branch 44 behind); `npm install` run there.
+#352 ghost-run fix merged (restart `npm run agent:watch` to see it). Wispr Flow added as a
+competitor (#366).
+
+**Open PRs from this session, base dev:** #361 Source View source side (after #351) · #362 reviewer
+refutes · #363 self-contained spaces + space-size benches · #364 F243/F244/F245 + 3D Spaces ·
+#365 merge-queue `--sync-local` · #366 Wispr Flow · #367 rename batch 2b (42 names) · #368 katex
+^0.19.0 (#360 pinned a deprecated release). The merge queue was still landing #341… #358.
+
+**Measured (bench, RTX 3090, headless GPU):** render is the limit, not the file. 10k statements:
+browser import 4 s, 3D first frame 12 s, nothing settles. 100k: import ~150 s, one 2D frame ~80 s.
+Browser import is superlinear (Node parse is linear); next step is a CPU profile of that import.
+
+**Waiting on Matt:** install the heartbeat hook (`/hooks`; the classifier blocks me editing
+settings.local.json), then `queue.ts seed-standard` + `npm run agent:queue-worker -- --stay`;
+remove the `# reckons-schedule` cron line once the hook is in. Review queue: 39 batch proposals
+(docs-expand drafts carry jargon) + 4 terminology gaps (set, space, source, graph-as-data).
+
 ## 2026-10-06 — START HERE. 0.2.5: backlog landing, Source View source side, reviewer refutes (Claude Code)
 
 **Matt approved (this session):** land every open dev PR, and the FULL 0.2.5 plan (Source View
