@@ -20,7 +20,7 @@
   import SourcesPanel from '$lib/components/SourcesPanel.svelte';
   import SourcesExplorer from '$lib/components/SourcesExplorer.svelte';
   import { officialKbActive } from '$lib/stores/official-kb.svelte';
-  import { createProvenanceControls, type projectProvenance } from '$lib/rdf/provenance-view';
+  import { buildProvenanceIndex, createProvenanceControls, type projectProvenance } from '$lib/rdf/provenance-view';
   import RelationBuilder from '$lib/components/RelationBuilder.svelte';
   import Select from '$lib/components/ui/Select.svelte';
   import Tooltip from '$lib/components/ui/Tooltip.svelte';
@@ -34,7 +34,7 @@
     addStatements,
     setStatus
   } from '$lib/stores/kb.svelte';
-  import { termKey, type Statement, type Source } from '$lib/rdf/types';
+  import { termKey, iriFromNodeKey, looksLikeTermKey, type Statement, type Source } from '$lib/rdf/types';
   import { SKOS_ALT_LABEL, buildAliasStatements, entityAnswersTo } from '$lib/rdf/merge-aliases';
   import MergeReview from '$lib/components/MergeReview.svelte';
   import { allTypes, typeMap } from '$lib/stores/entity-types.svelte';
@@ -153,6 +153,16 @@
     layout = (next === 'sources' ? sourcesLayout : statementsLayout) as typeof layout;
     selected = null; multiSelected = new Set(); navHistory = [];
   }
+  function showEntitySource(source: { id: string; key: string }) {
+    // An explicit jump must reveal its target even after the source picker was filtered or full.
+    provenanceControls = {
+      ...createProvenanceControls(),
+      presentation: provenanceControls.presentation,
+      selectedIds: [source.id], initialized: true,
+    };
+    switchPerspective('sources');
+    selected = source.key;
+  }
   function selectGraphNode(key: string | null) {
     if (perspective === 'sources' && key) {
       const containing = sourceScene?.sources.flatMap((source) => source.groups.filter((group) => group.members.includes(key)).map((group) => group.key)) ?? [];
@@ -182,11 +192,12 @@
   let gifPointerY = $state(0);
   let gifTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function iriFromNodeKey(key: string | null): string | null {
-    if (!key) return null;
-    // Node keys are stored as 'i:<iri>' for IRI nodes, 'l:<value>' for literals
-    return key.startsWith('i:') ? key.slice(2) : null;
-  }
+  // iriFromNodeKey is shared ($lib/rdf/types): 'i:<iri>' -> iri, anything else (a literal
+  // 'l:...' or blank node) -> null. A literal can never be a subject, so every action that
+  // writes statements ABOUT the selected node must go through it and bail on null — never fall
+  // back to the raw key (that produced `<l:high||> skos:altLabel ...`, an unparseable export).
+  /** The selected node as an IRI, or null when it is a literal / blank node. */
+  const selectedIri = $derived(iriFromNodeKey(selected));
 
   function onGraphPointerMove(e: PointerEvent) {
     gifPointerX = e.clientX;
@@ -1104,22 +1115,17 @@
         status: s.status
       }));
 
-    // Show which sources contribute to this entity
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : null;
-    if (entityIri) {
-      const entitySrcIds = new Set(visible.filter(s => s.s.kind === 'iri' && s.s.value === entityIri && s.sourceId).map(s => s.sourceId));
-      for (const sid of entitySrcIds) {
-        const src = sources().find(s => s.id === sid);
-        incoming.push({
-          predicate: 'sourced-by',
-          source: src?.title ?? sid,
-          sourceKey: `src:${sid}`,
-          status: 'confirmed'
-        });
-      }
-    }
-
     return { label, typeDef, outgoing, incoming };
+  });
+
+  // Use all current claims touching the node, independent of graph filters and connection limits.
+  // The Sources index supplies the same deduplicated IDs, labels and missing-metadata fallbacks.
+  const nodeSources = $derived.by(() => {
+    if (perspective !== 'statements' || !selected || selected.startsWith('src:')) return [];
+    const related = statements().filter((s) =>
+      s.status !== 'rejected' && s.status !== 'superseded' &&
+      (termKey(s.s) === selected || termKey(s.o) === selected));
+    return buildProvenanceIndex(related, sources()).sources.filter((source) => source.statements.length > 0);
   });
 
   // ── Edge-zone / swipe actions ───────────────────────────────────────────────
@@ -1223,7 +1229,8 @@
 
   async function saveEntityIcon3d() {
     if (!selected) return;
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     if (icon3dDraft.trim()) {
       await setGlb(entityIri, icon3dDraft.trim());
     } else {
@@ -1235,7 +1242,8 @@
 
   async function clearEntityIcon3d() {
     if (!selected) return;
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     await clearGlb(entityIri);
     editingIcon3d = false;
   }
@@ -1467,7 +1475,8 @@
 
   async function saveEntityIcon2d() {
     if (!selected) return;
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     if (icon2dDraft.trim()) {
       await setIcon2d(entityIri, icon2dDraft.trim());
     } else {
@@ -1479,14 +1488,16 @@
 
   async function clearEntityIcon2d() {
     if (!selected) return;
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     await clearIcon2d(entityIri);
     editingIcon2d = false;
   }
 
   async function saveLink() {
     if (!selected || !newLinkValue.trim()) { addingLink = false; return; }
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     const now = Date.now();
     const { v4: uuidv4 } = await import('uuid');
     await addStatements([{
@@ -1578,7 +1589,8 @@
 
   async function saveLeap() {
     if (!selected || !newLeapId.trim()) return;
-    const entityIri = selected.slice(2);
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     const { v4: uuidv4 } = await import('uuid');
     const now = Date.now();
     const stmts: Parameters<typeof addStatements>[0] = [{
@@ -1762,7 +1774,8 @@
 
   async function saveLabel() {
     if (!selected || !labelDraft.trim()) { editingLabel = false; return; }
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) return;
     const now = Date.now();
     const existing = statements().find(
       s => s.s.kind === 'iri' && s.s.value === entityIri && s.p.value === RDFS_LABEL
@@ -1799,7 +1812,8 @@
 
   const nodeAliases = $derived.by(() => {
     if (!selected) return [] as Statement[];
-    const iri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const iri = iriFromNodeKey(selected);
+    if (!iri) return [] as Statement[];
     return statements().filter(
       s => s.s.kind === 'iri' && s.s.value === iri && s.p.value === SKOS_ALT_LABEL &&
            s.o.kind === 'literal' && s.status !== 'rejected' && s.status !== 'superseded'
@@ -1809,7 +1823,8 @@
   async function addAlias() {
     const value = aliasDraft.trim();
     if (!selected || !value) { addingAlias = false; aliasDraft = ''; return; }
-    const entityIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const entityIri = iriFromNodeKey(selected);
+    if (!entityIri) { addingAlias = false; aliasDraft = ''; return; }
     // An alias the entity already answers to is not a new name. entityAnswersTo covers the
     // primary label too, so "add the name it is already called" is a no-op rather than a
     // duplicate row.
@@ -1972,7 +1987,10 @@
     if (!selected || !mergeTarget.trim()) return;
     const { updateStatement, setStatus } = await import('$lib/stores/kb.svelte');
 
-    const keepIri  = keepKey.startsWith('i:') ? keepKey.slice(2) : keepKey;
+    // Merging is only defined between two IRI entities. A literal node cannot be kept (it would
+    // be wrapped as an IRI subject) or dropped into an entity, so refuse rather than guess.
+    const keepIri  = iriFromNodeKey(keepKey);
+    if (!keepIri || !iriFromNodeKey(selected) || looksLikeTermKey(mergeTarget.trim())) return;
     const dropKey  = keepKey === selected ? `i:${mergeTarget}` : selected;
     const keepNode = { kind: 'iri' as const, value: keepIri };
 
@@ -2009,7 +2027,8 @@
     const { v4: uuid } = await import('uuid');
 
     // Extract subject IRI from termKey (strip leading "i:")
-    const subjectIri = selected.startsWith('i:') ? selected.slice(2) : selected;
+    const subjectIri = iriFromNodeKey(selected);
+    if (!subjectIri) return;
     const now = Date.now();
     const stmts: any[] = [];
 
@@ -2511,13 +2530,17 @@
       {/each}
     </div>
     <div class="multisel-actions">
-      <button class="np-act-btn" onclick={() => {
+      <button class="np-act-btn" disabled={!iriFromNodeKey(nodeA.key) || !iriFromNodeKey(nodeB.key)}
+        title={iriFromNodeKey(nodeA.key) && iriFromNodeKey(nodeB.key) ? '' : 'only entities can be merged, not literal values'}
+        onclick={() => {
         selected = nodeA.key;
         mergeTarget = nodeB.iri;
         multiSelected = new Set();
         showMergeUI = true;
       }}>⟷ merge</button>
-      <button class="np-act-btn np-act-primary" onclick={() => {
+      <button class="np-act-btn np-act-primary" disabled={!iriFromNodeKey(nodeA.key)}
+        title={iriFromNodeKey(nodeA.key) ? '' : 'a literal value cannot be the subject of a relation'}
+        onclick={() => {
         selected = nodeA.key;
         multiSelected = new Set();
         showRelationUI = true;
@@ -2742,7 +2765,7 @@
     <!-- Header: name + type + close -->
     <div class="np-header">
       <div class="np-title-row">
-        {#if editingLabel}
+        {#if editingLabel && selectedIri}
           <input
             class="np-label-input mono"
             bind:value={labelDraft}
@@ -2750,18 +2773,24 @@
             onblur={saveLabel}
             use:focusOnMount
           />
-        {:else}
+        {:else if selectedIri}
           <button class="np-label-btn" onclick={startEditLabel} title="click to edit label">
             <h3 class="np-label mono">{info.label}</h3>
             <span class="edit-hint mono">✎</span>
           </button>
+        {:else}
+          <!-- A literal / blank node is a value, not an entity: it has no label, type or names
+               of its own to edit (a literal cannot be the subject of a triple). -->
+          <h3 class="np-label mono" title="this node is a value, not an entity, so it has no label or type to edit">{info.label}</h3>
         {/if}
+        {#if selectedIri}
         <Select
           value={info.typeDef?.iri ?? ''}
           class="np-type-select"
           options={[{value: '', label: 'no type'}, ...allTypes().map(t => ({value: t.iri, label: t.label}))]}
           onchange={async (newTypeIri) => {
-            const entityIri = selected!.startsWith('i:') ? selected!.slice(2) : selected!;
+            const entityIri = iriFromNodeKey(selected);
+            if (!entityIri) return;
             const { v4: uuidv4 } = await import('uuid');
             const oldType = statements().find(s =>
               s.s.kind === 'iri' && s.s.value === entityIri && s.p.value === RDF_TYPE &&
@@ -2785,12 +2814,14 @@
             }
           }}
         />
+        {/if}
       </div>
       <button class="ghost np-close-btn" onclick={() => { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; }}>✕</button>
     </div>
     {/snippet}
     <div class="np-body">
-      <!-- Also known as — every other name this node answers to -->
+      <!-- Also known as — every other name this node answers to (entities only) -->
+      {#if selectedIri}
       <div class="np-aliases">
         <p class="np-conn-title mono">also known as</p>
         <div class="np-alias-list">
@@ -2815,6 +2846,9 @@
           {/if}
         </div>
       </div>
+      {:else}
+        <p class="hint mono">this node is a value, not an entity — names, types, merges and relations apply to the entity that holds it.</p>
+      {/if}
 
     <!-- Pod arrival actions (F29.3) — shown when pod view is on and this node hasn't been accepted yet -->
     {#if podMode && selectedIsArrival && !selected?.startsWith('src:')}
@@ -2841,8 +2875,10 @@
           {#if selectedIsSet}
             <button class="np-act-btn np-act-set" onclick={selectSetMembers} title="multi-select this set's members to act on them">⬡ select {selectedSetMemberCount} members</button>
           {/if}
-          <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
-          <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
+          {#if selectedIri}
+            <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
+            <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
+          {/if}
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
         </div>
       {/if}
@@ -2858,6 +2894,28 @@
           <p class="np-preview-text">{selectedContent}</p>
         {/if}
       </div>
+    {/if}
+
+    {#if nodeSources.length > 0}
+      <section class="np-sources" aria-label="Node sources">
+        <h4 class="np-conn-title mono">sources</h4>
+        {#each nodeSources as source (source.id)}
+          <div data-source-id={source.id}>
+            <button class="np-conn-row np-source-link" onclick={() => showEntitySource(source)}
+              aria-label={`Show ${source.title} in Sources`}>
+              <span class="conn-source">{source.title}</span><span aria-hidden="true">↗</span>
+            </button>
+            <details class="np-atoms-details" open>
+              <summary>{source.statements.length} Atom{source.statements.length === 1 ? '' : 's'}</summary>
+              {#each source.statements as statement (statement.id)}
+                <div data-atom-id={statement.id} class="np-atom-wrapper">
+                  <StatementCard {statement} compact showGraph={false} />
+                </div>
+              {/each}
+            </details>
+          </div>
+        {/each}
+      </section>
     {/if}
 
     <!-- Quick connections -->
@@ -3162,7 +3220,7 @@
         <span class="np-stmts-arrow mono">{expandedTriples ? '▲' : '▼'}</span>
       </button>
       {#if expandedTriples}
-        <div class="stack">
+        <div class="stack" role="region" aria-label="Node facts">
           {#each selectedStatements as st (st.id)}
             <StatementCard
               statement={st}
@@ -3916,6 +3974,16 @@
   }
 
   /* Quick connections */
+  .np-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+  }
+  .np-source-link { justify-content: space-between; width: 100%; min-height: 44px; overflow-wrap: anywhere; }
+  .np-atoms-details { margin: 0.2rem 0 0.6rem; border-left: 2px solid var(--line); padding-left: 0.5rem; }
+  .np-atoms-details summary { cursor: pointer; min-height: 44px; align-content: center; font-size: 0.75rem; color: var(--muted); }
+  .np-atom-wrapper { margin-top: 0.3rem; }
   .np-connections {
     display: flex;
     flex-direction: column;

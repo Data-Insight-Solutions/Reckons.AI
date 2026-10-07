@@ -52,7 +52,7 @@ import type { ExtractionStageName } from '../rdf/types';
 
 export type IngestInput =
   | { kind: 'url'; url: string }
-  | { kind: 'document'; title: string; text: string; filename?: string }
+  | { kind: 'document'; title: string; text: string; filename?: string; original?: { bytes: Uint8Array; filename?: string; mediaType?: string } }
   | { kind: 'note'; title: string; body: string }
   | { kind: 'reminder'; title: string; body: string; dueAt?: number }
   | { kind: 'repository'; repoUrl: string; token?: string };
@@ -131,6 +131,7 @@ export async function ingest(
 
   // Extra metadata for repository sources
   let repoMeta: { owner: string; repo: string; branch: string; headSha: string; fileCount: number } | undefined;
+  let originalBytes: { bytes: Uint8Array; filename?: string; mediaType?: string } | undefined;
 
   // Set when the URL is a Reckons.AI graph: its own TTL is imported directly as
   // pending facts, skipping LLM extraction entirely (F72 kb:ttl-aware-ingest).
@@ -170,6 +171,7 @@ export async function ingest(
   } else if (input.kind === 'document') {
     title = input.title;
     text = input.text;
+    originalBytes = input.original ? { ...input.original, filename: input.original.filename ?? input.filename } : undefined;
     uri = `file://${input.filename ?? input.title}`;
     kind = 'document';
   } else if (input.kind === 'note') {
@@ -758,6 +760,24 @@ export async function ingest(
     run = finishExtractionStage(run, activeRunStage);
     run = completeExtractionRun(run);
     await persistIngestBatch(source, writePlan, run);
+
+    // F221: keep the text the statements came from, so a statement's Evidence section can show the
+    // real passage. Direct Turtle import has no source text worth keeping. A retention failure
+    // must never cost the extraction that already committed: warn and carry on.
+    if (!turtleStatements) {
+      try {
+        // Lazy: the corpus store pulls in the workspace store, which ingest must not load eagerly.
+        const { retainSourceCorpus } = await import('./source-corpus');
+        const kept = await retainSourceCorpus({
+          sourceId: source.id, title, hash: source.hash ?? '', text,
+          ...(originalBytes ? { original: originalBytes } : {}),
+        });
+        if (kept.status === 'failed') console.warn(`[ingest] Source text not retained for "${title}": ${kept.error}`);
+        else if (kept.status === 'blocked') console.warn(`[ingest] Source text not retained for "${title}": content policy.`);
+      } catch (e) {
+        console.warn(`[ingest] Source text not retained for "${title}":`, e);
+      }
+    }
 
     // Detect similar entity names via semantic clustering
     try {

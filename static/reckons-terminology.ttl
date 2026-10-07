@@ -257,10 +257,12 @@ kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolog
 
 kterm:statement a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "statement" ;
+    skos:altLabel "Atom" ;
     kpred:standards-label "triple / rdf:Statement" ;
     kpred:user-label "fact" ;
     kpred:binding-class kbind:contract ;
     skos:definition "One subject-predicate-object claim, with a review status, a confidence and a source. The unit the review queue settles." ;
+    skos:scopeNote "Matt, 2026-10-02: Atom is the technical thesaurus term for the semantic triple; list Atoms by source. This names the existing subject-predicate-object unit. It does not introduce another data layer or rename the serialized Statement fields, RDF terms, or statement identifiers." ;
     skos:scopeNote "1764 occurrences across 241 files. The user-facing word has been fact for a long time and that is fine — a person settling a review queue is not thinking about reification. Contract-bound because statement ids and the urn:kbase:stmt/ prefix are serialized into every export." ;
     skos:hiddenLabel "triple", "fact", "claim" .
 

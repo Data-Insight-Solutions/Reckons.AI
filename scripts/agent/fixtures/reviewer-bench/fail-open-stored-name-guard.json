@@ -1,0 +1,12 @@
+{
+  "id": "fail-open-stored-name-guard",
+  "source": "PR #340 first commit, before 7912d28 (fail-closed fix)",
+  "promptContext": "Review this change from a rename tool. The tool refuses to rename an identifier when the name also appears as a quoted string under src/ (it could be a stored key or serialized field, and renaming it would silently orphan persisted data). Decide: accept, reject, or required-change.\n\n```ts\n/** Files under src/ in which `name` appears as a quoted string: a possible stored key or serialized field. */\nfunction quotedAsString(root: string, name: string): string[] {\n  try {\n    return execFileSync('git', ['grep', '-lF', '-e', `'${name}'`, '-e', `\"${name}\"`, '-e', `\\`${name}\\``, '--', 'src'], { cwd: root, encoding: 'utf8' }).split('\\n').filter(Boolean);\n  } catch {\n    return [];\n  }\n}\n// caller: if (quotedAsString(root, name).length > 0) refuse('stored-name guard: appears as a string in ...'); else proceed with the rename.\n```\nNote: `git grep` exits with status 1 when there are no matches (which makes execFileSync throw).",
+  "expected": {
+    "verdict": "required-change",
+    "mustMention": [
+      "fail closed",
+      "status"
+    ]
+  }
+}
