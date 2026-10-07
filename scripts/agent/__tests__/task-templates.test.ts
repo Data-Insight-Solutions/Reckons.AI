@@ -10,8 +10,9 @@
  * imagines someone says is worth very little.
  */
 import { describe, it, expect } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import {
-  TEMPLATES, admissionFailures, assertAdmissible, describeForApproval, matchTemplate, normalize,
+  TEMPLATES, admissionFailures, assertAdmissible, describeForApproval, matchTemplate, normalize, shellQuote,
   type TaskTemplate,
 } from '../task-templates.js';
 
@@ -128,5 +129,32 @@ describe('what the approver reads', () => {
 describe('normalisation', () => {
   it('lowercases and strips punctuation', () => {
     expect(normalize('  Generate DOCUMENT about X.  ')).toBe('generate document about x');
+  });
+});
+
+describe('shellQuote — template arguments reach bash as one literal word', () => {
+  // runner.ts executes a template's command with bash. Found 2026-09-30 by the F239 flow test:
+  // JSON.stringify double-quoted the argument, and bash expands $(…) and backticks inside double quotes.
+  const echoed = (arg: string) =>
+    execFileSync('bash', ['-c', `printf %s ${shellQuote(arg)}`], { encoding: 'utf8' });
+
+  it.each([
+    ['command substitution', '$(echo pwned)'],
+    ['backticks', '`echo pwned`'],
+    ['a single quote', "Matt's notes"],
+    ['quote breakout', "x'; echo pwned; '"],
+    ['variables and globs', '$HOME * ~ !!'],
+    ['newline', 'line one\nline two'],
+  ])('%s stays literal', (_, arg) => {
+    expect(echoed(arg)).toBe(arg);
+  });
+
+  it('every registered template builds its command through shellQuote', () => {
+    for (const t of TEMPLATES) {
+      if (!t.command) continue;
+      const cmd = t.command('$(echo pwned)');
+      expect(cmd).toContain(shellQuote('$(echo pwned)'));
+      expect(cmd).not.toContain('"$(echo pwned)"');
+    }
   });
 });
