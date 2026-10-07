@@ -38,7 +38,7 @@ async function ensureLoaded(): Promise<void> {
     const res = await fetch(OFFICIAL_KNOWLEDGE_BASE_FILE);
     if (!res.ok) throw new Error(`Failed to fetch official KB: ${res.status}`);
     const ttl = await res.text();
-    const { statements: parsed } = await importTurtleFull(ttl, { name: OFFICIAL_KB_FILE });
+    const { statements: parsed } = await importTurtleFull(ttl, { name: OFFICIAL_KNOWLEDGE_BASE_FILE });
 
     const now = Date.now();
     const source: Source = {
