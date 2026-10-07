@@ -19,13 +19,15 @@
  *   npm run agent:watch -- --once       one snapshot, then exit
  *   npm run agent:watch -- --detail     more answers per run, with full reasons
  *   npm run agent:watch -- --statusline one short line, for a status bar
+ *   npm run agent:watch -- --no-worker  watch only; do not start the session queue worker
  *
  * The status line must return at once, and reading the day's Ollama log costs ~2 s (measured
  * 2026-09-30), so --statusline reads a CACHED last-request time and, when the cache is over a
  * minute old, refreshes it in a detached process that the status line never waits for.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULT_MAX_ATTEMPTS, hyperlink, jobLink, openCircuits, readCircuitCache, readCurrent, readRuns, type CurrentJob, type HistRun } from './job-state.js';
@@ -360,8 +362,28 @@ async function main(): Promise<void> {
     const frame = process.env.NO_COLOR ? 0 : swimFrame++ % TURTLE_FRAMES;
     process.stdout.write(`\x1b[2J\x1b[H${render(await snapshot(), new Date(), { detail, thresholds, width: process.stdout.columns, frame })}\n`);
   };
+  if (!argv.includes('--no-worker')) startWorker();
   await draw();
   setInterval(() => void draw(), 2000);
+}
+
+/**
+ * The live window also runs the session queue worker (Matt, 2026-10-07: "I already have 2 commands
+ * every time to develop, run dev, and agent watch, can we combine"). A direct child of this process
+ * (same node + tsx loader, no npx in between, so a signal reaches it), its output to a log file so
+ * it never draws over the screen, and stopped when the window closes. The worker's own single-
+ * instance check still applies: with a worker already running elsewhere this one exits at once and
+ * the window just watches. --no-worker opts out. WEAKNESS: a job the worker started via job-watch
+ * may outlive a hard kill (SIGKILL) of this window; SIGINT/SIGTERM stop the worker cleanly.
+ */
+function startWorker(): void {
+  const dir = join(process.env.XDG_STATE_HOME ?? join(homedir(), '.local/state'), 'reckons/jobs');
+  mkdirSync(dir, { recursive: true });
+  const out = openSync(join(dir, 'queue-worker.log'), 'a');
+  const worker = spawn(process.execPath, [...process.execArgv, join(dirname(fileURLToPath(import.meta.url)), 'queue-worker.ts'), '--stay'], { stdio: ['ignore', out, out] });
+  const stop = () => { if (worker.exitCode === null) worker.kill('SIGTERM'); };
+  process.on('exit', stop);
+  for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(sig, () => { stop(); process.exit(0); });
 }
 
 if (process.argv[1] && process.argv[1].endsWith('watch.ts')) void main();

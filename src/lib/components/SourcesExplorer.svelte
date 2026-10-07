@@ -6,6 +6,7 @@
   import StatementCard from './StatementCard.svelte';
   import ExtractionTrail from './ExtractionTrail.svelte';
   import StatementEvidence from './StatementEvidence.svelte';
+  import SourceDocument from './SourceDocument.svelte';
   import type { ExtractionRun, Source, Statement } from '$lib/rdf/types';
   import {
     buildProvenanceIndex, filterProvenanceIndex, projectProvenance, statementsForProvenanceNode,
@@ -182,6 +183,9 @@
         </div>
         <ExtractionTrail source={source.source} statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []}
           runs={runs.filter((run) => run.sourceId === source.id)} loading={loadingRuns} error={runError} />
+        <!-- Every statement of the source, whatever the review filter, so a passage's counts are its whole yield. -->
+        <SourceDocument sourceId={source.id} sourceHash={source.source?.hash}
+          statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []} onterm={selectNode} />
         <h4>Extracted entity groups</h4>
         {#each source.groups as group (group.key)}
           <button class="detail-row" onclick={() => selected = group.key}>{group.label} <span>{group.members.length} entities →</span></button>

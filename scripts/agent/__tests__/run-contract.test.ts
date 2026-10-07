@@ -3,7 +3,9 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { captureGitState, runSucceeded, selectReviewBatch, validateRunReport } from '../run-contract';
+import {
+  captureGitState, captureStateFingerprint, runSucceeded, selectReviewBatch, validateRunReport, validateStateFingerprint,
+} from '../run-contract';
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -195,5 +197,72 @@ describe('task-specific report validation', () => {
         sourceChars: 10, consumedChars: 10, truncated: false,
       },
     }, { requireMcp: true })).toEqual([]);
+  });
+});
+
+describe('state fingerprint without a repository', () => {
+  const unavailable = () => ({ available: false as const, error: 'fatal: not a git repository' });
+  const folder = () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'runner-plain-'));
+    dirs.push(dir);
+    return dir;
+  };
+
+  it('keeps the git fingerprint unchanged inside a repository', () => {
+    const dir = repo();
+    const fp = captureStateFingerprint({ cwd: dir, declaredPaths: ['tracked.txt'] });
+    const state = captureGitState(dir);
+    expect(fp.kind).toBe('git');
+    if (fp.kind !== 'git' || !state.available) throw new Error('expected git');
+    expect(fp.worktreeStateSha256).toBe(state.worktreeStateSha256);
+    expect(validateStateFingerprint(fp)).toEqual([]);
+  });
+
+  it('uses an injected probe, not the machine', () => {
+    const probe = () => ({
+      available: true as const, head: 'h', dirty: false, statusSha256: 'a'.repeat(64),
+      trackedDiffSha256: 'b'.repeat(64), untrackedFilesSha256: 'c'.repeat(64), worktreeStateSha256: 'd'.repeat(64),
+    });
+    expect(captureStateFingerprint({ cwd: folder(), gitProbe: probe }).kind).toBe('git');
+  });
+
+  it('fingerprints declared files and directories when git is unavailable', () => {
+    const dir = folder();
+    writeFileSync(path.join(dir, 'note.md'), 'one');
+    mkdirSync(path.join(dir, 'kb/sub'), { recursive: true });
+    writeFileSync(path.join(dir, 'kb/a.ttl'), 'a');
+    writeFileSync(path.join(dir, 'kb/sub/b.ttl'), 'b');
+    const opts = { cwd: dir, declaredPaths: ['note.md', 'kb', 'missing.txt'], gitProbe: unavailable };
+    const fp = captureStateFingerprint(opts);
+    if (fp.kind !== 'files') throw new Error(`expected files, got ${fp.kind}`);
+    expect(fp.reason).toMatch(/not a git repository/);
+    expect(fp.paths.find((p) => p.path === 'note.md')).toMatchObject({ exists: true, type: 'file', files: 1 });
+    expect(fp.paths.find((p) => p.path === 'kb')).toMatchObject({ exists: true, type: 'directory', files: 2 });
+    expect(fp.paths.find((p) => p.path === 'missing.txt')).toEqual({ path: 'missing.txt', exists: false });
+    expect(validateStateFingerprint(fp)).toEqual([]);
+    expect(captureStateFingerprint(opts)).toEqual(fp);
+    writeFileSync(path.join(dir, 'kb/sub/b.ttl'), 'changed');
+    const after = captureStateFingerprint(opts);
+    if (after.kind !== 'files') throw new Error('expected files');
+    expect(after.stateSha256).not.toBe(fp.stateSha256);
+  });
+
+  it('records kind none, with a reason, when there is no repository and no declared paths', () => {
+    const fp = captureStateFingerprint({ cwd: folder(), declaredPaths: [], gitProbe: unavailable });
+    expect(fp.kind).toBe('none');
+    expect(fp).toMatchObject({ reason: expect.stringMatching(/declares no kpred:touches/) });
+    expect(validateStateFingerprint(fp)).toEqual([]);
+  });
+
+  it('treats a throwing probe as unavailable', () => {
+    const fp = captureStateFingerprint({ cwd: folder(), gitProbe: () => { throw new Error('boom'); } });
+    expect(fp.kind).toBe('none');
+  });
+
+  it('rejects malformed fingerprints', () => {
+    expect(validateStateFingerprint({ kind: 'bogus' })).not.toEqual([]);
+    expect(validateStateFingerprint({ kind: 'none' })).not.toEqual([]);
+    expect(validateStateFingerprint({ kind: 'files', paths: [] })).not.toEqual([]);
+    expect(validateStateFingerprint(null)).not.toEqual([]);
   });
 });
