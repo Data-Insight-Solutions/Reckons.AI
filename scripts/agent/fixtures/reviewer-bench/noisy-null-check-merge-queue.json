@@ -1,0 +1,12 @@
+{
+  "id": "noisy-null-check-merge-queue",
+  "source": "PR #336 (merge-queue.ts decide()); the finding text is representative of a noisy local-model finding, not a verbatim capture",
+  "promptContext": "A local model reviewed this function and reported the finding below. Judge the FINDING: is it a real defect worth changing the code for?\n\nFINDING (severity: high): \"decide() reads pr.checks.length and calls pr.checks.filter without first checking that pr.checks is defined. If the GitHub API returns no checks field this throws a TypeError. Add a null check and a default empty array.\"\n\nCODE:\n```ts\ntype Check = { name: string; status: string; conclusion: string };\ntype PrState = {\n  state: 'OPEN' | 'MERGED' | 'CLOSED'; baseRefName: string; isDraft: boolean;\n  mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN'; containsBase: boolean;\n  checks: Check[]; // always built by readPr(): `(raw.statusCheckRollup ?? []).map(...)`\n};\nexport function decide(pr: PrState): Action {\n  if (pr.state === 'MERGED') return { kind: 'done', why: 'already merged' };\n  if (pr.state === 'CLOSED') return { kind: 'stop', why: 'closed without merging' };\n  if (pr.baseRefName !== MERGE_BASE) return { kind: 'refuse', why: `base is \"${pr.baseRefName}\", not \"${MERGE_BASE}\"` };\n  if (pr.isDraft) return { kind: 'refuse', why: 'draft' };\n  if (pr.mergeable === 'CONFLICTING') return { kind: 'stop', why: 'conflicts' };\n  if (!pr.containsBase) return { kind: 'update', why: 'stale base' };\n  if (pr.mergeable === 'UNKNOWN') return { kind: 'wait', why: 'mergeability still computing' };\n  if (pr.checks.length === 0) return { kind: 'wait', why: 'no checks reported yet' };\n  const running = pr.checks.filter((c) => c.status !== 'COMPLETED');\n  const failed = pr.checks.filter((c) => c.status === 'COMPLETED' && !PASSED.has(c.conclusion));\n  if (failed.length > 0) return { kind: 'stop', why: 'failed' };\n  if (running.length > 0) return { kind: 'wait', why: 'checks running' };\n  return { kind: 'merge', why: 'all passed' };\n}\n```",
+  "expected": {
+    "verdict": "reject",
+    "mustMention": [
+      "typed",
+      "readPr"
+    ]
+  }
+}
