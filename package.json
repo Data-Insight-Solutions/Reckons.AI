@@ -103,6 +103,7 @@
     "test:local:quick": "bash tests/bench/run-local-suite.sh --quick",
     "test:local:bench": "bash tests/bench/run-local-suite.sh --bench-only --save",
     "bench:docs": "npx tsx tests/bench/run-docs-bench.ts",
+    "bench:space-size": "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts",
     "bench:docs:save": "npx tsx tests/bench/run-docs-bench.ts --save",
     "kb:stats": "npx tsx tests/bench/run-kb-workflow.ts stats",
     "kb:review": "npx tsx tests/bench/run-kb-workflow.ts review --save",
