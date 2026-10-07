@@ -57,7 +57,7 @@ export async function populateKbFromTtl(
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
 
-  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl);
+  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl, { name });
   if (rawStmts.length === 0) return 0;
 
   const now = Date.now();

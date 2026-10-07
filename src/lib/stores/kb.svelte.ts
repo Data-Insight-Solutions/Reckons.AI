@@ -1,7 +1,7 @@
 import { db } from '../storage/db';
 import { liveQuery } from 'dexie';
 import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
-import { isIRI, termKey } from '../rdf/types';
+import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
@@ -283,6 +283,19 @@ export async function prepareStatementsForWrite(
       );
     }
     sts = gate.allowed;
+    if (sts.length === 0) return { statements: [], blocked: [], opts };
+  }
+
+  // Node-key leak guard: an IRI shaped like a graph node key ("l:high||") can never be exported
+  // as parseable Turtle, so refuse to store it. Loud, and per-statement (the rest still lands).
+  const leaked = sts.filter(hasLeakedTermKey);
+  if (leaked.length > 0) {
+    console.error(
+      `[write-guard] Refused ${leaked.length} statement(s) whose IRI is a leaked graph node key ` +
+      `(e.g. <l:...|...|...>); a literal cannot be a subject.`,
+      leaked.map((st) => st.id),
+    );
+    sts = sts.filter((st) => !hasLeakedTermKey(st));
     if (sts.length === 0) return { statements: [], blocked: [], opts };
   }
 

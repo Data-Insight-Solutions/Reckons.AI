@@ -61,7 +61,7 @@
       const res = await fetch('/starter-everyday.ttl');
       if (!res.ok) throw new Error(`Failed to fetch starter graph: ${res.status}`);
       const ttl = await res.text();
-      const { statements, sources } = await importTurtleFull(ttl);
+      const { statements, sources } = await importTurtleFull(ttl, { name: 'starter-everyday.ttl' });
       for (const src of sources) await addSource(src);
       // Curated example — land it as CONFIRMED facts (not pending review), so the
       // graph reads as real and Shelly's tour (which sees confirmed statements)
@@ -98,7 +98,7 @@
       const res = await fetch('/starter-visual-review.ttl');
       if (!res.ok) throw new Error(`Failed to fetch visual-review story: ${res.status}`);
       const ttl = await res.text();
-      const { statements, sources } = await importTurtleFull(ttl);
+      const { statements, sources } = await importTurtleFull(ttl, { name: 'starter-visual-review.ttl' });
       for (const src of sources) await addSource(src);
       const confirmed = statements.map((s) => ({ ...s, status: 'confirmed' as const }));
       if (confirmed.length) await addStatements(confirmed, 'visual-review');
@@ -122,7 +122,7 @@
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
-      const { statements, sources } = await importTurtleFull(ttl);
+      const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'example-kb');
       goto('/');
