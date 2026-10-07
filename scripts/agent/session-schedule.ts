@@ -126,17 +126,48 @@ export const dueAll = (jobs: Recurring[], successes: Record<string, number>, now
  * The queue entries to add: each due job ONCE, however many periods overdue, unless a job of that
  * name+cwd is already queued or is the one running now. Pure.
  */
-export function selectDue(statuses: Due[], queued: QueueJob[], runningName?: string, priority = 5): QueueJob[] {
+export function selectDue(statuses: Due[], queued: QueueJob[], runningName?: string, priority = 5, held: ReadonlySet<string> | ReadonlyMap<string, string> = new Set()): QueueJob[] {
   const have = new Set(queued.map(jobKey));
   const out: QueueJob[] = [];
   for (const s of statuses) {
-    if (!s.due || s.job.name === runningName) continue;
+    if (!s.due || s.job.name === runningName || held.has(s.job.name)) continue;
     const j = newJob(s.job.name, s.job.cwd, s.job.argv, priority, s.job.gpu);
     if (have.has(jobKey(j))) continue;
     have.add(jobKey(j));
     out.push(j);
   }
   return out;
+}
+
+/** How long a schedule rests after a failed or refused attempt before it is queued again. */
+export const RETRY_BACKOFF_MS = 30 * 60_000;
+
+/**
+ * Schedules that must NOT be re-queued this pass, with the reason. Pure.
+ *
+ * WHY. Only a success resets a schedule's clock, so a schedule that failed is still overdue on the
+ * next pass and was queued again at once. With the breaker open, every attempt was refused in about
+ * a second and re-queued: 8,719 refusals of sched:safety-attestation between 2026-10-07 02:56 and
+ * 15:56 UTC. Two holds stop that:
+ *   circuit open   held until the breaker is reset (job-watch --reset), however long that is;
+ *   recent attempt the last attempt failed or was refused less than backoffMs ago.
+ */
+export function heldSchedules(done: DoneJob[], openCircuits: Record<string, unknown>, now: number, backoffMs = RETRY_BACKOFF_MS): Map<string, string> {
+  const held = new Map<string, string>();
+  for (const name of Object.keys(openCircuits)) {
+    held.set(name, `circuit open; reset with: npx tsx scripts/agent/job-watch.ts --name=${name} --reset`);
+  }
+  const last = new Map<string, DoneJob>();
+  for (const d of done) {
+    const prev = last.get(d.name);
+    if (!prev || Date.parse(d.finishedAt) > Date.parse(prev.finishedAt)) last.set(d.name, d);
+  }
+  for (const [name, d] of last) {
+    if (held.has(name) || (d.outcome !== 'failed' && d.outcome !== 'refused')) continue;
+    const age = now - Date.parse(d.finishedAt);
+    if (age < backoffMs) held.set(name, `last attempt ${d.outcome} ${Math.max(1, Math.round(age / 60_000))} min ago; retrying after ${Math.round(backoffMs / 60_000)} min`);
+  }
+  return held;
 }
 
 const fmt = (ms: number): string => (ms >= 86_400_000 * 2 ? `${Math.round(ms / 86_400_000)}d` : ms >= 3_600_000 ? `${Math.round(ms / 3_600_000)}h` : `${Math.max(1, Math.round(ms / 60_000))}m`);
