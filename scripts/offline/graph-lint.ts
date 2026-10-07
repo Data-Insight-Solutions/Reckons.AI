@@ -184,6 +184,20 @@ for (const { q, file } of quads) {
       : `${short(q.predicate.value)} → "${p}" does not exist (moved, renamed, or deleted).`);
 }
 
+// ── private-tracked: a personal graph must never be committed.
+//
+// MATT, 2026-10-01: personal knowledge projects live in the gitignored reckons-workspace/kbs/ inside
+// this checkout (kb:personal-workspace). The ignore rule keeps them out of `git add`, but not out of
+// `git add -f`, and every pushed branch of this repository is public. Ask git what is TRACKED there:
+// anything at all is an error, because nothing under kbs/ is meant to ship.
+const PRIVATE_PREFIX = 'reckons-workspace/kbs/';
+for (const p of tracked ?? []) {
+  if (!p.startsWith(PRIVATE_PREFIX)) continue;
+  add('error', 'private-tracked', p, 'urn:kbase:concept/personal-workspace',
+    `"${p}" is committed, but ${PRIVATE_PREFIX} is the gitignored home of personal graphs and every pushed branch is public. ` +
+    `Remove it from the index (git rm --cached "${p}") and keep the file.`);
+}
+
 // ── bad-status: scoped to ktype:Feature — a Concept may legitimately use has-status
 // to describe some other lifecycle (e.g. kb:review-workflow's pending → confirmed).
 for (const { q, file } of quads) {
