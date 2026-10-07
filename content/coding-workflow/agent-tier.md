@@ -17,7 +17,7 @@ generated: "docs-kb"
 
 A local model (via Ollama, on your own hardware) reviews a diff, drafts a missing description, or reads for staleness — always inside a scripted harness: ground it in the graph, constrain the prompt, validate the output, emit a PROPOSAL. It writes to the review queue. It never writes to source, and it never writes to the graph.
 
-<p class="derived">This is built and working.</p>
+<p class="derived">This is built and working. It has 2 parts below.</p>
 
 ## Why it is this way
 
@@ -28,3 +28,13 @@ Local models hallucinate conventions and mangle serialization. The harness — n
 **Honest Note**
 
 The harness must fail LOUDLY. Ours did not, once: a cold 18GB model load failed, and the review reported a clean run having reviewed nothing. It now refuses to start rather than silently review zero files. An agent tier that quietly does nothing is worse than none, because the queue it feeds looks empty rather than broken.
+
+## Steps
+
+**[The local panel — hand many small judgments to your own GPU, get back only the doubtful ones](../coding-workflow/local-panel)**
+
+Some decisions are too fuzzy for a rule but too numerous to make one by one: which of four meanings the word 'node' has on each of 1,800 lines of code, or whether each of 500 sentences on screen should say 'space' or 'graph'.
+
+**[See what the local models are doing — and when they are doing nothing](../coding-workflow/watch-local-models)**
+
+A local run is an ordinary command, not an agent your coding tool knows about, so it never appears in its list of running agents.

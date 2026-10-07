@@ -88,6 +88,56 @@ cw:AgentTier rdf:type          ktype:Concept ;
     kpred:principle     "Local models hallucinate conventions and mangle serialization. The harness — not the model — is the deliverable." ;
     kpred:honest-note   "The harness must fail LOUDLY. Ours did not, once: a cold 18GB model load failed, and the review reported a clean run having reviewed nothing. It now refuses to start rather than silently review zero files. An agent tier that quietly does nothing is worse than none, because the queue it feeds looks empty rather than broken." .
 
+cw:LocalPanel rdf:type         ktype:Concept ;
+    rdfs:label          "The local panel — hand many small judgments to your own GPU, get back only the doubtful ones" ;
+    kpred:part-of       cw:AgentTier ;
+    hnav:order          105 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Some decisions are too fuzzy for a rule but too numerous to make one by one: which of four meanings the word 'node' has on each of 1,800 lines of code, or whether each of 500 sentences on screen should say 'space' or 'graph'. A script gathers the evidence for each item, and a local model — running through Ollama on your own machine, costing no subscription — answers one narrow question about every item, several times. Where every answer agrees, the answer is taken. Where they disagree, the item comes back to you (or to the cloud model you are working with) with all the votes shown." ;
+    kpred:principle     "AGREEMENT IS THE SIGNAL, AND IT WAS MEASURED BEFORE IT WAS TRUSTED. On 30 lines hand-checked first: when three answers agreed, they were right 29 times out of 29 across two setups. When only two of three agreed, one strong model was right 9 times in 10 and a mix of three different models only 5 in 9 — the weaker models outvoted the stronger one. So the default is one strong model answering three times, and only unanimous answers are taken without reading." ;
+    kpred:example       "npx tsx scripts/offline/term-senses.ts --word=node — which meaning of 'node' each line of code uses. npx tsx scripts/agent/local-panel.ts --task=task.json for any batch you build yourself: items, one question, and the shape of the answer." ;
+    kpred:proof         "scripts/agent/local-panel.ts and scripts/offline/term-senses.ts, 31 tests; a hand-labelled set of 30 lines in scripts/agent/fixtures/ re-scores any change of model with --labels." ;
+    kpred:honest-note   "AGREEMENT IS ONLY AS GOOD AS THE CALIBRATION FOR THAT TASK. The same afternoon, 505 sentences were put to the panel asking whether each 'graph' should read 'space'. It answered 'keep' unanimously 324 times and 'space' not once — and a spot-check found at least 137 of those unanimous answers to be sentences like 'Your graph is empty' and 'back up every graph to disk', which the product's own ruling says should say space. The model's prior that 'graph' is normal wording won three times out of three, helped by a question that offered it an easy way out. So every NEW task needs its own small hand-checked sample before its unanimous answers are trusted; none of that run's answers were applied." ;
+    kpred:honest-note   "ONE CHECKER, 30 LINES, ONE WORD. The accuracy figures come from a single first calibration, not a benchmark. Letting a local model explore the code on its own (headless Claude Code pointed at Ollama) was also tried: it took two minutes, read 290,000 tokens and answered a counting question wrong. Handing the model the evidence works; asking it to go and find it does not." ;
+    kpred:relates-to    kb:local-panel .
+
+cw:WatchLocalModels rdf:type   ktype:Concept ;
+    rdfs:label          "See what the local models are doing — and when they are doing nothing" ;
+    kpred:part-of       cw:AgentTier ;
+    hnav:order          106 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "A local run is an ordinary command, not an agent your coding tool knows about, so it never appears in its list of running agents. npm run agent:watch is the window instead: whether Ollama is up and which model is loaded into the graphics card's memory, how busy the cards are, every request any program made to a local model today, and for each panel run its progress, how many items the answers disagree on so far, and the latest answers with their reasons. A one-line version fits a status bar." ;
+    kpred:principle     "SILENCE IS REPORTED AS SILENCE. The window exists because a whole morning of work once used no local model at all and nothing on screen could say so. 'None today — no local model has been asked anything' is a line it prints, not a blank." ;
+    kpred:example       "npm run agent:watch (live) · npm run agent:watch -- --once (one snapshot) · npm run agent:watch -- --statusline (one line, cached so it returns in a quarter of a second)." ;
+    kpred:proof         "scripts/agent/watch.ts and scripts/agent/local-activity.ts, 16 tests. Its first reading showed 217 local requests that day, every one after the question was raised." ;
+    kpred:honest-note   "Reading Ollama's request log needs journalctl, so on a machine where Ollama is not a systemd service the window says the log is unreadable and shows only panel runs. The run log lives outside the repository, under ~/.local/state/reckons/, because answers quote source lines." ;
+    kpred:relates-to    kb:local-panel .
+
+cw:TaxonomyManagement rdf:type ktype:Concept ;
+    rdfs:label          "Repository taxonomy — one word per meaning, in the code and on the screen" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          107 ;
+    kpred:has-status    "in-progress" ;
+    skos:definition     "A codebase drifts into using one word for several things and several words for one thing. Here 'graph' meant four different things and 'node' five. The taxonomy is a graph of terms (static/reckons-terminology.ttl): each meaning gets its own entry, with the word a user sees, the word a developer uses, the standards term underneath, and how costly the word is to change. Scripts then measure how every term is used, local models judge the doubtful cases, and a compiler-driven tool renames code in batches, with checks that stop a batch from making things worse." ;
+    kpred:principle     "THREE KINDS OF NAME, THREE COSTS. A FREE name (a local variable) can be renamed and costs a diff. A CONTRACT name (a storage key, an address saved in someone's data, a tool name other programs call) needs a data migration and is left alone by the rename. A FOREIGN name (belonging to RDF, three.js or the browser) is never renamed; it is qualified instead." ;
+    kpred:principle     "ON SCREEN, THE PERSON'S WORD WINS. One knowledge base is a 'space' to its user; 'knowledge base' is the developer's word and 'RDF dataset' the standard's. scripts/offline/ui-copy.ts reads every template with Svelte's own compiler, so only text a person actually sees or hears is counted, and rewrites the retired abbreviation KB by rule." ;
+    kpred:example       "npm run offline:terms (how each term is used) · npx tsx scripts/offline/ui-copy.ts (what a user reads) · npx tsx scripts/offline/naming-conventions.ts --check (the ratchet: a decided rule may not get worse)." ;
+    kpred:honest-note   "IN PROGRESS. Two rename batches are done (5 constants, 3 type declarations, 65 module-level names). 20 names were refused and wait for decisions. Renames cannot yet reach inside .svelte files, and there is no pixel-for-pixel visual check yet, so a rename is checked by the type checker, the unit tests and the browser tests only." ;
+    kpred:relates-to    kb:terminology-ontology ;
+    kpred:relates-to    kb:taxonomy-rename .
+
+cw:RenameByCompiler rdf:type   ktype:Concept ;
+    rdfs:label          "Renaming by compiler — every reference, or no rename at all" ;
+    kpred:part-of       cw:TaxonomyManagement ;
+    hnav:order          108 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Search-and-replace renames the wrong things (the word inside an error message) and misses the right ones (a reference in another file). scripts/offline/rename-identifier.ts asks the TypeScript compiler for every reference to a name and changes exactly those, or refuses and says why. No model edits the code." ;
+    kpred:principle     "IT REFUSES WHERE A RENAME WOULD COMPILE AND STILL BE WRONG. Removing the underscore from _prompt inside a function that already has a parameter called prompt turns an assignment into 'prompt = prompt' — valid code that silently stops working. The tool asks the compiler, at every reference, whether another thing with the new name is already visible there, and refuses if so. It also refuses a reserved word, a name already taken, and any exported name while some import in the project cannot be resolved, because an importer it cannot see is one it would silently skip." ;
+    kpred:example       "npx tsx scripts/offline/rename-identifier.ts --rename=src/lib/x.ts:oldName:newName --dry-run · --interface-to-type=<file>:<Name> · --batch=underscore-module-state" ;
+    kpred:proof         "scripts/offline/rename-identifier.ts, 19 tests including both kinds of refusal. Batch 1 renamed 65 names in 5.5 seconds and refused 9 that would have been captured this way." ;
+    kpred:honest-note   "A name exported and used inside a .svelte file is refused until Svelte support is added, because the compiler it asks cannot see inside those files." ;
+    kpred:relates-to    kb:taxonomy-rename .
+
 cw:AgentsAskTheGraph rdf:type  ktype:Concept ;
     rdfs:label          "Agents ask the graph, not you" ;
     kpred:part-of       cw:CodingWorkflow ;
@@ -191,3 +241,31 @@ cw:VersusDevTooling rdf:type   ktype:Concept ;
     kpred:honest-note   "AND THE COSTS, WHICH ARE REAL. Every specialist tool above is better at its own job, and a graph is a slower way to get their answer. The store has to be MAINTAINED — extraction recovers 53-63% of expected facts on a median run, so the rest is human work, and a graph nobody tends is worse than no graph because it looks authoritative. Claude Code with a CLAUDE.md is free, works today, and is the right answer for most repositories. This approach earns its keep when the knowledge outlives the session, the decisions have to be justified later, and several audiences — a person, an agent, a reader — need the same answer." ;
     kpred:honest-note   "DEPTH OF THIS COMPARISON: the tool categories above are drawn from READMEs read on 2026-09-08, not from running each product. The Claude Code figure is measured in this repository; the rest is a fair reading of what those tools say they do. Treat the category descriptions as accurate and the head-to-head as unmeasured, because it is." ;
     skos:related        cw:GitAnalysis .
+
+cw:HostCheck rdf:type          ktype:Concept ;
+    rdfs:label          "Checking your machine and dependencies, privately" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          109 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "npm run host:check reads the health of the Linux machine you develop on: listening ports, mounts and similar signals. It only reads, never changes a setting, and never scans your network. Each check reports pass, fail, unknown or skipped, so a check it could not run is never shown as a pass. npm run security:dependencies checks every npm lockfile in the repository against the registry's advisories." ;
+    kpred:principle     "WHAT YOUR MACHINE LOOKS LIKE STAYS ON YOUR MACHINE. The full report is written outside the repository, readable only by you; the terminal and any shared automation see counts only. Your own exceptions (a port you meant to open) live in a private file under ~/.config/reckons/." ;
+    kpred:honest-note   "LINUX ONLY, AND IT REPAIRS NOTHING. There is no macOS or Windows version, no background monitor, and no automatic fix. The dependency check shows that a vulnerable package is installed, not that your deployed app can reach it." ;
+    kpred:relates-to    kb:private-host-check .
+
+cw:UntrustedInput rdf:type     ktype:Concept ;
+    rdfs:label          "Treating every input as untrusted" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          110 ;
+    kpred:has-status    "scaffolded" ;
+    skos:definition     "Anything that arrives from outside can carry an attack: page titles, markdown, themes, model replies, archive contents, command-line arguments. The plan is for the site publisher, the browser extension, the QR code flow and the CLI to treat all of it as untrusted. Output is escaped or sanitized, file paths are kept inside a safe folder, and commands are run with their arguments passed separately rather than built as one string." ;
+    kpred:honest-note   "PARTLY DONE. Template arguments are now quoted for the shell rather than as JSON (a real injection, fixed in v0.2.5). The sanitizer allowlist for generated sites, path and cleanup limits, and pinned CMS code are not all in place yet, so treat a site generated from an untrusted graph with care." ;
+    kpred:relates-to    kb:untrusted-output-hardening .
+
+cw:ReproducibleBuilds rdf:type ktype:Concept ;
+    rdfs:label          "A fresh checkout that behaves like CI" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          111 ;
+    kpred:has-status    "scaffolded" ;
+    skos:definition     "The goal: clone the repository, install once, and every check, test and build runs the same on your machine as in CI, with nothing downloaded behind your back. That means one pinned package manager and Node version, every tool declared as a dependency, and quality gates that block a merge rather than warn." ;
+    kpred:honest-note   "NOT THERE YET. CI already blocks on type checks, unit tests, the build, graph lint and the page-drift check (md-align). Svelte warnings are not yet held at zero, coverage thresholds do not block, and the CLI, extension and cross-browser suites do not all run on every change." ;
+    kpred:relates-to    kb:reproducible-delivery .

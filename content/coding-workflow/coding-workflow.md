@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-<p class="derived">It has 11 parts below, 3 of which are not built yet.</p>
+<p class="derived">It has 15 parts below, 6 of which are not built yet.</p>
 
 ## Why it is this way
 
@@ -39,5 +39,9 @@ Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the
 <a class="card" href="../coding-workflow/agent-orchestration"><span class="card-title">Agent orchestration — bring your own harness (PLANNED, not built)</span><span class="card-status">planned</span><span class="card-text">This does not exist yet.</span></a>
 <a class="card" href="../coding-workflow/scheduling"><span class="card-title">Task scheduling in the graph (PLANNED, not built)</span><span class="card-status">planned</span><span class="card-text">This does not exist yet.</span></a>
 <a class="card" href="../coding-workflow/avoided-rework"><span class="card-title">The saving is not compression — it is the feature you did not build twice</span><span class="card-text">The usual pitch for a knowledge graph in front of a coding agent is token compression: feed a dense subgraph instead of re-reading the repo.</span></a>
+<a class="card" href="../coding-workflow/taxonomy-management"><span class="card-title">Repository taxonomy — one word per meaning, in the code and on the screen</span><span class="card-status">in-progress</span><span class="card-text">A codebase drifts into using one word for several things and several words for one thing.</span></a>
+<a class="card" href="../coding-workflow/host-check"><span class="card-title">Checking your machine and dependencies, privately</span><span class="card-text">npm run host:check reads the health of the Linux machine you develop on: listening ports, mounts and similar signals.</span></a>
+<a class="card" href="../coding-workflow/untrusted-input"><span class="card-title">Treating every input as untrusted</span><span class="card-status">scaffolded</span><span class="card-text">Anything that arrives from outside can carry an attack: page titles, markdown, themes, model replies, archive contents, command-line arguments.</span></a>
+<a class="card" href="../coding-workflow/reproducible-builds"><span class="card-title">A fresh checkout that behaves like CI</span><span class="card-status">scaffolded</span><span class="card-text">The goal: clone the repository, install once, and every check, test and build runs the same on your machine as in CI, with nothing downloaded behind your back.</span></a>
 
 </div>

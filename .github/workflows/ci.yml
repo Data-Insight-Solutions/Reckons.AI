@@ -34,6 +34,29 @@ jobs:
           GITHUB_BASE_REF: ${{ github.base_ref }}
           GITHUB_HEAD_REF: ${{ github.head_ref }}
 
+  # F33.1 — the notes for the NEXT VERSION, regenerated on every push to staging and on every pull
+  # request into main (Matt, 2026-09-30: documentation comes after development and before a
+  # promotion, and the staging changelog should point at it). The notes go to the job summary.
+  # Only a pull request into main is BLOCKED by missing documentation; on staging it is reported.
+  release-notes:
+    name: Release notes (next version)
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/staging') || (github.event_name == 'pull_request' && github.base_ref == 'main')
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Regenerate the notes for the next version
+        run: npx tsx scripts/offline/release-notes.ts --base=origin/main --head=HEAD >> "$GITHUB_STEP_SUMMARY"
+      - name: Documentation owed before promotion to main
+        if: github.event_name == 'pull_request'
+        run: npx tsx scripts/offline/release-notes.ts --base=origin/main --head=HEAD --check-docs > /dev/null
+
   check:
     name: Type check + Unit tests + Build
     runs-on: ubuntu-latest
