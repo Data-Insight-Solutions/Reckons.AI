@@ -95,13 +95,13 @@ Each recurring task goes to the cheapest worker that can do it correctly. A scri
 ## The fixes
 
 <div class="fr-tiers">
-  <div><span class="fr-tag">planned</span><p>Stream local model responses and time out on silence, not total length.</p></div>
-  <div><span class="fr-tag">planned</span><p>Back-pressure: hold a job while its own unreviewed proposals are over a limit.</p></div>
+  <div><span class="fr-tag">in v0.2.5</span><p>Local model responses stream, with separate limits for waiting in line (20 minutes) and going silent mid-answer (2 minutes). A review queued behind other GPU jobs now waits instead of failing.</p></div>
+  <div><span class="fr-tag">in v0.2.5</span><p>Back-pressure: a local job is held while 50 or more of its own suggestions sit unreviewed. On the day it shipped it held five jobs, the largest with 475.</p></div>
   <div><span class="fr-tag">this week</span><p>Clean up stale and duplicate proposals by script; sample each job nobody reviews and keep, demote or retire it.</p></div>
   <div><span class="fr-tag">this week</span><p>Recency from git history, so search can weight what is new, and a context benchmark scored by local models.</p></div>
 </div>
 
-<p class="fr-note">Measured 2026-10-06 and 2026-10-07 with the project's own scripts and the Ollama server log. The code is open source: <a href="https://github.com/Data-Insight-Solutions/Reckons.AI">github.com/Data-Insight-Solutions/Reckons.AI</a>.</p>
+<p class="fr-note">Both fixes shipped in <a href="/docs/releases/v0-2-5">Reckons.AI v0.2.5</a>. Measured 2026-10-06 and 2026-10-07 with the project's own scripts and the Ollama server log. The code is open source: <a href="https://github.com/Data-Insight-Solutions/Reckons.AI">github.com/Data-Insight-Solutions/Reckons.AI</a>.</p>
 
 <style>
   .fr-eyebrow { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin: 0 0 0.5rem; }
