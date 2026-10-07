@@ -28,12 +28,16 @@
 import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, appendFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import {
+  DEFAULT_MAX_ATTEMPTS, DEFAULT_MAX_PER_HOUR, breakerDecision, failureSignature, openCircuits, readRuns,
+  failureStreak, jobIri, runsTtlPath, setCircuitCache, slug, stateDir, updateCurrent, type HistRun,
+} from './job-state.js';
 
-export type Status = 'passed' | 'failed' | 'partial';
+export { stateDir, runsTtlPath };
+
+export type Status = 'passed' | 'failed' | 'partial' | 'refused' | 'reset';
 export type Finding = { kind: string; text: string; evidence_line: string };
 export type Verdict = { status: Status; headline: string; findings: Finding[] };
 export type Facts = { exitCode: number; durationMs: number; lines: string[]; counts: Record<string, number> };
@@ -149,7 +153,6 @@ export function validateVerdict(raw: unknown, log: string, exitCode: number): { 
 }
 
 const lit = (s: string): string => '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t') + '"';
-const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'job';
 
 export const TTL_PREFIXES = [
   '@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .',
@@ -158,11 +161,12 @@ export const TTL_PREFIXES = [
   '@prefix ktype:  <urn:kbase:type/> .',
   '@prefix kpred:  <urn:kbase:predicate/> .',
   '@prefix jobrun: <urn:reckons:jobrun/> .',
+  '@prefix job:    <urn:reckons:job/> .',
 ].join('\n');
 
 export type RunRecord = {
   name: string; startedAt: Date; endedAt: Date; exitCode: number; logPath: string;
-  verdict: Verdict; modelUsed?: string; modelNote?: string;
+  verdict: Verdict; modelUsed?: string; modelNote?: string; attempt?: number; signature?: string;
 };
 
 export function runEntityId(name: string, startedAt: Date): string {
@@ -177,6 +181,7 @@ export function runToTurtle(r: RunRecord): string {
     `rdfs:label ${lit(`${r.name} — ${r.verdict.status} (${r.startedAt.toISOString()})`)}`,
     `kpred:has-status ${lit(r.verdict.status)}`,
     `kpred:job-name ${lit(r.name)}`,
+    `kpred:of-job <${jobIri(r.name)}>`,
     `kpred:started ${lit(r.startedAt.toISOString())}^^xsd:dateTime`,
     `kpred:ended ${lit(r.endedAt.toISOString())}^^xsd:dateTime`,
     `kpred:exit-code ${Math.trunc(r.exitCode)}`,
@@ -184,9 +189,57 @@ export function runToTurtle(r: RunRecord): string {
     `kpred:log-path ${lit(r.logPath)}`,
     `kpred:read-by ${lit(r.modelUsed ? `local model ${r.modelUsed}` : 'script rules only (no local model)')}`,
   ];
+  if (r.attempt !== undefined) p.push(`kpred:attempt ${Math.trunc(r.attempt)}`);
+  if (r.signature) p.push(`kpred:failure-signature ${lit(r.signature)}`);
   if (r.modelNote) p.push(`kpred:note ${lit(r.modelNote)}`);
   for (const f of r.verdict.findings) p.push(`kpred:finding ${lit(`${f.kind}: ${f.text} [log: ${f.evidence_line}]`)}`);
   return `${id}\n    ${p.join(' ;\n    ')} .\n`;
+}
+
+/**
+ * The JOB entity: one per --name, rewritten after every run, so the node a person opens holds the
+ * status (latest/previous run, attempt, circuit state, log path) instead of making them hunt through runs. Pure.
+ */
+export function jobToTurtle(name: string, runs: HistRun[], maxAttempts: number): string {
+  const mine = runs.filter((r) => r.name === name).sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime());
+  const latest = mine[mine.length - 1];
+  const prev = mine[mine.length - 2];
+  const streak = failureStreak(mine);
+  const open = streak.count >= maxAttempts;
+  const lastLog = [...mine].reverse().find((r) => r.logPath)?.logPath;
+  const p = [
+    `rdf:type ktype:Job`,
+    `rdfs:label ${lit(name)}`,
+    `kpred:job-name ${lit(name)}`,
+    `kpred:circuit-state ${lit(open ? 'open' : 'closed')}`,
+    `kpred:max-attempts ${maxAttempts}`,
+  ];
+  if (latest) {
+    p.push(`kpred:has-status ${lit(latest.status)}`, `kpred:latest-run ${runEntityId(name, latest.startedAt)}`, `kpred:attempt ${streak.count + (open ? 0 : 1)}`);
+    if (latest.headline) p.push(`kpred:headline ${lit(latest.headline)}`);
+  }
+  if (prev) p.push(`kpred:previous-run ${runEntityId(name, prev.startedAt)}`);
+  if (open && streak.signature) p.push(`kpred:failure-signature ${lit(streak.signature)}`);
+  if (lastLog) p.push(`kpred:log-path ${lit(lastLog)}`);
+  return `job:${slug(name)}\n    ${p.join(' ;\n    ')} .\n`;
+}
+
+/** Replace this job's marked block in the file text, or append it; adds the job: prefix to older files. Pure. */
+export function upsertJobBlock(ttl: string, name: string, block: string): string {
+  const begin = `# job-begin ${slug(name)}`;
+  const end = `# job-end ${slug(name)}`;
+  const wrapped = `${begin}\n${block}${end}\n`;
+  let out = ttl;
+  if (!/@prefix job:/.test(out)) out = out.replace(/(@prefix jobrun:[^\n]*\n)/, '$1@prefix job:    <urn:reckons:job/> .\n');
+  const i = out.indexOf(begin);
+  const j = out.indexOf(end);
+  if (i >= 0 && j > i) return out.slice(0, i) + wrapped + out.slice(j + end.length + 1);
+  return out + '\n' + wrapped;
+}
+
+export function writeJob(ttlPath: string, name: string, runs: HistRun[], maxAttempts: number): void {
+  if (!existsSync(ttlPath)) return;
+  writeFileSync(ttlPath, upsertJobBlock(readFileSync(ttlPath, 'utf8'), name, jobToTurtle(name, runs, maxAttempts)));
 }
 
 export function appendRun(ttlPath: string, r: RunRecord): void {
@@ -197,8 +250,6 @@ export function appendRun(ttlPath: string, r: RunRecord): void {
   appendFileSync(ttlPath, '\n' + runToTurtle(r));
 }
 
-export const stateDir = (): string => path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'reckons', 'jobs');
-export const runsTtlPath = (): string => path.join(mainCheckoutRoot(), 'reckons-workspace', 'kbs', 'jobs', 'job-runs.ttl');
 
 export async function askModel(base: string, model: string, prompt: string): Promise<unknown> {
   const call = async (think: boolean) => fetch(`${base}/api/chat`, {
@@ -219,11 +270,14 @@ export async function askModel(base: string, model: string, prompt: string): Pro
   return JSON.parse(text);
 }
 
+let activeChild: ReturnType<typeof spawn> | undefined;
+
 function run(argv: string[], logPath: string): Promise<{ exitCode: number; durationMs: number }> {
   return new Promise((resolve) => {
     const out = createWriteStream(logPath);
     const t0 = Date.now();
     const child = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'pipe', 'pipe'] });
+    activeChild = child;
     child.stdout.pipe(out, { end: false });
     child.stderr.pipe(out, { end: false });
     let finished = false;
@@ -244,14 +298,42 @@ async function main(): Promise<void> {
   const cmd = sep < 0 ? [] : args.slice(sep + 1);
   const flag = (k: string) => flags.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
   const name = flag('name');
-  if (!name || !cmd.length) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] -- <command…>'); process.exit(2); }
+  const reset = flags.includes('--reset');
+  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--reset] -- <command…>'); process.exit(2); }
+  const num = (k: string, d: number) => { const v = Number(flag(k)); return Number.isFinite(v) && v > 0 ? Math.trunc(v) : d; };
+  const maxAttempts = num('max-attempts', DEFAULT_MAX_ATTEMPTS);
+  const maxPerHour = num('max-per-hour', DEFAULT_MAX_PER_HOUR);
+  const marker = (status: 'refused' | 'reset', headline: string, attempt?: number, signature?: string): RunRecord => {
+    const t = new Date();
+    return { name, startedAt: t, endedAt: t, exitCode: status === 'refused' ? 3 : 0, logPath: '', verdict: { status, headline, findings: [] }, attempt, signature };
+  };
+  if (reset) {
+    appendRun(runsTtlPath(), marker('reset', 'breaker reset by --reset'));
+    writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
+    setCircuitCache(name, null);
+    console.log(`${name}: breaker reset`);
+    if (!cmd.length) process.exit(0);
+  }
+  const history = readRuns().filter((r) => r.name === name);
+  const decision = breakerDecision(history, { maxAttempts, maxPerHour, now: new Date() });
+  if (!decision.allow) {
+    appendRun(runsTtlPath(), marker('refused', `refused: ${decision.reason}`.slice(0, 120), decision.attempt, decision.signature));
+    writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
+    console.error(`job-watch: REFUSED ${name} — ${decision.reason}`);
+    process.exit(3);
+  }
   const model = flag('model') ?? 'qwen3.6:latest';
   const base = (process.env.OLLAMA_BASE_URL ?? '').replace(/\/+$/, '');
 
   mkdirSync(stateDir(), { recursive: true });
   const startedAt = new Date();
   const logPath = path.join(stateDir(), `${slug(name)}-${startedAt.toISOString().replace(/[:.]/g, '-')}.log`);
+  updateCurrent({ add: { name, pid: process.pid, started: startedAt.toISOString(), attempt: decision.attempt, maxAttempts } });
+  const cleanup = (code: number) => () => { activeChild?.kill(); try { updateCurrent({ removePid: process.pid }); } catch { /* best effort */ } process.exit(code); };
+  process.on('SIGINT', cleanup(130));
+  process.on('SIGTERM', cleanup(143));
   const { exitCode, durationMs } = await run(cmd, logPath);
+  updateCurrent({ removePid: process.pid });
   const endedAt = new Date();
   const log = readFileSync(logPath, 'utf8');
   const facts = extractFacts(log, exitCode, durationMs);
@@ -278,8 +360,12 @@ async function main(): Promise<void> {
     }
   }
 
-  const rec: RunRecord = { name, startedAt, endedAt, exitCode, logPath, verdict, modelUsed, modelNote: notes.length ? notes.join('; ').slice(0, 400) : undefined };
+  const rec: RunRecord = { name, startedAt, endedAt, exitCode, logPath, verdict, modelUsed, modelNote: notes.length ? notes.join('; ').slice(0, 400) : undefined, attempt: decision.attempt, signature: failureSignature(log, exitCode) };
   appendRun(runsTtlPath(), rec);
+  writeJob(runsTtlPath(), name, readRuns(), maxAttempts);
+  const open = openCircuits(readRuns(), maxAttempts).find((c) => c.name === name);
+  setCircuitCache(name, open ? { count: open.count, signature: open.signature } : null);
+  if (open) console.error(`job-watch: circuit now OPEN for ${name} (${open.count} identical failures); the next run will be refused`);
   console.log(`${name}: ${verdict.status} — ${verdict.headline} (ttl: ${runEntityId(name, startedAt)})`);
   process.exit(exitCode === 0 ? 0 : 1);
 }
