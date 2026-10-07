@@ -70,3 +70,9 @@
     rdfs:label "startForeignVramMiB" ;
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 4096 .
+
+# Back-pressure (F74.9): an agent-tier schedule is held while this many of its own proposals are unreviewed
+<urn:reckons:threshold/holdUnreviewed> a ktype:Threshold ;
+    rdfs:label "holdUnreviewed" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 50 .

@@ -173,7 +173,9 @@ export function workerStep(i: StepInput): Step {
   return { state: 'working', startJob: true };
 }
 
-export type WorkerFile = { state: WorkerState; reason?: string; pid?: number; at?: string; job?: string; attempt?: number; maxAttempts?: number; index?: number; total?: number };
+export type WorkerFile = { state: WorkerState; reason?: string; pid?: number; at?: string; job?: string; attempt?: number; maxAttempts?: number; index?: number; total?: number;
+  /** Schedules the worker is holding back, each with its reason (heldSchedules, backlogHolds). */
+  held?: string[] };
 
 export function readWorker(alive: (pid: number) => boolean = pidAlive): WorkerFile | undefined {
   try {
@@ -191,14 +193,13 @@ export function writeWorker(w: WorkerFile): void {
 
 // ── what agent:watch shows ─────────────────────────────────────────────────
 
-export type QueueView =
-  | { kind: 'ready'; queued: number }
+export type QueueView = ({ kind: 'ready'; queued: number }
   | { kind: 'working'; job: string; attempt?: number; maxAttempts?: number; index: number; total: number; queued: number }
   | { kind: 'paused-idle'; queued: number }
   | { kind: 'paused-ollama-down'; queued: number }
   | { kind: 'paused-manual'; queued: number }
   | { kind: 'paused-resources'; queued: number; reason?: string }
-  | { kind: 'empty' };
+  | { kind: 'empty' }) & { held?: string[] };
 
 export type ViewInput = { queued: number; worker?: WorkerFile; heartbeatFresh: boolean; ollamaUp: boolean; manualPause?: boolean };
 
@@ -208,6 +209,10 @@ export type ViewInput = { queued: number; worker?: WorkerFile; heartbeatFresh: b
  * queued, not paused) — it is a suggestion, not a promise. Pure.
  */
 export function queueView(i: ViewInput): QueueView {
+  return { ...classify(i), ...(i.worker?.held?.length ? { held: i.worker.held } : {}) };
+}
+
+function classify(i: ViewInput): QueueView {
   const w = i.worker;
   if (w?.state === 'working' && w.job) {
     return { kind: 'working', job: w.job, attempt: w.attempt, maxAttempts: w.maxAttempts, index: w.index ?? 1, total: w.total ?? i.queued + 1, queued: i.queued };
