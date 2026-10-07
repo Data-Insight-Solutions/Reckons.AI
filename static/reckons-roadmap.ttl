@@ -9001,3 +9001,17 @@ kb:release-0-2-6 rdf:type ktype:Release ;
     kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:space-file-layout ;
     kpred:has-part kb:graph-proposals .
+
+kb:ci-graph rdf:type ktype:Feature ;
+    rdfs:label "CI as a graph — every check, what it guards, and whether it can block a merge" ;
+    kpred:feature-id "F33.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:release-pipeline ;
+    kpred:description "A script reads .github/workflows/*.yml and .github/ruleset-main.json and writes static/reckons-ci.ttl: each CI job and check, the branches that trigger it, the scripts it runs (already linked by kpred:has-file), whether the ruleset makes it required, and the roadmap feature it guards. A --check mode in CI fails when the YAML changes and the graph does not, the pattern of jobs-graph and md-align." ;
+    kpred:decided "MATT, 2026-10-07: 'Fine that yml is an external requirement.' GitHub only runs YAML in .github/workflows/, so the YAML stays the executable truth and the graph is generated FROM it, never the other way: modelling step lists, shell and GitHub expressions as triples would mirror GitHub's format one to one for no gain in what can be asked." ;
+    kpred:principle "SPACES AS DIFFERENT AUDITORS (Matt, 2026-10-07: 'I'm liking the spaces as different auditors'). Each space checks one kind of claim against what is real: the terminology space audits names, the codebase space audits file coverage, the jobs space audits local jobs, and this CI space audits merge protection. Questions it must answer: what stops a bad merge to main; which checks are advisory only; does any required check enforce a feature the roadmap calls blocking." ;
+    kpred:evidence "WHY NOW, from the v0.2.5 release: the release-notes docs gate runs on PRs into main but is not a required check in the ruleset, so it reports without blocking; and the safety attestation failed only under the queue worker for a day, visible in no graph. Today the graphs only NAME the workflow files (7 has-file links)." ;
+    kpred:relates-to kb:local-panel .
+
+kb:release-0-2-6 kpred:has-part kb:ci-graph .
