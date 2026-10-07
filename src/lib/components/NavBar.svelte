@@ -366,7 +366,7 @@
         class:running
         onclick={toggleAnalyze}
         title="analyze"
-        aria-label="Analyze graph"
+        aria-label="Analyze space"
         aria-haspopup="menu"
         aria-expanded={analyzeOpen}
         aria-controls="analyze-actions-menu"
