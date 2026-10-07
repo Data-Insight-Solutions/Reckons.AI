@@ -37,7 +37,7 @@
     computeAlignment, loadKbStatements, applyAlignmentToActiveKb,
     type AlignmentResult, type AlignmentSuggestion,
   } from '$lib/rdf/cross-kb-align';
-  import { termKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
+  import { termKey, iriFromNodeKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { newAliasValues, primaryLabelAfterMerge, buildAliasStatements } from '$lib/rdf/merge-aliases';
   import { computeDiff } from '$lib/rdf/diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
@@ -1119,9 +1119,10 @@
   async function onMergeConfirm(keepKey: string, conflicts: { keepId: string; rejectId: string }[]) {
     isProcessing = true;
     try {
-      const keepIri = keepKey.startsWith('i:') ? keepKey.slice(2) : keepKey;
-      const dropIri = (keepKey === mergeEntityA ? mergeEntityB : mergeEntityA);
-      const dropVal = dropIri.startsWith('i:') ? dropIri.slice(2) : dropIri;
+      const keepIri = iriFromNodeKey(keepKey);
+      const dropVal = iriFromNodeKey(keepKey === mergeEntityA ? mergeEntityB : mergeEntityA);
+      // A merge is between two IRI entities; a literal key must never become a subject IRI.
+      if (!keepIri || !dropVal) { error = 'Only entities can be merged, not literal values.'; return; }
       const keepNode = { kind: 'iri' as const, value: keepIri };
       const toRedirect = statements().filter(
         s => (s.s.kind === 'iri' && s.s.value === dropVal ||
