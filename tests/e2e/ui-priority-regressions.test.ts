@@ -270,7 +270,7 @@ test('mobile navigation keeps secondary actions usable without crowding primary 
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
-  const analyze = nav.getByRole('button', { name: 'Analyze graph' });
+  const analyze = nav.getByRole('button', { name: 'Analyze space' });
   await analyze.click();
   const analysisMenu = page.getByRole('menu', { name: 'Analysis actions' });
   await expect(analysisMenu).toBeVisible();
