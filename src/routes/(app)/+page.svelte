@@ -2274,7 +2274,7 @@
       <div class="timeline-row">
         <span class="timeline-label mono">zoom</span>
         <!-- Logarithmic, 0.25x to 10x (Matt, 2026-10-07: "it needs to go tighter together, and
-             also not up to 50x"). Below 1x the dated nodes draw closer than the full range; a
+             also not up to 50x"). Below 1x the dated entries draw closer than the full range; a
              linear 1-50 slider spent almost all of its travel on zooms nobody used. -->
         <input
           type="range"
