@@ -370,6 +370,10 @@
   const podMode = $derived(podViewEnabled());
   let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
+  // Timeline zoom is chosen on a log2 scale: 2^-2 = 0.25x (tighter than the full range) to 10x.
+  const TIMELINE_ZOOM_MIN_EXP = -2;
+  const TIMELINE_ZOOM_MAX_EXP = Math.log2(10);
+  const formatTimelineZoom = (z: number) => `${z < 1 ? z.toFixed(2).replace(/0$/, '') : z < 10 ? z.toFixed(1).replace(/\.0$/, '') : z.toFixed(0)}x`;
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
@@ -2269,15 +2273,20 @@
     <div class="timeline-controls">
       <div class="timeline-row">
         <span class="timeline-label mono">zoom</span>
+        <!-- Logarithmic, 0.25x to 10x (Matt, 2026-10-07: "it needs to go tighter together, and
+             also not up to 50x"). Below 1x the dated nodes draw closer than the full range; a
+             linear 1-50 slider spent almost all of its travel on zooms nobody used. -->
         <input
           type="range"
-          min="1"
-          max="50"
-          step="0.5"
-          bind:value={timelineZoom}
+          min={TIMELINE_ZOOM_MIN_EXP}
+          max={TIMELINE_ZOOM_MAX_EXP}
+          step="any"
+          value={Math.log2(timelineZoom)}
+          oninput={(e) => (timelineZoom = 2 ** Number((e.currentTarget as HTMLInputElement).value))}
+          aria-label="Timeline zoom"
           class="timeline-slider"
         />
-        <span class="timeline-value mono">{timelineZoom.toFixed(0)}x</span>
+        <span class="timeline-value mono">{formatTimelineZoom(timelineZoom)}</span>
       </div>
       <div class="timeline-row">
         <span class="timeline-label mono">show</span>

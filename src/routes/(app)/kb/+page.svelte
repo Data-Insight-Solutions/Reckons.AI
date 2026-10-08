@@ -868,7 +868,13 @@
 </script>
 
 <!-- ── Spaces map (F218) ───────────────────────────────────────────────────── -->
-{#if mapSpaces.length > 1}
+{#if mapSpaces.length === 1}
+  <!-- Matt, 2026-10-07, on a fresh staging: "I'm not seeing spaces map?" With one space the map
+       has nothing to draw, but silence made it look missing. Say when it appears. -->
+  <section class="section spaces-map-section">
+    <p class="section-hint spaces-map-pending">The spaces map appears here once you have two or more spaces.</p>
+  </section>
+{:else if mapSpaces.length > 1}
   <section class="section spaces-map-section">
     <details open>
       <summary class="section-head"><h3>spaces map</h3></summary>
