@@ -9148,3 +9148,18 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     kpred:has-part kb:agents-in-app .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
+
+kb:set-layout rdf:type ktype:Feature ;
+               rdfs:label         "Set layout — nodes grouped strongly by the sets they belong to, overlaps drawn as overlaps" ;
+               kpred:feature-id   "F256" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "A tenth canvas layout, beside force, focus, source, type, hub, timeline, order, hierarchy and map: nodes are pulled hard toward the sets they belong to, each set is drawn as a smooth contour around its members, and a node in two sets sits where their contours overlap, so the overlap between sets is visible as the link F187 says it is. Nodes in no set sit in a loose ring outside every contour, still selectable so they can be dragged into one." ;
+               kpred:decided      "MATT, 2026-10-08: 'We need a set layout, grouping nodes strongly by sets, like a venn diagram of circles overlapped.'" ;
+               kpred:decided      "MATT, 2026-10-08, FOUR CHOICES in a chat form. (1) SETS ARE skos:Collection ONLY (F187, read through src/lib/rdf/sets.ts), not F65's ktype:EntitySet; recommended was both, Matt chose the standard. (2) BUBBLE-SET CONTOURS, not circles: a smooth outline hugging each set's members, which draws any number of sets and overlaps exactly; recommended was circles with approximation past three sets, Matt chose exactness. (3) NODES IN NO SET in a loose ring outside the contours. (4) 2D FIRST; overlapping 3D volumes later, alongside the XR sets idea (F65.1)." ;
+               kpred:measured     "2026-10-08: no canvas layout groups by set. The closest existing drawing is OverlayGraph.svelte, a Venn-like pull of nodes toward the centroid of the SPACES they belong to in the multi-graph overlay, a different scale (spaces, not sets within a space)." ;
+               kpred:open-question "'group as set' in the canvas creates an F65 ktype:EntitySet with has-member, which this layout will not show. Should it create a skos:Collection instead (and existing entity sets be migrated), so a set made in the app appears in the set layout?" ;
+               kpred:remaining    "Nothing built. Order: placement (a force pull per set membership, so a node in sets A and B settles between them), then contour drawing over the placed nodes, then the outside ring, then labels and selection of a whole set by its contour." ;
+               kpred:relates-to   kb:set-semantics ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:custom-node-positioning ;
+               kpred:relates-to   kb:sets-xr .
