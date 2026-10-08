@@ -9009,6 +9009,22 @@ kb:blog-manager-persona rdf:type ktype:Feature ;
                kpred:relates-to   kb:publish-safety-gate ;
                kpred:relates-to   kb:research-watch .
 
+kb:langgraph-job-runtime rdf:type ktype:Feature ;
+               rdfs:label         "Local jobs as LangGraph graphs — durable steps, fan-out panels, and a pause that waits for a human decision" ;
+               kpred:feature-id   "F257" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Each local agent job (ground, prompt, validate, emit) becomes a LangGraph StateGraph instead of a hand-written script. The local panel becomes a fan-out to several voters with a reduce step. A job that needs a human decision PAUSES at that point (interrupt) and resumes when the decision arrives from the Review tab, which is the execution half of F223: a proposal accepted but not yet materialized is a paused run waiting to finish." ;
+               kpred:decided      "MATT, 2026-10-08, asked whether the job runtime could use LangChain core; after the comparison: 'langgraph makes more sense'. Recorded as speculative with a trial, not as a decision to migrate." ;
+               kpred:proposed     "WHAT MAPS. Job = StateGraph with nodes ground, prompt, validate, emit; validate failing routes back to prompt or to a refute step (lib/review-refute.ts) by conditional edge. Local panel (scripts/agent/local-panel.ts) = Send fan-out to N voters, reduce to unanimity, and only non-unanimous items continue. Decision rows (open-question with has-option, today from distill-decisions) = interrupt(); the verdict written to knowledge.decisions.jsonl carries the run's thread id and resumes it with Command. Model calls through @langchain/ollama with structured output in place of hand-parsed JSON." ;
+               kpred:proposed     "WHAT STAYS OURS. LangGraph has no scheduler, heartbeat gate, GPU check, circuit breaker or back-pressure. queue-worker, session-schedule, job-watch and backlogHolds stay as the thing that STARTS and RESUMES graphs; only the inside of a job moves." ;
+               kpred:constraint   "THE GRAPH STAYS THE SOURCE OF TRUTH. A checkpointer is execution plumbing (where a paused run is), kept private under ~/.local/state/reckons, never the record of what was decided. Proposal status lives in the TTL graph (F223, schema:Action status); losing every checkpoint must lose resumability only, never a decision." ;
+               kpred:constraint   "SCRIPTS ONLY, NOT THE APP. The packages are devDependencies used under scripts/; the browser bundle and the app's own provider layer (src/lib/integrations/llm) do not change. Measured 2026-10-08 on npm: @langchain/langgraph 1.4.21 (4.4 MB unpacked) needs @langchain/core 1.2.17 (7.6 MB); checkpoint-sqlite 1.0.4; @langchain/ollama 1.3.0." ;
+               kpred:remaining    "TRIAL FIRST, then decide. Port distill-decisions (it already produces decisions, so it exercises interrupt and resume) and compare with the current script on the same input: lines of code, validation failures, wall time, and whether a run paused for a decision resumes correctly after the worker restarts. Adopt for other jobs only if it wins. Nothing is built." ;
+               kpred:depends-on   kb:graph-proposals ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:local-panel ;
+               kpred:relates-to   kb:job-backpressure .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
