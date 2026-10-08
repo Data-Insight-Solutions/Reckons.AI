@@ -8849,7 +8849,7 @@ kb:graph-proposals rdf:type ktype:Feature ;
 kb:release-0-2-5 rdf:type ktype:Release ;
     rdfs:label "v0.2.5" ;
     kpred:version "0.2.5" ;
-    kpred:has-status "functional" ;
+    kpred:has-status "production" ;
     kpred:description "A more organized release, led by two features that make the graph's structure visible: the Spaces Map (the graph of graphs) and the Source View (a statement and the exact chunk it came from, in both directions)." ;
     kpred:decided "MATT, 2026-09-29: the Spaces Map and the Source View should be key features for a more organized 0.2.5." ;
     kpred:has-part kb:meta-graph-view ;
@@ -9148,3 +9148,4 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     kpred:has-part kb:agents-in-app .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
+kb:release-0-2-5 kpred:progress "2026-10-08, IN PRODUCTION. Matt merged #390 (staging to main) at 21:18 UTC; Cloudflare Pages queued the production build behind nine preview builds (one build runs at a time) and reckons.ai served it from 21:22 UTC. Checked in Chromium: /, /kb and /docs/releases/v0-2-5 return 200 with no page or console errors, and the badge reads v0.2.5. Tagged v0.2.5 on 76c8f23 and published the first GitHub release. KNOWN GAP, SAID OUT LOUD: #409 (the spaces map drawn from the first space) was meant to go in first and did not, so a copy with one space shows a note instead of the map the release notes lead with; it ships as patch 0.2.5.1." .
