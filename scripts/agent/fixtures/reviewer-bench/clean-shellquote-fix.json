@@ -1,0 +1,8 @@
+{
+  "id": "clean-shellquote-fix",
+  "source": "PR #342 as merged (task-templates.ts)",
+  "promptContext": "Review this fix. The runner executes the template command with bash; the argument is untrusted transcript text.\n\n```ts\n/**\n * Quote one argument for bash so it is always a single literal word. Single quotes stop every\n * expansion ($, backticks, globbing, history); a single quote inside the value is closed, escaped\n * and reopened. JSON.stringify is NOT a shell quote: it yields double quotes, inside which bash\n * still runs $(\u2026) and `\u2026`.\n */\nexport function shellQuote(value: string): string {\n  return \"'\" + value.replace(/'/g, \"'\\\\''\") + \"'\";\n}\ncommand: (arg) => `npm run agent:document -- --subject=${shellQuote(arg)} --deliver=email-owner`,\n```\nThe tests run each of these through real bash `printf %s <quoted>` and assert it round-trips exactly: `$(echo pwned)`, backticks, a single quote, `x'; echo pwned; '`, `$HOME * ~ !!`, a newline.",
+  "expected": {
+    "verdict": "accept"
+  }
+}

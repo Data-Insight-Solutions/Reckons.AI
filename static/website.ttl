@@ -227,10 +227,10 @@ site:user-paths a schema:WebPage ;
 site:where-it-is-going a schema:WebPage ;
     schema:isPartOf site:docs ;
     dcterms:isPartOf "Project" ;
-    schema:name "Where it is going" ;
+    schema:name "The ecosystem around it" ;
     schema:url <https://reckons.ai/docs/project/where-it-is-going> ;
     schema:position 7 ;
-    schema:abstract "The direction of the project and the ecosystem it sits in — what is built, and what is intended." ;
+    schema:abstract "The standards, people and organizations Reckons.AI builds on. What works in Reckons.AI itself is on the What works today page." ;
     schema:isBasedOn ds:timeline .
 
 # Deliberately LAST and separate: these datasets describe how this REPOSITORY is developed.
@@ -346,3 +346,18 @@ site:exclude-migration-tracker a skos:Concept ;
     rdfs:label "Markdown migration tracker" ;
     reckons:excludes-under <urn:reckons:arch/MigrationStatus> ;
     dcterms:description "Internal bookkeeping about which docs/*.md files in THIS repository have been migrated to TTL — entries like \"GUIDE.md -> Superseded\". Useful to a maintainer, meaningless to someone using Reckons.AI, and currently published as 16 public pages on /docs." .
+
+site:field-report-thirty-six-sentences a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Field reports" ;
+    schema:name "Thirty-six sentences" ;
+    schema:url <https://reckons.ai/docs/field-reports/thirty-six-sentences> ;
+    schema:position 91 ;
+    schema:abstract "One session on a $20-a-month plan: 36 short messages over 5.7 hours became 15 pull requests, with scripts and two local GPUs doing most of the work." .
+site:release-notes-v0-2-5 a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.2.5" ;
+    schema:url <https://reckons.ai/docs/releases/v0-2-5> ;
+    schema:position 92 ;
+    schema:abstract "The Spaces map, the first half of the Source View, one shared graph canvas, and a local agent tier that does most of the repetitive work on your own hardware." .

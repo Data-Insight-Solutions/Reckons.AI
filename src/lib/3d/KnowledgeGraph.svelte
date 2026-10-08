@@ -1641,9 +1641,12 @@
               if (tooClose) continue;
             }
 
-            // 3. Per-label opacity: near/important → 0.85, far/unimportant → 0.20.
+            // 3. Shown or hidden, never faded to a fraction (Matt, 2026-09-29). The nearer 60% of the
+            //    distance range stays visible at full strength; the far remainder hides, and the CSS
+            //    opacity transition in GraphLabels eases each label in or out as the camera moves.
+            //    Hover and selection still reveal any label.
             const t = (entry.adjDist - minAdj) / adjRange;
-            const opacity = isSpecial ? 1.0 : Math.max(0.20, 0.85 - t * 0.65);
+            const opacity = isSpecial || t <= 0.6 ? 1 : 0;
             kept.push({ key: entry.key, label: entry.label, x: entry.sx, y: entry.sy, opacity });
           }
           onlabelsmove(kept);

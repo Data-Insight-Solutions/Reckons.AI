@@ -20,7 +20,7 @@ const localName = (value: string) => value.split(/[/#]/).pop() || value;
 const sourceIdOf = (st: Statement) => st.sourceId || '__unrecorded__';
 const viewIri = (kind: string, id: string) => `${VIEW}${kind}/${encodeURIComponent(id)}`;
 
-export interface ProvenanceGroup {
+export type ProvenanceGroup = {
   key: string;
   sourceId: string;
   label: string;
@@ -28,9 +28,9 @@ export interface ProvenanceGroup {
   setIri?: string;
   members: string[];
   statementIds: string[];
-}
+};
 
-export interface ProvenanceSource {
+export type ProvenanceSource = {
   id: string;
   key: string;
   title: string;
@@ -39,13 +39,13 @@ export interface ProvenanceSource {
   statements: Statement[];
   entityKeys: string[];
   groups: ProvenanceGroup[];
-}
+};
 
-export interface ProvenanceIndex {
+export type ProvenanceIndex = {
   sources: ProvenanceSource[];
   entities: Map<string, { term: Term; label: string; type?: string }>;
   statements: Map<string, Statement>;
-}
+};
 
 /** Join recorded source IDs. A missing source record never becomes invented provenance. */
 export function buildProvenanceIndex(statements: Statement[], sources: Source[]): ProvenanceIndex {

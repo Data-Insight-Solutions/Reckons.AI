@@ -22,10 +22,32 @@ export type DeployModel =
 /** A local CLI that deploys the built site folder. Local installs are acceptable (Matt, 2026-07-16). */
 export interface DeployCli {
   tool: string;
+  executable: string;
+  args: (dir: string, project: string) => string[];
   /** How to install it (shown once). */
   install: string;
   /** The deploy command, given the built-site directory and the project/site name. */
   command: (dir: string, project: string) => string;
+}
+
+function deploymentInputs(dir: string, project: string): void {
+  if (!dir || dir.startsWith('-') || /[\x00-\x1f\x7f]/.test(dir)) throw new Error('Invalid deploy directory');
+  if (project && !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(project)) throw new Error('Invalid deploy project name');
+}
+
+const cloudflareArgs = (dir: string, project: string): string[] => {
+  deploymentInputs(dir, project);
+  if (!project) throw new Error('A Cloudflare project name is required');
+  return ['pages', 'deploy', dir, `--project-name=${project}`];
+};
+const netlifyArgs = (dir: string, project: string): string[] => {
+  deploymentInputs(dir, project);
+  return ['deploy', '--prod', `--dir=${dir}`, ...(project ? [`--site=${project}`] : [])];
+};
+
+/** POSIX copy/paste display only. Execution always uses executable + args. */
+function displayCommand(file: string, args: string[]): string {
+  return [file, ...args].map(v => /^[a-zA-Z0-9_./=-]+$/.test(v) ? v : `'${v.replace(/'/g, "'\\''")}'`).join(' ');
 }
 
 export interface PublishTarget {
@@ -60,8 +82,10 @@ export const PUBLISH_TARGETS: PublishTarget[] = [
     deploy: 'cli', // Wrangler does Direct Upload locally — no browser CORS, handles the whole deploy.
     cli: {
       tool: 'wrangler',
+      executable: 'wrangler',
+      args: cloudflareArgs,
       install: 'npm i -g wrangler  (then: wrangler login)',
-      command: (dir, project) => `wrangler pages deploy ${dir} --project-name=${project}`,
+      command: (dir, project) => displayCommand('wrangler', cloudflareArgs(dir, project)),
     },
     gitBackends: ['github', 'gitlab'], // alternative: connect a repo and let Cloudflare auto-deploy.
     setup: 'Deploy the built folder with Wrangler (wrangler pages deploy). Or connect a git repo to a Cloudflare Pages project for auto-deploy.',
@@ -85,8 +109,10 @@ export const PUBLISH_TARGETS: PublishTarget[] = [
     deploy: 'cli', // netlify-cli deploys the built folder directly.
     cli: {
       tool: 'netlify-cli',
+      executable: 'netlify',
+      args: netlifyArgs,
       install: 'npm i -g netlify-cli  (then: netlify login)',
-      command: (dir, project) => `netlify deploy --prod --dir=${dir}${project ? ` --site=${project}` : ''}`,
+      command: (dir, project) => displayCommand('netlify', netlifyArgs(dir, project)),
     },
     gitBackends: ['github', 'gitlab'],
     setup: 'Deploy the built folder with the Netlify CLI (netlify deploy --prod). Or connect a git repo for auto-deploy.',

@@ -14,11 +14,19 @@
  *   npm run session:tokens              this project, newest last
  *   npm run session:tokens -- --top=10  only the 10 heaviest sessions
  *   npm run session:tokens -- --path=/abs/dir/to/*.jsonl
+ *   npm run session:tokens -- --by=branch [--since=ISO] [--until=ISO] [--top=N]
+ *   npm run session:tokens -- --by=thread --session=<id> [--since=ISO] [--until=ISO]   main vs subagents by model
+ *   npm run session:tokens -- --calibrate        tasks per week (needs >=2 recorded percents)
+ *   npm run session:tokens -- --record=<percent> record Claude Code's weekly usage % now
  */
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, mkdirSync, writeFileSync, chmodSync } from 'fs';
 import { homedir } from 'os';
 import path from 'path';
 import { resolveTranscriptDir } from './lib/transcript-dir';
+import {
+  FAMILIES, attributeByBranch, attributeByThread, inSession, calibrationWindow, cleanCalibration, dedupeEntries, entryFromLine,
+  filterWindow, groupTasksPerWeek, taskCosts, tokensPerPercent, type Entry
+} from './lib/usage-attribution';
 
 // Relative Opus token weights (input=1): output is dear, cache-read is cheap.
 const W = { input: 1, cacheW: 1.25, cacheR: 0.1, output: 5 };
@@ -27,6 +35,94 @@ const args = process.argv.slice(2);
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
 const top = Number(flag('top') ?? 0);
 const dir = flag('path') ?? resolveTranscriptDir();
+
+const session = flag('session');
+const since = flag('since');
+const until = flag('until');
+const calibPath = path.join(process.env.XDG_STATE_HOME || path.join(homedir(), '.local', 'state'), 'reckons', 'usage-calibration.json');
+
+function readCalibration(): unknown[] {
+  try { return JSON.parse(readFileSync(calibPath, 'utf8')); } catch { return []; }
+}
+
+if (flag('record') !== undefined) {
+  const pct = Number(flag('record'));
+  if (!Number.isFinite(pct) || pct < 0) { console.error('--record=<percent> needs a number, e.g. --record=37'); process.exit(1); }
+  mkdirSync(path.dirname(calibPath), { recursive: true, mode: 0o700 });
+  const at = new Date().toISOString();
+  const all = [...readCalibration(), { at, weeklyPercent: pct }];
+  writeFileSync(calibPath, JSON.stringify(all, null, 2) + '\n', { mode: 0o600 });
+  chmodSync(calibPath, 0o600);
+  console.log(`Recorded ${pct}% at ${at} (${all.length} entries) in the private calibration file.`);
+  process.exit(0);
+}
+
+/** Every *.jsonl under dir, recursively: subagent transcripts live in <session>/subagents/. */
+function walk(d: string): string[] {
+  return readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+    const f = path.join(d, e.name);
+    return e.isDirectory() ? walk(f) : f.endsWith('.jsonl') ? [f] : [];
+  });
+}
+
+function loadEntries(): Entry[] {
+  let fs: string[];
+  try { fs = walk(dir); } catch { console.error(`No transcripts at ${dir}\nPass --path=<dir> if your logs live elsewhere.`); process.exit(1); }
+  const out: Entry[] = [];
+  if (session) fs = fs.filter((f) => inSession(f, session));
+  for (const f of fs) for (const line of readFileSync(f, 'utf8').split('\n')) {
+    if (!line) continue;
+    let o: any; try { o = JSON.parse(line); } catch { continue; }
+    const e = entryFromLine(o);
+    if (e) out.push(f.includes(`${path.sep}subagents${path.sep}`) ? { ...e, sub: true } : e);
+  }
+  return filterWindow(dedupeEntries(out), since, until);
+}
+
+const kk = (n: number) => (n < 1e6 ? `${Math.round(n / 1000)}K` : `${(n / 1e6).toFixed(1)}M`);
+
+if (flag('by') === 'branch' || flag('by') === 'thread' || args.includes('--calibrate')) {
+  const entries = loadEntries();
+  const window = `${since ?? 'start'} .. ${until ?? 'now'}`;
+  if (flag('by') === 'branch') {
+    let rows = attributeByBranch(entries);
+    const grand = rows.reduce((s, r) => s + r.weighted, 0);
+    if (top > 0) rows = rows.slice(0, top);
+    console.log(`\nWeighted tokens by branch (deduped per response; subagents attributed to their own branch) ${window}\n`);
+    console.log(`${'branch'.padEnd(46)}${'weighted'.padStart(10)}  ${FAMILIES.map((f) => f.padStart(8)).join('')}`);
+    for (const r of rows) console.log(`${r.branch.slice(0, 45).padEnd(46)}${kk(r.weighted).padStart(10)}  ${FAMILIES.map((f) => kk(r.byFamily[f]).padStart(8)).join('')}`);
+    console.log('-'.repeat(88));
+    console.log(`${'TOTAL'.padEnd(46)}${kk(grand).padStart(10)}  ${FAMILIES.map((f) => kk(entries.filter((e) => e.family === f).reduce((s, e) => s + e.weighted, 0)).padStart(8)).join('')}\n`);
+  }
+  if (flag('by') === 'thread') {
+    console.log(`\nWeighted tokens by thread (deduped per response)${session ? ` session ${session.slice(0, 8)}` : ''} ${window}\n`);
+    console.log(`${'thread'.padEnd(12)}${'weighted'.padStart(10)}  ${FAMILIES.map((f) => f.padStart(8)).join('')}`);
+    for (const r of attributeByThread(entries)) console.log(`${r.thread.padEnd(12)}${kk(r.weighted).padStart(10)}  ${FAMILIES.map((f) => kk(r.byFamily[f]).padStart(8)).join('')}`);
+    console.log();
+  }
+  if (args.includes('--calibrate')) {
+    const calib = cleanCalibration(readCalibration());
+    const w = calibrationWindow(calib);
+    if (!w) {
+      console.log(`\nNot calibrated: need >=2 recorded usage percentages in the same week, rising.`);
+      console.log(`Have ${calib.length} entr${calib.length === 1 ? 'y' : 'ies'}. Record Claude Code's weekly usage % (from its usage display) now, and again after some work:`);
+      console.log(`  npm run session:tokens -- --record=<percent>`);
+      console.log(`Stored privately at ${calibPath.replace(homedir(), '~')} (mode 0600). No number is guessed.\n`);
+    } else {
+      const tpp = tokensPerPercent(entries, w);
+      const g = groupTasksPerWeek(tpp, taskCosts(entries));
+      console.log(`\nCalibration ${w.from} .. ${w.to}: +${w.percentDelta}% of the weekly allowance = ${kk(tpp)} weighted tokens per 1%.`);
+      console.log(`Tasks = branches prefixed feat/ fix/ chore/ test/ plan/ docs/ agent/ in ${window}; cost = weighted tokens on the branch.\n`);
+      const show = (label: string, r: { tasks: number; medianWeighted: number; tasksPerWeek: number }) =>
+        console.log(`${label.padEnd(10)} tasks=${String(r.tasks).padStart(3)}  median=${kk(r.medianWeighted).padStart(7)}  tasks/week=${r.tasksPerWeek.toFixed(1)}`);
+      show('overall', g.overall);
+      for (const r of g.byKind) show(r.key, r);
+      for (const r of g.byFamily) show(`[${r.key}]`, r);
+      console.log(`\nCaveats: weeks are Monday-UTC calendar weeks, not your plan's reset; per-family rows divide the SAME percent-calibrated budget by that family's median task.\n`);
+    }
+  }
+  process.exit(0);
+}
 
 type Row = { date: string; id: string; msgs: number; input: number; cacheW: number; cacheR: number; output: number; eff: number };
 

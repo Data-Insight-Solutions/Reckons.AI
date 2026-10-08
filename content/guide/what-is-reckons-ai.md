@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 45 parts below.</p>
+<p class="derived">It has 45 parts below, 2 of which are not built yet.</p>
 
 ## In this section
 
@@ -48,7 +48,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="#content-safety-features"><span class="card-title">Content Safety</span><span class="card-text">Ethics preamble injected into ALL LLM system prompts.</span></a>
 <a class="card" href="../features/context-compression-features"><span class="card-title">Context Compression</span><span class="card-text">Condense your context.</span></a>
 <a class="card" href="#cross-kb-alignment"><span class="card-title">Cross-Graph Alignment</span><span class="card-text">Align entities across knowledge graphs.</span></a>
-<a class="card" href="../features/currents"><span class="card-title">Currents</span><span class="card-text">Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule.</span></a>
+<a class="card" href="../features/currents"><span class="card-title">Currents</span><span class="card-status">scaffolded</span><span class="card-text">Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule.</span></a>
 <a class="card" href="../architecture/currents-meta-triples"><span class="card-title">Currents Settings as Meta Triples</span><span class="card-text">Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy.</span></a>
 <a class="card" href="#disambiguation"><span class="card-title">Disambiguation</span><span class="card-text">Automatic detection of duplicate or similar entities using text embeddings and cosine similarity.</span></a>
 <a class="card" href="#entity-types"><span class="card-title">Entity Type System</span><span class="card-text">Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes.</span></a>
@@ -61,9 +61,9 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="../features/mcp-workspace"><span class="card-title">MCP Workspace</span><span class="card-text">Reckons.AI uses its own MCP server to track product state.</span></a>
 <a class="card" href="../features/multi-kb"><span class="card-title">Multi-Graph Management</span><span class="card-text">Create, switch, rename, and delete independent knowledge graphs.</span></a>
 <a class="card" href="#open-source"><span class="card-title">Open Source (MIT)</span><span class="card-text">Reckons.AI is MIT-licensed.</span></a>
-<a class="card" href="#passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
+<a class="card" href="../features/passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
 <a class="card" href="#predicate-manager"><span class="card-title">Predicate Manager</span><span class="card-text">View all predicates in your graph with usage counts.</span></a>
-<a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
+<a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-status">in-progress</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
 <a class="card" href="../features/review-system"><span class="card-title">Review — where your graph gets smaller and truer</span><span class="card-text">The step where you decide what is true.</span></a>
 <a class="card" href="../architecture/schema-constrained-extraction"><span class="card-title">Schema-Constrained Local Extraction</span><span class="card-text">Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.</span></a>
 <a class="card" href="../features/source-refresh"><span class="card-title">Source Refresh</span><span class="card-text">Generic refresh for url, repository, and calendar sources.</span></a>
@@ -130,10 +130,6 @@ This is not just a feature -- it is a design philosophy. Your knowledge belongs 
 <h3 id="open-source">Open Source (MIT)</h3>
 
 Reckons.AI is MIT-licensed. Read the code, fork it, self-host it, run it offline forever. No proprietary lock-in, no subscription, no way to lose access to your own tool.
-
-<h3 id="passage-grounding">Passage Grounding</h3>
-
-Verbatim source excerpts attached to extracted triples. LLM prompt rule requests the exact source sentence. Persists via meta:excerpt in TTL reification. Displayed in StatementCard and DiffEntry.
 
 <h3 id="predicate-manager">Predicate Manager</h3>
 

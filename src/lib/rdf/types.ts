@@ -542,6 +542,45 @@ export function termKey(t: Term): string {
   return `l:${t.value}|${t.datatype ?? ''}|${t.lang ?? ''}`;
 }
 
+/**
+ * True when `value` has the exact SHAPE of a {@link termKey} — i.e. a graph node id that has
+ * been wrapped as an IRI by mistake ("<l:high||>").
+ *
+ * Why this exists (2026-09-10 incident): the node panel derived an entity IRI with
+ * `selected.startsWith('i:') ? selected.slice(2) : selected`, so selecting a LITERAL node
+ * ("l:high||") used the whole key as a subject IRI. The serializer then wrote
+ * `<l:high||> skos:altLabel ...`, which no Turtle parser accepts, and the whole graph could not
+ * be re-imported.
+ *
+ * Only exact shapes are rejected, so ordinary IRIs are unaffected:
+ *  - `l:<value>|<datatype>|<lang>` (literal keys always carry two pipes at the end);
+ *  - `i:` or `b:` followed by something — an `i:`/`b:` scheme does not exist, and a real use
+ *    would be a double-wrapped key such as `i:urn:kbase:concept/x`.
+ */
+export function looksLikeTermKey(value: string): boolean {
+  if (/^l:[\s\S]*\|[^|]*\|[^|]*$/.test(value)) return true;
+  if (/^[ib]:[A-Za-z][A-Za-z0-9+.-]*:/.test(value)) return true;
+  if (/^b:\S+$/.test(value)) return true;
+  return false;
+}
+
+/**
+ * The IRI behind a graph node key, or null when the node is not an IRI node (a literal or blank
+ * node). A literal CANNOT be the subject of a triple, so callers that add or change statements
+ * "about this node" must treat null as "this action is not available here" — never fall back to
+ * the raw key.
+ */
+export function iriFromNodeKey(key: string | null | undefined): string | null {
+  if (!key || !key.startsWith('i:')) return null;
+  const v = key.slice(2);
+  return v && !looksLikeTermKey(v) ? v : null;
+}
+
+/** True when a statement carries a term that is a leaked node key (cannot be serialized). */
+export function hasLeakedTermKey(st: Pick<Statement, 's' | 'p' | 'o' | 'g'>): boolean {
+  return [st.s, st.p, st.o, st.g].some((t) => t && t.kind === 'iri' && looksLikeTermKey(t.value));
+}
+
 /** Canonical key for the (s,p,o) triple part — ignores graph and metadata */
 export function tripleKey(st: Pick<Statement, 's' | 'p' | 'o'>): string {
   return `${termKey(st.s)}>${termKey(st.p)}>${termKey(st.o)}`;

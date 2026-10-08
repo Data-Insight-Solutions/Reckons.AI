@@ -13,9 +13,11 @@ generated: "docs-kb"
 
 # Ingest
 
+> **Production** — built, tested, and in use.
+
 Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review.
 
-<p class="derived">It has 3 parts below, 2 of which are not built yet.</p>
+<p class="derived">This is built, working, and in daily use here. It has 4 parts below, 2 of which are not built yet.</p>
 
 <p class="in-sets">Part of Take it in.</p>
 
@@ -29,6 +31,10 @@ Bulk import from Confluence spaces.
 
 Post-extraction normalization that rewrites incoming IRIs to match existing graph entities and predicates using embedding similarity.
 
-### Text Chunking — **planned**
+**[Text Chunking](../features/text-chunking)** — **scaffolded**
 
-Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence.
+A long document is too big to read in one pass, so Reckons.AI reads it in overlapping pieces of about 12,000 characters.
+
+**[The add menu](../features/add-menu)**
+
+The + button at the top of every page opens a short menu of what you can add.

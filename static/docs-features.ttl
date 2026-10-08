@@ -15,6 +15,7 @@
 @prefix set:    <urn:reckons:set/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
+@prefix kb:     <urn:kbase:concept/> .
 
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a04-b004-000000000004" .
@@ -297,19 +298,18 @@ feat:MCPWorkspace
 ## =============================================================================
 
 feat:ConfluenceMigration
-    rdf:type            ktype:Feature ;
-    kpred:has-status    "planned" ;
+    rdf:type            ktype:Concept ;
     rdfs:label          "Confluence Migration" ;
     skos:definition     "Bulk import from Confluence spaces. Upload an HTML export ZIP, parse the page tree, chunk large pages with sliding window (10K chars, 2K overlap), and extract triples using local models (Ollama recommended). Preserves page hierarchy as skos:broader, converts Confluence labels to entity types, tracks provenance per page. Pause/resume checkpoint for overnight imports of large spaces." ;
     skos:broader        feat:Ingest ;
     skos:related        feat:EntityNormalization .
 
 feat:TextChunking
-    rdf:type            ktype:Feature ;
-    kpred:has-status    "planned" ;
+    rdf:type            ktype:Concept ;
     rdfs:label          "Text Chunking" ;
-    skos:definition     "Sliding window chunking for sources exceeding the 12K character extraction limit. Each chunk gets a context header (source title, chunk N of M, parent page). Cross-chunk deduplication merges triples with identical (subject, predicate, object) after slugification. Benefits all source types, not just Confluence." ;
-    skos:broader        feat:Ingest .
+    skos:definition     "A long document is too big to read in one pass, so Reckons.AI reads it in overlapping pieces of about 12,000 characters. Each piece is labelled with the document title and its place (piece 3 of 8, for example), so nothing is read out of context. When two pieces produce the same fact, you see it once. This works for every kind of source." ;
+    skos:broader        feat:Ingest ;
+    kpred:relates-to    kb:text-chunking .
 
 
 ## =============================================================================
@@ -334,8 +334,7 @@ feat:TurtlePersona
 ## =============================================================================
 
 feat:GitAnalysis
-    rdf:type            ktype:Feature ;
-    kpred:has-status    "functional" ;
+    rdf:type            ktype:Concept ;
     kpred:test-coverage "none" ;
     kpred:honest-note   "No automated test covers this (audited 2026-07-12). Shipped and in use; the coverage gap is declared rather than hidden (kb:honest-status). NOTE: this entity duplicates kb:git-analysis in the roadmap under a different IRI — same feature, split identity." ;
     rdfs:label          "Git Analysis" ;
@@ -352,13 +351,15 @@ feat:Currents
     rdfs:label          "Currents" ;
     skos:definition     "Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page." ;
     skos:broader        guide:WhatIsReckonsAI ;
-    skos:related        feat:PodView .
+    skos:related        feat:PodView ;
+    kpred:relates-to    kb:currents .
 
 feat:PodView
     rdf:type            ktype:Concept ;
     rdfs:label          "Pod View" ;
     skos:definition     "Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." ;
-    skos:broader        feat:Currents .
+    skos:broader        feat:Currents ;
+    kpred:relates-to    kb:currents-phase-3 .
 
 ## =============================================================================
 ## Review Workbench (F30)
@@ -453,7 +454,7 @@ feat:FiveMoves
 set:MoveCapture rdf:type          skos:Collection ;
     kpred:set-kind      kset:page ;
     skos:prefLabel      "Take it in" ;
-    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated." ;
+    skos:definition     "Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Extraction reads the first 12,000 characters of a source, about 2,000 words, and a longer source is cut there without a warning today; splitting long sources into chunks is planned, not built." ;
     skos:member         feat:Ingest, feat:Currents, feat:WhisperSTT, feat:TextChunking, feat:ConfluenceMigration ;
     kpred:set-relates-to feat:FiveMoves .
 
@@ -567,3 +568,88 @@ set:FirstHour rdf:type      skos:OrderedCollection ;
     kpred:in-set        set:FirstHour ;
     kpred:member-entity feat:Reckoning ;
     kpred:member-order  "4" .
+
+## =============================================================================
+## WHERE EACH CAPABILITY'S STATUS COMES FROM (F222 phase 2, 2026-09-29).
+## A capability does not state its own status. It names the roadmap entity it documents,
+## and scripts/docs-pages.ts reads that entity's kpred:has-status at build time, so a
+## status is written in exactly one place. skos:exactMatch: the roadmap entity IS this
+## capability. skos:broadMatch: the roadmap tracks it inside a broader feature.
+## scripts/offline/docs-status.ts fails when a capability has no status, or has both a
+## mapping and its own has-status.
+## =============================================================================
+
+feat:Ingest               skos:exactMatch  kb:wf-ingest .
+feat:ReviewSystem         skos:exactMatch  kb:wf-review .
+feat:TrustSystem          skos:exactMatch  kb:trust-system .
+feat:Graph3D              skos:exactMatch  kb:knowledge-graph .
+feat:Shelly               skos:exactMatch  kb:shelly-chat .
+feat:Reckoning            skos:exactMatch  kb:wf-reckon .
+feat:Compare              skos:exactMatch  kb:wf-compare .
+feat:DiffSummary          skos:exactMatch  kb:diff-summary .
+feat:MultiKB              skos:exactMatch  kb:multi-kb .
+feat:PredicateManager     skos:exactMatch  kb:predicate-manager .
+feat:EntityTypes          skos:exactMatch  kb:entity-types .
+feat:HistoryMode          skos:exactMatch  kb:history-mode .
+feat:LLMBackends          skos:exactMatch  kb:llm-providers .
+feat:WhisperSTT           skos:exactMatch  kb:whisper-stt .
+feat:KokoroTTS            skos:exactMatch  kb:kokoro-tts .
+feat:ContentSafety        skos:exactMatch  kb:content-safety .
+feat:PassageGrounding     skos:exactMatch  kb:passage-grounding .
+feat:TTLExport            skos:exactMatch  kb:ttl-export .
+feat:ModelCache           skos:exactMatch  kb:model-cache .
+feat:CrossKBAlignment     skos:exactMatch  kb:cross-kb-alignment .
+feat:SourceRefresh        skos:exactMatch  kb:source-refresh .
+feat:SourceMonitoring     skos:exactMatch  kb:n8n-source-monitor .
+feat:ContextCompression   skos:exactMatch  kb:context-compression .
+feat:EntityNormalization  skos:exactMatch  kb:entity-normalization .
+feat:MCPWorkspace         skos:exactMatch  kb:mcp-workspace .
+feat:ConfluenceMigration  skos:exactMatch  kb:confluence-migration .
+feat:TextChunking         skos:exactMatch  kb:text-chunking .
+feat:TurtlePersona        skos:exactMatch  kb:graph-persona .
+feat:GitAnalysis          skos:exactMatch  kb:git-analysis .
+feat:Currents             skos:exactMatch  kb:currents .
+feat:PodView              skos:exactMatch  kb:currents-phase-3 .
+feat:ReviewWorkbench      skos:exactMatch  kb:review-workbench .
+feat:PublishedDocs        skos:exactMatch  kb:graph-publishing .
+
+feat:KBLeap               skos:broadMatch  kb:multi-kb .
+feat:KBIdentity           skos:broadMatch  kb:multi-kb .
+feat:Disambiguation       skos:broadMatch  kb:wf-review .
+feat:StorySystem          skos:broadMatch  kb:shelly-chat .
+feat:PreferLocal          skos:broadMatch  kb:llm-providers .
+feat:ReleaseNotes         skos:broadMatch  kb:post-template .
+
+feat:FiveMoves  kpred:status-not-applicable  "An explanatory page about the whole product, not a capability." .
+feat:StartHere  kpred:status-not-applicable  "A reading guide, not a capability." .
+
+guide:WhatWorksToday
+    rdf:type            ktype:Concept ;
+    rdfs:label          "What works today" ;
+    kpred:page-section  "Project" ;
+    kpred:page-slug     "status" ;
+    kpred:render-as     "status-summary" ;
+    kpred:status-not-applicable "The status page itself." ;
+    skos:definition     "Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it." .
+
+## =============================================================================
+## Adding things, and where a fact came from (v0.2.5)
+## =============================================================================
+
+feat:AddMenu
+    rdf:type            ktype:Concept ;
+    rdfs:label          "The add menu" ;
+    skos:definition     "The + button at the top of every page opens a short menu of what you can add. Under New: a source (a whole document), a single statement, a set or a new space. Under From: a note, a link, a folder, a code repository, a calendar, a reminder or a space file. Each choice opens the right page already set up for it. The arrow keys move through the menu and Escape closes it." ;
+    skos:broader        feat:Ingest ;
+    skos:exactMatch     kb:add-quick-menu ;
+    kpred:relates-to    kb:add-quick-menu .
+
+feat:NodeSources
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Where a node's facts came from" ;
+    skos:definition     "Select a node and its details now show which sources its facts came from. Under each source are the facts that source gave, so you can see at a glance what came from where. Click a source's title to open it in Sources, where it is selected for you and any filter that would hide it is cleared. Facts are listed whichever direction they point, even when the Statements filters would hide them." ;
+    skos:broader        feat:PassageGrounding ;
+    skos:exactMatch     kb:statement-node-source-links ;
+    skos:broadMatch     kb:source-atoms ;
+    kpred:relates-to    kb:statement-node-source-links ;
+    kpred:relates-to    kb:source-atoms .

@@ -12,10 +12,11 @@
  * once per session; subsequent mutations trigger a debounced write with no prompts.
  */
 
-import { db, getSettings, type SettingsRecord } from './db';
+import { db, getSettings, DEFAULT_SETTINGS, type SettingsRecord } from './db';
 import { toTurtle, toTurtleFull } from '../rdf/serialize';
 import { kbFileSlug } from './kb-registry';
 import { redactSecrets } from '../safety/redact';
+import { selectProfileFields } from './settings-profile';
 
 // ── Settings profile ─────────────────────────────────────────────────────────
 //
@@ -113,7 +114,10 @@ export async function buildSettingsProfileJson(): Promise<string> {
   // Recursive final pass: the allowlist above excludes TOP-LEVEL secrets, but passes nested
   // objects (turtleSettings carries humeApiKey/humeSecretKey) through whole. Strip any
   // secret-named field at any depth so a "safe to share" profile truly carries no credential.
-  return JSON.stringify(redactSecrets(profile), null, 2);
+  return JSON.stringify({
+    _format: profile._format, _version: profile._version, exportedAt: profile.exportedAt,
+    ...redactSecrets(selectProfileFields(profile)),
+  }, null, 2);
 }
 
 /**
@@ -130,14 +134,23 @@ export async function exportSettingsProfile(): Promise<void> {
  * Returns null if the file is not a valid Reckons settings profile.
  * API keys are never included in a profile — existing keys are preserved on import.
  */
-export function parseSettingsProfile(json: string): Partial<SettingsRecord> | null {
+export function parseSettingsProfile(json: string, current: SettingsRecord = DEFAULT_SETTINGS): Partial<SettingsRecord> | null {
   try {
     const p = JSON.parse(json) as Partial<SettingsProfile> & { _format?: string };
-    if (p._format !== 'reckons-settings-profile') return null;
-    // Strip profile metadata; return only SettingsRecord-compatible fields
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { _format, _version, exportedAt, ...rest } = p;
-    return rest as Partial<SettingsRecord>;
+    if (p?._format !== 'reckons-settings-profile' || p._version !== 1) return null;
+    const patch = selectProfileFields(p);
+    // A nested object is a preference patch, not a replacement of local credentials.
+    if (patch.turtleSettings) {
+      const t = patch.turtleSettings;
+      patch.turtleSettings = { ...current.turtleSettings, ...t,
+        position: { ...current.turtleSettings.position, ...t.position },
+        clickBindings: { ...current.turtleSettings.clickBindings, ...t.clickBindings },
+      };
+    }
+    if (patch.extensionHighlight && current.extensionHighlight) {
+      patch.extensionHighlight = { ...current.extensionHighlight, ...patch.extensionHighlight };
+    }
+    return patch;
   } catch {
     return null;
   }
@@ -145,19 +158,19 @@ export function parseSettingsProfile(json: string): Partial<SettingsRecord> | nu
 
 // ---- Auto-save state (in-memory; lost on page reload) ----
 
-let _autoSaveHandle: FileSystemFileHandle | null = null;
-let _autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let autoSaveHandle: FileSystemFileHandle | null = null;
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function isAutoSaveSupported(): boolean {
   return typeof window !== 'undefined' && 'showSaveFilePicker' in window;
 }
 
 export function hasAutoSaveFile(): boolean {
-  return _autoSaveHandle !== null;
+  return autoSaveHandle !== null;
 }
 
 export function getAutoSaveFileName(): string | null {
-  return _autoSaveHandle?.name ?? null;
+  return autoSaveHandle?.name ?? null;
 }
 
 /**
@@ -167,7 +180,7 @@ export function getAutoSaveFileName(): string | null {
 export async function pickAutoSaveFile(): Promise<boolean> {
   if (!isAutoSaveSupported()) return false;
   try {
-    _autoSaveHandle = await (window as Window & typeof globalThis & {
+    autoSaveHandle = await (window as Window & typeof globalThis & {
       showSaveFilePicker(opts?: unknown): Promise<FileSystemFileHandle>
     }).showSaveFilePicker({
       suggestedName: `${kbFileSlug()}.ttl`,
@@ -180,8 +193,8 @@ export async function pickAutoSaveFile(): Promise<boolean> {
 }
 
 export function clearAutoSaveFile(): void {
-  _autoSaveHandle = null;
-  if (_autoSaveTimer) { clearTimeout(_autoSaveTimer); _autoSaveTimer = null; }
+  autoSaveHandle = null;
+  if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
 }
 
 /**
@@ -189,16 +202,16 @@ export function clearAutoSaveFile(): void {
  * Call this after every KB mutation (setStatus, addStatements, etc.)
  */
 export function scheduleAutoSave(): void {
-  if (!_autoSaveHandle) return;
-  if (_autoSaveTimer) clearTimeout(_autoSaveTimer);
-  _autoSaveTimer = setTimeout(() => {
-    _autoSaveTimer = null;
+  if (!autoSaveHandle) return;
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    autoSaveTimer = null;
     triggerAutoSave();
   }, 2000);
 }
 
 async function triggerAutoSave(): Promise<void> {
-  if (!_autoSaveHandle) return;
+  if (!autoSaveHandle) return;
   try {
     const [statements, sources, settings] = await Promise.all([
       db.statements.toArray(),
@@ -206,7 +219,7 @@ async function triggerAutoSave(): Promise<void> {
       db.settings.get('main')
     ]);
     const turtle = toTurtleFull(statements, sources, { header: 'auto-save', kbStableId: settings?.kbStableId });
-    const writable = await _autoSaveHandle.createWritable();
+    const writable = await autoSaveHandle.createWritable();
     await writable.write(turtle);
     await writable.close();
   } catch (err) {
@@ -223,7 +236,8 @@ export async function exportKBClean(filename?: string): Promise<void> {
 }
 
 /** Full export — all statuses, annotated with status/confidence/sources + persona. */
-export async function exportKBFull(filename?: string): Promise<void> {
+/** The lossless Turtle of the current space: every status, source and the stable id. */
+export async function fullSpaceTurtle(): Promise<string> {
   const [statements, sources, settings] = await Promise.all([
     db.statements.toArray(),
     db.sources.toArray(),
@@ -239,11 +253,51 @@ export async function exportKBFull(filename?: string): Promise<void> {
     maxWords: ts.maxResponseWords > 0 ? ts.maxResponseWords : undefined
   } : undefined;
   const hasPersoanl = shellyPersona && Object.values(shellyPersona).some(v => v !== undefined);
-  downloadText(
-    toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId }),
-    filename ?? `kb_full_${dateStr()}.ttl`,
-    'text/turtle'
-  );
+  return toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId });
+}
+
+export async function exportKBFull(filename?: string): Promise<void> {
+  downloadText(await fullSpaceTurtle(), filename ?? `kb_full_${dateStr()}.ttl`, 'text/turtle');
+}
+
+/** True where the browser can hand a FILE to the system share sheet (iPhone/iPad Safari, Android). */
+export function canShareFiles(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.canShare !== 'function' || typeof File === 'undefined') return false;
+  try {
+    return navigator.canShare({ files: [new File([''], 'probe.ttl', { type: 'text/turtle' })] });
+  } catch {
+    return false;
+  }
+}
+
+export type ShareOutcome = 'shared' | 'downloaded' | 'cancelled';
+
+/**
+ * Send a space to the phone's Files (Matt, 2026-09-30: file sync with the iPhone, self-service, no
+ * account). On a device with a share sheet this opens it, and "Save to Files" can put the file in
+ * iCloud Drive, OneDrive or Google Drive; elsewhere it downloads. It is the FULL export — every
+ * status, every source and the stable id — so opening the file on another device with
+ * + add → space file UPDATES that space instead of creating a duplicate (F127). A dismissed share
+ * sheet is reported as cancelled, never silently turned into a download.
+ */
+export async function sendSpaceToFiles(filename: string): Promise<ShareOutcome> {
+  return sendTextToFiles(await fullSpaceTurtle(), filename);
+}
+
+/** The share-or-download half, separate so it can be tested without a database. */
+export async function sendTextToFiles(content: string, filename: string): Promise<ShareOutcome> {
+  if (canShareFiles()) {
+    const file = new File([content], filename, { type: 'text/turtle' });
+    try {
+      await navigator.share({ files: [file], title: filename });
+      return 'shared';
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return 'cancelled';
+      // NotAllowedError and friends: the share sheet refused; fall through to a download.
+    }
+  }
+  downloadText(content, filename, 'text/turtle');
+  return 'downloaded';
 }
 
 /**

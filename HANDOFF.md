@@ -1,4 +1,353 @@
+## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
+
+**Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
+(awareness is not access); fold source chunks into the space .ttl; outbound webhooks first, REST
+polling second (F243); LAN HTTPS by one-time CA / Tailscale / own domain, offline-first default
+(F244); agents in the app, per space in the Spaces tab and per device in Settings, no new tab
+(F245); 3D Spaces = the 0.2.5 canvas mode; localhost serves dev.
+
+**Done:** main checkout switched to `dev` (was a feature branch 44 behind); `npm install` run there.
+#352 ghost-run fix merged (restart `npm run agent:watch` to see it). Wispr Flow added as a
+competitor (#366).
+
+**Open PRs from this session, base dev:** #361 Source View source side (after #351) · #362 reviewer
+refutes · #363 self-contained spaces + space-size benches · #364 F243/F244/F245 + 3D Spaces ·
+#365 merge-queue `--sync-local` · #366 Wispr Flow · #367 rename batch 2b (42 names) · #368 katex
+^0.19.0 (#360 pinned a deprecated release). The merge queue was still landing #341… #358.
+
+**Measured (bench, RTX 3090, headless GPU):** render is the limit, not the file. 10k statements:
+browser import 4 s, 3D first frame 12 s, nothing settles. 100k: import ~150 s, one 2D frame ~80 s.
+Browser import is superlinear (Node parse is linear); next step is a CPU profile of that import.
+
+**Waiting on Matt:** install the heartbeat hook (`/hooks`; the classifier blocks me editing
+settings.local.json), then `queue.ts seed-standard` + `npm run agent:queue-worker -- --stay`;
+remove the `# reckons-schedule` cron line once the hook is in. Review queue: 39 batch proposals
+(docs-expand drafts carry jargon) + 4 terminology gaps (set, space, source, graph-as-data).
+
+## 2026-10-06 — START HERE. 0.2.5: backlog landing, Source View source side, reviewer refutes (Claude Code)
+
+**Matt approved (this session):** land every open dev PR, and the FULL 0.2.5 plan (Source View
+source side, then Spaces phase 2, then version bump + release notes).
+
+**Merge queue running** (`merge-queue.ts` from #336, started 22:2x UTC, `--keep-going`):
+#360 → #335…#356 → #358. #360 (deps) MERGED at `4059130`. Check what landed:
+`gh pr list --state merged --base dev --limit 30`; anything still open failed its re-run on
+updated dev and needs a look. Re-run the same command for stragglers (it skips merged PRs).
+
+**New PRs, base dev:**
+- **#360** deps (merged): sharp 0.35.5; overrides katex ^0.18.11 (past mermaid's ^0.16 range;
+  build-time diagrams only), global-agent ^4.1.3 (sprintf-js has NO patched release; global-agent
+  4 drops roarr), source-map-js ^1.2.2. Without it every updated PR failed `Dependencies`.
+- **#361** Source View source side (0.2.5 item 3), stacked on #351. Passages with per-status
+  yield, statements by status, unplaced list with reasons. `kb:source-corpus` → in-progress.
+  NOT built: "not read yet" marking (needs extraction over chunks), canvas highlighting.
+- **#362** local reviewer refutes findings the file disproves (missing-import, RDF repeated
+  predicate). Verified on real output. Not fixed: roadmap.ttl review times out every run.
+- **#358** got a test fix: its Atoms section repeated the fact text, so the e2e scopes to a
+  labelled "Node facts" region.
+
+**agent:watch ghost run** (Matt asked): `review-triage-2026-10-01-muppszft` died when qwen3.6's
+llama-server crashed; no `run-end`, so the watcher shows it live forever. The retry finished
+fine. #352 fixes it (pid + abandoned detection) and is in the queue.
+
+**Next: Spaces phase 2 (0.2.5 item 4) needs one decision from Matt first:** where a user's set
+membership lives. Nothing stores user-defined sets today (`declaredSet` is read, never written;
+/kb passes no `definitions`). (a) In each member space's own graph (`<urn:reckons:kb>
+dcterms:isPartOf <set>`), travelling with exports, like the 09-23 title/description decision,
+but it writes into spaces that are not open. (b) One workspace-level `dcat:Catalog`. Then
+grouping choice, and Spaces as a GraphCanvas mode. After that: version bump + release notes.
+## 2026-10-02 — Source Atoms and visual-generation plans (Codex)
+
+PR #358, branch `fix/statements-node-source-links`, base `dev`. The initial source-link commit
+`d428437` passed every CI check. Matt then added Atoms under each source, ERD options in the
+layout menu, local image generation, Gaussian splatting and a possible 3D Photorama background.
+The follow-up groups the selected entity's existing triples beneath each source using compact
+StatementCard, retaining statuses and source navigation. The technical alias Atom is recorded in
+the thesaurus without renaming serialized fields. Desktop and phone checks pass locally.
+
+The roadmap now plans ERD notation/arrangement options (exact initial choices remain open), a
+local CLI image-generation trial with ComfyUI/Diffusers alternatives, separate local splat
+reconstruction/playback trials, and optional per-space Photorama backgrounds. These are PLANS;
+no image-generation or reconstruction runtime was executed. Primary tool documentation was
+checked on 2026-10-02 and linked in the graph. Panoramas and reconstructed parallax are distinct.
+
+Local jobs were used: qwen3.6 failed three planning items with CUDA errors; qwen3-coder completed
+all four planning items plus a markup proposal and revision. Reviewed proposals are queued in
+the graph. Rejected: substituting swim-lanes for ERD, treating Atoms as a new data layer,
+discarding source navigation, invented performance guarantees and claiming a local GPU job
+conflicts with local-first. Local code-review findings were false positives (imports/completion
+notes already exist, RDF scope notes are repeatable, test records are isolated).
+Follow-up local checks on 2026-10-02: zero type errors/warnings, two source-navigation/Atom browser
+checks pass; graph lint and site alignment pass with existing graph warnings. Copied-data visual
+checks have no page errors and retain preview websocket/GPU warnings. Verify the latest PR head's
+CI before merge; the earlier green result applies only to `d428437`. Matt merges.
+
+## 2026-10-02 — Statements node source links (Codex)
+
+Branch: `fix/statements-node-source-links`, PR base `dev`. Node details now lists each source
+from current incoming/outgoing claims and opens that source's Sources inspector. Explicit jumps
+reset source selection and filters while retaining the presentation. The roadmap records
+`kb:statement-node-source-links` as functional on the branch, not deployed. Matt merges.
+
+Local validation on 2026-10-02: type check has zero errors/warnings; eight provenance unit tests
+pass; desktop and phone source-navigation checks pass; production build, build guard and `align`
+pass. Graph lint reports zero errors and 15 existing warnings. The 41 startup script jobs returned
+success with advisory findings. Copied-data visual checks on `/kb` and `/` have no page errors,
+with preview websocket and GPU screenshot warnings; private artifacts remain outside the repo.
+Local model review flagged an allegedly missing import already present at the top of the page;
+rejected after inspection. The phone test dismisses onboarding tips because an existing notification
+can cover the node-panel close button; that issue is queued as a separate graph proposal.
+Check the PR's live CI before merging; local results are not a claim about CI.
+
+## 2026-09-30 (night) — START HERE. Delegation day: overseers, local queue, F239–F241 (Claude Code)
+
+**Working model (Matt's decisions, in memory + roadmap):** local models do the work → a SONNET
+subagent oversees and merges → Opus only by escalation (architecture, contested, safety/security/
+data loss). Haiku failed the overseer bench (#348: accepted the fail-open guard). Keep the main
+thread SHORT: #348 measured Opus per PR flat (0.50M→0.48M) because this thread grew; delegation
+only pays if the main session stays small. Start each session by queuing local work.
+
+**Merging:** merge-queue (#336) was running #333–#337, then a second queue waits to land #344 →
+#346 → #347 (`$scratch/merge-queue*.log`). Check what landed: `gh pr list --state merged --base dev`.
+Matt approved merging. Everything else is open, base dev, verify with `gh pr view <n> --json baseRefName`:
+#332 plan+F239–F241 (this PR) · #334 /review on GraphCanvas · #335 Spaces map e2e · #337 local-work
+reviewer (Sonnet) + SessionStart hook · #338 F74.6 ladder, F74.8, task sets, R3 · #339 script
+inventory · #340 rename batch 2a (`--batch=term`; blocker: .svelte references → svelte2tsx next)
+· #341 collab flow test (stacked #332) · #342 SECURITY shell-quoting fix — merge early, then flip
+#341's it.fails · #343 tasks-per-week tokens · #345 space watcher (stacked #341) · #348 bench.
+
+**#349 (built, stacked on #347, unreviewed): session queue —** session-bound queue
+worker (heartbeat hook; runs only while a session is active), anacron-style catch-up schedules
+(voice notes, maintenance, align…), GPU guards (VRAM 90%, 83 °C, other-process load, PAUSE file),
+definitions as TTL with private ~/.config/reckons/device.ttl. When it lands: install the heartbeat
+hook from its PR body into .claude/settings.local.json, run `queue.ts seed-standard`.
+
+**Running on the GPUs now:** ~/.local/state/reckons/jobs/batch-2026-09-30.sh (local reviews of every
+unmerged branch, docs/graph upkeep, term-senses). Results → review queue → next session: ONE
+Sonnet overseer batch, filtered first. Stop it: `pkill -f batch-2026-09-30.sh`.
+
+**Waiting on Matt:** cron vs session queue (session queue replaces it); the review queue and
+decisions log are gitignored but "everything through git" was decided — public repo, his call;
+nvme1n1 SMART FAILED — replace before any F239 hosting; web search source for the research
+template; 0.2.5 scope (ship without Source View UI?).
+
+## 2026-09-30 (late) — 0.2.5 started; merge queue built; nothing merged (Claude Code)
+
+**Nothing was merged this session.** The auto-mode classifier refused `merge-queue.ts` as
+"merge without review". Matt either runs it himself or allows it:
+`npx tsx scripts/agent/merge-queue.ts 333 326 327 328 329 330 331 332 334 335 336 --keep-going`
+(script tier: base must be `dev`, updates stale branches from `dev`, waits for green, merges pinned
+to the checked commit; `--dry-run` first). The script is on #336 until that merges.
+
+**New PRs, all base `dev`:** #333 dompurify 3.4.16 (a new low advisory failed `Dependencies (.)` on
+#327–#332; merge it FIRST, then the others need `dev` merged in), #334 `/review` mounts
+`GraphCanvas` (F92 step 2, 0.2.5 item 1), #335 first Spaces map e2e (F218, 4 tests), #336 merge
+queue (F89). Also pushed: #329's Indico e2e helper now uses the add quick menu (its 3 E2E failures).
+
+**0.2.5 remaining, in order:** F221 IO half (write `chunks.ttl` into `sources/`, keep originals,
+pdf.js, extraction over chunks, persist F122.1 anchors) → Source View UI with e2e → Spaces phase 2
+(grouping choice, multi-select → declared set, canvas mode) → version bump, release notes, promote.
+Scope option for Matt: cut 0.2.5 without the Source View UI (dev is 100 commits past 0.2.0).
+
+**F239 supervised compute sharing (this PR):** Matt's idea, asynchronous and file-only — tasks and
+TTL in a shared store, his local models answer with proposals, no ports, no live API.
+
+**Matt's correction (apply it):** "WHY NOT OFFLOAD TO LOCAL AGENTS?" — this session polled CI and
+re-ran specs by hand for an hour. Start the queue and background runs, then read logs when they end.
+
+## 2026-09-30 (evening) — START HERE. This thread ended at >150k context; begin fresh.
+
+Matt's usage panel, 2026-09-30: 97% of usage at >150k context, 71% subagent-heavy. Read this,
+then `kb_search` the roadmap; do not try to reconstruct the old thread.
+
+**Open PRs, all base `dev`, none merged:** #326 source chunks (F221/F78) · #327 docs gate fix +
+release notes (F33.1) · #328 UI copy scanner (F203) · #329 Add quick menu (F228; plans F226/F227)
+· #330 send space to Files (F56.2) · #331 sync-conflict guard + QR plan (F56.3; stacked on #330)
+· this PR (F229-F238). Merge order: #330 before #331. Check CI, verify base, then merge.
+
+**Work in progress, not a PR:** `feat/free-layout-positions` — storage half done (hnav:x/y,
+`src/lib/rdf/node-positions.ts`, 6 tests). Remaining: in `KnowledgeGraph2D.svelte` add a
+`pinned` flag, left-drag on a node in layout 'force' moves + pins it (right-drag still pans),
+skip pinned nodes in the integration loop, a `pinnedPositions` prop keyed `i:<iri>` and an
+`onnodemove` callback; in `+page.svelte` feed `positionsFrom(statements)` and write with
+`positionWrites` → `updateStatement`/`addStatements`; an e2e drag test; 3D untouched.
+
+**Next, in Matt's order:** F226 statement routing (each fact to the spaces it belongs in, one
+shared source) → then pick among: open-from-QR link (F56.3, no new deps), S3 sync (aws4fetch),
+F229-F238. Matt's ten directions of the evening are F229-F238 in the roadmap, with his words.
+
+**Waiting on Matt:** nvme1n1 (Samsung 970 EVO Plus) reports SMART FAILED, spare 0% — back up
+and replace; an Entra app registration if OneDrive sync is wanted; adding `release-notes` to
+main's required checks; names for 11 store variables refused by rename batch 1; TypeScript 7.
+
+**New task from Matt's phone (pulled 2026-09-30 20:43, in the queue as a personal-notes capture):**
+"Create a new task for the local models (Qwen 3.6, Qwen Coder) to orchestrate tasks and merge to
+dev. The task involves creating new example spaces utilizing new features and updating old ones,
+including cleaning up example spaces (graphs, themes, backgrounds, etc.)." Plan it in the roadmap,
+then as a runner task (scripts/agent/runner.ts). Local models merging to dev is Matt's explicit
+instruction here — gate it on green CI and a verified base `dev`, never `main`. Measured today:
+local models do well when the evidence is handed to them and badly when left to explore, so ground
+each example-space job (which features, which files) by script first.
+
+**Also decided this evening:** stay on TypeScript 5.x and Threlte 8 (no TypeScript 7; close or
+narrow #258/#314 accordingly). No Google/Microsoft OAuth for sync — existing sync services, the
+share sheet, then S3. Release-notes becomes a required check on main once it reaches staging (#327).
+Small bug: `notes-pull.ts --dry-run` prints "drained 1 note(s)" though it writes nothing.
+
+**Lessons (apply them):** a local-panel calibration holds for ONE task (UI-copy run answered
+"space" zero times and was wrong ≥137 times while unanimous) — label a sample first. Pass
+`model` to every Agent call. Check UI in a real browser at phone width before calling it done.
+
+## 2026-09-30 — CI unblocked; Laya recorded; feasibility pipeline + taxonomy rename planned (Claude Code)
+
+**Merge order (all base `dev`; verify with `gh pr view <n> --json baseRefName`):** #308 and #320
+(audit fix: new brace-expansion/fast-uri advisories had failed `Dependencies (.)` on every PR)
+MERGED 2026-09-30. Remaining: #317 e2e locator (the Spaces map's hidden "could not be read" list
+shadowed graph names; why #309/#310 failed E2E) → #309 → #310 → #318 Laya → #319 plan (stacked on
+#310) → #321 local panel.
+
+**Matt's direction, 2026-09-30, now in the roadmap (#319):** the repo taxonomy is a main track
+alongside the Spaces map UI and source chunks. F225 `kb:feature-feasibility` (request → terms →
+spaces → assembled situation → target absences → built/partial/planned/absent → proposals/SOW),
+F203.3 `kb:taxonomy-links` (terms have NO edges to code/roadmap/tests today), F203.4
+`kb:taxonomy-rename` (edits by TS language service + svelte2tsx = script tier; local models
+classify ambiguous sites; pixel-equality gate first, VLM second).
+
+**Local panel (#321, F74.7) — USE IT.** Matt: big tasks, small subscription budget. Before judging
+many items yourself, build a task file and run `scripts/agent/local-panel.ts` (default qwen3.6 × 3
+votes; only non-unanimous items come back). `scripts/offline/term-senses.ts --word=node` is the
+worked example for the taxonomy; fixture + `--labels` re-scores it. Headless Claude Code on a local
+model works (isolated `CLAUDE_CONFIG_DIR`) but was slow and wrong — ground by script instead.
+This session used ZERO local calls until Matt asked; do not repeat that.
+
+**Next, in order:** F203.4 batch 0 — `naming-ratchet` is red on `dev` (constant/camelCase 21 vs
+16, interface 284 vs 282); then the rename harness + a pixel mode for `visual-diff.ts`; then
+F203.3 edges from `term-usage.ts`. F225 is DEFERRED by Matt (speculative, low) — do not build it.
+Open for Matt: Laya `adopt-agent-cli-backend` (subscription vs metered rails, provider terms unread).
+
+**Validation, 2026-09-30:** 3,374 unit tests / 240 files; `npm run check` 0 errors; `npm audit`
+0 in all three lockfiles (after #320); graph-lint 0 errors (12 warnings); `align` aligned;
+script sweep 40/41 (naming-ratchet, pre-existing). Full e2e not run locally; CI runs it.
+
+## 2026-09-29 — Opus 5.5 session: Spaces map, 0.2.5 plan, graph organization (Claude Code)
+
+**Working folder:** `/home/matt/Github/tripleNotes` stays on `dev` — Matt's `npm run dev` on :5173
+serves it. **Do all branch work in a git worktree** (`git worktree add <scratch> -b <branch> origin/dev`);
+switching branches in the main folder changed what Matt's running app showed without telling him.
+
+**Open PRs (base `dev`):** #308 stable ids (every space gets one; imports never adopt a taken one),
+#309 `npm run visual:local`. Both were in CI at hand-off; merge when green after
+`gh pr view <n> --json baseRefName`. Also open and untouched: #290 (ruleset), 7 Dependabot PRs aimed
+at `main` (#249 #252 #257 #258 #272 #273 #274 — future ones target `dev` since #294), #120 (July).
+
+**Merged to `dev` 2026-09-29:** #291 #292 (Codex security work), #293 Claude calls on Opus 5.5,
+#294 Dependabot→dev, #295 chunking claim corrected, #296 F221 source-corpus plan, #297 graph
+catalog (F113 ph.1 / F222), #298 docs status pages, #299 Spaces map, #300 ecosystem page,
+#301 0.2.5 plan, #302 solid labels, #303 background leap reading, #304 GraphCanvas (F92 step 1),
+#305 reviewer queue path, #306 e2e isolation, #307 tide-pool tank.
+
+### Remaining goals, in order
+
+1. **Spaces map — grouping and display options** (Matt: "by folder should be adjustable to by set,
+   or other grouping and display options"). Today each pool uses whatever basis its set has
+   (declared > defined > folder > name). Make the grouping a choice: by set, by folder, by name,
+   none; plus display options.
+2. **Ctrl/Cmd-click to multi-select spaces on the map, then "new set from selection"** (Matt's
+   goal, 2026-09-29). This is F218 phase 2, declared membership: the set must be stored as data
+   (`GraphSetDefinition` / `declaredSet` in `src/lib/storage/graph-sets.ts`, and ultimately a
+   `dcat:Catalog` per F113), shown differently from name- or folder-derived sets.
+3. **F92 step 2:** `/review` mounts `GraphCanvas`; then Spaces as a canvas mode with its own layout
+   (decided 2026-09-29; the SVG map stays as the fallback).
+4. **0.2.5 build order (decided):** shared canvas → F221 source corpus phase 1 (local PDF text via
+   pdf.js, originals kept in `sources/`, `chunks.ttl` per source, a notice when a source is cut at
+   12,000 characters — extraction still silently truncates today) → evidence anchors (F122.1) →
+   Source View UI (statement → exact chunk; source → full document → chunk → its statements) →
+   Spaces as a canvas mode. Proposals (F223, SHACL + `schema:Action`) are 0.2.6.
+5. **F224 SOW estimation** (Matt's key use case, recorded in the roadmap): a plain-language
+   customer request estimated against the engineering spaces. Needs several spaces as one scope
+   (F218 ph.4 / F214), requirement-to-existing-feature mapping, proposals, and estimates grounded
+   in the code graph's blast radius.
+6. **F222 phases 3–4:** a generated code dependency view; a generated HANDOFF.md (this file is
+   still hand-written, ~2k lines — move history to HANDOFF-ARCHIVE.md).
+7. **Smaller:** 32 offline scripts still write the relative `reckons-workspace/knowledge.pending.jsonl`
+   (worktree runs lose findings — see `scripts/offline/lib/main-workspace.ts`); the proposed
+   AGENTS.md fixes (kb-watch triggers, branch protection wording, "11 checks") were never applied;
+   the Claude model benchmark (`extraction-score.ts --models=claude:…`) needs a metered API key —
+   `claude-sonnet-5-5` / `claude-haiku-5-5` are unconfirmed, check the Models API before using them.
+
+### What this session learned (apply it)
+
+- **Check UI on real data, not invented data:** `npm run visual:local -- --serve=http://localhost:<port> --paths=/kb`.
+  Five invented spaces looked fine; Matt's 18 real ones did not.
+- **Put roadmap additions next to their entity, never at the end of the file** — four PRs collided
+  at end-of-file in one day.
+- **Read local-review findings from the main checkout's queue** (fixed for `code-review.ts` in #305).
+- **Compare full values before claiming a match** — a "duplicate stable id" was two ids sharing a
+  24-character prefix, compared on 8.
+- **On Node 22 the local e2e suite now runs** (147 tests); `publish-security.test.ts` skips below
+  Node 24, which CI uses.
+
+**Validation, 2026-09-29 (goes stale fast):** 3,379 unit tests; `npm run check` 0 errors;
+`npm run align` aligned; graph-lint 0 errors; desktop e2e 137 passed / 10 skipped.
+
+## 2026-09-28 — Private reusable security checks (F172.1)
+
+Branch: `fix/private-host-health`, based on `dev`. The user requested a reusable local device
+check for future agents and particular attention to dependency vulnerabilities, without exposing
+personal device details. `npm run host:check` now writes private evidence outside Git and prints
+aggregate counts. `--pending` stays private. `npm run security:dependencies` explicitly audits
+tracked npm lockfiles online and preserves versions, advisories, inheritance and top-level overrides.
+Both jobs and the usage contract are registered for future agents; no daemon or security setting
+is changed. Host observations and detailed audit reports belong outside this repository.
+
+Validation on 2026-09-28: type checks, unit suite, production build/verification, graph-lint and
+md-align pass locally (graph-lint retains existing advisory warnings). Synthetic tests cover report
+privacy, evidence uncertainty, unsafe output paths, Docker exposure and incomplete registry audits.
+Dependency audit findings remain open; this branch improves detection, not dependency versions or
+publisher trust boundaries. Check the PR's current CI before merging into `dev`.
+
 # Session handoff — read this first if you are picking up mid-stream
+
+**Current work — 2026-09-29:** `fix/security-stabilization`, based on `origin/dev` at
+`2edc6572`. Matt selected dependency remediation, credential coverage, data-preservation tests,
+then publisher hardening, in that order. All four increments are implemented and locally
+validated. [PR #292](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/292) targets
+**dev**; check its current CI results before merging, and Matt merges. The branch preview builds
+automatically; no merge or production promotion has been performed. The earlier private
+host-check service remains a separate PR #291.
+
+Implemented: dependency audit workflow for all three npm lockfiles; explicit nested profile
+allowlists, numeric bounds and credential-preserving imports; portable review/source metadata
+and stable Drive identities; real-browser transport and IndexedDB rollback tests; standalone
+HTML sanitization, CSP, validated output paths, owned/staged CLI output, shell-free deploy
+arguments and pinned CMS integrity. Remote images in generated static pages are now excluded.
+Existing output directories without the generator manifest require a new destination.
+No device evidence belongs in this PR.
+
+**Validation on 2026-09-29:** 3,276 unit tests across 229 files, 172 MCP tests and four browser
+security/preservation tests passed. Type check: zero errors or warnings. Production build,
+build verification, alignment, script type checks and provider-secret scan passed. Graph lint:
+zero errors, 15 pre-existing warnings. All three full npm lockfile audits report zero known
+vulnerabilities on this date. A fresh audit caught GHSA-3wwx-pv8p-q78v after the prior day's clean
+report; the undici override floor is now ^7.29.1 and the lock resolves 7.30.0. Audit results expire.
+One full run hit an existing workspace-cache timing timeout under local load; that test passed
+in isolation and the final complete suite passed with four workers.
+
+The initial local model review stalled and was stopped. A bounded review completed all 13
+selected production files with devstral-small-2: one numeric-range finding accepted and tested;
+23 emitted suggestions rejected after inspection. This was a focused review, not exhaustive
+model coverage. The startup script sweep passed 41/41 on the host-check branch; this branch's
+two blocking script jobs pass. Keep private review/audit evidence outside the public repository.
+
+Broader F107 remains open: complete credential classification/log coverage, versioned graph
+packages, changelog/extraction-run portability, asset snapshots, conflict UI and full MCP/CLI
+conformance, extension/QR hardening. User-authored profile text can still be personal. Exported
+source Markdown relies on its downstream renderer. Output-path protection assumes exclusive
+access during publishing, not a hostile local process racing the filesystem. The weekly
+workflow starts only when present on the default branch; adding it does not enforce branch
+protection.
+
+The entries below are historical handoffs; their branch and validation claims are dated.
 
 **Current work — 2026-09-21:** `fix/public-example-privacy`, based on `origin/dev` at
 `5aeb2ff`. Matt requested generic public examples only and removal of external-project material.

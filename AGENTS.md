@@ -177,6 +177,8 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 | **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
 | **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree` | agent — local first-pass review |
 | **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
+| **You are about to judge many items one by one** (which meaning, which class, keep or split) | build a task file (items + one question + a JSON schema), then `npx tsx scripts/agent/local-panel.ts --task=task.json` — only non-unanimous items come back to you. `scripts/offline/term-senses.ts --word=node` is a worked example. Watch it (and every other local call) with `npm run agent:watch` | agent — local panel |
+| **Any UI change, before calling it done** | `npm run visual:local -- --serve=http://localhost:<branch port> --paths=/kb` | script — the page on a COPY of your real browser data; private output, copy deleted |
 | **Visual regression prod↔dev** | `npx tsx scripts/offline/visual-diff.ts --base=… --head=…` | agent — local VLM |
 | **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
 | **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |
@@ -199,6 +201,31 @@ deliberate design and were rejected.
 Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-small-2` for code,
 `qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
 for embeddings.
+
+### Reusable local security checks (F172.1)
+
+- Run `npm run host:check` for local device audits. This is a prebuilt script-tier capability,
+  not a reason to improvise host enumeration or install a monitoring server.
+- Default stdout contains aggregate counts only. Full evidence is written with mode 0600 under
+  `$XDG_STATE_HOME/reckons/security-audit/` (default `~/.local/state/`), outside any Git checkout.
+  `--pending` writes a private proposal snapshot there, never to the repository review queue.
+  Use `--details` only when the user requests device evidence in a private local session; never
+  paste that output into commits, PRs, public graphs, fixtures, or shared agent logs.
+- Configure deliberate listener exceptions and required mounts in the private file
+  `$XDG_CONFIG_HOME/reckons/host-health.json` (default `~/.config/`). Its optional fields are
+  `allowedListeners` (objects with `protocol`, `port`, and a nonempty `reason`) and
+  `criticalMounts` (absolute paths). Defaults grant no listener exceptions and require no mounts.
+- `--deep` opts into bounded package-integrity inspection. `--check` returns 1 for findings and
+  2 for unknown/skipped evidence; a default advisory run does not gate application CI on the host.
+  No probe uses sudo, changes settings, starts services, scans the LAN, or repairs anything.
+- For security audits and dependency work, run `npm run security:dependencies`. This explicit
+  online check submits dependency metadata to the configured npm registry and checks every
+  Git-tracked npm lockfile. Full versions, advisory links, inheritance and suggested fixes stay
+  in the private report; highlight high/critical findings and incomplete projects to the user.
+  Lockfile runtime/development placement is not proof of deployed reachability. A suggested fix
+  may conflict with overrides or require a major upgrade; review it before changing packages.
+- Share the generic capability and synthetic tests. Keep device inventories, private policy,
+  user paths, service names, security posture and raw scan artifacts out of public material.
 
 ### TTL-first documentation policy
 

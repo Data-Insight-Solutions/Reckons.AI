@@ -353,7 +353,7 @@
       "tier": "script",
       "enabled": true,
       "cmd": "npx tsx scripts/offline/host-health.ts --pending",
-      "desc": "Replaces Observium, which was running, exposed and never looked at. Deterministic host checks — disk pressure, critical mounts actually mounted, unexpected all-interface listeners, firewall state, container health, security updates, failed units — pushing ONLY what needs a human into the review queue. Reports UNKNOWN for anything needing root rather than assuming it is fine. Read-only: the F170 maintenance-level tier, which never acts."
+      "desc": "Reusable read-only Linux device check. Aggregate-only stdout; detailed evidence and pending proposals stay in private state outside Git. Explicit unknown/skipped results, local policy, bounded commands, Docker exposure, patch evidence and physical-security checks. No device facts enter shared graphs."
     },
     {
       "name": "docs-review",
@@ -391,6 +391,58 @@
       "blocking": false,
       "cmd": "npx tsx scripts/offline/naming-conventions.ts --check",
       "desc": "F204 enforcement. The DECIDED naming rules may not get worse: baselines live in static/reckons-standards.ttl as kpred:ratchet, and this fails only when a count goes UP. Advisory rather than blocking because a naming slip is not a failure you cannot take back after a push — and a gate that cries wolf gets switched off, at which point it protects nothing."
+    },
+    {
+      "name": "script-inventory",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/script-inventory.ts --pending",
+      "desc": "F74.8 script tier. Lists scripts nothing runs, npm/job entries pointing at missing files, likely-overlapping script groups and npm names that break their own prefix pattern. Proposals only: consolidation is a decision, not a check."
+    },
+    {
+      "name": "dependency-health",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/dependency-health.ts",
+      "desc": "Opt-in online audit of all tracked npm lockfiles. Contacts the configured registry; reports package versions, advisory inheritance, runtime/development placement and fix suggestions privately. No install or auto-fix; reachability remains a separate review."
+    },
+    {
+      "name": "space-size",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts --profiles=s,m,l,xl --runs=3 --save",
+      "desc": "F107.10: what one large space .ttl costs to serialize, import (the app's importTurtleFull) and load into the MCP server's N3 store, at 1k to 100k statements, with and without source chunks folded in (Matt, 2026-10-06: fold the chunks in). Synthetic, seeded data. DISABLED in the sweep: it takes minutes and several GB of heap. Results go to tests/bench/results/ (git-ignored); record findings on kb:space-file-layout as dated kpred:measured lines."
+    },
+    {
+      "name": "codebase-coverage",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/codebase-coverage.ts --check",
+      "desc": "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides."
+    },
+    {
+      "name": "term-ratchet",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/term-usage.ts --check",
+      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
+    },
+    {
+      "name": "terminology-sweep",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/terminology-sweep.ts --sample=30",
+      "desc": "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU."
+    },
+    {
+      "name": "rename-pr",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/agent/rename-pr.ts --term=kb",
+      "desc": "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep."
     }
   ]
 }

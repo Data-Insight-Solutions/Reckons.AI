@@ -40,7 +40,7 @@ function walk(value: unknown): unknown {
   if (value && typeof value === 'object' && isPlainObject(value)) {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      if (isSecretKey(k)) continue; // drop the credential entirely
+      if (isSecretKey(k) || ['__proto__', 'constructor', 'prototype'].includes(k)) continue;
       out[k] = walk(v);
     }
     return out;

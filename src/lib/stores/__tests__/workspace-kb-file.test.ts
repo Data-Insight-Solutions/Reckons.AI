@@ -116,7 +116,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const mod = await connectedWorkspace();
     const entry = mkEntry({ name: 'Roadmap' });
 
-    await mod.writeKbToFolder(entry, '<a> <b> <c> .', undefined, []);
+    await mod.writeKnowledgeBaseToFolder(entry, '<a> <b> <c> .', undefined, []);
 
     const kbsDir = await root.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle('roadmap');
@@ -155,6 +155,19 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const vt = folders.find(f => f.folderName === 'visual-tests');
     expect(vt).toBeTruthy();
     expect(vt!.path).toEqual(['visual-tests.ttl']);
+  });
+
+  it('a sync service\'s conflict copy is not listed as the space or as a second space (F56.2)', async () => {
+    const mod = await connectedWorkspace();
+    const kbs = await root.getDirectoryHandle('kbs', { create: true });
+    const work = await kbs.getDirectoryHandle('work', { create: true });
+    const id = '<urn:reckons:kb> <urn:reckons:meta/kbStableId> "same-id" .';
+    (await work.getFileHandle('work.ttl', { create: true })).content = id;
+    (await work.getFileHandle("work (Matt's conflicted copy 2026-09-30).ttl", { create: true })).content = id;
+
+    const folders = await mod.listKbFolders();
+    const matching = folders.filter((f) => f.meta.stableId === 'same-id');
+    expect(matching.map((f) => f.path.join('/'))).toEqual(['kbs/work/work.ttl']);
   });
 
   it('listKbFolders discovers a .ttl in any nested directory', async () => {
@@ -208,7 +221,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const legacy = await kbDir.getFileHandle('kb.ttl', { create: true });
     legacy.content = '<legacy> <a> <b> .';
 
-    const data = await mod.readKbFromFolder('both');
+    const data = await mod.readKnowledgeBaseFromFolder('both');
     expect(data?.ttl).toBe('<named> <a> <b> .');
   });
 
@@ -219,7 +232,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const legacy = await kbDir.getFileHandle('kb.ttl', { create: true });
     legacy.content = '<legacy> <a> <b> .';
 
-    const data = await mod.readKbFromFolder('legacy-only');
+    const data = await mod.readKnowledgeBaseFromFolder('legacy-only');
     expect(data?.ttl).toBe('<legacy> <a> <b> .');
   });
   it('skips the MCP knowledge.ttl export at root', async () => {

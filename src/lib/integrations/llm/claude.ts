@@ -4,9 +4,43 @@ import {
   parseTriplesJSON,
   type ExtractedTriple
 } from './extractor';
+import { claudeMaxTokens, claudeReplyText } from './providers';
 
 const CLAUDE_URL = 'https://api.anthropic.com/v1/messages';
-const DEFAULT_MODEL = 'claude-opus-4-7';
+const DEFAULT_MODEL = 'claude-opus-5-5';
+
+/**
+ * Output schema for structured outputs (`output_config.format`). Mirrors `ExtractedTriple`.
+ * The root has to be an object, so the array rides in `triples`; `parseTriplesJSON` slices from
+ * the first `[` to the last `]`, which reads this wrapper unchanged. Constrained decoding
+ * guarantees the shape, so this replaces the old assistant-turn prefill of `[` — a prefill
+ * returns a 400 on Opus 4.6+ / Sonnet 4.6+ / Opus 5.5. Structured outputs work on Haiku 4.5 too.
+ */
+const TRIPLES_SCHEMA = {
+  type: 'object',
+  properties: {
+    triples: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string' },
+          predicate: { type: 'string' },
+          object: { type: 'string' },
+          objectIsLiteral: { type: 'boolean' },
+          datatype: { type: 'string', enum: ['string', 'number', 'date', 'boolean'] },
+          gloss: { type: 'string' },
+          confidence: { type: 'number' },
+          excerpt: { type: 'string' }
+        },
+        required: ['subject', 'predicate', 'object', 'objectIsLiteral', 'gloss', 'confidence', 'excerpt'],
+        additionalProperties: false
+      }
+    }
+  },
+  required: ['triples'],
+  additionalProperties: false
+};
 
 export type ClaudeOptions = {
   apiKey: string;
@@ -16,6 +50,14 @@ export type ClaudeOptions = {
   systemPrompt?: string;
   /** Existing graph vocabulary + structure appended to the extraction request (F136.3). */
   graphContext?: string;
+  /**
+   * `output_config.effort`. Omitted unless set: Haiku 4.5 (the settings default) rejects the field,
+   * and on Opus 5.5 omitting it means `medium`. Measure before setting it —
+   * `scripts/offline/extraction-score.ts --models=claude:<id> --effort=<level>`.
+   */
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+  /** Receives the response's `usage` block, for token and cost accounting. */
+  onUsage?: (usage: { input_tokens: number; output_tokens: number }) => void;
 };
 
 /**
@@ -32,6 +74,7 @@ export async function extractWithClaude(
   sourceTitle: string,
   opts: ClaudeOptions
 ): Promise<ExtractedTriple[]> {
+  const model = opts.model ?? DEFAULT_MODEL;
   const res = await fetch(CLAUDE_URL, {
     method: 'POST',
     headers: {
@@ -41,14 +84,15 @@ export async function extractWithClaude(
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: opts.model ?? DEFAULT_MODEL,
-      max_tokens: 4096,
+      model,
+      max_tokens: claudeMaxTokens(model, 4096),
       system: opts.systemPrompt ?? EXTRACTION_SYSTEM_PROMPT,
+      output_config: {
+        format: { type: 'json_schema', schema: TRIPLES_SCHEMA },
+        ...(opts.effort ? { effort: opts.effort } : {})
+      },
       messages: [
-        { role: 'user', content: buildExtractionUserPrompt(text, sourceTitle, opts.graphContext) },
-        // Prefill forces Claude to start its response mid-array, guaranteeing
-        // JSON output without any preamble text.
-        { role: 'assistant', content: '[' }
+        { role: 'user', content: buildExtractionUserPrompt(text, sourceTitle, opts.graphContext) }
       ]
     }),
     signal: opts.signal
@@ -58,10 +102,6 @@ export async function extractWithClaude(
     throw new Error(`Claude API ${res.status}: ${body.slice(0, 300)}`);
   }
   const data = await res.json();
-  // Prepend the '[' we sent as prefill — the API returns only the completion.
-  const completion = (data.content ?? [])
-    .filter((b: { type: string }) => b.type === 'text')
-    .map((b: { text: string }) => b.text)
-    .join('\n');
-  return parseTriplesJSON('[' + completion);
+  if (data.usage) opts.onUsage?.(data.usage);
+  return parseTriplesJSON(claudeReplyText(data));
 }

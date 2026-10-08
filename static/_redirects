@@ -37,13 +37,11 @@
 /docs/features/kb-identity  /docs/features/multi-kb  301
 /docs/features/kokoro-tts-features  /docs/features/shelly  301
 /docs/features/model-cache-features  /docs/features/llm-backends  301
-/docs/features/passage-grounding  /docs/guide/what-is-reckons-ai  301
 /docs/features/predicate-manager  /docs/guide/what-is-reckons-ai  301
 /docs/features/reckoning  /docs/learn/reckoning  301
 /docs/features/release-notes  /docs/features/published-docs  301
 /docs/features/source-monitoring  /docs/features/source-refresh  301
 /docs/features/story-system  /docs/features/shelly  301
-/docs/features/text-chunking  /docs/features/ingest  301
 /docs/features/trust-system  /docs/guide/what-is-reckons-ai  301
 /docs/features/ttl-export  /docs/guide/what-is-reckons-ai  301
 /docs/features/turtle-persona  /docs/features/shelly  301

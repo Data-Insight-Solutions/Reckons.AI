@@ -30,7 +30,7 @@ import { createKb, updateKbName, getCurrentKbId, type KbEntry } from './kb-regis
  * already open, so the caller passes `viaSettings` for that case and this only ever reaches for a
  * fresh handle when the target is some other graph.
  */
-async function writeKbTitle(id: string, name: string): Promise<void> {
+async function writeKnowledgeBaseTitle(id: string, name: string): Promise<void> {
   const target = new KBaseDB(id);
   try {
     const existing = await target.settings.get('main');
@@ -49,7 +49,7 @@ async function writeKbTitle(id: string, name: string): Promise<void> {
  */
 export async function createNamedKb(name: string): Promise<KbEntry> {
   const entry = createKb(name);
-  await writeKbTitle(entry.id, name);
+  await writeKnowledgeBaseTitle(entry.id, name);
   return entry;
 }
 
@@ -75,5 +75,5 @@ export async function renameKb(
     await viaSettings({ kbTitle: trimmed });
     return;
   }
-  await writeKbTitle(id, trimmed);
+  await writeKnowledgeBaseTitle(id, trimmed);
 }

@@ -9,7 +9,7 @@ import {
   type EntityTypeDef,
   RDF_TYPE,
   KB_COLOR,
-  KB_ENTITY_TYPE,
+  KNOWLEDGE_BASE_ENTITY_TYPE,
 } from '../entity-types';
 
 // ── BUILT_IN_TYPES ──────────────────────────────────────────────────────────

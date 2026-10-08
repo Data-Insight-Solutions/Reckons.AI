@@ -16,6 +16,7 @@
  */
 
 import { zipSync, strToU8 } from 'fflate';
+import { assertSitePath } from './output-path';
 import type { Statement } from '../rdf/types';
 import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf/page';
 import { parseRepoUrl, type RepoRef } from '../integrations/github/repo-ingest';
@@ -31,7 +32,10 @@ export const PUBLISHED_TTL_PATH = 'knowledge.ttl';
 const GITHUB_API = 'https://api.github.com';
 
 /** Pinned Sveltia CMS bundle — external dependency, never vendored into this repo. */
-export const SVELTIA_CMS_CDN = 'https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js';
+export const SVELTIA_CMS_CDN = 'https://unpkg.com/@sveltia/cms@0.222.1/dist/sveltia-cms.js';
+// Verified against package/dist/sveltia-cms.js in the npm registry tarball,
+// independently of the CDN response, on 2026-09-29. Update URL and digest together.
+export const SVELTIA_CMS_INTEGRITY = 'sha384-lV41A8CKF2q4nxFyIDXBzxzEb24krghWRbIIYy+bygUhAwyEFko8o4UK1OAV2k0H';
 
 export interface SiteExportOptions {
   siteTitle?: string;
@@ -49,7 +53,8 @@ export interface SiteExportOptions {
 /** Repo-relative content path for a page: content/<section>/<slug>.md */
 export function contentPath(page: SitePage): string {
   const section = page.section ? `${slugify(page.section)}/` : '';
-  return `content/${section}${page.slug}.md`;
+  assertSitePath(page.slug);
+  return assertSitePath(`content/${section}${page.slug}.md`);
 }
 
 function slugMap(pages: SitePage[]): Map<string, string> {
@@ -62,7 +67,7 @@ function slugMap(pages: SitePage[]): Map<string, string> {
 
 /** YAML-encode a scalar string value (double-quoted, escaped). */
 function yamlStr(v: string): string {
-  return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  return JSON.stringify(v);
 }
 
 /**
@@ -123,8 +128,8 @@ export function sveltiaConfig(opts: SiteExportOptions): string {
   return [
     'backend:',
     '  name: github',
-    `  repo: ${repo}`,
-    `  branch: ${branch}`,
+    `  repo: ${yamlStr(repo)}`,
+    `  branch: ${yamlStr(branch)}`,
     '',
     'media_folder: static/media',
     'public_folder: /media',
@@ -172,7 +177,7 @@ export function sveltiaAdminHtml(): string {
     '    <title>Content Manager</title>',
     '  </head>',
     '  <body>',
-    `    <script src="${SVELTIA_CMS_CDN}"></script>`,
+    `    <script src="${SVELTIA_CMS_CDN}" integrity="${SVELTIA_CMS_INTEGRITY}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
     '  </body>',
     '</html>',
     '',
@@ -189,7 +194,9 @@ export function buildSiteFiles(stmts: Statement[], opts: SiteExportOptions = {})
 
   const files: Record<string, string> = {};
   for (const page of pages) {
-    files[contentPath(page)] = pageToMarkdown(page, slugs);
+    const output = contentPath(page);
+    if (Object.hasOwn(files, output)) throw new Error('Duplicate site output path');
+    files[output] = pageToMarkdown(page, slugs);
   }
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
 

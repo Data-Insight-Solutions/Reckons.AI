@@ -1,5 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { untrack } from 'svelte';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
   import { sources, statements } from '$lib/stores/kb.svelte';
   import { commitPrecomputedIngest } from '$lib/ingest/precomputed';
@@ -31,6 +33,19 @@
 
   type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
   let mode = $state<Mode>('note');
+  const MODES: readonly Mode[] = ['note', 'url', 'document', 'reminder', 'triples', 'drive', 'calendar', 'kb', 'vault', 'folder', 'repo'];
+
+  // Opened from the nav's add quick menu: /ingest?mode=url starts in that mode. An unknown value is
+  // ignored rather than trusted — it arrives in a URL anyone can type.
+  $effect(() => {
+    const requested = page.url.searchParams.get('mode');
+    if (!requested || !(MODES as readonly string[]).includes(requested)) return;
+    untrack(() => {
+      mode = requested as Mode;
+      if (requested === 'drive') void loadDriveFiles();
+      if (requested === 'calendar') void loadCalendars();
+    });
+  });
 
   // Standard ingest fields
   let title = $state('');
@@ -356,7 +371,7 @@
 
   // ── KB file import ────────────────────────────────────────────────────────────
   let kbFile = $state<File | null>(null);
-  let kbPreview = $state<{ stmts: number; isAnnotated: boolean } | null>(null);
+  let kbPreview = $state<{ stmts: number; isAnnotated: boolean; quarantined?: number } | null>(null);
   let kbParsing = $state(false);
 
   // GIF/GLB blobs extracted from a .zip import — applied on importKb()
@@ -409,11 +424,11 @@
         ttlText = await file.text();
       }
 
-      const { statements: rawStmts, cleanImportCount } = await importTurtleFull(ttlText);
+      const { statements: rawStmts, cleanImportCount, quarantined } = await importTurtleFull(ttlText);
       const active = rawStmts.filter(
         (s) => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending'
       );
-      kbPreview = { stmts: active.length, isAnnotated: cleanImportCount === 0 };
+      kbPreview = { stmts: active.length, isAnnotated: cleanImportCount === 0, quarantined: quarantined?.count };
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
       kbFile = null;
@@ -1117,7 +1132,7 @@
 
 <header class="head">
   <p class="kicker mono">add</p>
-  <h1>add to the base.</h1>
+  <h1>add to your space.</h1>
   <p class="sub">
     a single document, note, url or reminder. it will be parsed into atomic
     facts for you to review.
@@ -1459,6 +1474,9 @@
       <div class="kb-preview">
         <span class="kb-count mono">{kbPreview.stmts} fact{kbPreview.stmts !== 1 ? 's' : ''}</span>
         <span class="kb-badge mono">{kbPreview.isAnnotated ? 'annotated export' : 'plain turtle'}</span>
+        {#if kbPreview.quarantined}
+          <span class="kb-badge mono" role="status" title="This file was exported by a build that wrote a literal value as if it were an entity (an invalid IRI). Those facts are left out; everything else imports.">⚠ {kbPreview.quarantined} damaged fact{kbPreview.quarantined !== 1 ? 's' : ''} skipped</span>
+        {/if}
         {#if pendingGifImports.size > 0}
           <span class="kb-badge mono">{pendingGifImports.size} gif{pendingGifImports.size !== 1 ? 's' : ''}</span>
         {/if}

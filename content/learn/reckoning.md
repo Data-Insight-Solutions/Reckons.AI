@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # A reckoning — asking your graph what to do
 
+> **Production** — built, tested, and in use.
+
 A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking. You describe the situation you are in and the outcome you want, and you get back options that are built ONLY from facts you have confirmed — each one showing which of your own facts it stands on. The name is the old sense of the word: to reckon is to work something out from what you have, and to be held to account for the answer.
+
+<p class="derived">This is built, working, and in daily use here.</p>
 
 <p class="in-sets">Part of Ask it things.</p>
 

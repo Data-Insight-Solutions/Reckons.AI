@@ -15,15 +15,17 @@ related:
 
 # Currents
 
+> **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.
+
 Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page.
 
-<p class="derived">It has one part below.</p>
+<p class="derived">This exists in outline, with gaps. It has one part below, 1 of which is not built yet.</p>
 
 <p class="in-sets">Part of Take it in.</p>
 
 ## In this section
 
-**[Pod View](../features/pod-view)**
+**[Pod View](../features/pod-view)** — **scaffolded**
 
 Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node.
 

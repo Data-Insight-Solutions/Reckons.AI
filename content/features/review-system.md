@@ -16,9 +16,11 @@ related:
 
 # Review — where your graph gets smaller and truer
 
+> **Production** — built, tested, and in use.
+
 The step where you decide what is true. A model proposes triples; you confirm, refine or reject each one, and nothing enters your graph without that. It is the slowest part of the product and the only reason the rest of it is worth anything.
 
-<p class="derived">It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
 
 <p class="in-sets">Part of You settle it.</p>
 

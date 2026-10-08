@@ -18,6 +18,19 @@ import { clearStorage, waitForApp } from './helpers';
 
 const REGISTRY_KEY = 'kbRegistry';
 
+/**
+ * A graph's row in the /kb graph list — NOT any text on the page.
+ *
+ * The Spaces map (F218) also names every graph it could not read, inside a
+ * collapsed "why some spaces are not drawn" report. A graph created by writing
+ * the registry has no database yet, so its name lands there too, hidden, and
+ * earlier in the DOM than the list. An unscoped `getByText(name).first()` then
+ * picks the hidden copy and fails on an app that is behaving correctly.
+ */
+function graphRow(page: Page, name: string) {
+  return page.locator('.kb-list').getByText(name, { exact: true });
+}
+
 /** Read the raw registry as the app stores it. */
 async function readRegistry(page: Page): Promise<Array<{ id: string; name: string }>> {
   return page.evaluate((key) => {
@@ -58,7 +71,7 @@ test.describe('multi-tab: graph registry', () => {
 
     // Storage is genuinely shared — tab B sees it once it re-reads.
     await tabB.reload();
-    await expect(tabB.getByText('Persistence Check').first()).toBeVisible({ timeout: 10_000 });
+    await expect(graphRow(tabB, 'Persistence Check').first()).toBeVisible({ timeout: 10_000 });
 
     // ...and it really is in the shared registry, from tab B's own perspective.
     expect((await readRegistry(tabB)).map(k => k.name)).toContain('Persistence Check');
@@ -81,12 +94,12 @@ test.describe('multi-tab: graph registry', () => {
     const tabB = await context.newPage();
     await waitForApp(tabB);
     await tabB.goto('/kb');
-    await expect(tabB.getByText('Baseline Graph').first()).toBeVisible({ timeout: 10_000 });
+    await expect(graphRow(tabB, 'Baseline Graph').first()).toBeVisible({ timeout: 10_000 });
 
     await createGraphInTab(tabA, 'Live Sync Graph');
 
     // No reload. A user with both tabs open expects the list to be live.
-    await expect(tabB.getByText('Live Sync Graph').first()).toBeVisible({ timeout: 5_000 });
+    await expect(graphRow(tabB, 'Live Sync Graph').first()).toBeVisible({ timeout: 5_000 });
 
     await tabA.close();
     await tabB.close();
@@ -102,7 +115,7 @@ test.describe('multi-tab: graph registry', () => {
     await waitForApp(tabB);
     await tabB.goto('/kb');
     // Tab B starts out correctly showing it.
-    await expect(tabB.getByText('Doomed Graph').first()).toBeVisible({ timeout: 10_000 });
+    await expect(graphRow(tabB, 'Doomed Graph').first()).toBeVisible({ timeout: 10_000 });
 
     // Tab A removes it (removeKbFromRegistry — a filtered rewrite of the same key).
     await tabA.evaluate((key) => {
@@ -111,7 +124,7 @@ test.describe('multi-tab: graph registry', () => {
     }, REGISTRY_KEY);
 
     // Tab B should stop offering a graph that is gone.
-    await expect(tabB.getByText('Doomed Graph')).toHaveCount(0, { timeout: 5_000 });
+    await expect(graphRow(tabB, 'Doomed Graph')).toHaveCount(0, { timeout: 5_000 });
 
     await tabA.close();
     await tabB.close();

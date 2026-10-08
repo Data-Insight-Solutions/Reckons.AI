@@ -2,6 +2,20 @@ import { test, expect, type Page, type TestInfo } from '@playwright/test';
 import { clearStorage, waitForApp } from './helpers';
 
 /**
+ * The model-download consent dialog can appear and close again on its own (one request resolved,
+ * the page moved on). `if (isVisible()) click()` then waited 30 s for a button that was gone and
+ * failed #350 and #355 on 2026-10-07 while dev passed. Click briefly; a timeout fails the test only
+ * if the button is STILL showing, so a dialog that really stays open is still caught.
+ */
+async function dismissIfShown(button: import('@playwright/test').Locator): Promise<void> {
+  if (!(await button.isVisible())) return;
+  await button.click({ timeout: 5_000 }).catch(async (error) => {
+    if (await button.isVisible()) throw error;
+  });
+}
+
+
+/**
  * Focused UI regressions from the 2026-07 mobile/visual review.
  *
  * These are deterministic DOM/layout assertions; screenshots are attached for
@@ -178,7 +192,9 @@ test('starter graph keeps prose and URL attributes off the canvas topology', asy
   await page.getByPlaceholder('search nodes or facts…').fill('Alex');
   await page.locator('.sb-node-row').filter({ hasText: 'Alex' }).first().click();
   await page.locator('.np-stmts-toggle').click();
-  await expect(page.getByText(/Wants a fair, even meet-up point/i)).toBeVisible();
+  // The same fact also appears under its source in "Node sources", so scope to the facts list.
+  const nodeFacts = page.getByRole('region', { name: 'Node facts' });
+  await expect(nodeFacts.getByText(/Wants a fair, even meet-up point/i)).toBeVisible();
 });
 
 test('successful mobile starter opens a legible, touch-safe guided tour', async ({ page }, testInfo) => {
@@ -254,7 +270,7 @@ test('mobile navigation keeps secondary actions usable without crowding primary 
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
-  const analyze = nav.getByRole('button', { name: 'Analyze graph' });
+  const analyze = nav.getByRole('button', { name: 'Analyze space' });
   await analyze.click();
   const analysisMenu = page.getByRole('menu', { name: 'Analysis actions' });
   await expect(analysisMenu).toBeVisible();
@@ -293,7 +309,7 @@ test('review entries expose a standalone graph-focus control without nested inte
   // A native button supplies both Enter and Space semantics. Selecting one entry and then using a
   // different entry's action also proves that child actions do not bubble into card focus.
   const declineModel = page.getByRole('button', { name: /not now/i });
-  if (await declineModel.isVisible()) await declineModel.click();
+  await dismissIfShown(declineModel);
 
   const first = entries.nth(0);
   const second = entries.nth(1);
@@ -339,7 +355,7 @@ test('large mobile review queues scroll inside the panel and keep controls reach
   // hierarchy can actually fit below the old 4x zoom floor and reports real simulation completion.
   const graphPane = page.locator('.graph-pane');
   const declineModel = page.getByRole('button', { name: /not now/i });
-  if (await declineModel.isVisible()) await declineModel.click();
+  await dismissIfShown(declineModel);
   await graphPane.getByRole('button', { name: /^(2D|3D)$/ }).click();
   await graphPane.getByRole('radio', { name: 'tree', exact: true }).click();
   const graph2d = graphPane.locator('canvas.graph2d');
@@ -394,7 +410,7 @@ test('review graph remount starts a fresh settled-signal cycle', async ({ page }
 
   const graphPane = page.locator('.graph-pane');
   const declineModel = page.getByRole('button', { name: /not now/i });
-  if (await declineModel.isVisible()) await declineModel.click();
+  await dismissIfShown(declineModel);
   const rendererToggle = graphPane.getByRole('button', { name: /^(2D|3D)$/ });
   if ((await rendererToggle.textContent())?.trim() === '3D') await rendererToggle.click();
   await expect(graphPane.locator('canvas.graph2d')).toBeVisible();

@@ -60,7 +60,7 @@
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
-      const { statements, sources } = await importTurtleFull(ttl);
+      const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'starter-kb');
       goto('/');
@@ -525,7 +525,7 @@
         <span class="compare-ref">(Roam, Logseq, Tana)</span>
         <p>Blocks with backlinks create an implicit graph, but every block is authored manually. No extraction, no conflict detection, no semantic diff.</p>
         <span class="compare-gap mono">Reckons.AI:</span>
-        <p>AI extracts triples from any source. Every fact carries provenance. Two KBs can be structurally diffed and merged.</p>
+        <p>AI extracts triples from any source. Every fact carries provenance. Two spaces can be structurally diffed and merged.</p>
       </div>
       <div class="compare-card">
         <strong class="compare-approach mono">AI memory tools</strong>
