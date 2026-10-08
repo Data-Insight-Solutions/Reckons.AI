@@ -26,8 +26,16 @@ export type KbEntry = {
   lastModified?: number;
   /** Stable UUID from settings.kbStableId — used for KB Leap cross-references */
   stableId?: string;
-  /** Approximate confirmed statement count (updated on save) */
+  /** Approximate confirmed statement count (updated on Drive sync and import) */
   statementCount?: number;
+  /**
+   * Outgoing leaps to other spaces, by target stable id (F218 Spaces map). Recorded when this space
+   * is the current one, or by an explicit count over every space. UNDEFINED MEANS NOT COUNTED, which
+   * the map shows as such — it never reads as "no leaps".
+   */
+  leapTargets?: Record<string, number>;
+  /** When leapTargets was last recorded (ms). */
+  leapsCountedAt?: number;
   /**
    * Set on an ARCHIVE graph (F97): the stableId (or failing that, the name) of the graph whose
    * history it holds. Present only on graphs named "<parent> (archives)", and what lets the
@@ -289,7 +297,7 @@ export function removeKbFromRegistry(id: string): void {
 }
 
 /** Touch the lastModified timestamp for the current KB. */
-export function touchKb(id: string): void {
+export function touchKnowledgeBase(id: string): void {
   updateKbEntry(id, { lastModified: Date.now() });
 }
 
@@ -336,4 +344,21 @@ export function registerStableId(dbName: string, stableId: string, statementCoun
     if (statementCount !== undefined) entry.statementCount = statementCount;
     saveRegistry(reg);
   }
+}
+
+/**
+ * Record a space's outgoing leap counts (F218). Writes only when they changed, so a view that
+ * records on render does not loop through its own registry subscription.
+ */
+export function recordLeapTargets(id: string, counts: Record<string, number>): boolean {
+  const reg = getRegistry();
+  const entry = reg.find((k) => k.id === id);
+  if (!entry) return false;
+  const same = (a: Record<string, number> = {}, b: Record<string, number>) =>
+    Object.keys(a).length === Object.keys(b).length && Object.entries(b).every(([k, v]) => a[k] === v);
+  if (entry.leapTargets && same(entry.leapTargets, counts)) return false;
+  entry.leapTargets = counts;
+  entry.leapsCountedAt = Date.now();
+  saveRegistry(reg);
+  return true;
 }

@@ -1,0 +1,156 @@
+#!/usr/bin/env npx tsx
+/**
+ * WHAT EACH GRAPH IS FOR — the catalog check (F113 phase 1, F222; SCRIPT tier).
+ *
+ * static/ holds thirty-odd graphs and, until this, none of them said what it was: a plan, a record
+ * of what is actually so, an archive, a vocabulary, a docs source or a starter. So "is this graph the
+ * intent or the evidence?" was answered by reading its header comment, and a new graph was whatever
+ * its author meant. static/reckons-catalog.ttl now declares each graph once, with one role and, when
+ * a script writes it, that script. This check keeps the declaration true:
+ *
+ *   - every static/*.ttl is catalogued exactly once, and every entry's file exists
+ *   - every entry has exactly one role, from the role scheme
+ *   - every named generator script exists (a generator that is gone means the graph is now hand-kept
+ *     or stale, and either way the catalog is lying)
+ *   - every prov:wasInfluencedBy points at a catalogued graph
+ *
+ * It does NOT check that a graph's contents match its role. "Is this observed graph really derived
+ * from the code?" is a question about each generator, answered by that generator's own --check.
+ *
+ * Usage:
+ *   npx tsx scripts/offline/graph-catalog.ts           the graphs, grouped by role
+ *   npx tsx scripts/offline/graph-catalog.ts --check   exit 1 on any problem (CI / npm run align)
+ */
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { Parser, type Quad } from 'n3';
+
+export const CATALOG_PATH = 'static/reckons-catalog.ttl';
+
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+const VOID_DATASET = 'http://rdfs.org/ns/void#Dataset';
+const DCT = 'http://purl.org/dc/terms/';
+const PROV = 'http://www.w3.org/ns/prov#';
+const SKOS = 'http://www.w3.org/2004/02/skos/core#';
+const ROLE_SCHEME = 'urn:reckons:graph-role/scheme';
+const SCRIPT_NS = 'urn:reckons:script/';
+
+export type CatalogEntry = {
+  iri: string;
+  title: string;
+  source: string;
+  roles: string[];
+  generators: string[];
+  influencedBy: string[];
+};
+
+/**
+ * The graphs the catalog must cover: the .ttl files in static/ that GIT TRACKS. A git-ignored file
+ * there (docs-all.ttl, merged locally by the workspace setup script) is a build artifact that exists
+ * on one machine and not in CI, so listing the directory made the check pass locally and fail in CI.
+ * Falls back to the directory only when git is unavailable.
+ */
+export function trackedGraphFiles(): string[] {
+  try {
+    return execFileSync('git', ['ls-files', 'static/*.ttl'], { encoding: 'utf8' })
+      .split('\n')
+      .filter(Boolean)
+      .map((f) => f.replace(/^static\//, ''));
+  } catch {
+    return readdirSync('static').filter((f) => f.endsWith('.ttl'));
+  }
+}
+
+export function readCatalog(quads: Quad[]): { entries: CatalogEntry[]; roles: Map<string, string> } {
+  const roles = new Map<string, string>();
+  for (const q of quads) {
+    if (q.predicate.value === SKOS + 'inScheme' && q.object.value === ROLE_SCHEME) roles.set(q.subject.value, '');
+  }
+  for (const q of quads) {
+    if (roles.has(q.subject.value) && q.predicate.value === SKOS + 'prefLabel') roles.set(q.subject.value, q.object.value);
+  }
+  const byIri = new Map<string, CatalogEntry>();
+  for (const q of quads) {
+    if (q.predicate.value === RDF_TYPE && q.object.value === VOID_DATASET) {
+      byIri.set(q.subject.value, { iri: q.subject.value, title: '', source: '', roles: [], generators: [], influencedBy: [] });
+    }
+  }
+  for (const q of quads) {
+    const e = byIri.get(q.subject.value);
+    if (!e) continue;
+    const p = q.predicate.value;
+    if (p === DCT + 'title') e.title = q.object.value;
+    else if (p === DCT + 'source') e.source = q.object.value;
+    else if (p === DCT + 'type') e.roles.push(q.object.value);
+    else if (p === PROV + 'wasGeneratedBy') e.generators.push(q.object.value);
+    else if (p === PROV + 'wasInfluencedBy') e.influencedBy.push(q.object.value);
+  }
+  return { entries: [...byIri.values()], roles };
+}
+
+/** Every way the catalog can disagree with the repository. Empty means it is true. */
+export function checkCatalog(
+  quads: Quad[],
+  staticFiles: string[],
+  fileExists: (repoPath: string) => boolean,
+): string[] {
+  const problems: string[] = [];
+  const { entries, roles } = readCatalog(quads);
+  const iris = new Set(entries.map((e) => e.iri));
+
+  const bySource = new Map<string, CatalogEntry[]>();
+  for (const e of entries) bySource.set(e.source, [...(bySource.get(e.source) ?? []), e]);
+
+  for (const f of staticFiles) {
+    const repoPath = `static/${f}`;
+    const n = bySource.get(repoPath)?.length ?? 0;
+    if (n === 0) problems.push(`${repoPath} is not in the catalog — add a void:Dataset with one role to ${CATALOG_PATH}`);
+    if (n > 1) problems.push(`${repoPath} is catalogued ${n} times`);
+  }
+  for (const e of entries) {
+    if (!e.source) problems.push(`${e.iri} has no dcterms:source`);
+    else if (!fileExists(e.source)) problems.push(`${e.iri} names ${e.source}, which does not exist`);
+    if (e.roles.length !== 1) problems.push(`${e.iri} has ${e.roles.length} roles; exactly one is required`);
+    for (const r of e.roles) if (!roles.has(r)) problems.push(`${e.iri} has role ${r}, which is not in the role scheme`);
+    for (const g of e.generators) {
+      const script = g.startsWith(SCRIPT_NS) ? g.slice(SCRIPT_NS.length) : '';
+      if (!script) problems.push(`${e.iri} generator ${g} is not a <${SCRIPT_NS}path> IRI`);
+      else if (!fileExists(script)) problems.push(`${e.iri} says it is generated by ${script}, which does not exist`);
+    }
+    for (const i of e.influencedBy) if (!iris.has(i)) problems.push(`${e.iri} is influenced by ${i}, which is not catalogued`);
+  }
+  return problems;
+}
+
+function main(): void {
+  const quads = new Parser().parse(readFileSync(CATALOG_PATH, 'utf8'));
+  const files = trackedGraphFiles();
+  const problems = checkCatalog(quads, files, (p) => existsSync(path.resolve(p)));
+
+  if (process.argv.includes('--check')) {
+    if (problems.length) {
+      for (const p of problems) console.error(`✗ ${p}`);
+      process.exit(1);
+    }
+    console.log(`✓ graph catalog: ${files.length} graph(s), each with one role`);
+    return;
+  }
+
+  const { entries, roles } = readCatalog(quads);
+  const iriOf = new Map(entries.map((e) => [e.iri, e.source.replace(/^static\//, '')]));
+  for (const [role, label] of roles) {
+    const members = entries.filter((e) => e.roles.includes(role)).sort((a, b) => a.source.localeCompare(b.source));
+    if (!members.length) continue;
+    console.log(`\n${label.toUpperCase()} (${members.length})`);
+    for (const e of members) {
+      const by = e.generators.length ? `generated by ${e.generators.map((g) => g.slice(SCRIPT_NS.length)).join(', ')}` : 'by hand';
+      const about = e.influencedBy.length ? ` · evidence about ${e.influencedBy.map((i) => iriOf.get(i)).join(', ')}` : '';
+      console.log(`  ${e.source.replace(/^static\//, '').padEnd(30)} ${by}${about}`);
+    }
+  }
+  for (const p of problems) console.error(`✗ ${p}`);
+  if (problems.length) process.exit(1);
+}
+
+if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) main();

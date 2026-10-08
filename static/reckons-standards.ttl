@@ -113,7 +113,8 @@ kstd:declaration-kind rdf:type ktype:CodingStandard ;
     rdfs:label "type by default, interface as a deliberate extension point" ;
     kpred:has-status "decided" ;
     kpred:decided "MATT, 2026-09-17: type by default; interface only where a consumer is meant to extend the declaration. This fits all three evidence sets rather than overruling one — Svelte's interfaces are concentrated in its PUBLIC type surface, which is exactly what interface exists for (declaration merging), while SvelteKit and Threlte lean type in ordinary library code, as do we." ;
-    kpred:ratchet "declaration/interface/282" ;
+    kpred:ratchet "declaration/interface/281" ;
+    kpred:measured "2026-09-30, F203.4 BATCH 0: the ratchet had been RED on dev (284 interfaces against 282; 21 camelCase literal constants against 16) since the 2026-09-17 provenance view and the 2026-09-28 security work. Restored by scripts/offline/rename-identifier.ts, the TypeScript-language-service harness: five module constants renamed to UPPER_SNAKE (settings-profile.ts TURTLE, HIGHLIGHT, PROFILE; portable-metadata.ts STATEMENT_FIELDS, SOURCE_FIELDS), three provenance-view.ts interfaces converted to type, and App.PageState in src/app.d.ts marked as the extension point it is, since SvelteKit merges into it. Baseline lowered 282 -> 281 to lock the one below baseline in." ;
     kpred:measured "2026-09-17: this codebase 340 type against 282 interface — 55%, which is a coin flip, not a convention. SvelteKit 249/169 (60% type), Threlte 273/67 (80% type), Svelte 173/83 (68% INTERFACE), three.js NO EVIDENCE because it is authored in JavaScript." ;
     kpred:open-question "THE SOURCES SPLIT, AND THE SPLIT IS EXPLICABLE RATHER THAN RANDOM. Svelte's interfaces are concentrated in its PUBLIC TYPE SURFACE (types/index.d.ts), which is the case interface exists for: declaration merging, so a consumer can augment it. SvelteKit and Threlte lean type in ordinary library code. The rule that fits all three evidence sets is therefore not 'always type' but 'type by default, interface where a consumer is meant to extend it'." ;
     kpred:recommendation "TYPE AS THE DEFAULT, INTERFACE ONLY AS A DELIBERATE EXTENSION POINT. It matches two of the three ranked sources with evidence, matches our own lean, explains the third rather than contradicting it, and fits a codebase that leans on unions interface cannot express (Term = NamedNode | BlankNode | Literal). Whatever is chosen is worth a lint rule rather than a paragraph — 622 declarations is too many to settle by review." ;
@@ -132,11 +133,14 @@ kstd:private-member rdf:type ktype:CodingStandard ;
 
 kstd:module-state-prefix rdf:type ktype:CodingStandard ;
     rdfs:label "Module-scope mutable state carries no prefix" ;
-    kpred:has-status "open" ;
+    kpred:has-status "decided" ;
+    kpred:decided "2026-09-30, BY PLAN RATHER THAN BY A RULING ON THIS LINE: Matt merged the F203.4 plan (#319), whose batch 1 is exactly this rule, and chose the rename as the next main track. No separate sentence from him settles this entity; if that is not enough, this status is the thing to revert." ;
+    kpred:ratchet "module-state/_underscore/20" ;
+    kpred:measured "2026-09-30, F203.4 BATCH 1: 85 non-exported module-level let _x in src/ (the count was 95 on 2026-09-17 by a wider pattern), 65 renamed by scripts/offline/rename-identifier.ts through the TypeScript language service; 20 refused and still prefixed. ELEVEN collide with a declaration already using the bare name — the rune-store pattern of let _loaded behind an exported loaded() — so the unprefixed name is taken and they need a naming decision, not a strip. NINE would be shadowed at a reference: manual-llm.svelte.ts would have become prompt = prompt; resolve = resolve; reject = reject inside requestManualLLM, which compiles and never resolves the promise. The harness asks the type checker at every reference and refuses; the language service's own rename does not check this." ;
     kpred:measured "2026-09-17: this codebase 165 unmarked against 95 underscore-prefixed (63%, the second coin flip). SvelteKit, Svelte and Threlte are unmarked at 100%. three.js prefixes 55 of 68." ;
     kpred:recommendation "DROP THE PREFIX. All three ranked Svelte-family sources are unanimous, and the 95 prefixed names (_labelLast, _autoSaveTimer, _loading) are the three.js habit leaking into files that have nothing to do with three.js. Every one of them is FREE-bound under F203 — they are module-local identifiers — so this is the largest rename on the list that costs nothing but a diff." ;
     kpred:honest-note "This rule only exists because a metric measuring private members accidentally measured this instead. It is a real convention in this codebase and was undocumented; finding it by accident is not a reason to leave it undocumented." ;
-    kpred:enforced-by "unenforced" ;
+    kpred:enforced-by "scripts/offline/naming-conventions.ts --check — a ratchet at 20 from 2026-09-30" ;
     kpred:relates-to kb:coding-standards .
 
 kstd:formatting-out-of-scope rdf:type ktype:CodingStandard ;

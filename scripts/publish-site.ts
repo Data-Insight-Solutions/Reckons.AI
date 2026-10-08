@@ -11,13 +11,14 @@
  *   npx tsx scripts/publish-site.ts graph.ttl --out=dist --title="My Site"
  *   npx tsx scripts/publish-site.ts graph.ttl --target=cloudflare-pages --project=my-site --deploy
  */
-import { readFileSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { readFileSync } from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { Parser } from 'n3';
 import { generateStaticSite } from '../src/lib/publish/site-generator.js';
 import { checkAssetSizes, getTarget, formatBytes, type PublishTarget } from '../src/lib/publish/targets.js';
 import type { Statement } from '../src/lib/rdf/types.js';
+import { writeGeneratedSite } from './lib/site-output.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
 const argv = process.argv.slice(2);
@@ -38,6 +39,8 @@ if (!target) {
   console.error(`Unknown target "${targetId}". Options: cloudflare-pages, gitlab-pages, netlify, github-pages, zip.`);
   process.exit(1);
 }
+// Validate command arguments before writing an artifact, even for preview-only runs.
+target.cli?.args(path.resolve(outDir), project);
 
 // ── Parse the graph → statements (all confirmed; the file IS the confirmed graph). ──
 const quads = new Parser().parse(readFileSync(graphFile, 'utf8'));
@@ -71,12 +74,7 @@ if (site.pageCount === 0) {
 console.log(`${B}Publish${X} ${D}— ${graphFile} → ${site.pageCount} page(s), target: ${target.label}${X}\n`);
 
 // ── Write the site folder ──
-rmSync(outDir, { recursive: true, force: true });
-for (const [rel, content] of Object.entries(site.files)) {
-  const full = path.join(outDir, rel);
-  mkdirSync(path.dirname(full), { recursive: true });
-  writeFileSync(full, content);
-}
+const generatedDirectory = writeGeneratedSite(outDir, site.files, { inputFile: graphFile });
 console.log(`  ${G}✓${X} wrote ${Object.keys(site.files).length} file(s) to ${B}${outDir}/${X}`);
 
 // ── Preflight: any file over the host's per-file cap? ──
@@ -89,12 +87,12 @@ if (oversized.length) {
 // ── Deploy step ──
 console.log(`\n${B}deploy${X} ${D}(${target.deploy})${X}`);
 if (target.deploy === 'cli' && target.cli) {
-  const cmd = target.cli.command(outDir, project);
+  const cmd = target.cli.command(generatedDirectory, project);
   console.log(`  ${D}install:${X} ${target.cli.install}`);
   if (has('deploy')) {
     console.log(`  ${D}running:${X} ${cmd}\n`);
     try {
-      execSync(cmd, { stdio: 'inherit' });
+      execFileSync(target.cli.executable, target.cli.args(generatedDirectory, project), { stdio: 'inherit' });
       console.log(`\n${G}✓ deployed via ${target.cli.tool}.${X}`);
     } catch (e) {
       console.error(`\n${R}deploy failed${X} — is ${target.cli.tool} installed and authed? (${target.cli.install})`);

@@ -73,6 +73,8 @@ kb:shadcn-svelte rdf:type   ktype:Library ;
 # ── Features ─────────────────────────────────────────────────────────────────
 
 kb:knowledge-graph  rdf:type     ktype:Feature ;
+                    kpred:tested-by "tests/e2e/sync-preservation.test.ts" ;
+                    kpred:tested-by "src/lib/stores/__tests__/kb-import-roundtrip.test.ts" ;
                     rdfs:label   "Knowledge Graph" ;
                     kpred:renders-with kb:force-graph-2d ;
                     kpred:renders-with kb:three-js-3d ;
@@ -286,9 +288,13 @@ kb:workspace-export rdf:type     ktype:Feature ;
                     kpred:has-status   "production" ;
                     kpred:description  "Semantic TTL export with backup scheduling. Graph asset round-trip. EXPORT IS A RIGHT (kb:data-egress-model): plain-text TTL of the user's own graph to the user's own disk is never blocked, whatever it contains — withholding it would be data lock-in, and it would be futile besides, since the graph is readable straight out of IndexedDB. A content ADVISORY header may be attached (scanForExportAdvisory); a blocking gate here would be a bug." ;
                     kpred:tested-by    "src/lib/storage/__tests__/semantic-export.test.ts" ;
-                    kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" .
+                    kpred:tested-by    "src/lib/storage/__tests__/backup.test.ts" ;
+                    kpred:tested-by    "src/lib/storage/__tests__/settings-profile-secrets.test.ts" .
 
 kb:graph-publishing rdf:type     ktype:Feature ;
+                    kpred:tested-by "src/lib/publish/__tests__/site-generator.test.ts" ;
+                    kpred:tested-by "scripts/__tests__/site-output.test.ts" ;
+                    kpred:tested-by "tests/e2e/publish-security.test.ts" ;
                     rdfs:label   "Graph Publishing" ;
                     kpred:has-status   "functional" ;
                     kpred:description  "F27 — exports WebPage-typed graph entities to a static-site bundle (frontmatter + markdown) at /docs, and re-imports edits back into graph statements. scripts/docs-pages.ts regenerates content/ from the docs knowledge graphs; scripts/md-align.ts checks the two stay in lockstep. Sveltia CMS (static/admin/) edits content/*.md through a GitHub-backed admin UI." ;
@@ -559,3 +565,9 @@ kb:env-production a ktype:Environment ;
 kb:graph-publishing skos:altLabel "docs site" , "static site publishing" .
 
 kb:browser-extension skos:altLabel "web extension" , "Chrome extension" .
+
+kb:local-security-audits a ktype:Feature ;
+    rdfs:label "Private agent security checks" ;
+    kpred:has-status "functional" ;
+    kpred:description "Local tooling, not a hosted app capability: npm run host:check inspects Linux without privilege escalation; npm run security:dependencies explicitly contacts the npm registry for tracked lockfiles. Reports remain in private state outside Git. A passing check is scoped evidence, not certification that a device or deployment is secure." ;
+    kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .

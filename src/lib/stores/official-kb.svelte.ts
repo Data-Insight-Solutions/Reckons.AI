@@ -10,35 +10,35 @@
 import type { Statement, Source } from '../rdf/types';
 import { importTurtleFull } from '../rdf/import-ttl';
 
-const OFFICIAL_KB_FILE = '/starter-guide.ttl';
+const OFFICIAL_KNOWLEDGE_BASE_FILE = '/starter-guide.ttl';
 const OFFICIAL_SOURCE_ID = '__official_reckons_docs__';
 
-let _active = $state(false);
-let _statements = $state<Statement[]>([]);
-let _sources = $state<Source[]>([]);
-let _loaded = $state(false);
-let _loading = $state(false);
-let _error = $state<string | null>(null);
+let active = $state(false);
+let statements = $state<Statement[]>([]);
+let sources = $state<Source[]>([]);
+let loaded = $state(false);
+let loading = $state(false);
+let error = $state<string | null>(null);
 
-export function officialKbActive(): boolean { return _active; }
-export function officialKbStatements(): Statement[] { return _statements; }
-export function officialKbSources(): Source[] { return _sources; }
-export function officialKbLoaded(): boolean { return _loaded; }
-export function officialKbLoading(): boolean { return _loading; }
+export function officialKbActive(): boolean { return active; }
+export function officialKnowledgeBaseStatements(): Statement[] { return statements; }
+export function officialKnowledgeBaseSources(): Source[] { return sources; }
+export function officialKnowledgeBaseLoaded(): boolean { return loaded; }
+export function officialKnowledgeBaseLoading(): boolean { return loading; }
 /** Last load error, if the official KB failed to fetch/parse. Cleared on a successful load. */
-export function officialKbError(): string | null { return _error; }
+export function officialKbError(): string | null { return error; }
 
 /**
  * Load the official KB from the static file (cached after first load).
  */
 async function ensureLoaded(): Promise<void> {
-  if (_loaded || _loading) return;
-  _loading = true;
+  if (loaded || loading) return;
+  loading = true;
   try {
-    const res = await fetch(OFFICIAL_KB_FILE);
+    const res = await fetch(OFFICIAL_KNOWLEDGE_BASE_FILE);
     if (!res.ok) throw new Error(`Failed to fetch official KB: ${res.status}`);
     const ttl = await res.text();
-    const { statements: parsed } = await importTurtleFull(ttl);
+    const { statements: parsed } = await importTurtleFull(ttl, { name: OFFICIAL_KNOWLEDGE_BASE_FILE });
 
     const now = Date.now();
     const source: Source = {
@@ -60,18 +60,18 @@ async function ensureLoaded(): Promise<void> {
       // A successful fetch that yields no statements is still a failure for our
       // purposes — activating an empty KB would silently fall back to the landing
       // page (the graph route renders <LandingPage/> when visible.length === 0).
-      throw new Error(`Official KB parsed to 0 statements from ${OFFICIAL_KB_FILE}`);
+      throw new Error(`Official KB parsed to 0 statements from ${OFFICIAL_KNOWLEDGE_BASE_FILE}`);
     }
-    console.log(`[official-kb] Loaded ${stmts.length} statements from ${OFFICIAL_KB_FILE}`);
-    _statements = stmts;
-    _sources = [source];
-    _loaded = true;
-    _error = null;
+    console.log(`[official-kb] Loaded ${stmts.length} statements from ${OFFICIAL_KNOWLEDGE_BASE_FILE}`);
+    statements = stmts;
+    sources = [source];
+    loaded = true;
+    error = null;
   } catch (e) {
     console.error('[official-kb] Failed to load:', e);
-    _error = e instanceof Error ? e.message : String(e);
+    error = e instanceof Error ? e.message : String(e);
   } finally {
-    _loading = false;
+    loading = false;
   }
 }
 
@@ -94,11 +94,11 @@ export function preloadOfficialKb(): void {
  */
 export async function activateOfficialKb(): Promise<boolean> {
   await ensureLoaded();
-  if (_loaded && _statements.length > 0) {
-    _active = true;
+  if (loaded && statements.length > 0) {
+    active = true;
     return true;
   }
-  _active = false;
+  active = false;
   return false;
 }
 
@@ -106,5 +106,5 @@ export async function activateOfficialKb(): Promise<boolean> {
  * Switch back to the user's personal KB.
  */
 export function deactivateOfficialKb(): void {
-  _active = false;
+  active = false;
 }

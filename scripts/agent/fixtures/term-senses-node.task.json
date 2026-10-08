@@ -1,0 +1,151 @@
+{
+  "id": "term-senses-node",
+  "instruction": "The marked line (>>) of a TypeScript/Svelte file uses an identifier containing the word \"node\". Which ONE of these meanings does the word carry at that site?\n- graph-vertex (\"entity\"): A subject in the user's knowledge base: the thing statements are made about. What a person means when they point at a circle in the graph view. Scope: THE ONLY ONE OF THE FOUR NODES THAT IS OURS TO NAME, and the codebase already has a better word for it: entity, used 927 times across 183 files. Prefer entity in data and logic; reserve node strictly for the RENDERED representation of an entity (see kterm:rendered-node).\n- node-runtime (\"Node.js\"): The JavaScript runtime the build, the MCP server and the offline scripts run on. Scope: Only ever appears as a proper noun or in a node: import specifier. It is never a domain term, and it must never be shortened to node in prose where a reader could take it for an entity.\n- rdf-node (\"RDF term\"): One of the three kinds of thing that can occupy a position in an RDF triple. Defined by RDF and the RDF-JS interface, not by this project. Scope: Appears in src/lib/rdf/types.ts as NamedNode and BlankNode. These names are fixed by the specification — do not rename them, and do not reuse the word for our own vertex concept.\n- rendered-node (\"entity marker\"): The drawn representation of an entity in the 2D or 3D view — its position, colour, icon, label and hit target. A presentation object, not data. Scope: This is where most of the 947 bare uses of node actually live (src/lib/3d/, nodeMap, nodeColors, nodePositionCache). Renaming these is FREE and is the highest-value cleanup available, because it is exactly the collision with three.js.\n- scene-object (\"scene object\"): A member of a three.js scene graph — a mesh, light, camera or group. Three.js's own hierarchy concept. Scope: Threlte is the precedent worth copying: it does not rename the foreign thing, it namespaces it, so THREE.Mesh becomes <T.Mesh> and the origin stays visible. Qualify our own uses rather than competing for the word.\n- other: none of the above (a DOM node, a generic tree node, Node.js, or an unrelated word).\nJudge from what the code does with the value, and the file path. Give the meaning id and a reason under 20 words.",
+  "answer": {
+    "type": "object",
+    "properties": {
+      "sense": {
+        "type": "string",
+        "enum": [
+          "graph-vertex",
+          "node-runtime",
+          "rdf-node",
+          "rendered-node",
+          "scene-object",
+          "other"
+        ]
+      },
+      "reason": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "required": [
+      "sense",
+      "reason"
+    ]
+  },
+  "agreeOn": "sense",
+  "items": [
+    {
+      "id": "src/lib/3d/preview-collage.ts:89",
+      "context": "FILE src/lib/3d/preview-collage.ts\nIDENTIFIER node\n     86   slop?: number;\n     87   /**\n     88    * How much of the inward velocity to cancel when a pair is corrected, 0..1. 1 removes it\n>>   89    * entirely (the node stops pushing into its neighbour), 0 leaves the buzzing behaviour.\n     90    */\n     91   velocityDamping?: number;\n     92   /** Safety valve: pairwise is O(n²), so stop before a huge graph stalls the frame. */"
+    },
+    {
+      "id": "src/lib/rdf/types.ts:525",
+      "context": "FILE src/lib/rdf/types.ts\nIDENTIFIER isBNode\n    522 \n    523 export const isIRI = (t: Term): t is NamedNode => t.kind === 'iri';\n    524 export const isLit = (t: Term): t is Literal => t.kind === 'literal';\n>>  525 export const isBNode = (t: Term): t is BlankNode => t.kind === 'bnode';\n    526 \n    527 /** Render a term in N3/Turtle short form for display */\n    528 export function termToString(t: Term): string {"
+    },
+    {
+      "id": "src/routes/(app)/settings/+page.svelte:1139",
+      "context": "FILE src/routes/(app)/settings/+page.svelte\nIDENTIFIER node\n   1136   </div>\n   1137 \n   1138   <label class=\"field\">\n>> 1139     <span class=\"lbl mono\">node label size <span class=\"muted\">({nodeLabelFontSize}px)</span></span>\n   1140     <input\n   1141       type=\"range\"\n   1142       min=\"7\" max=\"20\" step=\"1\""
+    },
+    {
+      "id": "src/lib/rdf/finding-class.ts:6",
+      "context": "FILE src/lib/rdf/finding-class.ts\nIDENTIFIER node\n      3  *\n      4  * Matt, 2026-08-14: \"can we clearly classify drift from other syntax or functional errors?\"\n      5  * Measured answer at the time: no. `drift-warning` was emitted by claim-audit (a claim\n>>    6  * contradicting reality), server-health (a server being down) and shacl-validate (a node\n      7  * missing a label) — three different kinds of wrong under one label, from nine different\n      8  * agents across 54 queue entries, with NO entity anywhere defining what drift is.\n      9  *"
+    },
+    {
+      "id": "src/routes/(app)/overlay/+page.svelte:70",
+      "context": "FILE src/routes/(app)/overlay/+page.svelte\nIDENTIFIER selectedNode\n     67 \n     68   const selectedNode = $derived(selectedKey ? data?.nodes.get(selectedKey) ?? null : null);\n     69   const selectedGraphs = $derived.by(() => {\n>>   70     if (!selectedNode || !data) return [] as GraphDef[];\n     71     return data.graphs.filter(g => selectedNode.membership.has(g.id));\n     72   });\n     73 "
+    },
+    {
+      "id": "src/lib/components/RadialMenu.svelte:3",
+      "context": "FILE src/lib/components/RadialMenu.svelte\nIDENTIFIER nodeKey\n      1 <script lang=\"ts\">\n      2   let {\n>>    3     nodeKey,\n      4     label,\n      5     x,\n      6     y,"
+    },
+    {
+      "id": "src/lib/rdf/entity-review.ts:60",
+      "context": "FILE src/lib/rdf/entity-review.ts\nIDENTIFIER nodes\n     57 /**\n     58  * Group pending facts into one card per subject entity. `typeOf` resolves a subject to its\n     59  * rdf:type so F88 authority reservations hold (facts about a Tenet/Decision are the user's,\n>>   60  * however checkable). Non-IRI subjects (blank nodes) are grouped by their own key. Cards are\n     61  * ranked so the human's lane surfaces first: strongest gate, then the fullest card, then recency.\n     62  */\n     63 export function groupPendingByEntity("
+    },
+    {
+      "id": "src/lib/components/MergeReview.svelte:454",
+      "context": "FILE src/lib/components/MergeReview.svelte\nIDENTIFIER nodes\n    451         <section class=\"mr-section\">\n    452           <h4 class=\"mr-section-title\">\n    453             <span class=\"mr-badge mr-badge-in\">{inA.length + inB.length} incoming</span>\n>>  454             other nodes pointing here — silently redirected to kept entity\n    455           </h4>\n    456           <div class=\"mr-rows\">\n    457             {#each inA as st (st.id)}"
+    },
+    {
+      "id": "src/lib/integrations/indico/reachability.ts:34",
+      "context": "FILE src/lib/integrations/indico/reachability.ts\nIDENTIFIER Node\n     31  * Watch for a CSP violation naming `origin` while a request is in flight.\n     32  * Returns a probe whose `blocked` is true if the policy refused that origin.\n     33  *\n>>   34  * No-op outside a browser: Node enforces neither policy, so claiming either there would be a\n     35  * confident lie about the wrong layer.\n     36  */\n     37 export function watchCspViolations(origin: string): { blocked: () => boolean; stop: () => void } {"
+    },
+    {
+      "id": "src/lib/components/ShellyVoice.svelte:11",
+      "context": "FILE src/lib/components/ShellyVoice.svelte\nIDENTIFIER AnalyserNode\n      8    *   - Display streaming interim transcripts\n      9    *\n     10    * Audio pipeline:\n>>   11    *   Mic → AnalyserNode (volume) + MediaRecorder (chunks) → EVI (STT)\n     12    *   EVI user_message (interim) → oninterim(text)\n     13    *   EVI user_message (final)   → pauseAssistant → turtleChat → sendAssistantInput (TTS)\n     14    *   onmessage('user', transcript) + onmessage('assistant', reply, actions)"
+    },
+    {
+      "id": "src/lib/rdf/space-graph.ts:5",
+      "context": "FILE src/lib/rdf/space-graph.ts\nIDENTIFIER node\n      2  * THE SPACES MAP — the graph of graphs (F218 phase 1). Pure: no storage, no DOM.\n      3  *\n      4  * Matt, 2026-09-23: \"I would like to visualize the interconnected graphs, like we visualize nodes\n>>    5  * within a graph.\" A space is a node, leaps between spaces are edges, and a set of spaces is a\n      6  * cluster. Everything here is derived from data that already exists: the registry (spaces), the\n      7  * leap triples inside each space (edges, see kb-leap.ts) and the set buckets the Spaces tab already\n      8  * computes (graph-sets.ts). No new vocabulary; a leap edge is what VoID calls a Linkset."
+    },
+    {
+      "id": "src/lib/ingest/folder-scan.ts:66",
+      "context": "FILE src/lib/ingest/folder-scan.ts\nIDENTIFIER node_modules\n     63 \n     64 // Directories to skip\n     65 const SKIP_DIRS = new Set([\n>>   66   'node_modules', '.git', '.svelte-kit', '__pycache__', '.venv',\n     67   'venv', 'dist', 'build', '.next', '.nuxt', 'target', '.cargo'\n     68 ]);\n     69 "
+    },
+    {
+      "id": "src/routes/(app)/kb/+page.svelte:1748",
+      "context": "FILE src/routes/(app)/kb/+page.svelte\nIDENTIFIER nodes\n   1745     <h3>entity types</h3>\n   1746     <a href=\"/settings/entity-types\" class=\"ghost sm mono nav-cta\">manage types →</a>\n   1747   </div>\n>> 1748   <p class=\"section-hint\">customize type icons, colors, geometries, and 3D models for graph nodes.</p>\n   1749 </section>\n   1750 \n   1751 <!-- ── Export ─────────────────────────────────────────────────────────────── -->"
+    },
+    {
+      "id": "src/lib/rdf/protected-entities.ts:69",
+      "context": "FILE src/lib/rdf/protected-entities.ts\nIDENTIFIER node$\n     66     const plural = typedByCount !== 1;\n     67     return {\n     68       protected: true,\n>>   69       reason: `${typedByCount} node${plural ? 's are' : ' is'} typed as this — deleting it will un-type ${plural ? 'them' : 'it'}.`,\n     70     };\n     71   }\n     72   if (isEntityType) {"
+    },
+    {
+      "id": "src/lib/rdf/current-ranking.ts:67",
+      "context": "FILE src/lib/rdf/current-ranking.ts\nIDENTIFIER nodes\n     64       labels.set(st.s.value, st.o.value);\n     65       continue;\n     66     }\n>>   67     // rdf:type edges don't contribute to degree — otherwise category nodes\n     68     // (Concept, Tool, ...) would dominate rankings as the \"top\" entities —\n     69     // but the typed subject still counts as a candidate entity.\n     70     if (st.p.value === RDF_TYPE) {"
+    },
+    {
+      "id": "src/lib/components/OverlayGraph3D.svelte:23",
+      "context": "FILE src/lib/components/OverlayGraph3D.svelte\nIDENTIFIER nodes\n     20 \n     21 <div class=\"wrap\">\n     22   <Canvas>\n>>   23     <OverlayScene {graphs} {nodes} {edges} {activeGraphIds} {activePredicates} />\n     24   </Canvas>\n     25 \n     26   <div class=\"legend\">"
+    },
+    {
+      "id": "src/lib/publish/site-export.ts:264",
+      "context": "FILE src/lib/publish/site-export.ts\nIDENTIFIER Node\n    261     for (const b of bytes) bin += String.fromCharCode(b);\n    262     return btoa(bin);\n    263   }\n>>  264   // Node fallback\n    265   return Buffer.from(content, 'utf8').toString('base64');\n    266 }\n    267 "
+    },
+    {
+      "id": "src/lib/storage/db.ts:188",
+      "context": "FILE src/lib/storage/db.ts\nIDENTIFIER node\n    185    * can read bigger by default. Default 96. */\n    186   nodePreviewSize?: number;\n    187   /** Auto-expand a node's asset to the large view whenever it becomes selected —\n>>  188    * e.g. as a story/explore walkthrough moves node to node. Off by default.\n    189    * @deprecated superseded by previewMode; still read for migration. */\n    190   autoExpandAssets?: boolean;\n    191   /**"
+    },
+    {
+      "id": "src/lib/rdf/ghost-graph.ts:95",
+      "context": "FILE src/lib/rdf/ghost-graph.ts\nIDENTIFIER nodes\n     92   const sortedByDegree = [...degree.entries()].sort((a, b) => b[1] - a[1]);\n     93   const hubThreshold = sortedByDegree.length > 5 ? sortedByDegree[4][1] : 0;\n     94 \n>>   95   const nodes: GhostNode[] = [...entityIris].map(iri => ({\n     96     iri,\n     97     label: labels.get(iri) ?? iri.split('/').pop() ?? iri,\n     98     isHub: (degree.get(iri) ?? 0) >= hubThreshold && hubThreshold > 1,"
+    },
+    {
+      "id": "src/lib/rdf/view-suggestions.ts:142",
+      "context": "FILE src/lib/rdf/view-suggestions.ts\nIDENTIFIER CROWDED_NODE_COUNT\n    139 const MIN_DATED_FACTS = 3;\n    140 const MIN_SPAN_DAYS = 1;\n    141 const MIN_TYPES_FOR_TYPE_LAYOUT = 3;\n>>  142 const CROWDED_NODE_COUNT = 150;\n    143 const HUB_SKEW_RATIO = 4;\n    144 const MIN_SOURCES_FOR_SOURCE_LAYOUT = 3;\n    145 "
+    },
+    {
+      "id": "src/lib/rdf/import-ttl.ts:64",
+      "context": "FILE src/lib/rdf/import-ttl.ts\nIDENTIFIER NamedNode\n     61 // eslint-disable-next-line @typescript-eslint/no-explicit-any\n     62 function n3ToTerm(term: any): Term | null {\n     63   if (!term) return null;\n>>   64   if (term.termType === 'NamedNode') return { kind: 'iri', value: term.value };\n     65   if (term.termType === 'BlankNode') return { kind: 'bnode', value: term.value };\n     66   if (term.termType === 'Literal') {\n     67     const dt = term.datatype?.value;"
+    },
+    {
+      "id": "src/lib/rdf/pending-entry.ts:91",
+      "context": "FILE src/lib/rdf/pending-entry.ts\nIDENTIFIER nodes\n     88 }\n     89 \n     90 /**\n>>   91  * RDF named nodes carry absolute IRIs. `new URL()` alone is too forgiving for this boundary — it\n     92  * silently percent-encodes spaces and accepts malformed percent escapes — so reject characters\n     93  * forbidden by RFC 3987 first, then require an absolute scheme and a parseable URL/URN.\n     94  */"
+    },
+    {
+      "id": "src/lib/storage/settings-profile.ts:52",
+      "context": "FILE src/lib/storage/settings-profile.ts\nIDENTIFIER nodeLabelFontSize\n     49   wasmModel: text, wasmIngestModel: text, wasmAnalyzeModel: text, wasmChatModel: text,\n     50   openrouterModel: text, autoAnalyzeOnImport: bool, autoAnalyzeIntervalMinutes: range(0),\n     51   embeddingThreshold: range(0, 1), autoConfirmHighConfidence: bool, uiScale: oneOf('sm', 'md', 'lg'),\n>>   52   nodeLabelFontSize: range(1, 256), shellyCustomPrompt: text, humeConfigId: text,\n     53   turtleSettings: turtle, extensionHighlight: highlight,\n     54 } satisfies Record<Exclude<keyof SettingsProfile, '_format' | '_version' | 'exportedAt'>, Rule>;\n     55 "
+    },
+    {
+      "id": "src/lib/rdf/pending-dedup.ts:39",
+      "context": "FILE src/lib/rdf/pending-dedup.ts\nIDENTIFIER nodes\n     36  * Canonicalize a term into a comparison token. Literals are trimmed, whitespace-collapsed and\n     37  * lower-cased, but their datatype and language are KEPT — \"5\"^^xsd:integer and \"5\"@en are\n     38  * different assertions and must not silently merge. IRIs compare by value (they are already\n>>   39  * normalized entities); blank nodes compare by their own id, so two distinct bnodes never merge.\n     40  */\n     41 export function canonicalTerm(t: Term): string {\n     42   if (t.kind === 'literal') {"
+    },
+    {
+      "id": "src/routes/(app)/about/+page.svelte:384",
+      "context": "FILE src/routes/(app)/about/+page.svelte\nIDENTIFIER node\n    381       </div>\n    382 \n    383       <!-- Row 2: AI Extraction -->\n>>  384       <div class=\"pipe-node pipe-ai\">\n    385         <span class=\"pipe-tag mono\">extraction</span>\n    386         <strong>AI extracts facts</strong>\n    387         <p>Claude · GPT · Gemini · Ollama · WASM. Any backend, fully offline if preferred. No cloud required.</p>"
+    },
+    {
+      "id": "src/lib/components/GraphPackagePanel.svelte:119",
+      "context": "FILE src/lib/components/GraphPackagePanel.svelte\nIDENTIFIER node\n    116 <div class=\"overlay-group\">\n    117   <span class=\"group-label mono\">graph package · {getCurrentKbName()}</span>\n    118   <div class=\"pkg-row mono\">\n>>  119     <span class=\"pkg-stat\" title=\"2D node icons\">◇ {assetCounts.icons} icons</span>\n    120     <span class=\"pkg-stat\" title=\"hover preview images\">▣ {assetCounts.previews} previews</span>\n    121     <span class=\"pkg-stat\" title=\"3D GLB models\">◈ {assetCounts.models} models</span>\n    122     <a class=\"pkg-stat pkg-link\" href=\"/kb\" title=\"edit the guided story\">▸ {storySteps} story · edit →</a>"
+    },
+    {
+      "id": "src/lib/components/AssetGlbViewer.svelte:5",
+      "context": "FILE src/lib/components/AssetGlbViewer.svelte\nIDENTIFIER GraphNode\n      2   /**\n      3    * Standalone GLB/3D asset viewer for the large/fullscreen asset viewer — an\n      4    * orbitable, auto-rotating model on its own threlte canvas. Reuses the shared\n>>    5    * GLTF loader/cache from GraphNode so models load once.\n      6    */\n      7   import { Canvas, T } from '@threlte/core';\n      8   import { OrbitControls } from '@threlte/extras';"
+    },
+    {
+      "id": "src/lib/stores/story-prompt.svelte.ts:43",
+      "context": "FILE src/lib/stores/story-prompt.svelte.ts\nIDENTIFIER node\n     40 /**\n     41  * How many story steps a graph holds, and what the story calls itself.\n     42  *\n>>   43  * Counts SUBJECTS rather than triples: a step is one node carrying several predicates, and\n     44  * counting statements would report \"17 steps\" for a five-step story.\n     45  */\n     46 export function detectStory(statements: readonly Statement[]): StoryPresence {"
+    },
+    {
+      "id": "src/routes/(app)/publish/+page.svelte:8",
+      "context": "FILE src/routes/(app)/publish/+page.svelte\nIDENTIFIER node\n      5    * `src/lib/publish/` could render a site, zip it and push it to GitHub, and NOTHING in the app\n      6    * called any of it. A user could read pages the build generated and could not author one. This\n      7    * page is the missing entry point, and it is deliberately graph-first: writing here creates a\n>>    8    * `ktype:WebPage` node in the graph, and the markdown is a rendering of that node — the same\n      9    * direction `content/` already assumes (generated, never hand-edited).\n     10    *\n     11    * HONEST BOUNDARY, stated in the UI as well as here: saving a post does NOT put it on the live"
+    },
+    {
+      "id": "src/lib/rdf/fact-altitude.ts:514",
+      "context": "FILE src/lib/rdf/fact-altitude.ts\nIDENTIFIER node\n    511   for (const [re, alt] of SUFFIX_RULES) if (re.test(p)) return alt;\n    512   if (ns) return ns[1];\n    513 \n>>  514   // A partial fact is an open hole, and an open hole is a question — the most useful node in\n    515   // the graph (kb:mission). Never let one fall through to the default.\n    516   if (st.needsObject) return 'decision';\n    517 "
+    }
+  ]
+}

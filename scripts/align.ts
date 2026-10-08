@@ -45,6 +45,16 @@ const GATES: Gate[] = [
     check: 'npx tsx scripts/offline/graph-lint.ts',
   },
   {
+    name: 'graph catalog',
+    why: 'every graph must say what it is for — design, observed, archive, reference, docs or starter — and who writes it',
+    check: 'npx tsx scripts/offline/graph-catalog.ts --check',
+  },
+  {
+    name: 'docs status',
+    why: 'every capability the docs describe must show the status the roadmap gives it — one place a status is written, so a page cannot claim a feature works when the roadmap says it does not',
+    check: 'npx tsx scripts/offline/docs-status.ts --check',
+  },
+  {
     // Ordered BEFORE 'docs pages' on purpose: a missing diagram makes docs-pages.ts throw, so
     // without this gate the failure surfaces as a stack trace from the generator rather than as
     // the one-line instruction that actually fixes it.
@@ -72,7 +82,10 @@ const GATES: Gate[] = [
   {
     name: 'docs pages',
     why: 'content/*.md must match what the graph generates — a hand-edited page is a second source of truth',
-    check: 'npx tsx scripts/md-align.ts',
+    // BOTH halves: docs-pages --check sees a page the graph now produces but the site lacks (or
+    // shows stale); md-align sees a page that no longer round-trips. Until 2026-09-30 only the
+    // second ran, so a new docs entity with no page passed this gate.
+    check: 'npx tsx scripts/docs-pages.ts --check && npx tsx scripts/md-align.ts',
     fix: 'npx tsx scripts/docs-pages.ts',
   },
   {

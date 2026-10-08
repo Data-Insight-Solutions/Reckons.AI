@@ -1,0 +1,78 @@
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+# GENERIC DEFAULTS for agent:watch colours and the session worker's GPU start gate (F74.7).
+# Per-machine overrides live in the private ~/.config/reckons/device.ttl, scoped by kpred:device to a
+# profile whose kpred:hostname names the machine; see scripts/agent/device-config.ts. Overrides win
+# per property. scripts/agent/__tests__/device-config.test.ts checks this file equals the code fallbacks.
+
+<urn:reckons:device/default> a ktype:DeviceProfile ;
+    rdfs:label "Every machine" ;
+    kpred:hostname "*" .
+
+# GPU utilization, percent
+<urn:reckons:threshold/gpuUtil> a ktype:Threshold ;
+    rdfs:label "gpuUtil" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 85 ; kpred:red 98 .
+
+# VRAM used / total, percent
+<urn:reckons:threshold/vramPct> a ktype:Threshold ;
+    rdfs:label "vramPct" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 85 ; kpred:red 95 .
+
+# Model latency, seconds
+<urn:reckons:threshold/latencySec> a ktype:Threshold ;
+    rdfs:label "latencySec" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 30 ; kpred:red 120 .
+
+# Running job elapsed as a multiple of its previous median
+<urn:reckons:threshold/jobElapsedRatio> a ktype:Threshold ;
+    rdfs:label "jobElapsedRatio" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 1.5 ; kpred:red 3 .
+
+# Failed runs in the last hour
+<urn:reckons:threshold/failuresLastHour> a ktype:Threshold ;
+    rdfs:label "failuresLastHour" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 1 ; kpred:red 3 .
+
+# Queue length
+<urn:reckons:threshold/queueLength> a ktype:Threshold ;
+    rdfs:label "queueLength" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:yellow 5 ; kpred:red 15 .
+
+# The worker starts no GPU job at or above this VRAM percent
+<urn:reckons:threshold/startVramPct> a ktype:Threshold ;
+    rdfs:label "startVramPct" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 90 .
+
+# ... or at or above this temperature, Celsius
+<urn:reckons:threshold/startTempC> a ktype:Threshold ;
+    rdfs:label "startTempC" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 83 .
+
+# ... or at or above this utilization percent that is not Ollama's
+<urn:reckons:threshold/startOtherUtilPct> a ktype:Threshold ;
+    rdfs:label "startOtherUtilPct" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 80 .
+
+# ... or when non-Ollama GPU processes (a WebODM container, a game) hold this many MiB in total
+<urn:reckons:threshold/startForeignVramMiB> a ktype:Threshold ;
+    rdfs:label "startForeignVramMiB" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 4096 .
+
+# Back-pressure (F74.9): an agent-tier schedule is held while this many of its own proposals are unreviewed
+<urn:reckons:threshold/holdUnreviewed> a ktype:Threshold ;
+    rdfs:label "holdUnreviewed" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 50 .

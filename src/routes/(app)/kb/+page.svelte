@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
+  import { page } from '$app/state';
   import {
     statements,
     sources,
@@ -7,8 +8,13 @@
     deleteSource,
     statementsForSource,
     addStatements,
-    hotSwapData
+    hotSwapData,
+    loaded,
+    userStatements
   } from '$lib/stores/kb.svelte';
+  import SpacesMap from '$lib/components/SpacesMap.svelte';
+  import { leapTargetCounts, type SetInput, type SpaceInput } from '$lib/rdf/space-graph';
+  import { countLeapsInSpaces, spacesNeedingCount } from '$lib/storage/space-leaps';
   import { toTurtle, toNQuads, toTriG, parseNQuads } from '$lib/rdf/serialize';
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
@@ -25,13 +31,14 @@
   } from '$lib/stores/workspace.svelte';
   import {
     isAutoSaveSupported, hasAutoSaveFile, getAutoSaveFileName,
-    pickAutoSaveFile, clearAutoSaveFile
+    pickAutoSaveFile, clearAutoSaveFile, canShareFiles, sendSpaceToFiles
   } from '$lib/storage/backup';
   import { ensureAuth, isSignedIn } from '$lib/integrations/google/auth';
   import { uploadTurtle, listTurtleFiles, type DriveFile } from '$lib/integrations/google/drive';
   import { KB_CALENDAR_NAME } from '$lib/integrations/google/calendar';
   import {
     getRegistry,
+    recordLeapTargets,
     getCurrentKbId,
     switchToKb,
     removeKbFromRegistry,
@@ -145,7 +152,11 @@
   onDestroy(unsubscribeRegistry);
   let newKbName = $state('');
   let showNewKbForm = $state(false);
-  let editingKbId = $state<string | null>(null);
+
+  // Opened from the nav's add quick menu: /kb?new=space arrives with the new-space form open.
+  $effect(() => {
+    if (page.url.searchParams.get('new') === 'space') untrack(() => { showNewKbForm = true; });
+  });  let editingKbId = $state<string | null>(null);
   let editingName = $state('');
   let compareSelection = $state<Set<string>>(new Set());
   let kbFilter = $state<'all' | 'bookmarked'>('all');
@@ -207,6 +218,51 @@
   const kbSets = $derived(bucketIntoSets(kbGroups, { ungroupedTitle: 'Ungrouped' }, localKbs));
 
   /*
+   * THE SPACES MAP (F218 phase 1) reads the WHOLE registry, not the filtered list below, so the
+   * picture does not reshuffle as someone types into the filter box. One node per working graph: an
+   * archive belongs to its parent and is not a space of its own.
+   */
+  const mapSets = $derived(bucketIntoSets(groupGraphsWithArchives(localKbs), { ungroupedTitle: 'Ungrouped' }, localKbs));
+  const mapSetInputs = $derived<SetInput[]>(mapSets.map((set) => ({
+    id: set.id, title: set.title, basis: set.basis, memberIds: set.groups.map((g) => g.parent.id),
+  })));
+  const mapSpaces = $derived<SpaceInput[]>(mapSets.flatMap((set) => set.groups.map((g) => ({
+    id: g.parent.id, name: g.parent.name, stableId: g.parent.stableId,
+    statementCount: g.parent.id === currentKbId && loaded() ? userStatements().length : g.parent.statementCount,
+    leapTargets: g.parent.leapTargets,
+  }))));
+
+  // The space you are in is counted from memory, and only once it has loaded — recording before
+  // then would store "no leaps" for a space whose statements simply had not arrived yet.
+  $effect(() => {
+    if (!loaded()) return;
+    if (recordLeapTargets(currentKbId, leapTargetCounts(userStatements()))) localKbs = getRegistry();
+  });
+
+  /*
+   * Other spaces are counted in the BACKGROUND when the tab opens: only those never counted or written
+   * to since, one at a time, stopping if the page is left. There is no button to press — the map
+   * should simply be right (Matt, 2026-09-29, on a button that made the map look empty until pressed).
+   */
+  let leapCounting = $state<{ done: number; total: number } | null>(null);
+  let leapReadFailures = $state<import('$lib/storage/space-leaps').SpaceReadFailure[]>([]);
+  let leaveSpacesTab = false;
+  // Each space is tried ONCE per visit. A space that cannot be read stays "needs counting", and
+  // without this the effect would retry it every time the previous pass finished, indefinitely.
+  const leapReadTried = new Set<string>();
+  onDestroy(() => { leaveSpacesTab = true; });
+  $effect(() => {
+    if (!loaded() || leapCounting) return;
+    const stale = spacesNeedingCount(getRegistry(), currentKbId).filter((space) => !leapReadTried.has(space.id));
+    for (const space of stale) leapReadTried.add(space.id);
+    if (!stale.length) return;
+    leapCounting = { done: 0, total: stale.length };
+    countLeapsInSpaces(stale, (done, total) => { leapCounting = { done, total }; }, () => leaveSpacesTab)
+      .then((result) => { leapReadFailures = [...leapReadFailures, ...result.failed]; })
+      .finally(() => { leapCounting = null; if (!leaveSpacesTab) localKbs = getRegistry(); });
+  });
+
+  /*
    * Group by the folders the user actually made (kb:graph-sets, F113 `folder` basis).
    *
    * The workspace already knows where every synced graph lives — listKbFolders() has always
@@ -261,7 +317,7 @@
     if (!confirm(
       `Unlink ${ids.length} copy(ies) of "${groupName}", keeping the one with ${keepName}?\n\n` +
       `The registry entries are removed so they stop appearing here. Their IndexedDB data is ` +
-      `LEFT ON DISK, so this is reversible by re-adding the graph — nothing is destroyed.`
+      `LEFT ON DISK, so this is reversible by re-adding the space — nothing is destroyed.`
     )) return;
     for (const id of ids) removeKbFromRegistry(id);
     localKbs = getRegistry();
@@ -291,7 +347,7 @@
   }
 
   function handleDeleteKb(id: string) {
-    if (!confirm('Remove this graph from the list? Its IndexedDB data will remain but the entry will be unlinked.')) return;
+    if (!confirm('Remove this space from the list? Its data stays in this browser; only the entry is removed.')) return;
     removeKbFromRegistry(id);
     localKbs = getRegistry();
   }
@@ -325,12 +381,12 @@
     const plan = sweepPlan;
     if (!plan || plan.entities.length === 0 || sweepBusy) return;
     if (!kb.stableId) {
-      sweepError = 'This graph has no stable id yet — open it once so it can be registered.';
+      sweepError = 'This space has no stable id yet — open it once so it can be registered.';
       return;
     }
     if (!confirm(
       `Move ${plan.statementCount} fact(s) across ${plan.entities.length} entit(y/ies) into "${kb.name} (archives)"?\n\n`
-      + 'Archived is not deleted — the facts move to a separate graph and can be restored.',
+      + 'Archived is not deleted — the facts move to a separate archive space and can be restored.',
     )) return;
 
     sweepBusy = true;
@@ -427,7 +483,7 @@
       if (!result || result.count === 0) {
         // A file that parses to nothing is a wrong file, not an empty graph. Saying so beats
         // switching the user into a blank graph and letting them wonder what happened.
-        openError = 'No facts found in that file — is it a Turtle graph?';
+        openError = 'No facts found in that file — is it a Turtle (.ttl) file?';
         return;
       }
       /*
@@ -471,7 +527,7 @@
     driveUploadMsg = '';
     try {
       await ensureAuth(settings().googleClientId ?? '');
-      const content = toTurtle(confirmedStatements(), { header: 'full graph export' });
+      const content = toTurtle(confirmedStatements(), { header: 'full space export' });
       const filename = `${kbFileSlug()}_${new Date().toISOString().split('T')[0]}.ttl`;
       await uploadTurtle(filename, content);
       driveUploadMsg = `saved to Drive: ${filename}`;
@@ -493,8 +549,18 @@
     URL.revokeObjectURL(url);
   }
 
+  // Device sync without an account (2026-09-30): the share sheet on a phone, a download elsewhere.
+  let shareMsg = $state('');
+  const shareSheet = typeof window !== 'undefined' && canShareFiles();
+  async function sendToFiles() {
+    const outcome = await sendSpaceToFiles(`${kbFileSlug()}.ttl`);
+    shareMsg = outcome === 'cancelled' ? '' : outcome === 'shared'
+      ? 'sent. on the other device: + add → space file, and pick it. it updates the space rather than copying it.'
+      : 'saved. on the other device: + add → space file, and pick it. it updates the space rather than copying it.';
+  }
+
   function exportTurtle() {
-    download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full graph export' }), 'text/turtle');
+    download(`${kbFileSlug()}.ttl`, toTurtle(confirmedStatements(), { header: 'full space export' }), 'text/turtle');
   }
   /**
    * TriG export (F75). Turtle CANNOT carry the graph term, so `turtle (.ttl)` silently drops
@@ -508,7 +574,7 @@
   function exportTriG() {
     download(
       `${kbFileSlug()}.trig`,
-      toTriG(confirmedStatements(), { header: 'full graph export — lossless, one named graph per source' }),
+      toTriG(confirmedStatements(), { header: 'full space export — lossless, one named graph per source' }),
       'application/trig',
     );
   }
@@ -516,7 +582,7 @@
     download(`${kbFileSlug()}.nq`, toNQuads(confirmedStatements()), 'application/n-quads');
   }
   function exportClosure() {
-    download(`${kbFileSlug()}-closure.ttl`, toTurtle(closure(confirmedStatements()), { header: 'graph + RDFS/OWL closure' }), 'text/turtle');
+    download(`${kbFileSlug()}-closure.ttl`, toTurtle(closure(confirmedStatements()), { header: 'space + RDFS/OWL closure' }), 'text/turtle');
   }
 
   let exportingGifZip = $state(false);
@@ -680,7 +746,7 @@
     if (ok) {
       wsSyncing = true;
       const count = await syncAllKbs();
-      wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
+      wsSyncMsg = `Synced ${count} space${count !== 1 ? 's' : ''} to folder.`;
       wsSyncing = false;
       setTimeout(() => { wsSyncMsg = ''; }, 5000);
     }
@@ -690,7 +756,7 @@
     wsSyncing = true;
     wsSyncMsg = '';
     const count = await syncAllKbs();
-    wsSyncMsg = `Synced ${count} graph${count !== 1 ? 's' : ''} to folder.`;
+    wsSyncMsg = `Synced ${count} space${count !== 1 ? 's' : ''} to folder.`;
     wsSyncing = false;
     setTimeout(() => { wsSyncMsg = ''; }, 5000);
   }
@@ -801,6 +867,30 @@
   }
 </script>
 
+<!-- ── Spaces map (F218) ───────────────────────────────────────────────────── -->
+{#if mapSpaces.length === 1}
+  <!-- Matt, 2026-10-07, on a fresh staging: "I'm not seeing spaces map?" With one space the map
+       has nothing to draw, but silence made it look missing. Say when it appears. -->
+  <section class="section spaces-map-section">
+    <p class="section-hint spaces-map-pending">The spaces map appears here once you have two or more spaces.</p>
+  </section>
+{:else if mapSpaces.length > 1}
+  <section class="section spaces-map-section">
+    <details open>
+      <summary class="section-head"><h3>spaces map</h3></summary>
+      <p class="section-hint">each starfish is one of your spaces, bigger for more statements. A trail of bubbles means one space jumps to another, thicker for more jumps. Spaces in the same set share a tide pool. Select a starfish to see its connections.</p>
+      <SpacesMap
+        spaces={mapSpaces}
+        sets={mapSetInputs}
+        currentId={currentKbId}
+        onOpen={handleSwitch}
+        counting={leapCounting}
+        failures={leapReadFailures}
+      />
+    </details>
+  </section>
+{/if}
+
 <!-- ── KB Identity ─────────────────────────────────────────────────────────── -->
 <div class="kb-identity">
   <div class="kb-id-row">
@@ -812,7 +902,7 @@
       bind:value={kbTitleLocal}
       onblur={saveTitle}
       onkeydown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-      placeholder="graph title…"
+      placeholder="space title…"
       spellcheck="false"
     />
     {#if titleSaving}<span class="saving mono">saving…</span>{/if}
@@ -821,7 +911,7 @@
     class="kb-desc-input"
     bind:value={kbDescLocal}
     onblur={saveDesc}
-    placeholder="what is this graph about? (guides re-analysis prompts)"
+    placeholder="what is this space about? (guides re-analysis prompts)"
     rows="2"
   ></textarea>
 
@@ -848,15 +938,15 @@
 
 <section class="section">
   <div class="section-head">
-    <h3>other graphs</h3>
+    <h3>other spaces</h3>
     <div class="section-head-actions">
       <button class="ghost sm mono" onclick={() => (showNewKbForm = !showNewKbForm)}>+ new</button>
     </div>
   </div>
-  <p class="section-hint">switch to another graph, compare two, or start a new one. The section above edits the one you are in now.</p>
+  <p class="section-hint">switch to another space, compare two, or start a new one. The section above edits the one you are in now.</p>
 
   <!-- Filter tabs -->
-  <div class="kb-filter-tabs" role="tablist" aria-label="Graph filter">
+  <div class="kb-filter-tabs" role="tablist" aria-label="Space filter">
     <button
       role="tab"
       aria-selected={kbFilter === 'all'}
@@ -881,14 +971,14 @@
       type="search"
       class="kb-search mono"
       bind:value={kbQuery}
-      placeholder="filter graphs…"
-      aria-label="Filter graphs by name, description or id"
+      placeholder="filter spaces…"
+      aria-label="Filter spaces by name, description or id"
     />
-    <div class="kb-sort" role="group" aria-label="Sort graphs">
+    <div class="kb-sort" role="group" aria-label="Sort spaces">
       <button class="kb-sort-btn mono" class:active={kbSort === 'recent'} onclick={() => (kbSort = 'recent')}
         title="Most recently edited first">recent</button>
       <button class="kb-sort-btn mono" class:active={kbSort === 'size'} onclick={() => (kbSort = 'size')}
-        title="Largest graph first">size</button>
+        title="Largest space first">size</button>
       <button class="kb-sort-btn mono" class:active={kbSort === 'name'} onclick={() => (kbSort = 'name')}
         title="Alphabetical">name</button>
     </div>
@@ -902,8 +992,8 @@
       <input
         type="text"
         bind:value={newKbName}
-        placeholder="new graph name…"
-        aria-label="New graph name"
+        placeholder="new space name…"
+        aria-label="New space name"
         onkeydown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') showNewKbForm = false; }}
         use:focusOnMount
       />
@@ -923,7 +1013,7 @@
           href="/review?align={[...compareSelection].join(',')}"
           class="sm compare-link"
         >
-          align these graphs
+          align these spaces
         </a>
       {/if}
       <button class="sm" onclick={() => (compareSelection = new Set())}>clear</button>
@@ -936,7 +1026,7 @@
     <div class="dupe-notice" data-testid="duplicate-graphs">
       <strong class="mono">{duplicateGraphs.length} duplicated name(s)</strong>
       <p>
-        Re-importing a source makes a NEW graph rather than updating the old one, so these names
+        Re-importing a source makes a NEW space rather than updating the old one, so these names
         each cover more than one independent copy. They will disagree as soon as either is edited,
         and the name alone cannot tell you which you are in.
       </p>
@@ -993,11 +1083,11 @@
           {#if set.basis === 'derived'}
             <!-- Say that the grouping is a GUESS. A user cannot correct a rule they cannot see,
                  and F113's declared membership does not exist yet. -->
-            <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your graph names. Renaming a graph moves it. Define your own sets to make this explicit.">by name</span>
+            <span class="kb-set-basis mono" title="Grouped by a shared name prefix found in your space names. Renaming a space moves it. Define your own sets to make this explicit.">by name</span>
           {:else if set.basis === 'folder'}
             <!-- A folder the user made is a statement of intent, not a guess — so it is labelled
                  differently from the name-prefix cluster above, and says what would move it. -->
-            <span class="kb-set-basis mono folder" title="Grouped by the sub-directory these graphs are synced from in your workspace folder. Moving a graph to another folder moves it here.">by folder</span>
+            <span class="kb-set-basis mono folder" title="Grouped by the sub-directory these spaces are synced from in your workspace folder. Moving a space to another folder moves it here.">by folder</span>
           {/if}
         </div>
         <!-- Only ever the user's words. A derived set has no purpose, and inventing one would be
@@ -1035,7 +1125,7 @@
                 onblur={commitRename}
                 onkeydown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { editingKbId = null; } }}
                 use:focusOnMount
-                aria-label="Rename graph"
+                aria-label="Rename space"
               />
             {:else}
               <span
@@ -1052,7 +1142,7 @@
               <!-- An archive whose graph has left the registry. It is still listed, because
                    history you cannot reach is only technically preserved — but it must not be
                    mistaken for a working graph, so it says what it is and what is missing. -->
-              <span class="archive-badge orphan mono" title="This is an archive. The graph it holds history for is no longer in this list, so it cannot be restored into its parent from here.">
+              <span class="archive-badge orphan mono" title="This is an archive. The space it holds history for is no longer in this list, so it cannot be restored into its parent from here.">
                 archive · parent missing
               </span>
             {/if}
@@ -1069,7 +1159,7 @@
                   {kb.statementCount.toLocaleString()} facts
                 </span>
               {:else}
-                <span class="kb-entry-size mono muted-size" title="No statement count recorded — this graph has not been opened or saved yet">
+                <span class="kb-entry-size mono muted-size" title="No statement count recorded — this space has not been opened or saved yet">
                   not opened yet
                 </span>
               {/if}
@@ -1169,7 +1259,7 @@
                 <p class="err mono" data-testid="sweep-error">{sweepError}</p>
               {/if}
               <p class="kb-sweep-note">
-                Archived is not deleted — facts move to a separate archive graph, listed below,
+                Archived is not deleted — facts move to a separate archive space, listed below,
                 and stay restorable. Nothing sweeps on its own; this runs only when you press it.
               </p>
             </div>
@@ -1228,14 +1318,14 @@
       </div>
     {/each}
     {#if kbGroups.length === 0}
-      <p class="filter-empty mono">no bookmarked graphs yet. star a graph to bookmark it.</p>
+      <p class="filter-empty mono">no bookmarked spaces yet. star a space to bookmark it.</p>
     {/if}
   </div>
 
   <!-- Open a graph file — READ a graph someone handed you, as opposed to MERGING one (/ingest) -->
   <div class="drive-section">
     <div class="drive-head">
-      <span class="mono" style="font-size:0.75rem; color:var(--muted);">open a graph file</span>
+      <span class="mono" style="font-size:0.75rem; color:var(--muted);">open a space file</span>
       <label class="open-graph-label mono">
         <span>{openBusy ? 'opening…' : 'choose .ttl'}</span>
         <input
@@ -1247,8 +1337,8 @@
       </label>
     </div>
     <p class="hint">
-      Opens it as its own graph, ready to read — nothing to review first.
-      To <em>merge</em> a graph into this one fact by fact, use <a href="/ingest">Add</a> instead.
+      Opens it as its own space, ready to read — nothing to review first.
+      To <em>merge</em> a space into this one fact by fact, use <a href="/ingest">Add</a> instead.
     </p>
     {#if openError}
       <p class="err mono">{openError}</p>
@@ -1287,7 +1377,7 @@
                    here landed as a review queue instead of opening. It also carried no file
                    reference, so /ingest opened with nothing selected and the user had to find
                    the file again by hand. -->
-              <a href="/ingest" title="Opens the Add page — merges this graph into the current one, fact by fact">
+              <a href="/ingest" title="Opens the Add page — merges this space into the current one, fact by fact">
                 <button class="sm">merge →</button>
               </a>
             </div>
@@ -1452,7 +1542,7 @@
   {#if showPredicates}
     <PredicateManager />
   {:else}
-    <p class="section-hint">view, rename, and merge predicates used in your graph.</p>
+    <p class="section-hint">view, rename, and merge predicates used in your space.</p>
   {/if}
 </section>
 
@@ -1466,7 +1556,7 @@
   </div>
   {#if showStoryEditor}
     <div class="story-editor">
-      <p class="section-hint">define a guided tour for this graph. Shelly will walk visitors through these steps in the explore tab.</p>
+      <p class="section-hint">define a guided tour for this space. Shelly will walk visitors through these steps in the explore tab.</p>
       {#each storySteps as step, i}
         <div class="story-step-card">
           <div class="story-step-head">
@@ -1508,7 +1598,7 @@
       </div>
     </div>
   {:else if storySteps.length === 0}
-    <p class="section-hint">no story defined yet. create one to guide visitors through your graph.</p>
+    <p class="section-hint">no story defined yet. create one to guide visitors through your space.</p>
   {:else}
     <div class="story-preview">
       {#each storySteps as step, i}
@@ -1528,7 +1618,7 @@
   </div>
   {#if showCurrents}
     <div class="currents-editor">
-      <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this graph. arrivals always land as pending facts — review them in the pod view.</p>
+      <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this space. arrivals always land as pending facts — review them in the pod view.</p>
 
       <div class="currents-field">
         <label class="pod-toggle-row" for="pod-view-toggle">
@@ -1556,7 +1646,7 @@
 
       <div class="currents-field">
         <span class="currents-label mono">entity types a current may create</span>
-        <p class="section-hint" style="margin: 0 0 0.4rem;">empty = every type allowed. gate applies only to brand-new entities; facts on entities already in the graph always flow through.</p>
+        <p class="section-hint" style="margin: 0 0 0.4rem;">empty = every type allowed. gate applies only to brand-new entities; facts on entities already in the space always flow through.</p>
         <div class="chip-row">
           {#each allTypes() as t (t.iri)}
             <button
@@ -1637,7 +1727,7 @@
     <p class="section-hint">
       {currentsDraft.currents.length > 0
         ? `${currentsDraft.currents.length} current${currentsDraft.currents.length !== 1 ? 's' : ''} configured, feeding arrivals into the pod view.`
-        : 'define recurring streams (rss / url / topic) that bring new arrivals into this graph.'}
+        : 'define recurring streams (rss / url / topic) that bring new arrivals into this space.'}
     </p>
   {/if}
 </section>
@@ -1648,7 +1738,7 @@
      exists as its own top-level tab precisely because graph management matters. -->
 <section class="section">
   <div class="section-head">
-    <h3>graph package &amp; sync</h3>
+    <h3>share package &amp; sync</h3>
   </div>
   <GraphPackagePanel statementCount={statements().length} />
 </section>
@@ -1665,7 +1755,7 @@
     <a href="/publish" class="ghost sm mono nav-cta" data-testid="kb-write-post">write a post →</a>
   </div>
   <p class="section-hint">
-    author a post as a node in this graph, preview the markdown it produces, and export it into
+    author a post as a node in this space, preview the markdown it produces, and export it into
     the site's content folder. building and deploying the site stay separate steps.
   </p>
 </section>
@@ -1699,6 +1789,18 @@
       </button>
     {/if}
   </div>
+  <div class="row" style="margin-top: 0.5rem;">
+    <button onclick={sendToFiles} title="the complete space — every status and source — so it can be opened on another device">
+      {shareSheet ? '↗ send to Files or phone…' : '↓ full copy for another device (.ttl)'}
+    </button>
+  </div>
+  <p class="section-hint">
+    {shareSheet
+      ? 'opens the share sheet: choose save to files for iCloud Drive, OneDrive or Google Drive.'
+      : 'put the file in a folder your phone also sees — iCloud Drive, OneDrive or Google Drive.'}
+    to bring it back: <strong>+ add → space file</strong>. it updates the space instead of duplicating it.
+  </p>
+  {#if shareMsg}<p class="hint">{shareMsg}</p>{/if}
   {#if googleReady}
     <div class="row" style="margin-top: 0.5rem;">
       <button onclick={saveToDrive} disabled={driveUploading}>
@@ -1726,7 +1828,7 @@
   <div class="section-head">
     <h3>merge from n-quads</h3>
   </div>
-  <p class="section-hint">paste another graph export; conflicts surface in review.</p>
+  <p class="section-hint">paste another space's export; conflicts surface in review.</p>
   <textarea bind:value={mergePreview} rows="4" placeholder="<urn:...> <urn:...> ... ."></textarea>
   <div class="row" style="margin-top: 0.4rem;">
     <button onclick={importMerge}>merge</button>
@@ -1739,7 +1841,7 @@
   <div class="section-head">
     <h3>local folder sync</h3>
   </div>
-  <p class="section-hint">link a local folder to automatically back up all graphs. your data survives browser cache clears.</p>
+  <p class="section-hint">link a local folder to automatically back up all spaces. your data survives browser cache clears.</p>
 
   <div class="files-card">
     <div class="files-row">
@@ -1766,7 +1868,7 @@
     {#if workspaceState() === 'connected'}
       <div class="files-sub">
         <div class="files-row files-indent">
-          <span class="files-label mono">graphs synced</span>
+          <span class="files-label mono">spaces synced</span>
           <span class="files-value mono">{syncedKbCount() > 0 ? `${syncedKbCount()} graph${syncedKbCount() !== 1 ? 's' : ''}` : 'none yet'}</span>
         </div>
         {#if lastSyncTime()}

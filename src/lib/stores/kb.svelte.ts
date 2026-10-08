@@ -1,7 +1,7 @@
 import { db } from '../storage/db';
 import { liveQuery } from 'dexie';
 import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
-import { isIRI, termKey } from '../rdf/types';
+import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
@@ -9,7 +9,7 @@ import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
 import { scheduleWorkspaceTtlExport } from './workspace.svelte';
 import { scheduleDrivePush } from './drive-sync.svelte';
-import { officialKbActive, officialKbStatements, officialKbSources, deactivateOfficialKb } from './official-kb.svelte';
+import { officialKbActive, officialKnowledgeBaseStatements, officialKnowledgeBaseSources, deactivateOfficialKb } from './official-kb.svelte';
 import { filterBlockedStatements } from '../safety/content-policy';
 
 /**
@@ -53,10 +53,10 @@ export async function getTrustScore(sourceId: string): Promise<number> {
 }
 
 export function sources(): Source[] {
-  return officialKbActive() ? officialKbSources() : _sources;
+  return officialKbActive() ? officialKnowledgeBaseSources() : _sources;
 }
 export function statements(): Statement[] {
-  return officialKbActive() ? officialKbStatements() : _statements;
+  return officialKbActive() ? officialKnowledgeBaseStatements() : _statements;
 }
 /**
  * Existing entities (subject + object IRIs from live statements) as
@@ -283,6 +283,19 @@ export async function prepareStatementsForWrite(
       );
     }
     sts = gate.allowed;
+    if (sts.length === 0) return { statements: [], blocked: [], opts };
+  }
+
+  // Node-key leak guard: an IRI shaped like a graph node key ("l:high||") can never be exported
+  // as parseable Turtle, so refuse to store it. Loud, and per-statement (the rest still lands).
+  const leaked = sts.filter(hasLeakedTermKey);
+  if (leaked.length > 0) {
+    console.error(
+      `[write-guard] Refused ${leaked.length} statement(s) whose IRI is a leaked graph node key ` +
+      `(e.g. <l:...|...|...>); a literal cannot be a subject.`,
+      leaked.map((st) => st.id),
+    );
+    sts = sts.filter((st) => !hasLeakedTermKey(st));
     if (sts.length === 0) return { statements: [], blocked: [], opts };
   }
 

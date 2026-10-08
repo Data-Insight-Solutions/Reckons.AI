@@ -22,14 +22,14 @@ export type AnalysisTrigger = 'manual' | 'import' | 'schedule';
 
 // ── Reactive state ──────────────────────────────────────────────────────────
 
-let _running = $state(false);
-let _lastRunAt = $state<number | null>(null);
-let _lastError = $state<string | null>(null);
-let _intervalId: ReturnType<typeof setInterval> | null = null;
+let running = $state(false);
+let lastRunAt = $state<number | null>(null);
+let lastError = $state<string | null>(null);
+let intervalId: ReturnType<typeof setInterval> | null = null;
 
-export function analysisRunning() { return _running; }
-export function lastAnalysisAt() { return _lastRunAt; }
-export function lastAnalysisError() { return _lastError; }
+export function analysisRunning() { return running; }
+export function lastAnalysisAt() { return lastRunAt; }
+export function lastAnalysisError() { return lastError; }
 
 // ── Entity summaries (duplicated here to avoid circular imports) ────────────
 
@@ -77,7 +77,7 @@ function buildEntitySummaries(): EntitySummary[] {
  * Returns the new analysis sourceId, or null if skipped / failed.
  */
 export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', analysisType: AnalysisType = 'enrich'): Promise<string | null> {
-  if (_running) return null;
+  if (running) return null;
 
   const s = settings();
   // Use per-task analyzeBackend, falling back to preferredBackend.
@@ -98,12 +98,12 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
     s.claudeApiKey;
 
   if (!apiKey) {
-    _lastError = `No ${provider} API key configured.`;
+    lastError = `No ${provider} API key configured.`;
     return null;
   }
 
-  _running = true;
-  _lastError = null;
+  running = true;
+  lastError = null;
   const now = Date.now();
   const analysisId = uuid();
   const model =
@@ -236,7 +236,7 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
 
     if (pending.length > 0) await addStatements(pending);
 
-    _lastRunAt = now;
+    lastRunAt = now;
     if (total > 0) {
       pushNotification({
         id: `analysis-${analysisId}`,
@@ -248,11 +248,11 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
     }
     return analysisId;
   } catch (e) {
-    _lastError = e instanceof Error ? e.message : String(e);
+    lastError = e instanceof Error ? e.message : String(e);
     console.error('Auto-analyze failed:', e);
     return null;
   } finally {
-    _running = false;
+    running = false;
   }
 }
 
@@ -262,12 +262,12 @@ export function startScheduler() {
   stopScheduler();
   const minutes = settings().autoAnalyzeIntervalMinutes ?? 0;
   if (minutes > 0) {
-    _intervalId = setInterval(() => runAndStoreAnalysis('schedule'), minutes * 60 * 1000);
+    intervalId = setInterval(() => runAndStoreAnalysis('schedule'), minutes * 60 * 1000);
   }
 }
 
 export function stopScheduler() {
-  if (_intervalId !== null) { clearInterval(_intervalId); _intervalId = null; }
+  if (intervalId !== null) { clearInterval(intervalId); intervalId = null; }
 }
 
 // ── Import hook ─────────────────────────────────────────────────────────────

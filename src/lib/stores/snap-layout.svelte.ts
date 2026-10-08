@@ -19,7 +19,7 @@ const TOP_MAX_MOBILE = 180; // tighter cap on mobile — leave room for graph + 
 // calling registerPanel/unregisterPanel inside a $effect won't create a
 // dependency that would re-trigger that effect.
 const _panels = new Map<string, Corner>();
-let _tick = $state<object>({});
+let tick = $state<object>({});
 
 function partnerOf(c: Corner): Corner {
   switch (c) {
@@ -32,12 +32,12 @@ function partnerOf(c: Corner): Corner {
 
 export function registerPanel(id: string, corner: Corner): void {
   _panels.set(id, corner);
-  _tick = {};
+  tick = {};
 }
 
 export function unregisterPanel(id: string): void {
   _panels.delete(id);
-  _tick = {};
+  tick = {};
 }
 
 /**
@@ -45,7 +45,7 @@ export function unregisterPanel(id: string): void {
  * Pass `vh` as reactive state from the component so this re-derives on resize.
  */
 export function getColumnMaxH(id: string, vh: number): number | null {
-  void _tick; // reactive dependency — re-derives when panels register/unregister
+  void tick; // reactive dependency — re-derives when panels register/unregister
   const corner = _panels.get(id);
   if (!corner) return null;
   const partner = partnerOf(corner);

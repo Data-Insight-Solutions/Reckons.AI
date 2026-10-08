@@ -70,6 +70,19 @@ const RDFS_LABEL       = 'http://www.w3.org/2000/01/rdf-schema#label';
 const SKOS_DEFINITION  = 'http://www.w3.org/2004/02/skos/core#definition';
 const SKOS_BROADER     = 'http://www.w3.org/2004/02/skos/core#broader';
 const SKOS_RELATED     = 'http://www.w3.org/2004/02/skos/core#related';
+/**
+ * Where a docs capability's STATUS comes from (F222 phase 2). A capability page does not state its
+ * own status: it names the roadmap entity it documents, and the status is read from the roadmap at
+ * build time, so there is one place a status is written and the page cannot disagree with it.
+ * exactMatch — the roadmap entity IS this capability. broadMatch — the roadmap tracks this capability
+ * as part of a broader feature, whose status it shares.
+ */
+const SKOS_EXACT_MATCH = 'http://www.w3.org/2004/02/skos/core#exactMatch';
+const SKOS_BROAD_MATCH = 'http://www.w3.org/2004/02/skos/core#broadMatch';
+/** An explanatory page, not a capability: it has no status by design, and says why. */
+const STATUS_NOT_APPLICABLE = 'urn:kbase:predicate/status-not-applicable';
+/** The graphs a mapped capability takes its status from. */
+export const STATUS_GRAPHS = ['reckons-roadmap.ttl', 'reckons-shipped.ttl'] as const;
 const HAS_STATUS       = 'urn:kbase:predicate/has-status';
 const KTYPE_NS          = 'urn:kbase:type/';
 const NAV_DOCS_NS       = 'urn:reckons:docs/nav/'; // per-sub-graph "back to hub" stub namespace
@@ -128,6 +141,8 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([
   // published a "Detail" section reading "Page Section: Learn / Page Slug: what-it-does" — the
   // generator's own plumbing, printed at a reader as though it were a fact about the product.
   `${KPRED}page-section`, `${KPRED}page-slug`,
+  // Where a status comes from is plumbing too: the status itself is printed, as the banner.
+  SKOS_EXACT_MATCH, SKOS_BROAD_MATCH, STATUS_NOT_APPLICABLE,
 ]);
 
 // ── Section map — file → display title. Order here is the processing order used to
@@ -718,6 +733,72 @@ function renderSetMembership(e: Entity, refs: Map<string, PageRef>): string[] {
   ];
 }
 
+/** entity IRI -> kpred:has-status, over the roadmap graphs. */
+export function statusIndex(quads: Quad[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const q of quads) if (q.predicate.value === HAS_STATUS) out.set(q.subject.value, q.object.value);
+  return out;
+}
+
+export type ResolvedStatus = { status: string; via: 'exact' | 'broad' | 'own'; target?: string };
+
+/**
+ * A capability's status: its exactMatch's, else its broadMatch's, else its own literal. The own
+ * literal is last on purpose — it exists only for a capability the roadmap does not track, and
+ * scripts/offline/docs-status.ts fails when an entity has both, so the two can never disagree.
+ */
+export function resolveStatus(
+  e: Pick<Entity, 'literalProps' | 'iriProps'>,
+  statusOf: Map<string, string>,
+): ResolvedStatus | null {
+  for (const [pred, via] of [[SKOS_EXACT_MATCH, 'exact'], [SKOS_BROAD_MATCH, 'broad']] as const) {
+    for (const target of e.iriProps.get(pred) ?? []) {
+      const status = statusOf.get(target);
+      if (status) return { status, via, target };
+    }
+  }
+  const own = e.literalProps.get(HAS_STATUS)?.[0];
+  return own ? { status: own, via: 'own' } : null;
+}
+
+/** Every mapped capability and its resolved status, for the status summary page. Filled in main(). */
+const STATUS_ROWS: { iri: string; status: string }[] = [];
+
+const STATUS_GROUPS: { heading: string; blurb: string; statuses: string[] }[] = [
+  { heading: 'Works today', blurb: 'Built and working. Production means also tested and in daily use.', statuses: ['production', 'functional'] },
+  { heading: 'Partly built', blurb: 'Started, with parts missing. Expect gaps.', statuses: ['in-progress', 'scaffolded'] },
+  { heading: 'Not built yet', blurb: 'Planned or being considered. The pages describe what is intended, not what exists.', statuses: ['planned', 'speculative'] },
+];
+
+/**
+ * THE STATUS SUMMARY (kpred:render-as "status-summary"). Every documented capability grouped by the
+ * status the roadmap gives it, each linked to its page. Computed, so it is marked derived: nobody
+ * wrote this list, and when a roadmap status changes the list changes with it.
+ */
+export function renderStatusSummary(
+  rows: { iri: string; status: string }[],
+  refs: Map<string, PageRef>,
+  titleOf: (iri: string) => string,
+): string[] {
+  const out: string[] = [];
+  for (const g of STATUS_GROUPS) {
+    const members = rows
+      .filter((r) => g.statuses.includes(r.status) && refs.has(r.iri))
+      .map((r) => ({ ...r, title: docsTitle(titleOf(r.iri)), ref: refs.get(r.iri)! }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+    out.push(`## ${g.heading} (${members.length})`, '', `<p class="derived">${escapeMdText(g.blurb)}</p>`, '');
+    if (!members.length) { out.push('<p class="derived">Nothing in this group.</p>', ''); continue; }
+    for (const m of members) {
+      const href = `../${slugify(m.ref.section)}/${m.ref.slug}`;
+      const host = docsTitle(m.ref.title);
+      const elsewhere = host !== m.title ? ` — on the ${escapeMdText(host)} page` : '';
+      out.push(`- [${escapeMdText(m.title)}](${href}) · ${m.status}${elsewhere}`);
+    }
+    out.push('');
+  }
+  return out;
+}
+
 export function renderDerived(e: Entity, children: ChildRef[]): string[] {
   /*
    * NEVER THE FIRST THING ON A PAGE. Found on content/principles/thesis.md, which has no
@@ -1093,6 +1174,9 @@ function renderBody(
   // structured account of the thing, and the child list is the exhaustive one. A reader who stops
   // after the sets has read the argument; the components below answer it in detail.
   lines.push(...renderSetSections(e, refs));
+  if (e.renderAs === 'status-summary') {
+    lines.push(...renderStatusSummary(STATUS_ROWS, refs, (iri) => TITLE_OF.get(iri) ?? refs.get(iri)?.title ?? iri));
+  }
 
   lines.push(...renderChildren(children, childHeading, e.renderAs));
 
@@ -1155,6 +1239,16 @@ function main(): void {
   const entities: Entity[] = [...home.entries()]
     .map(([iri, file]) => extractEntity(iri, sectionOf.get(file)!, fileQuads.get(file)!))
     .sort((a, b) => a.iri.localeCompare(b.iri));
+
+  // A mapped capability takes its status from the roadmap (F222 phase 2) — written into the entity
+  // here so the banner, the derived sentence and a hub's "not built yet" count all read one value.
+  const statusOf = statusIndex(STATUS_GRAPHS.flatMap((f) => parseTtl(join(STATIC_DIR, f))));
+  for (const e of entities) {
+    const resolved = resolveStatus(e, statusOf);
+    if (!resolved) continue;
+    e.literalProps.set(HAS_STATUS, [resolved.status]);
+    if (resolved.via !== 'own') STATUS_ROWS.push({ iri: e.iri, status: resolved.status });
+  }
 
   /*
    * WHERE A PAGE LIVES IS A FACT, NOT A SIDE EFFECT OF WHICH FILE IT WAS WRITTEN IN.
@@ -1505,29 +1599,65 @@ function main(): void {
   const redirectLines = [...new Map(redirects.map((r) => [r.from, r.to]))]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([from, to]) => `${from}  ${to}  301`);
-  writeFileSync(
-    join(STATIC_DIR, '_redirects'),
+  const redirectsText =
     '# GENERATED by scripts/docs-pages.ts — do not hand-edit.\n'
     + '# One line per entity that no longer has a page of its own, pointing at the page that\n'
     + '# absorbed it. Regenerated whenever the docs are, so it cannot drift from the folding.\n'
-    + redirectLines.join('\n') + '\n',
-    'utf8',
-  );
+    + redirectLines.join('\n') + '\n';
+  const provenanceText = JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n';
+  const readOrNull = (abs: string): string | null => {
+    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
+    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
+    try { return readFileSync(abs, 'utf8'); } catch { return null; }
+  };
 
-  writeFileSync(
-    join(STATIC_DIR, 'page-provenance.json'),
-    JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n',
-    'utf8',
-  );
-
-  // ── Prune stale generated files (never touches files without generated: "docs-kb") ──
+  // Generated pages on disk that the graph no longer produces (hand-authored pages are never ours).
   const existingMd = walkMd(CONTENT_DIR);
-  let pruned = 0;
+  const orphaned: string[] = [];
   for (const abs of existingMd) {
     const rel = `content/${abs.slice(CONTENT_DIR.length + 1).split('\\').join('/')}`;
     if (newFiles.has(rel)) continue;
     const parsed = parsePageFile(readFileSync(abs, 'utf8'));
     if (parsed.generated !== GENERATED_TAG) continue; // hand-authored — never touch
+    orphaned.push(abs);
+  }
+
+  // ── --check: generate in memory, compare, write nothing ──────────────────────
+  //
+  // Added 2026-09-30. Until then this script had no check mode, and align's "docs pages" gate ran
+  // md-align.ts, which verifies that EXISTING pages round-trip — not that the pages match the
+  // CURRENT graph. Four new docs entities were added that day and align printed "the site says
+  // exactly what the graph says" while their pages did not exist. A gate that cannot see a missing
+  // page is the claim this product exists to refuse; this is the half it was missing.
+  if (process.argv.includes('--check')) {
+    const missing: string[] = [];
+    const stale: string[] = [];
+    for (const [rel, content] of newFiles) {
+      const existing = readOrNull(join(ROOT, rel));
+      if (existing === null) missing.push(rel);
+      else if (existing !== content) stale.push(rel);
+    }
+    if (readOrNull(join(STATIC_DIR, '_redirects')) !== redirectsText) stale.push('static/_redirects');
+    if (readOrNull(join(STATIC_DIR, 'page-provenance.json')) !== provenanceText) stale.push('static/page-provenance.json');
+    const orphanRel = orphaned.map((abs) => `content/${abs.slice(CONTENT_DIR.length + 1)}`);
+    const drift = missing.length + stale.length + orphanRel.length;
+    if (drift === 0) {
+      console.log(`Docs pages match the graph: ${pages.length} pages, none missing, stale or orphaned.`);
+      return;
+    }
+    console.error(`Docs pages DRIFT from the graph — ${missing.length} missing, ${stale.length} stale, ${orphanRel.length} orphaned. Run: npx tsx scripts/docs-pages.ts`);
+    for (const f of missing.slice(0, 20)) console.error(`  missing   ${f}`);
+    for (const f of stale.slice(0, 20)) console.error(`  stale     ${f}`);
+    for (const f of orphanRel.slice(0, 20)) console.error(`  orphaned  ${f}`);
+    process.exit(1);
+  }
+
+  writeFileSync(join(STATIC_DIR, '_redirects'), redirectsText, 'utf8');
+  writeFileSync(join(STATIC_DIR, 'page-provenance.json'), provenanceText, 'utf8');
+
+  // ── Prune stale generated files (never touches files without generated: "docs-kb") ──
+  let pruned = 0;
+  for (const abs of orphaned) {
     unlinkSync(abs);
     pruned++;
     pruneEmptyDirs(dirname(abs));
@@ -1538,11 +1668,7 @@ function main(): void {
   let unchanged = 0;
   for (const [rel, content] of newFiles) {
     const abs = join(ROOT, rel);
-    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
-    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
-    // Attempting the read directly is both correct and one syscall cheaper.
-    let existing: string | null = null;
-    try { existing = readFileSync(abs, 'utf8'); } catch { /* missing → write it */ }
+    const existing = readOrNull(abs);
     if (existing === content) { unchanged++; continue; }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content, 'utf8');

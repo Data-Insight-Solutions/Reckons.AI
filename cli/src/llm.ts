@@ -17,7 +17,7 @@ export interface LLMConfig {
 
 const DEFAULT_MODELS: Record<Provider, string> = {
   ollama: 'llama3.2',
-  claude: 'claude-sonnet-4-20250514',
+  claude: 'claude-opus-5-5',
   openai: 'gpt-4o-mini',
 };
 
@@ -161,7 +161,9 @@ async function chatClaude(
 ): Promise<string> {
   const body = {
     model,
-    max_tokens: 1024,
+    // Thinking-by-default models (Opus 5 / 5.5, Sonnet 5, Fable) spend part of max_tokens on
+    // thinking, so a 1024 ceiling sized for a plain reply comes back cut off or empty.
+    max_tokens: /^claude-(opus-5|sonnet-5|fable|mythos)/.test(model) ? 16_000 : 1024,
     system,
     messages,
   };
@@ -181,8 +183,11 @@ async function chatClaude(
     throw new Error(`Claude error ${res.status}: ${text.slice(0, 200)}`);
   }
 
-  const json = await res.json() as { content?: Array<{ text?: string }> };
-  return json.content?.[0]?.text?.trim() ?? '(no response)';
+  const json = await res.json() as { stop_reason?: string; content?: Array<{ type: string; text?: string }> };
+  if (json.stop_reason === 'refusal') throw new Error('Claude declined this request (stop_reason: refusal)');
+  // By type, not position: on thinking models content[0] is a thinking block.
+  const text = (json.content ?? []).filter((b) => b.type === 'text').map((b) => b.text ?? '').join('').trim();
+  return text || '(no response)';
 }
 
 // ── OpenAI ────────────────────────────────────────────────────────────────────

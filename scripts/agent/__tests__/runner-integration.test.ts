@@ -41,13 +41,14 @@ function initRepo(): string {
   return dir;
 }
 
-function taskGraph(command: string, doneWhen: string, effect: string | string[] = 'read-only'): string {
+function taskGraph(command: string, doneWhen: string, effect: string | string[] = 'read-only', touches: string[] = []): string {
   const literal = (value: string) => JSON.stringify(value);
   const effects = (Array.isArray(effect) ? effect : [effect]).map(literal).join(', ');
   return `@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n` +
     `@prefix ktype: <urn:kbase:type/> .\n@prefix kpred: <urn:kbase:predicate/> .\n` +
     `<urn:reckons:task/race> rdf:type ktype:AgentTask ;\n` +
     `  kpred:goal "Exercise the runner contract" ; kpred:tier "script" ;\n` +
+    (touches.length ? `  kpred:touches ${touches.map(literal).join(', ')} ;\n` : '') +
     `  kpred:effect ${effects} ; kpred:command ${literal(command)} ;\n` +
     `  kpred:done-when ${literal(doneWhen)} ; kpred:task-state "open" .\n`;
 }
@@ -227,9 +228,41 @@ describe('runner process contract', () => {
     expect(receipt).toMatchObject({ commandExit: 7, verificationExit: 0 });
     expect(receipts[0]).toContain(receipt.claimToken);
     expect(receipt.claimToken).toMatch(/^[a-f0-9-]{36}$/);
+    expect(receipt.schema).toBe('reckons.task-run-receipt/v2');
+    expect(receipt.stateFingerprint.kind).toBe('git');
     expect(receipt.git.worktreeStateSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(receipts.some((file) => file.endsWith('.tmp'))).toBe(false);
   }, 20_000);
+
+  it('writes a receipt in a folder that is not a git repository', async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'runner-nogit-'));
+    dirs.push(dir);
+    writeFileSync(path.join(dir, 'notes.md'), 'hello');
+    const read = () => {
+      const runs = path.join(dir, 'reckons-workspace/runs');
+      const file = readdirSync(runs).filter((f) => f.endsWith('.json') && !f.includes('context'));
+      expect(file).toHaveLength(1);
+      return JSON.parse(readFileSync(path.join(runs, file[0]), 'utf8'));
+    };
+    const graph = path.join(dir, 'tasks.ttl');
+    writeFileSync(graph, taskGraph('true', 'true', 'read-only', ['notes.md']));
+    const result = await runRunner(dir, graph, 'plain-files');
+    expect(result.code).toBe(0);
+    expect(stateValue(path.join(dir, 'tasks.state.ttl'), 'task-state')).toBe('done');
+    const receipt = read();
+    expect(receipt.stateFingerprint.kind).toBe('files');
+    expect(receipt.stateFingerprint.paths[0]).toMatchObject({ path: 'notes.md', exists: true });
+    expect(receipt.git).toBeUndefined();
+
+    rmSync(path.join(dir, 'reckons-workspace/runs'), { recursive: true, force: true });
+    rmSync(path.join(dir, 'tasks.state.ttl'), { force: true });
+    writeFileSync(graph, taskGraph('true', 'true'));
+    expect((await runRunner(dir, graph, 'plain-none')).code).toBe(0);
+    const none = read();
+    expect(none.stateFingerprint.kind).toBe('none');
+    expect(none.stateFingerprint.reason).toMatch(/no kpred:touches/);
+    expect(stateValue(path.join(dir, 'tasks.state.ttl'), 'task-state')).toBe('done');
+  }, 30_000);
 
   it('increments from the attempt count re-read under the claim lock', async () => {
     const dir = initRepo();

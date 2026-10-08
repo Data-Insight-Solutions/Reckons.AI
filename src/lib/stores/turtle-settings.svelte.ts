@@ -5,14 +5,14 @@ import { DEFAULT_TURTLE_SETTINGS } from '../storage/db';
 
 let _turtleSettings = $state<TurtleSettings>({ ...DEFAULT_TURTLE_SETTINGS });
 
-let _loaded = $state(false);
+let loaded = $state(false);
 
 export function turtleSettings(): TurtleSettings {
   return _turtleSettings;
 }
 
 export function turtleSettingsLoaded(): boolean {
-  return _loaded;
+  return loaded;
 }
 
 export async function loadTurtleSettings() {
@@ -44,22 +44,22 @@ export async function loadTurtleSettings() {
     try { await saveSettings({ turtleSettings: _turtleSettings }); } catch {}
   }
 
-  _loaded = true;
+  loaded = true;
 }
 
-let _saveTimeout: number | undefined;
+let saveTimeout: number | undefined;
 
 export async function updateTurtleSettings(patch: Partial<TurtleSettings>) {
   _turtleSettings = { ..._turtleSettings, ...patch };
 
   // Debounce database saves - avoid hammering IndexedDB on rapid updates
   // (e.g., mouse movements updating position dozens of times per second)
-  if (_saveTimeout !== undefined) {
-    clearTimeout(_saveTimeout);
+  if (saveTimeout !== undefined) {
+    clearTimeout(saveTimeout);
   }
 
-  _saveTimeout = window.setTimeout(async () => {
-    _saveTimeout = undefined;
+  saveTimeout = window.setTimeout(async () => {
+    saveTimeout = undefined;
     try {
       await saveSettings({ turtleSettings: _turtleSettings });
     } catch (e) {

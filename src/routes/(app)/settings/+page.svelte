@@ -581,7 +581,7 @@
     importProfileError = null;
     try {
       const text = await file.text();
-      const patch = parseSettingsProfile(text);
+      const patch = parseSettingsProfile(text, settings());
       if (!patch) { importProfileError = 'Not a valid Reckons.AI settings profile.'; return; }
       await updateSettings(patch);
       window.location.reload(); // sync all form fields from fresh DB state
@@ -622,7 +622,7 @@
     try {
       const text = await readFromWorkspace(WORKSPACE_PROFILE_FILE);
       if (!text) { wsProfileError = `No ${WORKSPACE_PROFILE_FILE} found in workspace.`; return; }
-      const patch = parseSettingsProfile(text);
+      const patch = parseSettingsProfile(text, settings());
       if (!patch) { wsProfileError = 'File found but is not a valid Reckons.AI settings profile.'; return; }
       await updateSettings(patch);
       window.location.reload();
@@ -1649,7 +1649,9 @@
           <strong>settings profile sync</strong>
           <p class="check-hint">
             Save <code>settings_profile.json</code> to your workspace and load it on any
-            browser or device. No API keys are included — those stay on this device.
+            browser or device. Credential fields are excluded and existing keys are preserved
+            when loading. Profiles still contain your prompts, graph description and service URLs;
+            review those before sharing.
           </p>
         </div>
         <div class="btn-group">
@@ -1815,15 +1817,11 @@
     margin-top: 1rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.75rem;
-    /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
-       the edge on mobile). Scroll horizontally instead of clipping. */
-    overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--muted-2) transparent;
-    scroll-snap-type: x proximity;
+    /* Wrap, like the other settings pages. The tabs once clipped on mobile ("turtle" cut off),
+       and the fix scrolled them sideways instead; but six tabs are 698px wide in a 685px column,
+       so the row scrolled by 13px even on a wide desktop (Matt, staging 2026-10-08). */
+    flex-wrap: wrap;
   }
-  .settings-nav::-webkit-scrollbar { height: 4px; }
-  .settings-nav::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 999px; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1851,7 +1849,7 @@
     border-color: var(--accent);
   }
   .nav-link {
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 0.6rem;
     border-radius: var(--rad-sm);
     font-family: var(--font-mono);
     font-size: 0.75rem;

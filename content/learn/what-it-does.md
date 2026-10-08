@@ -39,12 +39,12 @@ The whole product as a sequence. Each move is a set of its own, and the order is
 
 ### 1 · Take it in
 
-Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Long sources are chunked so nothing is silently truncated.
+Paste text, point at a URL or a repository, drop in a PDF, subscribe a current to a feed so it keeps arriving, or just talk — speech to text runs locally. Extraction reads the first 12,000 characters of a source, about 2,000 words, and a longer source is cut there without a warning today; splitting long sources into chunks is planned, not built.
 
 - [Ingest](../features/ingest)
 - [Currents](../features/currents)
 - [Whisper STT](../features/shelly) <span class="link-note">— on the Shelly (AI Assistant) page</span>
-- [Text Chunking](../features/ingest) <span class="link-note">— on the Ingest page</span>
+- [Text Chunking](../features/text-chunking)
 - [Confluence Migration](../features/confluence-migration)
 
 ### 2 · Work out the claims
@@ -52,7 +52,7 @@ Paste text, point at a URL or a repository, drop in a PDF, subscribe a current t
 A language model reads the source and PROPOSES triples, each carrying the verbatim sentence it came from. You choose the model, including a local one, and the setting that keeps everything local is a switch rather than a rewrite.
 
 - [LLM Backends](../features/llm-backends)
-- [Passage Grounding](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Passage Grounding](../features/passage-grounding)
 - [Prefer-Local Routing](../features/prefer-local)
 - [Entity Normalization](../features/entity-normalization)
 

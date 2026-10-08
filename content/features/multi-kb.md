@@ -15,9 +15,11 @@ related:
 
 # Multi-Graph Management
 
+> **Production** — built, tested, and in use.
+
 Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter.
 
-<p class="derived">It has 2 parts below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
 
 <p class="in-sets">Part of Keep it.</p>
 

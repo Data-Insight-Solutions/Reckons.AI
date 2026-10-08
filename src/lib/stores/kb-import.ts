@@ -10,8 +10,8 @@
 import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import type { Statement, Source } from '../rdf/types';
 
-export type KbImportMeta = { name: string; stableId?: string };
-export type KbImportData = { ttl: string; assets: Map<string, Uint8Array> };
+export type KnowledgeBaseImportMeta = { name: string; stableId?: string };
+export type KnowledgeBaseImportData = { ttl: string; assets: Map<string, Uint8Array> };
 
 /** A per-entity asset override decoded from the sidecar bytes, ready to write. */
 type DecodedAsset =
@@ -57,7 +57,7 @@ export async function populateKbFromTtl(
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
 
-  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl);
+  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl, { name });
   if (rawStmts.length === 0) return 0;
 
   const now = Date.now();
@@ -146,23 +146,29 @@ export async function populateKbFromTtl(
 
 /** Create a brand-new KB from graph data. Returns the new KB id + statement count. */
 export async function ingestNewKb(
-  data: KbImportData,
-  meta: KbImportMeta,
+  data: KnowledgeBaseImportData,
+  meta: KnowledgeBaseImportMeta,
   sourceUri: string,
   opts: { asPending?: boolean } = {},
 ): Promise<{ kbId: string; count: number } | null> {
   if (!data.ttl) return null;
-  const { createKb, registerStableId } = await import('../storage/kb-registry');
+  const { createKb, registerStableId, getRegistry } = await import('../storage/kb-registry');
+  // Adopt the file's stable id only if no other space already holds it: importing the same graph
+  // twice, or a copy of one, would otherwise give two spaces one id, and a jump to it could land on
+  // either. (Seen in the code, not in anyone's data: a suspected case on 2026-09-29 turned out to be
+  // two different ids sharing a 24-character prefix.) A space created here always gets an id.
+  const taken = !!meta.stableId && getRegistry().some((k) => k.stableId === meta.stableId);
+  const { v4: uuid } = await import('uuid');
+  const stableId = meta.stableId && !taken ? meta.stableId : uuid();
+  if (taken) console.warn(`[import] "${meta.name}" carries the stable id of a space already here; it was given a new one.`);
   const newKb = createKb(meta.name);
   const tempDb = new KBaseDB(newKb.id);
   try {
     await tempDb.open();
     await tempDb.settings.put({ ...DEFAULT_SETTINGS, kbTitle: meta.name });
     const count = await populateKbFromTtl(tempDb, meta.name, sourceUri, data.ttl, data.assets, opts);
-    if (meta.stableId) {
-      await tempDb.settings.update('main', { kbStableId: meta.stableId });
-      registerStableId(newKb.id, meta.stableId, count);
-    }
+    await tempDb.settings.update('main', { kbStableId: stableId });
+    registerStableId(newKb.id, stableId, count);
     return { kbId: newKb.id, count };
   } finally {
     if (tempDb !== db) tempDb.close();
@@ -170,10 +176,10 @@ export async function ingestNewKb(
 }
 
 /** Replace an existing KB's data in place. Returns the statement count. */
-export async function ingestExistingKb(
+export async function ingestExistingKnowledgeBase(
   kbId: string,
-  data: KbImportData,
-  meta: KbImportMeta,
+  data: KnowledgeBaseImportData,
+  meta: KnowledgeBaseImportMeta,
   sourceUri: string,
   opts: { asPending?: boolean } = {},
 ): Promise<number> {

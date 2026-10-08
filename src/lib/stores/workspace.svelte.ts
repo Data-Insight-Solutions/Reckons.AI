@@ -53,6 +53,9 @@ import {
   partitionPendingJsonl,
   type PendingEntry,
 } from '../rdf/pending-entry';
+import { pushNotification } from './notifications.svelte';
+import { conflictNotice, separateConflictCopies } from '../storage/sync-conflicts';
+import { CORPUS_DIR } from '../ingest/source-corpus';
 
 /**
  * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
@@ -66,13 +69,13 @@ function legacyWorkspaceStores() {
 }
 
 /** Filename written to the workspace dir on every KB mutation (read by the MCP server). */
-export const WORKSPACE_KB_FILE = 'knowledge.ttl';
+export const WORKSPACE_KNOWLEDGE_BASE_FILE = 'knowledge.ttl';
 
 let _handle = $state<FileSystemDirectoryHandle | null>(null);
-let _name   = $state<string | null>(null);
-let _state  = $state<'none' | 'disconnected' | 'connected'>('none');
+let name   = $state<string | null>(null);
+let state  = $state<'none' | 'disconnected' | 'connected'>('none');
 let _lastSyncTime = $state<number | null>(null);
-let _syncedKbCount = $state(0);
+let _syncedKnowledgeBaseCount = $state(0);
 
 // ── Two-way sync state ───────────────────────────────────────────────────────
 //
@@ -111,14 +114,14 @@ const POLL_INTERVAL_MS = 10_000;
 /** path-key ("kbs/foo/foo.ttl") → last-seen content hash of that file. */
 const _seenHashes = new Map<string, string>();
 let _autoSyncEnabled = $state<boolean>(readAutoSyncPref());
-let _pollTimer: ReturnType<typeof setInterval> | null = null;
-let _pulling = false;
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pulling = false;
 
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
-export function workspaceName(): string | null { return _name; }
-export function workspaceState(): 'none' | 'disconnected' | 'connected' { return _state; }
+export function workspaceName(): string | null { return name; }
+export function workspaceState(): 'none' | 'disconnected' | 'connected' { return state; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
-export function syncedKbCount(): number { return _syncedKbCount; }
+export function syncedKbCount(): number { return _syncedKnowledgeBaseCount; }
 export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
 
 export function supportsWorkspace(): boolean {
@@ -178,8 +181,8 @@ export async function loadWorkspace(): Promise<void> {
   // App-level, with a one-time adoption of any handle an older version left in this graph's
   // own database. See app-db.ts: the handle describes the browser, not the graph.
   const row = await getWorkspaceRow(legacyWorkspaceStores());
-  if (!row) { _state = 'none'; return; }
-  _name = row.name;
+  if (!row) { state = 'none'; return; }
+  name = row.name;
   // Restore the last-seen revision baseline BEFORE the initial pull, so a reconnect skips files
   // that have not changed on disk instead of re-importing every KB.
   loadSeenHashes();
@@ -187,13 +190,13 @@ export async function loadWorkspace(): Promise<void> {
     const perm = await (row.handle as any).queryPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
-      _state = 'connected';
+      state = 'connected';
       onWorkspaceConnected();
     } else {
-      _state = 'disconnected';
+      state = 'disconnected';
     }
   } catch {
-    _state = 'disconnected';
+    state = 'disconnected';
   }
 }
 
@@ -223,8 +226,8 @@ export async function pickWorkspace(): Promise<boolean> {
       .showDirectoryPicker({ mode: 'readwrite' });
     await putWorkspaceRow(handle, handle.name, db.workspace);
     _handle = handle;
-    _name = handle.name;
-    _state = 'connected';
+    name = handle.name;
+    state = 'connected';
     await updateSettings({ workspaceName: handle.name });
     // Polling starts via handlePickWorkspace after its initial import/sync so we
     // don't race that flow; enable it here for the reconnect-less first link.
@@ -248,8 +251,8 @@ export async function reconnectWorkspace(): Promise<boolean> {
     const perm = await (row.handle as any).requestPermission({ mode: 'readwrite' });
     if (perm === 'granted') {
       _handle = row.handle;
-      _name = row.name;
-      _state = 'connected';
+      name = row.name;
+      state = 'connected';
       onWorkspaceConnected();
       return true;
     }
@@ -266,10 +269,10 @@ export async function clearWorkspace(): Promise<void> {
   if (typeof localStorage !== 'undefined') localStorage.removeItem(seenHashesKey());
   await clearWorkspaceRow(legacyWorkspaceStores());
   _handle = null;
-  _name = null;
-  _state = 'none';
+  name = null;
+  state = 'none';
   _lastSyncTime = null;
-  _syncedKbCount = 0;
+  _syncedKnowledgeBaseCount = 0;
   await updateSettings({ workspaceName: undefined });
 }
 
@@ -440,9 +443,9 @@ export type WriteHold =
   | { held: true; reason: 'locked'; detail: string }
   | { held: true; reason: 'diverged'; detail: string };
 
-let _lastHold = $state<WriteHold>({ held: false });
+let lastHold = $state<WriteHold>({ held: false });
 /** The most recent reason a graph write was withheld, for the UI to surface. */
-export function lastWriteHold(): WriteHold { return _lastHold; }
+export function lastWriteHold(): WriteHold { return lastHold; }
 
 /**
  * Decide whether it is safe to overwrite `filename` with our version of it.
@@ -508,7 +511,7 @@ async function readFromDir(dir: FileSystemDirectoryHandle, filename: string): Pr
  * Read a KB's TTL from a folder, preferring `{folderName}.ttl` and falling
  * back to the legacy `kb.ttl` filename when the named file isn't present.
  */
-async function readKbTtl(dir: FileSystemDirectoryHandle, folderName: string): Promise<string | null> {
+async function readKnowledgeBaseTtl(dir: FileSystemDirectoryHandle, folderName: string): Promise<string | null> {
   const named = await readFromDir(dir, `${folderName}.ttl`);
   if (named !== null) return named;
   return readFromDir(dir, 'kb.ttl');
@@ -517,7 +520,7 @@ async function readKbTtl(dir: FileSystemDirectoryHandle, folderName: string): Pr
 // ── Multi-KB folder sync ─────────────────────────────────────────────────────
 
 /** Sanitize a KB name into a safe folder name. */
-function kbFolderName(name: string, id: string): string {
+function knowledgeBaseFolderName(name: string, id: string): string {
   const sanitized = name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '')
@@ -527,7 +530,7 @@ function kbFolderName(name: string, id: string): string {
   return sanitized || id;
 }
 
-export type KbMeta = {
+export type KnowledgeBaseMeta = {
   stableId?: string;
   name: string;
 };
@@ -536,7 +539,7 @@ export type KbMeta = {
  * Write one KB's data to the workspace folder: kbs/{folderName}/{folderName}.ttl
  * Binary assets written to assets/{icons,previews,models}/ — directories only created when populated.
  */
-export async function writeKbToFolder(
+export async function writeKnowledgeBaseToFolder(
   entry: KbEntry,
   ttl: string,
   stableId?: string,
@@ -545,14 +548,14 @@ export async function writeKbToFolder(
   if (!_handle) return false;
   try {
     const kbsDir = await getOrCreateDir(_handle, 'kbs');
-    const folderName = kbFolderName(entry.name, entry.id);
+    const folderName = knowledgeBaseFolderName(entry.name, entry.id);
     const kbDir = await getOrCreateDir(kbsDir, folderName);
     const pathKey = `kbs/${folderName}/${folderName}.ttl`;
 
     // HOLD, don't clobber. An unsafe write is deferred, not dropped: the file on disk stays as it
     // is, this graph keeps its state in IndexedDB, and the next pull reconciles the two properly.
     const hold = await holdWrite(kbDir, `${folderName}.ttl`, pathKey);
-    _lastHold = hold;
+    lastHold = hold;
     if (hold.held) {
       console.warn(`[workspace] write held for "${entry.name}": ${hold.detail} (${hold.reason})`);
       return false;
@@ -591,7 +594,7 @@ export async function syncNotesGraphToWorkspace(id: string): Promise<boolean> {
     registerStableId(id, stableId, statements.length);
     const assets = await collectAssets(graph);
     const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + await assetTriples(graph, assets);
-    return await writeKbToFolder(entry, ttl, stableId, assets);
+    return await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
   } finally { graph.close(); }
 }
 
@@ -626,7 +629,7 @@ async function writeAssetsToFolder(
  *  would otherwise flood discovery with stray `.ttl` fixtures when the linked
  *  folder is a real project root (e.g. a git repo). Hidden dirs (dot-prefixed:
  *  `.git`, `.svelte-kit`, `.cache`, …) are skipped separately below. */
-const WALK_SKIP_DIRS = new Set(['assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
+const WALK_SKIP_DIRS = new Set([CORPUS_DIR /* F221: chunks.ttl is a source corpus, never a graph */, 'assets', 'node_modules', 'build', 'dist', 'coverage', 'vendor']);
 
 /**
  * Workspace files that are AGENT INFRASTRUCTURE, not the user's knowledge.
@@ -662,7 +665,7 @@ async function* walkTtls(dir: any, prefix: string[] = []): AsyncGenerator<string
     } else if (
       entry.kind === 'file' &&
       entry.name.endsWith('.ttl') &&
-      entry.name !== WORKSPACE_KB_FILE &&
+      entry.name !== WORKSPACE_KNOWLEDGE_BASE_FILE &&
       !WALK_SKIP_FILES.has(entry.name)
     ) {
       // Skip the MCP combined export (knowledge.ttl) so it isn't imported as a
@@ -693,7 +696,7 @@ export async function readTtlByPath(segs: string[]): Promise<string | null> {
  * named sibling exists so a KB isn't listed twice. Each entry carries the file
  * `path` so it can be read regardless of location.
  */
-export async function listKbFolders(): Promise<Array<{ folderName: string; path: string[]; meta: KbMeta }>> {
+export async function listKbFolders(): Promise<Array<{ folderName: string; path: string[]; meta: KnowledgeBaseMeta }>> {
   if (!_handle) return [];
   try {
     const paths: string[][] = [];
@@ -706,7 +709,7 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
       (dirFiles.get(d) ?? dirFiles.set(d, new Set()).get(d)!).add(p[p.length - 1]);
     }
 
-    const results: Array<{ folderName: string; path: string[]; meta: KbMeta }> = [];
+    const results: Array<{ folderName: string; path: string[]; meta: KnowledgeBaseMeta }> = [];
     for (const p of paths) {
       const file = p[p.length - 1];
       const dirSegs = p.slice(0, -1);
@@ -719,7 +722,13 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
       const stableIdMatch = ttl?.match(/kbStableId[>"]\s+"([^"]+)"/);
       results.push({ folderName, path: p, meta: { name: folderName, stableId: stableIdMatch?.[1] } });
     }
-    return results;
+    // A sync service's conflict copy carries the original's stable id; never let it replace or
+    // duplicate the space silently (F56.2). Every caller of discovery gets this.
+    const { kept, conflicts } = separateConflictCopies(results);
+    for (const c of conflicts) {
+      pushNotification({ id: `sync-conflict-${c.stableId}`, type: 'warn', title: 'Two versions of one space', body: conflictNotice(c), important: true });
+    }
+    return kept;
   } catch {
     return [];
   }
@@ -731,9 +740,9 @@ export async function listKbFolders(): Promise<Array<{ folderName: string; path:
  * `kb.ttl`) don't exist.
  * Also reads any binary assets from assets/{icons,previews,models}/ subdirectories.
  */
-export async function readKbFromFolder(folderName: string): Promise<{
+export async function readKnowledgeBaseFromFolder(folderName: string): Promise<{
   ttl: string;
-  meta: KbMeta;
+  meta: KnowledgeBaseMeta;
   assets: Map<string, Uint8Array>; // relative path ("assets/icons/foo.svg") → bytes
 } | null> {
   if (!_handle) return null;
@@ -741,11 +750,11 @@ export async function readKbFromFolder(folderName: string): Promise<{
     const kbsDir = await _handle.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle(folderName);
 
-    const ttl = await readKbTtl(kbDir, folderName);
+    const ttl = await readKnowledgeBaseTtl(kbDir, folderName);
     if (!ttl) return null;
 
     const stableIdMatch = ttl.match(/kbStableId[>"]\s+"([^"]+)"/);
-    const meta: KbMeta = {
+    const meta: KnowledgeBaseMeta = {
       name: folderName,
       stableId: stableIdMatch?.[1],
     };
@@ -827,7 +836,7 @@ export async function syncAllKbs(): Promise<number> {
       const assetTtl = await assetTriples(kbDb, assets);
       const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + assetTtl;
 
-      await writeKbToFolder(entry, ttl, stableId, assets);
+      await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
       synced++;
 
       // Close if it's not the active DB
@@ -841,10 +850,10 @@ export async function syncAllKbs(): Promise<number> {
   try {
     const statements = await db.statements.toArray();
     const ttl = toTurtle(statements);
-    await writeToWorkspace(WORKSPACE_KB_FILE, ttl);
+    await writeToWorkspace(WORKSPACE_KNOWLEDGE_BASE_FILE, ttl);
   } catch { /* best-effort */ }
 
-  _syncedKbCount = synced;
+  _syncedKnowledgeBaseCount = synced;
   _lastSyncTime = Date.now();
   return synced;
 }
@@ -855,7 +864,7 @@ export async function syncAllKbs(): Promise<number> {
 //  1. kbs/{name}/ folder (multi-KB sync)
 //  2. knowledge.ttl (legacy MCP compat)
 
-let _wsExportTimer: ReturnType<typeof setTimeout> | null = null;
+let wsExportTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Schedule a workspace export after a KB mutation.
@@ -864,9 +873,9 @@ let _wsExportTimer: ReturnType<typeof setTimeout> | null = null;
  */
 export function scheduleWorkspaceTtlExport(): void {
   if (!_handle) return;
-  if (_wsExportTimer) clearTimeout(_wsExportTimer);
-  _wsExportTimer = setTimeout(() => {
-    _wsExportTimer = null;
+  if (wsExportTimer) clearTimeout(wsExportTimer);
+  wsExportTimer = setTimeout(() => {
+    wsExportTimer = null;
     _triggerWorkspaceTtlExport();
   }, 2000);
 }
@@ -881,7 +890,7 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
 
     // Legacy flat file for the MCP server stays a LOSSY confirmed/refined projection —
     // reification `stmt:` nodes would otherwise surface as spurious entities in the reader.
-    await writeToWorkspace(WORKSPACE_KB_FILE, toTurtle(statements));
+    await writeToWorkspace(WORKSPACE_KNOWLEDGE_BASE_FILE, toTurtle(statements));
 
     // The per-KB folder file is the one that gets re-imported, so it must be LOSSLESS
     // (all statuses + provenance) or a re-pull silently drops review state (F107.4).
@@ -893,7 +902,7 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
       const assets = await collectAssets(db);
       const assetTtl = await assetTriples(db, assets);
       const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId });
-      await writeKbToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
+      await writeKnowledgeBaseToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }
   } catch (err) {
@@ -1333,7 +1342,7 @@ export async function recordAnswer(answer: {
 // ── Import KBs from workspace ────────────────────────────────────────────────
 
 /** A `.ttl` discovered under the workspace, with its parsed metadata. */
-type FolderEntry = { folderName: string; path: string[]; meta: KbMeta };
+type FolderEntry = { folderName: string; path: string[]; meta: KnowledgeBaseMeta };
 
 /** Read a folder entry's TTL + assets (conventional folders carry binary assets;
  *  loose `.ttl` files anywhere are inline-only). */
@@ -1342,7 +1351,7 @@ async function readFolderData(
 ): Promise<{ ttl: string; assets: Map<string, Uint8Array> } | null> {
   const conventional = folder.path.length === 3 && folder.path[0] === 'kbs';
   if (conventional) {
-    const d = await readKbFromFolder(folder.folderName);
+    const d = await readKnowledgeBaseFromFolder(folder.folderName);
     return d ? { ttl: d.ttl, assets: d.assets } : null;
   }
   const ttl = await readTtlByPath(folder.path);
@@ -1351,7 +1360,7 @@ async function readFolderData(
 
 /** Import ONE freshly-discovered folder as a new KB. Returns statements written,
  *  or 0 if empty/unreadable. */
-async function importNewKb(folder: FolderEntry): Promise<number> {
+async function importNewKnowledgeBase(folder: FolderEntry): Promise<number> {
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
   const { ingestNewKb } = await import('./kb-import');
@@ -1361,10 +1370,10 @@ async function importNewKb(folder: FolderEntry): Promise<number> {
 }
 
 /** Re-import a changed folder into the EXISTING KB `kbId` (in place). */
-async function updateExistingKb(kbId: string, folder: FolderEntry): Promise<number> {
+async function updateExistingKnowledgeBase(kbId: string, folder: FolderEntry): Promise<number> {
   const data = await readFolderData(folder);
   if (!data?.ttl) return 0;
-  const { ingestExistingKb } = await import('./kb-import');
+  const { ingestExistingKnowledgeBase: ingestExistingKb } = await import('./kb-import');
   const uri = `workspace://${folder.folderName}/${folder.folderName}.ttl`;
   return ingestExistingKb(kbId, data, folder.meta, uri);
 }
@@ -1398,7 +1407,7 @@ export async function importKbsFromWorkspace(): Promise<{ imported: string[]; sk
       continue;
     }
     try {
-      const count = await importNewKb(folder);
+      const count = await importNewKnowledgeBase(folder);
       if (count === 0) { skipped.push(`${meta.name} (empty)`); continue; }
       // Baseline the hash so the poll loop won't immediately re-import it.
       markWritten(folder.path.join('/'), (await readTtlByPath(folder.path)) ?? '');
@@ -1465,8 +1474,8 @@ export async function syncFolderPaths(): Promise<number> {
  * reflects the change without a page reload.
  */
 export async function pullFromWorkspace(): Promise<{ imported: string[]; updated: string[] }> {
-  if (!_handle || _pulling) return { imported: [], updated: [] };
-  _pulling = true;
+  if (!_handle || pulling) return { imported: [], updated: [] };
+  pulling = true;
   const imported: string[] = [];
   const updated: string[] = [];
   try {
@@ -1495,13 +1504,13 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
 
       try {
         if (match) {
-          const count = await updateExistingKb(match.id, folder);
+          const count = await updateExistingKnowledgeBase(match.id, folder);
           if (count > 0) {
             updated.push(folder.meta.name);
             if (match.id === currentId) activeChanged = true;
           }
         } else {
-          const count = await importNewKb(folder);
+          const count = await importNewKnowledgeBase(folder);
           if (count > 0) imported.push(folder.meta.name);
         }
         _seenHashes.set(key, h);
@@ -1513,14 +1522,14 @@ export async function pullFromWorkspace(): Promise<{ imported: string[]; updated
 
     if (imported.length || updated.length) {
       _lastSyncTime = Date.now();
-      _syncedKbCount = folders.length;
+      _syncedKnowledgeBaseCount = folders.length;
       if (activeChanged) {
         const { loadAll } = await import('./kb.svelte');
         await loadAll();
       }
     }
   } finally {
-    _pulling = false;
+    pulling = false;
   }
   return { imported, updated };
 }
@@ -1549,7 +1558,7 @@ export async function resyncNow(): Promise<{ imported: string[]; updated: string
  * user with a silently dead sync.
  */
 export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
-  if (_pollTimer || !_handle || typeof setInterval === 'undefined') return;
+  if (pollTimer || !_handle || typeof setInterval === 'undefined') return;
   // Pull graph TTLs AND drain the proposal queue. The poll used to do only the first, so a note
   // dictated into a ring reached knowledge.pending.jsonl on disk and then sat there until the
   // next page load or a manual refresh — the app was polling a folder while ignoring the one file
@@ -1560,7 +1569,7 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   // unhandled, so the one signal that capture is broken is a console message nobody wrote. The
   // timer itself survives either way; what is lost is the diagnostic, which on this path is the
   // difference between a note that failed loudly and a note that appears never to have arrived.
-  _pollTimer = setInterval(() => {
+  pollTimer = setInterval(() => {
     void pullFromWorkspace()
       .then(() => drainAndImportPending())
       .catch((e) => console.warn('[workspace] poll cycle failed:', e));
@@ -1568,7 +1577,7 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
 }
 
 export function stopWorkspacePolling(): void {
-  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
 /** Toggle auto-sync (persisted). Starts/stops polling to match. */
@@ -1583,8 +1592,8 @@ export function setAutoSync(on: boolean): void {
  *  native picker, so folder sync can be exercised in Playwright/headless. */
 export function __linkHandleForTest(handle: FileSystemDirectoryHandle): void {
   _handle = handle;
-  _name = handle.name;
-  _state = 'connected';
+  name = handle.name;
+  state = 'connected';
 }
 
 // DEV/test-only: expose the sync internals on window so Playwright can exercise
@@ -1720,7 +1729,7 @@ export async function listModelFiles(repo: string, filePaths: string[]): Promise
 // package is redistribution of someone else's content.
 
 /** Directory name under the workspace root. Excluded from graph packages by construction. */
-export const SOURCES_DIR = 'sources';
+export const SOURCES_DIR = CORPUS_DIR;
 
 /**
  * One file per source id. Ids are app-generated, but this builds a path in the user's own

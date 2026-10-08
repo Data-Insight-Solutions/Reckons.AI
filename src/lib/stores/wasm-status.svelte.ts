@@ -8,21 +8,21 @@ import { pushNotification } from '$lib/stores/notifications.svelte';
 type WasmState = 'idle' | 'loading' | 'ready' | 'error';
 
 let _status = $state<WasmState>('idle');
-let _pct = $state<number>(0);
-let _text = $state<string>('');
+let pct = $state<number>(0);
+let text = $state<string>('');
 
 // Register progress callback once at module load (no worker created yet)
 // transformers.js sends progress as 0–100 (a percentage), not 0–1
 onWasmProgress((status, p) => {
   if (status === 'ready') {
     _status = 'ready';
-    _pct = 100;
-    _text = 'ready';
+    pct = 100;
+    text = 'ready';
     return;
   }
   _status = 'loading';
-  _text = status;
-  if (p !== undefined) _pct = Math.min(100, Math.round(p));
+  text = status;
+  if (p !== undefined) pct = Math.min(100, Math.round(p));
 });
 
 // When the worker falls back to a different model, notify the user
@@ -38,8 +38,8 @@ onWasmFallback((requested, actual, reason) => {
 });
 
 export function wasmStatus(): WasmState { return _status; }
-export function wasmPct(): number { return _pct; }
-export function wasmStatusText(): string { return _text; }
+export function wasmPct(): number { return pct; }
+export function wasmStatusText(): string { return text; }
 
 /**
  * Warm the WASM model in the background. Safe to call multiple times —
@@ -48,15 +48,15 @@ export function wasmStatusText(): string { return _text; }
 export async function warmWasm(model?: string): Promise<void> {
   if (_status === 'ready' || _status === 'loading') return;
   _status = 'loading';
-  _pct = 0;
-  _text = 'initializing…';
+  pct = 0;
+  text = 'initializing…';
   try {
     await ensureWasmReady(model);
     _status = 'ready';
-    _pct = 100;
-    _text = 'ready';
+    pct = 100;
+    text = 'ready';
   } catch (e) {
     _status = 'error';
-    _text = e instanceof Error ? e.message : String(e);
+    text = e instanceof Error ? e.message : String(e);
   }
 }

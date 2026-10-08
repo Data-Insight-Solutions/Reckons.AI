@@ -58,16 +58,64 @@ describe('parseSettingsProfile', () => {
   });
 
   it('does not include API keys even if present in JSON', () => {
-    // API keys are not in the SettingsProfile interface, so even if someone
-    // manually adds them to the JSON, they won't appear in the returned object
-    // (they'll pass through since we do a spread, but this verifies the interface
-    // doesn't define them — tested by ensuring standard fields work)
-    const withKey = { ...validProfile, claudeApiKey: 'sk-secret' };
+    const withKey = { ...validProfile, claudeApiKey: 'synthetic-secret' };
     const result = parseSettingsProfile(JSON.stringify(withKey));
-    expect(result).not.toBeNull();
-    // The key would be in result because parseSettingsProfile does a spread,
-    // but importantly it's NOT in the SettingsProfile interface definition.
-    // The key protection is in exportSettingsProfile() which never includes keys.
+    expect(result).not.toHaveProperty('claudeApiKey');
     expect(result?.preferredBackend).toBe('claude');
+  });
+});
+
+// ── sendTextToFiles — device sync through the share sheet (2026-09-30) ───────
+
+import { afterEach, vi } from 'vitest';
+import { canShareFiles, sendTextToFiles } from '../backup';
+
+describe('sendTextToFiles', () => {
+  const realNavigator = globalThis.navigator;
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    Object.defineProperty(globalThis, 'navigator', { value: realNavigator, configurable: true });
+  });
+  const withNavigator = (extra: Record<string, unknown>) =>
+    Object.defineProperty(globalThis, 'navigator', { value: { ...realNavigator, ...extra }, configurable: true });
+  const stubDownload = () => {
+    vi.stubGlobal('URL', { ...URL, createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() });
+    return vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  };
+
+  it('hands the file to the share sheet where files can be shared', async () => {
+    const share = vi.fn(async () => {});
+    withNavigator({ canShare: () => true, share });
+    const click = stubDownload();
+    expect(await sendTextToFiles('@prefix x: <x:> .', 'my-space.ttl')).toBe('shared');
+    const arg = (share.mock.calls[0] as unknown as [{ files: File[] }])[0];
+    expect(arg.files[0].name).toBe('my-space.ttl');
+    expect(arg.files[0].type).toBe('text/turtle');
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it('reports a dismissed share sheet as cancelled, and does NOT download behind the user\'s back', async () => {
+    const abort = Object.assign(new Error('dismissed'), { name: 'AbortError' });
+    withNavigator({ canShare: () => true, share: vi.fn(async () => { throw abort; }) });
+    const click = stubDownload();
+    expect(await sendTextToFiles('x', 'a.ttl')).toBe('cancelled');
+    expect(click).not.toHaveBeenCalled();
+  });
+
+  it('downloads where there is no share sheet', async () => {
+    withNavigator({ canShare: undefined, share: undefined });
+    const click = stubDownload();
+    expect(canShareFiles()).toBe(false);
+    expect(await sendTextToFiles('x', 'a.ttl')).toBe('downloaded');
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to a download when the share sheet refuses for another reason', async () => {
+    const denied = Object.assign(new Error('no'), { name: 'NotAllowedError' });
+    withNavigator({ canShare: () => true, share: vi.fn(async () => { throw denied; }) });
+    const click = stubDownload();
+    expect(await sendTextToFiles('x', 'a.ttl')).toBe('downloaded');
+    expect(click).toHaveBeenCalledOnce();
   });
 });

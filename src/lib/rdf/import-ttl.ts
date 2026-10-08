@@ -1,3 +1,4 @@
+import { decodePortableMetadata } from './portable-metadata';
 /**
  * Import annotated Turtle files produced by toTurtleFull().
  * Uses N3.js to parse, then reconstructs Statement[] and Source[]
@@ -8,6 +9,8 @@
  */
 
 import type { Statement, Source, Term, ReviewStatus } from './types';
+import { hasLeakedTermKey } from './types';
+import { notifyImportQuarantine } from './cut-notice';
 import { isAltitude } from './fact-altitude';
 
 // IRIs used in the annotated format
@@ -55,7 +58,31 @@ export type ImportResult = {
   cleanImportCount: number;
   /** Shelly persona overrides found in the TTL (from shelly: vocabulary) */
   shellyPersona?: ShellyPersonaOverrides;
+  /**
+   * Statements dropped because they were written with a graph node key as an IRI
+   * (`<l:high||>`) — files exported by a buggy build. The rest of the graph imports normally;
+   * callers should show this to the user rather than hide it.
+   */
+  quarantined?: { count: number; samples: string[] };
 };
+
+/** `<l:value|datatype|lang>` — a literal node key written as an IRI, which no Turtle parser accepts. */
+const LEAKED_LITERAL_IRI = /(?<=^|[\s;,(\[])<(l:[^<>\n]*\|[^<>\n|]*\|[^<>\n|]*)>/g;
+const QUARANTINE_PREFIX = 'urn:kbase:quarantine/';
+
+/**
+ * Replace leaked literal-key IRIs with placeholder IRIs the parser accepts, remembering what
+ * each one was. Only used after a normal parse FAILED, so well-formed files are never touched.
+ */
+function quarantineLeakedIris(turtle: string): { text: string; originals: string[] } {
+  const originals: string[] = [];
+  const text = turtle.replace(LEAKED_LITERAL_IRI, (_m, key: string) => {
+    let i = originals.indexOf(key);
+    if (i < 0) { i = originals.length; originals.push(key); }
+    return `<${QUARANTINE_PREFIX}${i}>`;
+  });
+  return { text, originals };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function n3ToTerm(term: any): Term | null {
@@ -78,16 +105,27 @@ function n3ToTerm(term: any): Term | null {
  * Parse an annotated .ttl file back into Statement[] + Source[].
  * Falls back to treating plain (non-annotated) Turtle as confirmed statements.
  */
-export async function importTurtleFull(turtle: string): Promise<ImportResult> {
+export async function importTurtleFull(turtle: string, opts: { name?: string } = {}): Promise<ImportResult> {
   // Dynamic import keeps N3 out of SSR / initial bundle
   const { Parser } = await import('n3');
   // TriG, not Turtle: TriG is a strict superset (every .ttl is legal TriG), so this
   // reads today's default-graph files unchanged while tolerating named graphs (F75).
-  const parser = new Parser({ format: 'TriG' });
-
   // Use synchronous overload — callback version is async in N3 v1.26+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const quads: any[] = parser.parse(turtle);
+  let quads: any[];
+  let quarantineOriginals: string[] = [];
+  try {
+    quads = new Parser({ format: 'TriG' }).parse(turtle);
+  } catch (err) {
+    // A build before the 2026-10 fix could export `<l:high||> skos:altLabel ...` (a literal
+    // node id used as a subject), which makes the whole file unparseable. Quarantine those
+    // terms and retry, so one bad triple does not cost the user their graph. If the file has no
+    // such terms the original error is the right one to report.
+    const repaired = quarantineLeakedIris(turtle);
+    if (repaired.originals.length === 0) throw err;
+    quarantineOriginals = repaired.originals;
+    quads = new Parser({ format: 'TriG' }).parse(repaired.text);
+  }
 
   // Maps from IRI → property bag
   const stmtData = new Map<string, Record<string, unknown>>();
@@ -110,6 +148,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === RDF + 'object')               d.o           = n3ToTerm(ov);
       else if (pv === KBASE + 'status')             d.status      = ov.value;
       else if (pv === KBASE + 'confidence')         d.confidence  = parseFloat(ov.value);
+      else if (pv === KBASE + 'reviewMetadata')     d.portable    = decodePortableMetadata(ov.value, 'statement');
       else if (pv === KBASE + 'proposed-by')        d.proposedBy  = ov.value;
       else if (pv === KBASE + 'asked-by')           d.askedBy     = ov.value;
       else if (pv === KBASE + 'altitude')           d.altitude    = isAltitude(ov.value) ? ov.value : undefined;
@@ -129,6 +168,7 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       else if (pv === KBASE + 'sourceKind')         d.kind        = ov.value;
       else if (pv === KBASE + 'trustLevel')         d.trustLevel  = ov.value;
       else if (pv === KBASE + 'trustScore')         d.trustScore  = parseFloat(ov.value);
+      else if (pv === KBASE + 'sourceMetadata')     d.portable    = decodePortableMetadata(ov.value, 'source');
       else if (pv === DC    + 'created')            d.ingestedAt  = new Date(ov.value).getTime();
     } else {
       // Plain triple — for non-annotated Turtle fallback (includes rdf:type)
@@ -177,7 +217,14 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
     const s = d.s as Term | null;
     const p = d.p as Term | null;
     const o = d.o as Term | null;
-    if (!s || !p || !o || p.kind !== 'iri') continue;
+    if (!s || !p || !o || p.kind !== 'iri') throw new Error('Incomplete annotated statement');
+    if (d.status !== undefined && !['pending', 'pending-removal', 'confirmed', 'refined', 'rejected', 'superseded'].includes(String(d.status))) {
+      throw new Error('Invalid annotated review status');
+    }
+    if (d.confidence !== undefined && (!Number.isFinite(d.confidence) || Number(d.confidence) < 0 || Number(d.confidence) > 1)) {
+      throw new Error('Invalid annotated confidence');
+    }
+    if (d.createdAt !== undefined && !Number.isFinite(d.createdAt)) throw new Error('Invalid annotated creation time');
 
     const g = (d.g as Term | null) ?? { kind: 'iri' as const, value: 'urn:kbase:source/unknown' };
     const sourceId = g.kind === 'iri' && g.value.startsWith(SRC_PREFIX)
@@ -200,7 +247,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       excerpt:    d.excerpt as string | undefined,
       supersedes: d.supersedes as string | undefined,
       createdAt:  (d.createdAt as number) ?? Date.now(),
-      updatedAt:  (d.createdAt as number) ?? Date.now()
+      updatedAt:  (d.createdAt as number) ?? Date.now(),
+      ...(d.portable as Partial<Statement> | undefined),
     });
   }
 
@@ -216,7 +264,8 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
       kind:       ((d.kind as Source['kind']) ?? 'document'),
       trustLevel: d.trustLevel as Source['trustLevel'],
       trustScore: d.trustScore as number | undefined,
-      ingestedAt: (d.ingestedAt as number) ?? Date.now()
+      ingestedAt: (d.ingestedAt as number) ?? Date.now(),
+      ...(d.portable as Partial<Source> | undefined),
     });
   }
 
@@ -245,5 +294,26 @@ export async function importTurtleFull(turtle: string): Promise<ImportResult> {
     }
   }
 
-  return { statements, sources, cleanImportCount, shellyPersona };
+  // Quarantine: drop every statement that touches a placeholder (both the plain triple and its
+  // reification block carry the same placeholder, so both go).
+  let quarantined: ImportResult['quarantined'];
+  if (quarantineOriginals.length > 0) {
+    const isPlaceholder = (t: Term) => t.kind === 'iri' && t.value.startsWith(QUARANTINE_PREFIX);
+    const kept = statements.filter((st) => !isPlaceholder(st.s) && !isPlaceholder(st.o) && !isPlaceholder(st.g) && !hasLeakedTermKey(st));
+    quarantined = {
+      count: statements.length - kept.length,
+      samples: quarantineOriginals.slice(0, 5),
+    };
+    if (cleanImportCount > 0) cleanImportCount = Math.max(0, cleanImportCount - quarantined.count);
+    statements.length = 0;
+    statements.push(...kept);
+    console.warn(
+      `[import] Quarantined ${quarantined.count} statement(s) with a leaked node-key IRI ` +
+      `(${quarantineOriginals.length} distinct: ${quarantined.samples.join(', ')}); the rest of the graph was imported.`,
+    );
+  }
+
+  if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
+
+  return { statements, sources, cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }

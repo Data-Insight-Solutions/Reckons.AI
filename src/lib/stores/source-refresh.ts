@@ -146,8 +146,8 @@ export async function refreshAllSources(
 
 // ── Auto-refresh scheduler ──────────────────────────────────────────────────
 
-let _refreshTimer: ReturnType<typeof setInterval> | null = null;
-let _refreshRunning = false;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+let refreshRunning = false;
 
 /**
  * Start the auto-refresh scheduler based on settings.
@@ -161,9 +161,9 @@ export function startAutoRefreshScheduler(): void {
   if (intervalMinutes <= 0) return;
 
   const intervalMs = intervalMinutes * 60 * 1000;
-  _refreshTimer = setInterval(async () => {
-    if (_refreshRunning) return; // skip if previous run still in progress
-    _refreshRunning = true;
+  refreshTimer = setInterval(async () => {
+    if (refreshRunning) return; // skip if previous run still in progress
+    refreshRunning = true;
     try {
       const results = await refreshAllSources();
       const refreshed = results.filter(r => r.status === 'refreshed');
@@ -174,15 +174,15 @@ export function startAutoRefreshScheduler(): void {
     } catch (e) {
       console.warn('[auto-refresh] Failed:', e);
     } finally {
-      _refreshRunning = false;
+      refreshRunning = false;
     }
   }, intervalMs);
 }
 
 export function stopAutoRefreshScheduler(): void {
-  if (_refreshTimer) {
-    clearInterval(_refreshTimer);
-    _refreshTimer = null;
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
   }
 }
 
