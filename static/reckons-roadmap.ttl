@@ -9131,6 +9131,27 @@ kb:publish-your-version rdf:type ktype:Feature ;
                kpred:relates-to   kb:game-development ;
                kpred:relates-to   kb:app-sharing-framework .
 
+kb:change-provenance rdf:type ktype:Feature ;
+               rdfs:label         "Change provenance — which model made every change, at which exact version, and what the person asked for" ;
+               kpred:feature-id   "F254" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Every change, to a graph or to code, records the model that made it (pinned to the exact revision or digest that ran) and the person's intent: what they asked for, in their own words, and that they approved it. A change with no model was made by a person and says so. A change whose model is not known says 'unknown' rather than guessing." ;
+               kpred:decided      "MATT, 2026-10-08: 'we need to track editor model for every change. Auditable user intent is also critical.'" ;
+               kpred:measured     "WHAT EXISTS, 2026-10-08. Statements carry proposedBy, a free-form agent name that sometimes includes the model (offline:docs-expand:qwen3:32b) and sometimes does not (offline:graph-lint, extraction-score); verifiedBy names a deterministic check. Ingest records an ExtractionRun whose route attempts name backend and model, with no revision. Commits carry a Co-Authored-By line naming the model family, not a version. Intent exists only by convention: the quoted request in commit messages and in kpred:decided. Nothing requires any of it, and edits made in the app (node panel, chat, merges, review decisions) record no model at all." ;
+               kpred:proposed     "PROV-O, THE STANDARD FOR EXACTLY THIS. Each change is a prov:Activity. The model is a prov:SoftwareAgent identified by name plus version: a Hugging Face repo at a commit sha, an Ollama model at its digest, a cloud model at the id the API reported. The person is a prov:Person the model acted on behalf of (prov:actedOnBehalfOf). The intent is the person's request, linked as the plan the activity carried out (prov:hadPlan), and approval is the person's own later activity that the change depends on." ;
+               kpred:proposed     "FOR CODE: agent commits carry trailers, Model: <id>@<version> and Intent: <the person's request>, checked by a script in CI so a commit without them fails rather than relying on memory. The feature builder (F249) writes both, since it has the request text and the model that ran." ;
+               kpred:constraint   "INTENT IS NOT A PROMPT. ExtractionRun deliberately stores no prompts, source text or responses. The intent is the person's own request, not the system prompt or the text a model read, and it stays in their private graph; a published version (F253) strips it or asks first." ;
+               kpred:constraint   "A MODEL'S NAME FOR ITSELF IS A CLAIM (kb:thesis). Record what was requested and what the provider reported separately; only a pinned revision or digest the app itself downloaded counts as verified." ;
+               kpred:open-question "Is intent REQUIRED (a change without it is refused) or recorded whenever it exists?" ;
+               kpred:open-question "Granularity: one intent per change, or one per request that produced many changes (an ingest of 200 statements)?" ;
+               kpred:open-question "In a shared space, who may read the intent behind another person's change?" ;
+               kpred:remaining    "Nothing built. First: pin every model the app downloads (without a fixed version there is nothing exact to record), then a provenance record on statements written in the app, then the commit trailer check." ;
+               kpred:relates-to   kb:publish-your-version ;
+               kpred:relates-to   kb:provenance-model ;
+               kpred:relates-to   kb:model-routing-ledger ;
+               kpred:relates-to   kb:feature-builder ;
+               kpred:relates-to   kb:model-cache .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
