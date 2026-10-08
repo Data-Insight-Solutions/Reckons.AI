@@ -3,7 +3,7 @@
  * as a pull request, a change, and documentation is pinned here.
  */
 import { describe, it, expect } from 'vitest';
-import { docsLinks, featureChanges, featureStates, parsePullRequests, renderMarkdown } from '../release-notes';
+import { docsLinks, featureChanges, featureStates, parsePullRequests, renderMarkdown, releaseNotesPath } from '../release-notes';
 
 const P = '@prefix kb: <urn:kbase:concept/> . @prefix kpred: <urn:kbase:predicate/> . @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n';
 
@@ -57,5 +57,13 @@ describe('docs coverage', () => {
     expect(md).toContain('| F3 C | new, scaffolded | **UNDOCUMENTED** |');
     expect(md).toContain('| F4 D | new, planned | — |');
     expect(md).toMatch(/Documentation owed before promotion to main[\s\S]*F3 C/);
+  });
+});
+
+describe('a release is documented by its notes page', () => {
+  it('maps a version to the release-notes path and reads the version from the graph', () => {
+    expect(releaseNotesPath('0.2.5')).toBe('releases/v0-2-5');
+    const ttl = '@prefix kpred: <urn:kbase:predicate/> . <urn:kbase:concept/release-0-2-5> kpred:version "0.2.5" ; kpred:has-status "functional" .';
+    expect(featureStates(ttl).get('urn:kbase:concept/release-0-2-5')).toMatchObject({ status: 'functional', version: '0.2.5' });
   });
 });

@@ -2725,7 +2725,7 @@ kb:graph-legibility rdf:type   ktype:Feature ;
 kb:one-graph-canvas rdf:type   ktype:Feature ;
                rdfs:label   "One graph canvas — review as overlays, adaptive LOD" ;
                kpred:feature-id   "F92" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "in-progress" ;
                kpred:priority     "high" ;
                kpred:relates-to   kb:graph-legibility ;
                kpred:relates-to   kb:review-workbench ;
@@ -2734,6 +2734,7 @@ kb:one-graph-canvas rdf:type   ktype:Feature ;
                kpred:principle    "Two renders of the same thing WILL drift, and a bug fixed in one stays live in the other. The review-graph bug cluster (3D labels, overlay node-details, doubled toggles) was drift, not three bugs. One canonical render, reused, is the fix — and it is cheaper than maintaining the divergence." ;
                kpred:principle    "Degrade by FRAMERATE, not by a hard 2D/3D switch. A graph that drops frames should shed detail gracefully — full 3D -> lower-poly 3D (simpler geometry/materials, fewer labels) -> 2D — measured from real frame timing with hysteresis so it does not flap. Falling all the way to 2D on the first stutter throws away depth the user wanted." ;
                kpred:depends-on   kb:graph-legibility ;
+               kpred:progress     "2026-10-07, STATUS planned -> in-progress (drift found while planning v0.2.6): step 1 shipped in #304 (one GraphCanvas owns the renderer choice and the 3D boundary) and step 2 in #334 (/review mounts GraphCanvas). Adoption on / and framerate-driven LOD remain." ;
                kpred:remaining    "Extract GraphCanvas (render + LOD + labels + node-details + overlay slots) from the main page; adopt it on / with no behaviour change; migrate /review to mount it with review panels as overlays; add framerate-driven LOD tiers (full-3D / low-poly-3D / 2D) with hysteresis; retire /review's duplicate render components." ;
                kpred:open-question "PROGRESSIVE RENDER (Matt, 2026-07-15): render the ghostly connections (kb ghost-graph) first and lazily bring the filtered-out nodes in later, so the first frame is cheap. RISK he flagged: lazy pop-in can FLICKER, and worse, it can BEAT against the framerate-driven LOD at specific frame rates (each triggers the other — shed detail, frame recovers, load detail, frame drops, shed again). If built, the lazy load and the LOD controller must share one budget and one hysteresis, not fight; settle a node's presence for a minimum dwell time before reconsidering it. Decide whether progressive load is worth that coupling or whether adaptive LOD alone suffices." ;
                kpred:starting-with "Small shared pieces first (Matt, 2026-07-15): extract the drift-prone bits — node-details panel, then the label overlay — into shared components both / and /review mount, before the full GraphCanvas. Lowest risk, and it directly retires the divergence that caused the review-graph bug cluster. DONE first: GraphLabels.svelte (the label overlay) extracted from the main page with no behaviour change and adopted on both / and /review — the drift that lost review its 3D labels can no longer recur. Verified: 0 type errors, 6/6 review e2e pass." ;
@@ -8848,13 +8849,22 @@ kb:graph-proposals rdf:type ktype:Feature ;
 kb:release-0-2-5 rdf:type ktype:Release ;
     rdfs:label "v0.2.5" ;
     kpred:version "0.2.5" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:description "A more organized release, led by two features that make the graph's structure visible: the Spaces Map (the graph of graphs) and the Source View (a statement and the exact chunk it came from, in both directions)." ;
     kpred:decided "MATT, 2026-09-29: the Spaces Map and the Source View should be key features for a more organized 0.2.5." ;
     kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:source-corpus ;
     kpred:proposed "SCOPE, IN BUILD ORDER BY WHAT EACH BLOCKS: (1) kb:one-graph-canvas extraction, the shared viewport every later mode mounts on; (2) kb:source-corpus phases 1-2 plus the evidence layer (kb:document-evidence-anchors): originals kept, chunks.ttl, statement-to-chunk anchors, extraction over chunks; (3) the Source View UI on that data; (4) kb:meta-graph-view phase 2, declared set membership, and Spaces as a canvas mode. Proposals (kb:graph-proposals) and Add/Reckoning as overlays follow in the release after, once the canvas exists." ;
-    kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." .
+    kpred:decided "MATT, 2026-09-29: build order is the shared canvas first, then the source corpus and evidence anchors, then the Source View UI, then Spaces phase 2 as a canvas mode. Proposals (F223) move to 0.2.6." ;
+    kpred:decided "MATT, 2026-10-07: cut v0.2.5 from dev now, as clean and complete as it can be today, and document every shipped feature before it reaches main. Spaces phase 2 (the map as a canvas mode, ghost spaces) and the importer for source chunks folded into a space's file move to v0.2.6." ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:add-quick-menu ;
+    kpred:has-part kb:statement-node-source-links ;
+    kpred:has-part kb:source-atoms ;
+    kpred:has-part kb:local-panel ;
+    kpred:has-part kb:job-backpressure ;
+    kpred:progress "2026-10-07, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.5; release notes at content/releases/v0-2-5.md; promoted dev -> staging -> main as one set. Status becomes production when main carries it." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and verified on dev and staging; production is set by the follow-up after Matt merges staging into main" .
 
 kb:meta-graph-view kpred:measured "2026-09-29, PHASE 1 CORRECTED AFTER MATT USED IT: 'I'm confused about the need for the button count leaps in every space, also no visual of the edges between spaces.' The map only counted the current space automatically, so on a real registry it drew no lines until the button was pressed. Other spaces are now read in the background when the Spaces tab opens (only those never read or written to since, one at a time, each tried once per visit), the button is gone, and each space's own stable id is read from its settings while it is read, so a jump into a space never opened on this device still resolves to a line. When there are no lines the map says why and names the node panel's '+ add jump'. Verified end to end in Chromium with two spaces created by the app and a jump written into one space's own database: one line drawn, no button, no page errors." .
 
@@ -9097,3 +9107,44 @@ kb:terminology-maintenance rdf:type ktype:Feature ;
     kpred:tested-by "scripts/offline/__tests__/term-senses.test.ts" ;
     kpred:tested-by "scripts/agent/__tests__/rename-pr.test.ts" .
 kb:taxonomy-rename kpred:progress "2026-10-07, BATCH 2B: 42 top-level kb names renamed to knowledgeBase in src/lib/rdf (10), src/lib/storage (11) and src/lib/stores (21) by rename-identifier.ts --batch=term --term=kb, run as a local script job at Matt's request ('run lots of agent jobs for maintenance, finish taxonomy consistency'). The nine other src/lib directories had nothing renamable. STILL REFUSED, for a decision: 33 exported names used in .svelte files (waits on svelte2tsx support) and 28 that also appear as quoted strings and may be stored; 207 non-top-level declarations are deferred and 3 are ambiguous (KBASE, KBaseDB, setClickBinding). THREE TOOL GAPS FOUND AND HANDLED BY HAND: (1) in a fresh worktree .svelte-kit/tsconfig.json is missing, every $lib import fails to resolve, and the tool refused names it could not verify, reporting 19 renames instead of 42 with every refusal plausible; it now stops with an instruction to run npx svelte-kit sync. (2) vi.mock factory keys are object properties, not references, so the rename changed a mock's values but not its keys (drive-sync.test.ts, 3 failures); fixed by hand. (3) scripts/ is outside the program the tool loads, so scripts/kb-to-graph-ttl.ts kept importing the old sweepKbToGraph; fixed by hand. Gates run locally: npm run check 0 errors, the unit suite green, naming-conventions --check at baseline, graph-lint 0 errors. E2E and pixel equality are left to CI." .
+
+kb:release-0-2-6 rdf:type ktype:Release ;
+    rdfs:label "v0.2.6" ;
+    kpred:version "0.2.6" ;
+    kpred:has-status "planned" ;
+    kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
+    kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:space-file-layout ;
+    kpred:has-part kb:graph-proposals .
+
+kb:ci-graph rdf:type ktype:Feature ;
+    rdfs:label "CI as a graph — every check, what it guards, and whether it can block a merge" ;
+    kpred:feature-id "F33.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "medium" ;
+    kpred:part-of kb:release-pipeline ;
+    kpred:description "A script reads .github/workflows/*.yml and .github/ruleset-main.json and writes static/reckons-ci.ttl: each CI job and check, the branches that trigger it, the scripts it runs (already linked by kpred:has-file), whether the ruleset makes it required, and the roadmap feature it guards. A --check mode in CI fails when the YAML changes and the graph does not, the pattern of jobs-graph and md-align." ;
+    kpred:decided "MATT, 2026-10-07: 'Fine that yml is an external requirement.' GitHub only runs YAML in .github/workflows/, so the YAML stays the executable truth and the graph is generated FROM it, never the other way: modelling step lists, shell and GitHub expressions as triples would mirror GitHub's format one to one for no gain in what can be asked." ;
+    kpred:principle "SPACES AS DIFFERENT AUDITORS (Matt, 2026-10-07: 'I'm liking the spaces as different auditors'). Each space checks one kind of claim against what is real: the terminology space audits names, the codebase space audits file coverage, the jobs space audits local jobs, and this CI space audits merge protection. Questions it must answer: what stops a bad merge to main; which checks are advisory only; does any required check enforce a feature the roadmap calls blocking." ;
+    kpred:evidence "WHY NOW, from the v0.2.5 release: the release-notes docs gate runs on PRs into main but is not a required check in the ruleset, so it reports without blocking; and the safety attestation failed only under the queue worker for a day, visible in no graph. Today the graphs only NAME the workflow files (7 has-file links)." ;
+    kpred:relates-to kb:local-panel .
+
+kb:release-0-2-6 kpred:has-part kb:ci-graph .
+
+kb:release-0-2-6 kpred:proposed "DRAFT SCOPE, 2026-10-07, for Matt to add to and refine from his staging reviews. In build order by what each blocks. (A) FINISH WHAT 0.2.5 STARTED: the importer recognizes chunk nodes so chunks can fold into a space's file (F107.10; blocks the Source View's second half and self-contained spaces); Spaces phase 2, the map as a canvas mode with ghost spaces and declared membership (F218); the shared canvas adopted on / (F92); evidence anchors that highlight the passage in the retained source (F122.1); proposals in the graph (F223). (B) PERFORMANCE, the largest measured limit: profile the superlinear browser import, density-aware labels and edges (F108.4), latency assertions in e2e (F140). (C) THE LOCAL TIER, HONESTLY: back-pressure parts 2-3, a script cleanup of stale and duplicate proposals and a keep/demote/retire decision per zero-yield job (F74.9); move the nine remaining stream:false callers; one GPU lease for every local caller; a recency index from git and a context benchmark scored by local models, the prerequisites of the research watch (F246). (D) AUDITORS: CI as a graph (F33.2), and a check that new user-facing words exist in the terminology (F203.6). (E) QUICK WIN: wire the Currents client so a current delivers arrivals again (kb:currents-client-unwired), returning F29.2 and F29.3 to functional. CANDIDATES, NOT YET IN: local host mode, LAN HTTPS and agents in the app (F243-F245); the Sveltia plugin and content lane (F47; Matt: not yet). OUT: the blog-manager persona (F247, speculative), Rapier physics (F242)." .
+
+kb:release-0-2-6 kpred:decided "MATT, 2026-10-07: wiring the Currents client (kb:currents-client-unwired) is worth doing in v0.2.6. Local host mode, LAN HTTPS and agents in the app go to a later v0.2.7 'reach' release. Draft plans for v0.2.6 go in now, with v0.2.5." ;
+    kpred:has-part kb:currents-client-unwired .
+
+kb:release-0-2-7 rdf:type ktype:Release ;
+    rdfs:label "v0.2.7" ;
+    kpred:version "0.2.7" ;
+    kpred:has-status "planned" ;
+    kpred:description "The reach release: Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
+    kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
+    kpred:has-part kb:local-host-mode ;
+    kpred:has-part kb:lan-https ;
+    kpred:has-part kb:agents-in-app .
+
+kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
