@@ -9084,6 +9084,29 @@ kb:predicate-rule-conflicts rdf:type ktype:Feature ;
                kpred:relates-to   kb:space-set-templates ;
                kpred:relates-to   kb:graph-proposals .
 
+kb:app-sharing-framework rdf:type ktype:Feature ;
+               rdfs:label         "App sharing — apps described in the graph, hosted on the person's own machines, connected through what the graph knows about them" ;
+               kpred:feature-id   "F252" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "Reckons.AI as a way to share and run apps: each app is described in the graph (what it does, what it needs, what it produces and consumes, its endpoints and MCP tools), so integration options between apps can be read from the graph instead of wired by hand. MCP is extended from exposing spaces to exposing locally hosted apps, and deployment comes from templates, including Kubernetes configuration, that a person applies to their own machines." ;
+               kpred:decided      "MATT, 2026-10-08: 'Reckons.AI could potentially become a app sharing framework, where the ontology on top of the app can provide seemless integration options, MCP enhanced for local hosting of apps. We need kuberntetes config templates, and such.'" ;
+               kpred:proposed     "THE KNOWLEDGE IS THE PRODUCT, NOT THE HOSTING (kb:mission: it is never about the tool). The graph describes each app in standard terms (schema:SoftwareApplication for the app, dcat:DataService for each endpoint and what it serves, the MCP tools it exposes) and the integration options are DERIVED: app A produces what app B consumes. The most useful output is the shape of what is missing: B needs an input no installed app provides, or A produces something nothing uses." ;
+               kpred:proposed     "AN APP'S DESCRIPTION OF ITSELF IS A CLAIM MADE BY THE PARTY IT BENEFITS (kb:thesis). A shared app's manifest says what it can do; the graph should record what was OBSERVED (the MCP tools the running app actually listed, a contract test that passed, a health check) separately from what was declared, and offer an integration only on observed capabilities." ;
+               kpred:proposed     "TEMPLATES GENERATED FROM THE GRAPH, VALIDATED BY SCRIPT. Deployment files (Kubernetes manifests or a Helm chart; Docker Compose for a single machine) are generated from the app's graph entry the way docs pages, n8n workflows and Blender scripts already are, and checked by a script (a schema validator such as kubeconform, or kubectl --dry-run=client) before anyone applies them. The first template would be Reckons.AI's own optional local services (the MCP server, the local host of F243, Ollama, n8n), which proves the shape on apps this project already runs." ;
+               kpred:constraint   "NOT A HOST, AND NO GENERAL BACKEND (AGENTS.md integration boundaries; F76 'Reckons.AI is NOT a file host'). Templates are applied by the person to THEIR machines or cluster; Reckons.AI never runs a cluster or hosts anyone's app. Every hosted app is opt-in and per person, like n8n (F179)." ;
+               kpred:constraint   "SOMEONE ELSE'S APP IS SOMEONE ELSE'S CODE ON YOUR MACHINE. A shared app is pinned to a digest or commit, shows what changes before an update, opens no port beyond loopback until the person allows it (F243), and gets no access to a space unless the person grants that space." ;
+               kpred:open-question "Is this a direction for Reckons.AI itself, or a separate product built on its graph and MCP server? It changes what the product is (AGENTS.md rule 2), so it is Matt's call." ;
+               kpred:open-question "Single machine first (Docker Compose) or Kubernetes first (a homelab or team cluster: k3s, kind, microk8s)?" ;
+               kpred:open-question "How are apps shared between people: a git repo per app (like the F249 plugin repo), an index graph that lists them, or the official MCP registry format?" ;
+               kpred:remaining    "Nothing built, no container or Kubernetes file exists in the repository (checked 2026-10-08). The smallest first slice: describe this project's own local services in the graph and generate one validated deployment template from that description." ;
+               kpred:relates-to   kb:mcp-server ;
+               kpred:relates-to   kb:local-host-mode ;
+               kpred:relates-to   kb:integration-plugin-sdk ;
+               kpred:relates-to   kb:feature-builder ;
+               kpred:relates-to   kb:space-set-templates ;
+               kpred:relates-to   kb:n8n-deploy ;
+               kpred:relates-to   kb:byo-static-host .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
