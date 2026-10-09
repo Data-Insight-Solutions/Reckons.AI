@@ -1011,7 +1011,9 @@ function summary(scores: Score[], specs: Record<string, FileSpec>) {
 function queue(scores: Score[], specs: Record<string, FileSpec>) {
   const lines: string[] = [];
   const add = (subject: string, predicate: string, object: string, note: string, type: string, priority: string) =>
-    lines.push(JSON.stringify({ subject, predicate, object, note, type, agent: 'extraction-score', priority }));
+    // Its findings are about roadmap features (kb:extraction-accuracy and the specs it scores). An
+    // unscoped row is retained by the drain rather than imported, so omitting kb delivers nothing.
+    lines.push(JSON.stringify({ subject, predicate, object, note, type, kb: 'roadmap', agent: 'extraction-score', priority }));
 
   /*
    * SYNONYMS FIRST — proposed as skos:altLabel, which is what a rival term for the same fact IS.
