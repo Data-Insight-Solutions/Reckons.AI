@@ -23,6 +23,7 @@
  * and has no transformers/ort dependency of its own.
  */
 import { loadWithDeviceFallback, type InferenceDevice } from '$lib/integrations/llm/device-select';
+import { revisionFor } from '$lib/integrations/llm/model-revisions';
 
 /** Local alias — cannot import type from @huggingface/transformers (see note above) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,6 +184,7 @@ async function loadEmbedder(): Promise<FeatureExtractionPipeline> {
   const load = loadWithDeviceFallback((device) =>
     pipeline('feature-extraction', MODEL, {
       device,
+      revision: revisionFor(MODEL),
       dtype: 'q8',
       progress_callback: (p: { status: string; progress?: number }) => {
         for (const cb of embedProgressCallbacks) cb(p.status, p.progress ?? 0);
