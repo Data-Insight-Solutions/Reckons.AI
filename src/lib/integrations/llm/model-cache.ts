@@ -12,6 +12,8 @@
  *  3. Purge cached models to free space.
  */
 
+import { revisionFor } from './model-revisions';
+
 const HF_HOST = 'https://huggingface.co';
 const TRANSFORMERS_CACHE = 'transformers-cache';
 const KOKORO_CACHE = 'kokoro-voices';
@@ -39,7 +41,7 @@ export interface ModelManifest {
   totalBytes: number;
 }
 
-function hfUrl(repo: string, path: string, revision = 'main'): string {
+function hfUrl(repo: string, path: string, revision: string): string {
   return `${HF_HOST}/${repo}/resolve/${revision}/${path}`;
 }
 
@@ -152,7 +154,7 @@ export async function inspectModelCache(): Promise<CachedModelStatus[]> {
     for (const file of manifest.files) {
       try {
         const cache = await caches.open(file.cacheName);
-        const url = hfUrl(manifest.repo, file.path);
+        const url = hfUrl(manifest.repo, file.path, revisionFor(manifest.repo));
         const resp = await cache.match(url);
         if (resp) {
           cachedCount++;
@@ -229,7 +231,7 @@ export async function sideloadModel(
     if (!file) continue;
 
     const cache = await caches.open(mf.cacheName);
-    const url = hfUrl(manifest.repo, mf.path);
+    const url = hfUrl(manifest.repo, mf.path, revisionFor(manifest.repo));
 
     // Read the file and store as a Response in the cache
     const buffer = await file.arrayBuffer();
@@ -264,7 +266,7 @@ export async function purgeModelCache(manifestId: string): Promise<number> {
   for (const mf of manifest.files) {
     try {
       const cache = await caches.open(mf.cacheName);
-      const url = hfUrl(manifest.repo, mf.path);
+      const url = hfUrl(manifest.repo, mf.path, revisionFor(manifest.repo));
       if (await cache.delete(url)) deleted++;
     } catch { /* ignore */ }
   }
@@ -301,7 +303,7 @@ export async function saveModelToWorkspace(
     const mf = manifest.files[i];
     try {
       const cache = await caches.open(mf.cacheName);
-      const url = hfUrl(manifest.repo, mf.path);
+      const url = hfUrl(manifest.repo, mf.path, revisionFor(manifest.repo));
       const resp = await cache.match(url);
       if (!resp) continue;
 
@@ -337,7 +339,7 @@ export async function restoreModelFromWorkspace(
       if (!buffer) continue;
 
       const cache = await caches.open(mf.cacheName);
-      const url = hfUrl(manifest.repo, mf.path);
+      const url = hfUrl(manifest.repo, mf.path, revisionFor(manifest.repo));
       const contentType = mf.path.endsWith('.json') ? 'application/json' : 'application/octet-stream';
 
       await cache.put(url, new Response(buffer, {
