@@ -9152,6 +9152,19 @@ kb:release-0-2-7 rdf:type ktype:Release ;
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
 
+# 2026-10-08 — v0.2.6 SCOPE DECIDED (Matt, in a Claude Code chat with selection forms).
+kb:release-0-2-6 kpred:decided "MATT, 2026-10-08, SCOPE. Theme: finish what 0.2.5 started, and DECISIONS YOU CAN TRUST. In: (A) the chunk importer (F107.10), Spaces phase 2 as a canvas mode, the shared canvas on / (F92), evidence anchors that highlight the passage (F122.1); proposals in the graph shown as 2 to 4 cited options (F223), ONE review queue for the app, the MCP server and the offline jobs (two were found on 2026-10-08), and model pinning (PR #404). First slices of four ideas from 2026-10-08: collections (F65 migrates to skos:Collection) and the collection layout (F256); voice as the first plugin on a minimal plugin contract (F61); change provenance phase 1 (F254: the model at its exact version on statements written in the app, Model:/Intent: commit trailers checked in CI); Analyze as job sets phase 1 (F255: the five actions as recipes, behaviour unchanged). Also all of the 10-07 draft's groups B (performance), C (local tier, honestly), D (auditors) and E (Currents quick win), plus dependabot retargeted to dev. PARKED for 0.2.7 or later, recorded and not worked: F257 LangGraph, F249 feature builder, F250 space-level Sets, F251 rule conflicts, F252 app sharing, F253 publish your version." ;
+    kpred:decided "MATT, 2026-10-08, CADENCE: 'I want big additions early, then refinement. The initial shape gives improvement opportunity clarity.' And: 'I've very quickly learned why arbitrary 2 week sprints can help movement. DEPLOY is much easier said than done.' 0.2.6 is a two-week sprint, 2026-10-08 to 2026-10-22: week one lands the big additions in rough shape, week two refines them and the smaller groups." ;
+    kpred:constraint "THE DATE HOLDS, THE SCOPE MOVES. The scope above is larger than 0.2.5, which had six parts in nine days. On 2026-10-18 (day ten) whatever is not working is moved to 0.2.7 rather than letting the release date slip; a sprint that stretches stops being a sprint. The cut is recorded here when it happens, item by item." ;
+    kpred:measured "WHO A DEPLOY REACHES, 2026-10-08 (Cloudflare Web Analytics, last 30 days, sampled): reckons.ai had about 170 visits and 880 page loads on 17 of 30 days; about 110 visits came from outside the US (Australia, India, New Zealand, Brazil, the UAE, Canada). 130 visits were to / only; /ingest, /review and /kb had about 10 each. Real but few readers, almost all of the landing page, so 0.2.6 can take big changes; the landing page is the surface to protect." ;
+    kpred:has-part kb:graph-proposals ;
+    kpred:has-part kb:entity-sets ;
+    kpred:has-part kb:integration-plugin-sdk ;
+    kpred:has-part kb:job-backpressure ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:document-evidence-anchors ;
+    kpred:has-part kb:currents-client-unwired .
 kb:set-layout rdf:type ktype:Feature ;
                rdfs:label         "Collection layout — nodes grouped strongly by the collections they belong to, overlaps drawn as overlaps" ;
                kpred:feature-id   "F256" ;
