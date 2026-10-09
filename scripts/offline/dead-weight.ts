@@ -349,6 +349,9 @@ if (PENDING_OUT && findings.length) {
       predicate: `urn:sweep:pred/dead-weight`,
       question,
       type: 'question',
+      // Its subjects are code modules and files, described in the codebase space. An unscoped row
+      // is retained by the drain rather than imported, so omitting this silently delivers nothing.
+      kb: 'codebase',
       agent: 'offline:dead-weight',
       priority: ['orphaned-artifact', 'ghost-feature', 'orphaned-feature'].includes(f.check) ? 'high' : 'medium',
       addedAt: now,
