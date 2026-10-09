@@ -392,6 +392,8 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/merge-analysis.ts" ;
           kpred:has-file "src/lib/integrations/llm/re-analyze.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-cache.ts" ;
+          kpred:has-file "src/lib/integrations/llm/model-revisions.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/model-revisions.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/provider-status.svelte.ts" ;
           kpred:has-file "src/lib/integrations/llm/kokoro-tts.ts" ;
           kpred:has-file "src/lib/integrations/llm/whisper-stt.ts" ;
