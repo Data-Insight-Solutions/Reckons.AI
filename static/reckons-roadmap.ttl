@@ -9023,6 +9023,8 @@ kb:stable-local-calls rdf:type ktype:Feature ;
                kpred:remaining    "Not covered: energy-bench (a benchmark must keep its own settings), the app's own Ollama provider in src/lib (browser, no device config), and visual-evidence-report (a dense vision model, never seen crashing). One GPU lease for every local caller (0.2.6 group C) is separate: this makes a call survive a crash, the lease stops two jobs loading models at once." ;
                kpred:has-file     "scripts/offline/lib/local-model.ts" ;
                kpred:tested-by    "scripts/offline/lib/__tests__/local-model.test.ts" ;
+               kpred:tested-by    "scripts/agent/__tests__/queue-standard-batch.test.ts" ;
+               kpred:progress     "2026-10-09, ALSO: the standard batch seeded term-senses panels for space, source, set and statement, which the terminology graph gives fewer than two meanings, so each run failed. standardBatch now reads the graph and seeds only words with two or more (node and graph today); a word joins the day its meanings are added." ;
                kpred:relates-to   kb:job-backpressure ;
                kpred:relates-to   kb:langgraph-job-runtime ;
                kpred:relates-to   kb:local-panel .
