@@ -1,3 +1,33 @@
+## 2026-10-08 — START HERE. 0.2.5 ships, 0.2.6 planned as a two-week sprint (Claude Code)
+
+**0.2.5:** on staging, verified. Matt chose to fix the spaces map first: **#409** (/kb draws the map
+from one space). Order: Matt merges #409 → promote dev → staging → Matt merges **#390**
+(staging → main, deploys reckons.ai) → then tag `v0.2.5`, publish the GitHub release from
+`content/releases/v0-2-5.md`, set `kb:release-0-2-5` to production (Matt said yes to all three).
+
+**0.2.6 (2026-10-08 → 10-22), scope in `kb:release-0-2-6`:** finish 0.2.5's leftovers + decisions you
+can trust (F223 cited options, ONE review queue, #404 model pins) + first slices of collections/F256,
+voice plugin (F61), F254 provenance, F255 Analyze recipes + groups B–E + dependabot → dev. Big
+additions in week one, refinement in week two; **day ten (10-18) cuts what isn't working to 0.2.7.**
+Parked: F249–F253 and F257 (LangGraph; renumbered from F248, which #393 claimed first).
+
+**Found today, not yet fixed:** two review queues. Offline jobs write
+`reckons-workspace/knowledge.pending.jsonl`, but the MCP review tools (and the local-work-reviewer agent)
+read `mcp-workspace` only. Five producers wrote rows with no `kb`, so the app never imported them (#396
+fixes the producers; 331 rows were backfilled locally). Local Playwright browsers are out of date
+(1228 installed, 1243 needed), so e2e runs only in CI.
+
+**Open PRs, base dev:** #396 pending rows name their space · #404 model pins (0.2.6) · #405 twelve
+decisions + taxonomy rule · #407 layer/benchmark cleanup · #408 F256 collection layout + Collection/Set
+model · #409 spaces map (0.2.5) · roadmap stack #397→#406 (F249–F255 and F257, merge in order) · this PR.
+
+**Queue state:** 1,272 rows after today's chat review (backups in `~/.local/state/reckons/`). Still to
+review in chat: 82 predicate synonym pairs, `screenshot-dir` layer, docs-review folded by term,
+a 5-draft sample of docs-expand.
+
+**Waiting on Matt:** merges above; remove the `# reckons-schedule` crontab line (the worker + heartbeat
+hook replace it; my edit was blocked).
+
 ## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
 
 **Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
