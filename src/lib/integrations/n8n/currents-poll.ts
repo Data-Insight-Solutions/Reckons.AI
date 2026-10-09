@@ -34,9 +34,13 @@ import { pushNotification, dismissNotification } from '../../stores/notification
 import { getOrCreateStableId } from '../../storage/kb-fingerprint';
 import { fetchCurrentItems, processArrivals, registerCurrent, type CurrentItem } from './currents-sync';
 
-/** Same cadence as the workspace poll (POLL_INTERVAL_MS in stores/workspace.svelte.ts). */
-export const CURRENTS_POLL_MS = 10_000;
-const MAX_BACKOFF_MS = 5 * 60_000;
+/**
+ * Every five minutes, NOT the workspace poll's ten seconds. The workspace poll reads a local folder;
+ * this one calls a server the person runs, and their n8n Currents Monitor only collects every 30
+ * minutes, so polling faster finds nothing new and costs them ~8,600 requests a day per open tab.
+ */
+export const CURRENTS_POLL_MS = 5 * 60_000;
+const MAX_BACKOFF_MS = 30 * 60_000;
 const FAILURE_NOTICE_ID = 'currents-n8n-unreachable';
 
 export type SweepResult =
