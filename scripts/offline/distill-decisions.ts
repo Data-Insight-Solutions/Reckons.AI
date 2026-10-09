@@ -208,6 +208,9 @@ if (PENDING_OUT && emit.length) {
       question: note,
       note: `${e.subject}|${e.label}`,
       type: 'suggestion',
+      // The open decisions are asserted in static/reckons-roadmap.ttl. An unscoped row is retained
+      // by the drain rather than imported, so omitting this silently delivers nothing.
+      kb: 'roadmap',
       agent: `offline:distill-decisions`,
       priority: 'normal',
       addedAt: now,
