@@ -9109,6 +9109,28 @@ kb:app-sharing-framework rdf:type ktype:Feature ;
 
 kb:feature-builder kpred:decided "MATT, 2026-10-08, THE FIRST COPY AND THE PURPOSE: 'This local instance of Reckons.AI is the single owner's development desktop and should be the first copy of Reckons.AI ... I want the Add Feature to add to the Reckons.AI interface and create a user customizable web application for creating games or other digital content using AI tools.' Read as: on the owner's desktop, the first copy, an approved feature lands in Reckons.AI itself through the normal branch, PR to dev, CI path; on every other copy it builds that person's own version (their plugin repo). Whether every copy's features should also appear in the interface the same way is to confirm." .
 
+kb:definition-spaces rdf:type ktype:Feature ;
+               rdfs:label         "Define it as a space first — a UI feature or a plugin starts as a collection of statements the person refines, and agent jobs build from it" ;
+               kpred:feature-id   "F249.1" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:feature-builder ;
+               kpred:description  "ADD offers 'a feature' and 'a plugin'. Either one starts by creating a definition space from a starter set: the set lays down the statements every definition of that kind needs, most of them open questions. The person reviews and refines that space until its collection of statements says what to build. Agent jobs then build from that collection, never from a one-line prompt, and every build step cites the statements it implements." ;
+               kpred:decided      "MATT, 2026-10-09: 'We need to also allow for new plugin creation, based on a space definition. Same with add feature, but add plugin. There should be sets to start off the definition of a UI feature or a plugin, user will need to review and refine the space to define the Collection of statements that guides the build out by agent jobs.'" ;
+               kpred:principle    "THE SPEC IS A REVIEWED GRAPH, NOT A PROMPT. The same rule as the rest of the product: nothing an agent builds is grounded in text nobody confirmed. A definition statement is pending until the person accepts it, whoever drafted it (the 2026-10-08 taxonomy rule), and the build reads only confirmed statements." ;
+               kpred:proposed     "TWO STARTER SETS, IN THE TERMS OF #426 (a set is the template, a SHACL shape that creates a collection; the collection is the grouping). (1) UI FEATURE: the problem in the person's words, who uses it, where it lives in the existing UI (an existing tab, panel, canvas mode or ADD option; a new top-level tab is flagged, never assumed), the statements it reads and writes, what done looks like as checkable acceptance statements, and what it must not do. (2) PLUGIN: the same, plus the F61 contract it implements (its capability: route, panel, canvas mode, job, ingest, sync, generation), its config schema, the data it may reach, and its dependencies with their size, since the 2026-10-08 voice measurement showed a dependency can add 706 MB to every clone." ;
+               kpred:proposed     "THE SHAPE IS THE READINESS CHECK. The set's SHACL shape says which statements must be confirmed before a build may start; shacl-validate already runs shapes as data. A build job refuses a definition the shape rejects and names the missing statements, which arrive back in the person's review queue as open questions (F32 partial facts)." ;
+               kpred:proposed     "THE BUILD IS A JOB SET (F255): script checks first (does the shape pass, does the named UI location exist, is the capability one the contract has), then a plan proposal, then code on a branch. Each proposal carries the model at its exact version and cites the definition statements it implements (F254), so review compares the result with the definition, not with a memory of the request." ;
+               kpred:open-question "Do the starter sets ship with Reckons.AI only, or can a person save their own refined definition as a new set for the next feature (F250 space set templates)?" ;
+               kpred:open-question "Is a definition space its own space, or a collection inside the person's plugin repo's roadmap space? The 2026-10-06 self-contained space decision favours its own space, which travels with the plugin." ;
+               kpred:remaining    "Nothing built. The two starter sets and their shapes can be written and checked now, with no plugin loader: they are TTL plus a shacl-validate run. The build path waits on the F61 minimal contract (v0.2.6, voice first) and F249's loader, which are parked for v0.2.7 with F249." ;
+               kpred:depends-on   kb:integration-plugin-sdk ;
+               kpred:depends-on   kb:analyze-job-sets ;
+               kpred:relates-to   kb:space-set-templates ;
+               kpred:relates-to   kb:entity-sets ;
+               kpred:relates-to   kb:graph-proposals ;
+               kpred:relates-to   kb:change-provenance .
+
 kb:game-development kpred:decided "MATT, 2026-10-08: 'I think Reckons.AI may be a game development orchestration engine at some point!' The direction is recorded; the status stays speculative and the honest notes above still hold, including the cheapest falsification (one real game canon in a graph, one generation run reviewed as a set) before phases 3 and 4." .
 
 kb:publish-your-version rdf:type ktype:Feature ;
