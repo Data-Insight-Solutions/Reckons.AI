@@ -9065,6 +9065,25 @@ kb:space-set-templates rdf:type ktype:Feature ;
                kpred:relates-to   kb:feature-builder ;
                kpred:relates-to   kb:starter-turtles .
 
+kb:predicate-rule-conflicts rdf:type ktype:Feature ;
+               rdfs:label         "Predicate rule conflicts — find where a space's own predicates and statements disagree with the rules declared for them" ;
+               kpred:feature-id   "F251" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A space can carry RULES about its predicates (a status takes one value from a fixed list, a feature has one status, depends-on points at a feature, parent-of is the inverse of child-of), whether a person wrote them, a template brought them (F250), or the shipped vocabulary declares them (F155). People and models also MINT their own predicates. This feature finds the conflicts between the two and turns each into a decision for a person, never a silent fix." ;
+               kpred:decided      "MATT, 2026-10-08: 'Another big feature will be custom predicate rule conflict detection versus custom predicates in the space graph.'" ;
+               kpred:proposed     "THREE KINDS OF CONFLICT, two decidable by rule and one not. (1) DATA AGAINST A RULE: a statement breaks a declared rule (two statuses where one is allowed, a value outside the closed list, an object of the wrong type). Deterministic: a SHACL validation report. (2) RULE AGAINST RULE: two rules that cannot both hold, typically a template's rule and a person's own (maxCount 1 against minCount 2, two different closed lists for one predicate). Deterministic: comparing the shapes. (3) A CUSTOM PREDICATE THAT ESCAPES A RULE: a minted predicate that means the same as a ruled one (status beside has-status), so its statements bypass the rule entirely. NOT decidable by similarity: kb:predicate-threshold-limit measured that cosine cannot separate a synonym from an opposite on any of five embedding models. Candidates come from similarity and usage; the person declares the relation (skos:exactMatch or owl:equivalentProperty, or 'different'), and from then on the rule covers both." ;
+               kpred:proposed     "EACH CONFLICT IS A DECISION, NOT A FIX. A conflict surfaces as a decision with its options (change the statement, relax the rule, declare the predicates equivalent, keep both as a natural dichotomy as kb:dichotomy allows), in the same review flow F223 gives proposals. Nothing is rewritten without a person choosing." ;
+               kpred:measured     "2026-10-08: the SHACL engine is already a dependency (rdf-validate-shacl ^0.6.5), but only scripts/offline/shacl-validate.ts and tests call it; the app runs no SHACL. Shapes exist for entity types (src/lib/rdf/type-shapes.ts, derived from EntityTypeDef) and for the four controlled vocabularies (static/reckons-vocabulary.ttl, F155), which graph-lint enforces procedurally for this repository only. Custom predicates are managed in PredicateManager.svelte (F12), which records no rules." ;
+               kpred:open-question "Where does a person write a rule: in the predicate manager beside the predicate, on the entity type as a shape, or both?" ;
+               kpred:open-question "When a template's rule and a person's rule conflict (kind 2), which one wins until they decide, or does neither apply?" ;
+               kpred:open-question "Does checking run on every write (blocking, like the content-safety filter) or as a sweep that queues decisions?" ;
+               kpred:remaining    "Nothing built. Order by what each blocks: run SHACL in the app over a space (kind 1), the shape comparison (kind 2), then candidates and declared equivalence for minted predicates (kind 3)." ;
+               kpred:relates-to   kb:shape-validation ;
+               kpred:relates-to   kb:controlled-vocabularies ;
+               kpred:relates-to   kb:predicate-threshold-limit ;
+               kpred:relates-to   kb:space-set-templates ;
+               kpred:relates-to   kb:graph-proposals .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
