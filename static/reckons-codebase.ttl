@@ -470,7 +470,9 @@ code:n8n  rdf:type     ktype:Concept ;
           skos:definition "Currents sync against the n8n Currents Monitor workflow: register currents, pull new items (with a direct in-browser RSS/Atom fallback), and process arrivals into pending statements." ;
           skos:broader code:integrations ;
           kpred:has-file "src/lib/integrations/n8n/currents-sync.ts" ;
-          kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" .
+          kpred:has-file "src/lib/integrations/n8n/currents-poll.ts" ;
+          kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" ;
+          kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-poll.test.ts" .
 
 ## =============================================================================
 ## src/lib/safety — Content Safety

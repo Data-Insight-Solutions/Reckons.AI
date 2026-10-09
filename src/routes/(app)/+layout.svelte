@@ -177,6 +177,10 @@
         }).catch(e => console.warn('[auto-refresh] Failed:', e));
         startAutoRefreshScheduler();
       }
+
+      // Currents (F29.2): pull what the person's own n8n monitor collected. A tick makes no
+      // network call unless settings.n8nBaseUrl is set and an enabled current exists.
+      import('$lib/integrations/n8n/currents-poll').then((m) => m.startCurrentsPolling());
     }).catch(e => {
       error = e instanceof Error ? e.message : String(e);
       console.error('Store initialization error:', e);
