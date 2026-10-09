@@ -24,7 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ollamaStream } from '../offline/lib/ollama-stream.js';
 
-export type PlanFact = { fact: string; say: string; must: string[]; status?: string; at?: string; reviewer?: string; why?: string; supersedes?: string };
+export type PlanFact = { fact: string; say: string; by?: string; must: string[]; status?: string; at?: string; reviewer?: string; why?: string; supersedes?: string };
 export type PlanSource = { id: string; kind: string; title: string; written: string; reviewer: string; style: string; facts: PlanFact[] };
 export type Plan = { trip: string; sources: PlanSource[] };
 
@@ -35,11 +35,16 @@ export function readPlan(p = PLAN_PATH): Plan {
   return JSON.parse(readFileSync(p, 'utf8')) as Plan;
 }
 
-/** The smallest unit (a sentence inside a line, else the line) that contains every needle. Pure. */
-export function excerptFor(text: string, needles: string[]): string | undefined {
+/**
+ * The smallest unit (a sentence inside a line, else the line) that contains every needle. With
+ * `by`, only that person's own messages ("Alex: …") count, and the whole message is the passage.
+ * "Oh!" never ends a sentence: it is the start of a campground's name (Oh! Ridge). Pure.
+ */
+export function excerptFor(text: string, needles: string[], by?: string): string | undefined {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (by) return lines.find((l) => l.startsWith(`${by}:`) && needles.every((n) => l.includes(n)));
   for (const line of lines) {
-    const sentences = line.split(/(?<=[.!?])\s+(?=[A-Z"'(])/);
+    const sentences = line.split(/(?<=[.!?])(?<!\bOh!)\s+(?=[A-Z"'(])/);
     const s = sentences.find((x) => needles.every((n) => x.includes(n)));
     if (s) return s.trim();
   }
@@ -74,8 +79,8 @@ export function checkDraft(src: PlanSource, text: string): DraftCheck {
   for (const f of src.facts) {
     const missing = f.must.filter((m) => !text.includes(m));
     if (missing.length) { problems.push(`missing exactly: ${missing.map((m) => JSON.stringify(m)).join(', ')}`); continue; }
-    const ex = excerptFor(text, f.must);
-    if (!ex) problems.push(`no single line or sentence contains all of ${f.must.map((m) => JSON.stringify(m)).join(' + ')}`);
+    const ex = excerptFor(text, f.must, f.by);
+    if (!ex) problems.push(`no single ${f.by ? `message from ${f.by}` : 'line or sentence'} contains all of ${f.must.map((m) => JSON.stringify(m)).join(' + ')}`);
     else excerpts[f.fact] = ex;
   }
   return { ok: problems.length === 0, problems, excerpts };
@@ -83,7 +88,7 @@ export function checkDraft(src: PlanSource, text: string): DraftCheck {
 
 /** The prompt for one source. Pure. */
 export function buildPrompt(plan: Plan, src: PlanSource, feedback: string[] = []): string {
-  const lines = src.facts.map((f, i) => `${i + 1}. ${f.say}  [use these words exactly: ${f.must.map((m) => JSON.stringify(m)).join(', ')}]`);
+  const lines = src.facts.map((f, i) => `${i + 1}. ${f.say}${f.by ? ` (${f.by} says this, in a message of their own)` : ''}  [use these words exactly: ${f.must.map((m) => JSON.stringify(m)).join(', ')}]`);
   return [
     `Write a short SAMPLE document for a demo of a note-taking app. Everything in it is fictional except real place names.`,
     `Background: ${plan.trip}`,

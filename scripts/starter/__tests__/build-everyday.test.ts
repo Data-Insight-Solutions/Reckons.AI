@@ -7,7 +7,7 @@ import { readPlan } from '../draft-sample-sources';
 // Synthetic texts: one sentence per fact, built from its required words. Real texts are drafted
 // by a local model and approved by a person; the build rules do not depend on which.
 const plan = readPlan();
-const texts = Object.fromEntries(plan.sources.map((s) => [s.id, s.facts.map((f) => `Note: ${f.must.join(' and ')}.`).join('\n') + '\n']));
+const texts = Object.fromEntries(plan.sources.map((s) => [s.id, s.facts.map((f) => `${f.by ?? 'Note'}: ${f.must.join(' and ')}.`).join('\n') + '\n']));
 const starterTtl = readFileSync(STARTER, 'utf8');
 
 describe('build-everyday', () => {

@@ -20,6 +20,12 @@ describe('excerptFor', () => {
     expect(excerptFor(good, ['light wind', 'mild nights'])).toContain('light wind and mild nights');
     expect(excerptFor(good, ['$23', 'light wind'])).toBeUndefined();
   });
+  it('keeps Oh! Ridge whole, and with `by` only takes that person\'s own message (2026-10-09 drafts)', () => {
+    expect(excerptFor('- Oh! Ridge costs $23 a night this season.', ['$23'])).toBe('- Oh! Ridge costs $23 a night this season.');
+    const thread = "Alex: Hey! I'm in San Francisco and ready to go.\nJordan: I'm in. Let's make it happen.";
+    expect(excerptFor(thread, ["I'm in"])).toContain('San Francisco'); // the bug: the first match is the wrong person
+    expect(excerptFor(thread, ["I'm in"], 'Jordan')).toBe("Jordan: I'm in. Let's make it happen.");
+  });
 });
 
 describe('checkDraft', () => {

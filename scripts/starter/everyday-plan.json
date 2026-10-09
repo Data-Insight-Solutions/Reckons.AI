@@ -1,5 +1,5 @@
 {
-  "_comment": "F248 plan for the Getting started space (static/starter-everyday.ttl). Which SAMPLE source each fact came from, the words its passage must contain, who settled it, when, and the review history. Hand-written; the source TEXTS are drafted by a local model (draft-sample-sources.ts) and approved by Matt. Every source is fictional and labelled as a sample. A fact is named subject|predicate|object, using the local names in the starter (an entity object by its local name, a literal by its exact value). Facts not listed here stay as curated, confirmed and unsourced: types, labels, icons, photos, links, coordinates and the reasoning edges (ruled-out-by, for, part-of). Each fact carries `say`, the fact as a plain sentence for the drafting model, which contains every `must` string.",
+  "_comment": "F248 plan for the Getting started space (static/starter-everyday.ttl). Which SAMPLE source each fact came from, the words its passage must contain, who settled it, when, and the review history. Hand-written; the source TEXTS are drafted by a local model (draft-sample-sources.ts) and approved by Matt. Every source is fictional and labelled as a sample. A fact is named subject|predicate|object, using the local names in the starter (an entity object by its local name, a literal by its exact value). Facts not listed here stay as curated, confirmed and unsourced: types, labels, icons, photos, links, coordinates and the reasoning edges (ruled-out-by, for, part-of). Each fact carries `say`, the fact as a plain sentence for the drafting model, which contains every `must` string. `by` (thread facts): the passage must come from that person's own message, so a fact about Alex is never evidenced by Jordan's words.",
   "trip": "Alex (San Francisco) and Jordan (Los Angeles) meet halfway for a camping weekend in the Eastern Sierra, Fri July 10 to Sun July 12, 2026, choosing between two campgrounds: Lake George (Mammoth Lakes basin) and Oh! Ridge (June Lake Loop). They must book by Wednesday July 8.",
   "sources": [
     {
@@ -13,6 +13,7 @@
         {
           "fact": "alex|lives-in|san-francisco",
           "say": "Alex lives in San Francisco.",
+          "by": "Alex",
           "must": [
             "San Francisco"
           ],
@@ -21,6 +22,7 @@
         {
           "fact": "jordan|lives-in|los-angeles",
           "say": "Jordan lives in Los Angeles.",
+          "by": "Jordan",
           "must": [
             "Los Angeles"
           ],
@@ -30,6 +32,7 @@
         {
           "fact": "alex|considering|lake-george",
           "say": "Alex is considering Lake George.",
+          "by": "Alex",
           "must": [
             "Lake George"
           ],
@@ -38,6 +41,7 @@
         {
           "fact": "alex|considering|oh-ridge",
           "say": "Alex is considering Oh! Ridge.",
+          "by": "Alex",
           "must": [
             "Oh! Ridge"
           ],
@@ -46,6 +50,7 @@
         {
           "fact": "jordan|considering|lake-george",
           "say": "Jordan is considering Lake George.",
+          "by": "Jordan",
           "must": [
             "Lake George"
           ],
@@ -55,6 +60,7 @@
         {
           "fact": "jordan|considering|oh-ridge",
           "say": "Jordan is considering Oh! Ridge.",
+          "by": "Jordan",
           "must": [
             "Oh! Ridge"
           ],
@@ -64,6 +70,7 @@
         {
           "fact": "jordan|coming-along|the-weekend",
           "say": "Jordan says yes to the weekend trip, in the words \"I'm in\".",
+          "by": "Jordan",
           "must": [
             "I'm in"
           ],
@@ -73,6 +80,7 @@
         {
           "fact": "alex|leans-toward|oh-ridge",
           "say": "Alex prefers Oh! Ridge (cheaper, warmer, open both nights).",
+          "by": "Alex",
           "must": [
             "Oh! Ridge"
           ],
@@ -121,6 +129,7 @@
         {
           "fact": "ev-alex-client-call|scheduled-at|2026-07-10T11:00",
           "say": "Alex has a work call on Friday that starts at 11:00, so Alex cannot leave before it ends.",
+          "by": "Alex",
           "must": [
             "11:00"
           ],
@@ -129,6 +138,7 @@
         {
           "fact": "ev-alex-client-call|ends-at|2026-07-10T12:30",
           "say": "Alex's Friday work call ends at 12:30.",
+          "by": "Alex",
           "must": [
             "12:30"
           ],
@@ -137,6 +147,7 @@
         {
           "fact": "ev-jordan-monday|scheduled-at|2026-07-13T09:00",
           "say": "Jordan has a work review Monday at 9, so they must be home on Sunday.",
+          "by": "Jordan",
           "must": [
             "Monday at 9"
           ],

@@ -66,8 +66,8 @@ export async function buildReviewed({ starterTtl, plan, texts }: BuildInput): Pr
       ingestedAt: written, hash: await hashSourceText(text), trustLevel: 'review',
     });
     for (const f of src.facts) {
-      const excerpt = excerptFor(text, f.must);
-      if (!excerpt) { problems.push(`${src.id}: no line or sentence of the text contains ${f.must.map((m) => JSON.stringify(m)).join(' + ')} (fact ${f.fact})`); continue; }
+      const excerpt = excerptFor(text, f.must, f.by);
+      if (!excerpt) { problems.push(`${src.id}: no ${f.by ? `message from ${f.by}` : 'line or sentence'} of the text contains ${f.must.map((m) => JSON.stringify(m)).join(' + ')} (fact ${f.fact})`); continue; }
       const st = byKey.get(f.fact) ?? newFact(f.fact, problems, byKey);
       if (!st) continue;
       const status = (f.status ?? 'confirmed') as Statement['status'];
