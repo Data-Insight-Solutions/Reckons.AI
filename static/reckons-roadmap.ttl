@@ -9047,6 +9047,24 @@ kb:feature-builder rdf:type ktype:Feature ;
                kpred:depends-on   kb:langgraph-job-runtime ;
                kpred:relates-to   kb:agents-in-app .
 
+kb:space-set-templates rdf:type ktype:Feature ;
+               rdfs:label         "Space set templates — create a whole set of spaces for one way of working, and see its workflow traced across them" ;
+               kpred:feature-id   "F250" ;
+               kpred:has-status   "speculative" ;
+               kpred:description  "A template describes a SET of spaces (each with a role, and how the roles relate) plus the workflow that runs across them, but no one's data. Creating from a template gives the person their own new spaces, unique to them, already joined as a set. The first template is a software development method, the one this repository runs on itself: a roadmap space where work is planned, a codebase space that links files to it, a testing space that links tests, and a production space that records what shipped. The person can then watch a feature's path through those spaces as a traced workflow." ;
+               kpred:decided      "MATT, 2026-10-08: 'I think a new Reckons.AI App feature being special, we need to allow users to create space set templates, with a set of spaces being created unique for the user from a template. The user could then see a software development method traced out in workflows leveraging the space sets.'" ;
+               kpred:proposed     "A TEMPLATE IS A SET WITH ROLES AND NO MEMBERS. F113 already models a set as a dcat:Catalog whose members carry one role each (dcterms:type, a SKOS concept) and PROV relations between them, and static/reckons-catalog.ttl does this for the repository's own 40 graphs. A template is the same catalog with roles declared and members empty, plus the vocabulary each role expects (for the development method: has-status, has-file, tested-by, depends-on, the six-step lifecycle in reckons-vocabulary.ttl). Creating from it mints one new space per role with fresh stable ids, writes the set membership into each space's own graph (the 2026-10-07 decision that sets live in the space files), and rewires any leap between roles to the new ids." ;
+               kpred:proposed     "THE WORKFLOW IS A PLAN IN THE TEMPLATE, THE TRACE IS DERIVED FROM REAL STATEMENTS. The template carries the method as ordered steps, each naming the role it happens in and the statement that marks it done (plan: a feature with has-status planned in the roadmap role; build: a has-file in the codebase role; test: a tested-by; ship: has-status production). Candidate standards, to choose between: P-Plan (a plan vocabulary that extends PROV-O, matching F113's use of PROV) or schema:HowTo with HowToStep. The trace for one feature is then computed, never stored: which steps its statements already satisfy, and which are a well-formed absence still waiting." ;
+               kpred:proposed     "WHERE IT LIVES: the Spaces tab, beside the map and its sets (F218, F245 placement decision). 'New set from template' next to the sets; the traced workflow shown when a set or a feature in it is selected. No new top-level tab." ;
+               kpred:proposed     "TIES TO THE FEATURE BUILDER (F249): a person's plugin repo would be created with its own development set from this template, so the features they build are planned, linked and traced exactly the way Reckons.AI's own are." ;
+               kpred:open-question "Templates shipped with the app only, or can a person save one of their own sets as a template (keeping roles, vocabulary and workflow, dropping every statement)?" ;
+               kpred:open-question "P-Plan or schema:HowTo for the workflow steps?" ;
+               kpred:open-question "Which spaces does the first development template include: the four above, or also architecture and features as in this repository?" ;
+               kpred:remaining    "Nothing built. Depends on F113 sets of a person's own spaces in the app (phase 1 exists only for this repository's static graphs) and on F218 phase 2 (declared membership on the map)." ;
+               kpred:depends-on   kb:graph-sets ;
+               kpred:relates-to   kb:feature-builder ;
+               kpred:relates-to   kb:starter-turtles .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
