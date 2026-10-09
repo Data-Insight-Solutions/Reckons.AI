@@ -8,6 +8,8 @@
  * Receives streamId from the service worker and forwards transcript results back.
  */
 
+import { revisionFor } from '../lib/integrations/llm/model-revisions';
+
 let mediaStream: MediaStream | null = null;
 let keepAlive: ReturnType<typeof setInterval> | null = null;
 let mode: 'deepgram' | 'whisper' = 'whisper';
@@ -170,6 +172,7 @@ async function startWhisperMode() {
 
   whisperTranscriber = await pipeline('automatic-speech-recognition', WHISPER_MODEL, {
     dtype: 'q8',
+    revision: revisionFor(WHISPER_MODEL),
   });
 
   chrome.runtime.sendMessage({
