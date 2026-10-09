@@ -96,6 +96,7 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-vocabulary ,
         graph:starter-assets ,
         graph:starter-everyday ,
+        graph:starter-everyday-reviewed ,
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-turtles ,
@@ -247,6 +248,11 @@ graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-everyday.ttl" .
+
+graph:starter-everyday-reviewed a void:Dataset ;
+    dcterms:title "Starter: everyday, reviewed (generated, F248)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-everyday-reviewed.ttl" .
 
 graph:starter-guide a void:Dataset ;
     dcterms:title "Starter: guide" ;

@@ -38,6 +38,15 @@ const CONCEPT = 'urn:kbase:concept/';
 const PRED = 'urn:kbase:predicate/';
 /** Curated facts are dated to when the friends started planning; nothing about them is reviewed. */
 const CURATED_AT = Date.parse('2026-07-03T18:00:00Z');
+/**
+ * The curated facts (types, labels, icons, photos, links) get a named source of their own. Without
+ * one they import under 'imported', and the Sources view lists "Source details unavailable
+ * (imported)" with 179 statements: the first thing a new person would see there (2026-10-09).
+ */
+export const CURATED: Source = {
+  id: 'starter-curated', title: 'Getting started example, as built into Reckons.AI', uri: 'note://sample/starter-curated',
+  kind: 'turtle', ingestedAt: CURATED_AT, trustLevel: 'trusted',
+};
 
 const termKey = (t: Term) => (t.kind === 'literal' ? t.value : t.value.startsWith(CONCEPT) ? t.value.slice(CONCEPT.length) : t.value);
 export const factKey = (st: Pick<Statement, 's' | 'p' | 'o'>) => `${termKey(st.s)}|${st.p.value.slice(PRED.length)}|${termKey(st.o)}`;
@@ -54,9 +63,12 @@ export async function buildReviewed({ starterTtl, plan, texts }: BuildInput): Pr
   const byKey = new Map<string, Statement>();
   for (const st of curated) {
     const key = factKey(st);
-    byKey.set(key, { ...st, id: stableId(key), status: 'confirmed', createdAt: CURATED_AT, updatedAt: CURATED_AT });
+    byKey.set(key, {
+      ...st, id: stableId(key), status: 'confirmed', createdAt: CURATED_AT, updatedAt: CURATED_AT,
+      g: { kind: 'iri', value: `urn:kbase:source/${CURATED.id}` }, sourceId: CURATED.id,
+    });
   }
-  const sources: Source[] = [];
+  const sources: Source[] = [CURATED];
   for (const src of plan.sources) {
     const text = texts[src.id];
     if (text === undefined) { problems.push(`${src.id}: no approved text at ${path.relative(ROOT, path.join(TEXT_DIR, `${src.id}.md`))}`); continue; }
@@ -75,7 +87,11 @@ export async function buildReviewed({ starterTtl, plan, texts }: BuildInput): Pr
       byKey.set(f.fact, {
         ...st,
         g: { kind: 'iri', value: `urn:kbase:source/${src.id}` },
-        sourceId: src.id, excerpt, grounded: true, status, confidence: status === 'pending' ? 0.8 : 1,
+        // grounded = someone checked the passage is in the source. The three pending facts are new
+        // arrivals nobody has checked, so they carry the passage without the mark, which also routes
+        // them to the person (verifiability.ts: a grounded excerpt goes to a reviewing agent, and a
+        // first visit has none). They are the tour's first real decision (F248, 2026-10-08).
+        sourceId: src.id, excerpt, ...(status === 'pending' ? {} : { grounded: true }), status, confidence: status === 'pending' ? 0.8 : 1,
         createdAt: written, updatedAt: at ?? written,
         ...(status !== 'pending' && at ? { settledBy: { actor: f.reviewer ?? src.reviewer, channel: 'review', at } } : {}),
         ...(f.supersedes ? { supersedes: stableId(f.supersedes) } : {}),

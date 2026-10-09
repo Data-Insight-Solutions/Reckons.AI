@@ -82,7 +82,8 @@
           "say": "Alex prefers Oh! Ridge (cheaper, warmer, open both nights).",
           "by": "Alex",
           "must": [
-            "Oh! Ridge"
+            "Oh! Ridge",
+            "cheaper"
           ],
           "at": "2026-07-04T18:30:00Z"
         },
