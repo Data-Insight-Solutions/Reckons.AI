@@ -1,102 +1,480 @@
 {
-  "_comment": "F248 plan for the Getting started space (static/starter-everyday.ttl). Which SAMPLE source each fact came from, the words its passage must contain, who settled it, when, and the review history. Hand-written; the source TEXTS are drafted by a local model (draft-sample-sources.ts) and approved by Matt. Every source is fictional and labelled as a sample. A fact is named subject|predicate|object, using the local names in the starter (an entity object by its local name, a literal by its exact value). Facts not listed here stay as curated, confirmed and unsourced: types, labels, icons, photos, links, coordinates and the reasoning edges (ruled-out-by, for, part-of).",
+  "_comment": "F248 plan for the Getting started space (static/starter-everyday.ttl). Which SAMPLE source each fact came from, the words its passage must contain, who settled it, when, and the review history. Hand-written; the source TEXTS are drafted by a local model (draft-sample-sources.ts) and approved by Matt. Every source is fictional and labelled as a sample. A fact is named subject|predicate|object, using the local names in the starter (an entity object by its local name, a literal by its exact value). Facts not listed here stay as curated, confirmed and unsourced: types, labels, icons, photos, links, coordinates and the reasoning edges (ruled-out-by, for, part-of). Each fact carries `say`, the fact as a plain sentence for the drafting model, which contains every `must` string.",
   "trip": "Alex (San Francisco) and Jordan (Los Angeles) meet halfway for a camping weekend in the Eastern Sierra, Fri July 10 to Sun July 12, 2026, choosing between two campgrounds: Lake George (Mammoth Lakes basin) and Oh! Ridge (June Lake Loop). They must book by Wednesday July 8.",
   "sources": [
     {
-      "id": "sample-thread", "kind": "note", "title": "Sample: text thread, Alex and Jordan",
-      "written": "2026-07-03T19:10:00Z", "reviewer": "Alex",
+      "id": "sample-thread",
+      "kind": "note",
+      "title": "Sample: text thread, Alex and Jordan",
+      "written": "2026-07-03T19:10:00Z",
+      "reviewer": "Alex",
       "style": "A text-message thread between two old friends, Alex and Jordan, planning the trip over two evenings. Each message starts with the sender's name and a colon. Casual, short messages, about 18 to 26 lines.",
       "facts": [
-        { "fact": "alex|lives-in|san-francisco", "must": ["San Francisco"], "at": "2026-07-03T20:02:00Z" },
-        { "fact": "jordan|lives-in|los-angeles", "must": ["Los Angeles"], "at": "2026-07-03T20:02:00Z", "reviewer": "Jordan" },
-        { "fact": "alex|considering|lake-george", "must": ["Lake George"], "at": "2026-07-03T20:05:00Z" },
-        { "fact": "alex|considering|oh-ridge", "must": ["Oh! Ridge"], "at": "2026-07-03T20:05:00Z" },
-        { "fact": "jordan|considering|lake-george", "must": ["Lake George"], "at": "2026-07-03T20:06:00Z", "reviewer": "Jordan" },
-        { "fact": "jordan|considering|oh-ridge", "must": ["Oh! Ridge"], "at": "2026-07-03T20:06:00Z", "reviewer": "Jordan" },
-        { "fact": "jordan|coming-along|the-weekend", "must": ["I'm in"], "at": "2026-07-03T20:08:00Z", "reviewer": "Jordan" },
-        { "fact": "alex|leans-toward|oh-ridge", "must": ["Oh! Ridge"], "at": "2026-07-04T18:30:00Z" },
-        { "fact": "the-weekend|scheduled-at|2026-07-10", "must": ["Friday July 10"], "at": "2026-07-03T20:10:00Z" },
-        { "fact": "the-weekend|ends-at|2026-07-12", "must": ["Sunday July 12"], "at": "2026-07-03T20:10:00Z" },
-        { "fact": "the-weekend|nights|2 nights", "must": ["two nights"], "at": "2026-07-03T20:10:00Z" },
-        { "fact": "the-weekend|budget|about $60 for two nights", "must": ["$60"], "status": "pending" },
-        { "fact": "ev-booking-deadline|scheduled-at|2026-07-08T23:59", "must": ["by Wednesday"], "at": "2026-07-04T18:35:00Z" },
-        { "fact": "ev-alex-client-call|scheduled-at|2026-07-10T11:00", "must": ["11:00"], "at": "2026-07-04T18:40:00Z" },
-        { "fact": "ev-alex-client-call|ends-at|2026-07-10T12:30", "must": ["12:30"], "at": "2026-07-04T18:40:00Z" },
-        { "fact": "ev-jordan-monday|scheduled-at|2026-07-13T09:00", "must": ["Monday at 9"], "at": "2026-07-04T18:42:00Z", "reviewer": "Jordan" }
+        {
+          "fact": "alex|lives-in|san-francisco",
+          "say": "Alex lives in San Francisco.",
+          "must": [
+            "San Francisco"
+          ],
+          "at": "2026-07-03T20:02:00Z"
+        },
+        {
+          "fact": "jordan|lives-in|los-angeles",
+          "say": "Jordan lives in Los Angeles.",
+          "must": [
+            "Los Angeles"
+          ],
+          "at": "2026-07-03T20:02:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "alex|considering|lake-george",
+          "say": "Alex is considering Lake George.",
+          "must": [
+            "Lake George"
+          ],
+          "at": "2026-07-03T20:05:00Z"
+        },
+        {
+          "fact": "alex|considering|oh-ridge",
+          "say": "Alex is considering Oh! Ridge.",
+          "must": [
+            "Oh! Ridge"
+          ],
+          "at": "2026-07-03T20:05:00Z"
+        },
+        {
+          "fact": "jordan|considering|lake-george",
+          "say": "Jordan is considering Lake George.",
+          "must": [
+            "Lake George"
+          ],
+          "at": "2026-07-03T20:06:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "jordan|considering|oh-ridge",
+          "say": "Jordan is considering Oh! Ridge.",
+          "must": [
+            "Oh! Ridge"
+          ],
+          "at": "2026-07-03T20:06:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "jordan|coming-along|the-weekend",
+          "say": "Jordan says yes to the weekend trip, in the words \"I'm in\".",
+          "must": [
+            "I'm in"
+          ],
+          "at": "2026-07-03T20:08:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "alex|leans-toward|oh-ridge",
+          "say": "Alex prefers Oh! Ridge (cheaper, warmer, open both nights).",
+          "must": [
+            "Oh! Ridge"
+          ],
+          "at": "2026-07-04T18:30:00Z"
+        },
+        {
+          "fact": "the-weekend|scheduled-at|2026-07-10",
+          "say": "The trip starts Friday July 10.",
+          "must": [
+            "Friday July 10"
+          ],
+          "at": "2026-07-03T20:10:00Z"
+        },
+        {
+          "fact": "the-weekend|ends-at|2026-07-12",
+          "say": "The trip ends Sunday July 12.",
+          "must": [
+            "Sunday July 12"
+          ],
+          "at": "2026-07-03T20:10:00Z"
+        },
+        {
+          "fact": "the-weekend|nights|2 nights",
+          "say": "The trip is two nights.",
+          "must": [
+            "two nights"
+          ],
+          "at": "2026-07-03T20:10:00Z"
+        },
+        {
+          "fact": "the-weekend|budget|about $60 for two nights",
+          "say": "Their camping budget is about $60 in total for both nights, not per night.",
+          "must": [
+            "$60"
+          ],
+          "status": "pending"
+        },
+        {
+          "fact": "ev-booking-deadline|scheduled-at|2026-07-08T23:59",
+          "say": "They have to book a campsite by Wednesday, July 8.",
+          "must": [
+            "by Wednesday"
+          ],
+          "at": "2026-07-04T18:35:00Z"
+        },
+        {
+          "fact": "ev-alex-client-call|scheduled-at|2026-07-10T11:00",
+          "say": "Alex has a work call on Friday that starts at 11:00, so Alex cannot leave before it ends.",
+          "must": [
+            "11:00"
+          ],
+          "at": "2026-07-04T18:40:00Z"
+        },
+        {
+          "fact": "ev-alex-client-call|ends-at|2026-07-10T12:30",
+          "say": "Alex's Friday work call ends at 12:30.",
+          "must": [
+            "12:30"
+          ],
+          "at": "2026-07-04T18:40:00Z"
+        },
+        {
+          "fact": "ev-jordan-monday|scheduled-at|2026-07-13T09:00",
+          "say": "Jordan has a work review Monday at 9, so they must be home on Sunday.",
+          "must": [
+            "Monday at 9"
+          ],
+          "at": "2026-07-04T18:42:00Z",
+          "reviewer": "Jordan"
+        }
       ]
     },
     {
-      "id": "sample-voice-memo", "kind": "note", "title": "Sample: voice memo from Jordan (transcript)",
-      "written": "2026-07-05T08:15:00Z", "reviewer": "Jordan",
+      "id": "sample-voice-memo",
+      "kind": "note",
+      "title": "Sample: voice memo from Jordan (transcript)",
+      "written": "2026-07-05T08:15:00Z",
+      "reviewer": "Jordan",
       "style": "A transcript of a short voice memo Jordan recorded for Alex while walking, spoken and a little rambling, one paragraph of about 90 to 130 words.",
       "facts": [
-        { "fact": "jordan|leans-toward|lake-george", "must": ["Lake George"], "status": "pending" },
-        { "fact": "ev-sunrise-shoot|scheduled-at|2026-07-11T05:32", "must": ["5:32"], "at": "2026-07-05T09:00:00Z" },
-        { "fact": "ev-sunrise-shoot|ends-at|2026-07-11T07:00", "must": ["7:00"], "at": "2026-07-05T09:00:00Z" }
+        {
+          "fact": "jordan|leans-toward|lake-george",
+          "say": "Jordan prefers Lake George, for the alpine lakes.",
+          "must": [
+            "Lake George"
+          ],
+          "status": "pending"
+        },
+        {
+          "fact": "ev-sunrise-shoot|scheduled-at|2026-07-11T05:32",
+          "say": "Jordan wants to photograph the sunrise on Saturday morning; sunrise is at 5:32.",
+          "must": [
+            "5:32"
+          ],
+          "at": "2026-07-05T09:00:00Z"
+        },
+        {
+          "fact": "ev-sunrise-shoot|ends-at|2026-07-11T07:00",
+          "say": "The sunrise photo session runs until 7:00 in the morning.",
+          "must": [
+            "7:00"
+          ],
+          "at": "2026-07-05T09:00:00Z"
+        }
       ]
     },
     {
-      "id": "sample-lake-george", "kind": "document", "title": "Sample: campground notes, Lake George",
-      "written": "2026-07-05T17:20:00Z", "reviewer": "Jordan",
+      "id": "sample-lake-george",
+      "kind": "document",
+      "title": "Sample: campground notes, Lake George",
+      "written": "2026-07-05T17:20:00Z",
+      "reviewer": "Jordan",
       "style": "Plain notes Jordan typed while reading about the campground: a short list of bullet points, about 6 to 9 bullets. Not a copy of any booking website; personal notes in plain words.",
       "facts": [
-        { "fact": "lake-george|elevation|9,008 ft", "must": ["9,008 ft"], "at": "2026-07-05T17:40:00Z" },
-        { "fact": "lake-george|nightly-rate|$28", "must": ["$28"], "at": "2026-07-05T17:40:00Z" },
-        { "fact": "lake-george|sites|16 sites", "must": ["16 sites"], "at": "2026-07-05T17:41:00Z" },
-        { "fact": "lake-george|availability|full weekend open", "must": ["full weekend open"], "status": "rejected", "at": "2026-07-06T07:55:00Z", "why": "true last week, not now" },
-        { "fact": "lake-george|availability|only Saturday night open", "must": ["only Saturday night open"], "at": "2026-07-06T07:56:00Z" }
+        {
+          "fact": "lake-george|elevation|9,008 ft",
+          "say": "Lake George campground is at 9,008 ft.",
+          "must": [
+            "9,008 ft"
+          ],
+          "at": "2026-07-05T17:40:00Z"
+        },
+        {
+          "fact": "lake-george|nightly-rate|$28",
+          "say": "Lake George costs $28 a night.",
+          "must": [
+            "$28"
+          ],
+          "at": "2026-07-05T17:40:00Z"
+        },
+        {
+          "fact": "lake-george|sites|16 sites",
+          "say": "Lake George has 16 sites.",
+          "must": [
+            "16 sites"
+          ],
+          "at": "2026-07-05T17:41:00Z"
+        },
+        {
+          "fact": "lake-george|availability|full weekend open",
+          "say": "Earlier it looked like Lake George had the full weekend open, but that is no longer true.",
+          "must": [
+            "full weekend open"
+          ],
+          "status": "rejected",
+          "at": "2026-07-06T07:55:00Z",
+          "why": "true last week, not now"
+        },
+        {
+          "fact": "lake-george|availability|only Saturday night open",
+          "say": "Lake George now has only Saturday night open.",
+          "must": [
+            "only Saturday night open"
+          ],
+          "at": "2026-07-06T07:56:00Z"
+        }
       ]
     },
     {
-      "id": "sample-oh-ridge", "kind": "document", "title": "Sample: campground notes, Oh! Ridge",
-      "written": "2026-07-05T17:30:00Z", "reviewer": "Alex",
+      "id": "sample-oh-ridge",
+      "kind": "document",
+      "title": "Sample: campground notes, Oh! Ridge",
+      "written": "2026-07-05T17:30:00Z",
+      "reviewer": "Alex",
       "style": "Plain notes Alex typed while reading about the campground: a short list of bullet points, about 6 to 9 bullets. Not a copy of any booking website; personal notes in plain words.",
       "facts": [
-        { "fact": "oh-ridge|elevation|7,644 ft", "must": ["7,644 ft"], "at": "2026-07-05T18:02:00Z" },
-        { "fact": "oh-ridge|nightly-rate|$25", "must": ["$25"], "status": "superseded", "at": "2026-07-05T18:03:00Z", "why": "last season's price" },
-        { "fact": "oh-ridge|nightly-rate|$23", "must": ["$23"], "at": "2026-07-05T18:04:00Z", "supersedes": "oh-ridge|nightly-rate|$25" },
-        { "fact": "oh-ridge|sites|148 sites", "must": ["148 sites"], "at": "2026-07-05T18:05:00Z" },
-        { "fact": "oh-ridge|availability|full weekend open", "must": ["full weekend open"], "at": "2026-07-05T18:05:00Z" }
+        {
+          "fact": "oh-ridge|elevation|7,644 ft",
+          "say": "Oh! Ridge campground is at 7,644 ft.",
+          "must": [
+            "7,644 ft"
+          ],
+          "at": "2026-07-05T18:02:00Z"
+        },
+        {
+          "fact": "oh-ridge|nightly-rate|$25",
+          "say": "$25 a night was last season's price at Oh! Ridge.",
+          "must": [
+            "$25"
+          ],
+          "status": "superseded",
+          "at": "2026-07-05T18:03:00Z",
+          "why": "last season's price"
+        },
+        {
+          "fact": "oh-ridge|nightly-rate|$23",
+          "say": "Oh! Ridge costs $23 a night this season.",
+          "must": [
+            "$23"
+          ],
+          "at": "2026-07-05T18:04:00Z",
+          "supersedes": "oh-ridge|nightly-rate|$25"
+        },
+        {
+          "fact": "oh-ridge|sites|148 sites",
+          "say": "Oh! Ridge has 148 sites.",
+          "must": [
+            "148 sites"
+          ],
+          "at": "2026-07-05T18:05:00Z"
+        },
+        {
+          "fact": "oh-ridge|availability|full weekend open",
+          "say": "Oh! Ridge has the full weekend open (both Friday and Saturday nights).",
+          "must": [
+            "full weekend open"
+          ],
+          "at": "2026-07-05T18:05:00Z"
+        }
       ]
     },
     {
-      "id": "sample-forecast-mammoth", "kind": "note", "title": "Sample: forecast notes, Mammoth basin",
-      "written": "2026-07-06T06:30:00Z", "reviewer": "Jordan",
+      "id": "sample-forecast-mammoth",
+      "kind": "note",
+      "title": "Sample: forecast notes, Mammoth basin",
+      "written": "2026-07-06T06:30:00Z",
+      "reviewer": "Jordan",
       "style": "A few lines Jordan jotted down from a weather forecast for the Mammoth Lakes basin for Friday to Sunday. Three to five short lines.",
       "facts": [
-        { "fact": "wx-mammoth|high|70°F", "must": ["70°F"], "at": "2026-07-06T07:00:00Z" },
-        { "fact": "wx-mammoth|low|38°F", "must": ["38°F"], "status": "pending" },
-        { "fact": "wx-mammoth|summary|Sunny · breezy afternoons · near-freezing nights", "must": ["breezy afternoons", "near-freezing nights"], "at": "2026-07-06T07:00:00Z" }
+        {
+          "fact": "wx-mammoth|high|70°F",
+          "say": "Mammoth Lakes basin, Friday to Sunday: highs around 70°F.",
+          "must": [
+            "70°F"
+          ],
+          "at": "2026-07-06T07:00:00Z"
+        },
+        {
+          "fact": "wx-mammoth|low|38°F",
+          "say": "Mammoth Lakes basin: lows around 38°F at night.",
+          "must": [
+            "38°F"
+          ],
+          "status": "pending"
+        },
+        {
+          "fact": "wx-mammoth|summary|Sunny · breezy afternoons · near-freezing nights",
+          "say": "Mammoth Lakes basin: sunny, with breezy afternoons and near-freezing nights.",
+          "must": [
+            "breezy afternoons",
+            "near-freezing nights"
+          ],
+          "at": "2026-07-06T07:00:00Z"
+        }
       ]
     },
     {
-      "id": "sample-forecast-june-lake", "kind": "note", "title": "Sample: forecast notes, June Lake",
-      "written": "2026-07-06T06:35:00Z", "reviewer": "Alex",
+      "id": "sample-forecast-june-lake",
+      "kind": "note",
+      "title": "Sample: forecast notes, June Lake",
+      "written": "2026-07-06T06:35:00Z",
+      "reviewer": "Alex",
       "style": "A few lines Alex jotted down from a weather forecast for June Lake for Friday to Sunday. Three to five short lines.",
       "facts": [
-        { "fact": "wx-june-lake|high|78°F", "must": ["78°F"], "at": "2026-07-06T07:10:00Z" },
-        { "fact": "wx-june-lake|low|43°F", "must": ["43°F"], "at": "2026-07-06T07:10:00Z" },
-        { "fact": "wx-june-lake|summary|Clear · light wind · mild nights", "must": ["light wind", "mild nights"], "at": "2026-07-06T07:10:00Z" }
+        {
+          "fact": "wx-june-lake|high|78°F",
+          "say": "June Lake, Friday to Sunday: highs around 78°F.",
+          "must": [
+            "78°F"
+          ],
+          "at": "2026-07-06T07:10:00Z"
+        },
+        {
+          "fact": "wx-june-lake|low|43°F",
+          "say": "June Lake: lows around 43°F at night.",
+          "must": [
+            "43°F"
+          ],
+          "at": "2026-07-06T07:10:00Z"
+        },
+        {
+          "fact": "wx-june-lake|summary|Clear · light wind · mild nights",
+          "say": "June Lake: clear, with light wind and mild nights.",
+          "must": [
+            "light wind",
+            "mild nights"
+          ],
+          "at": "2026-07-06T07:10:00Z"
+        }
       ]
     },
     {
-      "id": "sample-route-notes", "kind": "note", "title": "Sample: route notes",
-      "written": "2026-07-07T12:00:00Z", "reviewer": "Alex",
+      "id": "sample-route-notes",
+      "kind": "note",
+      "title": "Sample: route notes",
+      "written": "2026-07-07T12:00:00Z",
+      "reviewer": "Alex",
       "style": "Route notes both friends added to a shared note: one short section per person, with distance and driving time to each campground and when each plans to leave. About 10 to 16 lines.",
       "facts": [
-        { "fact": "drive-alex-lake-george|drive-distance|327 mi", "must": ["327 mi"], "at": "2026-07-07T12:20:00Z" },
-        { "fact": "drive-alex-lake-george|drive-time|5h 40m", "must": ["5h 40m"], "at": "2026-07-07T12:20:00Z" },
-        { "fact": "drive-alex-oh-ridge|drive-distance|313 mi", "must": ["313 mi"], "at": "2026-07-07T12:21:00Z" },
-        { "fact": "drive-alex-oh-ridge|drive-time|5h 25m", "must": ["5h 25m"], "at": "2026-07-07T12:21:00Z" },
-        { "fact": "drive-jordan-lake-george|drive-distance|305 mi", "must": ["305 mi"], "at": "2026-07-07T13:05:00Z", "reviewer": "Jordan" },
-        { "fact": "drive-jordan-lake-george|drive-time|5h 05m", "must": ["5h 05m"], "at": "2026-07-07T13:05:00Z", "reviewer": "Jordan" },
-        { "fact": "drive-jordan-oh-ridge|drive-distance|319 mi", "must": ["319 mi"], "at": "2026-07-07T13:06:00Z", "reviewer": "Jordan" },
-        { "fact": "drive-jordan-oh-ridge|drive-time|4h 50m", "must": ["4h 50m"], "status": "rejected", "at": "2026-07-07T13:07:00Z", "reviewer": "Jordan", "why": "only with no traffic" },
-        { "fact": "drive-jordan-oh-ridge|drive-time|5h 20m", "must": ["5h 20m"], "at": "2026-07-07T13:08:00Z", "reviewer": "Jordan" },
-        { "fact": "ev-alex-drive|scheduled-at|2026-07-10T13:00", "must": ["1:00 pm"], "at": "2026-07-07T12:22:00Z" },
-        { "fact": "ev-alex-drive|ends-at|2026-07-10T18:40", "must": ["6:40 pm"], "at": "2026-07-07T12:22:00Z" },
-        { "fact": "ev-jordan-drive|scheduled-at|2026-07-10T14:00", "must": ["2:00 pm"], "at": "2026-07-07T13:09:00Z", "reviewer": "Jordan" },
-        { "fact": "ev-jordan-drive|ends-at|2026-07-10T19:05", "must": ["7:05 pm"], "at": "2026-07-07T13:09:00Z", "reviewer": "Jordan" }
+        {
+          "fact": "drive-alex-lake-george|drive-distance|327 mi",
+          "say": "Alex's drive from San Francisco to Lake George is 327 mi.",
+          "must": [
+            "327 mi"
+          ],
+          "at": "2026-07-07T12:20:00Z"
+        },
+        {
+          "fact": "drive-alex-lake-george|drive-time|5h 40m",
+          "say": "Alex's drive to Lake George takes 5h 40m.",
+          "must": [
+            "5h 40m"
+          ],
+          "at": "2026-07-07T12:20:00Z"
+        },
+        {
+          "fact": "drive-alex-oh-ridge|drive-distance|313 mi",
+          "say": "Alex's drive to Oh! Ridge is 313 mi.",
+          "must": [
+            "313 mi"
+          ],
+          "at": "2026-07-07T12:21:00Z"
+        },
+        {
+          "fact": "drive-alex-oh-ridge|drive-time|5h 25m",
+          "say": "Alex's drive to Oh! Ridge takes 5h 25m.",
+          "must": [
+            "5h 25m"
+          ],
+          "at": "2026-07-07T12:21:00Z"
+        },
+        {
+          "fact": "drive-jordan-lake-george|drive-distance|305 mi",
+          "say": "Jordan's drive from Los Angeles to Lake George is 305 mi.",
+          "must": [
+            "305 mi"
+          ],
+          "at": "2026-07-07T13:05:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "drive-jordan-lake-george|drive-time|5h 05m",
+          "say": "Jordan's drive to Lake George takes 5h 05m.",
+          "must": [
+            "5h 05m"
+          ],
+          "at": "2026-07-07T13:05:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "drive-jordan-oh-ridge|drive-distance|319 mi",
+          "say": "Jordan's drive to Oh! Ridge is 319 mi.",
+          "must": [
+            "319 mi"
+          ],
+          "at": "2026-07-07T13:06:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "drive-jordan-oh-ridge|drive-time|4h 50m",
+          "say": "An earlier estimate said Jordan's drive to Oh! Ridge takes 4h 50m, but that is only with no traffic, so it is wrong for a Friday.",
+          "must": [
+            "4h 50m"
+          ],
+          "status": "rejected",
+          "at": "2026-07-07T13:07:00Z",
+          "reviewer": "Jordan",
+          "why": "only with no traffic"
+        },
+        {
+          "fact": "drive-jordan-oh-ridge|drive-time|5h 20m",
+          "say": "Jordan's drive to Oh! Ridge takes 5h 20m.",
+          "must": [
+            "5h 20m"
+          ],
+          "at": "2026-07-07T13:08:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "ev-alex-drive|scheduled-at|2026-07-10T13:00",
+          "say": "Alex leaves San Francisco at 1:00 pm on Friday.",
+          "must": [
+            "1:00 pm"
+          ],
+          "at": "2026-07-07T12:22:00Z"
+        },
+        {
+          "fact": "ev-alex-drive|ends-at|2026-07-10T18:40",
+          "say": "Alex expects to arrive at about 6:40 pm.",
+          "must": [
+            "6:40 pm"
+          ],
+          "at": "2026-07-07T12:22:00Z"
+        },
+        {
+          "fact": "ev-jordan-drive|scheduled-at|2026-07-10T14:00",
+          "say": "Jordan leaves Los Angeles at 2:00 pm on Friday.",
+          "must": [
+            "2:00 pm"
+          ],
+          "at": "2026-07-07T13:09:00Z",
+          "reviewer": "Jordan"
+        },
+        {
+          "fact": "ev-jordan-drive|ends-at|2026-07-10T19:05",
+          "say": "Jordan expects to arrive at about 7:05 pm.",
+          "must": [
+            "7:05 pm"
+          ],
+          "at": "2026-07-07T13:09:00Z",
+          "reviewer": "Jordan"
+        }
       ]
     }
   ]

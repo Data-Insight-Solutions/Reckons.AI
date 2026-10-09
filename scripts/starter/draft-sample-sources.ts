@@ -5,7 +5,9 @@
  *   ground    scripts/starter/everyday-plan.json: the trip, each source's style, and the facts it
  *             must support with the exact words each passage must contain (`must`).
  *   prompt    one source at a time. The model writes prose; it never picks the evidence.
- *   validate  every `must` string occurs verbatim, no URL, length within bounds, and for each fact
+ *   validate  every `must` string occurs verbatim, no URL, length within bounds, no figure (a price,
+ *             distance, time or temperature) that is not in this source's facts, no prompt wording
+ *             leaked into the text, and for each fact
  *             ONE line or sentence contains all of its `must` strings. That sentence becomes the
  *             fact's excerpt, chosen by this script, so a passage can never claim what the text
  *             does not say (kb:passage-grounding). A failed draft is retried with the misses named.
@@ -22,7 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ollamaStream } from '../offline/lib/ollama-stream.js';
 
-export type PlanFact = { fact: string; must: string[]; status?: string; at?: string; reviewer?: string; why?: string; supersedes?: string };
+export type PlanFact = { fact: string; say: string; must: string[]; status?: string; at?: string; reviewer?: string; why?: string; supersedes?: string };
 export type PlanSource = { id: string; kind: string; title: string; written: string; reviewer: string; style: string; facts: PlanFact[] };
 export type Plan = { trip: string; sources: PlanSource[] };
 
@@ -46,6 +48,18 @@ export function excerptFor(text: string, needles: string[]): string | undefined 
 
 export type DraftCheck = { ok: boolean; problems: string[]; excerpts: Record<string, string> };
 
+const FIGURE = /\$\d[\d,]*(?:\.\d+)?|\b\d{1,2}:\d{2}\b|\b\d[\d,]*(?:\.\d+)?\s?(?:ft|feet|mi|miles?|°F|degrees|hours?|hrs?|h|m|min|minutes|am|pm|AM|PM)\b/g;
+
+/**
+ * Figures in the text that none of this source's facts contain: an invented price, distance,
+ * drive time or temperature. Observed 2026-10-09: a first draft of the Lake George notes added
+ * "about 4.5 hours" from San Francisco, contradicting the route notes (5h 40m). Pure.
+ */
+export function inventedFigures(src: PlanSource, text: string): string[] {
+  const allowed = src.facts.map((f) => f.say).join(' \n ');
+  return [...new Set(text.match(FIGURE) ?? [])].filter((f) => !allowed.includes(f));
+}
+
 /** Is this draft usable for this source? Pure. */
 export function checkDraft(src: PlanSource, text: string): DraftCheck {
   const problems: string[] = [];
@@ -54,6 +68,9 @@ export function checkDraft(src: PlanSource, text: string): DraftCheck {
   if (words < 25) problems.push(`too short (${words} words)`);
   if (words > 400) problems.push(`too long (${words} words)`);
   if (/https?:\/\/|www\./i.test(text)) problems.push('contains a URL (samples link nowhere)');
+  if (/\bstate "|must contain|EXACTLY as written/i.test(text)) problems.push('prompt wording leaked into the text');
+  const invented = inventedFigures(src, text);
+  if (invented.length) problems.push(`figures that are not in the facts: ${invented.map((f) => JSON.stringify(f)).join(', ')}`);
   for (const f of src.facts) {
     const missing = f.must.filter((m) => !text.includes(m));
     if (missing.length) { problems.push(`missing exactly: ${missing.map((m) => JSON.stringify(m)).join(', ')}`); continue; }
@@ -66,19 +83,15 @@ export function checkDraft(src: PlanSource, text: string): DraftCheck {
 
 /** The prompt for one source. Pure. */
 export function buildPrompt(plan: Plan, src: PlanSource, feedback: string[] = []): string {
-  const lines = src.facts.map((f) => {
-    const req = f.must.map((m) => JSON.stringify(m)).join(' and ');
-    if (f.status === 'rejected') return `- mention ${req}, and in the same sentence say it is no longer right (${f.why ?? 'it changed'})`;
-    if (f.status === 'superseded') return `- mention ${req} as the old figure (${f.why ?? 'it changed'})`;
-    return `- state ${req}`;
-  });
+  const lines = src.facts.map((f, i) => `${i + 1}. ${f.say}  [use these words exactly: ${f.must.map((m) => JSON.stringify(m)).join(', ')}]`);
   return [
     `Write a short SAMPLE document for a demo of a note-taking app. Everything in it is fictional except real place names.`,
     `Background: ${plan.trip}`,
     `What to write: ${src.style}`,
-    `It must contain each of these strings EXACTLY as written, character for character (keep the symbols, spacing and capital letters):`,
+    `The document must say each of these facts, with the same meaning, in its own natural wording:`,
     ...lines,
-    `Rules: no links or web addresses, no real company or website names, no headings or markdown formatting beyond plain lines or "- " bullets. Plain text only. Write only the document itself.`,
+    `Each fact must appear in ONE sentence or line that contains all of its bracketed words, character for character (same symbols, spacing and capital letters), without quotation marks around them.`,
+    `Rules: say nothing else that is a number: no other prices, distances, times, temperatures or dates. Do not contradict any fact. No links or web addresses, no company or website names, no rules or regulations about real places. No headings or markdown formatting beyond plain lines or "- " bullets. Write only the document itself.`,
     ...(feedback.length ? [`Your previous draft was rejected for: ${feedback.join('; ')}. Fix exactly these.`] : []),
   ].join('\n');
 }

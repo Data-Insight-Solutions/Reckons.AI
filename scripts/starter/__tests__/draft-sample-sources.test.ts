@@ -4,9 +4,9 @@ import { buildPrompt, checkDraft, excerptFor, readPlan, type PlanSource } from '
 const src: PlanSource = {
   id: 's', kind: 'note', title: 'Sample', written: '2026-07-05T00:00:00Z', reviewer: 'Alex', style: 'notes',
   facts: [
-    { fact: 'oh-ridge|nightly-rate|$23', must: ['$23'] },
-    { fact: 'oh-ridge|nightly-rate|$25', must: ['$25'], status: 'superseded', why: "last season's price" },
-    { fact: 'wx|summary|x', must: ['light wind', 'mild nights'] },
+    { fact: 'oh-ridge|nightly-rate|$23', say: 'Oh! Ridge costs $23 a night this season.', must: ['$23'] },
+    { fact: 'oh-ridge|nightly-rate|$25', say: "$25 a night was last season's price.", must: ['$25'], status: 'superseded', why: "last season's price" },
+    { fact: 'wx|summary|x', say: 'Clear, with light wind and mild nights.', must: ['light wind', 'mild nights'] },
   ],
 };
 const good = [
@@ -48,7 +48,14 @@ describe('the plan', () => {
     }
     expect(facts.filter((f) => f.status === 'pending')).toHaveLength(3); // the 2026-10-08 decision
   });
-  it('asks for an old figure to be marked as old in the prompt', () => {
-    expect(buildPrompt(readPlan(), src)).toContain("as the old figure (last season's price)");
+  it('gives the model each fact as a sentence with its exact words, and every say holds its words', () => {
+    expect(buildPrompt(readPlan(), src)).toContain(`$25 a night was last season's price.  [use these words exactly: "$25"]`);
+    for (const f of readPlan().sources.flatMap((s) => s.facts)) for (const m of f.must) expect(f.say, f.fact).toContain(m);
+  });
+  it('rejects figures the facts do not contain, and leaked prompt wording (the first drafts, 2026-10-09)', () => {
+    const c = checkDraft(src, good + '\n- Drive time from SF is about 4.5 hours and we leave at 5pm.\n- It sits at state "7,644 ft".');
+    expect(c.problems.join(' ')).toContain('"4.5 hours"');
+    expect(c.problems.join(' ')).toContain('"5pm"');
+    expect(c.problems.join(' ')).toContain('leaked');
   });
 });
