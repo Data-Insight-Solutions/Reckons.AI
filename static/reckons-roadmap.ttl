@@ -9289,13 +9289,18 @@ kb:release-0-2-6 rdf:type ktype:Release ;
 kb:ci-graph rdf:type ktype:Feature ;
     rdfs:label "CI as a graph — every check, what it guards, and whether it can block a merge" ;
     kpred:feature-id "F33.2" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:priority "medium" ;
     kpred:part-of kb:release-pipeline ;
     kpred:description "A script reads .github/workflows/*.yml and .github/ruleset-main.json and writes static/reckons-ci.ttl: each CI job and check, the branches that trigger it, the scripts it runs (already linked by kpred:has-file), whether the ruleset makes it required, and the roadmap feature it guards. A --check mode in CI fails when the YAML changes and the graph does not, the pattern of jobs-graph and md-align." ;
     kpred:decided "MATT, 2026-10-07: 'Fine that yml is an external requirement.' GitHub only runs YAML in .github/workflows/, so the YAML stays the executable truth and the graph is generated FROM it, never the other way: modelling step lists, shell and GitHub expressions as triples would mirror GitHub's format one to one for no gain in what can be asked." ;
     kpred:principle "SPACES AS DIFFERENT AUDITORS (Matt, 2026-10-07: 'I'm liking the spaces as different auditors'). Each space checks one kind of claim against what is real: the terminology space audits names, the codebase space audits file coverage, the jobs space audits local jobs, and this CI space audits merge protection. Questions it must answer: what stops a bad merge to main; which checks are advisory only; does any required check enforce a feature the roadmap calls blocking." ;
     kpred:evidence "WHY NOW, from the v0.2.5 release: the release-notes docs gate runs on PRs into main but is not a required check in the ruleset, so it reports without blocking; and the safety attestation failed only under the queue worker for a day, visible in no graph. Today the graphs only NAME the workflow files (7 has-file links)." ;
+    kpred:has-file "scripts/ci-graph.ts" ;
+    kpred:has-file "static/reckons-ci.ttl" ;
+    kpred:tested-by "scripts/__tests__/ci-graph.test.ts" ;
+    kpred:progress "2026-10-09, BUILT, STATUS planned -> functional. scripts/ci-graph.ts writes static/reckons-ci.ttl from the six workflows, .github/ruleset-main.json, the blocking jobs in jobs.json and the has-file / tested-by links of the roadmap and production graphs: each check (matrix checks named as GitHub names them), whether a ruleset lets it stop a merge, what it depends on, when it runs, the scripts it runs, the blocking jobs it enforces, the features it guards, and a ruleset check that no workflow produces (none today). No YAML package: a reader for the subset the workflows use throws, by line, on anything else. Linked into the MCP workspace (ci/ci.ttl) and run by the script tier as ci-graph --check. DEVIATION, SAID OUT LOUD: the plan said the CI check FAILS when the YAML changes and the graph does not; it is ADVISORY instead (blocking:false, like jobs-graph), because a stale generated graph is fixed by regenerating it, not by stopping a merge. Set blocking:true in jobs.json to make it fail." ;
+    kpred:measured "2026-10-09, WHAT THE GRAPH ANSWERED THE FIRST TIME IT RAN. 15 checks; 8 can stop a merge to main (exactly the eight the ruleset names, all produced by a workflow), 7 only advise: CodeQL, the safety attestation, the extension build, the three dependency audits, and the release-notes gate. So a failing safety attestation, a dependency audit with a critical finding, or missing release notes cannot stop a merge to main today. Only main has a ruleset in the repository; dev and staging have none. Four blocking jobs reach main through the required script-tier check: published-graph-guard, version-align, codebase-coverage, term-ratchet." ;
     kpred:relates-to kb:local-panel .
 
 kb:release-0-2-6 kpred:has-part kb:ci-graph .
