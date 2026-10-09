@@ -69,8 +69,8 @@ describe('entity sets', () => {
 
   it('defaultSetName reads from member labels', () => {
     const labelFor = (iri: string) => ({ a: 'Alex', b: 'Jordan', c: 'Sam', d: 'Kim' }[iri] ?? iri);
-    expect(defaultSetName(['a', 'b'], labelFor)).toBe('Alex & Jordan set');
-    expect(defaultSetName(['a', 'b', 'c', 'd'], labelFor)).toBe('Alex, Jordan +2 set');
-    expect(defaultSetName([], labelFor)).toBe('New set');
+    expect(defaultSetName(['a', 'b'], labelFor)).toBe('Alex & Jordan collection');
+    expect(defaultSetName(['a', 'b', 'c', 'd'], labelFor)).toBe('Alex, Jordan +2 collection');
+    expect(defaultSetName([], labelFor)).toBe('New collection');
   });
 });

@@ -48,6 +48,7 @@
 @prefix kb:    <urn:kbase:concept/> .
 @prefix p:     <urn:kbase:predicate/> .
 @prefix kmeta: <urn:kbase:meta/> .
+@prefix skos:  <http://www.w3.org/2004/02/skos/core#> .
 
 ## == Custom entity types =====================================================
 ktype:Campground
@@ -91,13 +92,13 @@ kb:jordan
     p:considering   kb:oh-ridge ;
     p:leans-toward  kb:lake-george .
 
-## == A "set" grouping the two friends (demos entity sets, F65) ==============
+## == A "collection" grouping the two friends (F65, now skos:Collection) ==============
 ## Select this node and its members (Alex, Jordan) light up — a reusable group.
 kb:trip-crew
-    rdf:type        ktype:EntitySet ;
+    rdf:type        skos:Collection ;
     rdfs:label      "Trip crew" ;
-    p:has-member    kb:alex ;
-    p:has-member    kb:jordan .
+    skos:member    kb:alex ;
+    skos:member    kb:jordan .
 
 ## == Home cities =============================================================
 kb:san-francisco

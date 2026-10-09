@@ -64,7 +64,7 @@ describe('BUILT_IN_TYPES', () => {
   });
 
   it('the two spellings of Set are visually identical', () => {
-    const sets = BUILT_IN_TYPES.filter((t) => t.label === 'Set');
+    const sets = BUILT_IN_TYPES.filter((t) => t.label === 'Collection');
     expect(sets).toHaveLength(2);
     const [a, b] = sets;
     // If these ever diverge, the same set renders differently depending on which vocabulary

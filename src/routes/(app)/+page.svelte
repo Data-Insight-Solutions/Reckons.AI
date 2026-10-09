@@ -1944,8 +1944,8 @@
     untrack(() => pushNotification({
       id: 'add-set-hint',
       type: 'info',
-      title: 'Make a set',
-      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as set" in the panel.',
+      title: 'Make a collection',
+      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as collection" in the panel.',
     }));
   });
 
@@ -1970,7 +1970,7 @@
   }
 
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
-  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // is a first-class node (skos:Collection) linked to each member via skos:member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
   async function createSetFromSelection() {
     const members = multiSelectedList.map(n => n.iri);
@@ -2554,7 +2554,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
-      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>
