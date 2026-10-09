@@ -27,6 +27,7 @@ import { execSync } from 'child_process';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
 import { readTextOr } from '../lib/read-file.js';
+import { spaceForFileMap } from './lib/workspace-space.js';
 
 const argv = process.argv.slice(2);
 const PENDING_OUT = argv.includes('--pending');
@@ -685,7 +686,11 @@ if (JSON_OUT) {
 if (PENDING_OUT && findings.length) {
   const now = new Date().toISOString();
   const existing = readTextOr(PENDING, '');
+  // Each finding goes to the space whose graph holds its file; an unscoped row is retained by the
+  // drain rather than imported. A file no space links to stays unscoped, and is counted below.
+  const spaceOf = spaceForFileMap();
   let queued = 0;
+  let unscoped = 0;
   for (const f of findings) {
     const question = `[graph-lint/${f.check}] ${short(f.subject)} — ${f.msg}`;
     if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
@@ -694,14 +699,17 @@ if (PENDING_OUT && findings.length) {
       predicate: `urn:sweep:pred/graph-lint`,
       question,
       type: f.level === 'error' ? 'drift-warning' : 'question',
+      kb: spaceOf.get(f.file),
       agent: 'offline:graph-lint',
       priority: f.level === 'error' ? 'high' : 'medium',
       addedAt: now,
       addedByMcp: true,
     }) + '\n');
     queued++;
+    if (!spaceOf.has(f.file)) unscoped++;
   }
   console.log(`\n${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).`);
+  if (unscoped) console.log(`${unscoped} of them name a file no workspace space links to: the app will not import those.`);
 }
 
 process.exit(errors.length ? 1 : 0);
