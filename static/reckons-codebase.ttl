@@ -980,5 +980,5 @@ code:routes kpred:depends-on-module code:indico .  # 3 imports
 code:local-security-audits rdf:type ktype:Concept ;
     rdfs:label "Private local security audit services" ;
     kpred:description "Read-only Linux host probes and explicit online npm lockfile audits. Shared agent output contains aggregate counts; evidence and local policy remain private. Registered script-tier jobs provide reusable invocations without a daemon or inbound listener." ;
-    kpred:has-file "scripts/offline/host-health.ts", "scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
-    kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .
+    kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
