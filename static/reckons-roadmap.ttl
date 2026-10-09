@@ -9024,6 +9024,28 @@ kb:langgraph-job-runtime rdf:type ktype:Feature ;
                kpred:relates-to   kb:work-tiering ;
                kpred:relates-to   kb:local-panel ;
                kpred:relates-to   kb:job-backpressure .
+kb:feature-builder rdf:type ktype:Feature ;
+               rdfs:label         "Build a feature — ask local agents for a feature, try it in your own copy, approve it, and keep it in your own plugin repo" ;
+               kpred:feature-id   "F249" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "From the ADD button, a person running a local clone describes a feature they want. Local agents plan it, build it, and show it running in that person's own copy of Reckons.AI. If they approve it, it is kept in THEIR plugin repo, a separate GitHub repo their clone loads plugins from, so their core clone stays identical to upstream and every update still applies cleanly. Approving is also the signal that they wanted it." ;
+               kpred:decided      "MATT, 2026-10-08: 'Add needs a new special button to add feature to the app ... local agents could modify and then create PRs? ... they then need to navigate to an approve new feature button, which means they like it for some reason. We could never merge ALL reckons.AI github clones, but we could allow users to clone and add their own customize feature to the web application.'" ;
+               kpred:decided      "MATT, 2026-10-08, SCOPE: local clone first (not hosted users, who have no build step). Custom features live in an EXTERNAL plugin repo: 'need to set a way to reference plugins from another github repo. Likely a single external repo by default, per users setting.'" ;
+               kpred:decided      "PLACEMENT: an option inside the existing ADD button, not a new top-level tab (AGENTS.md rule 2)." ;
+               kpred:proposed     "THE SETTING. One plugin repo per device in the private device config (~/.config/reckons/device.ttl, the file the job runtime already reads): its GitHub URL, the local folder it is cloned into, and the commit it is pinned to. A list is allowed by the shape but one repo is the default. Settings can show it; changing it needs the local host (F243), because a browser tab cannot run git or a build." ;
+               kpred:proposed     "LOADING. The plugin folder sits outside the core clone's tracked files (a gitignored path or a sibling folder). The build reads it through one Vite alias and a manifest the plugin repo carries, and loads only entries that implement the plugin contract (F61). Core never imports a plugin by name, so pulling upstream never conflicts with a person's features." ;
+               kpred:proposed     "THE FLOW. ADD, then 'a feature' and a description. The local host (F243) starts a job (F257): plan the feature as an entry in the plugin repo's own roadmap graph (plan in the graph first applies to users too), build on a branch of the PLUGIN repo, run its tests and the core build, and serve a preview on a separate port so the person's live copy is untouched. The run pauses (F257 interrupt) until the person presses Approve or Discard; the agents panel (F245) shows progress. Approve merges the branch into their plugin repo and moves the pin. Offering a feature upstream to Reckons.AI is a separate, explicit step." ;
+               kpred:constraint   "A PLUGIN IS CODE WITH ACCESS TO THE WHOLE PRIVATE GRAPH. It runs in the same page as the person's data. Default to the person's own repo, pin to a commit, show the diff before moving the pin, and never auto-update from a repo they do not own." ;
+               kpred:constraint   "NOTHING PERSONAL LEAVES THROUGH A PR. Every pushed branch of a public repo is public; a feature offered upstream carries code and its graph entry, never the person's spaces, notes or device config." ;
+               kpred:constraint   "PREVIEW IS NOT APPROVAL. Agent-written code (local models hallucinate conventions, PR #43) is never swapped into the live copy before the person has seen it running and pressed Approve." ;
+               kpred:open-question "The default repo: none until the person sets one, or a template repo Reckons.AI publishes that they fork as their own?" ;
+               kpred:open-question "The plugin contract is F61, still speculative. What is the smallest contract a first plugin needs (a route, a panel, a canvas mode, a job)?" ;
+               kpred:open-question "The 'they kept it' signal: is it collected at all, and if so opt-in and aggregate only?" ;
+               kpred:remaining    "Nothing built. Order by what each blocks: the plugin contract and loader (F61, minimal), the device setting and clone/pin script, the local host's build-and-preview endpoint (F243), the feature job with Approve as its resume point (F257), then the ADD entry and the agents panel view (F245)." ;
+               kpred:depends-on   kb:integration-plugin-sdk ;
+               kpred:depends-on   kb:local-host-mode ;
+               kpred:depends-on   kb:langgraph-job-runtime ;
+               kpred:relates-to   kb:agents-in-app .
 
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
