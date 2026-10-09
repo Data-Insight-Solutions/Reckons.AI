@@ -9152,6 +9152,28 @@ kb:change-provenance rdf:type ktype:Feature ;
                kpred:relates-to   kb:feature-builder ;
                kpred:relates-to   kb:model-cache .
 
+kb:analyze-job-sets rdf:type ktype:Feature ;
+               rdfs:label         "Analyze as orchestrated job sets — one definition in the graph, run in the browser or by the desktop worker" ;
+               kpred:feature-id   "F255" ;
+               kpred:has-status   "planned" ;
+               kpred:description  "Each Analyze action (enrich, merge, types, prune, align) becomes a set of jobs: deterministic checks first, then model steps, in an order that does not waste work, with every proposal carrying the model at its exact version and the person's intent. A set is defined once, as a saved recipe in the graph, and run by whichever executor is available: the browser, as today, or the desktop job worker through the local host." ;
+               kpred:decided      "MATT, 2026-10-08: 'Analyze actions should likely be orchestrated sets of jobs in the agent tooling?' and, on the proposal, 'Yeah lets cleanup graphs'." ;
+               kpred:measured     "TODAY, 2026-10-08: the five Analyze actions (NavBar.svelte, re-analyze.ts, auto-analyze.svelte.ts) are each ONE model call in the browser over a list of entities; align skips the model and uses cross-graph alignment. Output goes to the review queue. No deterministic first pass, no back-pressure, no run report, no model version. The job library already covers the same ground: describe-entities (enrich), layer-classify (types), dead-weight and graph-lint orphan checks (prune), normalize-entities candidates (merge), branch-align, alignment-sweep and cross-kb-align (align)." ;
+               kpred:proposed     "ORDER BY WHAT EACH STEP WASTES OTHERWISE. A 'tidy this space' set runs prune, then merge, then types, then enrich: enriching first describes duplicates that merge is about to fold. Within each action the script tier runs before any model (kb:work-tiering): prune starts with the deterministic orphan and duplicate checks; merge offers similarity candidates for a person to declare, never auto-merges (kb:predicate-threshold-limit)." ;
+               kpred:proposed     "ONE DEFINITION, TWO RUNNERS. The set is a recipe in the graph (the 2026-10-08 decision that a saved recipe is the unit of generation). The browser runs it with the configured provider; when the local host (F243) is up, it can hand the set to the desktop worker, which adds the GPU gate, heartbeat, queue and back-pressure. Progress shows in the agents panel in Spaces (F245). Two definitions would drift, as the two review queues did (found 2026-10-08)." ;
+               kpred:constraint   "Every step that needs a person (a merge, a classification under the 2026-10-08 taxonomy rule, a deletion) pauses for a decision rather than writing (F257 interrupt), and the decision is presented with 2 to 4 options, a recommendation and citations (kb:graph-proposals)." ;
+               kpred:remaining    "Nothing built. First: express the existing five actions as recipes with their current single step, so nothing changes for the person; then add the script-tier steps in front; then the hand-off to the desktop worker." ;
+               kpred:relates-to   kb:work-tiering ;
+               kpred:relates-to   kb:graph-to-content ;
+               kpred:relates-to   kb:langgraph-job-runtime ;
+               kpred:relates-to   kb:local-host-mode ;
+               kpred:relates-to   kb:agents-in-app ;
+               kpred:relates-to   kb:change-provenance ;
+               kpred:relates-to   kb:cross-kb-alignment ;
+               kpred:relates-to   kb:job-backpressure .
+
+kb:graph-proposals kpred:decided "MATT, 2026-10-08, after reviewing twelve open questions in a Claude Code chat with selection forms: 'We need to get this level of summarization and ease of use within main interface but for now Claude Code is the best harness.' REQUIREMENT for how a decision is shown in the app: 2 to 4 real options (a local model's near-duplicate drafts collapsed), one marked recommended, and each option citing the graph statements it rests on (the earlier decision with its date, the measurement, the feature it unblocks). Questions the graph already settled are not asked again. Matt on the citations: the recommendations were 'a bit leading, but often there were space citations listed with the recommended options', which is what made them checkable." .
+
 kb:job-backpressure rdf:type ktype:Feature ;
                rdfs:label         "Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
                kpred:feature-id   "F74.9" ;
