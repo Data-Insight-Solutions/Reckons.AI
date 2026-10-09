@@ -29,6 +29,8 @@ export type CommitInfo = {
   sha: string;
   subject: string;
   parents: number;
+  /** Author date, ISO 8601. The AUTHOR date, because a rebase or cherry-pick resets the committer date. */
+  authorDate?: string;
   /** Parsed trailers as [key, value] pairs (git interpret-trailers --parse). */
   trailers: [string, string][];
 };
@@ -58,6 +60,17 @@ export function checkCommits(commits: CommitInfo[]): Violation[] {
   return out;
 }
 
+/**
+ * GRANDFATHERING IN EVERY MODE, not only on a push to dev. Without it, merging this check made every
+ * already-open PR fail, because their agent commits predate the rule (found 2026-10-09 in review: the
+ * whole 0.2.6 queue would have gone red). Commits authored before the cutoff are not checked.
+ * A commit with no known date is checked, so a missing date cannot excuse a commit.
+ */
+export function afterCutoff(commits: CommitInfo[], cutoff: string): CommitInfo[] {
+  const t = Date.parse(cutoff);
+  return commits.filter((c) => !c.authorDate || Date.parse(c.authorDate) >= t);
+}
+
 export function parseTrailers(text: string): [string, string][] {
   return text
     .split('\n')
@@ -72,10 +85,11 @@ function readRange(rangeArgs: string[]): CommitInfo[] {
   const shas = git('rev-list', ...rangeArgs).split('\n').filter(Boolean);
   return shas.map((sha) => {
     const subject = git('log', '-1', '--format=%s', sha).trim();
+    const authorDate = git('log', '-1', '--format=%aI', sha).trim();
     const parents = git('log', '-1', '--format=%P', sha).trim().split(/\s+/).filter(Boolean).length;
     const msg = git('log', '-1', '--format=%B', sha);
     const trailers = parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: msg, encoding: 'utf8' }));
-    return { sha, subject, parents, trailers };
+    return { sha, subject, parents, authorDate, trailers };
   });
 }
 
@@ -100,7 +114,10 @@ function main() {
       how = `commits since ${since} (no commits ahead of origin/dev; older history grandfathered)`;
     }
   }
-  const commits = readRange(rangeArgs);
+  const cutoff = arg('since') ?? CUTOFF;
+  const inRange = readRange(rangeArgs);
+  const commits = afterCutoff(inRange, cutoff);
+  if (commits.length < inRange.length) how += `; ${inRange.length - commits.length} authored before ${cutoff} grandfathered`;
   const bad = checkCommits(commits);
   const agents = commits.filter((c) => c.parents <= 1 && isAgentCommit(c)).length;
   console.log(`commit-trailers: ${commits.length} commit(s) in ${how}; ${agents} agent commit(s)`);

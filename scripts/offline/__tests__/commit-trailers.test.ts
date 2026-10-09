@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkCommits, parseTrailers, type CommitInfo } from '../commit-trailers.ts';
+import { afterCutoff, checkCommits, parseTrailers, type CommitInfo } from '../commit-trailers.ts';
 
 const c = (trailers: [string, string][], parents = 1): CommitInfo => ({ sha: 'abc1234def', subject: 's', parents, trailers });
 const CO: [string, string] = ['Co-Authored-By', 'Claude Sonnet 5.5 <noreply@anthropic.com>'];
@@ -35,5 +35,16 @@ describe('checkCommits', () => {
 describe('parseTrailers', () => {
   it('splits key and value', () => {
     expect(parseTrailers('Model: a@b\nIntent: x: y\n')).toEqual([['Model', 'a@b'], ['Intent', 'x: y']]);
+  });
+});
+
+describe('afterCutoff', () => {
+  const c = (sha: string, authorDate?: string) => ({ sha, subject: sha, parents: 1, authorDate, trailers: [] as [string, string][] });
+  it('grandfathers commits authored before the cutoff in any mode, and checks the rest', () => {
+    const kept = afterCutoff([c('old', '2026-10-08T23:00:00Z'), c('new', '2026-10-09T12:00:01Z'), c('edge', '2026-10-09T12:00:00Z')], '2026-10-09T12:00:00Z');
+    expect(kept.map((k) => k.sha)).toEqual(['new', 'edge']);
+  });
+  it('checks a commit whose date is unknown, so a missing date cannot excuse it', () => {
+    expect(afterCutoff([c('nodate')], '2026-10-09T12:00:00Z').map((k) => k.sha)).toEqual(['nodate']);
   });
 });
