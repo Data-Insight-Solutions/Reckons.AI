@@ -6,12 +6,12 @@
  * never reached the browser. This is the timer that closes that gap.
  *
  * OPT-IN IS THE EXISTING SETTING. The person's own n8n instance (settings.n8nBaseUrl) is the
- * only consent signal: with it unset, or with no enabled current defined in the graph, a tick
+ * only consent signal: with it unset, or with no enabled current defined in the space, a tick
  * makes NO network call at all. Nothing here talks to any service the person did not name.
  * (The CSP lets the request out only for builds that know the origin; see src/app.html.)
  *
- * ONE SWEEP, NOT ONE REQUEST PER CURRENT. The items webhook is keyed by graph, not by current
- * (fetchCurrentItems(graphStableId, since)), so a single GET returns every current's new items,
+ * ONE SWEEP, NOT ONE REQUEST PER CURRENT. The items webhook is keyed by space, not by current
+ * (fetchCurrentItems(spaceId, since)), so a single GET returns every current's new items,
  * each tagged with currentSlug. Fetching per current would multiply requests against the
  * person's own server for no gain. The sweep then groups by slug and calls processArrivals once
  * per current, so each current still keeps its own Source record (provenance stays per-current).
@@ -52,7 +52,7 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let running = false;
 let failures = 0;
 let outageReported = false;
-/** Currents already registered this session, keyed graph+definition so an edit re-registers. */
+/** Currents already registered this session, keyed space+definition so an edit re-registers. */
 const registered = new Set<string>();
 
 function sinceKey(): string {
@@ -65,7 +65,7 @@ function writeSince(iso: string): void {
   try { localStorage.setItem(sinceKey(), iso); } catch { /* storage blocked: re-fetch, don't fail */ }
 }
 
-async function graphStableId(): Promise<string> {
+async function spaceStableId(): Promise<string> {
   return getOrCreateStableId(settings().kbStableId, async (id) => {
     await updateSettings({ kbStableId: id });
   });
@@ -80,7 +80,7 @@ export async function runCurrentsSweep(): Promise<SweepResult> {
 
   running = true;
   try {
-    const stableId = await graphStableId();
+    const stableId = await spaceStableId();
     const bySlug = new Map<string, CurrentDef>(defs.map((d) => [d.slug, d]));
 
     // registerCurrent is an idempotent upsert, but there is no reason to repeat it every tick.
