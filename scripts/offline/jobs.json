@@ -423,6 +423,14 @@
       "desc": "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides."
     },
     {
+      "name": "branch-ancestry",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/branch-ancestry.ts",
+      "desc": "A PR into dev or staging must not carry commits that exist only on main. Found 2026-10-09: agent worktrees start from main, so three PRs meant for dev carried main's promotion merges and a safety attestation, which no test or conflict revealed. BLOCKING because merged, main's history would land in dev, and a well-meant deletion of it would reach main on the next promotion. Promotions into main are exempt; a back-merge of main is allowed only from a branch named main or sync/main-*."
+    },
+    {
       "name": "term-ratchet",
       "tier": "script",
       "enabled": true,
