@@ -34,6 +34,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { transactPendingQueue } from './pending-queue.js';
+import { assertOk, localOptions, retryTransient } from './lib/local-model.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const CONTENT = join(ROOT, 'content');
@@ -102,18 +103,20 @@ function definedTerms(pages: Page[]): Set<string> {
 }
 
 async function ollama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // think:false — a hybrid-thinking model spends its whole budget reasoning and returns
-    // nothing. Measured on 2026-09-08 when the VLM gate scored a competent model at 0%.
-    body: JSON.stringify({
-      model: MODEL, prompt, stream: false, think: false,
-      options: { num_ctx: 16384, temperature: 0.1, num_predict: 220 },
-    }),
+  return retryTransient(async () => {
+    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // think:false — a hybrid-thinking model spends its whole budget reasoning and returns
+      // nothing. Measured on 2026-09-08 when the VLM gate scored a competent model at 0%.
+      body: JSON.stringify({
+        model: MODEL, prompt, stream: false, think: false,
+        options: localOptions({ num_ctx: 16384, temperature: 0.1, num_predict: 220 }),
+      }),
+    });
+    await assertOk(res);
+    return ((await res.json()) as { response?: string }).response?.trim() ?? '';
   });
-  if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-  return ((await res.json()) as { response?: string }).response?.trim() ?? '';
 }
 
 const PROMPT = (p: Page, defined: string[]) => `You are checking one page of software documentation for terms it uses without explaining.
