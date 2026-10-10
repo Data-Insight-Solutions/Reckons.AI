@@ -627,6 +627,8 @@ code:mcp-server  rdf:type     ktype:Concept ;
                  kpred:has-file "mcp-server/src/layers.ts" ;
                  kpred:has-file "mcp-server/src/pending-file.ts" ;
                  kpred:has-file "mcp-server/src/review-links.ts" ;
+                 kpred:has-file "mcp-server/src/review-sources.ts" ;
+                 kpred:has-file "mcp-server/src/__tests__/review-sources.test.ts" ;
                  kpred:has-file "mcp-server/src/validate-args.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/ollama-client.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/local-llm.test.ts" ;
