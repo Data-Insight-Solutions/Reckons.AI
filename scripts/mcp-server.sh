@@ -41,4 +41,11 @@ if [ ! -f mcp-server/dist/index.js ]; then
   exit 1
 fi
 
+# The offline jobs write their queue to reckons-workspace/knowledge.pending.jsonl. The review tools
+# read it too, and journal verdicts beside it where the app drains them. Override with
+# RECKONS_QUEUE_WORKSPACE=/path; if unset and the directory is absent, only per-graph queues show.
+if [ -z "${RECKONS_QUEUE_WORKSPACE:-}" ] && [ -d reckons-workspace ]; then
+  export RECKONS_QUEUE_WORKSPACE="$PWD/reckons-workspace"
+fi
+
 exec node mcp-server/dist/index.js --kb mcp-workspace "$@"

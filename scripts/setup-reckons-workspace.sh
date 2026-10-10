@@ -52,6 +52,10 @@ ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.
 # the same facts in a format nothing else in the system can query.
 mkdir -p "$KBS/jobs"
 ln -sf ../../../static/reckons-jobs.ttl "$KBS/jobs/jobs.ttl"
+# CI as a graph (F33.2): every check, whether a ruleset makes it able to stop a merge, and the
+# roadmap features it guards. Generated from the workflow YAML by scripts/ci-graph.ts.
+mkdir -p "$KBS/ci"
+ln -sf ../../../static/reckons-ci.ttl "$KBS/ci/ci.ttl"
 # The positioning graph (F200). Linked as its own KB rather than only folded into docs-all.ttl so
 # that "why this instead of Palantir / OntoBricks / Logseq" is ANSWERABLE by kb_search. It is the
 # one graph in the workspace that is openly persuasion, and it carries its own sources and dates
