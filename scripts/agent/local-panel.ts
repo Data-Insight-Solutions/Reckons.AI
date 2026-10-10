@@ -69,6 +69,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { logEvent } from './local-activity.js';
+import { OllamaHttpError, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -197,7 +198,11 @@ export function checkAnswer(schema: Record<string, unknown>, raw: string): { ans
   return problems.length ? { error: problems.join('; ') } : { answer };
 }
 
-async function ollamaChat(model: string, user: string, task: PanelTask, attempt: number, withThink: boolean): Promise<string> {
+/** One panel call, retried when the model server restarted under it (F74.10). */
+const ollamaChat = (model: string, user: string, task: PanelTask, attempt: number, withThink: boolean): Promise<string> =>
+  retryTransient(() => ollamaChatOnce(model, user, task, attempt, withThink));
+
+async function ollamaChatOnce(model: string, user: string, task: PanelTask, attempt: number, withThink: boolean): Promise<string> {
   const res = await fetch(`${OLLAMA}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -212,20 +217,20 @@ async function ollamaChat(model: string, user: string, task: PanelTask, attempt:
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: user },
       ],
-      options: {
+      options: localOptions({
         num_ctx: task.numCtx ?? 8192,
         num_predict: task.maxOutput ?? 300,
         // The first vote is deterministic; extra votes from the same model need some spread or
         // they are the same vote counted twice.
         temperature: attempt === 0 ? 0 : 0.7,
         seed: 1000 + attempt,
-      },
+      }),
     }),
   });
   if (!res.ok) {
     const body = await res.text();
-    if (withThink && /think/i.test(body)) return ollamaChat(model, user, task, attempt, false);
-    throw new Error(`Ollama ${res.status}: ${body.slice(0, 160)}`);
+    if (withThink && /think/i.test(body)) return ollamaChatOnce(model, user, task, attempt, false);
+    throw new OllamaHttpError(res.status, body);
   }
   return ((await res.json()) as { message?: { content?: string } }).message?.content?.trim() ?? '';
 }
