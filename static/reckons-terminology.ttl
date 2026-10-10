@@ -233,7 +233,7 @@ kterm:knowledge-base a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/termin
     skos:scopeNote "THE USER LABEL MOVED TO 'space' (Matt, 2026-09-23): 'its space, and spaces is the current graphs tab.' This is exactly the reversal the 2026-09-17 note anticipated when it declined a friendlier word — 'the three-register model makes that reversible later without touching code, because only the user label would move' — and only the user label has moved. The generic user word for one of these is SPACE and for the collection is SPACES; the developer word stays 'knowledge base', the standards word stays 'RDF dataset', and every contract-bound spelling (urn:kbase:, ?kb=, the Dexie database names, the kb argument on every MCP tool) is untouched." ;
     skos:scopeNote "SO THE THING AND ITS VIEW SHARE ONE USER WORD, DELIBERATELY. kterm:graph-view also carries the user label 'space'. A person does not distinguish the object from being inside it, and forcing them to would invent a distinction the interface does not need; the developer register keeps the two apart where the code has to care. The nav reads space for the one you are in and spaces for the collection." ;
     skos:scopeNote "WHY 'knowledge graph' IS NOT THE USER WORD (Matt, 2026-09-23): it describes HOW THE SYSTEM WORKS, which makes it the right thing to say to a developer and the wrong thing to put in front of everyone else. The standards term underneath stays accurate and unchanged — kpred:standards-label is 'RDF dataset', and a quad's fourth element is a named graph (kterm:named-graph). Borrow the standard where it is accurate; translate at the surface." ;
-    skos:hiddenLabel "kb", "KB", "kbase" .
+    skos:hiddenLabel "kb", "KB", "kbase", "space", "graph" .
 
 kterm:named-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "named graph" ;
@@ -251,7 +251,64 @@ kterm:graph-view a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolog
     skos:definition "The 2D or 3D visual rendering of a knowledge base — the force layout, the camera, the drawn markers and edges." ;
     skos:scopeNote "DECIDED (Matt, 2026-09-23): the user-facing word is SPACE, and it spans BOTH 2D and 3D on purpose. Switching dimension is a change of VIEW, not a change of thing — you do not rename a document when you open print preview — so one word has to cover both or the interface implies two objects where there is one. 'World' was considered and is narrower: it reads 3D, where a space is whichever dimension you are currently in. Note that 'space' is the GENERIC word and stays generic: 'knowledge graph' is the technical register for the same thing, and a theme may skin it further (see kterm:knowledge-base on the theme axis)." ;
     skos:scopeNote "A presentation concept. Never store data under this name and never let it stand as bare graph in a module that also handles quads." ;
-    skos:hiddenLabel "graph" .
+    skos:hiddenLabel "graph", "space" .
+
+# ── MEANINGS FOUND IN THE CODE, 2026-10-09 ──────────────────────────────────
+#
+# Matt, 2026-10-09: "we need to refine taxonomy space, to properly define terms." The term-senses
+# panel cannot sort a word the graph gives fewer than two meanings, and space had none, source and
+# statement one each. A discovery panel asked what each word MEANS at 40 real sites, with an
+# 'other' answer in the model's own words; these are the meanings that held up. Proposed in a PR,
+# so Matt's merge is the person's approval (kb:terminology-ontology, 2026-10-08).
+
+kterm:spaces-map a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "spaces map" ;
+    kpred:user-label "spaces" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The view one level above a single space: every space a person has, one marker each, with the connections between them. The Spaces tab (kb:meta-graph-view)." ;
+    skos:scopeNote "4 of 40 sampled uses of space (KbPicker, kb-registry). Plural on purpose: space for the one you are in, spaces for the collection (Matt, 2026-10-07). EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "space" ;
+    skos:related kterm:knowledge-base, kterm:graph-view .
+
+kterm:whitespace a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "whitespace" ;
+    kpred:standards-label "CSS spacing (gap, margin, space-between) / Unicode whitespace" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "Empty room in text or layout: a space character, a gap or margin, CSS space-between. Owned by CSS and Unicode, not by this project." ;
+    skos:scopeNote "THE COMMONEST MEANING OF space IN THE CODE: 24 of 40 sampled sites, all unanimous. So a search for the bare word finds styling before it finds a space. Qualify our own identifiers (knowledgeBase, spacesMap) rather than competing for the word. EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "space" .
+
+kterm:coordinate-space a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "coordinate space" ;
+    kpred:standards-label "vector space; world, screen and camera space (three.js)" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "A mathematical space that positions or values live in: world, screen or camera coordinates in the 2D and 3D views, and by extension the range of possible values (a key space)." ;
+    skos:scopeNote "2 of 40 sampled sites as coordinates (map-layout, the force simulation), and 2 more where the models named a key space in their own words (vocabulary-repair's phonetic keys, co-hyponyms' identifier tails). EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "space" .
+
+kterm:source-of-truth a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "source of truth" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "The one authority that other copies follow and are checked against: the graphs are the source of truth for the plan, viewport.svelte.ts for breakpoints." ;
+    skos:scopeNote "An idiom, 9 times in src/ (counted 2026-10-09), and 3 sampled sites the panel could not place under where-a-fact-came-from. Prose only: it should never become an identifier, where it would read as a provenance source. EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "source" .
+
+kterm:edge-endpoint a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "edge endpoint" ;
+    kpred:standards-label "link.source / link.target (d3-force)" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The two ends of a drawn edge, which the force-layout library calls source and target. A rendering convention, unrelated to where a fact came from." ;
+    skos:scopeNote "About 7 link.source style uses in src/ (counted 2026-10-09). The panel split three ways on OverlayGraph.svelte:85 between this, a provenance source and other, which is the confusion itself. In our own data the start of an edge is the statement's subject; keep source and target for the library's objects. EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "source" .
+
+kterm:graph-structure a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "graph structure" ;
+    kpred:standards-label "graph (graph theory)" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "An in-memory structure of vertices and edges that an algorithm walks: adjacency, hops, paths, a history DAG. Built from statements, but a computation, not something stored." ;
+    skos:scopeNote "3 of 40 sampled uses of graph unanimously, and a third of the 12 splits had a vote for it (source-cache's history, CompareScene's mesh groups, analysis-advisor). graph is the most contested word measured: 21 of 40 unanimous, against 31 for space and source. EVIDENCE: Measured 2026-10-09: 40 sampled code sites per word under src/ (seed 7), three qwen3.6 votes each through scripts/agent/local-panel.ts, the disagreements and 'other' answers read by Opus." ;
+    skos:hiddenLabel "graph" ;
+    skos:related kterm:knowledge-base .
 
 # ── OUR OWN DOMAIN TERMS ────────────────────────────────────────────────────
 
@@ -275,14 +332,32 @@ kterm:source a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:scopeNote "1578 occurrences across 223 files. Serialized under urn:kbase:source/, so the identifier is contract-bound even where the variable name is free." ;
     skos:hiddenLabel "provenance" .
 
+kterm:collection a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "collection" ;
+    kpred:standards-label "skos:Collection / skos:OrderedCollection" ;
+    kpred:user-label "collection" ;
+    kpred:binding-class kbind:contract ;
+    skos:definition "A named, possibly ordered grouping of entities (or of spaces), used to compose pages, stories, rosters and contrasts. The one grouping primitive: skos:Collection with skos:member." ;
+    skos:scopeNote "RENAMED FROM 'set', Matt 2026-10-08: 'Collection = grouping, Set = template' (kb:set-semantics). Until the rename lands, most bare uses of set in code mean THIS (EntitySet, sets.ts, graph-sets), and they are contract names where they are serialized; rename the free ones, migrate the stored ones (F65 to skos:Collection, PR #424)." ;
+    skos:hiddenLabel "set", "group" ;
+    skos:related kterm:set .
+
 kterm:set a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "set" ;
-    kpred:standards-label "skos:Collection / skos:OrderedCollection" ;
-    kpred:user-label "group" ;
-    kpred:binding-class kbind:contract ;
-    skos:definition "A named, possibly ordered collection of entities, used to compose pages, stories, rosters and contrasts." ;
-    skos:scopeNote "1767 occurrences across 254 files — and a collision risk with JavaScript's own Set, which is a different thing entirely. A variable holding a JS Set of entity IRIs and a variable holding one of our sets must never share a name shape." ;
-    skos:hiddenLabel "collection", "group" .
+    kpred:standards-label "sh:NodeShape (a template of roles and required relations)" ;
+    kpred:user-label "set" ;
+    kpred:binding-class kbind:free ;
+    skos:definition "A template that creates collections: roles with their types and the relations that must hold between them. Applying a set creates a new collection, its members and their relations in one step (batch node creation), at entity scale or at space scale." ;
+    skos:scopeNote "NEW MEANING, Matt 2026-10-08: 'Maybe Sets are the templated version of a Collection' and 'Sets are what allow for batch node creation'. Before that date 'set' named the grouping now called collection, so an old bare use of set almost always means kterm:collection, not this. A collection can be validated against the set it came from." ;
+    skos:related kterm:collection, kterm:shape .
+
+kterm:js-set a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
+    skos:prefLabel "JavaScript Set" ;
+    kpred:standards-label "Set (ECMAScript)" ;
+    kpred:binding-class kbind:foreign ;
+    skos:definition "The language's built-in collection of unique values (new Set(), Set<string>). Owned by ECMAScript, not by this project." ;
+    skos:scopeNote "Never rename it. A variable holding a JS Set of entity IRIs and a variable holding one of our collections or sets must never share a name shape (the collision the old kterm:set scope note warned about)." ;
+    skos:hiddenLabel "set" .
 
 kterm:shape a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "shape" ;
@@ -417,7 +492,8 @@ kterm:source-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminol
     kpred:binding-class kbind:contract ;
     skos:definition "The half of a space's file that describes WHERE statements came from: one meta:Source per note, email, thread, page or file, each with its title, URI, kind and ingest time." ;
     skos:scopeNote "WHERE THE WORD 'graph' IS LITERAL AND WHERE IT IS NOT — measured 2026-09-23, because 'standards where accurate' requires knowing which. In toNQuads and toTriG the source IS the fourth element of every quad, so 'named graph' is exact. In a .ttl export it is NOT: Turtle has one default graph and no GRAPH blocks, so the two halves are two POPULATIONS in one graph, joined by prov:wasDerivedFrom on reified rdf:Statement nodes. Verified against tests/fixtures/multi-source.ttl: 5 meta:Source descriptions, 9 rdf:Statement nodes, zero GRAPH blocks." ;
-    skos:related kterm:statement-graph, kterm:named-graph .
+    skos:related kterm:statement-graph, kterm:named-graph ;
+    skos:hiddenLabel "source" .
 
 kterm:statement-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "statement graph" ;
@@ -426,7 +502,8 @@ kterm:statement-graph a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/termi
     kpred:binding-class kbind:contract ;
     skos:definition "The other half of a space's file: the statements themselves, each carrying its status, confidence, altitude and a prov:wasDerivedFrom link to the source it came from." ;
     skos:scopeNote "BOTH HALVES LIVE IN ONE FILE, AND THAT IS THE UNIT (Matt, 2026-09-23): 'the source graph and the statement graph are both contained within the .ttl for the space'. One space, one file, both halves — which is what makes a space portable and what makes the limit on its size meaningful." ;
-    skos:related kterm:source-graph, kterm:statement .
+    skos:related kterm:source-graph, kterm:statement ;
+    skos:hiddenLabel "statement" .
 
 kterm:export-act a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminology> ;
     skos:prefLabel "export" ;
@@ -465,7 +542,11 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # the same commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
     kpred:term-ratchet "graph/free/4649" ;
+    kpred:term-ratchet "statement/free/4979" ;
+    kpred:term-ratchet "source/free/4298" ;
+    kpred:term-ratchet "space/free/884" ;
     kpred:term-ratchet "node/free/3240" ;
     kpred:term-ratchet "export/free/394" ;
     kpred:term-ratchet "share/free/183" ;
+    kpred:term-ratchet "set/free/2166" ;
     kpred:enforced-by "scripts/offline/term-usage.ts --check, measured 2026-10-07 over src/ and content/; re-measured on dev the same evening when this check merged, after the Source View, coverage and release PRs landed (graph +27, node +73, export +18): a ratchet starts from the code it lands on. Raised again for #327 (graph +9, node +16): docs pages that QUOTE the words while explaining the terminology work, the tool and runtime names graph lint and Node, and the page title Where a node's facts came from, which uses the word the screen itself shows. #386 lowered graph to 4633 (54 fewer: /kb now says space) and raised share by 2: 'share package' is kterm:share-package's own label, the user word that replaced 'graph package'. The v0.2.5 release raised all four (graph +15, node +6, export +5, share +3) with its own public pages: the release notes, the field report, and the terminology-maintenance docs page, which names the four words because it explains them." .
