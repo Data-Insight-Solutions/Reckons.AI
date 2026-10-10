@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerStep, type QueueJob, type StepInput } from '../session-queue';
+import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
 import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
@@ -7,6 +7,21 @@ import { renderQueue } from '../watch';
 const MIN = 60_000;
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
 const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, heartbeatFresh: true, ollamaUp: true, ...over });
+
+describe('worker pid ownership', () => {
+  const alive = () => true;
+  const enoent = () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); };
+  it('is a worker only while the live pid still runs queue-worker', () => {
+    expect(workerPidAlive(42, () => 'node\0tsx\0scripts/agent/queue-worker.ts', alive)).toBe(true);
+    // the 2026-10-09 case: the pid was reused by an unrelated process
+    expect(workerPidAlive(42, () => 'code\0eslintServer.js\0--node-ipc', alive)).toBe(false);
+    expect(workerPidAlive(42, () => 'node\0scripts/agent/queue-worker.ts', () => false)).toBe(false);
+  });
+  it('treats a missing /proc entry as gone on Linux, and falls back to liveness without /proc', () => {
+    expect(workerPidAlive(42, enoent, alive, () => true)).toBe(false);
+    expect(workerPidAlive(42, enoent, alive, () => false)).toBe(true);
+  });
+});
 
 describe('heartbeat freshness', () => {
   const now = 1_000_000_000;
