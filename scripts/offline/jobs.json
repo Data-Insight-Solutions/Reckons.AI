@@ -334,6 +334,14 @@
       "desc": "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source."
     },
     {
+      "name": "ci-graph",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/ci-graph.ts --check",
+      "desc": "CI as a graph (F33.2): static/reckons-ci.ttl must match .github/workflows/*.yml and .github/ruleset-main.json. Answers what stops a bad merge to main, which checks only advise, and which roadmap features each check guards. Also reports a required check no workflow produces. Advisory, like jobs-graph: a stale graph is fixed by regenerating it, not by blocking a merge."
+    },
+    {
       "name": "landing-data",
       "tier": "script",
       "enabled": true,

@@ -1,3 +1,66 @@
+## 2026-10-09 — START HERE. 0.2.6 day 2: local jobs made stable, terms defined, F248 and F33.2 built (Claude Code)
+
+**Open PRs, all base dev, all green unless noted. Merge order: #429 first** (later local runs need its fix).
+This session could not merge: the auto-mode classifier refused the merge queue, so these wait for Matt or for a
+session allowed to merge into dev.
+- **#429** F74.10 stable local calls: `num_batch` 256 from device config, plus a retry after an Ollama restart. ROOT CAUSE:
+  qwen3.6, split across two 3090s, aborts with a CUDA illegal memory access at the default batch size (512). It
+  crashed 4 of 4 times on job-watch's verdict prompt and answered 4 of 4 at 256. Also: term-senses panels are seeded
+  only for words with 2 or more meanings.
+- **#428** a reused pid no longer holds the queue worker lock (worker.json named pid 32111, by then VS Code's ESLint).
+- **#430** terms: the missing meanings of space, source, statement and graph (6 new concepts, hidden labels, ratchets).
+  Validated with term-senses: unanimous on 29/30 sites for space, 24/30 for source, 17/30 for statement.
+- **#426** (earlier) collection vs set terms. It does not conflict with #430.
+- **#431** F248 Getting started arrives reviewed: 7 sample sources (drafted by local qwen3.6, reviewed), 48 facts
+  with passages, history (2 corrections, 2 rejections), and 3 pending. Review reads "all of them yours to decide",
+  and the tour links there with or without a model. e2e passes at 1280/390 locally (system Chrome).
+- **#432** F33.2 CI as a graph (`static/reckons-ci.ttl`): 8 of 15 checks can stop a merge to main, 7 only advise
+  (safety attestation, dependency audits, CodeQL, release notes, extension build).
+- **#427** F249.1 plan: a feature or plugin is defined as a space (starter sets, refined collection, built by jobs).
+
+**Decisions waiting on Matt (filed in the review queue):**
+1. The review headline says "N settled without you" / "nothing left for you to decide" for facts only a reviewing
+   agent could settle, and on a device with no agent nothing ever will (drift-warning, high).
+2. code-review (qwen3-coder) yield today was 0 of 20 across three diffs (keep, demote, retire, or try another model).
+3. F33.2's check is advisory, not blocking as planned. Flip `blocking` in jobs.json if wanted.
+4. Two wording items: Settings says "statements" to users (user word: fact); CompareScene calls two spaces "sources".
+
+**Running state:** the queue worker needs to run OUTSIDE the sandbox (it needs nvidia-smi, and in-sandbox `kill`
+returns EPERM, so a stale lock looks alive). Back-pressure holds docs-review (217), docs-expand (75) and
+extraction-score (89) until those rows are reviewed. Local Playwright browsers are still 1228: run e2e with
+`launchOptions.executablePath: '/usr/bin/google-chrome'`. Not done: the full 0.2.6 big-additions list (F107.10,
+F223, F122.1, F61 voice plugin, group B performance) is still unstarted on day 2 of 14; the cut is 10-18.
+
+## 2026-10-08 — START HERE. 0.2.5 ships, 0.2.6 planned as a two-week sprint (Claude Code)
+
+**0.2.5:** on staging, verified. Matt chose to fix the spaces map first: **#409** (/kb draws the map
+from one space). Order: Matt merges #409 → promote dev → staging → Matt merges **#390**
+(staging → main, deploys reckons.ai) → then tag `v0.2.5`, publish the GitHub release from
+`content/releases/v0-2-5.md`, set `kb:release-0-2-5` to production (Matt said yes to all three).
+
+**0.2.6 (2026-10-08 → 10-22), scope in `kb:release-0-2-6`:** finish 0.2.5's leftovers + decisions you
+can trust (F223 cited options, ONE review queue, #404 model pins) + first slices of collections/F256,
+voice plugin (F61), F254 provenance, F255 Analyze recipes + groups B–E + dependabot → dev. Big
+additions in week one, refinement in week two; **day ten (10-18) cuts what isn't working to 0.2.7.**
+Parked: F249–F253 and F257 (LangGraph; renumbered from F248, which #393 claimed first).
+
+**Found today, not yet fixed:** two review queues. Offline jobs write
+`reckons-workspace/knowledge.pending.jsonl`, but the MCP review tools (and the local-work-reviewer agent)
+read `mcp-workspace` only. Five producers wrote rows with no `kb`, so the app never imported them (#396
+fixes the producers; 331 rows were backfilled locally). Local Playwright browsers are out of date
+(1228 installed, 1243 needed), so e2e runs only in CI.
+
+**Open PRs, base dev:** #396 pending rows name their space · #404 model pins (0.2.6) · #405 twelve
+decisions + taxonomy rule · #407 layer/benchmark cleanup · #408 F256 collection layout + Collection/Set
+model · #409 spaces map (0.2.5) · roadmap stack #397→#406 (F249–F255 and F257, merge in order) · this PR.
+
+**Queue state:** 1,272 rows after today's chat review (backups in `~/.local/state/reckons/`). Still to
+review in chat: 82 predicate synonym pairs, `screenshot-dir` layer, docs-review folded by term,
+a 5-draft sample of docs-expand.
+
+**Waiting on Matt:** merges above; remove the `# reckons-schedule` crontab line (the worker + heartbeat
+hook replace it; my edit was blocked).
+
 ## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
 
 **Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
