@@ -143,6 +143,12 @@ export interface Decision {
   /** Most recent addedAt across the rows, ISO, or '' when none carried one. */
   latest: string;
   rowIds: string[];
+  /**
+   * Every agent that wrote a row in this decision — including rows that proposed no object. A
+   * job's finding is usually question-only (no claim), so claim proposers alone would make
+   * `--agent code-review` match none of them (observed 2026-10-08: 225 code-review rows, 0 hits).
+   */
+  agents?: string[];
   /** Ranking score. Reported so an order that looks wrong can be argued with. */
   score: number;
   /** The one-line reason this decision ranks where it does. */
@@ -360,6 +366,7 @@ export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, A
       priority: topPriority(group),
       latest: group.reduce((acc, r) => (r.addedAt && r.addedAt > acc ? r.addedAt : acc), ''),
       rowIds: group.map(rowId),
+      agents: [...new Set(group.map((r) => (r.agent ?? '(unattributed)').trim()))],
       score: 0,
       because: '',
     };
@@ -479,7 +486,7 @@ export function filterDecisions(decisions: Decision[], f: DecisionFilter): Decis
     if (f.high && d.priority !== 'high') return false;
     if (f.agent) {
       const needle = f.agent.toLowerCase();
-      const proposers = d.claims.flatMap((c) => c.proposers).join(' ').toLowerCase();
+      const proposers = [...d.claims.flatMap((c) => c.proposers), ...(d.agents ?? [])].join(' ').toLowerCase();
       if (!proposers.includes(needle)) return false;
     }
     return true;

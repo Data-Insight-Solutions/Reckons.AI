@@ -85,6 +85,7 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-codebase ,
         graph:reckons-competitive ,
         graph:reckons-generation-tools ,
+        graph:reckons-ci ,
         graph:reckons-jobs ,
         graph:reckons-production ,
         graph:reckons-roadmap ,
@@ -189,6 +190,12 @@ graph:reckons-generation-tools a void:Dataset ;
     dcterms:title "Local generation tools catalogue" ;
     dcterms:type role:reference ;
     dcterms:source "static/reckons-generation-tools.ttl" .
+
+graph:reckons-ci a void:Dataset ;
+    dcterms:title "CI checks and merge protection" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-ci.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/ci-graph.ts> .
 
 graph:reckons-jobs a void:Dataset ;
     dcterms:title "Offline jobs" ;
