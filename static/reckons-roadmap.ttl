@@ -266,6 +266,19 @@ kb:visual-workflow-harness rdf:type ktype:Feature ;
                kpred:description  "Workflow-level visual testing decoupled from Storybook (playwright.workflows.config.ts). A device-matrix harness (tests/visual/workflow-harness.ts: useDevice / screenshotStep / stepAudit) with a navigation-sweep exemplar auditing overflow + sub-44px touch targets across 5 devices. Two offline (local-VLM, no cloud) tools: scripts/visual-graph.ts turns the screenshot matrix into a browsable review-graph TTL (TestStep nodes + hnav tour + hover previews), and scripts/offline/visual-diff.ts (vision-vlm diffImagesVLM) diff-detects regressions between two deploys and queues each as a pending question. npm run test:workflows / visual:graph / offline:visual-diff." ;
                kpred:tested-by    "tests/visual/user-stories/navigation-sweep.test.ts" .
 
+kb:vlm-workflow-streams rdf:type ktype:Feature ;
+    rdfs:label "VLM analysis streams and guided usage workflows" ;
+    kpred:has-status "functional" ;
+    kpred:depends-on kb:visual-workflow-harness ;
+    kpred:relates-to kb:visual-testing ;
+    kpred:tested-by "scripts/visual-streams/__tests__/contract.test.ts" ;
+    kpred:tested-by "tests/e2e/visual-streams.test.ts" ;
+    kpred:description "Requested 2026-10-09: many visual analysis streams, covering end-to-end workflows and freeform usage where a local VLM chooses what to click and the next step. Build a configurable local browser runner with independent scripted and exploratory streams, device profiles, screenshot analysis lenses and bounded actions. Save ordered screenshots, model responses, actions and deterministic assertions; findings remain proposals for review." ;
+    kpred:decided "Use fresh isolated browser contexts and synthetic examples on an explicitly selected loopback app. Each stream has its own goal, model, device and analysis lenses. Scripted steps and VLM-selected steps share evidence capture. Completion asserted by a VLM alone is unverified; only configured browser assertions can verify the goal. Invalid output, timeouts, browser errors and step exhaustion must not become passing tests." ;
+    kpred:progress "Built on the feature branch, 2026-10-09: npm run visual:streams, a versioned JSON contract, isolated browser streams, screenshot lenses with previous-frame context, validated screenshot-grounded actions, deterministic goal assertions, private receipts and queued proposals. Registered as an opt-in disabled offline job. Browser assertions stop goal-driven exploration once the goal holds; freeform runs stop on model finish or step budget." ;
+    kpred:honest-note "Measured 2026-10-09 with local qwen2.5vl:7b: scripted desktop navigation verified across three frames and three analysis lenses; VLM-guided navigation reached Review in one click and passed browser assertions. Freeform phone exploration repeated the add-space menu cycle and exhausted six actions, correctly reported incomplete, with one visual proposal. General autonomous navigation and reliable freeform stopping are NOT established. The local gateway rejected schema grammar; JSON mode plus explicit schema prompts and strict runtime validation worked. No cloud fallback, production deployment or product UI change." ;
+    kpred:remaining "Broaden the workflow corpus and compare navigation/termination reliability across local vision models. External integrations and real-data browser profiles are outside this isolated runner." .
+
 # -- Functional / Scaffolded Features -------------------------------------------
 
 kb:voice-interface rdf:type ktype:Feature ;

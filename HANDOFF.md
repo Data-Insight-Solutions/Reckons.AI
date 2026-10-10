@@ -1,3 +1,21 @@
+## 2026-10-09 — VLM workflow streams (Codex)
+
+Branch `feat/vlm-workflow-streams`, worktree `/tmp/reckons-vlm-workflows`, PR base **dev**. Matt
+merges. `npm run visual:streams -- --list` shows the examples; run against an explicit loopback
+preview with `OLLAMA_BASE_URL` and `--base`. Scripted workflows and VLM-selected browser actions
+share screenshot analysis lenses, private receipts, deterministic assertions and review proposals.
+The graph plan is `kb:vlm-workflow-streams`; usage is generated from `static/docs-testing.ttl`.
+
+Measured 2026-10-09: desktop scripted navigation and VLM-guided Review navigation verified with
+qwen2.5vl:7b. Phone freeform exploration looped and exhausted six actions; **incomplete**, with a
+usability proposal. The runner does not make model completion claims into passing tests.
+Local validation: 12 contract tests, nine browser tests, type check, production build/guard, graph
+lint and align pass. Full unit suite first hit four five-second timeouts; four-worker rerun passed
+3,763 tests (14 TODOs). Startup sweep was 42/44 (competitor-scan and pre-existing naming-ratchet
+failed). Check the PR's current CI before merging. Earlier `test/visual-new-surfaces` failures
+(tour navigation abort, stale NavBar label, async-question timeout) were inspected and queued;
+that worktree and its screenshot changes were left intact.
+
 ## 2026-10-08 — START HERE. 0.2.5 ships, 0.2.6 planned as a two-week sprint (Claude Code)
 
 **0.2.5:** on staging, verified. Matt chose to fix the spaces map first: **#409** (/kb draws the map
