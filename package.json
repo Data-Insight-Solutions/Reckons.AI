@@ -49,6 +49,7 @@
     "visual:review:browser": "npm run build:test && playwright test --config=playwright.evidence.config.ts",
     "visual:review:update": "npx tsx scripts/visual-baseline-update.ts",
     "visual:graph": "npx tsx scripts/visual-graph.ts",
+    "visual:streams": "npx tsx scripts/visual-streams.ts",
     "offline:visual-diff": "npx tsx scripts/offline/visual-diff.ts",
     "branch-align": "npx tsx scripts/branch-align.ts",
     "offline:all": "npx tsx scripts/offline/run-all.ts",

@@ -1,5 +1,5 @@
 {
-  "built": 160,
+  "built": 161,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -890,7 +890,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "78a56f71eb123052"
+      "pageHash": "e9ed380fdbf220c9"
     },
     {
       "path": "testing/test-suite",
@@ -899,7 +899,7 @@
       "factHash": "becc5146029c62b3",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "3767510cd2570944"
+      "pageHash": "f325a1f12d738377"
     },
     {
       "path": "testing/visual-tests",
@@ -908,7 +908,16 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d17871a331ec7910"
+      "pageHash": "0644af9e24a8dbfd"
+    },
+    {
+      "path": "testing/vlm-workflow-streams",
+      "entity": "urn:reckons:test/VlmWorkflowStreams",
+      "graph": "docs-testing.ttl",
+      "factHash": "663a738d5de199f8",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "22413478fd0457ac"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

@@ -567,10 +567,19 @@ job:visual-diff rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:visual-streams rdf:type          ktype:OfflineJob ;
+    rdfs:label          "visual-streams" ;
+    skos:prefLabel      "visual-streams" ;
+    skos:definition     "Opt-in local VLM scripted and exploratory workflow streams. Requires an explicitly started branch preview on the chosen port and OLLAMA_BASE_URL. Private receipts and review proposals; disabled in sweeps because a preview is not assumed to exist. Configure streams in scripts/visual-streams/examples.json or pass --config." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "npm run visual:streams -- --base=http://localhost:4173" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff .
+    skos:member         job:aggregate-decisions, job:code-review, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
@@ -579,5 +588,5 @@ jobset:script rdf:type      skos:Collection ;
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 61 of them, 50 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 62 of them, 50 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

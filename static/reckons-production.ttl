@@ -103,6 +103,8 @@ kb:triple-extraction rdf:type    ktype:Feature ;
                     kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" .
 
 kb:visual-testing   rdf:type     ktype:Feature ;
+                  kpred:tested-by    "scripts/visual-streams/__tests__/contract.test.ts" ;
+                  kpred:tested-by    "tests/e2e/visual-streams.test.ts" ;
                   kpred:tested-by    "tests/visual/vision-scoring.test.ts" ;
                   kpred:tested-by    "tests/visual/vision-vlm.test.ts" ;
                     rdfs:label   "Visual Testing" ;

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "streams": [
+    {
+      "id": "navigation-desktop",
+      "mode": "scripted",
+      "goal": "Navigate from the home page to Spaces and then Review; keep navigation and page content readable throughout.",
+      "startPath": "/",
+      "steps": [
+        { "action": "click", "selector": "nav[aria-label='Main navigation'] a[href='/kb']" },
+        { "action": "click", "selector": "nav[aria-label='Main navigation'] a[href='/review']" }
+      ],
+      "assertions": [{ "path": "/review", "selector": "nav[aria-label='Main navigation']" }],
+      "lenses": [
+        { "id": "layout", "question": "Are navigation and primary controls visible without clipping or overlap?" },
+        { "id": "readability", "question": "Are the main labels readable and is the next action understandable?" },
+        { "id": "progress", "question": "What visible change occurred since the previous checkpoint, and does it support the navigation goal?" }
+      ]
+    },
+    {
+      "id": "find-review",
+      "mode": "explore",
+      "goal": "Find and open Review using the visible navigation. Finish when the Review page is displayed.",
+      "startPath": "/",
+      "maxSteps": 6,
+      "assertions": [{ "path": "/review", "selector": "nav[aria-label='Main navigation']" }],
+      "lenses": [{ "id": "usability", "question": "Can a first-time visitor see how to reach Review, and understand the current page?" }]
+    },
+    {
+      "id": "explore-spaces-phone",
+      "mode": "explore",
+      "goal": "Explore the Spaces page as a first-time visitor. Find the controls to add or open a space, scroll if useful, then finish with a reason describing what you found. Do not delete anything.",
+      "startPath": "/kb",
+      "viewport": { "width": 390, "height": 844 },
+      "mobile": true,
+      "maxSteps": 6,
+      "lenses": [
+        { "id": "layout", "question": "Are controls visible and separated at this phone size, without clipped text?" },
+        { "id": "guidance", "question": "Is it clear what a first-time visitor should do next, and what effect the previous action had?" }
+      ]
+    }
+  ]
+}
