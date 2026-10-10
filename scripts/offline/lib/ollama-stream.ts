@@ -15,6 +15,7 @@
  * Works for /api/generate (text in `response`) and /api/chat (text in `message.content`).
  */
 import { Agent, fetch } from 'undici';
+import { localOptions, retryTransient } from './local-model.js';
 
 export const QUEUE_WAIT_MS = 20 * 60_000;
 export const IDLE_MS = 2 * 60_000;
@@ -53,7 +54,9 @@ const agentFor = (queueWaitMs: number, idleMs: number): Agent => {
 };
 
 /**
- * POST a streamed request and return the whole answer. `body.stream` is forced to true.
+ * POST a streamed request and return the whole answer. `body.stream` is forced to true, and
+ * `body.options` gets the device's num_batch (F74.10). A failure a restarted model server explains
+ * is retried (retryTransient); the two patience timeouts are not.
  * Transport errors keep their cause (undici's code), because a bare "fetch failed" once made
  * a cold model load look like 25 mystery failures.
  */
@@ -62,6 +65,16 @@ export async function ollamaStream(
   endpoint: 'generate' | 'chat',
   body: Record<string, unknown>,
   opts: { queueWaitMs?: number; idleMs?: number } = {},
+): Promise<{ text: string; final: StreamFinal | null }> {
+  const withOptions = { ...body, options: localOptions((body.options as Record<string, unknown> | undefined) ?? {}) };
+  return retryTransient(() => streamOnce(base, endpoint, withOptions, opts));
+}
+
+async function streamOnce(
+  base: string,
+  endpoint: 'generate' | 'chat',
+  body: Record<string, unknown>,
+  opts: { queueWaitMs?: number; idleMs?: number },
 ): Promise<{ text: string; final: StreamFinal | null }> {
   const url = `${base.replace(/\/+$/, '')}/api/${endpoint}`;
   try {
