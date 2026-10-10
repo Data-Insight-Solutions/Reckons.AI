@@ -14,9 +14,12 @@ for (const width of [1280, 390]) {
     await page.goto('/');
     await page.getByRole('button', { name: /getting started/i }).click();
     await expect(page.getByRole('group', { name: 'Graph perspective' })).toBeVisible({ timeout: 30_000 });
-    // Shelly's tour opens over the graph; this test is about what the space holds, so close it.
+    // Shelly's tour ends at the person's first decision, with or without a model to run it (step 4).
     const shelly = page.getByRole('dialog', { name: 'Shelly' });
-    if (await shelly.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true, () => false)) {
+    const tourOpen = await shelly.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true, () => false);
+    const panel = tourOpen ? shelly : page;
+    await expect(panel.getByRole('link', { name: /3 facts wait for your decision in Review/ })).toBeVisible({ timeout: 15_000 });
+    if (tourOpen) {
       await page.keyboard.press('Escape');
       await expect(shelly).toBeHidden();
     }
