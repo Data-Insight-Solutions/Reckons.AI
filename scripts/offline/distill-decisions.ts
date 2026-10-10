@@ -38,6 +38,7 @@ import { readGraph } from './read-graph.js';
 import { buildReviewTree, distillationRequest, validateProposedOptions, questionText } from '../../src/lib/rdf/review-tree.js';
 import type { DistillationRequest, ProposedOptions } from '../../src/lib/rdf/review-tree.js';
 import { readTextOr } from '../lib/read-file.js';
+import { assertOk, localOptions, retryTransient } from './lib/local-model.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', C = '\x1b[36m', R = '\x1b[31m', X = '\x1b[0m';
 
@@ -61,19 +62,21 @@ if (!OLLAMA && !DRY) {
 }
 
 async function ollama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      prompt,
-      stream: false,
-      format: 'json',
-      options: { num_ctx: 16384, temperature: 0.1 },
-    }),
+  return retryTransient(async () => {
+    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL,
+        prompt,
+        stream: false,
+        format: 'json',
+        options: localOptions({ num_ctx: 16384, temperature: 0.1 }),
+      }),
+    });
+    await assertOk(res);
+    return (await res.json()).response ?? '';
   });
-  if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
-  return (await res.json()).response ?? '';
 }
 
 /**
