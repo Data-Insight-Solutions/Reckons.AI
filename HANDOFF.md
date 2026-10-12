@@ -1,3 +1,29 @@
+## 2026-10-12 — README review and documentation-space links (Codex)
+
+Branch: `docs/readme-space-guide`, based on `dev`; [PR #436](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/436) targets `dev`. No merge or production deployment authorized.
+The README now leads with the source → review → spaces → reckoning workflow, links key terms to graph-generated
+pages, describes optional integrations and their privacy boundaries, and summarizes four roadmap themes. The
+linked privacy documentation was corrected in its TTL source and regenerated. The plan and completion record
+are `kb:readme-space-guide` in `static/reckons-roadmap.ttl`. Public documentation URLs open pages, not arbitrary
+nodes in the local graph; the latter deep-link capability does not exist.
+
+Validation on 2026-10-12: 57 README links resolved against repository files, generated pages and inline anchors;
+type checking reported zero errors/warnings; graph/documentation alignment passed; production build and
+build verification passed (three existing WASM file-size warnings). Unit tests: 3,764 passed, 14 todo on the
+full rerun. The first full run had one five-second source-corpus timeout; that file passed in isolation before
+the successful full rerun. The changed documentation page passed the local visual harness without page or
+console errors. Local model review covered the README, both TTL sources and this handoff. Two wording suggestions across
+the review runs were rejected: distinguishing app accounts from service accounts is intentional, and the
+new Privacy and Network Boundaries title accurately describes the documented data flows.
+
+Existing findings remain: the session sweep returned 43/45 clean, with competitor-scan and naming-ratchet
+nonzero; graph-lint reports 16 warnings; claim-audit has no README findings but still flags SAFETY.md and
+COUNSEL-BRIEF.md. Other stale documentation inventories and compression claims were proposed to the graph
+review queue. This was a repository-grounded documentation audit, not a deployment/network security audit.
+The first CI script-tier run caught one additional bare use of “graph” in the generated privacy page.
+Changed “selected graph context” to “relevant facts” in the TTL source and regenerated it; the terminology
+ratchet now passes without changing its baseline. Check the latest PR checks before merge.
+
 ## 2026-10-09 — START HERE. 0.2.6 day 2: local jobs made stable, terms defined, F248 and F33.2 built (Claude Code)
 
 **Open PRs, all base dev, all green unless noted. Merge order: #429 first** (later local runs need its fix).

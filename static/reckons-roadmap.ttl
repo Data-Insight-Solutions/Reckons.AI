@@ -24,6 +24,20 @@
 
 # -- Core Product ---------------------------------------------------------------
 
+kb:readme-space-guide rdf:type ktype:Phase ;
+    rdfs:label "README — an honest introduction connected to documentation spaces" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:journey-docs ;
+    kpred:relates-to kb:honest-status, kb:integration-plugin-sdk, kb:local-offload ;
+    kpred:has-file "README.md", "static/docs-tips-security.ttl" ;
+    kpred:description "Present the product through its purpose and a few roadmap themes. Link key terms throughout the README to published pages derived from documentation-space entities, with the source spaces available for exploration. Verify claims against the repository and distinguish working capabilities from planned work." ;
+    kpred:decided "Matt, 2026-10-12: correct the claim that nothing leaves the device unless shared to account for integrations; review the repository honestly, retain good marketing, and connect README terminology to documentation spaces without a large feature inventory." ;
+    kpred:principle "Local storage is not a promise of zero network activity. Describe cloud AI, URL extraction, remote OCR, sync and connected agents at the point of the privacy claim. Public documentation links must resolve to real generated pages; do not invent app node deep links." ;
+    kpred:test-coverage "none" ;
+    kpred:done "2026-10-12: README now introduces the source-review-spaces-reckoning workflow, optional integrations and four roadmap themes, with key terms linked to graph-generated documentation pages. Removed feature-complete, zero-egress, provider-ranking and lossless-compression overclaims, plus stale inventories. Corrected the linked privacy node and regenerated its pages, search index and provenance." ;
+    kpred:proof "2026-10-12: README link targets checked against tracked files and generated pages, including inline node anchors. Claim-audit reports no README findings. Type checking, graph/documentation alignment and production build verification pass. Local model review covered README and both TTL sources. Wording suggestions were rejected: distinguishing app accounts from service accounts is intentional, and the privacy-boundaries title describes the documented data flows." ;
+    kpred:honest-note "This is a repository-grounded documentation review, not a deployment-wide security or network audit. Public documentation URLs open generated pages; public app links that select an arbitrary documentation-space node are not implemented. Other stale documentation claims remain in the review queue. Publication follows the dev-to-staging-to-main pipeline." .
+
 kb:provenance-view rdf:type ktype:Feature ;
     rdfs:label "Sources — source records and their contributed sets" ;
     kpred:has-status "functional" ;
