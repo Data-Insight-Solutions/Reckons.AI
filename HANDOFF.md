@@ -1,6 +1,6 @@
 ## 2026-10-12 — README review and documentation-space links (Codex)
 
-Branch: `docs/readme-space-guide`, based on `dev`; PR targets `dev`. No merge or production deployment authorized.
+Branch: `docs/readme-space-guide`, based on `dev`; [PR #436](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/436) targets `dev`. No merge or production deployment authorized.
 The README now leads with the source → review → spaces → reckoning workflow, links key terms to graph-generated
 pages, describes optional integrations and their privacy boundaries, and summarizes four roadmap themes. The
 linked privacy documentation was corrected in its TTL source and regenerated. The plan and completion record
@@ -20,7 +20,9 @@ Existing findings remain: the session sweep returned 43/45 clean, with competito
 nonzero; graph-lint reports 16 warnings; claim-audit has no README findings but still flags SAFETY.md and
 COUNSEL-BRIEF.md. Other stale documentation inventories and compression claims were proposed to the graph
 review queue. This was a repository-grounded documentation audit, not a deployment/network security audit.
-CI status must be checked on the PR before merge; local passes do not assert CI is green.
+The first CI script-tier run caught one additional bare use of “graph” in the generated privacy page.
+Changed “selected graph context” to “relevant facts” in the TTL source and regenerated it; the terminology
+ratchet now passes without changing its baseline. Check the latest PR checks before merge.
 
 ## 2026-10-09 — START HERE. 0.2.6 day 2: local jobs made stable, terms defined, F248 and F33.2 built (Claude Code)
 

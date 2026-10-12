@@ -959,10 +959,10 @@
       "path": "tips/no-telemetry",
       "entity": "urn:reckons:tip/NoTelemetry",
       "graph": "docs-tips-security.ttl",
-      "factHash": "5d65f89fb387da10",
+      "factHash": "5d15713e6f57871a",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "7b7f519af179066e"
+      "pageHash": "d169c70a57c0e283"
     },
     {
       "path": "tips/risk-warnings",
