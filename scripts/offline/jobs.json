@@ -219,9 +219,9 @@
     {
       "name": "code-review",
       "tier": "agent",
-      "enabled": true,
+      "enabled": false,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled"
     },
     {
       "name": "visual-diff",
