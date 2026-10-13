@@ -29,6 +29,14 @@ describe('diffCurrentsSettings', () => {
     expect(diff.toAdd).toEqual([]);
   });
 
+  it('explicitly saving proposed settings confirms them without adding duplicates', () => {
+    const pending = currentsSettingsToStatements(BASE).map((st) => ({ ...st, status: 'pending' as const }));
+    const diff = diffCurrentsSettings(pending, BASE);
+    expect(diff.toRevive.sort()).toEqual(pending.map((st) => st.id).sort());
+    expect(diff.toAdd).toEqual([]);
+    expect(diff.toReject).toEqual([]);
+  });
+
   it('removing a current rejects its statements and leaves the rest alone', () => {
     const existing = currentsSettingsToStatements(BASE).map((s) => ({ ...s, status: 'confirmed' as const }));
     const next: CurrentsSettings = { ...BASE, currents: [] };

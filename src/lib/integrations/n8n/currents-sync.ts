@@ -21,15 +21,17 @@
 import { v4 as uuid } from 'uuid';
 import type { Source } from '../../rdf/types';
 import type { CurrentDef } from '../../rdf/currents';
-import { buildArrivalStatements } from '../../rdf/currents';
+import { buildArrivalStatements, currentArticleIri } from '../../rdf/currents';
 import type { CurrentItem } from '../../rdf/current-ranking';
-import { addSource, addStatements, sources as allSources } from '../../stores/kb.svelte';
+import { addSource, addStatements, sources as allSources, userStatements } from '../../stores/kb.svelte';
 import { settings } from '../../stores/settings.svelte';
 
 export type { CurrentItem };
 
-function n8nBase(): string {
-  const base = settings().n8nBaseUrl?.trim().replace(/\/+$/, '');
+export type CurrentRequestOptions = { baseUrl?: string; signal?: AbortSignal };
+
+function n8nBase(baseUrl = settings().n8nBaseUrl): string {
+  const base = baseUrl?.trim().replace(/\/+$/, '');
   if (!base) {
     throw new Error(
       'n8n base URL not configured. Set settings.n8nBaseUrl (Settings > Integrations) to your n8n instance URL.'
@@ -42,9 +44,10 @@ function n8nBase(): string {
  * Register (or update) a current's definition with the n8n Currents Monitor.
  * Idempotent — upserts by (graphStableId, slug) on the workflow side.
  */
-export async function registerCurrent(def: CurrentDef, graphStableId: string): Promise<void> {
-  const res = await fetch(`${n8nBase()}/webhook/reckons-currents-register`, {
+export async function registerCurrent(def: CurrentDef, graphStableId: string, options: CurrentRequestOptions = {}): Promise<void> {
+  const res = await fetch(`${n8nBase(options.baseUrl)}/webhook/reckons-currents-register`, {
     method: 'POST',
+    signal: options.signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       graphStableId,
@@ -65,17 +68,32 @@ export async function registerCurrent(def: CurrentDef, graphStableId: string): P
  * Fetch new items for this graph from the n8n Currents Monitor's item store.
  * Pass `since` (ISO timestamp) to only pull items fetched after a prior sync.
  */
-export async function fetchCurrentItems(graphStableId: string, since?: string): Promise<CurrentItem[]> {
-  const url = new URL(`${n8nBase()}/webhook/reckons-currents-items`);
+export async function fetchCurrentItems(graphStableId: string, since?: string, options: CurrentRequestOptions = {}): Promise<CurrentItem[]> {
+  const url = new URL(`${n8nBase(options.baseUrl)}/webhook/reckons-currents-items`);
   url.searchParams.set('graphStableId', graphStableId);
   if (since) url.searchParams.set('since', since);
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { signal: options.signal });
   if (!res.ok) {
     throw new Error(`Failed to fetch current items from n8n: HTTP ${res.status}`);
   }
   const data = await res.json();
-  return Array.isArray(data) ? (data as CurrentItem[]) : [];
+  if (!Array.isArray(data)) throw new Error('Invalid Currents response: expected an array of items.');
+  return data.filter(isCurrentItem);
+}
+
+/** Treat webhook responses as data, so one malformed row cannot poison a whole poll. */
+export function isCurrentItem(value: unknown): value is CurrentItem {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  if (!['title', 'url', 'currentSlug', 'graphStableId', 'fetchedAt'].every(
+    (key) => typeof row[key] === 'string' && (row[key] as string).trim().length > 0,
+  )) return false;
+  if (!['publishedAt', 'summary', 'sourceLabel'].every(
+    (key) => row[key] === undefined || typeof row[key] === 'string',
+  )) return false;
+  try { return ['http:', 'https:'].includes(new URL(row.url as string).protocol); }
+  catch { return false; }
 }
 
 /**
@@ -207,17 +225,28 @@ export interface ProcessArrivalsResult {
 export async function processArrivals(
   items: CurrentItem[],
   def: CurrentDef,
-  graphStableId: string
+  graphStableId: string,
+  signal?: AbortSignal,
 ): Promise<ProcessArrivalsResult> {
   if (items.length === 0) return { processed: 0, skipped: 0, statementCount: 0 };
 
+  signal?.throwIfAborted();
   const source = await ensureCurrentSource(def, graphStableId);
   let processed = 0;
   let skipped = 0;
   let statementCount = 0;
+  const existing = userStatements();
+  const knownIds = new Set(existing.map((st) => st.id));
+  // Keep pre-URL-identity arrivals intact too, including rejected ones. No migration rewrites a
+  // person's review or merges two old title-derived entities behind their back.
+  const legacyUrls = new Set(existing.filter((st) => st.id.startsWith('arrival|') &&
+    st.p.value === 'urn:kbase:predicate/url' && st.s.value !== currentArticleIri(st.o.value))
+    .map((st) => st.o.value));
 
   for (const item of items) {
-    if (!item.title || !item.url) {
+    signal?.throwIfAborted();
+    if (!isCurrentItem(item) || item.graphStableId !== graphStableId || item.currentSlug !== def.slug ||
+      !def.enabled || legacyUrls.has(item.url)) {
       skipped++;
       continue;
     }
@@ -228,8 +257,10 @@ export async function processArrivals(
       excerpt: item.summary,
       sourceId: source.id,
       extracted: []
-    });
+    }).filter((st) => !knownIds.has(st.id));
+    if (arrival.length === 0) { skipped++; continue; }
     await addStatements(arrival, source.id, { origin: 'current' });
+    for (const st of arrival) knownIds.add(st.id);
     statementCount += arrival.length;
     processed++;
   }
