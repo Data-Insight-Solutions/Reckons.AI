@@ -422,6 +422,8 @@
   let exploreMessages = $state<ExploreMsg[]>([]);
   let exploreInput = $state('');
   let exploreLoading = $state(false);
+  /** Facts waiting for the person (F248): the tour's last stop links to them in Review. */
+  const tourPendingCount = $derived(statements().filter((s) => s.status === 'pending').length);
   let exploreErrorMsg = $state('');
   let exploreListRef = $state<HTMLDivElement | undefined>(undefined);
   let exploreStarted = $state(false);
@@ -1768,6 +1770,13 @@
           <button class="next-stop" onclick={() => sendExploreMessage('Continue to the next stop.')} disabled={exploreLoading}>
             next stop →
           </button>
+          <!-- F248: the tour ends with the person's first real decision. Not left to the model:
+               a first visit usually has no model, and the tour would never get there. -->
+          {#if tourPendingCount > 0}
+            <a class="tour-review" href="/review">
+              {tourPendingCount} {tourPendingCount === 1 ? 'fact waits' : 'facts wait'} for your decision in Review →
+            </a>
+          {/if}
         </div>
       </div>
     {/if}
@@ -2334,6 +2343,21 @@
   }
   .next-stop:not(:disabled):hover { background: var(--accent-soft); }
   .next-stop:disabled { opacity: 0.35; cursor: not-allowed; }
+  .tour-review {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0 0.75rem 0.6rem;
+    border-radius: var(--rad-sm);
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+  }
+  .tour-review:hover { filter: brightness(1.08); }
 
   /* ── Story tab ── */
   /* ── Explore story chips ── */

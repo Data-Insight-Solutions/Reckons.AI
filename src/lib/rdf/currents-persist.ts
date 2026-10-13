@@ -43,7 +43,7 @@ export function diffCurrentsSettings(existing: Statement[], next: CurrentsSettin
   const toAdd: Statement[] = [];
   for (const s of nextStatements) {
     const cur = byId.get(s.id);
-    if (cur && isActive(cur)) continue; // already active and identical — untouched
+    if (cur && (cur.status === 'confirmed' || cur.status === 'refined')) continue;
     if (cur) toRevive.push(s.id);
     else toAdd.push(s);
   }

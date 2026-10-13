@@ -11,10 +11,11 @@
  * The worker is scripts/agent/queue-worker.ts; it runs only while the session heartbeat is fresh.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import { sensesFor } from '../offline/term-senses.js';
 import { addJobs, isPaused, mutateQueue, newJob, orderQueue, queuePath, readDone, readQueue, setPaused, type QueueJob } from './session-queue.js';
 import { doneSuccesses, dueAll, dueLabel, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 
@@ -48,7 +49,21 @@ function execFileSyncOk(cwd: string, args: string[]): boolean {
 }
 
 /** The standard batch as jobs. Pure given its inputs (the worktree list and the tsx binary). */
-export function standardBatch(root: string, tsx: string, worktrees: { path: string; branch: string }[]): QueueJob[] {
+/** Words the term-senses panel sorts. Seeded only when the graph gives a word two or more meanings to choose between. */
+export const PANEL_WORDS = ['node', 'graph', 'space', 'source', 'set', 'statement'];
+
+/**
+ * A word the terminology graph gives at least two meanings, read from the graph so a word joins the
+ * batch the day its meanings are added. Observed 2026-10-09: space, source, set and statement were
+ * seeded with fewer than two and each failed its run ("nothing to disambiguate").
+ */
+export function ambiguousIn(root: string): (word: string) => boolean {
+  let ttl = '';
+  try { ttl = readFileSync(path.join(root, 'static', 'reckons-terminology.ttl'), 'utf8'); } catch { return () => false; }
+  return (word) => { try { return sensesFor(word, ttl).length >= 2; } catch { return false; } };
+}
+
+export function standardBatch(root: string, tsx: string, worktrees: { path: string; branch: string }[], ambiguous: (word: string) => boolean = ambiguousIn(root)): QueueJob[] {
   const off = (f: string) => path.join(root, 'scripts', 'offline', f);
   const j = (name: string, argv: string[], cwd = root) => newJob(name, cwd, argv);
   return [
@@ -59,7 +74,7 @@ export function standardBatch(root: string, tsx: string, worktrees: { path: stri
     j('distill-decisions', [tsx, off('distill-decisions.ts'), '--limit=20', '--pending']),
     j('layer-classify', [tsx, off('layer-classify.ts')]),
     j('extraction-score', [tsx, off('extraction-score.ts'), '--pending']),
-    ...['node', 'graph', 'space', 'source', 'set', 'statement'].map((w) => j(`term-senses:${w}`, [tsx, off('term-senses.ts'), `--word=${w}`])),
+    ...PANEL_WORDS.filter(ambiguous).map((w) => j(`term-senses:${w}`, [tsx, off('term-senses.ts'), `--word=${w}`])),
     j('offline-all-agent', ['npm', 'run', 'offline:all', '--', '--tier=agent']),
   ];
 }

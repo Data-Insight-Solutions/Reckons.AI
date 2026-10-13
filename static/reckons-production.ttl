@@ -317,8 +317,9 @@ kb:local-offload    rdf:type     ktype:Feature ;
 
 kb:currents         rdf:type     ktype:Feature ;
                     rdfs:label   "Currents" ;
-                    kpred:has-status   "functional" ;
-                    kpred:description  "F29 — streamed-ingest arrival model with an entity-type gate and per-graph meta-triple settings. Items arrive via the n8n Currents Monitor (workflow qb9uPZ8GScAmuUOX; direct in-browser RSS/Atom fetch as fallback), ranked by embedding affinity to the graph's top-degree entities with near-duplicate collapse and content-policy filtering (src/lib/rdf/current-ranking.ts, src/lib/integrations/n8n/currents-sync.ts). Arrivals drift as translucent 'pod view' nodes (KnowledgeGraph2D and the home view) behind a toggle until accepted or dismissed from the graph-level Currents settings on /kb." ;
+                    kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-poll.test.ts" ;
+                    kpred:has-status   "scaffolded" ;
+                    kpred:description  "F29: optional n8n Currents registration and arrivals polling while the app is open, enabled explicitly in Integrations. Confirmed current definitions and the space ID are sent to the configured instance. Incoming document metadata is proposed through type and content gates; retries preserve reviewed facts. Pod rendering and accept/dismiss already exist. Affinity ranking and direct RSS fetch are separate helpers, not part of the automatic delivery path; full extraction and context blocks remain unconnected." ;
                     kpred:tested-by    "src/lib/rdf/__tests__/currents.test.ts" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/currents-persist.test.ts" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/current-ranking.test.ts" ;

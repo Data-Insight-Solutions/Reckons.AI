@@ -76,3 +76,12 @@
     rdfs:label "holdUnreviewed" ;
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 50 .
+
+# Stable local calls (F74.10): the prompt batch size every local job sends to Ollama. 256, not
+# Ollama's 512: on 2026-10-09 qwen3.6 split over two RTX 3090s aborted with a CUDA illegal memory
+# access on a 4,273-character prompt 4 of 4 times at 512 and answered 4 of 4 at 256. Set 0 to send
+# none and use Ollama's own default.
+<urn:reckons:threshold/ollamaNumBatch> a ktype:Threshold ;
+    rdfs:label "ollamaNumBatch" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 256 .

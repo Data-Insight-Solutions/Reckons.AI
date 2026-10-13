@@ -177,7 +177,19 @@ export type WorkerFile = { state: WorkerState; reason?: string; pid?: number; at
   /** Schedules the worker is holding back, each with its reason (heldSchedules, backlogHolds). */
   held?: string[] };
 
-export function readWorker(alive: (pid: number) => boolean = pidAlive): WorkerFile | undefined {
+/**
+ * A recorded worker pid is a running worker only while it is alive AND, where /proc can say, still
+ * runs queue-worker. Observed 2026-10-09: a worker died without clearing worker.json, Linux reused
+ * its pid for VS Code's ESLint server, and every new worker refused to start behind a lock that no
+ * worker held. Without /proc (macOS) this falls back to liveness alone.
+ */
+export function workerPidAlive(pid: number, readCmdline: (pid: number) => string = (p) => readFileSync(`/proc/${p}/cmdline`, 'utf8'), alive: (pid: number) => boolean = pidAlive, hasProc: () => boolean = () => existsSync('/proc/self')): boolean {
+  if (!alive(pid)) return false;
+  try { return readCmdline(pid).includes('queue-worker'); }
+  catch (e) { return (e as NodeJS.ErrnoException).code !== 'ENOENT' || !hasProc(); }
+}
+
+export function readWorker(alive: (pid: number) => boolean = workerPidAlive): WorkerFile | undefined {
   try {
     const w = JSON.parse(readFileSync(workerPath(), 'utf8')) as WorkerFile;
     return w.pid !== undefined && Number.isInteger(w.pid) && alive(w.pid) ? w : undefined;

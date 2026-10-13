@@ -1,3 +1,129 @@
+## 2026-10-12 — 0.2.6 Currents delivery through local job review (Codex)
+
+Branch: `feat/v026-currents-arrivals`, based on `origin/dev`. Open the PR against `dev`; Matt merges.
+The README PR #436 has merged with all required checks green. The 0.2.6 release itself remains planned.
+
+Completed the accepted Currents quick win: explicit browser/space opt-in in Integrations; confirmed saved
+current definitions register with n8n; a cancellable poll delivers pending document facts once per minute
+while the app is open. Removed definitions get a remote disable using a durable registration ledger.
+URL-based article identity and transaction-level replay protection preserve reviewed facts across retries
+and tabs. Pending configuration cannot activate a current; a human Save can confirm it. Graph records and
+generated feature/integration docs describe the limits. The broad Currents and Pod phases remain scaffolded;
+the delivery phase is functional. No live n8n instance was changed or tested, and the original monitor's
+portable workflow export is still missing. Custom origins require a configured self-hosted build and server
+CORS. Disconnecting a browser or changing endpoints does not stop old server schedules.
+
+Local jobs: contract panel (qwen3.6, 6 successful votes after 6 grammar failures); test-design jobs
+(qwen3-coder returned no useful cases, qwen3.6 supplied removal/scope cases); code-review on 4 core files
+(4 false positives rejected, 11 observations capped); final UI/settings panel (2 clean votes, 1 rejected
+objection to intentionally confirming proposed configuration on Save). Accepted and rejected proposals are
+recorded in the pending graph queue and roadmap. All edits were reviewed and applied by Codex.
+
+Validation on 2026-10-12: 3,782 unit tests passed across 278 files, 14 todo; type check zero errors/warnings;
+one Chromium app integration test passed opt-in, pending arrivals, dismissal after reload and remote removal;
+local visual harness passed /kb and /settings/integrations with zero app warnings/page errors. Build and
+build verification passed, with three existing WASM size warnings. Documentation alignment passed. The script-tier sweep returned 43/45 clean: all blocking checks passed;
+competitor-scan and naming-ratchet remain advisory findings. Secret scanning passed; graph lint retains
+16 existing warnings.
+Early runs caught a missing settings-persistence field (fixed) and a test endpoint rejected by CSP
+(documented the real hosting restriction and used an allowed, intercepted localhost endpoint). Terminology
+baselines were raised only for measured existing API vocabulary in this feature/tests and generated copy;
+the commit explains the increases. Check the PR's latest CI before merging.
+
+Basis Universal: evaluated, not added. The larger bundled GLB is about 66% embedded JPEG by file size;
+KTX2 could help that asset path, but needs renderer-aware loaders, roughly 571 KiB raw transcoder assets,
+and desktop/mobile measurements. A scoped offline GLB/KTX2 benchmark proposal is in the graph queue;
+it is not a 0.2.6 dependency or a replacement for DOM image previews.
+
+## 2026-10-12 — README review and documentation-space links (Codex)
+
+Branch: `docs/readme-space-guide`, based on `dev`; [PR #436](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/436) targets `dev`. No merge or production deployment authorized.
+The README now leads with the source → review → spaces → reckoning workflow, links key terms to graph-generated
+pages, describes optional integrations and their privacy boundaries, and summarizes four roadmap themes. The
+linked privacy documentation was corrected in its TTL source and regenerated. The plan and completion record
+are `kb:readme-space-guide` in `static/reckons-roadmap.ttl`. Public documentation URLs open pages, not arbitrary
+nodes in the local graph; the latter deep-link capability does not exist.
+
+Validation on 2026-10-12: 57 README links resolved against repository files, generated pages and inline anchors;
+type checking reported zero errors/warnings; graph/documentation alignment passed; production build and
+build verification passed (three existing WASM file-size warnings). Unit tests: 3,764 passed, 14 todo on the
+full rerun. The first full run had one five-second source-corpus timeout; that file passed in isolation before
+the successful full rerun. The changed documentation page passed the local visual harness without page or
+console errors. Local model review covered the README, both TTL sources and this handoff. Two wording suggestions across
+the review runs were rejected: distinguishing app accounts from service accounts is intentional, and the
+new Privacy and Network Boundaries title accurately describes the documented data flows.
+
+Existing findings remain: the session sweep returned 43/45 clean, with competitor-scan and naming-ratchet
+nonzero; graph-lint reports 16 warnings; claim-audit has no README findings but still flags SAFETY.md and
+COUNSEL-BRIEF.md. Other stale documentation inventories and compression claims were proposed to the graph
+review queue. This was a repository-grounded documentation audit, not a deployment/network security audit.
+The first CI script-tier run caught one additional bare use of “graph” in the generated privacy page.
+Changed “selected graph context” to “relevant facts” in the TTL source and regenerated it; the terminology
+ratchet now passes without changing its baseline. Check the latest PR checks before merge.
+
+## 2026-10-09 — START HERE. 0.2.6 day 2: local jobs made stable, terms defined, F248 and F33.2 built (Claude Code)
+
+**Open PRs, all base dev, all green unless noted. Merge order: #429 first** (later local runs need its fix).
+This session could not merge: the auto-mode classifier refused the merge queue, so these wait for Matt or for a
+session allowed to merge into dev.
+- **#429** F74.10 stable local calls: `num_batch` 256 from device config, plus a retry after an Ollama restart. ROOT CAUSE:
+  qwen3.6, split across two 3090s, aborts with a CUDA illegal memory access at the default batch size (512). It
+  crashed 4 of 4 times on job-watch's verdict prompt and answered 4 of 4 at 256. Also: term-senses panels are seeded
+  only for words with 2 or more meanings.
+- **#428** a reused pid no longer holds the queue worker lock (worker.json named pid 32111, by then VS Code's ESLint).
+- **#430** terms: the missing meanings of space, source, statement and graph (6 new concepts, hidden labels, ratchets).
+  Validated with term-senses: unanimous on 29/30 sites for space, 24/30 for source, 17/30 for statement.
+- **#426** (earlier) collection vs set terms. It does not conflict with #430.
+- **#431** F248 Getting started arrives reviewed: 7 sample sources (drafted by local qwen3.6, reviewed), 48 facts
+  with passages, history (2 corrections, 2 rejections), and 3 pending. Review reads "all of them yours to decide",
+  and the tour links there with or without a model. e2e passes at 1280/390 locally (system Chrome).
+- **#432** F33.2 CI as a graph (`static/reckons-ci.ttl`): 8 of 15 checks can stop a merge to main, 7 only advise
+  (safety attestation, dependency audits, CodeQL, release notes, extension build).
+- **#427** F249.1 plan: a feature or plugin is defined as a space (starter sets, refined collection, built by jobs).
+
+**Decisions waiting on Matt (filed in the review queue):**
+1. The review headline says "N settled without you" / "nothing left for you to decide" for facts only a reviewing
+   agent could settle, and on a device with no agent nothing ever will (drift-warning, high).
+2. code-review (qwen3-coder) yield today was 0 of 20 across three diffs (keep, demote, retire, or try another model).
+3. F33.2's check is advisory, not blocking as planned. Flip `blocking` in jobs.json if wanted.
+4. Two wording items: Settings says "statements" to users (user word: fact); CompareScene calls two spaces "sources".
+
+**Running state:** the queue worker needs to run OUTSIDE the sandbox (it needs nvidia-smi, and in-sandbox `kill`
+returns EPERM, so a stale lock looks alive). Back-pressure holds docs-review (217), docs-expand (75) and
+extraction-score (89) until those rows are reviewed. Local Playwright browsers are still 1228: run e2e with
+`launchOptions.executablePath: '/usr/bin/google-chrome'`. Not done: the full 0.2.6 big-additions list (F107.10,
+F223, F122.1, F61 voice plugin, group B performance) is still unstarted on day 2 of 14; the cut is 10-18.
+
+## 2026-10-08 — START HERE. 0.2.5 ships, 0.2.6 planned as a two-week sprint (Claude Code)
+
+**0.2.5:** on staging, verified. Matt chose to fix the spaces map first: **#409** (/kb draws the map
+from one space). Order: Matt merges #409 → promote dev → staging → Matt merges **#390**
+(staging → main, deploys reckons.ai) → then tag `v0.2.5`, publish the GitHub release from
+`content/releases/v0-2-5.md`, set `kb:release-0-2-5` to production (Matt said yes to all three).
+
+**0.2.6 (2026-10-08 → 10-22), scope in `kb:release-0-2-6`:** finish 0.2.5's leftovers + decisions you
+can trust (F223 cited options, ONE review queue, #404 model pins) + first slices of collections/F256,
+voice plugin (F61), F254 provenance, F255 Analyze recipes + groups B–E + dependabot → dev. Big
+additions in week one, refinement in week two; **day ten (10-18) cuts what isn't working to 0.2.7.**
+Parked: F249–F253 and F257 (LangGraph; renumbered from F248, which #393 claimed first).
+
+**Found today, not yet fixed:** two review queues. Offline jobs write
+`reckons-workspace/knowledge.pending.jsonl`, but the MCP review tools (and the local-work-reviewer agent)
+read `mcp-workspace` only. Five producers wrote rows with no `kb`, so the app never imported them (#396
+fixes the producers; 331 rows were backfilled locally). Local Playwright browsers are out of date
+(1228 installed, 1243 needed), so e2e runs only in CI.
+
+**Open PRs, base dev:** #396 pending rows name their space · #404 model pins (0.2.6) · #405 twelve
+decisions + taxonomy rule · #407 layer/benchmark cleanup · #408 F256 collection layout + Collection/Set
+model · #409 spaces map (0.2.5) · roadmap stack #397→#406 (F249–F255 and F257, merge in order) · this PR.
+
+**Queue state:** 1,272 rows after today's chat review (backups in `~/.local/state/reckons/`). Still to
+review in chat: 82 predicate synonym pairs, `screenshot-dir` layer, docs-review folded by term,
+a 5-draft sample of docs-expand.
+
+**Waiting on Matt:** merges above; remove the `# reckons-schedule` crontab line (the worker + heartbeat
+hook replace it; my edit was blocked).
+
 ## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
 
 **Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces
