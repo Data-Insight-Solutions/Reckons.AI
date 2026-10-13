@@ -1,0 +1,3 @@
+(Sample text for the Reckons.AI Getting started space. Alex, Jordan and these notes are fictional.)
+
+Hey Alex, I am walking now and thinking hard about our trip next week. I really prefer Lake George because of those stunning alpine lakes there. I want to photograph the sunrise on Saturday morning; sunrise is at 5:32 so we need to be early. The sunrise photo session runs until 7:00 in the morning before we start hiking. It feels like the perfect plan for us to catch that golden light together. Please let me know if you agree with this choice soon since we have to book by Wednesday. I am excited to see you and share this adventure in the mountains.

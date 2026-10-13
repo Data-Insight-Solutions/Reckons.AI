@@ -5,19 +5,21 @@ import type { CurrentDef } from '../../../rdf/currents';
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
 let mockSources: Source[] = [];
+let mockStatements: Statement[] = [];
 let mockSettings: Record<string, unknown> = { n8nBaseUrl: 'https://n8n.test.example' };
 const addSourceMock = vi.fn(async (src: Source) => {
   mockSources = [src, ...mockSources];
 });
 const addStatementsMock = vi.fn(
-  async (_sts: Statement[], _sourceId?: string, _opts?: { origin?: 'manual' | 'current' }) => {}
+  async (sts: Statement[], _sourceId?: string, _opts?: { origin?: 'manual' | 'current' }) => { mockStatements.push(...sts); }
 );
 
 vi.mock('../../../stores/kb.svelte', () => ({
   addSource: (src: Source) => addSourceMock(src),
   addStatements: (sts: Statement[], sourceId?: string, opts?: { origin?: 'manual' | 'current' }) =>
     addStatementsMock(sts, sourceId, opts),
-  sources: () => mockSources
+  sources: () => mockSources,
+  userStatements: () => mockStatements,
 }));
 
 vi.mock('../../../stores/settings.svelte', () => ({
@@ -42,6 +44,7 @@ function mkDef(overrides: Partial<CurrentDef> = {}): CurrentDef {
 
 beforeEach(() => {
   mockSources = [];
+  mockStatements = [];
   mockSettings = { n8nBaseUrl: 'https://n8n.test.example' };
   addSourceMock.mockClear();
   addStatementsMock.mockClear();
@@ -117,9 +120,18 @@ describe('fetchCurrentItems', () => {
     await expect(fetchCurrentItems('kb-1')).resolves.toEqual(items);
   });
 
-  it('returns [] when the response is not an array', async () => {
+  it('reports a malformed response rather than claiming an empty successful poll', async () => {
     vi.stubGlobal('fetch', vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response('{"oops":true}', { status: 200 })));
-    await expect(fetchCurrentItems('kb-1')).resolves.toEqual([]);
+    await expect(fetchCurrentItems('kb-1')).rejects.toThrow('expected an array');
+  });
+
+  it('drops malformed rows and unsafe URLs while keeping valid rows', async () => {
+    const good = { title: 'A', url: 'https://example.com/a', currentSlug: 'hn', graphStableId: 'kb-1', fetchedAt: 'x' };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify([
+      null, {}, { ...good, title: 4 }, { ...good, url: 'javascript:alert(1)' },
+      { ...good, summary: {} }, good,
+    ]))));
+    await expect(fetchCurrentItems('kb-1')).resolves.toEqual([good]);
   });
 
   it('throws when the webhook responds with a non-ok status', async () => {
@@ -209,6 +221,35 @@ describe('fetchCurrentDirect', () => {
 // ── processArrivals ──────────────────────────────────────────────────────────
 
 describe('processArrivals', () => {
+  const item = { title: 'Post A', url: 'https://example.com/a', currentSlug: 'hn', graphStableId: 'kb-1', fetchedAt: 'x' };
+
+  it('does not replay an arrival or resurrect dismissed facts', async () => {
+    await processArrivals([item, item], mkDef(), 'kb-1');
+    expect(addStatementsMock).toHaveBeenCalledTimes(1);
+    mockStatements = mockStatements.map((st) => ({ ...st, status: 'rejected' }));
+    const before = structuredClone(mockStatements);
+    await expect(processArrivals([item], mkDef(), 'kb-1')).resolves.toEqual({ processed: 0, skipped: 1, statementCount: 0 });
+    expect(mockStatements).toEqual(before);
+    expect(addStatementsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains reviewed arrivals created with legacy title-based identity', async () => {
+    await processArrivals([item], mkDef(), 'kb-1');
+    mockStatements = mockStatements.map((st) => ({
+      ...st, s: { kind: 'iri', value: 'urn:kbase:concept/post-a' }, status: 'confirmed',
+    }));
+    addStatementsMock.mockClear();
+    await processArrivals([item], mkDef(), 'kb-1');
+    expect(addStatementsMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects foreign spaces, unknown currents, disabled definitions and aborted delivery', async () => {
+    await processArrivals([{ ...item, graphStableId: 'other' }, { ...item, currentSlug: 'other' }], mkDef(), 'kb-1');
+    await processArrivals([item], mkDef({ enabled: false }), 'kb-1');
+    expect(addStatementsMock).not.toHaveBeenCalled();
+    await expect(processArrivals([item], mkDef(), 'kb-1', AbortSignal.abort())).rejects.toThrow();
+  });
+
   it('creates one Source for the current and builds arrival statements per item', async () => {
     const items = [
       { title: 'Post A', url: 'https://example.com/a', currentSlug: 'hn', graphStableId: 'kb-1', fetchedAt: 'x', summary: 'Summary A' },

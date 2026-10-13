@@ -389,11 +389,12 @@
 
   // ── n8n automation server (F20) ──────────────────────────────────────────────
   let n8nBaseUrl = $state(settings().n8nBaseUrl ?? '');
+  let n8nCurrentsEnabled = $state(settings().n8nCurrentsEnabled ?? false);
   let n8nSaving = $state(false);
 
   async function saveN8n() {
     n8nSaving = true;
-    await updateSettings({ n8nBaseUrl: n8nBaseUrl.trim() || undefined });
+    await updateSettings({ n8nBaseUrl: n8nBaseUrl.trim() || undefined, n8nCurrentsEnabled });
     n8nSaving = false;
   }
 </script>
@@ -779,7 +780,8 @@
 
 <section id="s-n8n" class="card">
   <h3>n8n automation <span class="badge-local mono">self-host</span></h3>
-  <p class="sub">Point at your self-hosted n8n instance to route web integrations — graph sync, currents, and the contact form — through your own automation workflows. Open-source, no SaaS.</p>
+  <p class="sub">Connect your own n8n instance for optional automation. Each integration needs its corresponding workflow installed and active.</p>
+  <p class="sub">Your instance must allow this app's origin through CORS and be allowed by this build's connection policy. For a custom server, self-host Reckons.AI with <code>VITE_N8N_BASE_URL</code> configured; entering a new URL here cannot change a hosted build's policy.</p>
 
   <div class="indico-fields">
     <label class="field-row">
@@ -792,7 +794,14 @@
       />
     </label>
     <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
-      The contact form posts to <code>/webhook/reckons-contact</code> on this instance.
+      Currents sends this space's ID and saved current definitions to your instance, then checks for arrivals every five minutes while the app is open. New facts wait for your review.
+    </p>
+    <label class="field-row">
+      <input type="checkbox" bind:checked={n8nCurrentsEnabled} />
+      <span>Connect currents for this space on this browser</span>
+    </label>
+    <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
+      Configure streams in <a href="/kb#currents">Currents</a>. Turning this connection off stops this browser; to stop n8n schedules too, disable or remove those currents and let them sync before disconnecting. Changing instances leaves the old instance's schedules in place.
     </p>
     <button class="save-indico-btn" onclick={saveN8n} disabled={n8nSaving}>
       {n8nSaving ? 'saving...' : 'save'}

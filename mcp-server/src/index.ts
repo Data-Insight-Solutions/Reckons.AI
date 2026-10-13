@@ -70,6 +70,7 @@ import {
   type VerdictKind,
 } from './review-session.js';
 import { currentActor } from './actor.js';
+import { buildSources, journalsFor, loadReviewState, resolveQueueWorkspace } from './review-sources.js';
 
 // ── Args ─────────────────────────────────────────────────────────────────────
 
@@ -81,6 +82,14 @@ if (!kbPath) {
   process.stderr.write('Usage: reckons-mcp --kb /path/to/workspace/  (or /path/to/knowledge.ttl)\n');
   process.exit(1);
 }
+
+// Where the offline jobs' queue lives (knowledge.pending.jsonl). See review-sources.ts.
+const queueWsFlag = args.indexOf('--queue-workspace');
+const queueWorkspace = resolveQueueWorkspace({
+  flag: queueWsFlag >= 0 ? args[queueWsFlag + 1] : undefined,
+  env: process.env.RECKONS_QUEUE_WORKSPACE,
+  cwd: process.cwd(),
+});
 
 const kb = new MultiKBReader(kbPath);
 kb.watch(() => {
@@ -912,18 +921,6 @@ interface ReviewNextParams { limit?: number; contested?: boolean; high?: boolean
 interface ReviewDecideParams { decision: string; verdict: VerdictKind; claim?: string; note?: string; kb?: string }
 
 /**
- * Where a graph's verdicts are journalled: beside its queue, never inside it.
- *
- * A SEPARATE FILE ON PURPOSE. The queue crosses a trust boundary in one direction — many writers
- * propose, the app consumes. Verdicts travel the other way. Keeping them in one file would mean a
- * drain that consumes proposals also has to avoid consuming verdicts, and the first bug in that
- * scheme silently eats decisions.
- */
-function decisionsFileFor(pendingFile: string): string {
-  return pendingFile.replace(/pending\.jsonl$/, 'decisions.jsonl');
-}
-
-/**
  * Which predicates hold one value and which accumulate, measured from the graphs themselves.
  *
  * Cached for the process because it walks every triple in the workspace, and recomputing it per
@@ -980,17 +977,15 @@ function legacySiblingTriples(): { subject: string; predicate: string; object: s
   return out;
 }
 
-/** Every decision in this workspace, ranked, with already-settled ones removed. */
+/**
+ * Every open decision across the per-graph queues AND the offline jobs' workspace queue, ranked,
+ * with already-settled ones removed. A settled decision is not DELETED from the queue — the app
+ * owns that, and a tool that quietly shrank the queue would make the two disagree.
+ */
 function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number } {
-  const files = pendingQueueFiles(kbFilter);
-  const rows = files.flatMap((f) => readPendingRows(f));
-  const settled = new Set<string>();
-  for (const f of files) for (const id of settledIds(decisionsFileFor(f))) settled.add(id);
-  // A decision already ruled on is not shown again. It is not DELETED from the queue either —
-  // the app owns that, and a tool that quietly shrank the queue would make the two disagree.
-  const all = groupDecisions(rows, workspaceArity());
-  const decisions = all.filter((d) => !settled.has(d.id));
-  return { decisions, files, totalRows: rows.length, settled: all.length - decisions.length };
+  const sources = buildSources(pendingQueueFiles(kbFilter), queueWorkspace);
+  const state = loadReviewState(sources, workspaceArity(), kbFilter);
+  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled };
 }
 
 function handleKbReviewNext(params: ReviewNextParams): object {
@@ -1023,19 +1018,21 @@ function handleKbReviewShow(params: { decision: string; kb?: string }): object {
 }
 
 function handleKbReviewDecide(params: ReviewDecideParams): object {
-  const { decisions, files } = loadDecisions(params.kb);
+  const { decisions } = loadDecisions(params.kb);
   const d = decisions.find((x) => x.id === params.decision);
   if (!d) {
     return { content: [{ type: 'text', text: `No open decision ${params.decision}. Nothing was recorded. Run kb_review_next for current ids.` }], isError: true };
   }
 
   /*
-   * Route the verdict to the queue file the decision actually came from. Guessing the first file
-   * would journal a roadmap verdict beside a different graph's queue, where the app would never
-   * look for it — a verdict that lands nowhere is worse than a refusal, because it reports success.
+   * Journal the verdict beside every queue that holds the decision's rows. For rows from the
+   * offline jobs' queue that is <workspace>/knowledge.decisions.jsonl, the file the app drains.
+   * Per-graph journals are NOT read by the app (see review-sources.ts). Guessing the first file
+   * would write a verdict where nothing looks — a verdict that lands nowhere is worse than a
+   * refusal, because it reports success.
    */
-  const target = files.find((f) => readPendingRows(f).some((r) => d.rowIds.includes(rowId(r))));
-  if (!target) {
+  const targets = journalsFor(d, buildSources(pendingQueueFiles(params.kb), queueWorkspace));
+  if (targets.length === 0) {
     return { content: [{ type: 'text', text: `Could not locate the queue file holding ${d.id}. Nothing was recorded.` }], isError: true };
   }
 
@@ -1044,7 +1041,7 @@ function handleKbReviewDecide(params: ReviewDecideParams): object {
       decision: d, verdict: params.verdict, claim: params.claim, note: params.note,
       actor: currentActor('mcp'),
     });
-    recordVerdicts(decisionsFileFor(target), [verdict]);
+    for (const t of targets) recordVerdicts(t, [verdict]);
     return { content: [{ type: 'text', text: renderVerdict(verdict, d) }] };
   } catch (e) {
     if (e instanceof ReviewRefusal) {
