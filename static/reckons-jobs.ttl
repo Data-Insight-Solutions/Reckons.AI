@@ -84,10 +84,10 @@ job:claim-audit rdf:type          ktype:OfflineJob ;
 job:code-review rdf:type          ktype:OfflineJob ;
     rdfs:label          "code-review" ;
     skos:prefLabel      "code-review" ;
-    skos:definition     "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)" ;
+    skos:definition     "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled" ;
     kpred:job-tier      "agent" ;
     kpred:command       "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
 job:code-sprawl rdf:type          ktype:OfflineJob ;

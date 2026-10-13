@@ -954,7 +954,7 @@ export function reviewTreeSummary(tree: ReviewTree): string {
   const quiet = tree.suppressed.record + tree.suppressed.log;
   if (n === 0) {
     const bits: string[] = [];
-    if (quiet) bits.push(`${quiet} bookkeeping fact${quiet === 1 ? '' : 's'} settled without you`);
+    if (quiet) bits.push(`${quiet} bookkeeping fact${quiet === 1 ? '' : 's'} waiting for an agent`);
     if (tree.orphans.length) bits.push(`${tree.orphans.length} judgment${tree.orphans.length === 1 ? '' : 's'} under no decision`);
     return bits.length ? `No decisions open. ${bits.join('; ')}.` : 'No decisions open.';
   }
