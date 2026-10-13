@@ -447,6 +447,7 @@ kb:calendar-management rdf:type ktype:Feature ;
                kpred:relates-to   kb:publisher-subscriptions .
 
 kb:personal-assistant rdf:type ktype:Feature ;
+               kpred:decided      "MATT, 2026-10-13: the landing page may not state the personal assistant as present fact while this feature is planned. The hero line saying An assistant that understands your situation was reworded to intent: Becoming an assistant that understands your situation (planned). Restore the plain wording only when this feature reaches functional." ;
                rdfs:label   "Personal assistant — calendar, tasks, 'what is my priority today?'" ;
                kpred:feature-id   "F99" ;
                kpred:has-status   "planned" ;
@@ -3389,6 +3390,8 @@ kb:partial-facts rdf:type ktype:Feature ;
 # -- F33: Release Pipeline & Branch Alignment ------------------------------------
 
 kb:release-pipeline rdf:type ktype:Feature ;
+               kpred:decided      "MATT, 2026-10-13, ON CODEQL AT A DEV -> MAIN PROMOTION: block only on NEW alerts the promotion introduces. Alerts already open on main are a separate backlog, not a promotion gate. MEASURED 2026-10-13: this is already how GitHub code scanning behaves on a pull request (the PR check compares against the base branch), the CodeQL analyze job is not in the required checks of .github/ruleset-main.json (it only advises), the repository has 0 open code-scanning alerts, and the last two promotions (#390, #419) had CodeQL green. The only red CodeQL runs on record are dev pushes: #382 (2026-10-07, 2m37s, while the safety attestation was also failing) and one from 2026-07-17 (12s, a workflow fault). So no config change was made: nothing in the config gates on pre-existing alerts." ;
+               kpred:remaining    "IF CODEQL IS MADE A REQUIRED CHECK when branch protection is enforced (see enforcement-plan; not enforced as of 2026-10-13), require the PR-scoped code scanning result (new alerts vs base) and NOT a count of open alerts on main, so the decision of 2026-10-13 stays true. Add the check to .github/ruleset-main.json only after it has reported on main." ;
                kpred:touches-module code:test-bench ;
                kpred:tested-by    "tests/bench/scoring.test.ts" ;
                rdfs:label    "Release Pipeline & Branch Alignment" ;
@@ -9352,6 +9355,7 @@ kb:ci-graph rdf:type ktype:Feature ;
     rdfs:label "CI as a graph — every check, what it guards, and whether it can block a merge" ;
     kpred:feature-id "F33.2" ;
     kpred:has-status "functional" ;
+    kpred:decided "MATT, 2026-10-13: the CI graph check stays ADVISORY. It does not block a merge: a stale generated graph is fixed by regenerating it (npx tsx scripts/ci-graph.ts), not by stopping a PR. jobs.json keeps blocking:false for ci-graph; any older wording that said the check fails the build describes the plan, not what was built." ;
     kpred:priority "medium" ;
     kpred:part-of kb:release-pipeline ;
     kpred:description "A script reads .github/workflows/*.yml and .github/ruleset-main.json and writes static/reckons-ci.ttl: each CI job and check, the branches that trigger it, the scripts it runs (already linked by kpred:has-file), whether the ruleset makes it required, and the roadmap feature it guards. A --check mode in CI fails when the YAML changes and the graph does not, the pattern of jobs-graph and md-align." ;
