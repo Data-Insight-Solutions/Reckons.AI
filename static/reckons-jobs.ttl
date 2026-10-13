@@ -540,6 +540,15 @@ job:terminology-sweep rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:test-workflow-check rdf:type          ktype:OfflineJob ;
+    rdfs:label          "test-workflow-check" ;
+    skos:prefLabel      "test-workflow-check" ;
+    skos:definition     "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/test-workflow-check.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:untested-options rdf:type          ktype:OfflineJob ;
     rdfs:label          "untested-options" ;
     skos:prefLabel      "untested-options" ;
@@ -584,9 +593,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 62 of them, 51 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 63 of them, 52 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

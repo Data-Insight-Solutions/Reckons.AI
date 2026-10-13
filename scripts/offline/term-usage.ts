@@ -369,6 +369,11 @@ export function scanText(text: string, file: string, tokens: Map<string, TokenUs
   let inScript = false;
   let inStyle = false;
   for (const raw of text.split('\n')) {
+    // A rendered mermaid diagram is one huge line of SVG markup (class="node", xml:space, ...).
+    // Those are the renderer's words, not ours; counting them made adding a diagram to a docs page
+    // look like 43 new uses of "node" (F34.2). The diagram's own labels are drawn from graph text
+    // that is scanned where it is written.
+    if (raw.startsWith('<figure class="diagram"')) continue;
     if (isSvelte) {
       if (/<script\b/.test(raw)) inScript = true;
       if (/<style\b/.test(raw)) inStyle = true;
