@@ -139,7 +139,7 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([
   // F34.2 test workflows: read by scripts/lib/test-workflow.ts and rendered as step sections, so
   // printing them again as "Details" bullets would show the plumbing beside the finished page.
   `${KPRED}workflow-id`, `${KPRED}test-file`, `${KPRED}step-id`, `${KPRED}short-label`,
-  `${KPRED}box-label`, `${KPRED}screenshot`,
+  `${KPRED}box-label`, `${KPRED}box-target`, `${KPRED}page-name`, `${KPRED}shots-note`, `${KPRED}screenshot`,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
   // Where the page LIVES is routing too. Without these, the first page to use the override
@@ -1172,19 +1172,23 @@ function renderWorkflow(w: Workflow, heading: string): string[] {
     );
   }
   const lines: string[] = [
-    diagramFigure(svg, 'The steps of this workflow, drawn from the same list the test runs.'), '',
-    `## ${escapeMdText(heading)}`, '',
+    diagramFigure(svg, 'The steps of this workflow, drawn from the same list the test runs.')
+      .replace('<figure class="diagram"', '<figure class="diagram diagram-stack"'), '',
   ];
+  // How the screenshots were made, read from the graph, after the diagram so the picture of the
+  // route comes before the caveats about it.
+  if (w.shotsNote) lines.push(w.shotsNote, '');
+  lines.push(`## ${escapeMdText(heading)}`, '');
   for (const s of w.steps) {
     lines.push(`### ${s.order}. ${escapeMdText(s.title)}`, '');
     lines.push(escapeMdText(s.text), '');
-    lines.push(`On the page \`${s.page}\`.`, '');
+    lines.push(`Where: ${escapeMdText(s.pageName)} (\`${s.page}\`).`, '');
     if (s.screenshot) {
-      const alt = `Screenshot of step ${s.order}, ${s.title}, with a box labelled "${s.boxLabel}" round the part of the page being checked.`;
+      const alt = `Screenshot of step ${s.order}, ${s.title}. A pink box labelled "${s.boxLabel}" marks ${s.boxTarget}.`;
       lines.push(
         `<figure class="workflow-shot"><img src="${s.screenshot}" width="${SHOT_WIDTH}" height="${SHOT_HEIGHT}" `
         + `alt="${alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async" />`
-        + `<figcaption>The pink box marks: ${escapeMdText(s.boxLabel)}</figcaption></figure>`, '');
+        + `<figcaption>The pink box marks ${escapeMdText(s.boxTarget)}.</figcaption></figure>`, '');
     } else {
       lines.push(
         '<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>', '');

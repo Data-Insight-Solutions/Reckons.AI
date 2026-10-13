@@ -347,6 +347,18 @@ export class AiConsentRequiredError extends Error {
   }
 }
 
+/**
+ * The mock backend's reply. A browser test may script it by setting
+ * `globalThis.__RECKONS_MOCK_REPLY__` (the F34.2 workflow test does, so its screenshot of a
+ * reckoning reads like one). Read ONLY when the provider is `mock`, which is selected by the E2E
+ * server environment, so no real provider can be redirected this way.
+ */
+export function mockChatReply(factCount: number): string {
+  const scripted = (globalThis as { __RECKONS_MOCK_REPLY__?: unknown }).__RECKONS_MOCK_REPLY__;
+  if (typeof scripted === 'string' && scripted.trim()) return scripted;
+  return `OVERVIEW\nThis test proposal is grounded in ${factCount} verified statements.\n\nRecommendation: Review the cited graph facts and choose the option that best fits the stated target.\n\nConfidence: test — deterministic mock response.`;
+}
+
 export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatResponse> {
   const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, messages, kbContext, exploreMode, voiceMode, customPrompt, publishedMode } = opts;
 
@@ -386,7 +398,7 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     // Deterministic browser-test backend. `mock` is already a supported SettingsRecord value and
     // is selected by the E2E server environment; routing it to Claude/WASM made "mock" workflows
     // unexpectedly request credentials or a model download.
-    raw = `OVERVIEW\nThis test proposal is grounded in ${kbContext.statementCount} verified statements.\n\nRecommendation: Review the cited graph facts and choose the option that best fits the stated target.\n\nConfidence: test — deterministic mock response.`;
+    raw = mockChatReply(kbContext.statementCount);
   } else {
     raw = await chatClaude(messages, system, apiKey, model ?? 'claude-haiku-4-5-20251001');
   }

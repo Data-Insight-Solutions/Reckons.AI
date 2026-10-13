@@ -63,6 +63,7 @@
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import GraphPreview from '$lib/components/GraphPreview.svelte';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
+  import { countLabel } from '$lib/utils/count-label';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -890,9 +891,13 @@
 
 <!-- ── KB Identity ─────────────────────────────────────────────────────────── -->
 <div class="kb-identity">
-  <div class="kb-id-row">
-    <span class="kb-badge mono">{currentKbId}</span>
-  </div>
+  <!-- The default entry's id is the engineering word "kbase", meaningless to a person; only an
+       entry with its own identifier shows one. -->
+  {#if currentKbId !== 'kbase'}
+    <div class="kb-id-row">
+      <span class="kb-badge mono">{currentKbId}</span>
+    </div>
+  {/if}
   <div class="kb-title-row">
     <input
       class="kb-title-input"
@@ -913,11 +918,11 @@
   ></textarea>
 
   <div class="kb-stats mono">
-    <span class="stat">{entityCount} entities</span>
+    <span class="stat">{countLabel(entityCount, 'entity', 'entities')}</span>
     <span class="sep">·</span>
-    <span class="stat">{confirmedStatements().length} facts</span>
+    <span class="stat">{countLabel(confirmedStatements().length, 'fact')}</span>
     <span class="sep">·</span>
-    <span class="stat">{nonAnalysisSources.length} sources</span>
+    <span class="stat">{countLabel(nonAnalysisSources.length, 'source')}</span>
     {#if pendingTotal > 0}
       <span class="sep">·</span>
       <a href="/review" class="stat stat-pending">{pendingTotal} pending review →</a>
@@ -1144,7 +1149,7 @@
               </span>
             {/if}
             <div class="kb-entry-sub">
-              <span class="kb-entry-id mono">{kb.id}</span>
+              {#if kb.id !== 'kbase'}<span class="kb-entry-id mono">{kb.id}</span>{/if}
               {#if kb.lastModified}
                 <span class="kb-entry-date mono">{relativeTime(kb.lastModified)}</span>
               {/if}
@@ -1153,7 +1158,7 @@
                    "not opened yet" instead. -->
               {#if kb.statementCount != null}
                 <span class="kb-entry-size mono" title="{kb.statementCount} confirmed statements">
-                  {kb.statementCount.toLocaleString()} facts
+                  {countLabel(kb.statementCount, 'fact')}
                 </span>
               {:else}
                 <span class="kb-entry-size mono muted-size" title="No statement count recorded — this space has not been opened or saved yet">
@@ -1276,7 +1281,7 @@
             <span class="kb-archive-name">{archive.name}</span>
             {#if archive.statementCount != null}
               <span class="kb-entry-size mono" title="{archive.statementCount} archived statements">
-                {archive.statementCount.toLocaleString()} facts
+                {countLabel(archive.statementCount, 'fact')}
               </span>
             {:else}
               <span class="kb-entry-size mono muted-size" title="No statement count recorded — this archive has not been opened or saved yet">

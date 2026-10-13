@@ -233,6 +233,12 @@
        labels at about 7px — a picture technically present and practically unreadable. A diagram
        is worth its height, and the reader can scroll. */
   }
+  /* A top-to-bottom diagram of a few short steps: kept at its natural size (readable, 16px labels)
+     instead of stretched to the column, and centered. Phone width shows it unshrunk. */
+  .doc-prose :global(figure.diagram-stack svg) {
+    max-width: 340px;
+    margin: 0 auto;
+  }
   .doc-prose :global(figure.diagram figcaption) {
     margin-top: 0.9rem;
     padding-top: 0.75rem;
