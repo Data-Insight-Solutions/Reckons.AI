@@ -37,6 +37,7 @@ import { Parser, type Quad } from 'n3';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { transactPendingQueue } from './pending-queue.js';
+import { assertOk, localOptions, retryTransient } from './lib/local-model.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -102,17 +103,19 @@ function corpus(): { preds: Pred[]; defs: Map<string, string>; assigned: Set<str
 }
 
 async function ollama(prompt: string): Promise<string> {
-  const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    // think:false — a hybrid-thinking model spends its budget reasoning and returns nothing.
-    // Measured 2026-09-08 when the VLM gate scored a competent model at 0%.
-    body: JSON.stringify({
-      model: MODEL, prompt, stream: false, think: false,
-      options: { num_ctx: 8192, temperature: 0, num_predict: 120 },
-    }),
+  return retryTransient(async () => {
+    const res = await fetch(`${OLLAMA.replace(/\/+$/, '')}/api/generate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // think:false — a hybrid-thinking model spends its budget reasoning and returns nothing.
+      // Measured 2026-09-08 when the VLM gate scored a competent model at 0%.
+      body: JSON.stringify({
+        model: MODEL, prompt, stream: false, think: false,
+        options: localOptions({ num_ctx: 8192, temperature: 0, num_predict: 120 }),
+      }),
+    });
+    await assertOk(res);
+    return ((await res.json()) as { response?: string }).response?.trim() ?? '';
   });
-  if (!res.ok) throw new Error(`Ollama ${res.status} ${res.statusText}`);
-  return ((await res.json()) as { response?: string }).response?.trim() ?? '';
 }
 
 const PROMPT = (p: Pred, defs: Map<string, string>) => `You are sorting the predicates of a knowledge graph into exactly three layers.
