@@ -233,13 +233,6 @@
       "desc": "Drafts prose for docs entities too thin to be a page (under 45 words, the same threshold docs-pages.ts uses to decide what earns a URL). Grounded on the entity's own triples plus its parent and siblings, so the draft matches the register of the pages around it. PROPOSAL ONLY: emits suggestions to knowledge.pending.jsonl and never edits a TTL. Note this is NOT doc generation — scripts/docs-pages.ts renders the pages and stays deterministic, because md-align requires byte-identical regeneration."
     },
     {
-      "name": "code-review",
-      "tier": "agent",
-      "enabled": false,
-      "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled"
-    },
-    {
       "name": "visual-diff",
       "tier": "agent",
       "enabled": false,
