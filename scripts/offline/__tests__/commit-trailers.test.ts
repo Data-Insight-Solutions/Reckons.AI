@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { afterCutoff, checkCommits, parseTrailers, type CommitInfo } from '../commit-trailers.ts';
+import { afterCutoff, checkCommits, parseTrailers, CUTOFF, type CommitInfo } from '../commit-trailers.ts';
 
 const c = (trailers: [string, string][], parents = 1): CommitInfo => ({ sha: 'abc1234def', subject: 's', parents, trailers });
 const CO: [string, string] = ['Co-Authored-By', 'Claude Sonnet 5.5 <noreply@anthropic.com>'];
@@ -35,6 +35,16 @@ describe('checkCommits', () => {
 describe('parseTrailers', () => {
   it('splits key and value', () => {
     expect(parseTrailers('Model: a@b\nIntent: x: y\n')).toEqual([['Model', 'a@b'], ['Intent', 'x: y']]);
+  });
+});
+
+describe('default CUTOFF (local sweep on dev itself)', () => {
+  it('is the instant the check merged (#423), so older agent commits without trailers are never flagged', () => {
+    // Observed 2026-10-13: a cutoff of 2026-10-09T12:00Z made every local sweep on dev fail on 27
+    // commits that predate the rule, while CI (which checks only the PR range) passed.
+    expect(CUTOFF).toBe('2026-10-13T17:56:06Z');
+    const old = { sha: 'old', subject: 'feat(F248): before the rule', parents: 1, authorDate: '2026-10-10T08:00:00Z', trailers: [['Co-Authored-By', 'Claude Sonnet 5.5 <noreply@anthropic.com>']] as [string, string][] };
+    expect(checkCommits(afterCutoff([old], CUTOFF))).toEqual([]);
   });
 });
 

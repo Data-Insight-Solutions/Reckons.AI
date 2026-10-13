@@ -2,7 +2,7 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
-import { clearStorage, waitForApp } from './helpers';
+import { clearStorage, waitForApp, modelPromptsDismissed } from './helpers';
 import { boxTarget } from '../visual/workflow-harness';
 import type { Workflow } from '../../scripts/lib/test-workflow';
 
@@ -86,6 +86,18 @@ async function declineModelDownload(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^not now$/i }).click({ timeout: 700 }).catch(() => {});
 }
 
+/**
+ * Review works without a model: the person decides each claim. Entering it must not raise the
+ * model-download prompt (MATT, 2026-10-13); the shared dismisser counts any it had to close.
+ */
+async function expectNoModelPrompt(page: Page): Promise<void> {
+  // Relative to what the Add step already dismissed (ingest legitimately asks for a model).
+  const before = modelPromptsDismissed(page);
+  await page.waitForTimeout(1500);
+  await expect(page.locator('.consent-dialog')).toHaveCount(0);
+  expect(modelPromptsDismissed(page), 'entering Review must not prompt for a model download').toBe(before);
+}
+
 /** The first claim card on the Review page that is still waiting for a decision. */
 const waitingCard = (page: Page) =>
   page.locator('.entry').filter({ has: page.getByRole('button', { name: /^accept$/i }) }).first();
@@ -121,7 +133,7 @@ const impls: Record<string, StepImpl> = {
 
   'review-claims': async (page, snap) => {
     await page.goto('/review');
-    await declineModelDownload(page);
+    await expectNoModelPrompt(page);
     const card = waitingCard(page);
     await expect(card).toBeVisible({ timeout: 10_000 });
     // The card is the thing the step is about: it names its source, shows the passage the claim
@@ -134,7 +146,7 @@ const impls: Record<string, StepImpl> = {
 
   'confirm-claims': async (page, snap) => {
     await page.goto('/review');
-    await declineModelDownload(page);
+    await expectNoModelPrompt(page);
     const accept = () => page.getByRole('button', { name: /^accept$/i }).first();
     await expect(accept()).toBeVisible({ timeout: 10_000 });
     await snap(accept());
