@@ -541,9 +541,9 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # Checked by scripts/offline/term-usage.ts --check (script tier, blocking). Lower a baseline in
 # the same commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
-    kpred:term-ratchet "graph/free/4665" ;
-    kpred:term-ratchet "statement/free/5017" ;
-    kpred:term-ratchet "source/free/4302" ;
+    kpred:term-ratchet "graph/free/4664" ;
+    kpred:term-ratchet "statement/free/5019" ;
+    kpred:term-ratchet "source/free/4314" ;
     kpred:term-ratchet "space/free/901" ;
     kpred:term-ratchet "node/free/3240" ;
     kpred:term-ratchet "export/free/394" ;
