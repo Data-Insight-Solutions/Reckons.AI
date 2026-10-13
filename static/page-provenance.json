@@ -1,5 +1,5 @@
 {
-  "built": 163,
+  "built": 164,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -899,7 +899,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "fdc6f26e4b22d42e"
+      "pageHash": "a98f1181d164ba51"
     },
     {
       "path": "testing/test-suite",
@@ -908,7 +908,7 @@
       "factHash": "becc5146029c62b3",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "347db08f0e14777c"
+      "pageHash": "48e8df9f04bf6fe1"
     },
     {
       "path": "testing/test-workflows",
@@ -926,7 +926,16 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "b70b2c61e33e70ea"
+      "pageHash": "0fb5a23d9856a792"
+    },
+    {
+      "path": "testing/vlm-workflow-streams",
+      "entity": "urn:reckons:test/VlmWorkflowStreams",
+      "graph": "docs-testing.ttl",
+      "factHash": "663a738d5de199f8",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "a2d53b9aa63da703"
     },
     {
       "path": "testing/workflow-readme-path",
