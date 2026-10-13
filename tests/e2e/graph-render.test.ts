@@ -218,7 +218,11 @@ test('Getting started + Preview all demonstrates GIF, video, and GLB assets', as
   // asset viewer's top-right controls. Clear it as a user would before opening
   // the large viewers below.
   const dismissNotification = page.getByRole('button', { name: 'dismiss', exact: true });
-  if (await dismissNotification.isVisible()) await dismissNotification.click();
+  // More than one can be showing (the reviewed starter also announces its pending facts), so
+  // clear them one at a time instead of assuming a single notification.
+  for (let i = 0; i < 5 && (await dismissNotification.count()) > 0; i++) {
+    await dismissNotification.first().click();
+  }
 
   const previews = page.locator('.overlay-group', { hasText: /previews/i });
   await previews.locator('button.chip').first().click();
