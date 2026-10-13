@@ -463,6 +463,17 @@ export async function addStatements(
   const plan = await prepareStatementsForWrite(sts, sourceId, opts);
   if (plan.statements.length === 0 && plan.blocked.length === 0) return;
   await db.transaction('rw', db.statements, db.changelog, async () => {
+    if (opts?.origin === 'current') {
+      // A retry must not turn a confirmed/rejected arrival back into pending. Check inside the
+      // write transaction: another tab may have reviewed it since our reactive snapshot loaded.
+      const existing = await db.statements.bulkGet(plan.statements.map((st) => st.id));
+      const seen = new Set<string>();
+      plan.statements = plan.statements.filter((st, i) => {
+        if (existing[i] || seen.has(st.id)) return false;
+        seen.add(st.id);
+        return true;
+      });
+    }
     if (plan.statements.length > 0) await db.statements.bulkPut(plan.statements);
     await writeStatementChangeLog(plan, sourceId);
   });
