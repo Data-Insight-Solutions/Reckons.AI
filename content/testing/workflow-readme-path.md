@@ -25,7 +25,7 @@ Open the Add page, give the note a title, paste in a few sentences and press Ext
 
 On the page `/ingest`.
 
-<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/01-add-source.webp" width="1280" height="800" alt="Screenshot of step 1, Add a source, with a box labelled &quot;Extract facts&quot; round the part of the page being checked." loading="lazy" decoding="async" /><figcaption>The pink box marks: Extract facts</figcaption></figure>
 
 **What the test checks.** The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add page when reading finishes.
 
@@ -35,19 +35,19 @@ Open Review. The claims taken from your note are listed here, each one waiting. 
 
 On the page `/review`.
 
-<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/02-review-claims.webp" width="1280" height="800" alt="Screenshot of step 2, Review the proposed claims, with a box labelled &quot;Claims waiting&quot; round the part of the page being checked." loading="lazy" decoding="async" /><figcaption>The pink box marks: Claims waiting</figcaption></figure>
 
 **What the test checks.** At least one claim from the note just added is shown on the Review page, still waiting for a decision.
 
 ### 3. Confirm the claims that are right
 
-Confirm each claim that matches the note. You can also refine a claim or reject it. Only claims you confirm become part of the space; anything left waiting stays out.
+Confirm each claim that matches the note by pressing accept. You can also refine a claim or reject it. Only claims you confirm become part of the space; anything left waiting stays out.
 
 On the page `/review`.
 
-<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/03-confirm-claims.webp" width="1280" height="800" alt="Screenshot of step 3, Confirm the claims that are right, with a box labelled &quot;Accept&quot; round the part of the page being checked." loading="lazy" decoding="async" /><figcaption>The pink box marks: Accept</figcaption></figure>
 
-**What the test checks.** Pressing Confirm settles the claims one by one until none of them is left waiting for a decision.
+**What the test checks.** Pressing accept settles the claims one by one until none of them is left waiting for a decision.
 
 ### 4. See the claims in your space
 
@@ -55,7 +55,7 @@ Open Spaces. The claims you confirmed are now part of your space, the collection
 
 On the page `/kb`.
 
-<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/04-see-in-space.webp" width="1280" height="800" alt="Screenshot of step 4, See the claims in your space, with a box labelled &quot;Your space&quot; round the part of the page being checked." loading="lazy" decoding="async" /><figcaption>The pink box marks: Your space</figcaption></figure>
 
 **What the test checks.** The Spaces page opens and shows the space that holds the confirmed claims.
 
@@ -65,7 +65,7 @@ Describe the situation you are in, say what you want to reach, and ask for a rec
 
 On the page `/reckoning`.
 
-<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/05-reckoning.webp" width="1280" height="800" alt="Screenshot of step 5, Ask for a reckoning, with a box labelled &quot;Reckon&quot; round the part of the page being checked." loading="lazy" decoding="async" /><figcaption>The pink box marks: Reckon</figcaption></figure>
 
 **What the test checks.** The request is accepted and the page comes back with either a proposal or a clear message that no model was available. The test does not judge the wording of a proposal; that depends on the model and is measured separately.
 

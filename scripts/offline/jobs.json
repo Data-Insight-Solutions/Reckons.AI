@@ -66,8 +66,9 @@
       "name": "test-workflow-check",
       "tier": "script",
       "enabled": true,
-      "cmd": "npx tsx scripts/offline/test-workflow-check.ts --pending-ok",
-      "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. WARN-ONLY FOR NOW: --pending-ok reports steps with no screenshot but passes them, because the flagship's screenshots wait on F248 (synthetic Getting started data). Drop the flag and set blocking when they are committed."
+      "cmd": "npx tsx scripts/offline/test-workflow-check.ts",
+      "blocking": true,
+      "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
     },
     {
       "name": "tenet-align",
