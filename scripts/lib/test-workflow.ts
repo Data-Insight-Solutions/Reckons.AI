@@ -44,6 +44,9 @@ export const P = {
   page: `${KPRED}page`,
   assertion: `${KPRED}assertion`,
   boxLabel: `${KPRED}box-label`,
+  boxTarget: `${KPRED}box-target`,
+  pageName: `${KPRED}page-name`,
+  shotsNote: `${KPRED}shots-note`,
   shortLabel: `${KPRED}short-label`,
   screenshot: `${KPRED}screenshot`,
 } as const;
@@ -64,6 +67,10 @@ export interface WorkflowStep {
   shortLabel: string;
   /** The label drawn on the highlight box in the screenshot. */
   boxLabel: string;
+  /** In plain words, the control or result the box sits on: the thing the step is about. */
+  boxTarget: string;
+  /** What a person calls the place this step happens, e.g. "the Add tab". */
+  pageName: string;
   /** Site-root path of the annotated screenshot, or null when none has been captured. */
   screenshot: string | null;
 }
@@ -73,6 +80,8 @@ export interface Workflow {
   id: string;
   title: string;
   definition: string;
+  /** Markdown on how the screenshots were made and what is scripted; shown after the diagram. */
+  shotsNote: string;
   testFile: string;
   steps: WorkflowStep[];
 }
@@ -120,6 +129,8 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
         assertion: need(sIri, P.assertion, 'kpred:assertion'),
         shortLabel: lit(sIri, P.shortLabel) ?? title,
         boxLabel: lit(sIri, P.boxLabel) ?? title,
+        boxTarget: need(sIri, P.boxTarget, 'kpred:box-target'),
+        pageName: need(sIri, P.pageName, 'kpred:page-name'),
         screenshot: lit(sIri, P.screenshot),
       });
     }
@@ -133,6 +144,7 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
       id: need(iri, P.workflowId, 'kpred:workflow-id'),
       title: need(iri, RDFS_LABEL, 'rdfs:label'),
       definition: lit(iri, SKOS_DEFINITION) ?? '',
+      shotsNote: lit(iri, P.shotsNote) ?? '',
       testFile: need(iri, P.testFile, 'kpred:test-file'),
       steps,
     });
@@ -169,9 +181,9 @@ function wrap(s: string, width = 18): string {
  */
 export function workflowDiagram(w: Workflow): string {
   if (!w.steps.length) throw new Error(`<${w.iri}> has no steps, so there is no diagram to draw`);
-  const lines = ['flowchart LR'];
+  const lines = ['flowchart TB'];
   w.steps.forEach((s, i) => {
-    lines.push(`  S${i + 1}["${i + 1}. ${wrap(s.shortLabel)}<br/><i>${mm(s.page)}</i>"]`);
+    lines.push(`  S${i + 1}["${i + 1}. ${wrap(s.shortLabel, 30)}<br/><i>${mm(s.pageName)}</i>"]`);
   });
   lines.push('  ' + w.steps.map((_, i) => `S${i + 1}`).join(' --> '));
   return lines.join('\n');

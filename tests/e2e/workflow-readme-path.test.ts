@@ -17,9 +17,16 @@ import type { Workflow } from '../../scripts/lib/test-workflow';
  * implementation here, or an implementation here with no step in the graph. So the page cannot show
  * a step this test does not run, and this test cannot run a step the page does not show.
  *
- * It also runs the checks the page promises ("What the test checks"). It is mock-backend only
- * (no keys), like workflow-add-review-reckon.test.ts, which it complements by adding the Spaces
- * step; that older test is left in place.
+ * It also runs the checks the page promises ("What the test checks"), and each step boxes the same
+ * control or result that its check asserts on, so the box, the words and the assertion all
+ * describe one thing. It is mock-backend only (no keys), like workflow-add-review-reckon.test.ts,
+ * which it complements by adding the Spaces step; that older test is left in place.
+ *
+ * EVERY STEP RUNS ON THE GETTING STARTED SPACE (synthetic: Alex and Jordan's camping weekend), loaded
+ * the way a first-time visitor loads it, so the screenshots show real-looking content instead of a
+ * throwaway test note. Two things are scripted stand-ins for a language model and the page says so:
+ * the note typed in step 1 is read by the mock extractor (its claims are placeholders), and the
+ * reckoning in step 5 is a fixed reply (SCRIPTED_RECKONING).
  *
  * CAPTURE MODE. With WORKFLOW_CAPTURE_DIR set (by `npm run workflow:shots`, which then compresses
  * the PNGs to WebP and links them from the steps), each step also draws a labelled box round its
@@ -42,13 +49,58 @@ if (!workflow) throw new Error(`No TestWorkflow with kpred:workflow-id "${WORKFL
 type Snap = (target: Locator) => Promise<void>;
 type StepImpl = (page: Page, snap: Snap) => Promise<void>;
 
-const SITUATION = 'I am choosing between Company Alpha and Company Beta as a battery-software vendor.';
-const TARGET = 'Pick the vendor that best fits a long-term, scalable battery-software partnership.';
+const SITUATION = 'Alex and Jordan are choosing between Lake George and Oh! Ridge for a camping weekend.';
+const TARGET = 'Pick the campground that keeps two nights inside the $60 budget.';
 
 /** Synthetic note text typed by the test; no real data is involved at any point. */
-const NOTE_TITLE = 'Company Alpha';
+const NOTE_TITLE = 'Camping trip plan';
 const NOTE_BODY =
-  'Company Alpha has 50 employees, was founded in 2020 by Jane Doe in Seattle, and makes battery software.';
+  'Alex and Jordan are camping near Lake George for two nights. The budget is about 80 dollars.';
+
+/**
+ * A scripted reply for the mock chat backend (src/lib/integrations/llm/turtle-chat.ts reads
+ * globalThis.__RECKONS_MOCK_REPLY__, and only when the provider is `mock`). It is written to read
+ * like a real reckoning about the Getting started space's own sample notes, so the screenshot shows
+ * what a reckoning looks like rather than the mock's placeholder line. It is a SCRIPTED response,
+ * not a model's: the page that shows this screenshot says so.
+ */
+const SCRIPTED_RECKONING = [
+  'OVERVIEW',
+  'Oh! Ridge fits the weekend best. It is open both nights, while Lake George now has only Saturday, and it costs less per night.',
+  'Option 1: Book Oh! Ridge for Friday and Saturday',
+  'Basis: Oh! Ridge costs $23 a night this season and has the full weekend open.',
+  'Consideration: Two nights comes to $46, inside the $60 budget.',
+  'Action: Book by Wednesday July 8.',
+  'Option 2: Lake George for Saturday only',
+  'Basis: Lake George is $28 a night but now has only Saturday night open.',
+  'Consideration: One night leaves Friday without a campsite.',
+  'Recommendation: Book Oh! Ridge, and keep Lake George as the backup if it opens up.',
+  'Confidence: Moderate. The notes may be out of date, so check availability before booking.',
+].join('\n');
+
+/**
+ * Adding a note to a space that already holds facts makes the app offer to download its matching
+ * model; the test declines (nothing is downloaded) and carries on. Safe to call when absent.
+ */
+async function declineModelDownload(page: Page): Promise<void> {
+  await page.getByRole('button', { name: /^not now$/i }).click({ timeout: 700 }).catch(() => {});
+}
+
+/** The first claim card on the Review page that is still waiting for a decision. */
+const waitingCard = (page: Page) =>
+  page.locator('.entry').filter({ has: page.getByRole('button', { name: /^accept$/i }) }).first();
+
+/** How many facts the card for the current space says it holds, on the Spaces page. */
+async function currentSpaceFacts(page: Page): Promise<number> {
+  await page.goto('/kb');
+  const space = page.locator('.kb-entry.current').first();
+  await expect(space).toBeVisible({ timeout: 8_000 });
+  await expect(space).toContainText(/[\d,]+ facts?/i, { timeout: 8_000 });
+  return Number(/([\d,]+) facts?/.exec((await space.textContent()) ?? '')?.[1]?.replace(/,/g, '') ?? 0);
+}
+
+/** Facts in the space before any claim is confirmed (set once the Getting started space has loaded). */
+let factsBefore = 0;
 
 const impls: Record<string, StepImpl> = {
   'add-source': async (page, snap) => {
@@ -59,41 +111,49 @@ const impls: Record<string, StepImpl> = {
     await expect(submit).not.toBeDisabled({ timeout: 5_000 });
     await snap(submit);
     await submit.click();
-    await page.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 30_000 });
+    const deadline = Date.now() + 30_000;
+    while (new URL(page.url()).pathname.startsWith('/ingest') && Date.now() < deadline) {
+      await declineModelDownload(page);
+      await page.waitForTimeout(500);
+    }
+    expect(new URL(page.url()).pathname, 'reading finishes and leaves the Add page').not.toMatch(/^\/ingest/);
   },
 
   'review-claims': async (page, snap) => {
     await page.goto('/review');
-    const claim = page.getByText(/company.alpha|employee|2020|seattle/i).first();
-    await expect(claim).toBeVisible({ timeout: 8_000 });
-    // For the picture, box the claim as the review card shows it (the mock backend's claims read
-    // "<source> contains-text ..."); the first text match can be a node label in the graph behind.
-    const card = page.getByText(/contains-text/).first();
-    await snap((await card.count()) ? card : claim);
+    await declineModelDownload(page);
+    const card = waitingCard(page);
+    await expect(card).toBeVisible({ timeout: 10_000 });
+    // The card is the thing the step is about: it names its source, shows the passage the claim
+    // came from, and offers all three decisions.
+    for (const name of [/^accept$/i, /^refine$/i, /^reject$/i]) {
+      await expect(card.getByRole('button', { name })).toBeVisible();
+    }
+    await snap(card);
   },
 
   'confirm-claims': async (page, snap) => {
     await page.goto('/review');
-    const confirm = () => page.getByRole('button', { name: /confirm|✓|accept/i }).first();
-    await expect(confirm()).toBeVisible({ timeout: 8_000 });
-    await snap(confirm());
+    await declineModelDownload(page);
+    const accept = () => page.getByRole('button', { name: /^accept$/i }).first();
+    await expect(accept()).toBeVisible({ timeout: 10_000 });
+    await snap(accept());
     for (let i = 0; i < 40; i++) {
-      if (!(await confirm().count()) || !(await confirm().isVisible().catch(() => false))) break;
-      await confirm().click().catch(() => {});
+      if (!(await accept().count()) || !(await accept().isVisible().catch(() => false))) break;
+      await accept().click().catch(() => {});
       await page.waitForTimeout(250);
     }
     // Nothing is left waiting: the queue was settled by hand, one claim at a time.
-    await expect(confirm()).toHaveCount(0, { timeout: 8_000 });
+    await expect(accept()).toHaveCount(0, { timeout: 8_000 });
   },
 
   'see-in-space': async (page, snap) => {
-    await page.goto('/kb');
-    // The space holding the confirmed claims reports how many facts it now contains.
-    const summary = page.getByText(/\d+ entities · \d+ facts/).first();
-    await expect(summary).toBeVisible({ timeout: 8_000 });
-    const facts = Number(/(\d+) facts/.exec((await summary.textContent()) ?? '')?.[1] ?? 0);
-    expect(facts, 'the confirmed claims should be facts in the space').toBeGreaterThan(0);
-    await snap(summary);
+    // The card for the space you are in: it says "current" and how many facts it now holds.
+    const facts = await currentSpaceFacts(page);
+    const space = page.locator('.kb-entry.current').first();
+    await expect(space).toContainText(/current/i);
+    expect(facts, 'the confirmed claims should be facts added to the space').toBeGreaterThan(factsBefore);
+    await snap(space);
   },
 
   reckoning: async (page, snap) => {
@@ -111,21 +171,27 @@ const impls: Record<string, StepImpl> = {
     const reckon = page.locator('.btn-reckon');
     await expect(reckon).toBeVisible({ timeout: 5_000 });
     await reckon.click();
-    // A proposal (a working model) OR a handled error (CI has no chat model): both prove the
-    // request was accepted and the page resolved. The wording of a proposal is not judged here.
-    const outcome = page.getByRole('heading', { name: /proposal/i })
-      .or(page.getByText(/verified statements/i))
-      .or(page.locator('.error-msg'))
-      .first();
-    await expect(outcome).toBeVisible({ timeout: 20_000 });
-    await snap(outcome);
+    // The scripted reply comes back as a proposal card that says how many facts it rests on.
+    const proposal = page.locator('.proposal-card');
+    await expect(proposal).toBeVisible({ timeout: 20_000 });
+    await expect(proposal).toContainText(/based on \d+ verified statements/i);
+    await expect(proposal).toContainText(/oh! ridge/i);
+    await snap(proposal);
   },
 };
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript((reply) => {
+    (globalThis as { __RECKONS_MOCK_REPLY__?: string }).__RECKONS_MOCK_REPLY__ = reply;
+  }, SCRIPTED_RECKONING);
   await clearStorage(page);
   await waitForApp(page);
+  // Every step runs on the Getting started space, loaded the way a first-time visitor loads it.
+  await page.goto('/');
+  await page.getByRole('button', { name: /getting started/i }).first().click();
+  await page.waitForTimeout(4_000);
+  factsBefore = await currentSpaceFacts(page);
 });
 
 test('the steps in the graph and the steps this test runs are the same list', () => {

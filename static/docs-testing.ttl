@@ -684,7 +684,7 @@ test:TestWorkflows
     rdf:type            ktype:Concept ;
     rdfs:label          "Test workflows" ;
     <urn:reckons:nav/order> "112"^^xsd:integer ;
-    skos:definition     """A test workflow is one whole task a person does in Reckons.AI, written down as numbered steps and then run, step by step, by an automated test in a real browser. Each workflow page shows the route as a diagram, says in plain words what happens at each step, shows a screenshot of the real app with a box drawn round the control being checked, and states the one thing the test asserts at that step.
+    skos:definition     """A test workflow is one whole task a person does in Reckons.AI, written down as numbered steps and then run, step by step, by an automated test in a real browser. Each workflow page shows the steps as a diagram, says in plain words what happens at each step, shows a screenshot of the real app with a box drawn round the control being checked, and states the one thing the test checks at that step.
 
 ### Why a page for each
 
@@ -693,18 +693,27 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 ### How to read a workflow page
 
 1. **The diagram** is drawn from the step list itself, so it always matches what the test runs.
-2. **Each step** has the words for what happens, then the screenshot, then **What the test checks**.
+2. **Each step** has the words for what happens, where it happens, the screenshot, then **What the test checks**.
 3. **The pink box** in a screenshot marks the control or area that step is about.
 
 ### What is honest about this
 
-Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately.""" ;
+Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.""" ;
     skos:broader        test:TestSuite .
 
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Add a source, review it, see it in a space, ask for a reckoning" ;
-    skos:definition     "The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled. It is the whole point of the product in five steps, and it is run on every change by a browser test." ;
+    skos:definition     """The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled. It is the whole point of the product in five steps, and a browser test runs it on every change.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.**
+
+Every step is run on the **Getting started** sample that a first-time visitor opens, in which two people, Alex and Jordan, plan a camping weekend. Everything in it is invented, so the claims, counts and names in the pictures are sample content and not anyone's real notes.
+
+**What is scripted.**
+
+The test uses no language model. When it adds its own note in step 1, a stand-in reader returns placeholder claims, so the claims you see waiting in steps 2 and 3 are the ones Getting started already holds. In step 5 the reckoning is a fixed reply, written in advance to read like a real one. So the pictures show what each screen looks like and that it responds. They do not show how good a real model's claims or proposal would be, which is measured separately.""" ;
     kpred:workflow-id   "readme-path" ;
     kpred:test-file     "tests/e2e/workflow-readme-path.test.ts" ;
     kpred:render-inline "true" ;
@@ -719,10 +728,12 @@ test:Workflow-ReadmePath-Step1
     kpred:step-id       "add-source" ;
     kpred:short-label   "Add a source" ;
     kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, under the note's title and text" ;
     kpred:page          "/ingest" ;
+    kpred:page-name     "the Add tab" ;
     kpred:screenshot    "/workflows/readme-path/01-add-source.webp" ;
-    skos:definition     "Open the Add page, give the note a title, paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision." ;
-    kpred:assertion     "The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add page when reading finishes." .
+    skos:definition     "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision." ;
+    kpred:assertion     "The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." .
 
 test:Workflow-ReadmePath-Step2
     rdf:type            ktype:TestStep ;
@@ -731,11 +742,13 @@ test:Workflow-ReadmePath-Step2
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "review-claims" ;
     kpred:short-label   "Review the claims" ;
-    kpred:box-label     "Claims waiting" ;
+    kpred:box-label     "A claim waiting" ;
+    kpred:box-target    "one claim card: the claim, the passage it was taken from, and its accept, refine and reject buttons" ;
     kpred:page          "/review" ;
+    kpred:page-name     "the Review tab" ;
     kpred:screenshot    "/workflows/readme-path/02-review-claims.webp" ;
-    skos:definition     "Open Review. The claims taken from your note are listed here, each one waiting. AI can misread a source, so this is where you check what it proposed against what the note actually says." ;
-    kpred:assertion     "At least one claim from the note just added is shown on the Review page, still waiting for a decision." .
+    skos:definition     "Open Review. Each claim waiting for a decision is a card. It names where the claim came from, shows the passage it was taken from, and offers accept, refine and reject. AI can misread what it reads, so this is where you check what it proposed against the original text." ;
+    kpred:assertion     "At least one claim is waiting on the Review tab, shown as a card with accept, refine and reject buttons." .
 
 test:Workflow-ReadmePath-Step3
     rdf:type            ktype:TestStep ;
@@ -745,9 +758,11 @@ test:Workflow-ReadmePath-Step3
     kpred:step-id       "confirm-claims" ;
     kpred:short-label   "Confirm what is right" ;
     kpred:box-label     "Accept" ;
+    kpred:box-target    "the accept button on the first claim card" ;
     kpred:page          "/review" ;
+    kpred:page-name     "the Review tab" ;
     kpred:screenshot    "/workflows/readme-path/03-confirm-claims.webp" ;
-    skos:definition     "Confirm each claim that matches the note by pressing accept. You can also refine a claim or reject it. Only claims you confirm become part of the space; anything left waiting stays out." ;
+    skos:definition     "Press accept on each claim that matches its source. You can also refine a claim or reject it. Only claims you confirm become part of the space; anything left waiting stays out." ;
     kpred:assertion     "Pressing accept settles the claims one by one until none of them is left waiting for a decision." .
 
 test:Workflow-ReadmePath-Step4
@@ -758,10 +773,12 @@ test:Workflow-ReadmePath-Step4
     kpred:step-id       "see-in-space" ;
     kpred:short-label   "See it in your space" ;
     kpred:box-label     "Your space" ;
+    kpred:box-target    "the card marked current, which shows its name and how many facts it holds" ;
     kpred:page          "/kb" ;
+    kpred:page-name     "the Spaces tab" ;
     kpred:screenshot    "/workflows/readme-path/04-see-in-space.webp" ;
-    skos:definition     "Open Spaces. The claims you confirmed are now part of your space, the collection of connected knowledge that your sources feed. This is where the note stops being text and becomes something you can browse and connect to other things." ;
-    kpred:assertion     "The Spaces page opens and shows the space that holds the confirmed claims." .
+    skos:definition     "Open Spaces. The claims you confirmed are now facts in your space, the collection of connected knowledge that everything you add feeds. The one you are working in is marked current, and its card says how many facts it holds." ;
+    kpred:assertion     "The Spaces tab shows the current one with more facts than it held before the claims were confirmed." .
 
 test:Workflow-ReadmePath-Step5
     rdf:type            ktype:TestStep ;
@@ -770,8 +787,10 @@ test:Workflow-ReadmePath-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "reckoning" ;
     kpred:short-label   "Ask for a reckoning" ;
-    kpred:box-label     "Reckon" ;
+    kpred:box-label     "Proposal" ;
+    kpred:box-target    "the proposal card, which says how many facts it is based on" ;
     kpred:page          "/reckoning" ;
+    kpred:page-name     "the Reckon tab" ;
     kpred:screenshot    "/workflows/readme-path/05-reckoning.webp" ;
-    skos:definition     "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It works from the claims you confirmed and proposes a next step, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust." ;
-    kpred:assertion     "The request is accepted and the page comes back with either a proposal or a clear message that no model was available. The test does not judge the wording of a proposal; that depends on the model and is measured separately." .
+    skos:definition     "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It reads the facts in your space and proposes options and a recommendation, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust." ;
+    kpred:assertion     "The request is accepted and a proposal card comes back saying how many facts it is based on. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." .

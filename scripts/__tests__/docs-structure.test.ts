@@ -50,7 +50,7 @@ const pages = loadGeneratedPages();
 
 /** Prose a reader actually reads: not headings, not bold predicate labels, not the SVG. */
 function proseWords(body: string): number {
-  const withoutDiagrams = body.replace(/<figure class="diagram"[\s\S]*?<\/figure>/g, '');
+  const withoutDiagrams = body.replace(/<figure class="diagram[^"]*"[\s\S]*?<\/figure>/g, '');
   return withoutDiagrams
     .split('\n')
     .map((l) => l.trim())

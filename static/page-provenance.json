@@ -914,10 +914,10 @@
       "path": "testing/test-workflows",
       "entity": "urn:reckons:test/TestWorkflows",
       "graph": "docs-testing.ttl",
-      "factHash": "70a61c103f033337",
+      "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "a56005f3450763f7"
+      "pageHash": "2f356cee59f96827"
     },
     {
       "path": "testing/visual-tests",
@@ -941,10 +941,10 @@
       "path": "testing/workflow-readme-path",
       "entity": "urn:reckons:test/Workflow-ReadmePath",
       "graph": "docs-testing.ttl",
-      "factHash": "cfa137c93bb378f0",
-      "factCount": 5,
+      "factHash": "b3958864258797fb",
+      "factCount": 6,
       "floor": "evidence",
-      "pageHash": "53f4a34d2d2781fe"
+      "pageHash": "be1d7d1a0c756f87"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

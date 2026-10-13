@@ -24,6 +24,8 @@ test:W-${id}
     kpred:step-order "${n}"^^xsd:integer ;
     kpred:step-id "${id}" ;
     kpred:page "/p${n}" ;
+    kpred:page-name "the P${n} tab" ;
+    kpred:box-target "the control for ${id}" ;
     skos:definition "Text ${id}" ;
     kpred:assertion "Checks ${id}" ${extra} .
 `;
@@ -41,6 +43,16 @@ describe('loadWorkflows', () => {
     expect(() => loadWorkflows(parse(noAssertion))).toThrow(/no kpred:assertion|assertion/);
     expect(() => loadWorkflows(parse(PRE + step(1, 'a') + step(1, 'b')))).toThrow(/same kpred:step-order/);
   });
+
+  it('requires every step to say what its box sits on and what the place is called', () => {
+    const noTarget = PRE + step(1, 'a').replace(/kpred:box-target "[^"]*" ;/, '');
+    expect(() => loadWorkflows(parse(noTarget))).toThrow(/box-target/);
+    const noName = PRE + step(1, 'a').replace(/kpred:page-name "[^"]*" ;/, '');
+    expect(() => loadWorkflows(parse(noName))).toThrow(/page-name/);
+    const w = loadWorkflows(parse(PRE + step(1, 'a')))[0].steps[0];
+    expect(w.boxTarget).toBe('the control for a');
+    expect(w.pageName).toBe('the P1 tab');
+  });
 });
 
 describe('workflowDiagram', () => {
@@ -48,7 +60,7 @@ describe('workflowDiagram', () => {
     const two = loadWorkflows(parse(PRE + step(1, 'a') + step(2, 'b')))[0];
     const three = loadWorkflows(parse(PRE + step(1, 'a') + step(2, 'b') + step(3, 'c')))[0];
     const d = workflowDiagram(two);
-    expect(d.startsWith('flowchart LR')).toBe(true);
+    expect(d.startsWith('flowchart TB')).toBe(true);
     expect(d).toContain('S1 --> S2');
     expect(d.indexOf('1. Step a')).toBeLessThan(d.indexOf('2. Step b'));
     expect(workflowDiagram(three)).not.toBe(d);
