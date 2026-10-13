@@ -481,7 +481,7 @@
       </h1>
       <p class="sub">
         Condense your context. Keep the meaning.<br/>
-        Becoming an assistant that understands your situation (planned), <em>controlled by you,</em> private by default.
+        Your sources, <em>reviewed by you,</em> private by default — growing into an assistant that understands your situation.
       </p>
 
       <div class="ctas">

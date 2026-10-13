@@ -718,6 +718,8 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:tested-by "scripts/visual-streams/__tests__/contract.test.ts" ;
                   kpred:tested-by "tests/e2e/visual-streams.test.ts" ;
                   kpred:has-file "playwright.visual.config.ts" ;
+                  kpred:has-file "playwright.extension.config.ts" ;
+                  kpred:has-file "playwright.workflows.config.ts" ;
                   kpred:has-file "tests/visual/run-embed-bench.ts" ;
                   kpred:has-file "tests/visual/embed-scoring.ts" ;
                   kpred:has-file "tests/visual/hf-model-query.ts" ;

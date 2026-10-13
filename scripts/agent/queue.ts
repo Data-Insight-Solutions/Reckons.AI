@@ -67,7 +67,6 @@ export function standardBatch(root: string, tsx: string, worktrees: { path: stri
   const off = (f: string) => path.join(root, 'scripts', 'offline', f);
   const j = (name: string, argv: string[], cwd = root) => newJob(name, cwd, argv);
   return [
-    ...worktrees.map((w) => j(`code-review:${w.branch}`, [tsx, off('code-review.ts'), '--base=origin/dev', '--worktree'], w.path)),
     j('describe-entities', [tsx, off('describe-entities.ts'), '--limit=40']),
     j('docs-review', [tsx, off('docs-review.ts'), '--limit=30']),
     j('docs-expand', [tsx, off('docs-expand.ts'), '--limit=20']),
