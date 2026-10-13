@@ -20,12 +20,12 @@ const SKOS = 'http://www.w3.org/2004/02/skos/core#';
 const LEGACY_TYPE = 'urn:kbase:type/EntitySet';
 const LEGACY_MEMBER = 'urn:kbase:predicate/has-member';
 
-export interface CollectionsMigration {
+export type CollectionsMigration = {
   /** The full statement list with legacy terms rewritten (same order, same length). */
   statements: Statement[];
   /** Only the rows that were rewritten — what a caller must write back. */
   changed: Statement[];
-}
+};
 
 export function migrateEntitySetsToCollections(statements: Statement[]): CollectionsMigration {
   const changed: Statement[] = [];

@@ -111,7 +111,7 @@ job:codebase-coverage rdf:type          ktype:OfflineJob ;
 job:commit-trailers rdf:type          ktype:OfflineJob ;
     rdfs:label          "commit-trailers" ;
     skos:prefLabel      "commit-trailers" ;
-    skos:definition     "F254 phase 1a. Every AGENT commit (Co-Authored-By naming a model, or a Model: trailer) must carry non-empty Model: and Intent: trailers; merges and human commits are exempt. Range origin/dev..HEAD, or commits since 2026-10-09T12:00Z on dev itself. Trailers are self-attested text: this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it." ;
+    skos:definition     "F254 phase 1a. Every AGENT commit (Co-Authored-By naming a model, or a Model: trailer) must carry non-empty Model: and Intent: trailers; merges and human commits are exempt. Range origin/dev..HEAD, or commits since 2026-10-13T17:56Z (the instant #423 merged) on dev itself. Trailers are self-attested text: this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it." ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/commit-trailers.ts" ;
     kpred:job-enabled   "true" ;

@@ -137,6 +137,7 @@ vi.mock('$lib/embed', () => {
   }
 
   return {
+    isEmbedderReady: vi.fn(() => Promise.resolve(true)),
     embedMany: vi.fn((labels: string[]) => Promise.resolve(labels.map(getVec))),
     cosine: (a: Float32Array, b: Float32Array) => {
       let dot = 0;
@@ -286,5 +287,37 @@ describe('semanticEnrichDiff', () => {
 
     const enriched = await semanticEnrichDiff(structural, [existing]);
     expect(enriched.entries.map(e => e.kind)).toEqual(['duplicate', 'reinforces']);
+  });
+
+  describe('onlyIfModelReady (passive callers such as opening Review)', () => {
+    it('returns the structural diff WITHOUT embedding when no model is on the device', async () => {
+      const { embedMany, isEmbedderReady } = await import('$lib/embed');
+      vi.mocked(embedMany).mockClear();
+      vi.mocked(isEmbedderReady).mockResolvedValueOnce(false);
+      const existing = stmt({ s: iri('urn:kbase:concept/matthew-roe') });
+      const incoming = stmt({ id: 'inc', s: iri('urn:kbase:concept/matt-roe'), p: iri('urn:kbase:predicate/likes'), o: lit('coffee') });
+      const structural = computeDiff([incoming], [existing]);
+      const result = await semanticEnrichDiff(structural, [existing], { onlyIfModelReady: true });
+      expect(result).toBe(structural);
+      expect(embedMany).not.toHaveBeenCalled();
+    });
+
+    it('still enriches when the model is already available', async () => {
+      const { embedMany } = await import('$lib/embed');
+      vi.mocked(embedMany).mockClear();
+      const existing = stmt({ s: iri('urn:kbase:concept/matthew-roe'), p: iri('urn:kbase:predicate/knows'), o: iri('urn:kbase:concept/alice') });
+      const incoming = stmt({ id: 'inc', s: iri('urn:kbase:concept/matt-roe'), p: iri('urn:kbase:predicate/likes'), o: lit('coffee') });
+      const structural = computeDiff([incoming], [existing]);
+      await semanticEnrichDiff(structural, [existing], { onlyIfModelReady: true });
+      expect(embedMany).toHaveBeenCalled();
+    });
+
+    it('an explicit caller (no option) never asks isEmbedderReady, so its consent prompt is intact', async () => {
+      const { isEmbedderReady } = await import('$lib/embed');
+      vi.mocked(isEmbedderReady).mockClear();
+      const structural = computeDiff([stmt({ id: 'inc' })], []);
+      await semanticEnrichDiff(structural, []);
+      expect(isEmbedderReady).not.toHaveBeenCalled();
+    });
   });
 });

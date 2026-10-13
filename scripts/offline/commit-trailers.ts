@@ -12,7 +12,7 @@
  * RANGE. `--base=<ref>` checks <ref>..HEAD. With no --base: origin/dev..HEAD when that range is
  * non-empty (a PR: the checkout is a merge commit, which is exempt, plus the PR's commits).
  * When it is empty (a push to dev itself, where HEAD == origin/dev) fall back to commits since
- * the cutoff instant 2026-10-09T12:00:00Z (a bare date was tried first and failed: UTC midnight
+ * the cutoff instant 2026-10-13T17:56:06Z, when this check itself merged (#423; it was 2026-10-09T12:00Z, which made every local sweep on dev fail on 27 commits that predate the rule; a bare date was tried first and failed: UTC midnight
  * had already passed with agent commits on dev that predate this check), so old history is grandfathered and never fails. `--since=<date>`
  * overrides the cutoff.
  *
@@ -23,7 +23,7 @@
  */
 import { execFileSync } from 'node:child_process';
 
-export const CUTOFF = '2026-10-09T12:00:00Z';
+export const CUTOFF = '2026-10-13T17:56:06Z';
 
 export type CommitInfo = {
   sha: string;
