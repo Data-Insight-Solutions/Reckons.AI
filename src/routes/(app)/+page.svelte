@@ -1268,11 +1268,22 @@
   ]);
   const previewUrlMap = $derived.by(() => {
     const m = new Map<string, string>();
+    // An entity can declare more than one image. Which one wins must not depend on statement
+    // order (an imported file's order is arbitrary, and a reviewed export sorts by id), so the
+    // animated preview outranks the photo, which outranks the icon image.
+    const rank = new Map<string, number>([
+      ['urn:kbase:meta/gifPreview', 3], ['urn:kbase:predicate/photo', 2], ['urn:kbase:predicate/icon2d', 1],
+    ]);
+    const best = new Map<string, number>();
     for (const s of statements()) {
       if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
       if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
       const v = s.o.value;
-      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      if (!(v.startsWith('/') || v.startsWith('http') || v.startsWith('data:'))) continue;
+      const r = rank.get(s.p.value) ?? 0;
+      if (r < (best.get(s.s.value) ?? 0)) continue;
+      best.set(s.s.value, r);
+      m.set(s.s.value, v);
     }
     return m;
   });
