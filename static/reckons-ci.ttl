@@ -182,6 +182,7 @@ ci:check-script-tier-f74-3-deterministic-zero-tokens rdf:type ktype:CiCheck ;
     kpred:required-by ci:ruleset-main-merge-protection ;
     kpred:runs-script "scripts/offline/run-all.ts" ;
     kpred:enforces job:published-graph-guard ;
+    kpred:enforces job:commit-trailers ;
     kpred:enforces job:version-align ;
     kpred:enforces job:codebase-coverage ;
     kpred:enforces job:term-ratchet ;
