@@ -11,10 +11,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { Parser, type Quad } from 'n3';
+import { rowId } from '../../../mcp-server/src/review-session.js';
 
 export type Tally = { proposed: number; accepted: number; rejected: number; open: number };
 export const WORKSPACES = ['reckons-workspace/kbs', 'mcp-workspace/kbs'];
 export const PENDING_FILE = 'reckons-workspace/knowledge.pending.jsonl';
+export const DECISIONS_FILE = 'reckons-workspace/knowledge.decisions.jsonl';
 const META = 'urn:kbase:meta/';
 
 const bump = (m: Map<string, Tally>, agent: string): Tally => {
@@ -22,8 +24,32 @@ const bump = (m: Map<string, Tally>, agent: string): Tally => {
   return m.get(agent)!;
 };
 
+/**
+ * Pure: pending-row id -> verdict, from the journal (knowledge.decisions.jsonl), for rows a
+ * verdict has ruled on but the app has not yet drained out of the queue. Without this a row
+ * rejected through the MCP review tools still counted as unreviewed, and back-pressure held a
+ * producer whose whole backlog had been judged (2026-10-13: 58 extraction-score rows).
+ *
+ * Only accept/reject settle (as in settledIds); defer does not. A reject covers every row it names.
+ * An ACCEPT naming more than one row covers NONE: accepting one claim of a group says nothing about
+ * its siblings (the grouping bug, decision eecf9f37: one accept hid 101 docs-review rows).
+ */
+export function settledRows(decisionsText: string): Map<string, 'accept' | 'reject'> {
+  const out = new Map<string, 'accept' | 'reject'>();
+  for (const line of decisionsText.split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const v = JSON.parse(line) as { verdict?: unknown; rows?: unknown };
+      if ((v.verdict !== 'accept' && v.verdict !== 'reject') || !Array.isArray(v.rows)) continue;
+      if (v.verdict === 'accept' && v.rows.length !== 1) continue;
+      for (const r of v.rows) if (typeof r === 'string') out.set(r, v.verdict);
+    } catch { /* a malformed journal line settles nothing */ }
+  }
+  return out;
+}
+
 /** Pure: queued lines. Returns the number of well-formed lines too (malformed ones are not proposals). */
-export function tallyPending(text: string, into: Map<string, Tally> = new Map()): { tallies: Map<string, Tally>; queued: number } {
+export function tallyPending(text: string, into: Map<string, Tally> = new Map(), settled: ReadonlyMap<string, 'accept' | 'reject'> = new Map()): { tallies: Map<string, Tally>; queued: number } {
   let queued = 0;
   for (const line of text.split('\n')) {
     if (!line.trim()) continue;
@@ -32,7 +58,11 @@ export function tallyPending(text: string, into: Map<string, Tally> = new Map())
       queued++;
       // A hand-written or foreign line can carry any JSON here; only a string names an agent.
       const t = bump(into, typeof e.agent === 'string' && e.agent ? e.agent : '(unattributed)');
-      t.proposed++; t.open++;
+      t.proposed++;
+      const verdict = settled.size ? settled.get(rowId(e as never)) : undefined;
+      if (verdict === 'accept') t.accepted++;
+      else if (verdict === 'reject') t.rejected++;
+      else t.open++;
     } catch { /* a malformed line is not a proposal */ }
   }
   return { tallies: into, queued };
@@ -71,7 +101,9 @@ function ttlFiles(dir: string, out: string[] = []): string[] {
 export function tallyWorkspace(root: string): { tallies: Map<string, Tally>; queued: number; annotatedFiles: number } {
   const tallies = new Map<string, Tally>();
   const pending = join(root, PENDING_FILE);
-  const { queued } = tallyPending(existsSync(pending) ? readFileSync(pending, 'utf8') : '', tallies);
+  const decisions = join(root, DECISIONS_FILE);
+  const settled = existsSync(decisions) ? settledRows(readFileSync(decisions, 'utf8')) : new Map<string, 'accept' | 'reject'>();
+  const { queued } = tallyPending(existsSync(pending) ? readFileSync(pending, 'utf8') : '', tallies, settled);
   let annotatedFiles = 0;
   for (const ws of WORKSPACES) {
     for (const file of ttlFiles(join(root, ws))) {

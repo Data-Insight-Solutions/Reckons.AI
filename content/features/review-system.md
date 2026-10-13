@@ -52,7 +52,7 @@ Review System
 
 **[Review Workbench](../features/review-workbench)**
 
-The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted.
+The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph (a small live map beside the review list): browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted.
 
 ## Related
 

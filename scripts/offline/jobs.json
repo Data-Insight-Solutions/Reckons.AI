@@ -103,6 +103,7 @@
       "name": "extraction-score",
       "tier": "agent",
       "enabled": true,
+      "queues": false,
       "cmd": "npx tsx scripts/offline/extraction-score.ts",
       "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only."
     },

@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 > **Production** — built, tested, and in use.
 
-Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review.
+Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples (small facts: a subject, a relationship, an object) from unstructured input. Every extracted triple starts as pending for your review.
 
 <p class="derived">This is built, working, and in daily use here. It has 4 parts below, 2 of which are not built yet.</p>
 

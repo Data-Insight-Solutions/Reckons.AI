@@ -42,7 +42,7 @@ nav:BackToHub
 feat:Ingest
     rdf:type            ktype:Concept ;
     rdfs:label          "Ingest" ;
-    skos:definition     "Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples from unstructured input. Every extracted triple starts as pending for your review." ;
+    skos:definition     "Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files. An LLM extracts semantic triples (small facts: a subject, a relationship, an object) from unstructured input. Every extracted triple starts as pending for your review." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:ReviewSystem
@@ -69,7 +69,7 @@ feat:TrustSystem
 feat:Graph3D
     rdf:type            ktype:Concept ;
     rdfs:label          "3D / 2D Knowledge Graph" ;
-    skos:definition     "Interactive force-directed graph in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips." ;
+    skos:definition     "Interactive force-directed graph (a map where linked facts pull toward each other and unrelated ones drift apart) in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:note           "Fixed known issue (PR #21): production builds rendered a black graph while hit-testing still worked. Root cause was Threlte's <T.BufferAttribute> resolving its THREE class by function name, which minification mangled, so the geometry got the class instead of an instance and the WebGL renderer threw every frame. A minified-build deploy gate (PR #24, tests/e2e/graph-render.test.ts + playwright.smoke.config.ts) now guards against regressions, since the bug only reproduces in a minified production build, never under `vite dev`." .
 
@@ -261,7 +261,7 @@ feat:SourceMonitoring
 feat:ContextCompression
     rdf:type            ktype:Concept ;
     rdfs:label          "Context Compression" ;
-    skos:definition     "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away." ;
+    skos:definition     "Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP (Model Context Protocol, a standard way for AI assistants to reach tools and data). Structured triples outperform summaries because no relationships are paraphrased away." ;
     skos:broader        guide:WhatIsReckonsAI ;
     kpred:has-tool      "kb_compress" ;
     kpred:has-param     "query (required) — topic to extract context for" ;
@@ -357,7 +357,7 @@ feat:Currents
 feat:PodView
     rdf:type            ktype:Concept ;
     rdfs:label          "Pod View" ;
-    skos:definition     "Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." ;
+    skos:definition     "Turn on the pod view from the Graph tab (currents section, where you manage feeds that bring new facts in) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node. Accept folds an arrival into the graph for normal review; dismiss clears it. It is a per-device view preference (stored locally, not in the graph) and is honoured by the home graph view." ;
     skos:broader        feat:Currents ;
     kpred:relates-to    kb:currents-phase-3 .
 
@@ -368,7 +368,7 @@ feat:PodView
 feat:ReviewWorkbench
     rdf:type            ktype:Concept ;
     rdfs:label          "Review Workbench" ;
-    skos:definition     "The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted." ;
+    skos:definition     "The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph (a small live map beside the review list): browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted." ;
     skos:broader        feat:ReviewSystem .
 
 ## =============================================================================
