@@ -279,3 +279,13 @@ cw:TerminologyMaintenance rdf:type ktype:Concept ;
     kpred:principle     "THE COUNT CAN BE RAISED, BUT ONLY WITH A REASON WRITTEN NEXT TO IT. On its first evening the baseline was raised three times, each with the reason recorded in the terminology graph: other work had landed first, docs that quote the words while explaining them, and a page title that uses the word the screen shows." ;
     kpred:honest-note   "THE WEEKLY PARTS HAVE NOT RUN YET. The daily check blocks in CI today. The weekly vote is scheduled but has not run on its own, the automatic rename pull request has never been opened (its trial run stops before that step), and the third model chosen for the vote is not installed, so another stands in." ;
     kpred:relates-to    kb:terminology-maintenance .
+
+cw:UiTermsAudit rdf:type       ktype:Concept ;
+    rdfs:label          "Checking that the screen speaks the user's words" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          112 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "npm run offline:all includes ui-terms, which reads the text people actually see in every screen and checks it against the terminology graph. It flags words that describe how the product is built, such as triple or IRI, with the everyday word to use instead, and it finds 'graph' where the product means a space. A count of each may fall but never rise, so a new screen cannot add more." ;
+    kpred:principle     "RULES BEFORE MODELS, AND MODELS ONLY AFTER CALIBRATION. A local model asked the same question agreed with itself every time and was right 3 times in 59. The rules are scored against those 59 hand-labelled sentences and must make no mistakes on them." ;
+    kpred:honest-note   "TEXT BUILT WHILE THE APP RUNS IS NOT SEEN. A space named Default Graph by the app shows 'graph' on screen, but no source line says so; a pass over rendered pages is still to come." ;
+    kpred:relates-to    kb:ui-term-audit .

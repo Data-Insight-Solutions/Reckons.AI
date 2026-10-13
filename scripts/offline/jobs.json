@@ -482,6 +482,14 @@
       "enabled": false,
       "cmd": "npx tsx scripts/agent/rename-pr.ts --term=kb",
       "desc": "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep."
+    },
+    {
+      "name": "ui-terms",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/ui-terms.ts --check",
+      "desc": "F203.7 UI terms ratchet (Matt, 2026-10-07: detect backend engineering terms on screen and inconsistent words). Visible template text only: jargon from kpred:ui-jargon and prefixed standards labels, and 'graph' meaning a space by rule (lib/term-sense-rules.ts). Counts may fall, never rise; baselines are kpred:ui-term-ratchet on the terminology scheme."
     }
   ]
 }

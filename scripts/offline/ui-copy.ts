@@ -48,7 +48,7 @@ export type Occurrence = {
   start: number;
   end: number;
   word: string;
-  kind: 'kb' | 'knowledge-base' | 'graph';
+  kind: 'kb' | 'knowledge-base' | 'graph' | 'jargon';
   where: 'text' | 'attribute' | 'script';
   /** The whole visible sentence the word sits in, expressions shown as {…}. */
   sentence: string;
@@ -73,7 +73,8 @@ function sentenceOf(parts: Node[] | undefined): string {
   return (parts ?? []).map((p) => (p.type === 'Text' ? String(p.data ?? '') : p.type === 'ExpressionTag' ? '{…}' : '')).join('').replace(/\s+/g, ' ').trim();
 }
 
-export function occurrencesIn(file: string, source: string): Occurrence[] {
+/** Visible occurrences of `pattern` (default: KB / knowledge base / graph) in a component's template. */
+export function occurrencesIn(file: string, source: string, pattern: RegExp = WORDS, kind: (w: string) => Occurrence['kind'] = kindOf): Occurrence[] {
   const out: Occurrence[] = [];
   let ast: { fragment: Node };
   try {
@@ -84,9 +85,9 @@ export function occurrencesIn(file: string, source: string): Occurrence[] {
   const lineOf = (pos: number) => source.slice(0, pos).split('\n').length;
   const scan = (text: Node, where: Occurrence['where'], sentence: string) => {
     const data = String(text.data ?? '');
-    for (const m of data.matchAll(WORDS)) {
+    for (const m of data.matchAll(pattern)) {
       const start = (text.start ?? 0) + (m.index ?? 0);
-      out.push({ file, line: lineOf(start), start, end: start + m[0].length, word: m[0], kind: kindOf(m[0]), where, sentence });
+      out.push({ file, line: lineOf(start), start, end: start + m[0].length, word: m[0], kind: kind(m[0]), where, sentence });
     }
   };
   const walk = (node: unknown, inCode: boolean): void => {
@@ -126,7 +127,7 @@ export function occurrencesIn(file: string, source: string): Occurrence[] {
 
 /** "KB" → "space", "KBs" → "spaces", preserving an initial capital or all-caps position. */
 /** String literals in TypeScript source that read as prose, with absolute offsets. */
-export function scriptOccurrences(file: string, code: string, offset: number, source: string): Occurrence[] {
+export function scriptOccurrences(file: string, code: string, offset: number, source: string, pattern: RegExp = WORDS, kind: (w: string) => Occurrence['kind'] = kindOf): Occurrence[] {
   const out: Occurrence[] = [];
   const sf = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
   const lineOf = (pos: number) => source.slice(0, pos).split('\n').length;
@@ -143,10 +144,10 @@ export function scriptOccurrences(file: string, code: string, offset: number, so
       const value = (n as ts.LiteralLikeNode).text;
       if (/\s/.test(value) && !insideConsole(n)) {
         const raw = n.getText(sf);
-        for (const m of raw.matchAll(WORDS)) {
+        for (const m of raw.matchAll(pattern)) {
           const start = offset + n.getStart(sf) + (m.index ?? 0);
           const sentence = value.replace(/\s+/g, ' ').trim();
-          out.push({ file, line: lineOf(start), start, end: start + m[0].length, word: m[0], kind: kindOf(m[0]), where: 'script', sentence });
+          out.push({ file, line: lineOf(start), start, end: start + m[0].length, word: m[0], kind: kind(m[0]), where: 'script', sentence });
         }
       }
     }
