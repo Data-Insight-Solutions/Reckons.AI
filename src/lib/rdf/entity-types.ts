@@ -231,7 +231,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
   },
   {
     iri: 'urn:kbase:type/EntitySet',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A user-defined grouping of entities and the relationships among them',
@@ -252,7 +252,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
    */
   {
     iri: 'http://www.w3.org/2004/02/skos/core#Collection',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A grouping of entities — members overlap rather than partition, and the group carries facts of its own',
