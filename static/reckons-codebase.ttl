@@ -108,6 +108,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/auto-trust.ts" ;
           kpred:has-file "src/lib/rdf/claims-context.ts" ;
           kpred:has-file "src/lib/rdf/co-hyponyms.ts" ;
+          kpred:has-file "src/lib/rdf/collections-migration.ts" ;
           kpred:has-file "src/lib/rdf/entity-sets.ts" ;
           kpred:has-file "src/lib/rdf/entity-typing.ts" ;
           kpred:has-file "src/lib/rdf/finding-class.ts" ;

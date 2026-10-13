@@ -267,6 +267,12 @@ kb:ev-alex-drive
     rdfs:label "Alex drives up (SF → Eastern Sierra)" ;
     pred:ends-at "2026-07-10T18:40"^^xsd:dateTime .
 
+kb:trip-crew
+    rdf:type <http://www.w3.org/2004/02/skos/core#Collection> ;
+    <http://www.w3.org/2004/02/skos/core#member> kb:alex ;
+    <http://www.w3.org/2004/02/skos/core#member> kb:jordan ;
+    rdfs:label "Trip crew" .
+
 kb:san-francisco
     rdfs:label "San Francisco, CA" ;
     rdf:type <urn:kbase:type/Place> ;
@@ -284,12 +290,6 @@ kb:ev-alex-client-call
     pred:ends-at "2026-07-10T12:30"^^xsd:dateTime ;
     rdf:type <urn:kbase:type/CalendarEvent> ;
     pred:icon2d "📞" .
-
-kb:trip-crew
-    pred:has-member kb:jordan ;
-    rdf:type <urn:kbase:type/EntitySet> ;
-    pred:has-member kb:alex ;
-    rdfs:label "Trip crew" .
 
 # ---- sources ----
 src:starter-curated
@@ -1193,6 +1193,17 @@ src:sample-route-notes
     prov:wasDerivedFrom src:sample-thread ;
     dc:created "2026-07-03T19:10:00.000Z"^^xsd:dateTime .
 
+<urn:kbase:stmt/starter-509dc5c3a34dddf2>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:trip-crew ;
+    rdf:predicate rdf:type ;
+    rdf:object <http://www.w3.org/2004/02/skos/core#Collection> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
+    prov:wasDerivedFrom src:starter-curated ;
+    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
+
 <urn:kbase:stmt/starter-517b0a2857b4dbcd>
     rdf:type rdf:Statement ;
     rdf:subject kb:ev-sunrise-shoot ;
@@ -1270,28 +1281,6 @@ src:sample-route-notes
     meta:excerpt "I want to photograph the sunrise on Saturday morning; sunrise is at 5:32 so we need to be early." ;
     prov:wasDerivedFrom src:sample-voice-memo ;
     dc:created "2026-07-05T08:15:00.000Z"^^xsd:dateTime .
-
-<urn:kbase:stmt/starter-5aa7ed0fac2ecf48>
-    rdf:type rdf:Statement ;
-    rdf:subject kb:trip-crew ;
-    rdf:predicate pred:has-member ;
-    rdf:object kb:jordan ;
-    meta:status "confirmed" ;
-    meta:confidence "1"^^xsd:decimal ;
-    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
-    prov:wasDerivedFrom src:starter-curated ;
-    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
-
-<urn:kbase:stmt/starter-5c519b5d1ae220d1>
-    rdf:type rdf:Statement ;
-    rdf:subject kb:trip-crew ;
-    rdf:predicate rdf:type ;
-    rdf:object <urn:kbase:type/EntitySet> ;
-    meta:status "confirmed" ;
-    meta:confidence "1"^^xsd:decimal ;
-    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
-    prov:wasDerivedFrom src:starter-curated ;
-    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
 
 <urn:kbase:stmt/starter-5ce3f42d97953f1a>
     rdf:type rdf:Statement ;
@@ -1500,17 +1489,6 @@ src:sample-route-notes
     rdf:subject kb:lake-george ;
     rdf:predicate pred:scheduled-at ;
     rdf:object "2026-07-11"^^xsd:date ;
-    meta:status "confirmed" ;
-    meta:confidence "1"^^xsd:decimal ;
-    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
-    prov:wasDerivedFrom src:starter-curated ;
-    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
-
-<urn:kbase:stmt/starter-6f3247e687f6ed22>
-    rdf:type rdf:Statement ;
-    rdf:subject kb:trip-crew ;
-    rdf:predicate pred:has-member ;
-    rdf:object kb:alex ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
@@ -1912,6 +1890,17 @@ src:sample-route-notes
     prov:wasDerivedFrom src:starter-curated ;
     dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
 
+<urn:kbase:stmt/starter-9e54966bf94414de>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:trip-crew ;
+    rdf:predicate <http://www.w3.org/2004/02/skos/core#member> ;
+    rdf:object kb:alex ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
+    prov:wasDerivedFrom src:starter-curated ;
+    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
+
 <urn:kbase:stmt/starter-9eaf476a4d293e90>
     rdf:type rdf:Statement ;
     rdf:subject <urn:kbase:type/TripLeg> ;
@@ -1996,6 +1985,17 @@ src:sample-route-notes
     rdf:subject kb:ev-jordan-monday ;
     rdf:predicate rdfs:comment ;
     rdf:object "The commitment on the far side of the weekend. It is what makes an eleven o'clock checkout the latest workable one — leave any later and Sunday's drive runs into Monday's obligation." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
+    prov:wasDerivedFrom src:starter-curated ;
+    dc:created "2026-07-03T18:00:00.000Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/starter-a95fd55d18bede88>
+    rdf:type rdf:Statement ;
+    rdf:subject kb:trip-crew ;
+    rdf:predicate <http://www.w3.org/2004/02/skos/core#member> ;
+    rdf:object kb:jordan ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"starter-curated\",\"updatedAt\":1783101600000}}" ;
