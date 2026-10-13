@@ -16,7 +16,11 @@ type PollDependencies = {
   report: (error: unknown) => void;
 };
 
-const INTERVAL_MS = 60_000;
+// Five minutes, not one: the person's n8n monitor only collects every ~30 minutes, so a faster
+// poll finds nothing new and costs them one request per minute per open tab. Consecutive
+// failures back off exponentially (cap 30 min) so a down server is not hammered.
+const INTERVAL_MS = 5 * 60_000;
+const MAX_BACKOFF_MS = 30 * 60_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 
 function validDefinition(value: unknown): value is CurrentDef {
@@ -105,6 +109,7 @@ export function startCurrentsPolling(
     }
   }
 
+  let failures = 0;
   async function tick() {
     try {
       // Two tabs share the ledger. Serializing the sweep prevents a stale read from losing a
@@ -114,11 +119,13 @@ export function startCurrentsPolling(
       } else {
         await sweep();
       }
+      failures = 0;
     } catch (error) {
+      failures++;
       if (!lifetime.signal.aborted) deps.report(error);
     } finally {
       // Schedule after completion, so a slow server never creates overlapping polls.
-      if (!lifetime.signal.aborted) timer = setTimeout(() => void tick(), INTERVAL_MS);
+      if (!lifetime.signal.aborted) timer = setTimeout(() => void tick(), Math.min(INTERVAL_MS * 2 ** failures, MAX_BACKOFF_MS));
     }
   }
   void tick();

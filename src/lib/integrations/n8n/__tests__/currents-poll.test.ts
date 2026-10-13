@@ -55,7 +55,7 @@ describe('Currents connection lifecycle', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(register).toHaveBeenCalledTimes(2);
     expect(process).toHaveBeenCalledWith([item], def, 'space-a', expect.any(AbortSignal));
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(300_000);
     expect(register).toHaveBeenCalledTimes(2);
     expect(fetchItems).toHaveBeenCalledTimes(2);
   });
@@ -91,7 +91,9 @@ describe('Currents connection lifecycle', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(report).toHaveBeenCalledTimes(1);
     expect(process).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(300_000); // backed off: one failure doubles the wait
+    expect(process).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(300_000);
     expect(process).toHaveBeenCalledTimes(1);
   });
 

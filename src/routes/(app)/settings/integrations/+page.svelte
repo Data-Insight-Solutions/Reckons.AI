@@ -794,7 +794,7 @@
       />
     </label>
     <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
-      Currents sends this space's ID and saved current definitions to your instance, then checks for arrivals every minute while the app is open. New facts wait for your review.
+      Currents sends this space's ID and saved current definitions to your instance, then checks for arrivals every five minutes while the app is open. New facts wait for your review.
     </p>
     <label class="field-row">
       <input type="checkbox" bind:checked={n8nCurrentsEnabled} />
