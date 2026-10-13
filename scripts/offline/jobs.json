@@ -63,6 +63,13 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "test-workflow-check",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/test-workflow-check.ts --pending-ok",
+      "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. WARN-ONLY FOR NOW: --pending-ok reports steps with no screenshot but passes them, because the flagship's screenshots wait on F248 (synthetic Getting started data). Drop the flag and set blocking when they are committed."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,

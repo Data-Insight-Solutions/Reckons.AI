@@ -23,6 +23,7 @@ import { Parser, type Quad } from 'n3';
 import {
   loadCache, saveCache, diagramKey, renderDiagrams, CACHE_FILE,
 } from './lib/mermaid-render.js';
+import { allWorkflowDiagrams } from './lib/test-workflow.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -66,7 +67,9 @@ export function collectDiagramSources(files: string[]): string[] {
 
 async function main(): Promise<void> {
   const files = ttlFiles();
-  const sources = collectDiagramSources(files);
+  // F34.2: test-workflow diagrams are written in no graph; they are COMPUTED from the ordered
+  // TestStep triples, exactly as docs-pages.ts computes them when it looks them up.
+  const sources = [...new Set([...collectDiagramSources(files), ...allWorkflowDiagrams().map((d) => d.trim())])].sort();
   const cache = loadCache();
 
   const wanted = new Map(sources.map((s) => [diagramKey(s), s]));

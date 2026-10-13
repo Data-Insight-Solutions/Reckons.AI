@@ -1,5 +1,5 @@
 {
-  "built": 160,
+  "built": 162,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -890,7 +890,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "78a56f71eb123052"
+      "pageHash": "fdc6f26e4b22d42e"
     },
     {
       "path": "testing/test-suite",
@@ -899,7 +899,16 @@
       "factHash": "becc5146029c62b3",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "3767510cd2570944"
+      "pageHash": "347db08f0e14777c"
+    },
+    {
+      "path": "testing/test-workflows",
+      "entity": "urn:reckons:test/TestWorkflows",
+      "graph": "docs-testing.ttl",
+      "factHash": "70a61c103f033337",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "a56005f3450763f7"
     },
     {
       "path": "testing/visual-tests",
@@ -908,7 +917,16 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d17871a331ec7910"
+      "pageHash": "b70b2c61e33e70ea"
+    },
+    {
+      "path": "testing/workflow-readme-path",
+      "entity": "urn:reckons:test/Workflow-ReadmePath",
+      "graph": "docs-testing.ttl",
+      "factHash": "cfa137c93bb378f0",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "6dda304344ba7156"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",
