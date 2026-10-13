@@ -237,9 +237,9 @@ job:extraction-chain rdf:type          ktype:OfflineJob ;
 job:extraction-score rdf:type          ktype:OfflineJob ;
     rdfs:label          "extraction-score" ;
     skos:prefLabel      "extraction-score" ;
-    skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)." ;
+    skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only." ;
     kpred:job-tier      "agent" ;
-    kpred:command       "npx tsx scripts/offline/extraction-score.ts --pending" ;
+    kpred:command       "npx tsx scripts/offline/extraction-score.ts" ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
