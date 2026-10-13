@@ -4,6 +4,13 @@
   "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
     {
+      "name": "visual-streams",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npm run visual:streams -- --base=http://localhost:4173",
+      "desc": "Opt-in local VLM scripted and exploratory workflow streams. Requires an explicitly started branch preview on the chosen port and OLLAMA_BASE_URL. Private receipts and review proposals; disabled in sweeps because a preview is not assumed to exist. Configure streams in scripts/visual-streams/examples.json or pass --config."
+    },
+    {
       "name": "queue-dedupe",
       "tier": "script",
       "enabled": true,
