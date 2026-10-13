@@ -72,7 +72,7 @@
     }, {
       report: (error) => pushNotification({
         id: 'currents-delivery-error', type: 'warn', title: 'Currents could not sync',
-        body: `${error instanceof Error ? error.message : String(error)} Check the n8n workflow, server access and this build's connection policy in Integrations. Retrying in a minute.`,
+        body: `${error instanceof Error ? error.message : String(error)} Check the n8n workflow, server access and this build's connection policy in Integrations. Retrying in a few minutes.`,
         action: { label: 'Integrations', href: '/settings/integrations#s-n8n' },
       }),
     });
