@@ -184,8 +184,10 @@ ci:check-script-tier-f74-3-deterministic-zero-tokens rdf:type ktype:CiCheck ;
     kpred:enforces job:published-graph-guard ;
     kpred:enforces job:version-align ;
     kpred:enforces job:codebase-coverage ;
+    kpred:enforces job:branch-ancestry ;
     kpred:enforces job:term-ratchet ;
     kpred:guards kb:code-graph-edges ;
+    kpred:guards kb:release-pipeline ;
     kpred:guards kb:terminology-maintenance ;
     kpred:guards kb:terminology-ontology ;
     skos:definition "Required by Main merge protection: a merge to main waits for it to pass." .
