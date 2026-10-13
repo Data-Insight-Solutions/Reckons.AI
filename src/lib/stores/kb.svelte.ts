@@ -1,4 +1,5 @@
 import { db } from '../storage/db';
+import { migrateEntitySetsToCollections } from '../rdf/collections-migration';
 import { liveQuery } from 'dexie';
 import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
 import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
@@ -91,8 +92,25 @@ export async function loadAll() {
     db.statements.toArray()
   ]);
   _sources = srcs;
-  _statements = sts;
+  _statements = await migrateLegacyEntitySets(sts);
   _loaded = true;
+}
+
+/**
+ * F65 entity sets become skos:Collection (0.2.6). Runs on every load; migrated data has no legacy
+ * terms so it is a no-op scan. If the write-back fails the legacy rows stay in storage and are still
+ * READ (entity-sets.ts / sets.ts accept both), so a failure costs nothing but a retry next load.
+ */
+async function migrateLegacyEntitySets(sts: Statement[]): Promise<Statement[]> {
+  const { statements, changed } = migrateEntitySetsToCollections(sts);
+  if (changed.length === 0) return sts;
+  try {
+    await db.statements.bulkPut(changed);
+    return statements;
+  } catch (e) {
+    console.warn('[collections] entity-set -> collection migration not persisted:', e);
+    return sts;
+  }
 }
 
 /** Compare storage snapshots by id and content, independent of cursor/local insertion order. */
@@ -463,6 +481,17 @@ export async function addStatements(
   const plan = await prepareStatementsForWrite(sts, sourceId, opts);
   if (plan.statements.length === 0 && plan.blocked.length === 0) return;
   await db.transaction('rw', db.statements, db.changelog, async () => {
+    if (opts?.origin === 'current') {
+      // A retry must not turn a confirmed/rejected arrival back into pending. Check inside the
+      // write transaction: another tab may have reviewed it since our reactive snapshot loaded.
+      const existing = await db.statements.bulkGet(plan.statements.map((st) => st.id));
+      const seen = new Set<string>();
+      plan.statements = plan.statements.filter((st, i) => {
+        if (existing[i] || seen.has(st.id)) return false;
+        seen.add(st.id);
+        return true;
+      });
+    }
     if (plan.statements.length > 0) await db.statements.bulkPut(plan.statements);
     await writeStatementChangeLog(plan, sourceId);
   });

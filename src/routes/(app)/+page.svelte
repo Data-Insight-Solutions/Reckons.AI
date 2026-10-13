@@ -1268,11 +1268,22 @@
   ]);
   const previewUrlMap = $derived.by(() => {
     const m = new Map<string, string>();
+    // An entity can declare more than one image. Which one wins must not depend on the order
+    // the file listed them in (a reviewed starter sorts by id), so the animated preview
+    // outranks the photo, which outranks the icon image.
+    const rank: Record<string, number> = {
+      'urn:kbase:meta/gifPreview': 3, 'urn:kbase:predicate/photo': 2, 'urn:kbase:predicate/icon2d': 1,
+    };
+    const best: Record<string, number> = {};
     for (const s of statements()) {
       if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
       if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
       const v = s.o.value;
-      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      if (!(v.startsWith('/') || v.startsWith('http') || v.startsWith('data:'))) continue;
+      const r = rank[s.p.value] ?? 0;
+      if (r < (best[s.s.value] ?? 0)) continue;
+      best[s.s.value] = r;
+      m.set(s.s.value, v);
     }
     return m;
   });
@@ -1944,8 +1955,8 @@
     untrack(() => pushNotification({
       id: 'add-set-hint',
       type: 'info',
-      title: 'Make a set',
-      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as set" in the panel.',
+      title: 'Make a collection',
+      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as collection" in the panel.',
     }));
   });
 
@@ -1970,7 +1981,7 @@
   }
 
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
-  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // is a first-class node (skos:Collection) linked to each member via skos:member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
   async function createSetFromSelection() {
     const members = multiSelectedList.map(n => n.iri);
@@ -2554,7 +2565,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
-      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>

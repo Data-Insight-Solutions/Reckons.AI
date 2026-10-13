@@ -45,6 +45,15 @@ job:altitude-report rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:branch-ancestry rdf:type          ktype:OfflineJob ;
+    rdfs:label          "branch-ancestry" ;
+    skos:prefLabel      "branch-ancestry" ;
+    skos:definition     "A PR into dev or staging must not carry commits that exist only on main. Found 2026-10-09: agent worktrees start from main, so three PRs meant for dev carried main's promotion merges and a safety attestation, which no test or conflict revealed. BLOCKING because merged, main's history would land in dev, and a well-meant deletion of it would reach main on the next promotion. Promotions into main are exempt; a back-merge of main is allowed only from a branch named main or sync/main-*." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/branch-ancestry.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:build-guard rdf:type          ktype:OfflineJob ;
     rdfs:label          "build-guard" ;
     skos:prefLabel      "build-guard" ;
@@ -63,6 +72,15 @@ job:button-crawl rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:ci-graph rdf:type          ktype:OfflineJob ;
+    rdfs:label          "ci-graph" ;
+    skos:prefLabel      "ci-graph" ;
+    skos:definition     "CI as a graph (F33.2): static/reckons-ci.ttl must match .github/workflows/*.yml and .github/ruleset-main.json. Answers what stops a bad merge to main, which checks only advise, and which roadmap features each check guards. Also reports a required check no workflow produces. Advisory, like jobs-graph: a stale graph is fixed by regenerating it, not by blocking a merge." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/ci-graph.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:claim-audit rdf:type          ktype:OfflineJob ;
     rdfs:label          "claim-audit" ;
     skos:prefLabel      "claim-audit" ;
@@ -75,10 +93,10 @@ job:claim-audit rdf:type          ktype:OfflineJob ;
 job:code-review rdf:type          ktype:OfflineJob ;
     rdfs:label          "code-review" ;
     skos:prefLabel      "code-review" ;
-    skos:definition     "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)" ;
+    skos:definition     "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled" ;
     kpred:job-tier      "agent" ;
     kpred:command       "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
 job:code-sprawl rdf:type          ktype:OfflineJob ;
@@ -96,6 +114,15 @@ job:codebase-coverage rdf:type          ktype:OfflineJob ;
     skos:definition     "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides." ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/codebase-coverage.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
+job:commit-trailers rdf:type          ktype:OfflineJob ;
+    rdfs:label          "commit-trailers" ;
+    skos:prefLabel      "commit-trailers" ;
+    skos:definition     "F254 phase 1a. Every AGENT commit (Co-Authored-By naming a model, or a Model: trailer) must carry non-empty Model: and Intent: trailers; merges and human commits are exempt. Range origin/dev..HEAD, or commits since 2026-10-09T12:00Z on dev itself. Trailers are self-attested text: this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/commit-trailers.ts" ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "true" .
 
@@ -228,9 +255,9 @@ job:extraction-chain rdf:type          ktype:OfflineJob ;
 job:extraction-score rdf:type          ktype:OfflineJob ;
     rdfs:label          "extraction-score" ;
     skos:prefLabel      "extraction-score" ;
-    skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)." ;
+    skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only." ;
     kpred:job-tier      "agent" ;
-    kpred:command       "npx tsx scripts/offline/extraction-score.ts --pending" ;
+    kpred:command       "npx tsx scripts/offline/extraction-score.ts" ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
@@ -531,6 +558,15 @@ job:terminology-sweep rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:test-workflow-check rdf:type          ktype:OfflineJob ;
+    rdfs:label          "test-workflow-check" ;
+    skos:prefLabel      "test-workflow-check" ;
+    skos:definition     "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/test-workflow-check.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
+
 job:untested-options rdf:type          ktype:OfflineJob ;
     rdfs:label          "untested-options" ;
     skos:prefLabel      "untested-options" ;
@@ -584,9 +620,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:build-guard, job:button-crawl, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 62 of them, 50 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 66 of them, 54 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

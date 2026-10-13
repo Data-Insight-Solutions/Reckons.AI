@@ -71,8 +71,12 @@ test('notifications collapse to a corner bell on /review and expand on click', a
   await expect(bell).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('.notification-stack')).toHaveCount(0);
 
-  // Clicking the bell expands the stack in place.
-  await bell.click();
+  // Clicking the bell expands the stack in place. The reviewed starter (F248) leaves three facts
+  // pending, so Review can raise the model-download consent dialog over the page; this test is
+  // about the bell, not the dialog, so decline it and dispatch the click past the overlay.
+  const notNow = page.getByRole('button', { name: /not now/i });
+  if (await notNow.isVisible().catch(() => false)) await notNow.click().catch(() => {});
+  await bell.dispatchEvent('click');
   await expect(page.locator('.notification-stack')).toBeVisible({ timeout: 3_000 });
 });
 

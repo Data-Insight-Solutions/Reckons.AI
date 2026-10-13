@@ -71,6 +71,8 @@
     "docs:pages": "npx tsx scripts/docs-pages.ts",
     "docs:diagrams": "npx tsx scripts/docs-diagrams.ts",
     "docs:diagrams:check": "npx tsx scripts/docs-diagrams.ts --check",
+    "workflow:shots": "npx tsx scripts/workflow-shots.ts",
+    "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",
