@@ -183,11 +183,13 @@ ci:check-script-tier-f74-3-deterministic-zero-tokens rdf:type ktype:CiCheck ;
     kpred:runs-script "scripts/offline/run-all.ts" ;
     kpred:enforces job:published-graph-guard ;
     kpred:enforces job:version-align ;
+    kpred:enforces job:test-workflow-check ;
     kpred:enforces job:codebase-coverage ;
     kpred:enforces job:term-ratchet ;
     kpred:guards kb:code-graph-edges ;
     kpred:guards kb:terminology-maintenance ;
     kpred:guards kb:terminology-ontology ;
+    kpred:guards kb:test-workflow-docs ;
     skos:definition "Required by Main merge protection: a merge to main waits for it to pass." .
 
 ci:check-type-check-unit-tests-build rdf:type ktype:CiCheck ;
