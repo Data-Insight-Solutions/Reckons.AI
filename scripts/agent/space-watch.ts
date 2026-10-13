@@ -28,6 +28,7 @@ import { join, basename, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Parser } from 'n3';
 import { TEMPLATES } from './task-templates.js';
+import { assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 export type ModelFn = (prompt: string) => Promise<string>;
 export interface Provenance { host: string; model: string; at: string; kind: 'plan' | 'answer' | 'notice' }
@@ -274,14 +275,14 @@ export async function processSpace(o: WatchOptions): Promise<PassSummary> {
 
 // ── default model: local Ollama only ───────────────────────────────────────
 export function ollamaCall(model: string, base = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434'): ModelFn {
-  return async (prompt) => {
+  return (prompt) => retryTransient(async () => {
     const res = await fetch(`${base.replace(/\/+$/, '')}/api/generate`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model, prompt, stream: false, format: 'json', options: { temperature: 0 } }),
+      body: JSON.stringify({ model, prompt, stream: false, format: 'json', options: localOptions({ temperature: 0 }) }),
     });
-    if (!res.ok) throw new Error(`Ollama ${res.status}`);
+    await assertOk(res);
     return ((await res.json()) as { response?: string }).response ?? '';
-  };
+  });
 }
 
 async function main(): Promise<void> {

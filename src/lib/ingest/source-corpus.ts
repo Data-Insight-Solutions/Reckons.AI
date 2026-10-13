@@ -78,11 +78,12 @@ export function originalExtension(filename?: string, mediaType?: string): string
   return EXT_BY_MEDIA[media] ?? 'bin';
 }
 
-/** Thin storage seam. Adapters: FileSystemDirectoryHandle (linked folder or OPFS) and test fakes. */
+/** Thin storage seam (extension point: adapters are FileSystemDirectoryHandle, OPFS and test fakes). */
 export interface CorpusDir {
   write(name: string, data: string | Uint8Array): Promise<void>;
   readText(name: string): Promise<string | null>;
 }
+/** Root of the corpus store (extension point: same adapters as CorpusDir). */
 export interface CorpusRoot {
   /** Names of the per-source directories. */
   listDirs(): Promise<string[]>;

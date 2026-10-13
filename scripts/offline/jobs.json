@@ -80,8 +80,8 @@
       "name": "extraction-score",
       "tier": "agent",
       "enabled": true,
-      "cmd": "npx tsx scripts/offline/extraction-score.ts --pending",
-      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)."
+      "cmd": "npx tsx scripts/offline/extraction-score.ts",
+      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only."
     },
     {
       "name": "shacl-validate",
@@ -219,9 +219,9 @@
     {
       "name": "code-review",
       "tier": "agent",
-      "enabled": true,
+      "enabled": false,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled"
     },
     {
       "name": "visual-diff",
@@ -332,6 +332,14 @@
       "blocking": false,
       "cmd": "npx tsx scripts/jobs-graph.ts --check",
       "desc": "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source."
+    },
+    {
+      "name": "ci-graph",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/ci-graph.ts --check",
+      "desc": "CI as a graph (F33.2): static/reckons-ci.ttl must match .github/workflows/*.yml and .github/ruleset-main.json. Answers what stops a bad merge to main, which checks only advise, and which roadmap features each check guards. Also reports a required check no workflow produces. Advisory, like jobs-graph: a stale graph is fixed by regenerating it, not by blocking a merge."
     },
     {
       "name": "landing-data",

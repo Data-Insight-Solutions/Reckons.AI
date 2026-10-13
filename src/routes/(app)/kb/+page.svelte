@@ -1606,7 +1606,7 @@
 </section>
 
 <!-- ── Currents ───────────────────────────────────────────────────────────── -->
-<section class="section">
+<section id="currents" class="section">
   <div class="section-head">
     <h3>currents</h3>
     <button class="ghost sm mono" onclick={() => (showCurrents = !showCurrents)}>
@@ -1615,7 +1615,7 @@
   </div>
   {#if showCurrents}
     <div class="currents-editor">
-      <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this space. arrivals always land as pending facts — review them in the pod view.</p>
+      <p class="section-hint">recurring streams bring new arrivals into this space through your n8n Currents Monitor. <a href="/settings/integrations#s-n8n">connect currents in integrations</a> to receive them while this app is open. arrivals land as pending facts — review them in the pod view or review queue. automatic ranking and full-text extraction are not connected yet.</p>
 
       <div class="currents-field">
         <label class="pod-toggle-row" for="pod-view-toggle">
