@@ -55,6 +55,7 @@ import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 import { docsTitle } from './lib/docs-title.js';
+import { loadWorkflows, workflowDiagram, SHOT_WIDTH, SHOT_HEIGHT, type Workflow } from './lib/test-workflow.js';
 import { altitudeOf, ALTITUDE_RANK } from '../src/lib/rdf/fact-altitude.js';
 import { readSets, readNotations, setOverlaps, type EntitySet } from '../src/lib/rdf/sets.js';
 
@@ -135,6 +136,10 @@ const EXCLUDED_IRI_PREDICATES = new Set<string>([RDF_TYPE, SKOS_BROADER, NAV_NEX
  */
 const RENDER_ONLY_STRUCTURAL = new Set<string>([
   PART_OF, STEP_ORDER, RENDER_INLINE, CHILDREN_LABEL,
+  // F34.2 test workflows: read by scripts/lib/test-workflow.ts and rendered as step sections, so
+  // printing them again as "Details" bullets would show the plumbing beside the finished page.
+  `${KPRED}workflow-id`, `${KPRED}test-file`, `${KPRED}step-id`, `${KPRED}short-label`,
+  `${KPRED}box-label`, `${KPRED}screenshot`,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
   // Where the page LIVES is routing too. Without these, the first page to use the override
@@ -603,6 +608,8 @@ const STATUS_BANNER: Record<string, string> = {
  */
 const DIAGRAMS = loadCache();
 const SCENES = loadSceneCache();
+/** Test workflows (F34.2) by entity IRI, read from the Testing graph in main(). */
+const WORKFLOWS = new Map<string, Workflow>();
 /** stable id -> the page a leap should land on. Filled in main(), read by the renderers. */
 const LEAP_TARGETS = new Map<string, { section: string; slug: string; title: string }>();
 /** Sets declared anywhere in the corpus, and which sets each entity belongs to. F187.5. */
@@ -1144,6 +1151,50 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
   return lines;
 }
 
+
+/**
+ * A test workflow's body: the flow diagram, then one section per step (F34.2).
+ *
+ * BOTH come from the same ordered TestStep list that the e2e test reads, so the picture and the
+ * sections cannot disagree with each other or with what the test runs. A step with no captured
+ * screenshot says so in the page; it never shows a stand-in picture, because a reader would take it
+ * for the real app (kb:honest-status).
+ */
+function renderWorkflow(w: Workflow, heading: string): string[] {
+  const source = workflowDiagram(w);
+  const key = diagramKey(source);
+  const svg = DIAGRAMS[key];
+  if (!svg) {
+    throw new Error(
+      `No cached diagram for test workflow <${w.iri}> (key ${key}).\n` +
+      `The diagram is computed from the workflow's steps, so adding or renaming a step changes it.\n` +
+      `Fix: npm run docs:diagrams`,
+    );
+  }
+  const lines: string[] = [
+    diagramFigure(svg, 'The steps of this workflow, drawn from the same list the test runs.'), '',
+    `## ${escapeMdText(heading)}`, '',
+  ];
+  for (const s of w.steps) {
+    lines.push(`### ${s.order}. ${escapeMdText(s.title)}`, '');
+    lines.push(escapeMdText(s.text), '');
+    lines.push(`On the page \`${s.page}\`.`, '');
+    if (s.screenshot) {
+      const alt = `Screenshot of step ${s.order}, ${s.title}, with a box labelled "${s.boxLabel}" round the part of the page being checked.`;
+      lines.push(
+        `<figure class="workflow-shot"><img src="${s.screenshot}" width="${SHOT_WIDTH}" height="${SHOT_HEIGHT}" `
+        + `alt="${alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async" />`
+        + `<figcaption>The pink box marks: ${escapeMdText(s.boxLabel)}</figcaption></figure>`, '');
+    } else {
+      lines.push(
+        '<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>', '');
+    }
+    lines.push(`**What the test checks.** ${escapeMdText(s.assertion)}`, '');
+  }
+  lines.push(`This workflow is run by \`${w.testFile}\`, which reads the steps above from the same list.`, '');
+  return lines;
+}
+
 function renderBody(
   e: Entity,
   refs: Map<string, PageRef>,
@@ -1160,6 +1211,8 @@ function renderBody(
 
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
+  const workflow = WORKFLOWS.get(e.iri);
+  if (workflow) lines.push(...renderWorkflow(workflow, childHeading));
   lines.push(...renderSceneFor(e));
   lines.push(...renderDerived(e, children));
   lines.push(...renderSetMembership(e, refs));
@@ -1178,7 +1231,8 @@ function renderBody(
     lines.push(...renderStatusSummary(STATUS_ROWS, refs, (iri) => TITLE_OF.get(iri) ?? refs.get(iri)?.title ?? iri));
   }
 
-  lines.push(...renderChildren(children, childHeading, e.renderAs));
+  // A workflow's steps are rendered above, as numbered sections with their screenshots.
+  if (!workflow) lines.push(...renderChildren(children, childHeading, e.renderAs));
 
   const iriKeys = [...e.iriProps.keys()]
     .filter((k) => !RENDER_ONLY_STRUCTURAL.has(k))
@@ -1232,6 +1286,8 @@ function pruneEmptyDirs(dir: string): void {
 function main(): void {
   const fileQuads = new Map<string, Quad[]>();
   for (const { file } of SOURCES) fileQuads.set(file, parseTtl(join(STATIC_DIR, file)));
+
+  for (const w of loadWorkflows(fileQuads.get('docs-testing.ttl') ?? [])) WORKFLOWS.set(w.iri, w);
 
   const home = resolveHomeFiles(fileQuads);
   const sectionOf = new Map(SOURCES.map((s) => [s.file, s.section]));
@@ -1599,29 +1655,65 @@ function main(): void {
   const redirectLines = [...new Map(redirects.map((r) => [r.from, r.to]))]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([from, to]) => `${from}  ${to}  301`);
-  writeFileSync(
-    join(STATIC_DIR, '_redirects'),
+  const redirectsText =
     '# GENERATED by scripts/docs-pages.ts — do not hand-edit.\n'
     + '# One line per entity that no longer has a page of its own, pointing at the page that\n'
     + '# absorbed it. Regenerated whenever the docs are, so it cannot drift from the folding.\n'
-    + redirectLines.join('\n') + '\n',
-    'utf8',
-  );
+    + redirectLines.join('\n') + '\n';
+  const provenanceText = JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n';
+  const readOrNull = (abs: string): string | null => {
+    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
+    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
+    try { return readFileSync(abs, 'utf8'); } catch { return null; }
+  };
 
-  writeFileSync(
-    join(STATIC_DIR, 'page-provenance.json'),
-    JSON.stringify({ built: provenance.length, pages: provenance }, null, 2) + '\n',
-    'utf8',
-  );
-
-  // ── Prune stale generated files (never touches files without generated: "docs-kb") ──
+  // Generated pages on disk that the graph no longer produces (hand-authored pages are never ours).
   const existingMd = walkMd(CONTENT_DIR);
-  let pruned = 0;
+  const orphaned: string[] = [];
   for (const abs of existingMd) {
     const rel = `content/${abs.slice(CONTENT_DIR.length + 1).split('\\').join('/')}`;
     if (newFiles.has(rel)) continue;
     const parsed = parsePageFile(readFileSync(abs, 'utf8'));
     if (parsed.generated !== GENERATED_TAG) continue; // hand-authored — never touch
+    orphaned.push(abs);
+  }
+
+  // ── --check: generate in memory, compare, write nothing ──────────────────────
+  //
+  // Added 2026-09-30. Until then this script had no check mode, and align's "docs pages" gate ran
+  // md-align.ts, which verifies that EXISTING pages round-trip — not that the pages match the
+  // CURRENT graph. Four new docs entities were added that day and align printed "the site says
+  // exactly what the graph says" while their pages did not exist. A gate that cannot see a missing
+  // page is the claim this product exists to refuse; this is the half it was missing.
+  if (process.argv.includes('--check')) {
+    const missing: string[] = [];
+    const stale: string[] = [];
+    for (const [rel, content] of newFiles) {
+      const existing = readOrNull(join(ROOT, rel));
+      if (existing === null) missing.push(rel);
+      else if (existing !== content) stale.push(rel);
+    }
+    if (readOrNull(join(STATIC_DIR, '_redirects')) !== redirectsText) stale.push('static/_redirects');
+    if (readOrNull(join(STATIC_DIR, 'page-provenance.json')) !== provenanceText) stale.push('static/page-provenance.json');
+    const orphanRel = orphaned.map((abs) => `content/${abs.slice(CONTENT_DIR.length + 1)}`);
+    const drift = missing.length + stale.length + orphanRel.length;
+    if (drift === 0) {
+      console.log(`Docs pages match the graph: ${pages.length} pages, none missing, stale or orphaned.`);
+      return;
+    }
+    console.error(`Docs pages DRIFT from the graph — ${missing.length} missing, ${stale.length} stale, ${orphanRel.length} orphaned. Run: npx tsx scripts/docs-pages.ts`);
+    for (const f of missing.slice(0, 20)) console.error(`  missing   ${f}`);
+    for (const f of stale.slice(0, 20)) console.error(`  stale     ${f}`);
+    for (const f of orphanRel.slice(0, 20)) console.error(`  orphaned  ${f}`);
+    process.exit(1);
+  }
+
+  writeFileSync(join(STATIC_DIR, '_redirects'), redirectsText, 'utf8');
+  writeFileSync(join(STATIC_DIR, 'page-provenance.json'), provenanceText, 'utf8');
+
+  // ── Prune stale generated files (never touches files without generated: "docs-kb") ──
+  let pruned = 0;
+  for (const abs of orphaned) {
     unlinkSync(abs);
     pruned++;
     pruneEmptyDirs(dirname(abs));
@@ -1632,11 +1724,7 @@ function main(): void {
   let unchanged = 0;
   for (const [rel, content] of newFiles) {
     const abs = join(ROOT, rel);
-    // Read-and-catch rather than existsSync-then-read: the check-then-use pair is a race
-    // (the file can vanish between the two calls) and CodeQL flags it as js/file-system-race.
-    // Attempting the read directly is both correct and one syscall cheaper.
-    let existing: string | null = null;
-    try { existing = readFileSync(abs, 'utf8'); } catch { /* missing → write it */ }
+    const existing = readOrNull(abs);
     if (existing === content) { unchanged++; continue; }
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content, 'utf8');

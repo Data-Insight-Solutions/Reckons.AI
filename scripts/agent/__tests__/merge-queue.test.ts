@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decide, toCheck, type PrState } from '../merge-queue';
+import { decide, decideSync, toCheck, type PrState } from '../merge-queue';
 
 const pass = (name: string) => ({ name, status: 'COMPLETED', conclusion: 'SUCCESS' });
 const base: PrState = {
@@ -59,5 +59,19 @@ describe('toCheck()', () => {
     expect(toCheck({ __typename: 'CheckRun', name: 'unit', status: 'COMPLETED', conclusion: 'SUCCESS' })).toEqual(pass('unit'));
     expect(toCheck({ __typename: 'StatusContext', context: 'Cloudflare Pages', state: 'SUCCESS' })).toEqual(pass('Cloudflare Pages'));
     expect(toCheck({ __typename: 'StatusContext', context: 'ci', state: 'PENDING' }).status).toBe('IN_PROGRESS');
+  });
+});
+
+describe('merge queue decideSync() — keeping localhost on dev', () => {
+  const clean = { branch: 'dev', dirty: false, ahead: 0, behind: 3 };
+  it('fast-forwards a clean checkout on dev that is behind', () => {
+    expect(decideSync(clean)).toEqual({ kind: 'sync', why: '3 commit(s) behind' });
+    expect(decideSync({ ...clean, behind: 0 }).kind).toBe('current');
+  });
+  it('never moves a checkout on another branch, with local edits, or with local-only commits', () => {
+    expect(decideSync({ ...clean, branch: 'fix/x' })).toEqual({ kind: 'skip', why: 'on "fix/x", not dev' });
+    expect(decideSync({ ...clean, branch: '' }).why).toContain('detached HEAD');
+    expect(decideSync({ ...clean, dirty: true }).why).toBe('uncommitted changes');
+    expect(decideSync({ ...clean, ahead: 2 }).why).toBe('2 local commit(s) not on origin/dev');
   });
 });

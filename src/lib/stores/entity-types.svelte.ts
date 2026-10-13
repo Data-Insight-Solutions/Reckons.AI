@@ -5,7 +5,7 @@ import {
   labelToIri,
   RDF_TYPE,
   RDFS_LABEL,
-  KB_ENTITY_TYPE,
+  KNOWLEDGE_BASE_ENTITY_TYPE,
   KB_COLOR,
   KB_DESCRIPTION,
   KB_SCHEMA_PREDICATE,
@@ -35,7 +35,7 @@ function deriveCustomTypes(stmts: Statement[]): EntityTypeDef[] {
   // Find all subjects that are declared as EntityTypes
   const typeSubjects = new Set(
     stmts
-      .filter((s) => s.p.value === RDF_TYPE && s.o.value === KB_ENTITY_TYPE)
+      .filter((s) => s.p.value === RDF_TYPE && s.o.value === KNOWLEDGE_BASE_ENTITY_TYPE)
       .map((s) => s.s.value)
   );
 
@@ -167,7 +167,7 @@ export async function createCustomType(
       id: uuid(),
       s: subject,
       p: n(RDF_TYPE),
-      o: n(KB_ENTITY_TYPE),
+      o: n(KNOWLEDGE_BASE_ENTITY_TYPE),
       g,
       sourceId,
       confidence: 1,

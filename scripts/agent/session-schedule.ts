@@ -170,6 +170,32 @@ export function heldSchedules(done: DoneJob[], openCircuits: Record<string, unkn
   return held;
 }
 
+/** Default for the holdUnreviewed threshold (device config): an agent job with this many of its own proposals unreviewed is held. */
+export const DEFAULT_HOLD_UNREVIEWED = 50;
+
+/**
+ * BACK-PRESSURE (F74.9). An agent-tier schedule is held while its OWN producer has `limit` or more
+ * proposals nobody has ruled on. Pure.
+ *
+ * WHY. Offloading moves cost from generating to reviewing. Measured 2026-10-07: 1,881 of 2,741
+ * proposals never looked at, and layer-classify alone had 435 with none ruled on, yet the worker
+ * queued it again as overdue. Running it adds to a pile no one reads.
+ *
+ * Matching is by name: sched:<x> holds while producer <x> is over the limit (producerKey in
+ * scripts/offline/lib/proposal-tally.ts). A schedule that runs MANY producers (offline-all-agent)
+ * matches none and is never held by this rule, a gap said out loud. Script-tier schedules are
+ * never held: they cost nothing to review.
+ */
+export function backlogHolds(jobs: Recurring[], openByProducer: ReadonlyMap<string, number>, limit = DEFAULT_HOLD_UNREVIEWED): Map<string, string> {
+  const held = new Map<string, string>();
+  for (const j of jobs) {
+    if (j.tier === 'script') continue;
+    const open = openByProducer.get(j.name.replace(/^sched:/, '')) ?? 0;
+    if (open >= limit) held.set(j.name, `${open} unreviewed proposals (limit ${limit}); review some to release it`);
+  }
+  return held;
+}
+
 const fmt = (ms: number): string => (ms >= 86_400_000 * 2 ? `${Math.round(ms / 86_400_000)}d` : ms >= 3_600_000 ? `${Math.round(ms / 3_600_000)}h` : `${Math.max(1, Math.round(ms / 60_000))}m`);
 
 /** "notes-pull (overdue 2d)" / "describe (in 3h)" / "x (never run)". Pure. */

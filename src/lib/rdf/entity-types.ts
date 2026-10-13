@@ -55,8 +55,8 @@ export type EntityTypeDef = {
 
 export const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 export const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
-export const KB_ENTITY_TYPE = 'urn:kbase:type/EntityType';
-export const KB_ICON = 'urn:kbase:predicate/icon';
+export const KNOWLEDGE_BASE_ENTITY_TYPE = 'urn:kbase:type/EntityType';
+export const KNOWLEDGE_BASE_ICON = 'urn:kbase:predicate/icon';
 export const KB_ICON2D = 'urn:kbase:predicate/icon2d';
 export const KB_ICON3D = 'urn:kbase:predicate/icon3d';
 export const KB_MESHY_TASK_ID = 'urn:kbase:predicate/meshy-task-id';
@@ -231,7 +231,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
   },
   {
     iri: 'urn:kbase:type/EntitySet',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A user-defined grouping of entities and the relationships among them',
@@ -252,7 +252,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
    */
   {
     iri: 'http://www.w3.org/2004/02/skos/core#Collection',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A grouping of entities — members overlap rather than partition, and the group carries facts of its own',

@@ -53,6 +53,18 @@ describe('buildSpaceGraph', () => {
     }
   });
 
+  it('draws a single empty space as one centred starfish, the map a fresh copy opens on', () => {
+    const { nodes: [n, ...rest], edges, width, height } = buildSpaceGraph(
+      [{ id: 'kbase', name: 'My space', statementCount: 0, leapTargets: {} }],
+      [{ id: 'ungrouped', title: 'Ungrouped', basis: 'none', memberIds: ['kbase'] }],
+    );
+    expect(rest).toHaveLength(0);
+    expect(edges).toHaveLength(0);
+    expect([n.x, n.y, n.r, n.lx, n.ly].every(Number.isFinite)).toBe(true);
+    expect([n.x, n.y]).toEqual([width / 2, height / 2]);
+    expect(n.r).toBe(nodeRadius(0, 0));
+  });
+
   it('says how many spaces have not been counted, rather than treating them as having no leaps', () => {
     const g = buildSpaceGraph([space('a', {}), space('b'), space('c')], sets);
     expect(g.uncounted).toBe(2);

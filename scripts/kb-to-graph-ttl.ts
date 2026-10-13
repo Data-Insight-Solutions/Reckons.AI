@@ -14,7 +14,7 @@
  */
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { sweepKbToGraph } from '../src/lib/rdf/terminology';
+import { sweepKnowledgeBaseToGraph } from '../src/lib/rdf/terminology';
 
 const ROOT = process.cwd();
 const SEARCH_DIRS = ['static', 'reckons-workspace/kbs'];
@@ -38,7 +38,7 @@ let changed = 0;
 
 for (const file of files) {
   const src = readFileSync(file, 'utf8');
-  const { out, count } = sweepKbToGraph(src);
+  const { out, count } = sweepKnowledgeBaseToGraph(src);
   if (count > 0) {
     changed++;
     total += count;

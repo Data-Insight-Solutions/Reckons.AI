@@ -18,7 +18,7 @@ const MINIMAL_TTL = `
     skos:related <urn:example/A> .
 `;
 
-const KB_LEAP_TTL = `
+const KNOWLEDGE_BASE_LEAP_TTL = `
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix ktype: <urn:kbase:type/> .
@@ -131,31 +131,31 @@ describe('parseGhostGraph — meta predicates are excluded from edges', () => {
   });
 
   it('does not create edges for leap predicates', async () => {
-    const g = await parseGhostGraph(KB_LEAP_TTL);
+    const g = await parseGhostGraph(KNOWLEDGE_BASE_LEAP_TTL);
     expect(g.edges.find(e => e.predicate.includes('reckons:leap'))).toBeUndefined();
   });
 
   it('does not create edges for kbStableId', async () => {
-    const g = await parseGhostGraph(KB_LEAP_TTL);
+    const g = await parseGhostGraph(KNOWLEDGE_BASE_LEAP_TTL);
     expect(g.edges.find(e => e.predicate.includes('kbStableId'))).toBeUndefined();
   });
 });
 
 describe('parseGhostGraph — KB Leap entities', () => {
   it('includes KnowledgeBase-typed leap nodes', async () => {
-    const g = await parseGhostGraph(KB_LEAP_TTL);
+    const g = await parseGhostGraph(KNOWLEDGE_BASE_LEAP_TTL);
     const leapNode = g.nodes.find(n => n.label === 'LEAP: Target KB');
     expect(leapNode).toBeDefined();
   });
 
   it('includes Back to Hub nodes', async () => {
-    const g = await parseGhostGraph(KB_LEAP_TTL);
+    const g = await parseGhostGraph(KNOWLEDGE_BASE_LEAP_TTL);
     const backNode = g.nodes.find(n => n.label === 'Back to Hub');
     expect(backNode).toBeDefined();
   });
 
   it('creates edges between regular entities and leap nodes via skos:related', async () => {
-    const g = await parseGhostGraph(KB_LEAP_TTL);
+    const g = await parseGhostGraph(KNOWLEDGE_BASE_LEAP_TTL);
     const edge = g.edges.find(
       e => e.source === 'urn:example/RegularEntity' && e.target === 'urn:example/LeapNode'
     );

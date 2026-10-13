@@ -10,8 +10,8 @@
 import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import type { Statement, Source } from '../rdf/types';
 
-export type KbImportMeta = { name: string; stableId?: string };
-export type KbImportData = { ttl: string; assets: Map<string, Uint8Array> };
+export type KnowledgeBaseImportMeta = { name: string; stableId?: string };
+export type KnowledgeBaseImportData = { ttl: string; assets: Map<string, Uint8Array> };
 
 /** A per-entity asset override decoded from the sidecar bytes, ready to write. */
 type DecodedAsset =
@@ -146,8 +146,8 @@ export async function populateKbFromTtl(
 
 /** Create a brand-new KB from graph data. Returns the new KB id + statement count. */
 export async function ingestNewKb(
-  data: KbImportData,
-  meta: KbImportMeta,
+  data: KnowledgeBaseImportData,
+  meta: KnowledgeBaseImportMeta,
   sourceUri: string,
   opts: { asPending?: boolean } = {},
 ): Promise<{ kbId: string; count: number } | null> {
@@ -176,10 +176,10 @@ export async function ingestNewKb(
 }
 
 /** Replace an existing KB's data in place. Returns the statement count. */
-export async function ingestExistingKb(
+export async function ingestExistingKnowledgeBase(
   kbId: string,
-  data: KbImportData,
-  meta: KbImportMeta,
+  data: KnowledgeBaseImportData,
+  meta: KnowledgeBaseImportMeta,
   sourceUri: string,
   opts: { asPending?: boolean } = {},
 ): Promise<number> {

@@ -19,11 +19,11 @@ export function glbOverrides(): Map<string, string> {
 export async function loadGlbOverrides(): Promise<void> {
   const rows = await db.glbOverrides.toArray();
   overrides = new Map(rows.map((r) => [r.id, r.url]));
-  await _migrateKbIcon3d();
+  await _migrateKnowledgeBaseIcon3d();
 }
 
 /** Move legacy `urn:kbase:predicate/icon3d` KB statements into the local store. */
-async function _migrateKbIcon3d(): Promise<void> {
+async function _migrateKnowledgeBaseIcon3d(): Promise<void> {
   const KB_ICON3D = 'urn:kbase:predicate/icon3d';
   const stmts = await db.statements
     .filter((s) => s.p.value === KB_ICON3D && s.status !== 'rejected' && s.status !== 'superseded')

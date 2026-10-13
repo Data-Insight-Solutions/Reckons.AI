@@ -34,6 +34,14 @@
       "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
     },
     {
+      "name": "commit-trailers",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/commit-trailers.ts",
+      "desc": "F254 phase 1a. Every AGENT commit (Co-Authored-By naming a model, or a Model: trailer) must carry non-empty Model: and Intent: trailers; merges and human commits are exempt. Range origin/dev..HEAD, or commits since 2026-10-09T12:00Z on dev itself. Trailers are self-attested text: this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it."
+    },
+    {
       "name": "version-align",
       "tier": "script",
       "enabled": true,
@@ -63,6 +71,14 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "test-workflow-check",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/test-workflow-check.ts",
+      "blocking": true,
+      "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,
@@ -80,8 +96,8 @@
       "name": "extraction-score",
       "tier": "agent",
       "enabled": true,
-      "cmd": "npx tsx scripts/offline/extraction-score.ts --pending",
-      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)."
+      "cmd": "npx tsx scripts/offline/extraction-score.ts",
+      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only."
     },
     {
       "name": "shacl-validate",
@@ -219,9 +235,9 @@
     {
       "name": "code-review",
       "tier": "agent",
-      "enabled": true,
+      "enabled": false,
       "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
+      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL). PAUSED 2026-10-13 by Matt pending a 10-row sample; 0/20 on 10-09, 63% cumulative of 148 ruled"
     },
     {
       "name": "visual-diff",
@@ -334,6 +350,14 @@
       "desc": "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source."
     },
     {
+      "name": "ci-graph",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/ci-graph.ts --check",
+      "desc": "CI as a graph (F33.2): static/reckons-ci.ttl must match .github/workflows/*.yml and .github/ruleset-main.json. Answers what stops a bad merge to main, which checks only advise, and which roadmap features each check guards. Also reports a required check no workflow produces. Advisory, like jobs-graph: a stale graph is fixed by regenerating it, not by blocking a merge."
+    },
+    {
       "name": "landing-data",
       "tier": "script",
       "enabled": true,
@@ -413,6 +437,36 @@
       "enabled": false,
       "cmd": "NODE_OPTIONS=--max-old-space-size=12288 npx tsx --expose-gc tests/bench/run-space-size-bench.ts --profiles=s,m,l,xl --runs=3 --save",
       "desc": "F107.10: what one large space .ttl costs to serialize, import (the app's importTurtleFull) and load into the MCP server's N3 store, at 1k to 100k statements, with and without source chunks folded in (Matt, 2026-10-06: fold the chunks in). Synthetic, seeded data. DISABLED in the sweep: it takes minutes and several GB of heap. Results go to tests/bench/results/ (git-ignored); record findings on kb:space-file-layout as dated kpred:measured lines."
+    },
+    {
+      "name": "codebase-coverage",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/codebase-coverage.ts --check",
+      "desc": "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides."
+    },
+    {
+      "name": "term-ratchet",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/term-usage.ts --check",
+      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
+    },
+    {
+      "name": "terminology-sweep",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npx tsx scripts/offline/terminology-sweep.ts --sample=30",
+      "desc": "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU."
+    },
+    {
+      "name": "rename-pr",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npx tsx scripts/agent/rename-pr.ts --term=kb",
+      "desc": "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep."
     },
     {
       "name": "ui-terms",

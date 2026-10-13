@@ -78,12 +78,12 @@ vi.mock('../../rdf/serialize', () => ({
 }));
 vi.mock('../kb.svelte', () => ({ loadAll: vi.fn(async () => {}) }));
 
-const ingestNewKb = vi.fn(
+const ingestNewKnowledgeBase = vi.fn(
   async (_data: { ttl: string; assets: Map<string, Uint8Array> }, _meta?: unknown, _uri?: string) =>
     ({ kbId: 'new-kb', count: 2 })
 );
-const ingestExistingKb = vi.fn(async () => 2);
-vi.mock('../kb-import', () => ({ ingestNewKb, ingestExistingKb }));
+const ingestExistingKnowledgeBase = vi.fn(async () => 2);
+vi.mock('../kb-import', () => ({ ingestNewKb: ingestNewKnowledgeBase, ingestExistingKnowledgeBase }));
 
 beforeEach(() => {
   vi.resetModules();
@@ -92,8 +92,8 @@ beforeEach(() => {
   folderSeq = 0;
   registry = [];
   clientId = 'client-123';
-  ingestNewKb.mockClear();
-  ingestExistingKb.mockClear();
+  ingestNewKnowledgeBase.mockClear();
+  ingestExistingKnowledgeBase.mockClear();
   collectAssets.mockClear();
   parseAssetRefs.mockClear();
   (globalThis as any).localStorage ??= {
@@ -140,8 +140,8 @@ describe('drive-sync', () => {
     const { imported, updated } = await m.driveSyncPull();
     expect(updated).toContain('notes');
     expect(imported).toContain('fresh');
-    expect(ingestExistingKb).toHaveBeenCalledTimes(1);
-    expect(ingestNewKb).toHaveBeenCalledTimes(1);
+    expect(ingestExistingKnowledgeBase).toHaveBeenCalledTimes(1);
+    expect(ingestNewKnowledgeBase).toHaveBeenCalledTimes(1);
   });
 
   it('auto-sync off: a scheduled push is a no-op', async () => {
@@ -190,8 +190,8 @@ describe('drive-sync', () => {
     const m = await import('../drive-sync.svelte');
     await m.linkDriveFolder();
     await m.driveSyncPull();
-    expect(ingestNewKb).toHaveBeenCalledTimes(1);
-    const passedAssets = ingestNewKb.mock.calls[0][0].assets as Map<string, Uint8Array>;
+    expect(ingestNewKnowledgeBase).toHaveBeenCalledTimes(1);
+    const passedAssets = ingestNewKnowledgeBase.mock.calls[0][0].assets as Map<string, Uint8Array>;
     expect([...(passedAssets.get('assets/previews/p.gif') ?? [])]).toEqual([9, 8, 7]);
   });
 
@@ -203,7 +203,7 @@ describe('drive-sync', () => {
     const r = await m.driveSyncPull();    // same content → skipped
     expect(r.imported).toHaveLength(0);
     expect(r.updated).toHaveLength(0);
-    expect(ingestNewKb).not.toHaveBeenCalled();
-    expect(ingestExistingKb).not.toHaveBeenCalled();
+    expect(ingestNewKnowledgeBase).not.toHaveBeenCalled();
+    expect(ingestExistingKnowledgeBase).not.toHaveBeenCalled();
   });
 });

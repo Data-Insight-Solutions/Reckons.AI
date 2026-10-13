@@ -31,7 +31,9 @@ import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
 import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
-import { doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { loadDeviceConfig } from './device-config.js';
+import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
 
@@ -51,6 +53,21 @@ function runJob(job: QueueJob): Promise<number> {
     child.on('close', (code) => resolve(code ?? 1));
   });
 }
+
+/** Open proposals per producer, recounted at most every 10 minutes: it parses every workspace graph. */
+let backlogCache: { at: number; open: Map<string, number> } | undefined;
+function backlog(root: string, now = Date.now()): Map<string, number> {
+  if (!backlogCache || now - backlogCache.at > 10 * 60_000) {
+    try { backlogCache = { at: now, open: openByProducer(tallyWorkspace(root).tallies) }; }
+    catch { backlogCache = { at: now, open: new Map() }; } // an unreadable workspace holds nothing, never everything
+  }
+  return backlogCache.open;
+}
+const holdLimit = (): number => {
+  try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
+  catch { return DEFAULT_HOLD_UNREVIEWED; }
+};
+let heldList: string[] = [];
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -76,7 +93,9 @@ async function main(): Promise<void> {
       const { jobs, successes } = loadRecurring(root);
       const done = readDone();
       const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
-      const held = heldSchedules(done, readCircuitCache(), Date.now());
+      // Back-pressure first, then breaker and backoff holds (their reasons win for the same job).
+      const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...heldSchedules(done, readCircuitCache(), Date.now())]);
+      heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
       const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
       if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
       const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
@@ -93,13 +112,13 @@ async function main(): Promise<void> {
       lastState = step.state;
     }
     if (!step.startJob) {
-      writeWorker({ state: step.state, reason: step.reason });
+      writeWorker({ state: step.state, reason: step.reason, held: heldList });
       if (step.state === 'empty' && !stay) return;
       await sleep(pollMs);
       continue;
     }
     const job = pickNext(queue, gpuBlocked)!;
-    writeWorker({ state: 'working', job: job.name, index: finished + 1, total: finished + queue.length, });
+    writeWorker({ state: 'working', job: job.name, index: finished + 1, total: finished + queue.length, held: heldList });
     const code = await runJob(job);
     finished++;
     mutateQueue((jobs) => ({

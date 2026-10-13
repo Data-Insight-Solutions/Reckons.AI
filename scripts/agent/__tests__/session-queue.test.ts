@@ -1,11 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerStep, type QueueJob, type StepInput } from '../session-queue';
+import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
-import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, type Recurring } from '../session-schedule';
+import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
+import { renderQueue } from '../watch';
 
 const MIN = 60_000;
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
 const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, heartbeatFresh: true, ollamaUp: true, ...over });
+
+describe('worker pid ownership', () => {
+  const alive = () => true;
+  const enoent = () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); };
+  it('is a worker only while the live pid still runs queue-worker', () => {
+    expect(workerPidAlive(42, () => 'node\0tsx\0scripts/agent/queue-worker.ts', alive)).toBe(true);
+    // the 2026-10-09 case: the pid was reused by an unrelated process
+    expect(workerPidAlive(42, () => 'code\0eslintServer.js\0--node-ipc', alive)).toBe(false);
+    expect(workerPidAlive(42, () => 'node\0scripts/agent/queue-worker.ts', () => false)).toBe(false);
+  });
+  it('treats a missing /proc entry as gone on Linux, and falls back to liveness without /proc', () => {
+    expect(workerPidAlive(42, enoent, alive, () => true)).toBe(false);
+    expect(workerPidAlive(42, enoent, alive, () => false)).toBe(true);
+  });
+});
 
 describe('heartbeat freshness', () => {
   const now = 1_000_000_000;
@@ -189,6 +205,21 @@ describe('catch-up schedules', () => {
     expect(heldSchedules([at(5, 'passed')], {}, now).has('a')).toBe(false);
     // Only the LATEST attempt counts: a pass after a failure releases the hold.
     expect(heldSchedules([at(10, 'failed'), at(2, 'passed')], {}, now).has('a')).toBe(false);
+  });
+  it('back-pressure holds an agent job over its own unreviewed limit, never a script job or an unmatched one', () => {
+    const agent = (n: string): Recurring => ({ ...rec(n, true), tier: 'agent' });
+    const open = new Map([['layer-classify', 435], ['docs-review', 49], ['graph-lint', 900]]);
+    const held = backlogHolds([agent('sched:layer-classify'), agent('sched:docs-review'), { ...rec('sched:graph-lint'), tier: 'script' }, agent('sched:offline-all-agent')], open, 50);
+    expect([...held.keys()]).toEqual(['sched:layer-classify']);
+    expect(held.get('sched:layer-classify')).toMatch(/435 unreviewed proposals \(limit 50\)/);
+    expect(backlogHolds([agent('sched:docs-review')], open, 49).has('sched:docs-review')).toBe(true);
+  });
+  it('the monitor shows what the worker holds, with reasons', () => {
+    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, heartbeatFresh: true, ollamaUp: true, manualPause: false });
+    expect(v.held).toEqual(['layer-classify: 435 unreviewed proposals (limit 50)']);
+    const lines = renderQueue(v, undefined, (_l, t) => t).join('\n');
+    expect(lines).toMatch(/held.*layer-classify: 435 unreviewed/);
+    expect(queueView({ queued: 0, worker: { state: 'empty' }, heartbeatFresh: true, ollamaUp: true, manualPause: false }).held).toBeUndefined();
   });
   it('does not enqueue what is queued or running, nor what is not due; carries the gpu flag', () => {
     const statuses = dueAll([rec('a'), rec('b'), rec('c', true), rec('fresh')], { fresh: now }, now);

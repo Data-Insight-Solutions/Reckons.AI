@@ -242,6 +242,8 @@ export type SettingsRecord = {
    * no /webhook suffix (callers append that per-endpoint).
    */
   n8nBaseUrl?: string;
+  /** Explicit local opt-in for Currents delivery; deliberately not imported from graph metadata. */
+  n8nCurrentsEnabled?: boolean;
   /**
    * When set, POST a small summary to the n8n review webhook
    * (/webhook/reckons-review) whenever new facts land for review — so n8n can
@@ -335,6 +337,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   indicoApiToken: import.meta.env.VITE_INDICO_API_TOKEN || undefined,
   indicoCategoryId: import.meta.env.VITE_INDICO_CATEGORY_ID || undefined,
   n8nNotifyOnReview: false,
+  n8nCurrentsEnabled: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   // A year, deliberately conservative: the first sweep a user runs should surprise nobody.
@@ -384,7 +387,7 @@ export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name
  * reconcile). `ttl` is a lossless `toTurtleFull` export (all statuses + provenance) so the
  * prior state is recoverable via `restoreKbSnapshot`. Pruned to the last few per KB.
  */
-export type KbSnapshotRow = {
+export type KnowledgeBaseSnapshotRow = {
   id: string;
   kbId: string;
   createdAt: number;
@@ -404,7 +407,7 @@ export class KBaseDB extends Dexie {
   workspace!: Table<WorkspaceRow, string>;
   entityGifs!: Table<EntityGifRow, string>;
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
-  kbSnapshots!: Table<KbSnapshotRow, string>;
+  kbSnapshots!: Table<KnowledgeBaseSnapshotRow, string>;
   extractionRuns!: Table<ExtractionRun, string>;
 
   constructor(name?: string) {
@@ -656,6 +659,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       autoRefreshIntervalMinutes: m.autoRefreshIntervalMinutes,
       showTutorialHints: m.showTutorialHints,
       n8nBaseUrl: m.n8nBaseUrl,
+      n8nCurrentsEnabled: m.n8nCurrentsEnabled,
       n8nNotifyOnReview: m.n8nNotifyOnReview,
       turtleSettings: JSON.parse(JSON.stringify(m.turtleSettings))
     };

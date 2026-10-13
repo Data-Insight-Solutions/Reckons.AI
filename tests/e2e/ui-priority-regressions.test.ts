@@ -117,7 +117,7 @@ test('manual Facts inputs retain readable dark-theme styling', async ({ page }, 
 });
 
 test('starter and ingest failures are visible, announced, and retryable', async ({ page }, testInfo) => {
-  await page.route('**/starter-everyday.ttl', async (route) => {
+  await page.route('**/starter-everyday-reviewed.ttl', async (route) => {
     await route.fulfill({ status: 503, body: 'fixture unavailable' });
   });
   await page.goto('/');
@@ -270,7 +270,7 @@ test('mobile navigation keeps secondary actions usable without crowding primary 
   await page.keyboard.press('Escape');
   await expect(menu).toBeHidden();
   await expect(more).toBeFocused();
-  const analyze = nav.getByRole('button', { name: 'Analyze graph' });
+  const analyze = nav.getByRole('button', { name: 'Analyze space' });
   await analyze.click();
   const analysisMenu = page.getByRole('menu', { name: 'Analysis actions' });
   await expect(analysisMenu).toBeVisible();

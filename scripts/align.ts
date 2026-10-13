@@ -82,7 +82,10 @@ const GATES: Gate[] = [
   {
     name: 'docs pages',
     why: 'content/*.md must match what the graph generates — a hand-edited page is a second source of truth',
-    check: 'npx tsx scripts/md-align.ts',
+    // BOTH halves: docs-pages --check sees a page the graph now produces but the site lacks (or
+    // shows stale); md-align sees a page that no longer round-trips. Until 2026-09-30 only the
+    // second ran, so a new docs entity with no page passed this gate.
+    check: 'npx tsx scripts/docs-pages.ts --check && npx tsx scripts/md-align.ts',
     fix: 'npx tsx scripts/docs-pages.ts',
   },
   {

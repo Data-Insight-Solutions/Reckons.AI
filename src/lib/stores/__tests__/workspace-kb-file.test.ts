@@ -116,7 +116,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const mod = await connectedWorkspace();
     const entry = mkEntry({ name: 'Roadmap' });
 
-    await mod.writeKbToFolder(entry, '<a> <b> <c> .', undefined, []);
+    await mod.writeKnowledgeBaseToFolder(entry, '<a> <b> <c> .', undefined, []);
 
     const kbsDir = await root.getDirectoryHandle('kbs');
     const kbDir = await kbsDir.getDirectoryHandle('roadmap');
@@ -221,7 +221,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const legacy = await kbDir.getFileHandle('kb.ttl', { create: true });
     legacy.content = '<legacy> <a> <b> .';
 
-    const data = await mod.readKbFromFolder('both');
+    const data = await mod.readKnowledgeBaseFromFolder('both');
     expect(data?.ttl).toBe('<named> <a> <b> .');
   });
 
@@ -232,7 +232,7 @@ describe('workspace kbs/{name}/{name}.ttl convention', () => {
     const legacy = await kbDir.getFileHandle('kb.ttl', { create: true });
     legacy.content = '<legacy> <a> <b> .';
 
-    const data = await mod.readKbFromFolder('legacy-only');
+    const data = await mod.readKnowledgeBaseFromFolder('legacy-only');
     expect(data?.ttl).toBe('<legacy> <a> <b> .');
   });
   it('skips the MCP knowledge.ttl export at root', async () => {

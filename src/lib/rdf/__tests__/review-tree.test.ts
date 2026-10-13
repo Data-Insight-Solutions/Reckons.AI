@@ -129,6 +129,8 @@ describe('buildReviewTree', () => {
     const tree = buildReviewTree([orphanRecord, orphanLog], [orphanRecord, orphanLog]);
     expect(tree.decisions).toHaveLength(0);
     expect(tree.suppressed).toEqual({ record: 1, log: 1 });
+    expect(reviewTreeSummary(tree)).toMatch(/2 bookkeeping facts waiting for an agent/);
+    expect(reviewTreeSummary(tree)).not.toMatch(/settled without you/);
   });
 
   it('marks a prose-only question honestly — no options to weigh yet', () => {

@@ -37,13 +37,11 @@
 /docs/features/kb-identity  /docs/features/multi-kb  301
 /docs/features/kokoro-tts-features  /docs/features/shelly  301
 /docs/features/model-cache-features  /docs/features/llm-backends  301
-/docs/features/passage-grounding  /docs/guide/what-is-reckons-ai  301
 /docs/features/predicate-manager  /docs/guide/what-is-reckons-ai  301
 /docs/features/reckoning  /docs/learn/reckoning  301
 /docs/features/release-notes  /docs/features/published-docs  301
 /docs/features/source-monitoring  /docs/features/source-refresh  301
 /docs/features/story-system  /docs/features/shelly  301
-/docs/features/text-chunking  /docs/features/ingest  301
 /docs/features/trust-system  /docs/guide/what-is-reckons-ai  301
 /docs/features/ttl-export  /docs/guide/what-is-reckons-ai  301
 /docs/features/turtle-persona  /docs/features/shelly  301
@@ -117,6 +115,11 @@
 /docs/testing/settings-page  /docs/testing/page-screenshots  301
 /docs/testing/unit-tests  /docs/testing/test-suite  301
 /docs/testing/user-story-tests  /docs/testing/visual-tests  301
+/docs/testing/workflow-readme-path-step1  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step2  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step3  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step4  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step5  /docs/testing/workflow-readme-path  301
 /docs/timeline-ecosystem/ai-alliance  /docs/timeline-ecosystem/semantic-web-organizations  301
 /docs/timeline-ecosystem/anthropic  /docs/timeline-ecosystem/semantic-web-organizations  301
 /docs/timeline-ecosystem/apache-jena  /docs/timeline-ecosystem/semantic-web-organizations  301

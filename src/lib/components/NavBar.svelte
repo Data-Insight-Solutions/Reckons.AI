@@ -71,7 +71,7 @@
       actions: [
         { href: '/ingest?mode=document', label: 'source', glyph: '▤', hint: 'a whole document — its facts are read for review' },
         { href: '/ingest?mode=triples', label: 'statement', glyph: '⟶', hint: 'a fact, written by hand' },
-        { href: '/?add=set', label: 'set', glyph: '⬡', hint: 'group nodes you select in your space' },
+        { href: '/?add=set', label: 'collection', glyph: '⬡', hint: 'group nodes you select in your space' },
         { href: '/kb?new=space', label: 'space', glyph: '◯', hint: 'a new, empty space' },
       ],
     },
@@ -366,7 +366,7 @@
         class:running
         onclick={toggleAnalyze}
         title="analyze"
-        aria-label="Analyze graph"
+        aria-label="Analyze space"
         aria-haspopup="menu"
         aria-expanded={analyzeOpen}
         aria-controls="analyze-actions-menu"

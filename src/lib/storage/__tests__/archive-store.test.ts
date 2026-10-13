@@ -77,7 +77,7 @@ vi.mock('../db', () => ({
 }));
 
 const {
-  runArchive, ensureArchiveKb, findArchiveKbId, loadArchiveSnapshot,
+  runArchive, ensureArchiveKb, findArchiveKnowledgeBaseId: findArchiveKbId, loadArchiveSnapshot,
   loadArchivedFacts, findArchivedReferencesForParent, restoreArchivedEntityForParent,
   sweepArchiveByAge,
   ArchivedEntityRestoreError, ArchivedStatementCollisionError,
@@ -105,7 +105,7 @@ const graph = [
   st('urn:gone', 'urn:p/rel', iri('urn:keep')),
 ];
 
-let workingKbId = '';
+let workingKnowledgeBaseId = '';
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();
@@ -116,8 +116,8 @@ beforeEach(() => {
   storedSources = {};
   bulkPutCall = 0;
   failBulkPutCall = null;
-  workingKbId = createKb('Research').id;
-  registerStableId(workingKbId, 'stable-1');
+  workingKnowledgeBaseId = createKb('Research').id;
+  registerStableId(workingKnowledgeBaseId, 'stable-1');
 });
 
 describe('archive graph lifecycle', () => {
@@ -299,8 +299,8 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
       ...event,
       ...peerEvent,
     ];
-    stored[workingKbId] = [graph[0]];
-    storedSources[workingKbId] = [{ id: 'x' }, { id: 'original-source' }];
+    stored[workingKnowledgeBaseId] = [graph[0]];
+    storedSources[workingKnowledgeBaseId] = [{ id: 'x' }, { id: 'original-source' }];
     return {
       archiveKbId,
       archivedLabel,
@@ -313,7 +313,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
   };
 
   const restore = () => restoreArchivedEntityForParent({
-    workingKbId,
+    workingKbId: workingKnowledgeBaseId,
     parentStableId: 'stable-1',
     entity: 'urn:gone',
     actor: 'human',
@@ -350,12 +350,12 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     // committed=true. The false marker is deleted inside the final archive transaction.
     expect(calls.map(({ db, op }) => ({ db, op }))).toEqual([
       { db: archiveKbId, op: 'bulkPut' },
-      { db: workingKbId, op: 'bulkPut' },
+      { db: workingKnowledgeBaseId, op: 'bulkPut' },
       { db: archiveKbId, op: 'bulkDelete' },
       { db: archiveKbId, op: 'bulkPut' },
     ]);
 
-    const workingRows = stored[workingKbId] as Statement[];
+    const workingRows = stored[workingKnowledgeBaseId] as Statement[];
     expect(workingRows).toEqual([graph[0], archivedLabel, inbound]);
     expect(workingRows).not.toContainEqual(rejected);
     expect(workingRows).not.toContainEqual(archivedPeerEdge);
@@ -380,7 +380,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     failBulkPutCall = 2; // prepare succeeds; working transaction fails before writing
 
     await expect(restore()).rejects.toThrow('injected bulkPut failure');
-    expect(stored[workingKbId]).toEqual([graph[0]]);
+    expect(stored[workingKnowledgeBaseId]).toEqual([graph[0]]);
     expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
       id: 'restore-1',
       committed: false,
@@ -392,13 +392,13 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     failBulkPutCall = null;
     const retried = await restore();
     expect(retried.event.committed).toBe(true);
-    expect(stored[workingKbId]).toHaveLength(3);
+    expect(stored[workingKnowledgeBaseId]).toHaveLength(3);
   });
 
   it('keeps the new undo snapshot even when a caller requests keepLast zero', async () => {
     const { archiveKbId } = seedArchive();
     await restoreArchivedEntityForParent({
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentStableId: 'stable-1',
       entity: 'urn:gone',
       actor: 'human',
@@ -415,7 +415,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     failBulkPutCall = 3; // final committed-event write fails and its transaction rolls back
 
     await expect(restore()).rejects.toThrow('injected bulkPut failure');
-    expect(stored[workingKbId]).toHaveLength(3);
+    expect(stored[workingKnowledgeBaseId]).toHaveLength(3);
     expect(statementsToEvents(stored[archiveKbId] as Statement[])[0]).toMatchObject({
       id: 'restore-1',
       committed: false,
@@ -426,7 +426,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     const recovered = await restore();
     expect(recovered.alreadyRestored).toBe(false);
     expect(recovered.event.committed).toBe(true);
-    expect(stored[workingKbId]).toHaveLength(3);
+    expect(stored[workingKnowledgeBaseId]).toHaveLength(3);
     await expect(loadArchiveSnapshot(archiveKbId, 'restore-1')).resolves.toEqual([graph[0]]);
 
     const completedRetry = await restore();
@@ -440,14 +440,14 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
     failBulkPutCall = 2; // leave a durable prepared event before the working write
     await expect(restore()).rejects.toThrow('injected bulkPut failure');
 
-    stored[workingKbId] = [
-      ...(stored[workingKbId] as Statement[]),
+    stored[workingKnowledgeBaseId] = [
+      ...(stored[workingKnowledgeBaseId] as Statement[]),
       st('urn:concurrent', LABEL, lit('Added elsewhere'), 'concurrent-change'),
     ];
     failBulkPutCall = null;
 
     await expect(restore()).rejects.toThrow('Working graph changed after the restore was prepared');
-    expect((stored[workingKbId] as Statement[]).map((row) => row.id)).toEqual([
+    expect((stored[workingKnowledgeBaseId] as Statement[]).map((row) => row.id)).toEqual([
       graph[0].id,
       'concurrent-change',
     ]);
@@ -460,7 +460,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
 
   it('refuses a same-ID content collision before preparing any mutation', async () => {
     const { archiveKbId, archivedLabel } = seedArchive();
-    stored[workingKbId] = [
+    stored[workingKnowledgeBaseId] = [
       graph[0],
       { ...archivedLabel, o: lit('Different content') },
     ];
@@ -472,7 +472,7 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
 
   it('refuses to restore facts whose source provenance is no longer available', async () => {
     const { archiveKbId } = seedArchive();
-    storedSources[workingKbId] = [{ id: 'x' }];
+    storedSources[workingKnowledgeBaseId] = [{ id: 'x' }];
 
     await expect(restore()).rejects.toThrow('missing source record(s) original-source');
     expect(calls).toEqual([]);
@@ -484,13 +484,13 @@ describe('restoreArchivedEntityForParent — reversible storage primitive (F97.2
 
     seedArchive();
     await expect(restoreArchivedEntityForParent({
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentStableId: 'stable-other',
       entity: 'urn:gone',
       actor: 'human',
     })).rejects.toThrow('does not match the parent stable ID');
     await expect(restoreArchivedEntityForParent({
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentStableId: 'stable-1',
       entity: 'urn:not-archived',
       actor: 'human',
@@ -504,7 +504,7 @@ describe('runArchive — the ordering guarantee', () => {
     entities: ['urn:gone'],
     type: 'delete',
     actor: 'human',
-    workingKbId,
+    workingKbId: workingKnowledgeBaseId,
     parentName: 'Research',
     parentStableId: 'stable-1',
     now: () => 1_700_000_000_000,
@@ -532,7 +532,7 @@ describe('runArchive — the ordering guarantee', () => {
     sessionStorage.setItem('sessionKbId', 'kbase_wrong_tab');
     await run();
     const del = calls.find((c) => c.op === 'bulkDelete')!;
-    expect(del.db).toBe(workingKbId);
+    expect(del.db).toBe(workingKnowledgeBaseId);
   });
 
   it('returns the surviving statements for the caller to adopt', async () => {
@@ -564,7 +564,7 @@ describe('runArchive — the ordering guarantee', () => {
   it('archiving nothing still journals, and deletes nothing', async () => {
     const result = await runArchive({
       statements: graph, entities: [], type: 'prune', actor: 'agent',
-      workingKbId, parentName: 'Research', parentStableId: 'stable-1',
+      workingKbId: workingKnowledgeBaseId, parentName: 'Research', parentStableId: 'stable-1',
       now: () => 1, newId: () => 'evt-empty',
     });
     expect(result.archivedCount).toBe(0);
@@ -606,7 +606,7 @@ describe('runArchive — the ordering guarantee', () => {
       entities: ['urn:gone'],
       type: 'delete',
       actor: 'human',
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentName: 'Research',
       parentStableId: 'stable-other',
     })).rejects.toThrow('does not match the parent stable ID');
@@ -635,7 +635,7 @@ describe('runArchive — retention is part of the writer', () => {
     entities: ['urn:gone'],
     type: 'age-drop',
     actor: 'schedule',
-    workingKbId,
+    workingKbId: workingKnowledgeBaseId,
     parentName: 'Research',
     parentStableId: 'stable-1',
     milestone,
@@ -677,7 +677,7 @@ describe('runArchive — retention is part of the writer', () => {
     expect(calls.map(({ db, op }) => ({ db, op }))).toEqual([
       { db: archiveKbId, op: 'bulkPut' },
       { db: archiveKbId, op: 'bulkDelete' },
-      { db: workingKbId, op: 'bulkDelete' },
+      { db: workingKnowledgeBaseId, op: 'bulkDelete' },
     ]);
   });
 });
@@ -699,7 +699,7 @@ describe('age sweep', () => {
     sweepArchiveByAge({
       statements,
       olderThanDays,
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentName: 'Research',
       parentStableId: 'stable-1',
       actor: 'human',
@@ -709,14 +709,14 @@ describe('age sweep', () => {
 
   it('moves only the aged entity and keeps the current one', async () => {
     // Seed the working store so the DELETE half is observable, not just the returned `kept`.
-    stored[workingKbId] = [...dated];
+    stored[workingKnowledgeBaseId] = [...dated];
     const { plan, run } = await sweep(dated);
 
     expect(plan.entities).toEqual(['urn:old']);
     expect(run).not.toBeNull();
     expect(run!.archivedCount).toBe(2);
     expect(run!.kept.map((s) => s.id).sort()).toEqual(['new|label', 'new|when']);
-    expect((stored[workingKbId] ?? []).map((r) => (r as Statement).id).sort())
+    expect((stored[workingKnowledgeBaseId] ?? []).map((r) => (r as Statement).id).sort())
       .toEqual(['new|label', 'new|when']);
   });
 
@@ -784,7 +784,7 @@ describe('reactive state never reaches IndexedDB', () => {
       entities: ['urn:gone'],
       type: 'delete',
       actor: 'human',
-      workingKbId,
+      workingKbId: workingKnowledgeBaseId,
       parentName: 'Research',
       parentStableId: 'stable-1',
       now: () => 1,
@@ -793,6 +793,6 @@ describe('reactive state never reaches IndexedDB', () => {
 
     // structuredClone is what Dexie actually performs. If any proxy survived, this throws.
     expect(() => structuredClone(stored[archiveKbId])).not.toThrow();
-    expect(() => structuredClone(stored[workingKbId] ?? [])).not.toThrow();
+    expect(() => structuredClone(stored[workingKnowledgeBaseId] ?? [])).not.toThrow();
   });
 });

@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { KBaseDB, DEFAULT_SETTINGS } from './db';
 import { appDb } from './app-db';
-import { getRegistry, ensureKbRegistered, touchKb, type KbEntry } from './kb-registry';
+import { getRegistry, ensureKbRegistered, touchKnowledgeBase, type KbEntry } from './kb-registry';
 import { normalizePendingGraphName } from '../rdf/pending-entry';
 import type { PendingEntry } from '../rdf/pending-entry';
 import { CAPTURED_NOTE } from '../rdf/captured-notes';
@@ -91,7 +91,7 @@ async function persistCapture(id: string, entry: PendingEntry): Promise<boolean>
       await writeBatch(graph, source, [statement]);
       return true;
     });
-    if (written) touchKb(id);
+    if (written) touchKnowledgeBase(id);
     return written;
   } finally { graph.close(); }
 }
@@ -185,7 +185,7 @@ async function deliverTransfers(): Promise<string[]> {
         // Source + statements commit together. Source is the receipt even after a human edits a copy.
       });
       await appDb.noteTransfers.update(transfer.id, { state: 'delivered', deliveredAt: Date.now(), error: undefined });
-      touchKb(transfer.destinationId);
+      touchKnowledgeBase(transfer.destinationId);
       writtenGraphs.add(transfer.destinationId);
     } catch (error) {
       await appDb.noteTransfers.update(transfer.id, { error: error instanceof Error ? error.message : 'Transfer failed; retry available' });

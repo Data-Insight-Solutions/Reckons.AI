@@ -255,7 +255,7 @@ describe('two-way folder sync — pullFromWorkspace', () => {
     mod.__linkHandleForTest(root as any);
     // Register + write via the app's own writer (records the hash).
     registry.push({ id: 'kb_mine', name: 'mine', createdAt: 0 });
-    await mod.writeKbToFolder(mkEntry({ id: 'kb_mine', name: 'mine' }), '<a> <b> <c> .', undefined, []);
+    await mod.writeKnowledgeBaseToFolder(mkEntry({ id: 'kb_mine', name: 'mine' }), '<a> <b> <c> .', undefined, []);
 
     const { imported, updated } = await mod.pullFromWorkspace();
     expect(imported).toHaveLength(0);
@@ -720,7 +720,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
       mod.__linkHandleForTest(root as any);
       await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl'], '<canonical> <graph> <content> .');
 
-      await mod.writeKbToFolder(mkEntry(), '<our> <partial> <export> .');
+      await mod.writeKnowledgeBaseToFolder(mkEntry(), '<our> <partial> <export> .');
 
       expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('<canonical> <graph> <content> .');
       expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'diverged' });
@@ -730,10 +730,10 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
   it('does not hold a graph write merely because the persistent flock pathname exists', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
-    await mod.writeKbToFolder(mkEntry(), 'original');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'original');
     await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock'], '');
 
-    await mod.writeKbToFolder(mkEntry(), 'ours');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'ours');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('ours');
     expect(mod.lastWriteHold()).toEqual({ held: false });
@@ -742,7 +742,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
   it('holds a graph write while the host active marker lease is fresh', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
-    await mod.writeKbToFolder(mkEntry(), 'original');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'original');
     await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock'], '');
     await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock.active'], JSON.stringify({
       version: 1,
@@ -751,7 +751,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
       expiresAt: Date.now() + 60_000,
     }));
 
-    await mod.writeKbToFolder(mkEntry(), 'ours');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'ours');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('original');
     expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'locked' });
@@ -760,7 +760,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
   it('ignores a stale graph active marker after its lease expires', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
-    await mod.writeKbToFolder(mkEntry(), 'original');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'original');
     await seedFile(root, ['kbs', 'my-kb', 'my-kb.ttl.lock.active'], JSON.stringify({
       version: 1,
       pid: 123,
@@ -768,7 +768,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
       expiresAt: Date.now() - 60_000,
     }));
 
-    await mod.writeKbToFolder(mkEntry(), 'ours');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'ours');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('ours');
     expect(mod.lastWriteHold()).toEqual({ held: false });
@@ -778,7 +778,7 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
 
-    await mod.writeKbToFolder(mkEntry(), '<fresh> <graph> <a> .');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), '<fresh> <graph> <a> .');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('<fresh> <graph> <a> .');
     expect(mod.lastWriteHold()).toEqual({ held: false });
@@ -788,8 +788,8 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
 
-    await mod.writeKbToFolder(mkEntry(), 'first');
-    await mod.writeKbToFolder(mkEntry(), 'second');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'first');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'second');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('second');
     expect(mod.lastWriteHold()).toEqual({ held: false });
@@ -798,12 +798,12 @@ describe('writeKbToFolder — holds a write it is not entitled to make', () => {
   it('holds once someone else edits the file behind us', async () => {
     const mod = await import('../workspace.svelte');
     mod.__linkHandleForTest(root as any);
-    await mod.writeKbToFolder(mkEntry(), 'ours-v1');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'ours-v1');
 
     // Claude Code / a script / git edits it out from under the app.
     fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content = 'edited by someone else';
 
-    await mod.writeKbToFolder(mkEntry(), 'ours-v2');
+    await mod.writeKnowledgeBaseToFolder(mkEntry(), 'ours-v2');
 
     expect(fileAt(['kbs', 'my-kb', 'my-kb.ttl'])!.content).toBe('edited by someone else');
     expect(mod.lastWriteHold()).toMatchObject({ held: true, reason: 'diverged' });

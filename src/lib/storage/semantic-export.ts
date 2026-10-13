@@ -25,7 +25,7 @@ import { scanForExportAdvisory } from '../safety/content-policy';
 
 // ── Schema.org type mapping ───────────────────────────────────────────────────
 
-const KB_TYPE_TO_SCHEMA: Record<string, string> = {
+const KNOWLEDGE_BASE_TYPE_TO_SCHEMA: Record<string, string> = {
   'urn:kbase:type/Person':        'Person',
   'urn:kbase:type/Place':         'Place',
   'urn:kbase:type/Organization':  'Organization',
@@ -40,7 +40,7 @@ const KB_TYPE_TO_SCHEMA: Record<string, string> = {
 
 // ── Schema.org predicate mapping ─────────────────────────────────────────────
 
-const KB_PRED_TO_SCHEMA: Record<string, string> = {
+const KNOWLEDGE_BASE_PRED_TO_SCHEMA: Record<string, string> = {
   'urn:kbase:predicate/birth-date':    'birthDate',
   'urn:kbase:predicate/occupation':    'hasOccupation',
   'urn:kbase:predicate/nationality':   'nationality',
@@ -128,11 +128,11 @@ export function toJsonLd(
 
       // rdf:type → @type
       if (predIri === RDF_TYPE && st.o.kind === 'iri') {
-        node['@type'] = KB_TYPE_TO_SCHEMA[st.o.value] ?? slugLabel(st.o.value);
+        node['@type'] = KNOWLEDGE_BASE_TYPE_TO_SCHEMA[st.o.value] ?? slugLabel(st.o.value);
         continue;
       }
 
-      const schemaKey = KB_PRED_TO_SCHEMA[predIri] ?? slugLabel(predIri);
+      const schemaKey = KNOWLEDGE_BASE_PRED_TO_SCHEMA[predIri] ?? slugLabel(predIri);
       const val = st.o.kind === 'iri'
         ? { '@id': st.o.value }
         : st.o.value;
@@ -213,13 +213,13 @@ export function toLlmsTxt(
   for (const [subjectIri, stmts] of bySubject) {
     const typeStmt = stmts.find(s => s.p.value === RDF_TYPE && s.o.kind === 'iri');
     const schemaType = typeStmt
-      ? (KB_TYPE_TO_SCHEMA[typeStmt.o.value] ?? slugLabel(typeStmt.o.value))
+      ? (KNOWLEDGE_BASE_TYPE_TO_SCHEMA[typeStmt.o.value] ?? slugLabel(typeStmt.o.value))
       : 'Thing';
 
     const labelStmt = stmts.find(s =>
       s.p.value === RDFS_LABEL ||
       s.p.value === 'urn:kbase:predicate/name' ||
-      KB_PRED_TO_SCHEMA[s.p.value] === 'name'
+      KNOWLEDGE_BASE_PRED_TO_SCHEMA[s.p.value] === 'name'
     );
     const label = labelStmt
       ? termValue(labelStmt.o)
@@ -230,7 +230,7 @@ export function toLlmsTxt(
       .filter(s => s.p.value !== RDF_TYPE && s.p.value !== RDFS_LABEL)
       .slice(0, 4)
       .map(s => {
-        const predLabel = KB_PRED_TO_SCHEMA[s.p.value] ?? slugLabel(s.p.value);
+        const predLabel = KNOWLEDGE_BASE_PRED_TO_SCHEMA[s.p.value] ?? slugLabel(s.p.value);
         const objLabel  = s.o.kind === 'iri' ? slugLabel(s.o.value) : s.o.value;
         return `${predLabel}: ${objLabel}`;
       });
@@ -288,7 +288,7 @@ export function toLlmsTxt(
     lines.push('## Key Relations', '');
     for (const st of relations) {
       const sub  = slugLabel(st.s.value);
-      const pred = KB_PRED_TO_SCHEMA[st.p.value] ?? slugLabel(st.p.value);
+      const pred = KNOWLEDGE_BASE_PRED_TO_SCHEMA[st.p.value] ?? slugLabel(st.p.value);
       const obj  = slugLabel(st.o.value);
       lines.push(`- ${sub} ${pred} ${obj}`);
     }

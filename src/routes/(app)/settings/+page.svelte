@@ -1817,15 +1817,11 @@
     margin-top: 1rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.75rem;
-    /* On narrow viewports the section tabs used to clip (e.g. "turtle" cut off at
-       the edge on mobile). Scroll horizontally instead of clipping. */
-    overflow-x: auto;
-    scrollbar-width: thin;
-    scrollbar-color: var(--muted-2) transparent;
-    scroll-snap-type: x proximity;
+    /* Wrap, like the other settings pages. The tabs once clipped on mobile ("turtle" cut off),
+       and the fix scrolled them sideways instead; but six tabs are 698px wide in a 685px column,
+       so the row scrolled by 13px even on a wide desktop (Matt, staging 2026-10-08). */
+    flex-wrap: wrap;
   }
-  .settings-nav::-webkit-scrollbar { height: 4px; }
-  .settings-nav::-webkit-scrollbar-thumb { background: var(--muted-2); border-radius: 999px; }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1853,7 +1849,7 @@
     border-color: var(--accent);
   }
   .nav-link {
-    padding: 0.35rem 0.75rem;
+    padding: 0.35rem 0.6rem;
     border-radius: var(--rad-sm);
     font-family: var(--font-mono);
     font-size: 0.75rem;

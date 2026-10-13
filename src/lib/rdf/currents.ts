@@ -16,6 +16,7 @@
 
 import type { Statement } from './types';
 import { iri, lit, isIRI } from './types';
+import { v5 as uuidv5 } from 'uuid';
 
 export const CURRENTS_META_PREFIX = 'urn:reckons:meta/currents/';
 /** Subject holding graph-wide currents settings */
@@ -70,7 +71,8 @@ export interface CurrentsSettings {
 const KINDS = new Set<CurrentKind>(['rss', 'url', 'topic', 'tasks']);
 
 function isActive(s: Statement): boolean {
-  return s.status !== 'rejected' && s.status !== 'superseded';
+  // Proposed settings are data for review, not permission to schedule remote fetches.
+  return s.status === 'confirmed' || s.status === 'refined';
 }
 
 /** Normalize a type reference: bare local names become full ktype IRIs. */
@@ -209,9 +211,9 @@ export function applyTypeGate(
 
 /* ---------- arrivals ---------- */
 
-export const KB_MENTIONED_IN = 'urn:kbase:predicate/mentioned-in';
-const KB_URL = 'urn:kbase:predicate/url';
-const KB_PUBLISHED_AT = 'urn:kbase:meta/published-at';
+export const KNOWLEDGE_BASE_MENTIONED_IN = 'urn:kbase:predicate/mentioned-in';
+const KNOWLEDGE_BASE_URL = 'urn:kbase:predicate/url';
+const KNOWLEDGE_BASE_PUBLISHED_AT = 'urn:kbase:meta/published-at';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const DOCUMENT_TYPE = 'urn:kbase:type/Document';
 
@@ -225,14 +227,10 @@ export interface ArrivalInput {
   extracted: Statement[];
 }
 
-function articleIri(title: string): string {
-  const s = title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `urn:kbase:concept/${s || 'article'}`;
+export function currentArticleIri(url: string): string {
+  // Headlines are neither unique nor stable: two documents can share a title, and a publisher
+  // can correct one. The URL identifies the arrival across retries, feeds and title changes.
+  return `urn:kbase:concept/arrival-${uuidv5(url, uuidv5.URL)}`;
 }
 
 /**
@@ -242,7 +240,7 @@ function articleIri(title: string): string {
  */
 export function buildArrivalStatements(input: ArrivalInput): Statement[] {
   const now = Date.now();
-  const article = articleIri(input.title);
+  const article = currentArticleIri(input.url);
   const g = iri(`urn:kbase:source/${input.sourceId}`);
   const make = (s: string, p: string, o: Statement['o'], excerpt?: string): Statement => ({
     id: `arrival|${s}|${p}|${o.value}`,
@@ -261,16 +259,16 @@ export function buildArrivalStatements(input: ArrivalInput): Statement[] {
   const out: Statement[] = [
     make(article, RDF_TYPE, iri(DOCUMENT_TYPE)),
     make(article, RDFS_LABEL, lit(input.title)),
-    make(article, KB_URL, lit(input.url), input.excerpt)
+    make(article, KNOWLEDGE_BASE_URL, lit(input.url), input.excerpt)
   ];
-  if (input.publishedAt) out.push(make(article, KB_PUBLISHED_AT, lit(input.publishedAt)));
+  if (input.publishedAt) out.push(make(article, KNOWLEDGE_BASE_PUBLISHED_AT, lit(input.publishedAt)));
 
   const linked = new Set<string>();
   for (const st of input.extracted) {
     const subj = st.s.value;
     if (subj === article || linked.has(subj)) continue;
     linked.add(subj);
-    out.push(make(subj, KB_MENTIONED_IN, iri(article)));
+    out.push(make(subj, KNOWLEDGE_BASE_MENTIONED_IN, iri(article)));
   }
   return [...out, ...input.extracted];
 }

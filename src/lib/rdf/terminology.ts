@@ -45,7 +45,7 @@ export function kbToGraphText(text: string): { out: string; count: number } {
 }
 
 /** Rewrite KB → graph only inside Turtle string literals; IRIs untouched. */
-export function sweepKbToGraph(ttl: string): { out: string; count: number } {
+export function sweepKnowledgeBaseToGraph(ttl: string): { out: string; count: number } {
   const spans = literalSpans(ttl);
   let out = '';
   let last = 0;

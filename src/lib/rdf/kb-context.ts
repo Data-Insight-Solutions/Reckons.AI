@@ -19,7 +19,7 @@ import type { KBContext } from '$lib/types/turtle-chat';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 
-export interface BuildKBContextOpts {
+export interface BuildKnowledgeBaseContextOpts {
   /** Confirmed statements — the graph the context describes. */
   confirmed: Statement[];
   /** All statements — used only for the manual-statement count. */
@@ -34,7 +34,7 @@ export interface BuildKBContextOpts {
   includeDegree?: boolean;
 }
 
-export function buildKBContext(o: BuildKBContextOpts): KBContext {
+export function buildKBContext(o: BuildKnowledgeBaseContextOpts): KBContext {
   const { confirmed: stmts, all: allStmts, sourceCount, typeLabelOf, hubFirst = false, includeDegree = false } = o;
 
   const bySubject = new Map<string, Statement[]>();

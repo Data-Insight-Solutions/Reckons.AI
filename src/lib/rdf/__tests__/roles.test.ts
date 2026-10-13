@@ -17,7 +17,7 @@ import {
   HAS_ROLE,
   RDF_TYPE,
   RDFS_LABEL,
-  KB_ROLE_TYPE,
+  KNOWLEDGE_BASE_ROLE_TYPE,
   ROLE_PREFIX,
 } from '../roles';
 
@@ -33,7 +33,7 @@ describe('labelToRoleIri', () => {
 describe('parseCustomRoles', () => {
   it('finds roles declared as rdf:type Role and reads their labels', () => {
     const stmts = [
-      t('urn:kbase:role/founder', RDF_TYPE, KB_ROLE_TYPE),
+      t('urn:kbase:role/founder', RDF_TYPE, KNOWLEDGE_BASE_ROLE_TYPE),
       t('urn:kbase:role/founder', RDFS_LABEL, 'Founder'),
       t('urn:kbase:concept/x', RDF_TYPE, 'urn:kbase:type/EntityType'), // not a role
     ];
@@ -69,7 +69,7 @@ describe('rolesForEntity', () => {
 
   it('picks up a custom role declared in the same graph', () => {
     const stmts = [
-      t('urn:kbase:role/founder', RDF_TYPE, KB_ROLE_TYPE),
+      t('urn:kbase:role/founder', RDF_TYPE, KNOWLEDGE_BASE_ROLE_TYPE),
       t('urn:kbase:role/founder', RDFS_LABEL, 'Founder'),
       t('urn:p', HAS_ROLE, 'urn:kbase:role/founder'),
     ];

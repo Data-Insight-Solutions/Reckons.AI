@@ -5,10 +5,11 @@ import {
   isTypeAllowed,
   applyTypeGate,
   buildArrivalStatements,
+  currentArticleIri,
   normalizeTypeIri,
   CURRENTS_SUBJECT,
   CUR_ALLOWED_TYPE,
-  KB_MENTIONED_IN,
+  KNOWLEDGE_BASE_MENTIONED_IN,
   type CurrentsSettings
 } from '../currents';
 import { isMetaPredicate, iri, lit, type Statement } from '../types';
@@ -57,6 +58,11 @@ describe('currents settings round-trip', () => {
     const read = readCurrentsSettings(rejected);
     expect(read.allowedTypes).toEqual([]);
     expect(read.currents).toEqual([]);
+  });
+
+  it('does not activate remote streams from proposed settings', () => {
+    const pending = currentsSettingsToStatements(SAMPLE).map((st) => ({ ...st, status: 'pending' as const }));
+    expect(readCurrentsSettings(pending)).toEqual({ currents: [], allowedTypes: [], location: undefined });
   });
 
   it('normalizes bare local names to full type IRIs', () => {
@@ -137,14 +143,14 @@ describe('buildArrivalStatements', () => {
   });
 
   it('creates a Document article node with label and url', () => {
-    const article = 'urn:kbase:concept/new-quantum-chip-announced';
+    const article = currentArticleIri('https://example.com/quantum');
     expect(arrival.some((s) => s.s.value === article && s.p.value === RDF_TYPE && s.o.value === 'urn:kbase:type/Document')).toBe(true);
     expect(arrival.some((s) => s.s.value === article && s.o.value === 'New Quantum Chip Announced!')).toBe(true);
     expect(arrival.some((s) => s.s.value === article && s.o.value === 'https://example.com/quantum')).toBe(true);
   });
 
   it('links each extracted concept to the article via mentioned-in, once', () => {
-    const links = arrival.filter((s) => s.p.value === KB_MENTIONED_IN);
+    const links = arrival.filter((s) => s.p.value === KNOWLEDGE_BASE_MENTIONED_IN);
     expect(links).toHaveLength(1);
     expect(links[0].s.value).toBe('urn:kbase:concept/quantum-chip');
   });
@@ -153,13 +159,22 @@ describe('buildArrivalStatements', () => {
     expect(arrival.every((s) => s.status === 'pending')).toBe(true);
     for (const e of extracted) expect(arrival).toContainEqual(e);
   });
+
+  it('uses the URL for identity across headline corrections and same-title articles', () => {
+    const first = buildArrivalStatements({ title: 'Daily update', url: 'https://example.com/one', sourceId: 'a', extracted: [] });
+    const other = buildArrivalStatements({ title: 'Daily update', url: 'https://example.com/two', sourceId: 'a', extracted: [] });
+    const corrected = buildArrivalStatements({ title: 'Corrected update', url: 'https://example.com/one', sourceId: 'b', extracted: [] });
+    expect(first[0].s.value).not.toBe(other[0].s.value);
+    expect(first[0].s.value).toBe(corrected[0].s.value);
+    expect(first[0].id).toBe(corrected[0].id);
+  });
 });
 
 describe('isMetaPredicate integration', () => {
   it('hides the whole currents namespace from graph edges', () => {
     expect(isMetaPredicate(CUR_ALLOWED_TYPE)).toBe(true);
     expect(isMetaPredicate('urn:reckons:meta/currents/sourceUrl')).toBe(true);
-    expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
+    expect(isMetaPredicate(KNOWLEDGE_BASE_MENTIONED_IN)).toBe(false);
   });
 
   it('keeps crawl telemetry out of the graph — a button caption is not an entity', () => {
@@ -169,7 +184,7 @@ describe('isMetaPredicate integration', () => {
     expect(isMetaPredicate('urn:reckons:test/finding')).toBe(true);
     expect(isMetaPredicate('urn:reckons:test/anything-else')).toBe(true);
     // Still an ordinary fact — the suppression is scoped to the telemetry namespace.
-    expect(isMetaPredicate(KB_MENTIONED_IN)).toBe(false);
+    expect(isMetaPredicate(KNOWLEDGE_BASE_MENTIONED_IN)).toBe(false);
     expect(isMetaPredicate('urn:kbase:predicate/tested-by')).toBe(false);
   });
 });

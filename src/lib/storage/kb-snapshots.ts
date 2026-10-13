@@ -6,10 +6,10 @@
  * bad reconcile is recoverable rather than a silent loss of review history. Backend-agnostic:
  * it operates on a `KBaseDB` and so protects both the local folder and Google Drive paths.
  */
-import type { KBaseDB, KbSnapshotRow } from './db';
+import type { KBaseDB, KnowledgeBaseSnapshotRow } from './db';
 
 /** How many snapshots to keep per KB — enough to recover a recent mistake, bounded storage. */
-const MAX_SNAPSHOTS_PER_KB = 3;
+const MAX_SNAPSHOTS_PER_KNOWLEDGE_BASE = 3;
 
 /**
  * Serialize the current state of `target` into a snapshot row WITHOUT writing it. Returns null
@@ -18,7 +18,7 @@ const MAX_SNAPSHOTS_PER_KB = 3;
  * and cross-table awaits inside a transaction would commit it early), then persist the row
  * inside that same atomic replace. See `populateKbFromTtl`.
  */
-export async function buildKbSnapshot(target: KBaseDB, reason: string): Promise<KbSnapshotRow | null> {
+export async function buildKbSnapshot(target: KBaseDB, reason: string): Promise<KnowledgeBaseSnapshotRow | null> {
   const [statements, sources] = await Promise.all([
     target.statements.toArray(),
     target.sources.toArray(),
@@ -44,7 +44,7 @@ export async function buildKbSnapshot(target: KBaseDB, reason: string): Promise<
  * (returns null) when the KB is empty. For standalone callers; the reconcile path inlines the
  * write into its transaction via `buildKbSnapshot` + `pruneSnapshots`.
  */
-export async function snapshotKbState(target: KBaseDB, reason: string): Promise<KbSnapshotRow | null> {
+export async function snapshotKnowledgeBaseState(target: KBaseDB, reason: string): Promise<KnowledgeBaseSnapshotRow | null> {
   const row = await buildKbSnapshot(target, reason);
   if (!row) return null;
   await target.kbSnapshots.put(row);
@@ -53,7 +53,7 @@ export async function snapshotKbState(target: KBaseDB, reason: string): Promise<
 }
 
 /** Newest-first snapshots for a KB (defaults to the target's own id). */
-export async function listKbSnapshots(target: KBaseDB, kbId?: string): Promise<KbSnapshotRow[]> {
+export async function listKnowledgeBaseSnapshots(target: KBaseDB, kbId?: string): Promise<KnowledgeBaseSnapshotRow[]> {
   const id = kbId ?? target.name;
   const rows = await target.kbSnapshots.where('kbId').equals(id).toArray();
   return rows.sort((a, b) => b.createdAt - a.createdAt);
@@ -75,7 +75,7 @@ export async function restoreKbSnapshot(target: KBaseDB, snapshotId: string): Pr
 }
 
 export async function pruneSnapshots(target: KBaseDB, kbId: string): Promise<void> {
-  const rows = await listKbSnapshots(target, kbId);
-  const stale = rows.slice(MAX_SNAPSHOTS_PER_KB);
+  const rows = await listKnowledgeBaseSnapshots(target, kbId);
+  const stale = rows.slice(MAX_SNAPSHOTS_PER_KNOWLEDGE_BASE);
   if (stale.length > 0) await target.kbSnapshots.bulkDelete(stale.map((r) => r.id));
 }

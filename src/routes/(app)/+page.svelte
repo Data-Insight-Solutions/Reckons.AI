@@ -370,6 +370,10 @@
   const podMode = $derived(podViewEnabled());
   let nodeOrder = $state<string[]>([]); // ordered node keys for 'order' layout
   let timelineZoom = $state(1);
+  // Timeline zoom is chosen on a log2 scale: 2^-2 = 0.25x (tighter than the full range) to 10x.
+  const TIMELINE_ZOOM_MIN_EXP = -2;
+  const TIMELINE_ZOOM_MAX_EXP = Math.log2(10);
+  const formatTimelineZoom = (z: number) => `${z < 1 ? z.toFixed(2).replace(/0$/, '') : z < 10 ? z.toFixed(1).replace(/\.0$/, '') : z.toFixed(0)}x`;
   let timelineCenter = $state<number | null>(null);
   let timelineTimeSource = $state<'event' | 'ingested'>('event');
 
@@ -1264,11 +1268,22 @@
   ]);
   const previewUrlMap = $derived.by(() => {
     const m = new Map<string, string>();
+    // An entity can declare more than one image. Which one wins must not depend on the order
+    // the file listed them in (a reviewed starter sorts by id), so the animated preview
+    // outranks the photo, which outranks the icon image.
+    const rank: Record<string, number> = {
+      'urn:kbase:meta/gifPreview': 3, 'urn:kbase:predicate/photo': 2, 'urn:kbase:predicate/icon2d': 1,
+    };
+    const best: Record<string, number> = {};
     for (const s of statements()) {
       if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
       if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
       const v = s.o.value;
-      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      if (!(v.startsWith('/') || v.startsWith('http') || v.startsWith('data:'))) continue;
+      const r = rank[s.p.value] ?? 0;
+      if (r < (best[s.s.value] ?? 0)) continue;
+      best[s.s.value] = r;
+      m.set(s.s.value, v);
     }
     return m;
   });
@@ -1940,8 +1955,8 @@
     untrack(() => pushNotification({
       id: 'add-set-hint',
       type: 'info',
-      title: 'Make a set',
-      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as set" in the panel.',
+      title: 'Make a collection',
+      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as collection" in the panel.',
     }));
   });
 
@@ -1966,7 +1981,7 @@
   }
 
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
-  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // is a first-class node (skos:Collection) linked to each member via skos:member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
   async function createSetFromSelection() {
     const members = multiSelectedList.map(n => n.iri);
@@ -2269,15 +2284,20 @@
     <div class="timeline-controls">
       <div class="timeline-row">
         <span class="timeline-label mono">zoom</span>
+        <!-- Logarithmic, 0.25x to 10x (Matt, 2026-10-07: "it needs to go tighter together, and
+             also not up to 50x"). Below 1x the dated entries draw closer than the full range; a
+             linear 1-50 slider spent almost all of its travel on zooms nobody used. -->
         <input
           type="range"
-          min="1"
-          max="50"
-          step="0.5"
-          bind:value={timelineZoom}
+          min={TIMELINE_ZOOM_MIN_EXP}
+          max={TIMELINE_ZOOM_MAX_EXP}
+          step="any"
+          value={Math.log2(timelineZoom)}
+          oninput={(e) => (timelineZoom = 2 ** Number((e.currentTarget as HTMLInputElement).value))}
+          aria-label="Timeline zoom"
           class="timeline-slider"
         />
-        <span class="timeline-value mono">{timelineZoom.toFixed(0)}x</span>
+        <span class="timeline-value mono">{formatTimelineZoom(timelineZoom)}</span>
       </div>
       <div class="timeline-row">
         <span class="timeline-label mono">show</span>
@@ -2545,7 +2565,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
-      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>

@@ -81,3 +81,14 @@ describe('buildTask', () => {
     expect(moduleOf('src/lib/embed.ts')).toBe('src/lib');
   });
 });
+
+describe('terminology sweep word list (F203.6)', () => {
+  it('takes exactly the words the graph gives two or more meanings, most meanings first', async () => {
+    const { ambiguousWords } = await import('../terminology-sweep');
+    const words = ambiguousWords(TTL);
+    expect(words.length).toBeGreaterThan(0);
+    expect(words.every((w) => w.meanings >= 2)).toBe(true);
+    expect(words[0].meanings).toBeGreaterThanOrEqual(words[words.length - 1].meanings);
+    expect(words.map((w) => w.word)).toContain('node');
+  });
+});

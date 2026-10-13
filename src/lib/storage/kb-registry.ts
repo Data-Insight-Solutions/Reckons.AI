@@ -297,7 +297,7 @@ export function removeKbFromRegistry(id: string): void {
 }
 
 /** Touch the lastModified timestamp for the current KB. */
-export function touchKb(id: string): void {
+export function touchKnowledgeBase(id: string): void {
   updateKbEntry(id, { lastModified: Date.now() });
 }
 

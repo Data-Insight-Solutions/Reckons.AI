@@ -546,3 +546,30 @@ kpred:network a rdf:Property ;
     rdfs:label "needs network" ;
     rdfs:domain ktype:Schedule ;
     rdfs:comment "\"true\" when the scheduled command talks to the internet (e.g. an advisory lookup), so the person can see which recurring jobs leave the machine." .
+
+# 2026-10-08 — LAYERS APPROVED BY MATT in a Claude Code chat review of the layer-classify job's proposals
+# (qwen3:32b drafted them; 475 queued rows over 355 predicates). claim is the fail-safe default above, so the 331
+# predicates classified only as claim are NOT written: an unclassified predicate already lands there. Rejected as
+# provenance: icon2d and page-section (display and structure, not origin) and from (Matt: 'too narrow and will be
+# often used within statements ... multi-meaning'); they stay at the default. tested-by received both answers from the
+# model; Matt chose provenance, like has-file. screenshot-dir is not yet decided.
+kpred:has-file kpred:layer klayer:provenance .
+kpred:touches-file kpred:layer klayer:provenance .
+kpred:repo-url kpred:layer klayer:provenance .
+kpred:last-push kpred:layer klayer:provenance .
+kpred:proof kpred:layer klayer:provenance .
+kpred:source kpred:layer klayer:provenance .
+kpred:has-source-type kpred:layer klayer:provenance .
+kpred:attested-at kpred:layer klayer:provenance .
+kpred:git-commit kpred:layer klayer:provenance .
+kpred:photo-source kpred:layer klayer:provenance .
+kpred:seen-in kpred:layer klayer:provenance .
+kpred:test-file kpred:layer klayer:provenance .
+kpred:createdBy kpred:layer klayer:provenance .
+kpred:git-branch kpred:layer klayer:provenance .
+kpred:scanned-at kpred:layer klayer:provenance .
+kpred:has-repo kpred:layer klayer:provenance .
+kpred:raised-by kpred:layer klayer:provenance .
+kpred:moved-to kpred:layer klayer:provenance .
+kpred:tested-by kpred:layer klayer:provenance .
+kpred:open-question kpred:layer klayer:question .

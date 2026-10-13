@@ -19,7 +19,7 @@
 
 export const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 export const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
-export const KB_ROLE_TYPE = 'urn:kbase:type/Role';
+export const KNOWLEDGE_BASE_ROLE_TYPE = 'urn:kbase:type/Role';
 export const HAS_ROLE = 'urn:kbase:predicate/has-role';
 export const ROLE_PREFIX = 'urn:kbase:role/';
 
@@ -67,7 +67,7 @@ const obj = (t: TripleLike) => t.o?.value ?? t.object ?? '';
 
 /** Custom roles declared in the graph (rdf:type urn:kbase:type/Role, labelled by rdfs:label). */
 export function parseCustomRoles(statements: TripleLike[]): RoleDef[] {
-  const roleIris = new Set(statements.filter((t) => pred(t) === RDF_TYPE && obj(t) === KB_ROLE_TYPE).map(subj));
+  const roleIris = new Set(statements.filter((t) => pred(t) === RDF_TYPE && obj(t) === KNOWLEDGE_BASE_ROLE_TYPE).map(subj));
   const labels = new Map<string, string>();
   for (const t of statements) if (roleIris.has(subj(t)) && pred(t) === RDFS_LABEL) labels.set(subj(t), obj(t));
   return [...roleIris].map((iri) => ({

@@ -61,10 +61,10 @@
       const folders = await listKbFolders();
       if (folders.length > 0) {
         const { imported } = await importKbsFromWorkspace();
-        flash(imported.length ? `imported ${imported.length} graph(s)` : `${folders.length} graph(s) linked`);
+        flash(imported.length ? `imported ${imported.length} space(s)` : `${folders.length} space(s) linked`);
       } else {
         const n = await syncAllKbs();
-        flash(`synced ${n} graph${n !== 1 ? 's' : ''} to folder`);
+        flash(`synced ${n} space${n !== 1 ? 's' : ''} to folder`);
       }
     }
     busy = false;
@@ -81,7 +81,7 @@
     busy = true;
     const r = await resyncNow();
     const pulled = r.imported.length + r.updated.length;
-    flash(pulled ? `pulled ${pulled}, pushed ${r.pushed}` : `pushed ${r.pushed} graph${r.pushed !== 1 ? 's' : ''}`);
+    flash(pulled ? `pulled ${pulled}, pushed ${r.pushed}` : `pushed ${r.pushed} space${r.pushed !== 1 ? 's' : ''}`);
     busy = false;
   }
 
@@ -114,7 +114,7 @@
 
 <!-- THIS GRAPH'S PACKAGE -->
 <div class="overlay-group">
-  <span class="group-label mono">graph package · {getCurrentKbName()}</span>
+  <span class="group-label mono">share package · {getCurrentKbName()}</span>
   <div class="pkg-row mono">
     <span class="pkg-stat" title="2D node icons">◇ {assetCounts.icons} icons</span>
     <span class="pkg-stat" title="hover preview images">▣ {assetCounts.previews} previews</span>
@@ -158,7 +158,7 @@
     </div>
   {:else}
     <button class="pkg-chip pkg-cta" disabled={busy} onclick={link}>📁 link a folder</button>
-    <span class="pkg-note mono">back up every graph to disk · survives cache clears</span>
+    <span class="pkg-note mono">back up every space to disk · survives cache clears</span>
   {/if}
 
   <!-- Google Drive (cloud) folder sync (F56) -->

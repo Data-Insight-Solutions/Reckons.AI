@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { kbToGraphText, sweepKbToGraph } from '../terminology';
+import { kbToGraphText, sweepKnowledgeBaseToGraph } from '../terminology';
 
 describe('kbToGraphText', () => {
   it('maps knowledge base(s) case-preserving', () => {
@@ -25,7 +25,7 @@ describe('kbToGraphText', () => {
   });
 });
 
-describe('sweepKbToGraph — literals only', () => {
+describe('sweepKnowledgeBaseToGraph — literals only', () => {
   it('rewrites inside literals but never IRIs or prefixes', () => {
     const ttl = [
       'kb:my-kb rdf:type ktype:KnowledgeBase ;',
@@ -33,7 +33,7 @@ describe('sweepKbToGraph — literals only', () => {
       '    rdfs:comment "Import this KB into your knowledge base." ;',
       '    p:x <urn:kbase:concept/kb-thing> .',
     ].join('\n');
-    const { out } = sweepKbToGraph(ttl);
+    const { out } = sweepKnowledgeBaseToGraph(ttl);
     expect(out).toContain('"My graph"');
     expect(out).toContain('"Import this graph into your knowledge graph."');
     // identifiers untouched

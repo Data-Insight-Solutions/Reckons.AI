@@ -40,7 +40,7 @@ describe('activateOfficialKb', () => {
     const ok = await kb.activateOfficialKb();
     expect(ok).toBe(true);
     expect(kb.officialKbActive()).toBe(true);
-    expect(kb.officialKbStatements()).toHaveLength(1);
+    expect(kb.officialKnowledgeBaseStatements()).toHaveLength(1);
     expect(kb.officialKbError()).toBeNull();
   });
 

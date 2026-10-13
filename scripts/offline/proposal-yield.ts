@@ -28,81 +28,13 @@
  * Run: npx tsx scripts/offline/proposal-yield.ts
  */
 
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-import { Parser } from 'n3';
+import { tallyWorkspace } from './lib/proposal-tally.js';
 
 const ROOT = new URL('../..', import.meta.url).pathname;
-const WORKSPACES = ['reckons-workspace/kbs', 'mcp-workspace/kbs'];
-const PENDING = join(ROOT, 'reckons-workspace/knowledge.pending.jsonl');
 
-const META = 'urn:kbase:meta/';
-
-type Tally = { proposed: number; accepted: number; rejected: number; open: number };
-
-const byAgent = new Map<string, Tally>();
-const tally = (agent: string): Tally => {
-  if (!byAgent.has(agent)) byAgent.set(agent, { proposed: 0, accepted: 0, rejected: 0, open: 0 });
-  return byAgent.get(agent)!;
-};
-
-// ── 1. What is still queued and has never reached a graph ────────────────────
-
-let queuedTotal = 0;
-if (existsSync(PENDING)) {
-  for (const line of readFileSync(PENDING, 'utf8').split('\n')) {
-    if (!line.trim()) continue;
-    try {
-      const e = JSON.parse(line);
-      queuedTotal++;
-      const t = tally(e.agent ?? '(unattributed)');
-      t.proposed++;
-      t.open++;
-    } catch {
-      /* a malformed line is not a proposal */
-    }
-  }
-}
-
-// ── 2. What reached a graph, and what a human then did with it ───────────────
-
-function ttlFiles(dir: string, out: string[] = []): string[] {
-  if (!existsSync(dir)) return out;
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) ttlFiles(p, out);
-    else if (name.endsWith('.ttl')) out.push(p);
-  }
-  return out;
-}
-
-let annotatedFiles = 0;
-for (const ws of WORKSPACES) {
-  for (const file of ttlFiles(join(ROOT, ws))) {
-    let quads;
-    try {
-      quads = new Parser().parse(readFileSync(file, 'utf8'));
-    } catch {
-      continue; // a graph that does not parse is graph-lint's problem, not this job's
-    }
-    // Reification blocks carry status and (since 2026-08-13) attribution.
-    const status = new Map<string, string>();
-    const agent = new Map<string, string>();
-    for (const q of quads) {
-      if (q.predicate.value === META + 'status') status.set(q.subject.value, q.object.value);
-      else if (q.predicate.value === META + 'proposed-by') agent.set(q.subject.value, q.object.value);
-    }
-    if (agent.size > 0) annotatedFiles++;
-    for (const [stmt, who] of agent) {
-      const t = tally(who);
-      t.proposed++;
-      const s = status.get(stmt);
-      if (s === 'confirmed' || s === 'refined') t.accepted++;
-      else if (s === 'rejected') t.rejected++;
-      else t.open++;
-    }
-  }
-}
+// ── 1-2. What is still queued, what reached a graph, and what a human did with it ─
+// The counting lives in lib/proposal-tally.ts, shared with the queue worker's back-pressure (F74.9).
+const { tallies: byAgent, queued: queuedTotal, annotatedFiles } = tallyWorkspace(ROOT);
 
 // ── 3. Report ────────────────────────────────────────────────────────────────
 

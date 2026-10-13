@@ -63,7 +63,7 @@ async function waitForHook(page: Page) {
 async function openPackageDisclosure(page: Page) {
   await page.goto(`${APP}/kb`);
   await page.waitForTimeout(800);
-  await expect(page.getByRole('heading', { name: /graph package/i }).first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('heading', { name: /share package/i }).first()).toBeVisible({ timeout: 10_000 });
 }
 
 test.describe('Local Folder Sync', () => {

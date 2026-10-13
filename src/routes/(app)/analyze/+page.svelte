@@ -33,11 +33,9 @@
     margin-top: 1rem;
     border-bottom: 1px solid var(--line);
     padding-bottom: 0.75rem;
-    /* Scroll rather than clip the section tabs on narrow viewports (mobile). */
-    overflow-x: auto;
-    scrollbar-width: none;
+    /* Wrap rather than scroll, the same as every settings page (scrolling hid tabs off the edge). */
+    flex-wrap: wrap;
   }
-  .settings-nav::-webkit-scrollbar { display: none; }
   .nav-link {
     padding: 0.35rem 0.75rem;
     border-radius: var(--rad-sm);
