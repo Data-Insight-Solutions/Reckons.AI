@@ -455,10 +455,10 @@
       "path": "features/context-compression-features",
       "entity": "urn:reckons:feature/ContextCompression",
       "graph": "docs-features.ttl",
-      "factHash": "726ebf03df5ab51d",
+      "factHash": "f1d29c766b723688",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "5807c7233507cf73"
+      "pageHash": "b757c513cbff84d3"
     },
     {
       "path": "features/currents",
@@ -467,7 +467,7 @@
       "factHash": "351bcc5e3c503e72",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "a1931d6e1de9606c"
+      "pageHash": "31cbdd0cf2f3cce2"
     },
     {
       "path": "features/entity-normalization",
@@ -491,19 +491,19 @@
       "path": "features/graph3-d",
       "entity": "urn:reckons:feature/Graph3D",
       "graph": "docs-features.ttl",
-      "factHash": "36e8f000cef834d5",
+      "factHash": "17c18ea496929e86",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "6bf87543c33bcc1b"
+      "pageHash": "bafe2c1f0f32abb6"
     },
     {
       "path": "features/ingest",
       "entity": "urn:reckons:feature/Ingest",
       "graph": "docs-features.ttl",
-      "factHash": "335ec4ef594b2da1",
+      "factHash": "465581c742fbaec0",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "f933cd57288582c7"
+      "pageHash": "55a34fc5359e9adc"
     },
     {
       "path": "features/kb-leap",
@@ -563,10 +563,10 @@
       "path": "features/pod-view",
       "entity": "urn:reckons:feature/PodView",
       "graph": "docs-features.ttl",
-      "factHash": "44f48d75b47289d7",
+      "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "6fd5df05bc1147aa"
+      "pageHash": "b90622f605978c80"
     },
     {
       "path": "features/prefer-local",
@@ -593,16 +593,16 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "3c0d897c46eff536"
+      "pageHash": "d62e62e78f3d0516"
     },
     {
       "path": "features/review-workbench",
       "entity": "urn:reckons:feature/ReviewWorkbench",
       "graph": "docs-features.ttl",
-      "factHash": "2b8d39754563b1e1",
+      "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "57ab8cddf3f65cbe"
+      "pageHash": "c799cf7488ae1e6e"
     },
     {
       "path": "features/shelly",
@@ -644,10 +644,10 @@
       "path": "guide/reckons-ai",
       "entity": "urn:reckons:guide/ReckonsAI",
       "graph": "starter-guide.ttl",
-      "factHash": "012d8944de8205cb",
+      "factHash": "dd4b812bdfde646c",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "46022796f1ea8f47"
+      "pageHash": "5aa4a6fde458ea6d"
     },
     {
       "path": "guide/what-is-reckons-ai",
@@ -656,7 +656,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "da7c66d823175e7c"
+      "pageHash": "ab8ad94fa9adc5fe"
     },
     {
       "path": "guide/who-makes-this",
@@ -1256,19 +1256,19 @@
       "path": "user-paths/add-3",
       "entity": "urn:reckons:path/Add-3",
       "graph": "docs-user-paths.ttl",
-      "factHash": "19b488b471e85bf4",
+      "factHash": "8eba0ecb99ac8a49",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "76d6df5a6f723206"
+      "pageHash": "d345e43d4441100f"
     },
     {
       "path": "user-paths/add-to-existing",
       "entity": "urn:reckons:path/AddToExisting",
       "graph": "docs-user-paths.ttl",
-      "factHash": "50cfb0c53e335c67",
+      "factHash": "65288bc20af340aa",
       "factCount": 11,
       "floor": "evidence",
-      "pageHash": "c3e453e424b632a9"
+      "pageHash": "5fa772148d754e8a"
     },
     {
       "path": "user-paths/build-for-research",
@@ -1364,10 +1364,10 @@
       "path": "user-paths/paths-overlap",
       "entity": "urn:reckons:path/PathsOverlap",
       "graph": "docs-user-paths.ttl",
-      "factHash": "9f5f1eba1e044564",
+      "factHash": "9f75209119c6b6e5",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "bff109d6f90c107c"
+      "pageHash": "7c0aa7d18d0bc035"
     },
     {
       "path": "user-paths/research-1",

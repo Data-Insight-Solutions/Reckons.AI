@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 > **Functional** — built and working, with rough edges still being smoothed.
 
-Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP. Structured triples outperform summaries because no relationships are paraphrased away.
+Condense your context. Keep the meaning. Knowledge graphs are dense by nature — a page of prose becomes a handful of triples. Semantic meaning preserved, tokens reduced. Feed compressed graph directly to AI agents via MCP (Model Context Protocol, a standard way for AI assistants to reach tools and data). Structured triples outperform summaries because no relationships are paraphrased away.
 
 <p class="derived">This is built and working.</p>
 

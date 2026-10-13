@@ -27,7 +27,7 @@ Currents brings recurring external content into a space through your optional n8
 
 **[Pod View](../features/pod-view)** — **scaffolded**
 
-Turn on the pod view from the Graph tab (currents section) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node.
+Turn on the pod view from the Graph tab (currents section, where you manage feeds that bring new facts in) to see arrivals -- nodes touched only by pending facts from a current -- drift gently at reduced opacity with a dashed halo, kept visually distinct until you accept or dismiss them from the node.
 
 ## Related
 
