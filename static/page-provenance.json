@@ -1,5 +1,5 @@
 {
-  "built": 162,
+  "built": 163,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -260,7 +260,7 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "8b17576fdab7423a"
+      "pageHash": "8d4c08008d547fdf"
     },
     {
       "path": "coding-workflow/context-compression-coding-workflow",
@@ -378,6 +378,15 @@
       "factCount": 4,
       "floor": "evidence",
       "pageHash": "14e227cbfbbfcc2a"
+    },
+    {
+      "path": "coding-workflow/ui-terms-audit",
+      "entity": "urn:reckons:docs/coding-workflow/UiTermsAudit",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "868a15d710dbfa2e",
+      "factCount": 4,
+      "floor": "evidence",
+      "pageHash": "8abde4a5fec4b05c"
     },
     {
       "path": "coding-workflow/untrusted-input",
