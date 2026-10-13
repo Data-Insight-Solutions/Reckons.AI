@@ -33,6 +33,8 @@
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
   import { initViewport } from '$lib/stores/viewport.svelte';
+  import { readCurrentsSettings } from '$lib/rdf/currents';
+  import { startCurrentsPolling } from '$lib/integrations/n8n/currents-poll';
 
   let { children } = $props();
   let error = $state<string | null>(null);
@@ -55,6 +57,26 @@
   // IndexedDB is shared by same-origin tabs; mirror committed source/fact changes into this
   // tab's reactive store for as long as the app layout is mounted.
   $effect(() => startKbLiveSync());
+
+  // A primitive signature avoids restarting the poll when an unrelated fact arrives. Saved
+  // definition edits do restart it immediately; teardown cancels the previous network requests.
+  const currentsDefinitions = $derived(JSON.stringify(readCurrentsSettings(statements()).currents));
+  $effect(() => {
+    if (!clientReady || !loaded() || !settingsLoaded() || officialKbActive()) return;
+    const s = settings();
+    return startCurrentsPolling({
+      enabled: s.n8nCurrentsEnabled === true,
+      baseUrl: s.n8nBaseUrl,
+      graphStableId: s.kbStableId,
+      currents: JSON.parse(currentsDefinitions),
+    }, {
+      report: (error) => pushNotification({
+        id: 'currents-delivery-error', type: 'warn', title: 'Currents could not sync',
+        body: `${error instanceof Error ? error.message : String(error)} Check the n8n workflow, server access and this build's connection policy in Integrations. Retrying in a minute.`,
+        action: { label: 'Integrations', href: '/settings/integrations#s-n8n' },
+      }),
+    });
+  });
 
   // Apply UI scale as root font-size whenever it changes
   const UI_SCALE_PX: Record<string, string> = { sm: '14px', md: '16px', lg: '18px' };

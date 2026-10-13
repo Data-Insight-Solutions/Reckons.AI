@@ -7,7 +7,7 @@ parent: "what-is-reckons-ai"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule."
+excerpt: "Currents brings recurring external content into a space through your optional n8n Currents Monitor."
 generated: "docs-kb"
 related:
   - "pod-view"
@@ -17,7 +17,7 @@ related:
 
 > **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.
 
-Streamed ingest: point a current at an RSS feed, URL, or topic and it brings recurring external content into your graph on a schedule. Items arrive via the n8n Currents Monitor (or a direct in-browser RSS fetch as fallback) and are ranked by affinity to your graph's most-connected entities, with near-duplicates collapsed and content-policy filtering applied. New facts always land as pending — a current never bypasses review. An entity-type gate (set in graph settings) restricts which types a current may CREATE; facts attaching to entities already in the graph always flow through. Configure currents and the type gate from the graph page.
+Currents brings recurring external content into a space through your optional n8n Currents Monitor. Configure streams and an entity-type gate on the space management page, then explicitly connect Currents in Integrations. While the app is open, it sends saved current definitions and the space ID to your instance and checks for arrivals every minute. New document metadata enters the review queue as pending facts; repeated delivery preserves your decisions. Removing or disabling a current stops its remote schedule on the next successful sync. Disconnecting the browser or changing instances leaves existing server schedules running. The monitor workflow must be installed and active, allow this app through CORS, and be permitted by the build connection policy. A custom server needs a self-hosted build configured for its origin. Automatic ranking, direct RSS fallback and full-text extraction are not connected to this delivery path yet.
 
 <p class="derived">This exists in outline, with gaps. It has one part below, 1 of which is not built yet.</p>
 

@@ -1,3 +1,40 @@
+## 2026-10-12 — 0.2.6 Currents delivery through local job review (Codex)
+
+Branch: `feat/v026-currents-arrivals`, based on `origin/dev`. Open the PR against `dev`; Matt merges.
+The README PR #436 has merged with all required checks green. The 0.2.6 release itself remains planned.
+
+Completed the accepted Currents quick win: explicit browser/space opt-in in Integrations; confirmed saved
+current definitions register with n8n; a cancellable poll delivers pending document facts once per minute
+while the app is open. Removed definitions get a remote disable using a durable registration ledger.
+URL-based article identity and transaction-level replay protection preserve reviewed facts across retries
+and tabs. Pending configuration cannot activate a current; a human Save can confirm it. Graph records and
+generated feature/integration docs describe the limits. The broad Currents and Pod phases remain scaffolded;
+the delivery phase is functional. No live n8n instance was changed or tested, and the original monitor's
+portable workflow export is still missing. Custom origins require a configured self-hosted build and server
+CORS. Disconnecting a browser or changing endpoints does not stop old server schedules.
+
+Local jobs: contract panel (qwen3.6, 6 successful votes after 6 grammar failures); test-design jobs
+(qwen3-coder returned no useful cases, qwen3.6 supplied removal/scope cases); code-review on 4 core files
+(4 false positives rejected, 11 observations capped); final UI/settings panel (2 clean votes, 1 rejected
+objection to intentionally confirming proposed configuration on Save). Accepted and rejected proposals are
+recorded in the pending graph queue and roadmap. All edits were reviewed and applied by Codex.
+
+Validation on 2026-10-12: 3,782 unit tests passed across 278 files, 14 todo; type check zero errors/warnings;
+one Chromium app integration test passed opt-in, pending arrivals, dismissal after reload and remote removal;
+local visual harness passed /kb and /settings/integrations with zero app warnings/page errors. Build and
+build verification passed, with three existing WASM size warnings. Documentation alignment passed. The script-tier sweep returned 43/45 clean: all blocking checks passed;
+competitor-scan and naming-ratchet remain advisory findings. Secret scanning passed; graph lint retains
+16 existing warnings.
+Early runs caught a missing settings-persistence field (fixed) and a test endpoint rejected by CSP
+(documented the real hosting restriction and used an allowed, intercepted localhost endpoint). Terminology
+baselines were raised only for measured existing API vocabulary in this feature/tests and generated copy;
+the commit explains the increases. Check the PR's latest CI before merging.
+
+Basis Universal: evaluated, not added. The larger bundled GLB is about 66% embedded JPEG by file size;
+KTX2 could help that asset path, but needs renderer-aware loaders, roughly 571 KiB raw transcoder assets,
+and desktop/mobile measurements. A scoped offline GLB/KTX2 benchmark proposal is in the graph queue;
+it is not a 0.2.6 dependency or a replacement for DOM image previews.
+
 ## 2026-10-12 — README review and documentation-space links (Codex)
 
 Branch: `docs/readme-space-guide`, based on `dev`; [PR #436](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/436) targets `dev`. No merge or production deployment authorized.
