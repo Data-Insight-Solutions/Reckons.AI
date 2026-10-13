@@ -1,230 +1,71 @@
 # Reckons.AI
 
-![Reckons.AI — the semantic understanding knowledge graph you review, automatically edit, compare, and share](static/social-preview.png)
+![Reckons.AI — connect knowledge, inspect its sources, and work out what to do next](static/social-preview.png)
 
-<!-- A short demo GIF (ingest -> review -> 3D graph -> reckon) is planned; the image above is an interim visual. -->
-
-**🌐 Live app: [reckons.ai](https://reckons.ai)**
+[Open Reckons.AI](https://reckons.ai) · [Start here](https://reckons.ai/docs/learn/start-here) · [Documentation](https://reckons.ai/docs)
 
 [![CI](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml/badge.svg)](https://github.com/Data-Insight-Solutions/Reckons.AI/actions/workflows/ci.yml)
 ![Status: Alpha](https://img.shields.io/badge/status-alpha-orange)
-![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A personal knowledge graph that turns documents, web pages, and notes into a structured graph of facts — stored as a standard **Turtle** (`.ttl`) file on your device.
+**Turn scattered information into knowledge you can question, connect, and use.**
 
-You own the file. You review and confirm every fact. Nothing leaves your device unless you choose to share it.
+Reckons.AI is a [local-first](https://reckons.ai/docs/architecture/local-first-arch) personal knowledge app. Bring together notes, documents, and web pages; review the claims inside them; and build [spaces](https://reckons.ai/docs/features/multi-kb) of connected knowledge with the sources still in reach. When you need to make a decision, a [reckoning](https://reckons.ai/docs/learn/reckoning) helps you work through the situation, your target, and possible next steps.
 
-> 🚧 **Alpha** — feature-complete for personal use and actively developed. Expect rough edges; please [file issues](https://github.com/Data-Insight-Solutions/Reckons.AI/issues).
+Your graph is stored on your device. **Sharing and enabled integrations can send data elsewhere**, including cloud AI, web extraction, and sync. The [privacy boundaries](https://reckons.ai/docs/tips/no-telemetry) depend on the services and settings you use.
 
----
+> **Alpha, actively developed.** The core workflow is usable, with rough edges and unfinished work. Documentation distinguishes built capabilities from plans; the live app can lag changes on `dev`. [Report an issue](https://github.com/Data-Insight-Solutions/Reckons.AI/issues).
 
-## What it does
+## From information to understanding
 
-```
-note / url / doc / .ttl / calendar / extension
-        |
-        v
-   AI extraction
-        |
-        v
-   Review & confirm  <-- only what you approve enters your KB
-        |
-        v
-   3D knowledge graph   Reckoning (decision support)   Share .ttl
-```
+[Add a source](https://reckons.ai/docs/features/ingest), then [review](https://reckons.ai/docs/features/review-system) the proposed claims: confirm, refine, or reject them. [Source excerpts](https://reckons.ai/docs/features/passage-grounding) help you check what the model extracted. AI can misread a source; review is part of the work. Sources you explicitly mark as trusted can have pending claims auto-confirmed.
 
-1. **Ingest** — paste a note, URL, document, calendar, or an existing `.ttl` file from someone else
-2. **Review** — confirm or reject each proposed triple; refine labels before accepting
-3. **Explore** — 3D force-directed graph with hub emphasis, layout modes, filter chips, and 2D fallback
-4. **Reckon** — describe a situation and a target; the AI proposes options grounded in your KB
-5. **Compare** — import a `.ttl` file or analyze a page to see what's new, conflicting, or reinforcing
-6. **Share** — export `.ttl` and send it to collaborators; they see the diff on import
+Organize separate [spaces](https://reckons.ai/docs/features/multi-kb) for projects or interests, [link them](https://reckons.ai/docs/features/kb-leap), and explore their relationships in [2D or 3D](https://reckons.ai/docs/features/graph3-d). [Compare](https://reckons.ai/docs/features/compare) incoming knowledge with what you already hold to inspect additions and disagreements. [Sources](https://reckons.ai/docs/features/node-sources) let you trace a claim back to its recorded origin.
 
----
+Ask [Shelly](https://reckons.ai/docs/features/shelly) about your graph or run a [reckoning](https://reckons.ai/docs/learn/reckoning). For example, bring together a project's requirements, constraints, and previous decisions, then ask what could achieve the next milestone. The output is a proposal to evaluate; its usefulness depends on your sources, reviewed claims, and model.
 
-## Key features
+The [five moves](https://reckons.ai/docs/learn/what-it-does) explain the whole workflow. The [data model](https://reckons.ai/docs/learn/how-it-works) explains how statements, relationships, and provenance fit together.
 
-- **Multi-KB management** — create, switch, rename, and delete independent knowledge bases
-- **KB Leap** — cross-reference entities between KBs; click to jump between them
-- **Browser extension** — compare any webpage against your KB, accumulate research sessions across tabs, batch ingest
-- **MCP server** — expose your KB to Claude Desktop, Cursor, and other MCP-compatible AI agents
-- **Predicate Manager** — view, rename, and merge predicates across your KB
-- **Content safety** — ethics preamble on shared and remote prompts (purpose- and locality-gated, `ethicsPreambleFor` — not local-only or structured-output), content classifier, export advisory
-- **Passage grounding** — verbatim source excerpts attached to extracted triples
-- **Diff summaries** — LLM-generated 3-part summaries (new/reinforcing/conflicting)
-- **Whisper STT** — local speech-to-text via transformers.js, no cloud required ([`whisper-stt.ts`](src/lib/integrations/llm/whisper-stt.ts))
-- **Kokoro TTS** — local text-to-speech for story walkthroughs
-- **Per-task LLM backends** — use different providers for ingest, chat, analysis, and diff summary
-- **Model cache management** — inspect, sideload, and purge locally cached WASM models
-- **Source trust system** — sources earn trust through consistent accuracy; trusted sources auto-confirm
-- **History mode** — time-travel through your KB with a timeline scrubber
-- **Cross-KB alignment** — align entities across knowledge bases with embedding similarity and IRI remapping
-- **n8n cloud sync** — private cloud sync via self-hosted n8n VPS; upload, download, and monitor KBs
-- **Source monitoring** — watch URLs for changes, detect diffs, queue pending notes automatically
-- **GitHub repo ingest** — ingest repository structure and code as knowledge with delta compare
-- **Entity normalisation** — embedding-based IRI rewriting prevents duplicate entities at ingest time
-- **Self-dogfooding MCP workspace** — the product tracks its own roadmap and status via its own MCP server
+## Your data, your connections
 
----
+The core app uses a browser database and runs without a Reckons.AI account. Export your knowledge as standard [RDF/Turtle](https://reckons.ai/docs/triples-rdf/turtle), or link a [workspace folder](https://reckons.ai/docs/integrations-tech/integrations#workspace-sync) to keep a disk copy. Browser storage can be cleared or evicted, so keep backups of work you care about.
 
-## Quick start
+[Integrations](https://reckons.ai/docs/integrations-tech/integrations) extend that personal workspace:
+
+- **Bring research together.** Import from the [browser extension](https://reckons.ai/docs/integrations-tech/integrations#browser-extension), GitHub repositories, and [calendars](https://reckons.ai/docs/integrations-tech/integrations#google-calendar). These connections have their own setup and access requirements.
+- **Choose your AI and tools.** Use [local models](https://reckons.ai/docs/llm/local-models) in the browser or through [Ollama](https://reckons.ai/docs/integrations-tech/ollama), or configure [cloud providers and per-task backends](https://reckons.ai/docs/features/llm-backends). The [MCP server](https://reckons.ai/docs/integrations-tech/mcp-server) gives connected agents access to workspace graphs; those agents may use remote models.
+- **Connect storage and automation.** Optional [Google Drive](https://reckons.ai/docs/integrations-tech/integrations#google-drive) and [self-hosted n8n](https://reckons.ai/docs/integrations-tech/n8n-cloud-sync) support backup, sync, and automation. They use services you configure; n8n is an optional integration, not a required app backend.
+
+Cloud AI receives the content and graph context used for its task. URL ingestion uses Jina Reader or a configured scraper; remote OCR sends documents or images to its provider. Enabled sync can transfer graphs in the background. Local inference requires downloaded or sideloaded models, and Ollama is on-device only when its configured server is. “Prefer local” is a routing preference, not an offline lock. The hosted site also permits Cloudflare Web Analytics. See [privacy and network behavior](https://reckons.ai/docs/tips/no-telemetry), [model routing](https://reckons.ai/docs/features/prefer-local), and [safety limitations](SAFETY.md).
+
+## Where it is going
+
+The [roadmap space](static/reckons-roadmap.ttl) holds the detailed plans, status, dependencies, and open questions. Its themes build on the workflow above:
+
+- **Knowledge you can check:** better extraction, retained source evidence, and clearer review decisions.
+- **Spaces that stay understandable:** easier organization, navigation across spaces, and better performance as knowledge grows.
+- **Useful assistance under your control:** stronger local models, optional integrations, and automation grounded in reviewed knowledge.
+- **Knowledge you can carry forward:** portable files, more dependable sync and publishing, and eventually collaboration and team governance.
+
+These are directions with work at different stages. The general integration plugin SDK remains speculative; seamless sync, autonomous assistance, and enterprise access controls are not completed capabilities.
+
+## Get started
+
+[Open the app](https://reckons.ai) and try the starter example, or run it locally with Node.js 22 or newer:
 
 ```bash
-cp .env.example .env   # add at least one AI backend key (or leave blank for WASM)
-npm install
-npm run dev               # http://localhost:5173
+git clone https://github.com/Data-Insight-Solutions/Reckons.AI.git
+cd Reckons.AI
+npm ci
+npm run dev
 ```
 
-No AI key required — the local WASM backend works out of the box (slower, fully offline).
+Open `http://localhost:5173`. An API key is optional: choose a local model or configure a provider in Settings. Browser inference needs model assets and compatible hardware; it can be slow, and model quality varies. Follow [SETUP.md](SETUP.md) for model setup, the extension, workspace folders, and self-hosting.
 
----
+## Explore the documentation spaces
 
-## AI backends
+The linked terms above open pages generated from nodes in the documentation graphs. To explore their relationships in the app, open **Documentation Graph** from the welcome screen and follow its links between spaces. The public page links do not select a node in your local graph.
 
-| Backend | Cost | Privacy | Quality |
-|---|---|---|---|
-| **WASM (built-in)** | Free | 100% local | Low-medium |
-| **Ollama** | Free | 100% local | High |
-| **Chrome built-in AI** | Free | Local (Chrome only) | Medium |
-| **OpenRouter** | Free tier available | Third-party | High |
-| **Gemini** | Free tier (1,500 req/day) | Google | High |
-| **Claude** | Pay-per-token | Anthropic | Highest |
-| **OpenAI** | Pay-per-token | OpenAI | High |
-| **Manual paste** | Free | Any LLM | Any |
+Start with the [guide](https://reckons.ai/docs/learn/start-here) ([source space](static/starter-guide.ttl)), then explore [features](https://reckons.ai/docs/learn/what-it-does) ([source space](static/docs-features.ttl)), [integrations](https://reckons.ai/docs/integrations-tech/integrations) ([source space](static/docs-integrations-tech.ttl)), or [architecture](https://reckons.ai/docs/architecture/local-first-arch) ([source space](static/docs-architecture.ttl)). The [roadmap](static/reckons-roadmap.ttl), [production](static/reckons-production.ttl), [testing](static/docs-testing.ttl), and [codebase](static/reckons-codebase.ttl) spaces describe the project itself.
 
-Full setup details in [`SETUP.md`](SETUP.md) and [`docs/GUIDE.md`](docs/GUIDE.md).
-
----
-
-## Tech stack
-
-- **SvelteKit 2 + Svelte 5** (runes) — frontend framework
-- **Threlte 8 / Three.js** — 3D force-directed knowledge graph
-- **Dexie** — IndexedDB persistence (all data stays in-browser)
-- **N3.js** — W3C RDF/Turtle parsing and serialization
-- **@huggingface/transformers** — local WASM LLM and embedding inference
-- **Playwright** — end-to-end test suite
-
----
-
-## Data model
-
-Every fact is a `Statement` — an RDF triple with provenance:
-
-```ts
-{
-  s: { kind: 'iri', value: 'urn:kbase:person/alice' },
-  p: { kind: 'iri', value: 'urn:kbase:predicate/organized' },
-  o: { kind: 'iri', value: 'urn:kbase:event/float-trip' },
-  g: { kind: 'iri', value: 'urn:kbase:source/<uuid>' },  // provenance
-  sourceId: '<uuid>',
-  confidence: 0.95,
-  status: 'confirmed',   // pending | pending-removal | confirmed | refined | rejected | superseded
-  excerpt: 'Alice organized the float trip last summer.',  // verbatim source sentence
-}
-```
-
-Exported as standard Turtle (`.ttl`) — readable by any RDF tool.
-
----
-
-## Browser extension
-
-The extension adds a side panel with three tabs:
-
-- **Compare** — analyze the current page against your KB with at-a-glance proportional bar
-- **Session** — accumulate findings across multiple pages with aggregate summaries and batch ingest
-- **Ingest** — send extracted triples to Reckons.AI
-
-Supports Chrome, Edge, Brave, Firefox desktop, and Firefox for Android.
-
-See [`SETUP.md`](SETUP.md) for installation instructions.
-
----
-
-## MCP server
-
-The standalone MCP server (`mcp-server/`) exposes 20 tools to AI agents:
-
-| Tool | Description |
-|------|-------------|
-| `kb_list_kbs` | List all available knowledge bases |
-| `kb_search` | Full-text BM25 search over KB entities and statements |
-| `kb_get_entity` | Get all statements for a specific entity |
-| `kb_list_entities` | List all entities with type and connection count |
-| `kb_stats` | Return KB statistics (entity count, statement count, types) |
-| `kb_add_note` | Add a note for extraction and review |
-| `kb_subgraph` | Extract a subgraph around an entity (configurable depth) |
-| `kb_reckoning` | Run a Situation-Target-Proposal analysis |
-| `kb_list_sources` | List all sources with metadata and trust scores |
-| `kb_request_refresh` | Request a source refresh by source ID |
-| `kb_git_status` | Show current git branch, staged/modified files, and recent commits |
-| `kb_check_plan` | Check alignment of current work against the knowledge base |
-| `kb_pending` | List queued proposals from pending.jsonl |
-| `kb_git_diff_triples` | Cross-reference git changes with KB entities |
-| `kb_alignment_score` | Quantitative alignment score (0-1) with per-dimension breakdown |
-| `kb_compress` | Compress KB context for LLM prompts (~60-70% token reduction) |
-| `kb_local_extract` | Extract triples from text via a local Ollama model (opt-in) |
-| `kb_local_summarize` | Summarize an entity subgraph or text via a local Ollama model (opt-in) |
-| `kb_generate_page` | Draft a documentation-page markdown proposal via a local Ollama model (opt-in) |
-| `kb_entity_markdown` | Deterministic (no LLM) rendering of one entity as markdown |
-
-### Self-dogfooding workspace
-
-Reckons.AI uses its own MCP server to track product state. Six internal KBs (Roadmap, Production, Features, Architecture, Testing, Codebase) are symlinked from `static/*.ttl` into `mcp-workspace/kbs/`. Claude Code queries these KBs before planning new work or modifying architecture. Edit a TTL file → the MCP server auto-reloads → the next AI session sees the change.
-
-```bash
-bash scripts/setup-mcp-workspace.sh   # one-time setup after cloning
-```
-
----
-
-## Documentation
-
-| Doc | Contents |
-|---|---|
-| [`SETUP.md`](SETUP.md) | Setup guide — dev, extension, Ollama, Docker, self-hosting, multi-KB |
-| [`docs/GUIDE.md`](docs/GUIDE.md) | Full user + developer guide — backends, review, graph, voice, merge, architecture |
-| [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) | Brand colors, typography, component patterns, z-index scale |
-| [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) | Dependency health, browser support matrix, replacement candidates |
-| [`docs/SECURITY.md`](docs/SECURITY.md) | Known CVEs, risk assessments, vulnerability response process |
-| [`docs/USER_STORIES.md`](docs/USER_STORIES.md) | Collaborative use case scenarios |
-| [`docs/N8N_INTEGRATION.md`](docs/N8N_INTEGRATION.md) | n8n cloud sync — architecture, API, sync scripts |
-| [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md) | Enterprise roadmap — People, Policy, Procedure framework |
-
----
-
-## Documentation KB
-
-The app ships with a built-in documentation graph (`starter-guide.ttl`) containing:
-- Core philosophy and getting-started steps
-- **KB Leap nodes** linking to 7 deep-dive sub-graphs (auto-imported on first click):
-  - Triples & RDF standards
-  - Language models & RAG
-  - Real-world use cases
-  - All features
-  - Integrations & technology
-  - Tips & security
-  - Timeline & RDF ecosystem
-- A guided story walkthrough narrated by Shelly
-
----
-
-## Context compression
-
-Knowledge graphs are dense by nature. Reckons.AI compresses what you know into structured RDF triples — retaining semantic meaning while reducing the tokens an AI needs to understand your situation. A page of prose becomes a handful of triples. Same meaning, fraction of the tokens. Feed your compressed KB directly to AI agents via MCP.
-
----
-
-## Enterprise roadmap
-
-Structure organisational knowledge around **People · Policy · Procedure** — the three dimensions that matter. RBAC, bring-your-own auth (SSO/LDAP/OIDC), file-based `.ttl` delivery, and self-hosted deployment via n8n. See [`docs/ENTERPRISE.md`](docs/ENTERPRISE.md).
-
----
-
-## Things that are deliberately absent
-
-- **No backend server** — all state in IndexedDB; Turtle export for backup. Optional n8n cloud sync is self-hosted. Enforced by the build: [`svelte.config.js`](svelte.config.js) uses `adapter-static`, so there is no server to run.
-- **No accounts** — your KB is yours alone, on this device. Enterprise RBAC is an opt-in layer.
-- **No personal telemetry** — the app collects nothing and there is no server to receive it. The public website counts visits in aggregate via Cloudflare Web Analytics (cookieless, no persistent identifier, no cross-site tracking); it measures the marketing and docs pages, never anything inside your graph. Full statement: [no-telemetry](https://reckons.ai/docs/no-telemetry).
-- URL ingestion proxies through `r.jina.ai/<url>` for clean-text extraction; use the note or document tab to avoid that hop entirely
+Reckons.AI uses these graphs to plan and document its own development. The app is built with SvelteKit, TypeScript, Dexie, and Three.js; the standalone MCP server and CLI live alongside it. See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute and [AGENTS.md](AGENTS.md) for the graph-first development workflow.

@@ -466,6 +466,9 @@ code:search  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/integrations/search/tavily.ts" .
 
 code:n8n  rdf:type     ktype:Concept ;
+          kpred:has-file "src/lib/integrations/n8n/currents-poll.ts" ;
+          kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-poll.test.ts" ;
+          kpred:tested-by "tests/e2e/currents.test.ts" ;
           rdfs:label   "n8n Integration" ;
           skos:definition "Currents sync against the n8n Currents Monitor workflow: register currents, pull new items (with a direct in-browser RSS/Atom fallback), and process arrivals into pending statements." ;
           skos:broader code:integrations ;
