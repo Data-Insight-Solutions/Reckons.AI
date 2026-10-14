@@ -855,7 +855,7 @@ test:Workflow-GeneratedAssets-Step2
     kpred:page          "/" ;
     kpred:screenshot    "/workflows/generated-assets/02-see-pipeline.webp" ;
     kpred:page-name     "the graph" ;
-    skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node also holds the facts its receipt recorded: the model, the license, the seed and how long it took. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
+    skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
     kpred:assertion     "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
 
 test:Workflow-GeneratedAssets-Step3

@@ -3938,6 +3938,18 @@ kb:splat-e2e-workflow rdf:type ktype:Phase ;
     kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
     kpred:progress "2026-10-14: six-step TestWorkflow, page generated at /docs/testing/workflow-generated-assets with six captured screenshots. The example opens as its own space from the About page. FLAKE, said out loud: opening a node's preview by its 'preview all' thumbnail failed 1 run in 3 (the force layout put the node where no preview is drawn); after switching to search-then-open it passed 16 of 17 runs, the one failure the same symptom in step 5. Not yet run in CI." .
 
+kb:media-entity-types rdf:type ktype:Phase ;
+    rdfs:label "F58.9.5 — Prompt, Image, Video, 3D model, Gaussian splat and License as standard entity types, with generation provenance as attributes" ;
+    kpred:feature-id "F58.9.5" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-e2e-workflow ;
+    kpred:decided "MATT, 2026-10-14: \"Prompt should be a standard Entity type, also we should have Image, Video, and GLB, Splat Etc as entity types, with Generation provenance as part of the attributes of each.\" Earlier the same day: \"License should also be an entity type.\" (A Plugin type was NOT decided and is not added.)" ;
+    kpred:description "Six built-in types in BUILT_IN_TYPES (urn:kbase:type/Prompt, Image, Video, Model3D, GaussianSplat, License). Generation provenance (generated-with, -seed, -duration, -at, -frames, -gaussians) and a License's spdx-id and license-url are literal ATTRIBUTES: they are listed in each type's schemaPredicates (the detail panel's metadata section) and are metadata predicates (isMetaPredicate), so the graph draws no value node for them. Entity links stay edges: made-from (asset to Prompt or source image) and license (asset to a License entity). The Generated assets example is written from the receipts with these types." ;
+    kpred:honest-note "Geometry is NOT fully distinct: the renderer has 13 shapes and all but three were taken, so Image shares the flat slab with Document and Web Page, Video the cube with Organization, and License the cylinder with Tool; they differ by color and icon, as Document and Web Page already do. A real fix is new shapes in four renderers, not done here. The GLB type has no generated example yet (the pipeline makes none). Existing graphs that wrote p:made-with, p:took, p:seed as value nodes keep them; only the Generated assets example was rewritten." ;
+    kpred:has-file "src/lib/rdf/entity-types.ts", "src/lib/rdf/types.ts", "scripts/content/gen-assets.ts", "static/starter-generated-assets.ttl" ;
+    kpred:tested-by "src/lib/rdf/__tests__/entity-types.test.ts", "tests/e2e/workflow-generated-assets.test.ts" .
+
 kb:release-0-2-7 kpred:proposed "2026-10-14 (agent, not decided): the F58.9 splat proof of concept (F58.9.1-.4) belongs in 0.2.7, not 0.2.6, by Matt's own rule for 0.2.6 that anything not serving the evidence chain waits." .
 kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: 'We should get things on dev so I can review localhost... I want to review both on localhost, dev branch.' The proof of concept merges to dev now for review; which release carries it is still open." ;
     kpred:open-question "MATT, 2026-10-14: 'The visual test review space is interesting, but minimal and without proper timeline/story setup.' What should a review space's timeline and story be (the Getting started starter has one; the visual-review and generated-assets examples do not)?" .
