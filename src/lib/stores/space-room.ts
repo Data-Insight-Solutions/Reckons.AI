@@ -56,17 +56,17 @@ async function writePlacement(iri: string, p: Placement, was?: Placement) {
  */
 export async function placeInRoom(iri: string): Promise<{ ok: boolean; message: string }> {
   const sts = statements();
-  const set = backgroundSettingsFrom(sts);
+  const bg = backgroundSettingsFrom(sts);
   if (!backgroundSplatFrom(sts)) return { ok: false, message: 'This space has no room yet. Import a scan first (Graphs tab, space background).' };
-  if (set.mode !== 'surround') return { ok: false, message: 'Switch the background to "surround" to place things in the room (Graphs tab, space background).' };
+  if (bg.mode !== 'surround') return { ok: false, message: 'Switch the background to "surround" to place things in the room (Graphs tab, space background).' };
   if (!roomView.live) return { ok: false, message: 'Open the 3D graph first, so the room has a camera to place things in front of.' };
   const p = defaultPlacement(
-    { camera: roomView.camera, target: roomView.target, floor: set.floor },
-    { centre: roomView.centre, scale: set.scale, yaw: set.yaw },
-    1 / set.scale, // one world unit of radius, whatever the scan's own scale
+    { camera: roomView.camera, target: roomView.target, floor: bg.floor },
+    { centre: roomView.centre, scale: bg.scale, yaw: bg.yaw },
+    1 / bg.scale, // one world unit of radius, whatever the scan's own scale
   );
   await writePlacement(iri, p);
-  return { ok: true, message: set.floor === null ? "Placed at the room's mid height: run Level the floor to stand it on the floor." : 'Placed on the floor.' };
+  return { ok: true, message: bg.floor === null ? "Placed at the room's mid height: run Level the floor to stand it on the floor." : 'Placed on the floor.' };
 }
 
 /** One step: move, raise, turn or scale a placed node. No-op for a node that is not placed. */

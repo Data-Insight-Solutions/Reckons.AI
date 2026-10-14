@@ -103,6 +103,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-quickstart ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
+        graph:starter-your-room ,
         graph:website ,
         graph:website-status .
 
@@ -256,6 +257,11 @@ graph:starter-generated-assets a void:Dataset ;
     dcterms:title "Starter: generated assets" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-generated-assets.ttl" .
+
+graph:starter-your-room a void:Dataset ;
+    dcterms:title "Starter: your room" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-your-room.ttl" .
 
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;

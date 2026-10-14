@@ -46,11 +46,11 @@
   const clear = () => setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, '');
 
   // ── Settings (F58.9.8): meta triples on the space, never edges ──
-  const set = $derived(backgroundSettingsFrom(statements()));
+  const bg = $derived(backgroundSettingsFrom(statements()));
   const put = (pred: string, v: string | number) => setMeta(SPACE_SUBJECT, pred, String(v));
   const num = (e: Event) => Number((e.target as HTMLInputElement).value);
   const putOffset = (axis: 0 | 1 | 2, e: Event) => {
-    const o = [...set.offset]; const v = num(e); o[axis] = Number.isFinite(v) ? v : 0;
+    const o = [...bg.offset]; const v = num(e); o[axis] = Number.isFinite(v) ? v : 0;
     return put(BG_OFFSET_PREDICATE, o.join(' '));
   };
   const resetSettings = async () => {
@@ -69,7 +69,7 @@
       else if (/\.ply(\?|#|$)/i.test(background)) blob = await (await fetch(background)).blob();
       if (!blob || background.endsWith('.spz')) { levelMsg = 'Level the floor reads PLY files; this background is not one it can read here.'; return; }
       const centres = await plyCentresFromSource(blobSource(blob));
-      let q = upAxisQuaternion(set.up);
+      let q = upAxisQuaternion(bg.up);
       if (splatOrientationFor(statements(), background) === 'triposplat') q = qMul(q, TRIPOSPLAT_BASE);
       // The room turns about its bounding-box centre, so fit in that frame: then the plane's offset
       // IS the floor height above the room's centre.
@@ -114,30 +114,30 @@
   {#if background}
     <div class="settings mono" data-testid="background-settings">
       <div class="chip-row" role="group" aria-label="Background mode">
-        <button class="pkg-chip" class:active={set.mode === 'backdrop'} onclick={() => put(BG_MODE_PREDICATE, 'backdrop')} title="A dimmed scene behind the graph, sized to it">backdrop</button>
-        <button class="pkg-chip" class:active={set.mode === 'surround'} onclick={() => put(BG_MODE_PREDICATE, 'surround')} title="The graph sits inside the room, which keeps its own scale">surround</button>
+        <button class="pkg-chip" class:active={bg.mode === 'backdrop'} onclick={() => put(BG_MODE_PREDICATE, 'backdrop')} title="A dimmed scene behind the graph, sized to it">backdrop</button>
+        <button class="pkg-chip" class:active={bg.mode === 'surround'} onclick={() => put(BG_MODE_PREDICATE, 'surround')} title="The graph sits inside the room, which keeps its own scale">surround</button>
       </div>
       <label>up axis
-        <select class="pkg-chip" value={set.up} onchange={(e) => put(BG_UP_PREDICATE, (e.target as HTMLSelectElement).value)} title="Which of the file's axes points up. Scans from COLMAP-based tools usually point down (−y).">
+        <select class="pkg-chip" value={bg.up} onchange={(e) => put(BG_UP_PREDICATE, (e.target as HTMLSelectElement).value)} title="Which of the file's axes points up. Scans from COLMAP-based tools usually point down (−y).">
           {#each UP_AXES as a}<option value={a}>{a.replace('-', '−')}</option>{/each}
         </select>
       </label>
-      <label>yaw {set.yaw}°
-        <input type="range" min="-180" max="180" step="5" value={set.yaw} onchange={(e) => put(BG_YAW_PREDICATE, num(e))} />
+      <label>yaw {bg.yaw}°
+        <input type="range" min="-180" max="180" step="5" value={bg.yaw} onchange={(e) => put(BG_YAW_PREDICATE, num(e))} />
       </label>
       <label>scale
-        <input type="number" min="0.001" step="0.1" value={set.scale} onchange={(e) => put(BG_SCALE_PREDICATE, num(e))}
-          title={set.mode === 'surround' ? 'World units per file unit. A scan has no true size until you set one.' : 'Multiplier on the automatic size'} />
+        <input type="number" min="0.001" step="0.1" value={bg.scale} onchange={(e) => put(BG_SCALE_PREDICATE, num(e))}
+          title={bg.mode === 'surround' ? 'World units per file unit. A scan has no true size until you set one.' : 'Multiplier on the automatic size'} />
       </label>
-      <label>opacity {Math.round(set.opacity * 100)}%
-        <input type="range" min="0" max="1" step="0.05" value={set.opacity} onchange={(e) => put(BG_OPACITY_PREDICATE, num(e))} />
+      <label>opacity {Math.round(bg.opacity * 100)}%
+        <input type="range" min="0" max="1" step="0.05" value={bg.opacity} onchange={(e) => put(BG_OPACITY_PREDICATE, num(e))} />
       </label>
       <label>offset
-        {#each [0, 1, 2] as k}<input type="number" step="0.5" value={set.offset[k]} onchange={(e) => putOffset(k as 0 | 1 | 2, e)} aria-label={'offset ' + 'xyz'[k]} />{/each}
+        {#each [0, 1, 2] as k}<input type="number" step="0.5" value={bg.offset[k]} onchange={(e) => putOffset(k as 0 | 1 | 2, e)} aria-label={'offset ' + 'xyz'[k]} />{/each}
       </label>
       <div class="chip-row">
         <button class="pkg-chip" onclick={levelFloor} data-testid="level-floor" title="Fit the dominant horizontal plane to the scan and remove its tilt">Level the floor</button>
-        {#if set.level}<button class="pkg-chip" onclick={async () => { await put(BG_LEVEL_PREDICATE, ''); await put(BG_FLOOR_PREDICATE, ''); }}>remove levelling</button>{/if}
+        {#if bg.level}<button class="pkg-chip" onclick={async () => { await put(BG_LEVEL_PREDICATE, ''); await put(BG_FLOOR_PREDICATE, ''); }}>remove levelling</button>{/if}
         <button class="pkg-chip" onclick={resetSettings}>reset settings</button>
       </div>
       {#if levelMsg}<span class="pkg-note pkg-msg mono" role="status">{levelMsg}</span>{/if}
