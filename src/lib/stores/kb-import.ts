@@ -57,7 +57,7 @@ export async function populateKbFromTtl(
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
 
-  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl, { name });
+  const { statements: rawStmts, sources: rawSources, cleanImportCount, chunks: rawChunks = [], chunkVersions } = await importTurtleFull(ttl, { name });
   if (rawStmts.length === 0) return 0;
 
   const now = Date.now();
@@ -140,6 +140,18 @@ export async function populateKbFromTtl(
 
   // Prune old snapshots after the atomic replace has committed (housekeeping, not safety-critical).
   if (snapshot) await pruneSnapshots(target, target.name).catch(() => {});
+
+  // F107.10.3: passages that travel in the saved file are kept where the Source View looks. A failure
+  // here never fails the import: the claims are already in.
+  if (rawChunks.length > 0) {
+    try {
+      const { adoptSpacePassages } = await import('./source-corpus');
+      const report = await adoptSpacePassages(rawChunks, chunkVersions, outSources);
+      if (report && report.skipped.length > 0) console.warn('[import] passages not kept:', report.skipped);
+    } catch (e) {
+      console.warn('[import] passages not kept:', e);
+    }
+  }
 
   return outStatements.length;
 }

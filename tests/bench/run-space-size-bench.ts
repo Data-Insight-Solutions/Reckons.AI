@@ -46,22 +46,22 @@ type Row = {
   profile: string; chunks: 'folded' | 'none'; statements: number; sources: number;
   bytes: number; chunkBytes: number; quads: number;
   serializeMs: number; importMs: number; mcpLoadMs: number; importHeapMb: number;
-  importedStatements: number;
+  importedStatements: number; chunksWritten: number; chunksRetained: number;
 };
 
 async function measure(p: Profile, folded: boolean): Promise<Row> {
   const serialize = () => renderSpace(p, folded);
 
   const ser: number[] = [], imp: number[] = [], mcp: number[] = [], heap: number[] = [];
-  let ttl = '', chunkBytes = 0, quads = 0, importedStatements = 0;
+  let ttl = '', chunkBytes = 0, quads = 0, importedStatements = 0, chunksWritten = 0, chunksRetained = 0;
   for (let r = 0; r < RUNS; r++) {
     const s = await time(serialize);
-    ser.push(s.ms); ttl = s.value.ttl; chunkBytes = s.value.chunkBytes;
+    ser.push(s.ms); ttl = s.value.ttl; chunkBytes = s.value.chunkBytes; chunksWritten = s.value.chunksWritten;
     const before = heapMb();
     const i = await time(() => importTurtleFull(ttl));
     imp.push(i.ms);
     heap.push(Math.max(0, process.memoryUsage().heapUsed / 1e6 - before));
-    importedStatements = i.value.statements.length;
+    importedStatements = i.value.statements.length; chunksRetained = i.value.chunks.length;
     const m = await time(() => { const store = new Store(); store.addQuads(new Parser({ format: 'TriG' }).parse(ttl)); return store.size; });
     mcp.push(m.ms); quads = m.value;
   }
@@ -69,7 +69,7 @@ async function measure(p: Profile, folded: boolean): Promise<Row> {
     profile: p.key, chunks: folded ? 'folded' : 'none', statements: p.statements, sources: p.sources,
     bytes: Buffer.byteLength(ttl), chunkBytes, quads,
     serializeMs: median(ser), importMs: median(imp), mcpLoadMs: median(mcp), importHeapMb: median(heap),
-    importedStatements,
+    importedStatements, chunksWritten, chunksRetained,
   };
 }
 
@@ -87,7 +87,7 @@ for (const p of profiles) {
       ` (chunks ${mb(row.chunkBytes)} MB)  quads ${String(row.quads).padStart(8)}` +
       `  serialize ${row.serializeMs.toFixed(0).padStart(6)} ms  import ${row.importMs.toFixed(0).padStart(6)} ms` +
       `  mcp ${row.mcpLoadMs.toFixed(0).padStart(6)} ms  heap +${row.importHeapMb.toFixed(0)} MB` +
-      `  imported ${row.importedStatements}`,
+      `  imported ${row.importedStatements}  chunks written ${row.chunksWritten} retained ${row.chunksRetained}`,
     );
   }
 }

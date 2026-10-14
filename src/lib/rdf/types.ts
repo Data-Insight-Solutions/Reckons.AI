@@ -158,6 +158,24 @@ export type TurtleSettings = {
  */
 export type Verifiability = 'code' | 'test' | 'source' | 'user' | 'unknown' | 'external-graph';
 
+/**
+ * Where in the retained text a fact's quote sits (F122.1.1). TEXT SPANS ONLY: a text-only document
+ * gets a character range and never a page or a box (never synthesize precision).
+ *
+ * Optional fields on the Statement, not a shared record (Matt, 2026-10-13): a shared EvidenceAnchor can
+ * be derived from these later and nothing is lost. `start`/`end` are UTF-16 offsets into the text
+ * whose SHA-256 is `sourceHash`; the anchor is only as good as that match, so a reader must check
+ * the hash and that the span still holds the excerpt before trusting it (F122.1.3).
+ */
+export type EvidenceSpan = {
+  /** IRI of the chunk the span starts in (urn:kbase:source/<id>/chunk/<n>). */
+  chunk: string;
+  start: number;
+  end: number;
+  /** Hash of the document text the offsets were computed against (Source.hash). */
+  sourceHash: string;
+};
+
 export type Statement = {
   /** Unique id (uuid) */
   id: string;
@@ -202,6 +220,11 @@ export type Statement = {
    * excerpt has been DROPPED rather than shown.  undefined = not checked (no source text).
    */
   grounded?: boolean;
+  /**
+   * The span of the retained text that `excerpt` was found at, computed once when grounding verified
+   * it (F122.1.1). Absent when the quote is ungrounded, was never checked, or could not be placed.
+   */
+  anchor?: EvidenceSpan;
   /** Review state */
   status: ReviewStatus;
   /**

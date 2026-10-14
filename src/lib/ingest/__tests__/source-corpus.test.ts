@@ -5,7 +5,7 @@ vi.mock('../../safety/content-policy', () => ({
   classifyText: (t: string) => ({ rating: t.includes('BLOCKME') ? 'blocked' : 'none', flags: [] }),
 }));
 import {
-  slugify, hash8, corpusDirName, findCorpusDir, originalExtension, retainSource, readRetainedText,
+  slugify, hash8, corpusDirName, findCorpusDir, originalExtension, retainSource, readRetainedText, readFoldedCorpora,
   type CorpusRoot, type CorpusDir,
 } from '../source-corpus';
 import { deriveEvidence } from '../statement-evidence';
@@ -100,5 +100,36 @@ describe('readRetainedText + evidence', () => {
     const { root } = fakeRoot();
     expect(await readRetainedText(root, 'ffffffff00')).toBeNull();
     expect(await readRetainedText(root, '')).toBeNull();
+  });
+});
+
+describe('readFoldedCorpora — what an export folds into the space file (F107.10.2)', () => {
+  it('reads a retained source back as its chunks, with its version', async () => {
+    const { root } = fakeRoot();
+    await retainSource(root, { ...base, generatedAt: '2026-10-01T00:00:00.000Z' });
+    const got = await readFoldedCorpora(root, [{ id: 'src-1', hash: base.hash }]);
+    expect(got).toHaveLength(1);
+    expect(got[0].sourceId).toBe('src-1');
+    expect(got[0].sha256).toBe(base.hash);
+    expect(got[0].generatedAt).toBe('2026-10-01T00:00:00.000Z');
+    expect(got[0].chunks.map((c) => c.text).join('')).toBe(TEXT);
+  });
+
+  it('falls back to cutting text.md when chunks.ttl is missing (a cache is rebuildable)', async () => {
+    const { root, dirs } = fakeRoot();
+    await retainSource(root, base);
+    dirs.get(corpusDirName(base.title, base.hash)!)!.delete('chunks.ttl');
+    const got = await readFoldedCorpora(root, [{ id: 'src-1', hash: base.hash }]);
+    expect(got[0].chunks.map((c) => c.text).join('')).toBe(TEXT);
+  });
+
+  it('skips a source with no retained copy or no hash, and never throws on an unreadable one', async () => {
+    const { root, dirs } = fakeRoot();
+    await retainSource(root, base);
+    dirs.get(corpusDirName(base.title, base.hash)!)!.set('chunks.ttl', '<<< not turtle');
+    const got = await readFoldedCorpora(root, [{ id: 'gone', hash: 'ffffffffffffffff' }, { id: 'nohash' }, { id: 'src-1', hash: base.hash }]);
+    // The unparseable chunks.ttl falls through to the retained text.
+    expect(got.map((g) => g.sourceId)).toEqual(['src-1']);
+    expect(got[0].chunks.map((c) => c.text).join('')).toBe(TEXT);
   });
 });

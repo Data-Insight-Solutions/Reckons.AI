@@ -8,7 +8,7 @@ import { decodePortableMetadata } from './portable-metadata';
  * all state is recovered from the reification blocks which carry status.
  */
 
-import type { Statement, Source, Term, ReviewStatus } from './types';
+import type { Statement, Source, Term, ReviewStatus, EvidenceSpan } from './types';
 import { hasLeakedTermKey } from './types';
 import { notifyImportQuarantine } from './cut-notice';
 import { isAltitude } from './fact-altitude';
@@ -54,17 +54,17 @@ export type ShellyPersonaOverrides = {
 };
 
 /**
- * A source passage read from a space file (F107.10.1). Evidence, never a claim: it is returned
- * beside the statements and never enters the statement store, the graph view or a publish.
+ * A document passage read from a saved file (F107.10.1). Evidence, never a claim: it is returned
+ * beside the facts and never enters the fact store, the view or a publish.
  */
 export type ImportedChunk = {
   /** The chunk's IRI, e.g. urn:kbase:source/<id>/chunk/<n>. */
   iri: string;
-  /** The source it is part of (dcterms:isPartOf), as a source id when it is a urn:kbase:source/ IRI. */
+  /** The document it is part of (dcterms:isPartOf), as a document id when it is a urn:kbase:source/ IRI. */
   sourceId: string;
-  /** 0-based order in the source (schema:position). */
+  /** 0-based order in the document (schema:position). */
   index: number;
-  /** Content range [start, end) in the source text (oa:TextPositionSelector). */
+  /** Content range [start, end) in the document text (oa:TextPositionSelector). */
   start: number;
   end: number;
   /** The passage text (rdf:value). */
@@ -75,10 +75,14 @@ export type ImportedChunk = {
 
 export type ImportResult = {
   statements: Statement[];
-  /** Source passages found in the file. Empty when it holds none. Never statements. */
+  /** Source passages found in the file. Empty when it holds none. Never facts. */
   chunks: ImportedChunk[];
-  /** Chunk-shaped nodes that were incomplete or contradictory: reported, never thrown, never imported. */
+  /** Chunk-shaped entries that were incomplete or contradictory: reported, never thrown, never imported. */
   chunkProblems?: Array<{ iri: string; reason: string }>;
+  /** Fact anchors that were incomplete or contradictory: the fact imported without one (F122.1.2). */
+  anchorProblems?: Array<{ statement: string; reason: string }>;
+  /** SHA-256 of the document text each document's chunks were cut from, by document id, where the file says (dcterms:hasVersion "sha256:..."). */
+  chunkVersions?: Record<string, string>;
   sources: Source[];
   /** Statements imported from a clean (non-annotated) Turtle file get this status */
   cleanImportCount: number;
@@ -128,15 +132,15 @@ function n3ToTerm(term: any): Term | null {
 }
 
 /**
- * Find the chunk nodes in a parsed file. A chunk is a node that is dcterms:isPartOf an IRI AND
+ * Find the chunk entries in a parsed file. A chunk is an entry that is dcterms:isPartOf an IRI AND
  * carries at least one of schema:position, rdf:value, oa:hasSelector; the second condition keeps
- * a space that is isPartOf a set from being mistaken for a passage. Complete chunks are returned;
- * incomplete ones are reported. Either way every triple of the node, and of its selector blank
- * node, is marked consumed so none of them can fall into the plain-Turtle statement fallback.
- * `consumed` holds subject values (blank nodes as '_:' + label).
+ * a file that is isPartOf a set from being mistaken for a passage. Complete chunks are returned;
+ * incomplete ones are reported. Either way every triple of the entry, and of its selector blank
+ * entry, is marked consumed so none of them can fall into the plain-Turtle fact fallback.
+ * `consumed` holds subject values (blank entries as '_:' + label).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; consumed: Set<string> } {
+function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; chunkVersions: Record<string, string>; consumed: Set<string> } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bySubject = new Map<string, any[]>();
   for (const q of quads) {
@@ -193,7 +197,7 @@ function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems:
       ...(generated ? { generatedAt: generated } : {}),
     });
   }
-  // Duplicate (source, index): the first wins, the rest are reported. Order is canonical either way.
+  // Duplicate (document, index): the first wins, the rest are reported. Order is canonical either way.
   const seen = new Set<string>();
   const kept: ImportedChunk[] = [];
   chunks.sort((a, b) => (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : a.index - b.index || (a.iri < b.iri ? -1 : 1)));
@@ -203,8 +207,62 @@ function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems:
     seen.add(key);
     kept.push(c);
   }
-  return { chunks: kept, chunkProblems, consumed };
+  const chunkVersions: Record<string, string> = {};
+  for (const sid of new Set(kept.map((c) => c.sourceId))) {
+    const v = (bySubject.get(sid.startsWith('urn:') ? sid : SRC_PREFIX + sid) ?? []).find((q) => q.predicate.value === DC + 'hasVersion');
+    const m = v && /^sha256:([0-9a-f]+)$/i.exec(v.object.value);
+    if (m) chunkVersions[sid] = m[1];
+  }
+  return { chunks: kept, chunkProblems, chunkVersions, consumed };
 }
+
+/**
+ * Read the anchors (F122.1.2): on a fact's annotation, oa:hasTarget [ oa:hasSource <chunk> ;
+ * oa:hasSelector [ a oa:TextPositionSelector ; oa:start N ; oa:end M ] ; dcterms:hasVersion "sha256:..." ].
+ * A complete one becomes the fact's `anchor`. An incomplete one is reported and the fact imports
+ * without it. Every triple of the anchor's blank entries is marked consumed so none of them can reach
+ * the plain-Turtle fallback as a claim. An old file with no anchors reads exactly as before.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function readAnchors(quads: any[], consumed: Set<string>): { anchors: Map<string, EvidenceSpan>; problems: Array<{ statement: string; reason: string }> } {
+  const anchors = new Map<string, EvidenceSpan>();
+  const problems: Array<{ statement: string; reason: string }> = [];
+  const ofBnode = (label: string) => quads.filter((q: any) => q.subject.termType === 'BlankNode' && q.subject.value === label);
+  const nonNeg = (v: string) => (/^\d+$/.test(v.trim()) ? parseInt(v, 10) : null);
+  const pick = (qs: any[], p: string) => qs.filter((x: any) => x.predicate.value === p);
+  for (const q of quads) {
+    if (!q.subject.value.startsWith(STMT_PREFIX) || q.predicate.value !== OA + 'hasTarget') continue;
+    const id = q.subject.value;
+    if (q.object.termType !== 'BlankNode') { problems.push({ statement: id, reason: 'anchor is not a node with a source and a selector' }); continue; }
+    const target = ofBnode(q.object.value);
+    consumed.add('_:' + q.object.value);
+    const sources = pick(target, OA + 'hasSource');
+    const selectors = pick(target, OA + 'hasSelector');
+    const versions = pick(target, DC + 'hasVersion');
+    const why: string[] = [];
+    if (sources.length !== 1 || sources[0].object.termType !== 'NamedNode') why.push('needs exactly one chunk IRI (oa:hasSource)');
+    if (versions.length !== 1) why.push('needs exactly one source version (dcterms:hasVersion)');
+    let start: number | null = null;
+    let end: number | null = null;
+    if (selectors.length !== 1 || selectors[0].object.termType !== 'BlankNode') why.push('needs exactly one text position selector');
+    else {
+      consumed.add('_:' + selectors[0].object.value);
+      const sq = ofBnode(selectors[0].object.value);
+      if (pick(sq, OA + 'start').length === 1) start = nonNeg(pick(sq, OA + 'start')[0].object.value);
+      if (pick(sq, OA + 'end').length === 1) end = nonNeg(pick(sq, OA + 'end')[0].object.value);
+      if (start === null || end === null) why.push('selector start/end missing or not integers');
+      else if (end <= start) why.push('selector ends at or before its start');
+    }
+    if (why.length > 0 || start === null || end === null) { problems.push({ statement: id, reason: why.join('; ') }); continue; }
+    const next: EvidenceSpan = { chunk: sources[0].object.value, start, end, sourceHash: versions[0].object.value.replace(/^(sha256|unverified):/, '') };
+    const have = anchors.get(id);
+    if (!have) anchors.set(id, next);
+    // The same anchor written twice is one anchor; two different ones are a contradiction, and the first stands.
+    else if (JSON.stringify(have) !== JSON.stringify(next)) problems.push({ statement: id, reason: 'more than one, and they differ' });
+  }
+  return { anchors, problems };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /**
  * Parse an annotated .ttl file back into Statement[] + Source[].
@@ -232,7 +290,8 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     quads = new Parser({ format: 'TriG' }).parse(repaired.text);
   }
 
-  const { chunks, chunkProblems, consumed: chunkSubjects } = readChunkNodes(quads);
+  const { chunks, chunkProblems, chunkVersions, consumed: chunkSubjects } = readChunkNodes(quads);
+  const { anchors, problems: anchorProblems } = readAnchors(quads, chunkSubjects);
 
   // Maps from IRI → property bag
   const stmtData = new Map<string, Record<string, unknown>>();
@@ -358,6 +417,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
       supersedes: d.supersedes as string | undefined,
       createdAt:  (d.createdAt as number) ?? Date.now(),
       updatedAt:  (d.createdAt as number) ?? Date.now(),
+      ...(anchors.has(iri) ? { anchor: anchors.get(iri) } : {}),
       ...(d.portable as Partial<Statement> | undefined),
     });
   }
@@ -425,5 +485,5 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
 
   if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
-  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
+  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(anchorProblems.length ? { anchorProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }
