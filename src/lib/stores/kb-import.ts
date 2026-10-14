@@ -120,7 +120,7 @@ export async function populateKbFromTtl(
   // Imported splat files (F58.9.7): assets/splats/<id> goes back to IndexedDB under the name the
   // space's statements already use (asset:splat/<id>).
   for (const [path, bytes] of assets) {
-    const m = /^assets\/splats\/([A-Za-z0-9_-]+\.(?:ply|spz))$/.exec(path);
+    const m = /^assets\/splats\/([A-Za-z0-9_-]+\.(?:ply|spz|sog))$/.exec(path);
     if (m) decoded.push({ kind: 'splat', id: m[1], bytes });
   }
 
