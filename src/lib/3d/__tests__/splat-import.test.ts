@@ -4,6 +4,7 @@
  * entity written for it says where it came from.
  */
 import { describe, it, expect } from 'vitest';
+import { Blob as NodeBlob } from 'node:buffer';
 import { makePly, makeSpz } from './ply-fixture';
 import { judgeSplatFile, splatKindOf, plyCentres } from '../splat-check';
 import {
@@ -13,7 +14,7 @@ import {
 import { importSplatFile, readSplatFile, localSplatId } from '../../storage/splat-files';
 import type { KBaseDB } from '../../storage/db';
 
-const fileOf = (name: string, bytes: Uint8Array) => ({ name, size: bytes.length, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer });
+const fileOf = (name: string, bytes: Uint8Array) => Object.assign(new NodeBlob([bytes as never]), { name }) as unknown as File;
 
 /** The one table importSplatFile touches. */
 function fakeDb() {
@@ -42,10 +43,36 @@ describe('judgeSplatFile', () => {
     expect((await judgeSplatFile('room.spz', await makeSpz(1000, { body: 50 }))).problems[0]).toMatch(/truncated/);
   });
 
-  it('knows the extension and samples centres', () => {
+  it('knows the extension and samples centres', async () => {
     expect(splatKindOf('a.PLY')).toBe('ply');
     expect(splatKindOf('a.glb')).toBeNull();
-    expect(Array.from(plyCentres(makePly([1, 2, 3, 4, 5, 6])))).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(Array.from(await plyCentres(makePly([1, 2, 3, 4, 5, 6])))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+});
+
+describe('large files', () => {
+  it('judges in chunks and agrees with the in-memory check', async () => {
+    const bytes = makePly(5000);
+    let reads = 0, biggest = 0;
+    const src = { size: bytes.length, read: async (a: number, b: number) => { reads++; biggest = Math.max(biggest, b - a); return bytes.subarray(a, b); } };
+    const { judgePlySource, judgeSplatPly } = await import('../splat-check');
+    const chunked = await judgePlySource(src);
+    expect(chunked).toEqual(judgeSplatPly(bytes));
+    expect(reads).toBeGreaterThan(1);
+    expect(biggest).toBeLessThanOrEqual(4 * 1024 * 1024);
+  });
+
+  it('warns above the size threshold but still imports; refuses above the limit with guidance', async () => {
+    const { WARN_SPLAT_BYTES, MAX_SPLAT_BYTES } = await import('../../storage/splat-files');
+    const { db } = fakeDb();
+    const good = fileOf('big.ply', makePly(64));
+    const warnBig = Object.defineProperty(good, 'size', { value: WARN_SPLAT_BYTES + 1 });
+    const w = await importSplatFile(warnBig, db);
+    expect(w.ok && w.warnings[0]).toMatch(/fewer training steps/);
+    const huge = Object.defineProperty(fileOf('huge.ply', makePly(64)), 'size', { value: MAX_SPLAT_BYTES + 1 });
+    const r = await importSplatFile(huge, db);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.problems[0]).toMatch(/limit.*\.spz/s);
   });
 });
 
@@ -62,7 +89,7 @@ describe('importSplatFile', () => {
     expect(rows.get(localSplatId(res.url)!)!.filename).toBe('my room.ply');
     const back = await readSplatFile(res.url, db);
     expect(back?.kind).toBe('ply');
-    expect(back?.bytes.length).toBe(makePly(64).length);
+    expect(back?.blob.size).toBe(makePly(64).length);
     const again = await importSplatFile(fileOf('copy.ply', makePly(64)), db);
     expect(again.ok && again.alreadyHad).toBe(true);
     expect(rows.size).toBe(1);

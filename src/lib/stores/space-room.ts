@@ -7,7 +7,7 @@ import { statements, addStatements, setStatus } from './kb.svelte';
 import { importSplatFile, type ImportedSplat } from '$lib/storage/splat-files';
 import {
   scanStatements, scanEntityIri, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, type SplatOrigin,
-  backgroundSplatFrom, backgroundSettingsFrom, placementsFrom, defaultPlacement, adjustPlacement, formatPlacementAt,
+  backgroundSplatFrom, backgroundSettingsFrom, BG_EXTENT_PREDICATE, placementsFrom, defaultPlacement, adjustPlacement, formatPlacementAt,
   PLACED_AT_PREDICATE, PLACED_SCALE_PREDICATE, PLACED_YAW_PREDICATE, DEFAULT_PLACED_SCALE, type Placement, type PlacementOp,
 } from '$lib/3d/splat';
 import { roomView } from '$lib/3d/room-view';
@@ -36,6 +36,9 @@ export async function importScan(file: File, origin: SplatOrigin): Promise<Impor
   const known = statements().some((s) => s.s.kind === 'iri' && s.s.value === entity && s.status !== 'rejected');
   if (!known) await addStatements(scanStatements(res.url, label, origin, uuid));
   await setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, res.url);
+  // Record the measured size so a surround room can be fitted to the graph (COLMAP scale is arbitrary).
+  const extent = Number(res.check.measured.extent);
+  await setMeta(SPACE_SUBJECT, BG_EXTENT_PREDICATE, Number.isFinite(extent) && extent > 0 ? String(extent) : '');
   return { ...res, entity };
 }
 
@@ -60,7 +63,7 @@ export async function placeInRoom(iri: string): Promise<{ ok: boolean; message: 
   const p = defaultPlacement(
     { camera: roomView.camera, target: roomView.target, floor: set.floor },
     { centre: roomView.centre, scale: set.scale, yaw: set.yaw },
-    DEFAULT_PLACED_SCALE,
+    1 / set.scale, // one world unit of radius, whatever the scan's own scale
   );
   await writePlacement(iri, p);
   return { ok: true, message: set.floor === null ? "Placed at the room's mid height: run Level the floor to stand it on the floor." : 'Placed on the floor.' };

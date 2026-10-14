@@ -11,7 +11,7 @@
     backgroundSettingsFrom, BACKGROUND_DEFAULTS, UP_AXES, upAxisQuaternion, fitFloor, levelQuaternion, rotatePoints, qMul, TRIPOSPLAT_BASE,
     BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE,
   } from '$lib/3d/splat';
-  import { plyCentres } from '$lib/3d/splat-check';
+  import { plyCentresFromSource, blobSource } from '$lib/3d/splat-check';
   import { readSplatFile } from '$lib/storage/splat-files';
 
   const background = $derived(backgroundSplatFrom(statements()));
@@ -22,16 +22,20 @@
   let busy = $state(false);
   let problems = $state<string[]>([]);
   let done = $state('');
+  let warnings = $state<string[]>([]);
 
   async function onpick(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    busy = true; problems = []; done = '';
+    busy = true; problems = []; done = ''; warnings = [];
     try {
       const res = await importScan(file, kind);
-      if (res.ok) done = `${res.check.measured.count?.toLocaleString() ?? ''} Gaussians, ${(res.size / 1048576).toFixed(1)} MB, now the background${res.alreadyHad ? ' (this file was already here)' : ''}`;
+      if (res.ok) {
+        done = `${Number(res.check.measured.count ?? 0).toLocaleString()} Gaussians, ${(res.size / 1048576).toFixed(1)} MB, now the background${res.alreadyHad ? ' (this file was already here)' : ''}`;
+        warnings = res.warnings;
+      }
       else problems = res.problems;
     } catch (err) {
       problems = [(err as Error).message];
@@ -60,11 +64,11 @@
     if (!background) return;
     levelMsg = 'fitting…';
     try {
-      let bytes: Uint8Array | null = null;
-      if (background.startsWith('asset:splat/')) bytes = (await readSplatFile(background))?.bytes ?? null;
-      else if (/\.ply(\?|#|$)/i.test(background)) bytes = new Uint8Array(await (await fetch(background)).arrayBuffer());
-      if (!bytes || background.endsWith('.spz')) { levelMsg = 'Level the floor reads PLY files; this background is not one it can read here.'; return; }
-      const centres = plyCentres(bytes);
+      let blob: Blob | null = null;
+      if (background.startsWith('asset:splat/')) blob = (await readSplatFile(background))?.blob ?? null;
+      else if (/\.ply(\?|#|$)/i.test(background)) blob = await (await fetch(background)).blob();
+      if (!blob || background.endsWith('.spz')) { levelMsg = 'Level the floor reads PLY files; this background is not one it can read here.'; return; }
+      const centres = await plyCentresFromSource(blobSource(blob));
       let q = upAxisQuaternion(set.up);
       if (splatOrientationFor(statements(), background) === 'triposplat') q = qMul(q, TRIPOSPLAT_BASE);
       // The room turns about its bounding-box centre, so fit in that frame: then the plane's offset
@@ -105,6 +109,7 @@
       <ul>{#each problems as p}<li>{p}</li>{/each}</ul>
     </div>
   {/if}
+  {#each warnings as w}<span class="pkg-note mono" style="color:#d9a441;opacity:1" role="alert" data-testid="import-scan-warning">{w}</span>{/each}
   {#if done}<span class="pkg-note pkg-msg mono" role="status">{done}</span>{/if}
   {#if background}
     <div class="settings mono" data-testid="background-settings">

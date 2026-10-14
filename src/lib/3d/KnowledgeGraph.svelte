@@ -27,7 +27,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
-  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, splatOriginOf, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
   import { roomView } from './room-view';
 
   interactivity();
@@ -219,6 +219,10 @@
     for (const [iri, url] of splatMapFrom(statements as Statement[])) {
       const n = byKey.get('i:' + iri);
       if (!n) continue;
+      // A room is not an object: the node that carries the background scan keeps its ordinary marker
+      // (the room is already drawn behind), instead of drawing the whole room a second time, node-sized.
+      const origin = splatOriginOf(statements as Statement[], url);
+      if (bgUrl && url === bgUrl && (origin === 'reconstructed' || origin === 'synthetic')) continue;
       const pl = placed.get(iri);
       if (pl) {
         const yaw = pl.yaw + roomSet.yaw;

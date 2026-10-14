@@ -111,7 +111,7 @@ export async function createNormalizedSplat(
     const { readSplatFile } = await import('$lib/storage/splat-files');
     const file = await readSplatFile(url);
     if (!file) throw new Error(`the imported splat ${url} is not in this browser's storage`);
-    mesh = new SplatMesh({ fileBytes: file.bytes, fileType: file.kind as never, fileName: file.filename, raycastable: false });
+    mesh = new SplatMesh({ file: file.blob, fileType: file.kind as never, fileName: file.filename, raycastable: false });
   } else {
     mesh = new SplatMesh({ url, raycastable: false });
   }
@@ -175,6 +175,14 @@ export const BG_LEVEL_PREDICATE = META + 'background-level';
 export const BG_SCALE_PREDICATE = META + 'background-scale';
 export const BG_OFFSET_PREDICATE = META + 'background-offset';
 export const BG_OPACITY_PREDICATE = META + 'background-opacity';
+/**
+ * The measured extent (longest bounding-box side, in the file's own units) of the imported scan.
+ * Informational and used for ONE thing: the default surround scale. COLMAP's scale is arbitrary (a
+ * 5 m room measured 38.7 units on the scan:room lane), so a surround room is never assumed to be
+ * in metres: unless the person sets a scale, the room's longest side is fitted to ROOM_FIT_UNITS.
+ */
+export const BG_EXTENT_PREDICATE = META + 'background-extent';
+export const ROOM_FIT_UNITS = 10;
 
 /** backdrop: a dimmed scene behind the graph, sized to it. surround: the graph sits INSIDE the room, which keeps its own scale. */
 export type BackgroundMode = 'backdrop' | 'surround';
@@ -198,9 +206,11 @@ export interface BackgroundSettings {
   opacity: number;
   /** Height of the levelled floor above the room centre, in room units; null until Level the floor finds one. */
   floor: number | null;
+  /** Measured extent of the scan in file units, or null (SPZ files are not decoded, so have none). */
+  extent: number | null;
 }
 
-export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5, floor: null };
+export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5, floor: null, extent: null };
 
 const nums = (v: string, n: number): number[] | null => {
   const a = v.trim().split(/[\s,]+/).map(Number);
@@ -211,7 +221,7 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 /** The space's background settings. The newest live value of each wins; anything malformed falls back to its default. */
 export function backgroundSettingsFrom(statements: readonly Statement[]): BackgroundSettings {
   const newest = new Map<string, Statement>();
-  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE]);
+  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE, BG_EXTENT_PREDICATE]);
   for (const s of statements) {
     if (s.s.value !== SPACE_SUBJECT || !wanted.has(s.p.value) || s.o.kind !== 'literal' || !live(s)) continue;
     const prev = newest.get(s.p.value);
@@ -226,6 +236,8 @@ export function backgroundSettingsFrom(statements: readonly Statement[]): Backgr
   const opacity = Number(val(BG_OPACITY_PREDICATE));
   const offset = nums(val(BG_OFFSET_PREDICATE) ?? '', 3);
   const level = nums(val(BG_LEVEL_PREDICATE) ?? '', 4);
+  const extentRaw = val(BG_EXTENT_PREDICATE) === undefined ? NaN : Number(val(BG_EXTENT_PREDICATE));
+  const extent = Number.isFinite(extentRaw) && extentRaw > 0 ? extentRaw : null;
   const floor = val(BG_FLOOR_PREDICATE) === undefined ? NaN : Number(val(BG_FLOOR_PREDICATE));
   const resolvedMode: BackgroundMode = mode === 'surround' || mode === 'backdrop' ? mode : d.mode;
   return {
@@ -234,7 +246,9 @@ export function backgroundSettingsFrom(statements: readonly Statement[]): Backgr
     yaw: Number.isFinite(yaw) && val(BG_YAW_PREDICATE) !== undefined ? yaw : d.yaw,
     level: level ? qNormalize(level as Quat) : null,
     floor: Number.isFinite(floor) ? clamp(floor, -1e4, 1e4) : null,
-    scale: Number.isFinite(scale) && scale > 0 ? clamp(scale, 0.001, 1000) : d.scale,
+    // Unset scale: a surround room is fitted to ROOM_FIT_UNITS by its measured extent; never assumed to be metres.
+    scale: Number.isFinite(scale) && scale > 0 && val(BG_SCALE_PREDICATE) !== undefined ? clamp(scale, 0.001, 1000) : resolvedMode === 'surround' && extent ? clamp(ROOM_FIT_UNITS / extent, 0.001, 1000) : d.scale,
+    extent,
     offset: offset ? (offset.map((x) => clamp(x, -1e4, 1e4)) as Vec3) : d.offset,
     // Unset opacity: a backdrop is dimmed so labels stay readable; a room you are inside is not.
     opacity: Number.isFinite(opacity) && val(BG_OPACITY_PREDICATE) !== undefined ? clamp(opacity, 0, 1) : resolvedMode === 'surround' ? 1 : d.opacity,

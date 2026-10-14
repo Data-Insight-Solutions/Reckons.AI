@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import {
   backgroundSettingsFrom, backgroundQuaternion, upAxisQuaternion, qRotate, qBetween, qAboutY, fitFloor, levelQuaternion, rotatePoints,
   BACKGROUND_DEFAULTS, SPACE_SUBJECT, BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE,
-  BG_OPACITY_PREDICATE, BG_LEVEL_PREDICATE, UP_AXES, type Vec3, type Quat,
+  BG_OPACITY_PREDICATE, BG_LEVEL_PREDICATE, BG_EXTENT_PREDICATE, UP_AXES, type Vec3, type Quat,
 } from '../splat';
 import type { Statement } from '../../rdf/types';
 
@@ -45,6 +45,16 @@ describe('backgroundSettingsFrom', () => {
     expect(backgroundSettingsFrom([other]).mode).toBe('backdrop');
     expect(backgroundSettingsFrom([meta(BG_MODE_PREDICATE, 'surround')]).opacity).toBe(1);
     expect(backgroundSettingsFrom([]).opacity).toBe(0.5);
+  });
+});
+
+describe('surround scale is not assumed to be metres', () => {
+  it('fits the measured extent to 10 units unless a scale is set', () => {
+    const ext = meta(BG_EXTENT_PREDICATE, '38.7');
+    expect(backgroundSettingsFrom([meta(BG_MODE_PREDICATE, 'surround'), ext]).scale).toBeCloseTo(10 / 38.7, 6);
+    expect(backgroundSettingsFrom([meta(BG_MODE_PREDICATE, 'surround'), ext, meta(BG_SCALE_PREDICATE, '0.5')]).scale).toBe(0.5);
+    expect(backgroundSettingsFrom([ext]).scale).toBe(1); // a backdrop sizes itself
+    expect(backgroundSettingsFrom([meta(BG_MODE_PREDICATE, 'surround')]).scale).toBe(1); // no measurement (SPZ): say so, do not guess
   });
 });
 
