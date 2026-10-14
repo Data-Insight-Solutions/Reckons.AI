@@ -22,6 +22,8 @@
  *     uses (F122.1), so chunk and anchor speak one language.
  */
 
+import type { EvidenceSpan } from '../rdf/types';
+
 /** Characters of a source the extractor reads in one call. The single source of truth. */
 export const EXTRACTION_TEXT_LIMIT = 12_000;
 
@@ -234,8 +236,12 @@ export function anchorExcerpt(text: string, excerpt: string, chunks: Chunk[]): C
   let end = start + needle.length;
   let match: ChunkAnchor['match'] = 'exact';
   if (start < 0) {
-    const pattern = needle.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
-    const m = new RegExp(pattern).exec(text);
+    // The same leniency grounding applied (grounding.ts normalizeForGrounding): whitespace, case,
+    // curly versus straight quotes, and dash variants. A quote grounding accepted must be placeable.
+    const quote = (c: string) =>
+      /['‘’‛′]/.test(c) ? "['‘’‛′]" : /["“”‟″]/.test(c) ? '["“”‟″]' : /[-‐-―−]/.test(c) ? '[-‐-―−]' : c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = needle.split(/\s+/).map((w) => Array.from(w).map(quote).join('')).join('\\s+');
+    const m = new RegExp(pattern, 'i').exec(text);
     if (!m) return null;
     start = m.index;
     end = m.index + m[0].length;
@@ -264,4 +270,39 @@ export function corporaFromImported(
     corpus.chunks.push({ index: c.index, start: c.start, end: c.end, text: c.text });
   }
   return [...by.values()];
+}
+
+/**
+ * The stored anchor for one grounded quote (F122.1.1): the same anchorExcerpt the views use, run once
+ * when grounding has verified the quote. Null when the quote is not in the text. A pure function of
+ * (document id, text, excerpt), so the same text always yields the same chunk IRI.
+ */
+export function anchorFor(
+  source: { id: string; hash?: string },
+  text: string,
+  excerpt: string,
+  chunks: Chunk[] = chunkText(text),
+): EvidenceSpan | null {
+  if (!source.hash) return null;
+  const a = anchorExcerpt(text, excerpt, chunks);
+  return a ? { chunk: chunkIri(source.id, a.chunkIndex), start: a.start, end: a.end, sourceHash: source.hash } : null;
+}
+
+/**
+ * Attach `anchor` to every verified fact. Only `grounded === true` facts get one: an
+ * ungrounded or unchecked quote stays unanchored rather than guessed at. The text is chunked once
+ * for the batch. Statements that already carry an anchor are left as they are.
+ */
+export function attachAnchors<T extends { excerpt?: string; grounded?: boolean; anchor?: EvidenceSpan }>(
+  statements: T[],
+  source: { id: string; hash?: string },
+  text: string | undefined,
+): T[] {
+  if (!text || !source.hash || !statements.some((s) => s.grounded === true && s.excerpt)) return statements;
+  const chunks = chunkText(text);
+  return statements.map((s) => {
+    if (s.grounded !== true || !s.excerpt || s.anchor) return s;
+    const anchor = anchorFor(source, text, s.excerpt, chunks);
+    return anchor ? { ...s, anchor } : s;
+  });
 }
