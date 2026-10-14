@@ -9711,13 +9711,16 @@ kb:anchor-roundtrip rdf:type ktype:Phase ;
 kb:anchor-staleness rdf:type ktype:Phase ;
     rdfs:label "F122.1.3 — a changed source marks its anchors stale instead of misplacing them" ;
     kpred:feature-id "F122.1.3" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:document-evidence-anchors ;
     kpred:depends-on kb:anchor-roundtrip ;
     kpred:estimate "0.5 day" ;
     kpred:description "The evidence section prefers the stored anchor and verifies it (the source hash equals the retained revision's, and the span still contains the excerpt). A mismatch is shown as 'the source changed since this was extracted' with the saved quote, not as a verified passage. Statements with no stored anchor keep today's view-time derivation, so nothing already ingested regresses." ;
     kpred:has-file "src/lib/ingest/statement-evidence.ts", "src/lib/components/StatementEvidence.svelte", "src/lib/ingest/__tests__/statement-evidence.test.ts" ;
-    kpred:proof "Unit: edit one character before the anchor in the retained text and the evidence kind becomes stale; an old statement without an anchor still resolves as anchored." .
+    kpred:tested-by "src/lib/ingest/__tests__/anchor-staleness.test.ts" ;
+    kpred:proof "Unit: edit one character before the anchor in the retained text and the evidence kind becomes stale; an old statement without an anchor still resolves as anchored." ;
+    kpred:progress "2026-10-13, BUILT. deriveEvidence takes the fact's stored anchor and the retained revision's hash. checkAnchor (statement-evidence.ts) makes two deterministic checks: the hash matches the one the anchor was computed against, and the span of the retained text still reads as the saved quote (case, spacing and quote marks forgiven, as grounding forgives them). A failure returns a new evidence kind, stale, with reason source-changed or span-moved and the saved quote; the plain sentence says the source changed since this was extracted and marks no passage. A stale anchor is NOT re-located by searching: the quote may occur elsewhere, and presenting that as the original place would be a guess. A fact with no anchor keeps the view-time derivation unchanged, and a retained hash alone never makes an unanchored fact stale. Text appended after the span keeps the anchor valid; one character before it, or inside it, makes it stale (anchor-staleness.test.ts, 17 tests). StatementEvidence.svelte passes statement.anchor and its sourceHash to deriveEvidence (one line; the component renders a stale kind as the notice with no marked passage). Local qwen3.6 proposed 12 inputs in 22 s; its append-after and truncation items became tests, and its 'hash differs but the span matches is ok' item was the opposite of the rule." ;
+    kpred:honest-note "NOT DONE: the passage jump from a statement to the Sources view (F122.1.4, PR #456) reads the stored span through locatePassageJump but does not yet call checkAnchor, so a stale stored span there is rejected only by its own text comparison, not reported as stale. The Source View's passage list, derived from the retained text and each fact's quote, is unchanged. No real-browser check of the stale notice was run." .
 
 kb:statement-to-passage-jump rdf:type ktype:Phase ;
     rdfs:label "F122.1.4 — click a statement, the source opens scrolled to the highlighted passage" ;
