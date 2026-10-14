@@ -218,7 +218,8 @@ async function triggerAutoSave(): Promise<void> {
       db.sources.toArray(),
       db.settings.get('main')
     ]);
-    const turtle = toTurtleFull(statements, sources, { header: 'auto-save', kbStableId: settings?.kbStableId });
+    const { passagesForSave } = await import('../stores/source-corpus');
+    const turtle = toTurtleFull(statements, sources, { header: 'auto-save', kbStableId: settings?.kbStableId, chunks: await passagesForSave(sources) });
     const writable = await autoSaveHandle.createWritable();
     await writable.write(turtle);
     await writable.close();
@@ -253,14 +254,9 @@ export async function fullSpaceTurtle(): Promise<string> {
     maxWords: ts.maxResponseWords > 0 ? ts.maxResponseWords : undefined
   } : undefined;
   const hasPersoanl = shellyPersona && Object.values(shellyPersona).some(v => v !== undefined);
-  // F107.10.2: the retained sources' passages ride in the file, after the claims. They are a
-  // cache of what is on disk, so a failure to read them must not cost the export.
-  let chunks: Awaited<ReturnType<typeof import('../stores/source-corpus').readSourcePassages>> = [];
-  try {
-    chunks = await (await import('../stores/source-corpus')).readSourcePassages(sources);
-  } catch (e) {
-    console.warn('[export] source passages not included:', e);
-  }
+  // F107.10.2: the retained documents' passages ride in the file, after the claims.
+  const { passagesForSave } = await import('../stores/source-corpus');
+  const chunks = await passagesForSave(sources);
   return toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId, chunks });
 }
 
