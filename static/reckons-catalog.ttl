@@ -98,6 +98,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-assets ,
         graph:starter-everyday ,
         graph:starter-everyday-reviewed ,
+        graph:starter-generated-assets ,
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-turtles ,
@@ -250,6 +251,11 @@ graph:starter-assets a void:Dataset ;
     dcterms:title "Starter: assets" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-assets.ttl" .
+
+graph:starter-generated-assets a void:Dataset ;
+    dcterms:title "Starter: generated assets" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-generated-assets.ttl" .
 
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;

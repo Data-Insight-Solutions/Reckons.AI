@@ -3875,6 +3875,70 @@ kb:gen-video-to-splat rdf:type ktype:Feature ;
                kpred:relates-to kb:space-photorama, kb:generation-coupling ;
                kpred:relates-to   kb:int-game-engine .
 
+# F58.9 PROOF OF CONCEPT, 2026-10-14 (Matt: "I want to do some proof of concept work on gaussian
+# splats soon. I think graph nodes could have a splat that you see, as well as maybe setting splats
+# as your background... Lets generate image from text, video and gaussian from image, and show that
+# process in a e2e test workflow with documentation." Local models first, self-hostable tools.)
+kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: proof of concept now, local models primarily and self-hostable tools: text to image, then video and a Gaussian splat from that image; a graph node shows its splat, a splat can be a space's background; the process shown as an end-to-end test workflow with documentation. Renderer candidate named by Matt: Gaussian-Splat-Lite (a starred repository)." ;
+    kpred:measured "2026-10-14, FIRST RUNS ON THIS MACHINE (two RTX 3090, stable-diffusion.cpp master-964 Vulkan build with a user-space Vulkan loader, no CUDA toolkit): Z-Image-Turbo Q8 text to image 768x768 in 15 s; Wan2.2 TI2V-5B Q8 image to video 512x512x33 frames in 42 s; TripoSplat image to 32,768 and 131,072 Gaussians in 30 s at 4.6 GiB peak (torch 2.11 cu128). The first video barely moved: the model did not follow a turntable prompt, so the video check measures motion instead of trusting the exit code." ;
+    kpred:principle "RECONSTRUCTION IS NOT GENERATION. TripoSplat INVENTS the unseen side of an object from one picture; a splat reconstructed from photographs or video (Trial B, Splatfacto/vid2scene) RECORDS what was there. A generated splat is decoration and is labelled as generated wherever it appears; it is never evidence." .
+
+kb:splat-local-pipeline rdf:type ktype:Phase ;
+    rdfs:label "F58.9.1 — text to image, image to video and to a Gaussian splat, each a local command with an independent check" ;
+    kpred:feature-id "F58.9.1" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:generation-coupling ;
+    kpred:description "A script (scripts/content/gen-assets.ts) runs three local tools on the person's own machine: stable-diffusion.cpp with Z-Image-Turbo (text to image), stable-diffusion.cpp with Wan2.2 TI2V-5B (image to video) and TripoSplat (image to Gaussian splat). Each stage writes a receipt (tool and commit, model files with SHA-256 and licence, prompt, seed, settings, duration, output hash) and is accepted only by an independent check: the image is not flat, the video decodes and moves, the splat parses with the expected count, finite values and a real extent. The stages are also declared as F166 tasks (kpred:command plus kpred:done-when) so the existing runner can execute them." ;
+    kpred:constraint "All three tools and every model weight are permissive (MIT or Apache-2.0); the receipt records each licence separately from the tool's. Weights live outside the repository (RECKONS_GEN_HOME, default ~/.local/share/reckons/gen). Prompts are synthetic. CI has no GPU, so CI checks the committed outputs and receipts, never runs the models." ;
+    kpred:proof "A person with the tools installed runs npm run gen:assets and gets, per brief, an image, a video and a splat with receipts; the check mode passes on every committed output and fails on a flat image, a still video and a truncated splat (unit tests)." ;
+    kpred:has-file "scripts/content/gen-assets.ts", "scripts/content/asset-checks.ts", "scripts/content/triposplat_run.py", "scripts/content/gen-briefs.json", "scripts/content/gen-setup.sh", "scripts/content/generated-assets.tasks.ttl", "static/generated/carved-turtle/receipt.json", "static/generated/lighthouse-island/receipt.json" ;
+    kpred:tested-by "scripts/content/__tests__/asset-checks.test.ts" ;
+    kpred:progress "2026-10-14, BUILT AND RUN: two synthetic briefs produced six outputs, all accepted by their checks (npm run gen:check). Timings on one RTX 3090 (Vulkan build): image 14-20 s, 49-frame video about 53 s, splat 34-52 s including model load. The splat check caught an upstream TripoSplat defect on the first run (opacity written as +inf for 1,480 to 10,601 Gaussians); triposplat_run.py clamps them and the receipt records the count. A flat top-down prompt gave a coin-flat splat; a three-quarter-view prompt gave real depth. TripoSplat's first CUDA initialisation failed with 'CUDA driver initialization failed' on 3 of 6 runs and succeeded on one retry; cause unknown, the retry is logged." ;
+    kpred:remaining "The F166 task (scripts/content/generated-assets.tasks.ttl) parses and the runner lists it, but it has not been executed through the runner. The app cannot start a generation; it only shows committed results. CUDA build of stable-diffusion.cpp not tried (no toolkit installed); Vulkan used. Only tested on Ubuntu 24.04." .
+
+kb:splat-node-view rdf:type ktype:Phase ;
+    rdfs:label "F58.9.2 — a node can carry a Gaussian splat, seen in the 3D graph and in the asset viewer" ;
+    kpred:feature-id "F58.9.2" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "A p:splat literal on a node (a PLY or SPZ path) is presentation, like p:photo and p:video. The node shows a splat badge, the large and fullscreen viewers orbit it, and the 3D graph draws it at the node. Rendering is Gaussian-Splat-Lite (Apache-2.0, three.js >= 0.186, WebGL2 or WebGPU), loaded only when a splat is on screen because it is about 0.75 MB compressed." ;
+    kpred:constraint "Lazy import only; a failed load leaves the ordinary marker. Graph picking, labels and layout must not change because a splat is present." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/SplatLayer.svelte", "src/lib/components/AssetSplatViewer.svelte", "src/lib/3d/KnowledgeGraph.svelte", "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: splat badge, large and fullscreen orbit viewer, and node splats in the 3D graph, proven by the e2e workflow (the canvas reports loaded/failed splats in data-splats). Orientation measured by projecting both splats' centres: TripoSplat writes y down and faces its picture along +x." ;
+    kpred:remaining "3D graph only; the 2D graph shows the splat badge but not the splat. Measured only under headless SwiftShader (the app warned of 11 fps); no frame-time measurement on a real GPU or a phone. Layout spacing does not yet account for a splat's size the way it does for a GLB." .
+
+kb:splat-space-background rdf:type ktype:Phase ;
+    rdfs:label "F58.9.3 — a splat as the background of a space" ;
+    kpred:feature-id "F58.9.3" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:relates-to kb:space-photorama ;
+    kpred:description "Set as background, from a splat in the asset viewer, writes one graph-level setting (<urn:reckons:space> kmeta:background-splat) so it travels with an export of the space; the 3D graph then draws that splat large behind the nodes, and Clear background removes it. This is Photorama phase 2 with a generated splat instead of a reconstructed one." ;
+    kpred:constraint "A background must not take picking or label contrast from the graph; it is never raycast and is drawn at half opacity (set, but not visibly confirmed on 2026-10-14: the island still looked near full strength in the screenshot). It is a setting, not a fact, so it is a meta predicate and never an edge." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/KnowledgeGraph.svelte", "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: Set as background and Clear background in the splat viewer write and clear <urn:reckons:space> kmeta:background-splat; the 3D graph draws that splat behind the graph, sized to the graph each frame. First placed below the graph, it fell outside the camera fit and was never seen; moved behind." ;
+    kpred:remaining "Not shown in 2D. Half opacity is set but the island did not look dimmed in the screenshot. No reduced-motion handling for its slow turn. Export carries the setting as a triple, but the PLY file itself is only a path, so a space exported to another machine needs the file to exist there." .
+
+kb:splat-e2e-workflow rdf:type ktype:Phase ;
+    rdfs:label "F58.9.4 — the generated-assets path as a test workflow page with screenshots" ;
+    kpred:feature-id "F58.9.4" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-node-view, kb:splat-space-background, kb:test-workflow-docs ;
+    kpred:description "A TestWorkflow in docs-testing.ttl (the F34.2 pattern) walks: generate the image, the video, the splat (shown as the committed outputs and their receipts), open the Generated assets example as a space, see each asset on its node, see the splat in the 3D graph, set a splat as the background. The e2e test reads its steps from the graph and the screenshots come from npm run workflow:shots." ;
+    kpred:honest-note "The browser test cannot run the models (no GPU in CI): it checks that the committed outputs pass their checks and that the app shows them. The generation itself is proven by the receipts from a run on Matt's machine, dated in each receipt." ;
+    kpred:has-file "static/docs-testing.ttl", "content/testing/workflow-generated-assets.md", "static/workflows/generated-assets/01-open-example.webp", "static/starter-generated-assets.ttl", "src/lib/storage/example-space.ts", "src/routes/(app)/about/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: six-step TestWorkflow, page generated at /docs/testing/workflow-generated-assets with six captured screenshots. The example opens as its own space from the About page. FLAKE, said out loud: opening a node's preview by its 'preview all' thumbnail failed 1 run in 3 (the force layout put the node where no preview is drawn); after switching to search-then-open it passed 16 of 17 runs, the one failure the same symptom in step 5. Not yet run in CI." .
+
+kb:release-0-2-7 kpred:proposed "2026-10-14 (agent, not decided): the F58.9 splat proof of concept (F58.9.1-.4) belongs in 0.2.7, not 0.2.6, by Matt's own rule for 0.2.6 that anything not serving the evidence chain waits." .
+kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: 'We should get things on dev so I can review localhost... I want to review both on localhost, dev branch.' The proof of concept merges to dev now for review; which release carries it is still open." ;
+    kpred:open-question "MATT, 2026-10-14: 'The visual test review space is interesting, but minimal and without proper timeline/story setup.' What should a review space's timeline and story be (the Getting started starter has one; the visual-review and generated-assets examples do not)?" .
+
 # -- Spatial / Map Force Layout (F59) ------------------------------------------
 # A new force mode that positions nodes by real-world LOCATION, not just graph
 # relation. Raised 2026-07-10. The existing force modes (free/focus/source/type/

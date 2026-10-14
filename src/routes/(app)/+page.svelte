@@ -14,6 +14,8 @@
   import GraphLabels from '$lib/components/GraphLabels.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
+  import { splatMapFrom, backgroundSplatFrom, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -1385,10 +1387,18 @@
     }
     return m;
   });
-  type NodeAsset = { kind: 'image' | 'video' | 'glb'; url: string };
+  // Gaussian splats (F58.9.2) and the space's background splat (F58.9.3).
+  const splatMap = $derived(splatMapFrom(statements()));
+  const backgroundSplat = $derived(backgroundSplatFrom(statements()));
+  /** Set (or, with null, clear) the space's background splat — a setting, so one replaceable meta triple. */
+  async function setBackgroundSplat(url: string | null) {
+    await setSchemaField(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, url ?? '');
+  }
+  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat'; url: string };
   function nodeAssetFor(iri: string | null): NodeAsset | null {
     if (!iri) return null;
     const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
+    const splat = splatMap.get(iri); if (splat) return { kind: 'splat', url: splat };
     const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
     const img = previewUrlFor(iri);  if (img) return { kind: 'image', url: img };
     return null;
@@ -2597,7 +2607,7 @@
         <button
           type="button"
           class="node-preview-thumb"
-          class:glb-badge={a.kind === 'glb'}
+          class:glb-badge={a.kind === 'glb' || a.kind === 'splat'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
@@ -2606,6 +2616,8 @@
             <img src={a.url} alt="" loading="lazy" />
           {:else if a.kind === 'video'}
             <video src={a.url} muted loop autoplay playsinline></video>
+          {:else if a.kind === 'splat'}
+            ✦ Splat
           {:else}
             ◈ 3D
           {/if}
@@ -2703,6 +2715,20 @@
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'splat'}
+      <div class="asset-media asset-glb asset-splat" aria-label="Gaussian splat, generated">
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} />{/key}
+        <!-- Inside the splat's own box, top left: the viewer's top-right controls sit beside the
+             search bar, and a wider button there slid underneath it (the e2e click was
+             intercepted, 2026-10-14). -->
+        <div class="asset-bg-action">
+          {#if backgroundSplat === expandedAsset.url}
+            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
+          {:else}
+            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
+          {/if}
+        </div>
+      </div>
     {:else}
       <div
         class="asset-media asset-glb"
@@ -2747,6 +2773,10 @@
     {:else if expandedAsset.kind === 'video'}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'splat'}
+      <div class="asset-fs-media asset-glb">
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} />{/key}
+      </div>
     {:else}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
@@ -4422,6 +4452,24 @@
     gap: 0.5rem;
     pointer-events: auto;
   }
+  .asset-splat { position: relative; }
+  .asset-bg-action {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 1;
+  }
+  .asset-bg-toggle {
+    min-height: 44px;
+    padding: 0 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .asset-bg-toggle:hover { border-color: var(--accent); }
   .asset-controls button {
     /* 44px is the floor in kb:web-uiux-rubric (touch-targets); these were 34. */
     width: 44px;

@@ -26,6 +26,8 @@
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
+  import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
+  import { splatMapFrom, backgroundSplatFrom } from './splat';
 
   interactivity();
 
@@ -198,6 +200,32 @@
     return map;
   });
 
+  /**
+   * GAUSSIAN SPLATS (F58.9.2 / F58.9.3). A node with p:splat is drawn inside its splat, which
+   * follows the node and turns slowly; the space's background splat sits beneath the graph, dimmed,
+   * like an island the graph floats over. Neither is raycast, so picking still hits the marker.
+   */
+  const splatItems = $derived.by((): SplatItem[] => {
+    const items: SplatItem[] = [];
+    const byKey = new Map(nodes.map((n) => [n.key, n] as const));
+    for (const [iri, url] of splatMapFrom(statements as Statement[])) {
+      const n = byKey.get('i:' + iri);
+      if (!n) continue;
+      items.push({ key: n.key, url, radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35 });
+    }
+    const bg = backgroundSplatFrom(statements as Statement[]);
+    if (bg) {
+      // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
+      // space's size; recomputed each frame because the layout keeps moving.
+      items.push({
+        key: 'background', url: bg, radius: 10, opacity: 0.5, spin: 0.02,
+        // size() runs first each frame (SplatLayer), so the frame is computed once per frame.
+        size: () => graphFrame().radius, position: () => bgFrame.anchor,
+      });
+    }
+    return items;
+  });
+
   type Node = {
     key: string;
     label: string;
@@ -235,6 +263,28 @@
   let hubNodeKeys = $state<string[]>([]);
   let cameraTarget = new THREE.Vector3(0, 0, 0);
   const projVec = new THREE.Vector3();
+  /**
+   * Where the background splat sits and how big it is: BEHIND the graph as a backdrop, 2.4
+   * graph-radii back and a little low, 2.2 graph-radii across. (Placed below the graph first, it
+   * fell outside the camera's fit and was never seen, 2026-10-14.) The graph radius is the
+   * 90th-percentile node distance from the centroid, so one far outlier does not shrink the rest.
+   */
+  const bgFrame = { anchor: new THREE.Vector3(), radius: 10 };
+  const bgDistances: number[] = [];
+  function graphFrame() {
+    const c = bgFrame.anchor.set(0, 0, 0);
+    if (!nodes.length) return bgFrame;
+    for (const n of nodes) c.add(n.pos);
+    c.multiplyScalar(1 / nodes.length);
+    bgDistances.length = 0;
+    for (const n of nodes) bgDistances.push(n.pos.distanceTo(c));
+    bgDistances.sort((a, b) => a - b);
+    const r = Math.max(4, bgDistances[Math.floor(bgDistances.length * 0.9)] ?? 4);
+    bgFrame.radius = r * 2.2;
+    c.y -= r * 0.4;
+    c.z -= r * 2.4;
+    return bgFrame;
+  }
   const { camera, renderer } = useThrelte();
   let previousCanvasWidth = 0;
   let previousCanvasHeight = 0;
@@ -1833,6 +1883,13 @@
     }}
   />
 {/each}
+
+<!-- Gaussian splats: node splats and the space background (lazy; absent until loaded) -->
+{#if splatItems.length > 0}
+  <!-- data-splats on the canvas ("loaded/failed") lets a test, or a person in devtools, see that
+       the splats actually loaded: nothing else in the DOM can say what WebGL drew. -->
+  <SplatLayer items={splatItems} onstatus={(l, f) => { if (renderer) renderer.domElement.dataset.splats = `${l}/${f}`; }} />
+{/if}
 
 <!-- Concentric rings: focus (teal, hop-distance) and hub (orange, degree-band) -->
 {#if layoutRingRadii.length > 0}

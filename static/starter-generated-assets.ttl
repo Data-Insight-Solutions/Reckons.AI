@@ -1,0 +1,94 @@
+## Generated assets — made on this machine by local models (F58.9, kb:splat-local-pipeline).
+## WRITTEN BY scripts/content/gen-assets.ts FROM static/generated/*/receipt.json. Do not hand-edit;
+## regenerate with `npm run gen:assets -- --ttl`. Every prompt is synthetic.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix schema: <https://schema.org/> .
+
+ktype:Prompt rdf:type ktype:EntityType ; rdfs:label "Prompt" ; p:icon "box" ; p:color "#ffd6b0" .
+ktype:GeneratedAsset rdf:type ktype:EntityType ; rdfs:label "Generated asset" ; p:icon "octahedron" ; p:color "#6dd3c4" .
+
+kb:generated-assets rdf:type ktype:Concept ;
+    rdfs:label "Generated on this machine" ;
+    rdfs:comment "Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real." ;
+    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt .
+
+kb:gen-carved-turtle-prompt rdf:type ktype:Prompt ;
+    rdfs:label "Prompt: Carved wooden sea turtle" ;
+    rdfs:comment "A hand-carved wooden sea turtle figurine with a high domed shell painted with teal patterns, standing on its four flippers, three-quarter view from the front and slightly above, the whole figurine visible with its depth clear, studio product photo on a plain light grey background, soft even lighting" .
+
+kb:gen-carved-turtle-image rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Image: carved wooden sea turtle" ;
+    p:photo "/generated/carved-turtle/image.webp" ;
+    p:made-from kb:gen-carved-turtle-prompt ;
+    p:made-with "Z-Image-Turbo (Q8) on stable-diffusion.cpp" ;
+    schema:license "MIT, Apache-2.0" ;
+    p:took "13.8 s" ;
+    p:seed "42" ;
+    p:generated-at "2026-10-14" .
+
+kb:gen-carved-turtle-video rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Video: carved wooden sea turtle" ;
+    p:video "/generated/carved-turtle/video.webm" ;
+    p:made-from kb:gen-carved-turtle-image ;
+    p:made-with "Wan2.2 TI2V-5B (Q8) on stable-diffusion.cpp" ;
+    schema:license "MIT, Apache-2.0" ;
+    p:took "52.6 s" ;
+    p:seed "42" ;
+    p:frames "49" ;
+    rdfs:comment "the wooden sea turtle figurine swims forward, its flippers paddling up and down, the camera slowly circles around it, soft studio light" ;
+    p:generated-at "2026-10-14" .
+
+kb:gen-carved-turtle-splat rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Splat: carved wooden sea turtle" ;
+    p:splat "/generated/carved-turtle/splat.ply" ;
+    p:made-from kb:gen-carved-turtle-image ;
+    p:made-with "TripoSplat" ;
+    schema:license "MIT" ;
+    p:took "33.8 s" ;
+    p:seed "42" ;
+    p:gaussians "32768" ;
+    rdfs:comment "Invented from one picture by TripoSplat: the far side is a guess." ;
+    p:generated-at "2026-10-14" .
+
+kb:gen-lighthouse-island-prompt rdf:type ktype:Prompt ;
+    rdfs:label "Prompt: Lighthouse island diorama" ;
+    rdfs:comment "A miniature diorama of a small rocky island with a white and red lighthouse, a few pine trees and a wooden jetty, centered, whole island visible, isometric view, plain dark blue background, soft light" .
+
+kb:gen-lighthouse-island-image rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Image: lighthouse island diorama" ;
+    p:photo "/generated/lighthouse-island/image.webp" ;
+    p:made-from kb:gen-lighthouse-island-prompt ;
+    p:made-with "Z-Image-Turbo (Q8) on stable-diffusion.cpp" ;
+    schema:license "MIT, Apache-2.0" ;
+    p:took "16.6 s" ;
+    p:seed "7" ;
+    p:generated-at "2026-10-14" .
+
+kb:gen-lighthouse-island-video rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Video: lighthouse island diorama" ;
+    p:video "/generated/lighthouse-island/video.webm" ;
+    p:made-from kb:gen-lighthouse-island-image ;
+    p:made-with "Wan2.2 TI2V-5B (Q8) on stable-diffusion.cpp" ;
+    schema:license "MIT, Apache-2.0" ;
+    p:took "52.2 s" ;
+    p:seed "7" ;
+    p:frames "49" ;
+    rdfs:comment "the lighthouse beam sweeps around, waves lap at the rocks of the small island, the camera slowly orbits the diorama" ;
+    p:generated-at "2026-10-14" .
+
+kb:gen-lighthouse-island-splat rdf:type ktype:GeneratedAsset ;
+    rdfs:label "Splat: lighthouse island diorama" ;
+    p:splat "/generated/lighthouse-island/splat.ply" ;
+    p:made-from kb:gen-lighthouse-island-image ;
+    p:made-with "TripoSplat" ;
+    schema:license "MIT" ;
+    p:took "50.9 s" ;
+    p:seed "7" ;
+    p:gaussians "65536" ;
+    rdfs:comment "Open it and choose Set as background to put this island behind the graph." ;
+    p:generated-at "2026-10-14" .
