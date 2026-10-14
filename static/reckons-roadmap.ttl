@@ -9703,13 +9703,15 @@ kb:anchor-staleness rdf:type ktype:Phase ;
 kb:statement-to-passage-jump rdf:type ktype:Phase ;
     rdfs:label "F122.1.4 — click a statement, the source opens scrolled to the highlighted passage" ;
     kpred:feature-id "F122.1.4" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:document-evidence-anchors ;
     kpred:estimate "1 day" ;
     kpred:description "The statement-side Evidence section (StatementEvidence.svelte) shows the passage inline today. This adds the same join as a link: Open in source navigates to the Sources inspector for that source, scrolled to that passage with the supporting span highlighted and the other statements of the passage visible. It needs only the derived chunkIndex that deriveEvidence already returns, so it can start before any storage work and later uses the stored anchor." ;
-    kpred:has-file "src/lib/components/StatementEvidence.svelte", "src/lib/components/SourceDocument.svelte", "src/lib/components/SourcesExplorer.svelte", "src/lib/ingest/source-document.ts", "src/routes/(app)/+page.svelte", "tests/e2e/source-document.test.ts", "tests/e2e/provenance-view.test.ts" ;
+    kpred:has-file "src/lib/components/StatementEvidence.svelte", "src/lib/ingest/__tests__/source-document.test.ts", "tests/e2e/starter-provenance.test.ts", "src/lib/components/SourceDocument.svelte", "src/lib/components/SourcesExplorer.svelte", "src/lib/ingest/source-document.ts", "src/routes/(app)/+page.svelte", "tests/e2e/source-document.test.ts", "tests/e2e/provenance-view.test.ts" ;
     kpred:proof "E2E, user-visible: seed a synthetic long source with a statement quoting its passage 19; click that statement, click Open in source; the Sources inspector shows passage 19 in the viewport with the quote marked, and its statement count matches. Screenshot with a bounding box on the marked span (the F34.2 test-workflow pattern)." ;
-    kpred:honest-note "Whether a deep link exists today is unverified in a browser; a search of src for chunkIndex consumers finds only the two derive modules and SourceDocument.svelte, which suggests it does not." .
+    kpred:honest-note "Whether a deep link exists today is unverified in a browser; a search of src for chunkIndex consumers finds only the two derive modules and SourceDocument.svelte, which suggests it does not." ;
+    kpred:progress "Built 2026-10-13: Open in source button in the Evidence section (shown only when the quote is found in the kept text); SourcesExplorer selects the source and SourceDocument opens that passage, marks the supporting span and scrolls it into view (locatePassageJump in source-document.ts). Proven by e2e on the Getting started space and on a three-passage synthetic source, at 1280 and 390 px. When the quote is not found no button is offered and the Evidence section already says why; a jump that cannot place the quote shows that in plain words instead of opening at the top." ;
+    kpred:remaining "The jump reads a stored text-span anchor when one is passed (locatePassageJump verifies it against the quote, else falls back to the quote match), but nothing stores an anchor yet: that is F122.1.1. Statements from sources with no kept text, or whose quote has changed, get no jump. The Reckoning citation chip reuse (F223) is not built." .
 
 # -- F223 proposals as 2 to 4 cited options --
 

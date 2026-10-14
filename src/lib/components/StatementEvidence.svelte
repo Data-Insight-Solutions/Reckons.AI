@@ -5,7 +5,7 @@
   import { deriveEvidence, evidenceNotice, EVIDENCE_LIMITS_NOTE } from '$lib/ingest/statement-evidence';
 
   // Thin renderer: the derivation is in $lib/ingest/statement-evidence (pure, tested).
-  let { statement, sourceTitle, sourceHash } = $props<{ statement: Statement; sourceTitle: string; sourceHash?: string }>();
+  let { statement, sourceTitle, sourceHash, onopensource } = $props<{ statement: Statement; sourceTitle: string; sourceHash?: string; onopensource?: (statementId: string) => void }>();
 
   let sourceText = $state<string | null>(null);
   let loaded = $state(false);
@@ -43,6 +43,9 @@
     {#if evidence.kind === 'anchored'}
       <blockquote class="statement-evidence-text">{evidence.before}<mark class="statement-evidence-mark">{evidence.highlight}</mark>{evidence.after}</blockquote>
     {/if}
+    {#if evidence.kind === 'anchored' && onopensource}
+      <button class="statement-evidence-open" onclick={() => onopensource(statement.id)}>Open in source</button>
+    {/if}
     <!-- Excerpt-only: the statement row above already shows the saved quote, so it is not repeated here. -->
     {#if notice}<p class="statement-evidence-note">{notice}</p>{/if}
     <p class="statement-evidence-note">{EVIDENCE_LIMITS_NOTE}</p>
@@ -56,5 +59,6 @@
   .statement-evidence-where { color: var(--muted); }
   .statement-evidence-text { margin: 0; padding: 0.4rem 0.6rem; max-height: 14rem; overflow: auto; border-left: 3px solid var(--line); font-size: 0.82rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
   .statement-evidence-mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
+  .statement-evidence-open { margin-top: 0.3rem; min-height: 44px; padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: var(--rad); background: none; color: var(--accent); cursor: pointer; font-size: 0.8rem; }
   .statement-evidence-note { margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--muted); }
 </style>
