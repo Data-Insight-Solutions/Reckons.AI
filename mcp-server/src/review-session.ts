@@ -268,9 +268,11 @@ function normalizeBlocks(value: unknown): string[] {
 }
 
 /** A decision's identity: the question being asked, independent of how many claims answer it. */
-export function decisionId(kb: string, subject: string, predicate: string): string {
+export function decisionId(kb: string, subject: string, predicate: string, object?: string): string {
   return createHash('sha256')
-    .update(`${normalizeKb(kb)}|${subject.trim()}|${predicate.trim()}`)
+    // `object` is only passed for MULTI-VALUED predicates (one decision per finding); omitting it
+    // keeps the original id for functional predicates and open questions.
+    .update(`${normalizeKb(kb)}|${subject.trim()}|${predicate.trim()}${object === undefined ? '' : `|${object.trim()}`}`)
     .digest('hex').slice(0, 8);
 }
 
@@ -300,14 +302,22 @@ export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, A
     // A row with no subject or predicate names no fact and cannot be a decision about anything.
     if (!subject || !predicate) continue;
     const kb = normalizeKb((row as { kb?: unknown }).kb);
-    const key = JSON.stringify([kb, subject, predicate]);
+    /*
+     * MULTI-VALUED predicates get one decision PER OBJECT: independent findings that merely share
+     * subject+predicate (101 docs-review `unexplained-term` rows on one page) are not alternatives,
+     * and grouping them let one accept close the rest. Only a measured-FUNCTIONAL predicate groups
+     * values, because there they genuinely compete. Open questions (no object) stay grouped.
+     */
+    const object = String(row.object ?? '').trim();
+    const perFinding = arity?.get(localName(predicate)) !== 'functional' && object !== '' && object !== '?';
+    const key = JSON.stringify(perFinding ? [kb, subject, predicate, object] : [kb, subject, predicate]);
     byQuestion.set(key, [...(byQuestion.get(key) ?? []), row]);
   }
 
   const decisions: Decision[] = [];
   for (const [key, group] of byQuestion) {
-    const [kb, subject, predicate] = JSON.parse(key) as [string, string, string];
-    const id = decisionId(kb, subject, predicate);
+    const [kb, subject, predicate, keyObject] = JSON.parse(key) as [string, string, string, string | undefined];
+    const id = decisionId(kb, subject, predicate, keyObject);
 
     const byObject = new Map<string, PendingRow[]>();
     let open = false;
@@ -702,6 +712,9 @@ export function buildVerdict(input: DecideInput): Verdict {
   return {
     decision: d.id, verdict,
     rows: d.rowIds, subject: d.subject, predicate: d.predicate, kb: d.kb,
+    // A reject names the objects it speaks to, so applying it cannot spill onto siblings that
+    // merely share subject+predicate.
+    ...(verdict === 'reject' ? { objects: d.claims.map((c) => c.object) } : {}),
     note, actor, at: input.now ?? new Date().toISOString(),
   };
 }

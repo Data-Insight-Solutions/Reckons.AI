@@ -45,6 +45,13 @@ function statement(over: Partial<Statement> = {}): Statement {
   } as Statement;
 }
 
+const withObjects = (values: string[]) => values.map((o) => ({
+  id: o, sourceId: 'mcp-pending-x', confidence: 0.7, status: 'pending',
+  s: { kind: 'iri', value: S }, p: { kind: 'iri', value: P },
+  o: { kind: 'literal', value: o }, g: { kind: 'iri', value: 'urn:mcp:pending:x' },
+  createdAt: 1, updatedAt: 1,
+}) as never);
+
 describe('parsing the journal', () => {
   it('accepts a well-formed verdict', () => {
     expect(parseDecisionLine(JSON.stringify(verdict())).ok).toBe(true);
@@ -150,6 +157,24 @@ describe('what a verdict does to statements', () => {
   it('rejects every matching statement on a reject', () => {
     const out = applyVerdicts([verdict({ verdict: 'reject' })], [statement()]);
     expect(out.changes[0].status).toBe('rejected');
+  });
+
+  it('a reject naming objects touches ONLY the named objects, not siblings sharing subject+predicate', () => {
+    const rows = withObjects(['a', 'b', 'c']);
+    const out = applyVerdicts([verdict({ verdict: 'reject', objects: ['b'] })], rows);
+    expect(out.changes.map((c) => c.id)).toEqual(['b']);
+    expect(out.changes[0].status).toBe('rejected');
+  });
+
+  it('a whole-decision reject naming every claim still rejects them all', () => {
+    const rows = withObjects(['a', 'b']);
+    const out = applyVerdicts([verdict({ verdict: 'reject', objects: ['a', 'b'] })], rows);
+    expect(out.changes.map((c) => c.id).sort()).toEqual(['a', 'b']);
+  });
+
+  it('a legacy reject with no objects keeps rejecting every sibling', () => {
+    const rows = withObjects(['a', 'b']);
+    expect(applyVerdicts([verdict({ verdict: 'reject' })], rows).changes).toHaveLength(2);
   });
 
   it('changes nothing on defer or ask, and still records them as handled', () => {
