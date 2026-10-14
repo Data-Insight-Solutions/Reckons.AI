@@ -278,6 +278,50 @@ kshape:StatementStatus a sh:NodeShape ;
         sh:message "kmeta:status must be one of the ktype:ReviewStatusScheme notations."
     ] .
 
+# ── PROPOSALS (F223.1) ───────────────────────────────────────────────────────
+# A proposal is a target state that does not hold yet, closed when the graph reaches it. Its
+# LIFECYCLE is schema:Action's actionStatus (the four states are the standard's own). Its TARGET
+# STATE is a shape the reviewed graph must satisfy: no inference and no model decides that
+# (kb:graph-proposals). The shape below says what a well-formed proposal CARRIES; src/lib/rdf/proposal.ts
+# validates against the same rules and a test keeps the two lists in agreement.
+# Honest limit: nothing writes a proposal into a graph yet (F223.2 builds the options, F223.3 shows them).
+
+ktype:Proposal a rdfs:Class ;
+    rdfs:label "Proposal" ;
+    rdfs:comment "A target state that needs a solution, offered as 2 to 4 options with the citations each rests on." .
+
+kshape:Proposal a sh:NodeShape ;
+    rdfs:label "A proposal carries a target, 2 to 4 options, one recommended, and a lifecycle state" ;
+    sh:targetClass ktype:Proposal ;
+    sh:property [
+        sh:path <https://schema.org/actionStatus> ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( <https://schema.org/PotentialActionStatus> <https://schema.org/ActiveActionStatus> <https://schema.org/CompletedActionStatus> <https://schema.org/FailedActionStatus> ) ;
+        sh:severity sh:Violation ;
+        sh:message "A proposal's state must be one of schema:Action's four action statuses."
+    ] ;
+    sh:property [
+        sh:path kpred:target-shape ;
+        sh:minCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "A proposal without a target state cannot be reached or closed."
+    ] ;
+    sh:property [
+        sh:path kpred:has-option ;
+        sh:minCount 2 ;
+        sh:maxCount 4 ;
+        sh:severity sh:Violation ;
+        sh:message "A proposal offers 2 to 4 options."
+    ] ;
+    sh:property [
+        sh:path kpred:recommended-option ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "Exactly one option is marked recommended, and it is one of the options."
+    ] .
+
 # ── SET KINDS (F187) ─────────────────────────────────────────────────────────
 # What kind of grouping a set is. A set TYPE describes the GROUP the way an
 # entity type describes one node, and it is a controlled vocabulary for exactly

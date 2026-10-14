@@ -9738,12 +9738,13 @@ kb:statement-to-passage-jump rdf:type ktype:Phase ;
 kb:proposal-shape rdf:type ktype:Phase ;
     rdfs:label "F223.1 — the proposal as a SHACL target shape and a schema:Action lifecycle" ;
     kpred:feature-id "F223.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:graph-proposals ;
     kpred:estimate "1 day" ;
     kpred:description "Matt, 2026-09-29: SHACL shapes for the target state, schema:Action status for the lifecycle. A vocabulary shape for a proposal (what a well-formed proposal carries: a target-state shape reference, 2 to 4 option nodes, one marked recommended, an actionStatus) and a pure module that moves a proposal through PotentialActionStatus, ActiveActionStatus, CompletedActionStatus and FailedActionStatus. A proposal is closed when the graph validates against its target shape; no inference and no model decides that." ;
-    kpred:has-file "static/reckons-vocabulary.ttl", "src/lib/rdf/option-cascade.ts", "src/lib/rdf/decision-journal.ts" ;
-    kpred:remaining "NEW FILES, not built: src/lib/rdf/proposal.ts and src/lib/rdf/__tests__/proposal.test.ts (new)" ;
+    kpred:has-file "static/reckons-vocabulary.ttl", "src/lib/rdf/option-cascade.ts", "src/lib/rdf/decision-journal.ts", "src/lib/rdf/proposal.ts", "src/lib/rdf/__tests__/proposal.test.ts" ;
+    kpred:progress "Built 2026-10-13: kshape:Proposal and ktype:Proposal in the vocabulary (schema:actionStatus in its four values, a target shape, 2 to 4 options, exactly one recommended); src/lib/rdf/proposal.ts with validateProposal (named reasons), the potential/active/completed/failed lifecycle (advanceProposal), targetReached and closeIfReached over REVIEWED facts only, and resolveCitations, which keeps every citation and flags unresolved or stale ones (checking a stored anchor with checkAnchor). A test keeps the status list and the 2 to 4 / exactly-one rules in agreement with the vocabulary shape. A local-model edge-case pass found three real defects, now fixed: an empty actor slipped past the self-settlement rule, a target with no requirements list crashed validation, and a throwing text lookup dropped a citation." ;
+    kpred:remaining "The target-state check is a small subset of SHACL (required reviewed facts), not an engine, and the vocabulary shape is not run by any validator against a stored proposal because nothing stores one yet. F223.2 builds options from a reckoning, F223.3 shows them; review conflicts (settleConflict) come last (Matt, 2026-10-13)." ;
     kpred:proof "Unit: a proposal with 5 options, or none marked recommended, or an unknown status fails its shape with a named reason; a proposal whose target shape the fixture graph satisfies is completed, one it does not satisfy stays active. Graph-lint validates the shape file." ;
     kpred:constraint "The decision-journal rule that an agent may not settle its own proposal carries over unchanged." .
 
