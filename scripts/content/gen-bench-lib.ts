@@ -245,9 +245,11 @@ export interface Budget {
   minMargin: number;
   /** Seeds per brief the incumbent needs for a spread to mean anything. */
   minSeeds: number;
+  /** Incumbent mean quality at or above this leaves no headroom to show an improvement. */
+  ceiling: number;
   allowedLicenses: string[];
 }
-export const DEFAULT_BUDGET: Budget = { maxTimeRatio: 1.5, maxVramMiB: 22 * 1024, minMargin: 0.02, minSeeds: 2, allowedLicenses: LICENSE_ALLOWLIST };
+export const DEFAULT_BUDGET: Budget = { maxTimeRatio: 1.5, maxVramMiB: 22 * 1024, minMargin: 0.02, minSeeds: 2, ceiling: 0.95, allowedLicenses: LICENSE_ALLOWLIST };
 
 export type Verdict = 'upgrade' | 'hold' | 'insufficient-evidence';
 export interface Decision {
@@ -285,6 +287,14 @@ export function decide(inc: Arm, cand: Arm, budget: Budget = DEFAULT_BUDGET): De
   if (inc.runs.some((r) => r.quality === null) || cand.runs.some((r) => r.quality === null)) problems.push('some runs have no quality score (judge unavailable or the output was unreadable)');
   if (problems.length) return insufficient(problems);
 
+  // Found on the first real run (2026-10-14): 28 of 30 images scored a perfect checklist, so a 0.027
+  // 'gain' was two judge answers. A benchmark with no headroom cannot say a candidate is better.
+  numbers.incumbentQuality = mean([...perSeedQuality(inc.runs).values()]);
+  if (numbers.incumbentQuality >= budget.ceiling) {
+    numbers.candidateQuality = mean([...perSeedQuality(cand.runs).values()]);
+    numbers.delta = numbers.candidateQuality - numbers.incumbentQuality;
+    return insufficient([`the incumbent already scores ${fmt(numbers.incumbentQuality)} (ceiling ${budget.ceiling}): the briefs have no headroom to show an improvement, so a gain of ${fmt(numbers.delta)} is a few judge answers, not evidence. Harder briefs are needed.`]);
+  }
   // 1. Hard checks: nothing the incumbent passes may be failed by the candidate.
   const candByKey = new Map(cand.runs.map((r) => [key(r), r]));
   numbers.hardRegressions = inc.runs.filter((r) => r.hardPass && !candByKey.get(key(r))!.hardPass).map(key);

@@ -358,6 +358,7 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.l
 async function main() {
   const stage = arg('stage') as GenStage | undefined;
   if (!stage || !(stage in STAGE_SPECS)) { console.error('usage: npm run bench:gen -- --stage=image|video|splat [--candidate=<owner/repo | dir>] [--seeds=3] [--briefs=N] [--gpu=N] [--wait=S]'); process.exit(2); }
+  if (arg('redecide')) { await redecide(arg('redecide')!); return; }
   const seeds = SEEDS.slice(0, Number(arg('seeds') ?? 3));
   const nBriefs = Number(arg('briefs') ?? 99);
   const waitS = Number(arg('wait') ?? 0);
@@ -407,17 +408,31 @@ async function main() {
     console.log(`\nSaved ${f.replace(ROOT + '/', '')}`);
   }
   if (!flag('no-pending') && !arms[1].control) {
-    const n = decision.numbers;
-    const f = (x: number | null, d = 3) => (x === null ? 'n/a' : x.toFixed(d));
-    const { queued } = queueFindings([{
-      subject: 'urn:kbase:concept/gen-model-bench',
-      predicate: `urn:kbase:predicate/bench-verdict-${stage}`,
-      object: decision.verdict,
-      note: `[gen-model-bench ${new Date().toISOString().slice(0, 10)}] ${stage}: candidate ${arms[1].id} (${arms[1].license}) vs incumbent. Quality ${f(n.candidateQuality)} vs ${f(n.incumbentQuality)} (delta ${f(n.delta)}, incumbent seed spread ${f(n.incumbentSpread)}); time ${f(n.timeRatio, 2)}x; peak VRAM ${n.candidatePeakVramMiB ?? 'n/a'} MiB; hard-check regressions ${n.hardRegressions.length}. ${decision.reasons.join(' ')} ${seeds.length} seeds x ${nBriefs > 99 ? 'all' : Math.min(nBriefs, 99)} briefs. Proposal only: MODELS in gen-assets.ts is not edited by the bench.`,
-      type: 'suggestion', priority: decision.verdict === 'upgrade' ? 'high' : 'low',
-    }], { agent: 'gen-model-bench', recomputes: true });
-    console.log(`${queued} proposal queued -> reckons-workspace/knowledge.pending.jsonl`);
+    queueVerdict(stage, { id: arms[1].id, license: arms[1].license }, decision, seeds, new Set(records.map((r) => r.brief)).size);
   }
+}
+
+/** Re-apply decide() to a saved result (no GPU) and re-queue its proposal, replacing the earlier line for the stage. */
+async function redecide(file: string) {
+  const j = JSON.parse(readFileSync(file, 'utf8')) as { stage: GenStage; seeds: number[]; arms: { id: string; license: string; control: boolean }[]; runs: RunRecord[] };
+  const [a, b] = j.arms;
+  const decision = decide(armOf(a.id, a.license.split(' + ')[0].toLowerCase(), j.runs), armOf(b.id, b.license.split(' + ')[0].toLowerCase(), j.runs));
+  console.log(`${j.stage}: ${decision.verdict}\n  ${decision.reasons.join('\n  ')}`);
+  writeFileSync(file, JSON.stringify({ ...j, decision, redecidedAt: new Date().toISOString() }, null, 2));
+  if (!b.control) queueVerdict(j.stage, { id: b.id, license: b.license }, decision, j.seeds, new Set(j.runs.map((x) => x.brief)).size);
+}
+
+function queueVerdict(stage: GenStage, cand: { id: string; license?: string }, decision: Decision, seeds: number[], briefs: number) {
+  const n = decision.numbers;
+  const f = (x: number | null, d = 3) => (x === null ? 'n/a' : x.toFixed(d));
+  const { queued } = queueFindings([{
+    subject: 'urn:kbase:concept/gen-model-bench',
+    predicate: `urn:kbase:predicate/bench-verdict-${stage}`,
+    object: decision.verdict,
+    note: `[gen-model-bench ${new Date().toISOString().slice(0, 10)}] ${stage}: candidate ${cand.id} (${cand.license ?? 'licence unknown'}) vs incumbent. Quality ${f(n.candidateQuality)} vs ${f(n.incumbentQuality)} (delta ${f(n.delta)}, incumbent seed spread ${f(n.incumbentSpread)}); time ${f(n.timeRatio, 2)}x; peak VRAM ${n.candidatePeakVramMiB ?? 'n/a'} MiB; hard-check regressions ${n.hardRegressions.length}. ${decision.reasons.join(' ')} ${seeds.length} seeds x ${briefs} briefs. Proposal only: MODELS in gen-assets.ts is not edited by the bench.`,
+    type: 'suggestion', priority: decision.verdict === 'upgrade' ? 'high' : 'low',
+  }], { agent: 'gen-model-bench', recomputes: true });
+  console.log(`${queued} proposal queued -> reckons-workspace/knowledge.pending.jsonl`);
 }
 
 function perSeedSpreadReport(inc: Arm): string {

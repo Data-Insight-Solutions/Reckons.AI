@@ -185,6 +185,12 @@ describe('decide: the upgrade rule', () => {
     const slow = arm('slow', [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9]], { seconds: 16 });
     expect(decide(inc, slow, { ...DEFAULT_BUDGET, maxTimeRatio: 2 }).verdict).toBe('upgrade');
   });
+  it('INSUFFICIENT: an incumbent at the ceiling leaves no headroom, however large the apparent gain', () => {
+    const top = arm('inc', [[0.96, 0.96, 0.96], [0.96, 0.96, 0.96]]);
+    const d = decide(top, arm('cand', [[1, 1, 1], [1, 1, 1]]));
+    expect(d.verdict).toBe('insufficient-evidence');
+    expect(d.reasons[0]).toMatch(/no headroom/);
+  });
   it('INSUFFICIENT: one seed cannot measure a spread', () => {
     expect(decide(arm('inc', [[0.6], [0.7]]), arm('cand', [[0.9], [0.9]])).verdict).toBe('insufficient-evidence');
   });
