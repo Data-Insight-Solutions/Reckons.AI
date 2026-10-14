@@ -54,17 +54,17 @@ export type ShellyPersonaOverrides = {
 };
 
 /**
- * A source passage read from a space file (F107.10.1). Evidence, never a claim: it is returned
- * beside the statements and never enters the statement store, the graph view or a publish.
+ * A document passage read from a saved file (F107.10.1). Evidence, never a claim: it is returned
+ * beside the facts and never enters the fact store, the view or a publish.
  */
 export type ImportedChunk = {
   /** The chunk's IRI, e.g. urn:kbase:source/<id>/chunk/<n>. */
   iri: string;
-  /** The source it is part of (dcterms:isPartOf), as a source id when it is a urn:kbase:source/ IRI. */
+  /** The document it is part of (dcterms:isPartOf), as a document id when it is a urn:kbase:source/ IRI. */
   sourceId: string;
-  /** 0-based order in the source (schema:position). */
+  /** 0-based order in the document (schema:position). */
   index: number;
-  /** Content range [start, end) in the source text (oa:TextPositionSelector). */
+  /** Content range [start, end) in the document text (oa:TextPositionSelector). */
   start: number;
   end: number;
   /** The passage text (rdf:value). */
@@ -75,11 +75,11 @@ export type ImportedChunk = {
 
 export type ImportResult = {
   statements: Statement[];
-  /** Source passages found in the file. Empty when it holds none. Never statements. */
+  /** Source passages found in the file. Empty when it holds none. Never facts. */
   chunks: ImportedChunk[];
-  /** Chunk-shaped nodes that were incomplete or contradictory: reported, never thrown, never imported. */
+  /** Chunk-shaped entries that were incomplete or contradictory: reported, never thrown, never imported. */
   chunkProblems?: Array<{ iri: string; reason: string }>;
-  /** SHA-256 of the source text each source's chunks were cut from, by source id, where the file says (dcterms:hasVersion "sha256:..."). */
+  /** SHA-256 of the document text each document's chunks were cut from, by document id, where the file says (dcterms:hasVersion "sha256:..."). */
   chunkVersions?: Record<string, string>;
   sources: Source[];
   /** Statements imported from a clean (non-annotated) Turtle file get this status */
@@ -130,12 +130,12 @@ function n3ToTerm(term: any): Term | null {
 }
 
 /**
- * Find the chunk nodes in a parsed file. A chunk is a node that is dcterms:isPartOf an IRI AND
+ * Find the chunk entries in a parsed file. A chunk is an entry that is dcterms:isPartOf an IRI AND
  * carries at least one of schema:position, rdf:value, oa:hasSelector; the second condition keeps
- * a space that is isPartOf a set from being mistaken for a passage. Complete chunks are returned;
- * incomplete ones are reported. Either way every triple of the node, and of its selector blank
- * node, is marked consumed so none of them can fall into the plain-Turtle statement fallback.
- * `consumed` holds subject values (blank nodes as '_:' + label).
+ * a file that is isPartOf a set from being mistaken for a passage. Complete chunks are returned;
+ * incomplete ones are reported. Either way every triple of the entry, and of its selector blank
+ * entry, is marked consumed so none of them can fall into the plain-Turtle fact fallback.
+ * `consumed` holds subject values (blank entries as '_:' + label).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; chunkVersions: Record<string, string>; consumed: Set<string> } {
@@ -195,7 +195,7 @@ function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems:
       ...(generated ? { generatedAt: generated } : {}),
     });
   }
-  // Duplicate (source, index): the first wins, the rest are reported. Order is canonical either way.
+  // Duplicate (document, index): the first wins, the rest are reported. Order is canonical either way.
   const seen = new Set<string>();
   const kept: ImportedChunk[] = [];
   chunks.sort((a, b) => (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : a.index - b.index || (a.iri < b.iri ? -1 : 1)));

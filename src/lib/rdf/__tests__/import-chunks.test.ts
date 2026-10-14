@@ -1,6 +1,6 @@
 /**
- * F107.10.1 — the importer reads chunk nodes instead of dropping them. Chunks are evidence, never
- * claims: they come back in `chunks`, and the statements, the sources and the plain-Turtle
+ * F107.10.1 — the importer reads chunk entries instead of dropping them. Chunks are evidence, never
+ * claims: they come back in `chunks`, and the facts, the documents and the plain-Turtle
  * fallback are exactly what they were without them.
  */
 import { describe, it, expect } from 'vitest';
@@ -18,14 +18,14 @@ function stmt(i: number): Statement {
 }
 const SOURCE: Source = { id: 'doc1', title: 'A document', uri: 'urn:kbase:source/doc1', kind: 'document', ingestedAt: 1_000_000 };
 
-/** A synthetic source long enough to cut into 12 chunks. */
+/** A synthetic document long enough to cut into 12 chunks. */
 const TEXT = Array.from({ length: 60 }, (_, i) => `Paragraph ${i}. ${'Plain filler words sit here. '.repeat(10)}`).join('\n\n');
 const CHUNKS = chunkText(TEXT, { size: 1650, overlap: 100 });
 const chunkTtl = (sourceId = 'doc1', chunks = CHUNKS) =>
   chunksToTurtle({ sourceId, title: 'A document', sha256: 'ab'.repeat(32), chunks, generatedAt: '2026-10-01T00:00:00.000Z' });
 
 const base = () => toTurtleFull([stmt(1), stmt(2), stmt(3)], [SOURCE]);
-/** A space file with folded chunks: claims first, then the chunk section. */
+/** A saved file with folded chunks: claims first, then the chunk section. */
 const withChunks = (extra = chunkTtl()) => `${base()}\n# ---- source passages ----\n${extra}`;
 
 describe('importTurtleFull — chunk nodes (F107.10.1)', () => {

@@ -3,7 +3,7 @@
  *
  * Matt, 2026-09-29: chunk text is stored as Turtle, one corpus file per source
  * (sources/<slug>-<hash8>/chunks.ttl), beside the original. REVERSED 2026-10-06 ("fold the chunks
- * in"): the space file carries them too (foldedChunksSection, F107.10.2); chunks.ttl remains a
+ * in"): the saved file carries them too (foldedChunksSection, F107.10.2); chunks.ttl remains a
  * readable cache. Either way they are evidence and never claims. And the browser and the CLI use the SAME code so neither drifts into its own format. So
  * this module touches no DOM, no filesystem and no Node API: it turns text into chunks, chunks into
  * Turtle, and an excerpt into a chunk reference. The IO half writes the file.
@@ -132,7 +132,7 @@ const FULL: typeof PREFIXED = {
   dateTime: '<http://www.w3.org/2001/XMLSchema#dateTime>',
 };
 
-/** One chunk node. The same block goes to a per-source chunks.ttl and into a space file. */
+/** One chunk entry. The same block goes to a per-document chunks.ttl and into a saved file. */
 function chunkBlock(sourceId: string, c: Pick<Chunk, 'index' | 'start' | 'end' | 'text'>, generatedAt: string, n: typeof PREFIXED): string[] {
   const src = `<${sourceIri(sourceId)}>`;
   return [
@@ -147,11 +147,11 @@ function chunkBlock(sourceId: string, c: Pick<Chunk, 'index' | 'start' | 'end' |
 }
 
 /**
- * chunks.ttl for one source. Everything in it is derived and rebuildable from the original.
+ * chunks.ttl for one document. Everything in it is derived and rebuildable from the original.
  *
- * Since F107.10.2 this file is a CACHE beside the original, not the authority: the space file
+ * Since F107.10.2 this file is a CACHE beside the original, not the authority: the saved file
  * carries the same chunks (foldedChunksSection). It stays readable, and retainSource still writes
- * it, so a space exported before the fold keeps its passages and a retained source works alone.
+ * it, so a file exported before the fold keeps its passages and a retained document works alone.
  */
 export function chunksToTurtle(corpus: ChunkCorpus): string {
   const src = `<${sourceIri(corpus.sourceId)}>`;
@@ -175,7 +175,7 @@ export function chunksToTurtle(corpus: ChunkCorpus): string {
   return lines.join('\n');
 }
 
-/** What a space file needs to know about one source's passages. */
+/** What a saved file needs to know about one document's passages. */
 export type FoldedCorpus = {
   sourceId: string;
   /** SHA-256 of the text the chunks were cut from, when known: names the version. */
@@ -187,13 +187,13 @@ export type FoldedCorpus = {
 export const FOLDED_CHUNKS_HEADER = '# ---- source passages (chunks): evidence, never claims; not part of a published space ----';
 
 /**
- * The chunk section of a space file, written AFTER the claims so a reader that stops early never
- * parses it (F107.10.2). Canonical: sources by id, chunks by position, so two exports of the same
+ * The chunk section of a saved file, written AFTER the claims so a reader that stops early never
+ * parses it (F107.10.2). Canonical: documents by id, chunks by position, so two copies of the same
  * space carry identical chunk bytes. Full IRIs throughout, so it depends on no prefix declared
  * above it. Empty string when there are no chunks.
  */
 export function foldedChunksSection(corpora: FoldedCorpus[]): string {
-  // One block per source: two corpora for the same source merge, and the first chunk at a position wins,
+  // One block per source: two corpora for the same document merge, and the first chunk at a position wins,
   // so the file never holds two chunks at one position (the importer would report the second).
   const merged = new Map<string, FoldedCorpus>();
   for (const c of corpora) {
@@ -252,7 +252,7 @@ export function anchorExcerpt(text: string, excerpt: string, chunks: Chunk[]): C
 }
 
 /**
- * Group chunks read from a space file back into per-source corpora, ready to be written again
+ * Group chunks read from a saved file back into per-document corpora, ready to be written again
  * (foldedChunksSection) or indexed. `versions` is ImportResult.chunkVersions. A corpus keeps the
  * first chunk's generation time: it was derived at one moment.
  */
