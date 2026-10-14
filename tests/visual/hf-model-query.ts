@@ -123,6 +123,48 @@ export function getCuratedModels(): Array<{ modelId: string; dims: number; sizeM
   ];
 }
 
+// ── Generic access (F183.1: the generation-model bench reuses this instead of a second client) ──
+
+/** What the HF API returns for a model, as far as any bench here reads it. */
+export interface HFRawModel {
+  id: string;
+  sha?: string;
+  lastModified?: string;
+  createdAt?: string;
+  downloads?: number;
+  likes?: number;
+  pipeline_tag?: string;
+  gated?: boolean | string;
+  private?: boolean;
+  tags?: string[];
+  cardData?: { license?: string; base_model?: string | string[]; [k: string]: unknown };
+  gguf?: { total?: number; architecture?: string; totalFileSize?: number };
+  siblings?: Array<{ rfilename: string; size?: number; lfs?: { sha256: string; size: number } }>;
+}
+export type FetchLike = (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown>; text(): Promise<string> }>;
+
+/** List models for a pipeline tag (and optional tag filter), with the fields discovery needs. */
+export async function hfListModels(
+  opts: { pipelineTag: string; filter?: string; sort?: 'downloads' | 'likes' | 'lastModified'; limit?: number },
+  fetchImpl: FetchLike = fetch as unknown as FetchLike,
+): Promise<HFRawModel[]> {
+  const params = new URLSearchParams({
+    pipeline_tag: opts.pipelineTag, sort: opts.sort ?? 'downloads', direction: '-1', limit: String(opts.limit ?? 50),
+    ...(opts.filter ? { filter: opts.filter } : {}),
+  });
+  for (const f of ['downloads', 'likes', 'tags', 'lastModified', 'createdAt', 'sha', 'gguf', 'cardData', 'gated', 'pipeline_tag']) params.append('expand[]', f);
+  const res = await fetchImpl(`${HF_API}?${params}`);
+  if (!res.ok) throw new Error(`HF API ${res.status}: ${await res.text()}`);
+  return (await res.json()) as HFRawModel[];
+}
+
+/** One repository with per-file sizes and LFS sha256 (`blobs=true`). */
+export async function hfModelInfo(repo: string, fetchImpl: FetchLike = fetch as unknown as FetchLike): Promise<HFRawModel> {
+  const res = await fetchImpl(`${HF_API}/${repo}?blobs=true`);
+  if (!res.ok) throw new Error(`HF API ${res.status} for ${repo}`);
+  return (await res.json()) as HFRawModel;
+}
+
 // ── CLI ──────────────────────────────────────────────────────────────────────
 
 if (process.argv[1] && (process.argv[1].endsWith('hf-model-query.ts') || process.argv[1].endsWith('hf-model-query.js'))) {
