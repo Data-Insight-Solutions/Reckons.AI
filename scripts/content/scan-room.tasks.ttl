@@ -1,0 +1,24 @@
+## Room reconstruction as F166 tasks (kb:room-scan-capture, F58.9.6): a command, an authority boundary and an
+## independent done-when. Run deliberately, on a machine with the tools from gen-setup.sh and a scan to read:
+##
+##   RECKONS_SCAN_INPUT=~/scans/my-room RECKONS_SCAN_OUT=~/.local/share/reckons/scans/my-room \
+##     npx tsx scripts/agent/runner.ts --graph scripts/content/scan-room.tasks.ttl --allow-effects=source-write
+##
+## RECKONS_SCAN_INPUT is a Stray Scanner export folder or a video file. Output goes OUTSIDE the repository.
+## Kept out of reckons-workspace/tasks.ttl for the same reason as generated-assets.tasks.ttl: these tasks need
+## a GPU, optional tools, and an input only the person has.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix task:  <urn:reckons:task/> .
+
+task:reconstruct-room-scan rdf:type ktype:AgentTask ;
+    rdfs:label      "Reconstruct a scanned room into a Gaussian splat locally" ;
+    kpred:goal      "Extract frames from the scan with ffmpeg, recover camera poses with COLMAP, train a splat with Brush, and write splat.ply plus receipt.json (origin reconstructed) to RECKONS_SCAN_OUT." ;
+    kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
+    kpred:command   "npx tsx scripts/content/scan-room.ts \"$RECKONS_SCAN_INPUT\" --out \"$RECKONS_SCAN_OUT\"" ;
+    kpred:done-when "npx tsx scripts/content/scan-room.ts --check \"$RECKONS_SCAN_OUT\"" ;
+    kpred:task-state "open" .
