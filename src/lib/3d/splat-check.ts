@@ -11,6 +11,11 @@
  * keeps only running totals. The same code judges a small in-memory buffer.
  */
 
+import { robustExtent } from './robust-extent';
+
+/** Centres kept for the robust extent: enough to see a 1% stray population, small enough to sort quickly. */
+const EXTENT_SAMPLE = 100_000;
+
 export interface SplatCheck {
   pass: boolean;
   /** Why it failed, or empty. */
@@ -18,6 +23,21 @@ export interface SplatCheck {
   notes: string[];
   /** Measured values, recorded in a receipt. */
   measured: Record<string, number | string>;
+}
+
+/**
+ * `rawExtent` is the longest side of the box of EVERY centre. `extent` is the robust one (see
+ * robust-extent.ts): the box of the bulk, so a few far floaters do not decide how big the room is.
+ * Callers that size or fit a room use `extent`; the integrity checks and the compression check use `rawExtent`.
+ * `strayFraction` is the share of sampled centres outside the robust box.
+ */
+function extentMeasures(raw: number, sample: number[]): Record<string, number> {
+  const r = robustExtent(sample);
+  const extent = r ? Math.min(raw, r.extent) : raw;
+  return {
+    extent: Number(extent.toFixed(4)), rawExtent: Number(raw.toFixed(4)),
+    strayFraction: r && r.count ? Number((r.outside / r.count).toFixed(4)) : 0,
+  };
 }
 
 const PLY_SIZES: Record<string, number> = {
@@ -117,12 +137,15 @@ export async function judgePlySource(src: ByteSource, expect?: { count?: number 
   const [ox, oy, oz, oo] = [off('x'), off('y'), off('z'), off('opacity')];
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   let nonFinite = 0, visible = 0;
-  await walkPly(src, lay, (view, _first, n) => {
+  const every = Math.max(1, Math.floor(count / EXTENT_SAMPLE));
+  const sample: number[] = [];
+  await walkPly(src, lay, (view, first, n) => {
     for (let i = 0; i < n; i++) {
       const base = i * stride;
       for (const p of floatProps) if (!Number.isFinite(view.getFloat32(base + p.offset, true))) { nonFinite++; break; }
       const xyz = [view.getFloat32(base + ox, true), view.getFloat32(base + oy, true), view.getFloat32(base + oz, true)];
       for (let k = 0; k < 3; k++) { if (xyz[k] < min[k]) min[k] = xyz[k]; if (xyz[k] > max[k]) max[k] = xyz[k]; }
+      if ((first + i) % every === 0) sample.push(xyz[0], xyz[1], xyz[2]);
       // Opacity is stored as a logit; sigmoid > 0.05 is a Gaussian a viewer would actually draw.
       if (1 / (1 + Math.exp(-view.getFloat32(base + oo, true))) > 0.05) visible++;
     }
@@ -133,7 +156,7 @@ export async function judgePlySource(src: ByteSource, expect?: { count?: number 
   if (visible < count * 0.05) problems.push(`only ${visible} of ${count} Gaussians are visible (opacity)`);
   return {
     pass: problems.length === 0, problems, notes: [],
-    measured: { count, bytesPerGaussian: stride, extent: Number(extent.toFixed(4)), visibleFraction: Number((visible / count).toFixed(3)) },
+    measured: { count, bytesPerGaussian: stride, ...extentMeasures(extent, sample), visibleFraction: Number((visible / count).toFixed(3)) },
   };
 }
 
@@ -157,11 +180,14 @@ export function judgeSplatPly(bytes: Uint8Array, expect?: { count?: number }): S
   const [ox, oy, oz, oo] = [off('x'), off('y'), off('z'), off('opacity')];
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   let nonFinite = 0, visible = 0;
+  const every = Math.max(1, Math.floor(count / EXTENT_SAMPLE));
+  const sample: number[] = [];
   for (let i = 0; i < count; i++) {
     const base = i * stride;
     for (const p of floatProps) if (!Number.isFinite(view.getFloat32(base + p.offset, true))) { nonFinite++; break; }
     const xyz = [view.getFloat32(base + ox, true), view.getFloat32(base + oy, true), view.getFloat32(base + oz, true)];
     for (let k = 0; k < 3; k++) { if (xyz[k] < min[k]) min[k] = xyz[k]; if (xyz[k] > max[k]) max[k] = xyz[k]; }
+    if (i % every === 0) sample.push(xyz[0], xyz[1], xyz[2]);
     if (1 / (1 + Math.exp(-view.getFloat32(base + oo, true))) > 0.05) visible++;
   }
   const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
@@ -170,7 +196,7 @@ export function judgeSplatPly(bytes: Uint8Array, expect?: { count?: number }): S
   if (visible < count * 0.05) problems.push(`only ${visible} of ${count} Gaussians are visible (opacity)`);
   return {
     pass: problems.length === 0, problems, notes: [],
-    measured: { count, bytesPerGaussian: stride, extent: Number(extent.toFixed(4)), visibleFraction: Number((visible / count).toFixed(3)) },
+    measured: { count, bytesPerGaussian: stride, ...extentMeasures(extent, sample), visibleFraction: Number((visible / count).toFixed(3)) },
   };
 }
 
