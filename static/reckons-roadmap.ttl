@@ -9642,12 +9642,14 @@ kb:evidence-chain rdf:type ktype:Feature ;
 kb:chunk-importer-parse rdf:type ktype:Phase ;
     rdfs:label "F107.10.1 — the importer reads chunk nodes instead of dropping them" ;
     kpred:feature-id "F107.10.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:space-file-layout ;
     kpred:estimate "0.5 day" ;
     kpred:description "importTurtleFull (src/lib/rdf/import-ttl.ts) returns the chunk nodes it finds (dcterms:isPartOf a source, schema:position, rdf:value, oa:TextPositionSelector, the vocabulary source-chunks.ts already writes) in a separate result field, and they never enter the statement store. Today it silently drops every triple that is not an annotated statement, so a space with folded chunks loses them on the first import." ;
     kpred:has-file "src/lib/rdf/import-ttl.ts", "src/lib/ingest/source-chunks.ts", "src/lib/rdf/__tests__/serialize.test.ts" ;
-    kpred:remaining "NEW FILES, not built: src/lib/rdf/__tests__/import-chunks.test.ts (new)" ;
+    kpred:tested-by "src/lib/rdf/__tests__/import-chunks.test.ts" ;
+    kpred:progress "2026-10-13, BUILT (PR for F107.10.1). importTurtleFull now returns `chunks` (ImportedChunk: iri, sourceId, index, start, end, text, generatedAt) and `chunkProblems` (iri + reason). A chunk node is a named node that is dcterms:isPartOf an IRI AND carries schema:position, rdf:value or oa:hasSelector (so a space that is part of a set is not one). Every triple of a chunk node and its selector blank node is consumed, so none can reach the plain-Turtle fallback as a claim; a claim that merely MENTIONS a chunk is still a claim. Malformed nodes (no text, no or bad position, no or inverted selector, two texts, two sources, duplicate position) are reported and skipped. Result order is canonical (source, then position). Local qwen3.6 proposed 14 edge inputs in 8 s; the ones used: the part-of-plus-position-only node, an extra rdf:type on a chunk, a chunk referenced as the object of a claim, an unterminated literal." ;
+    kpred:honest-note "WHAT THIS DOES NOT DO YET: nothing in the app consumes `chunks` (the import page and workspace sync still ignore the field) and the exporter does not write them into the space file; that is F107.10.2. A Turtle SYNTAX error anywhere in the file, including inside a chunk literal, still rejects the whole file like any other syntax error: only well-formed Turtle with an incomplete chunk is reported rather than thrown." ;
     kpred:proof "Unit: a Turtle file holding 3 statements and 12 chunks imports 3 statements and returns 12 chunks, and the statement count, graph view node count and a publish of the same space are unchanged by the chunks (chunks are evidence, never claims). Malformed chunk nodes are reported, not thrown." ;
     kpred:constraint "Chunks must never become claims: they may not appear in the statement store, the graph view or a publish (space-file-layout remaining item 3)." .
 
