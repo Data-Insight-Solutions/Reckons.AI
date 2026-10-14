@@ -7612,6 +7612,19 @@ kb:task-model-bench rdf:type   ktype:Feature ;
                kpred:relates-to   kb:tenet-open ;
                kpred:remaining    "The task definition, a shared runner, and fixtures for the named modalities: video-with-audio and image-with-text. Nothing exists for either today." .
 
+kb:gen-model-bench rdf:type ktype:Phase ;
+    rdfs:label "F183.1 — benchmark each generation stage and say when a newer Hugging Face model should replace the current one" ;
+    kpred:feature-id "F183.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:relates-to kb:gen-video-to-splat, kb:splat-local-pipeline, kb:local-model-bench ;
+    kpred:decided "MATT, 2026-10-14: \"we need to add benchmarking for the generation features, to indicate if we should update to a newer hugginface model for a given plugin.\"" ;
+    kpred:description "The unit is a GENERATION STAGE (text to image, image to video, image to splat; room reconstruction once F58.9.6 lands), the F166 tasks in scripts/content/generated-assets.tasks.ttl. Each stage has a bench task: fixed synthetic briefs and seeds, a hand-written checklist per brief (the ground truth), the incumbent model set read from scripts/content/gen-assets.ts, and candidates. Candidates come from two sources: a newer revision of an incumbent repository (its Hugging Face sha or lastModified differs from the receipt) and a discovery query (Hugging Face pipeline tag, a licence allowlist, a runtime the stage can load, a size that fits one 24 GB GPU). Every arm runs the same briefs and seeds and is scored on its hard checks (asset-checks.ts), quality (image: checklist items confirmed by the local VLM judge; video: motion, flicker and first-frame fidelity; splat: depth-to-width ratio, finite values and silhouette agreement with the source image), and cost (seconds, peak VRAM, bytes on disk, licence). A script applies the decision rule and emits a proposal, upgrade or hold, with the numbers, to knowledge.pending.jsonl. It never edits gen-assets.ts." ;
+    kpred:principle "A BENCHMARK NEEDS A GROUND TRUTH OR IT IS A VIBE (F183). An upgrade is proposed only when the candidate passes every hard check the incumbent passes, beats it on quality by more than the spread between seeds of the incumbent alone, and stays inside the cost budget. Downloads and likes rank discovery; they are never evidence of quality." ;
+    kpred:constraint "Discovery is ONLINE and opt-in (like npm run security:dependencies); scoring runs fully local. GPU runs are manual or scheduled, never CI: there is no GPU in CI. Until the GPU lease (0.2.7) exists, the bench pins one GPU and refuses to start while another generation job holds it. A licence outside the allowlist ends a candidate before download." ;
+    kpred:open-question "The user's request says 'for a given plugin'. These stages are not plugins today (HANDOFF 2026-10-14: host commands declared as F166 tasks, no manifest); whether a Plugin entity becomes the F61 manifest is undecided and Matt's. This bench keys on the stage, so it can move under a Plugin entity unchanged if that is decided." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
 kb:tenet-alignment rdf:type    ktype:Feature ;
                rdfs:label   "Tenet alignment — checking the roadmap against what we say we believe" ;
                kpred:feature-id   "F184" ;
