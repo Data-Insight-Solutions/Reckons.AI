@@ -4148,6 +4148,8 @@ kb:kokoro-tts rdf:type ktype:Feature ;
 
 kb:shelly-chat rdf:type ktype:Feature ;
     rdfs:label "Shelly Chat System" ;
+    kpred:decided "MATT, 2026-10-13: Shelly's chat consent ('Shelly answers by sending the relevant parts of your graph to a language model', Allow / Not now) waits until the person reaches for something that needs a model, the same principle as the model download. The Getting started tour opens Shelly for the person; that alone no longer puts the question on screen. The tour's automatic first message is held back when a model would need consent, and sending a message, next stop or opening the explore tab raises the ask. The gate itself is unchanged: turtleChat still refuses every model call without consent. Weakness: on a first visit with a real provider the tour shows no Shelly text until the person asks. Pinned by tests/e2e/shelly-consent-lazy.test.ts." ;
+    kpred:tested-by "tests/e2e/shelly-consent-lazy.test.ts" ;
     kpred:moved-to "static/reckons-shipped.ttl" .
 
 kb:workspace-sync rdf:type ktype:Feature ;

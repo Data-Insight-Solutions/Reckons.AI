@@ -93,7 +93,7 @@
     if (exploreMode && !exploreModeHandled) {
       exploreModeHandled = true;
       tab = 'explore';
-      if (!exploreStarted) {
+      if (!exploreStarted && !modelNeedsConsent()) {
         exploreStarted = true;
         sendExploreMessage(null);
       }
@@ -215,7 +215,7 @@
   // Auto-scroll on new messages
   $effect(() => {
     if (messages.length && msgListRef) {
-      setTimeout(() => msgListRef!.scrollTo({ top: msgListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => msgListRef?.scrollTo({ top: msgListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
@@ -347,6 +347,7 @@
   async function sendMessage() {
     const text = input.trim();
     if (!text || loading) return;
+    if (askConsentFirst()) return; // keeps the typed text; sends after the person answers
 
     const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
@@ -387,6 +388,28 @@
    * declining is a real answer — Shelly keeps working for everything that needs no model.
    */
   const aiConsent = $derived(settings().aiUsageConsent);
+
+  /*
+   * LAZY CONSENT (MATT, 2026-10-13, same principle as the model download): the consent ask appears
+   * only when the PERSON reaches for something that needs a model, never because Shelly happened
+   * to be open (the Getting started tour opens her). The gate itself is unchanged: turtleChat
+   * still refuses every model call without consent. `consentWanted` flips on a person's own
+   * request; the tour's automatic first message does not count and is simply held back.
+   */
+  let consentWanted = $state(false);
+
+  /** True when a model call right now would be refused for lack of consent. */
+  function modelNeedsConsent(): boolean {
+    const p: string = resolveChatProvider().provider; // widened: the gate below also names mock and manual
+    return p !== 'mock' && p !== 'manual' && aiConsent !== 'granted';
+  }
+
+  /** The person asked for a model-backed answer: surface the ask (once) instead of an error. */
+  function askConsentFirst(): boolean {
+    if (!modelNeedsConsent()) return false;
+    consentWanted = true;
+    return true;
+  }
 
   async function grantAiConsent(granted: boolean) {
     await updateSettings({ aiUsageConsent: granted ? 'granted' : 'declined' });
@@ -430,13 +453,13 @@
 
   $effect(() => {
     if (exploreMessages.length && exploreListRef) {
-      setTimeout(() => exploreListRef!.scrollTo({ top: exploreListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => exploreListRef?.scrollTo({ top: exploreListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
   // Auto-start tour on mount if in explore mode; also triggered by tab click below
   onMount(() => {
-    if (tab === 'explore' && !exploreStarted) {
+    if (tab === 'explore' && !exploreStarted && !modelNeedsConsent()) {
       exploreStarted = true;
       sendExploreMessage(null);
     }
@@ -444,6 +467,7 @@
 
   async function sendExploreMessage(userText: string | null) {
     if (exploreLoading) return;
+    if (askConsentFirst()) return;
     exploreLoading = true;
     exploreErrorMsg = '';
 
@@ -496,6 +520,7 @@
   function sendExploreInput() {
     const msg = exploreInput.trim();
     if (!msg || exploreLoading) return;
+    if (askConsentFirst()) return; // keeps the typed text
     exploreInput = '';
     sendExploreMessage(msg);
   }
@@ -549,7 +574,7 @@
 
   $effect(() => {
     if (storyMessages.length && storyListRef) {
-      setTimeout(() => storyListRef!.scrollTo({ top: storyListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => storyListRef?.scrollTo({ top: storyListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
@@ -1199,7 +1224,7 @@
       stopAutoPlay();
     }
     tab = v as Tab;
-    if (v === 'explore' && !exploreStarted) {
+    if (v === 'explore' && !exploreStarted && !askConsentFirst()) {
       exploreStarted = true;
       sendExploreMessage(null);
     }
@@ -1235,7 +1260,7 @@
     the model is shown. Naming WHERE it runs matters more than the word "AI": "runs on this device"
     and "sends to openai" are different promises, and only one of them needs thinking about.
   -->
-  {#if aiConsent === undefined}
+  {#if aiConsent === undefined && consentWanted}
     <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
       <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
       <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
@@ -1244,7 +1269,7 @@
         <button onclick={() => grantAiConsent(false)}>Not now</button>
       </div>
     </div>
-  {:else if aiConsent === 'declined'}
+  {:else if aiConsent === 'declined' && consentWanted}
     <div class="ai-consent">
       <p class="ai-consent-q">Shelly's model is off, so answers are unavailable. Everything that needs no model still works.</p>
       <div class="ai-consent-actions">
