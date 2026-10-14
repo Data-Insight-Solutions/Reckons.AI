@@ -39,6 +39,18 @@ for (const width of [1280, 390]) {
     await expect(document).not.toContainText('was not kept');
     await page.screenshot({ path: testInfo.outputPath(`starter-sources-${width}.png`) });
 
+    // F122.1.4: from a statement's Evidence, Open in source marks its quote in the document.
+    const evidence = details.getByRole('region', { name: 'Evidence' }).filter({ has: page.getByRole('button', { name: 'Open in source' }) }).first();
+    await evidence.scrollIntoViewIfNeeded();
+    await evidence.getByRole('button', { name: 'Open in source' }).click();
+    const mark = document.locator('.source-document-mark');
+    await expect(mark).toHaveCount(1);
+    await expect(mark).toBeInViewport({ ratio: 1 });
+    const quoted = (await mark.textContent())?.trim() ?? '';
+    expect(quoted.length).toBeGreaterThan(5);
+    await expect(document.locator('.source-document-passage.open')).toHaveCount(1);
+    if (process.env.JUMP_SHOT) await page.screenshot({ path: `${process.env.JUMP_SHOT}-${width === 1280 ? 'desktop' : 'phone'}.png` });
+
     // Review: the three facts the sample review left open are the person's first decision.
     await page.goto('/review');
     await expect(page.getByTestId('review-pending-count')).toHaveText(/\b3\b/, { timeout: 20_000 });
