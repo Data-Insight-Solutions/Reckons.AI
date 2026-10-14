@@ -3,7 +3,7 @@
  * run measures the same bytes. Shared by the Node bench and the browser bench.
  */
 import { toTurtleFull } from '../../../src/lib/rdf/serialize';
-import { chunkText, chunksToTurtle } from '../../../src/lib/ingest/source-chunks';
+import { chunkText, foldedChunksSection } from '../../../src/lib/ingest/source-chunks';
 import { iri, lit, type ReviewStatus, type Source, type Statement } from '../../../src/lib/rdf/types';
 
 export type Profile = { key: string; statements: number; sources: number; textCharsPerSource: number };
@@ -59,12 +59,13 @@ export function buildSpace(p: Profile) {
   return { statements, sources, texts };
 }
 
-/** The space file as the app exports it, with every source's chunks appended when `folded`. */
-export function renderSpace(p: Profile, folded: boolean): { ttl: string; chunkBytes: number } {
+/** The space file as the app exports it (F107.10.2: the chunk section is the serializer's own), chunks folded in when `folded`. */
+export function renderSpace(p: Profile, folded: boolean): { ttl: string; chunkBytes: number; chunksWritten: number } {
   const { statements, sources, texts } = buildSpace(p);
   const generatedAt = new Date(Date.UTC(2026, 9, 6)).toISOString();
-  const ttl = toTurtleFull(statements, sources, { kbStableId: `bench-space-${p.key}` });
-  if (!folded) return { ttl, chunkBytes: 0 };
-  const chunkTtl = sources.map((s, i) => chunksToTurtle({ sourceId: s.id, title: s.title, sha256: s.hash!, chunks: chunkText(texts[i]), generatedAt })).join('\n');
-  return { ttl: `${ttl}\n${chunkTtl}`, chunkBytes: Buffer.byteLength(chunkTtl) };
+  const base = toTurtleFull(statements, sources, { kbStableId: `bench-space-${p.key}` });
+  if (!folded) return { ttl: base, chunkBytes: 0, chunksWritten: 0 };
+  const chunks = sources.map((s, i) => ({ sourceId: s.id, sha256: s.hash!, generatedAt, chunks: chunkText(texts[i]) }));
+  const ttl = toTurtleFull(statements, sources, { kbStableId: `bench-space-${p.key}`, chunks });
+  return { ttl, chunkBytes: Buffer.byteLength(foldedChunksSection(chunks)), chunksWritten: chunks.reduce((n, c) => n + c.chunks.length, 0) };
 }

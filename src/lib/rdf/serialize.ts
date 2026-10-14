@@ -3,6 +3,7 @@ import type { Statement, Source, Term, NamedNode } from './types';
 import { notifyExportSkipped } from './cut-notice';
 import { isIRI, isLit, isBNode, termToString, hasLeakedTermKey } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
+import { foldedChunksSection, type FoldedCorpus } from '../ingest/source-chunks';
 
 /* ============================================================
  *  PREFIX REGISTRY
@@ -341,7 +342,16 @@ export type ShellyPersonaExport = {
 export function toTurtleFull(
   statements: Statement[],
   sources: Source[],
-  opts: Pick<TurtleOptions, 'header' | 'prefixes'> & { shellyPersona?: ShellyPersonaExport; kbStableId?: string } = {}
+  opts: Pick<TurtleOptions, 'header' | 'prefixes'> & {
+    shellyPersona?: ShellyPersonaExport;
+    kbStableId?: string;
+    /**
+     * The space's source passages (F107.10.2), written LAST under their own header so a reader that
+     * stops early never parses them. Evidence, never claims: the importer returns them apart from
+     * the statements, and toTurtle / site-export never write them.
+     */
+    chunks?: FoldedCorpus[];
+  } = {}
 ): string {
   const prefixes = { ...FULL_PREFIXES, ...(opts.prefixes ?? {}) };
   const dropped = dropUnserializable(statements);
@@ -476,6 +486,10 @@ export function toTurtleFull(
     lines.push(`    dc:created "${new Date(st.createdAt).toISOString()}"^^xsd:dateTime .`);
     lines.push('');
   }
+
+  // 4. Source passages, after every claim (F107.10.2)
+  const folded = foldedChunksSection(opts.chunks ?? []);
+  if (folded) lines.push(folded);
 
   return lines.join('\n');
 }
