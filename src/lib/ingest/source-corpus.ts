@@ -19,7 +19,7 @@
  *    The folder walk skips CORPUS_DIR for that reason (workspace.svelte.ts).
  */
 import { classifyText } from '../safety/content-policy';
-import { chunkText, chunksToTurtle } from './source-chunks';
+import { chunkText, chunksToTurtle, corporaFromImported, type FoldedCorpus } from './source-chunks';
 
 /** Directory under the workspace root (or OPFS root). Never exported, published or walked for graphs. */
 export const CORPUS_DIR = 'sources';
@@ -147,4 +147,43 @@ export async function readRetainedText(root: CorpusRoot, hash: string): Promise<
   } catch {
     return null;
   }
+}
+
+/**
+ * The passages of the retained sources, ready to fold into a space file (F107.10.2). Reads each
+ * source's chunks.ttl through the importer when it is there (the pre-fold format stays readable and
+ * keeps its generation time); otherwise cuts the retained text, which is deterministic. A source
+ * with no retained copy contributes nothing. Never throws: a failure to read one source skips that
+ * source, because an export must not be lost to a cache.
+ */
+export async function readFoldedCorpora(root: CorpusRoot, sources: Array<{ id: string; hash?: string }>): Promise<FoldedCorpus[]> {
+  const out: FoldedCorpus[] = [];
+  let dirs: string[];
+  try { dirs = await root.listDirs(); } catch { return out; }
+  for (const src of sources) {
+    if (!src.hash) continue;
+    try {
+      const name = findCorpusDir(dirs, src.hash);
+      const dir = name ? await root.openDir(name, false) : null;
+      if (!dir) continue;
+      const ttl = await dir.readText(CHUNKS_FILE);
+      if (ttl) {
+        try {
+          const { importTurtleFull } = await import('../rdf/import-ttl');
+          const mine = (await importTurtleFull(ttl)).chunks.filter((c) => c.sourceId === src.id);
+          if (mine.length > 0) {
+            out.push(...corporaFromImported(mine, { [src.id]: src.hash }));
+            continue;
+          }
+        } catch {
+          /* an unreadable cache is rebuilt from the retained text below */
+        }
+      }
+      const text = await dir.readText(TEXT_FILE);
+      if (text) out.push({ sourceId: src.id, sha256: src.hash, generatedAt: new Date(0).toISOString(), chunks: chunkText(text) });
+    } catch {
+      /* skip this source */
+    }
+  }
+  return out;
 }

@@ -79,6 +79,8 @@ export type ImportResult = {
   chunks: ImportedChunk[];
   /** Chunk-shaped nodes that were incomplete or contradictory: reported, never thrown, never imported. */
   chunkProblems?: Array<{ iri: string; reason: string }>;
+  /** SHA-256 of the source text each source's chunks were cut from, by source id, where the file says (dcterms:hasVersion "sha256:..."). */
+  chunkVersions?: Record<string, string>;
   sources: Source[];
   /** Statements imported from a clean (non-annotated) Turtle file get this status */
   cleanImportCount: number;
@@ -136,7 +138,7 @@ function n3ToTerm(term: any): Term | null {
  * `consumed` holds subject values (blank nodes as '_:' + label).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; consumed: Set<string> } {
+function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; chunkVersions: Record<string, string>; consumed: Set<string> } {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bySubject = new Map<string, any[]>();
   for (const q of quads) {
@@ -203,7 +205,13 @@ function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems:
     seen.add(key);
     kept.push(c);
   }
-  return { chunks: kept, chunkProblems, consumed };
+  const chunkVersions: Record<string, string> = {};
+  for (const sid of new Set(kept.map((c) => c.sourceId))) {
+    const v = (bySubject.get(sid.startsWith('urn:') ? sid : SRC_PREFIX + sid) ?? []).find((q) => q.predicate.value === DC + 'hasVersion');
+    const m = v && /^sha256:([0-9a-f]+)$/i.exec(v.object.value);
+    if (m) chunkVersions[sid] = m[1];
+  }
+  return { chunks: kept, chunkProblems, chunkVersions, consumed };
 }
 
 /**
@@ -232,7 +240,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     quads = new Parser({ format: 'TriG' }).parse(repaired.text);
   }
 
-  const { chunks, chunkProblems, consumed: chunkSubjects } = readChunkNodes(quads);
+  const { chunks, chunkProblems, chunkVersions, consumed: chunkSubjects } = readChunkNodes(quads);
 
   // Maps from IRI → property bag
   const stmtData = new Map<string, Record<string, unknown>>();
@@ -425,5 +433,5 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
 
   if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
-  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
+  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }

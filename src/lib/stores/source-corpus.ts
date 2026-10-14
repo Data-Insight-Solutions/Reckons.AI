@@ -2,7 +2,8 @@
  * Store-level entry points for the source corpus (F221): pick the linked workspace folder, or OPFS
  * when none is linked, and delegate to the shared module. Retention failure is reported, never thrown.
  */
-import { retainSource, readRetainedText, type RetainInput, type RetainResult, type CorpusRoot } from '../ingest/source-corpus';
+import { retainSource, readRetainedText, readFoldedCorpora, type RetainInput, type RetainResult, type CorpusRoot } from '../ingest/source-corpus';
+import type { FoldedCorpus } from '../ingest/source-chunks';
 import { fsCorpusRoot, opfsCorpusRoot } from '../storage/source-corpus-fs';
 import { workspaceHandle } from './workspace.svelte';
 
@@ -22,4 +23,10 @@ export async function readRetainedSourceText(hash: string | undefined): Promise<
   if (!hash) return null;
   const root = await currentRoot();
   return root ? readRetainedText(root, hash) : null;
+}
+
+/** The retained sources' passages, to fold into the space file on export (F107.10.2). Empty when none are kept. */
+export async function readSourcePassages(sources: Array<{ id: string; hash?: string }>): Promise<FoldedCorpus[]> {
+  const root = await currentRoot();
+  return root ? readFoldedCorpora(root, sources) : [];
 }

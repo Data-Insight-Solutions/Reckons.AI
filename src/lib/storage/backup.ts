@@ -253,7 +253,15 @@ export async function fullSpaceTurtle(): Promise<string> {
     maxWords: ts.maxResponseWords > 0 ? ts.maxResponseWords : undefined
   } : undefined;
   const hasPersoanl = shellyPersona && Object.values(shellyPersona).some(v => v !== undefined);
-  return toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId });
+  // F107.10.2: the retained sources' passages ride in the file, after the claims. They are a
+  // cache of what is on disk, so a failure to read them must not cost the export.
+  let chunks: Awaited<ReturnType<typeof import('../stores/source-corpus').readSourcePassages>> = [];
+  try {
+    chunks = await (await import('../stores/source-corpus')).readSourcePassages(sources);
+  } catch (e) {
+    console.warn('[export] source passages not included:', e);
+  }
+  return toTurtleFull(statements, sources, { shellyPersona: hasPersoanl ? shellyPersona : undefined, kbStableId: settings?.kbStableId, chunks });
 }
 
 export async function exportKBFull(filename?: string): Promise<void> {

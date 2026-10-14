@@ -9650,13 +9650,18 @@ kb:chunk-importer-parse rdf:type ktype:Phase ;
 kb:chunk-section-export rdf:type ktype:Phase ;
     rdfs:label "F107.10.2 — chunks written as their own section of the space file, after the claims" ;
     kpred:feature-id "F107.10.2" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:space-file-layout ;
     kpred:depends-on kb:chunk-importer-parse ;
     kpred:estimate "0.5 day" ;
     kpred:description "The serializer writes a space's chunks after the claims under a comment header, in canonical order (by source IRI, then position), so a reader that stops early never parses them and two exports of the same space are byte-identical. The header of chunksToTurtle, which says chunks are never part of an exported space, is rewritten to say they are part of the space file and never part of a published one." ;
-    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/ingest/source-chunks.ts", "src/lib/rdf/__tests__/serialize.test.ts", "src/lib/publish/site-export.ts" ;
-    kpred:proof "Unit: export then import then export is a fixed point with chunks present; a publish of a space with chunks contains none of their text. The existing tests/bench/run-space-size-bench.ts is re-run and its chunks-retained count goes from 0 to the number written." .
+    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/ingest/source-chunks.ts", "src/lib/rdf/__tests__/serialize.test.ts", "src/lib/publish/site-export.ts", "src/lib/ingest/source-corpus.ts", "src/lib/stores/source-corpus.ts", "src/lib/storage/backup.ts", "tests/bench/lib/synthetic-space.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/export-chunks.test.ts" ;
+    kpred:tested-by "src/lib/ingest/__tests__/source-corpus.test.ts" ;
+    kpred:decided "MATT, 2026-10-13: FOLD CHUNKS ONLY. The retained originals stay at the workspace root sources/ directory; moving them into the space folder is F107.10.3 (0.2.7)." ;
+    kpred:proof "Unit: export then import then export is a fixed point with chunks present; a publish of a space with chunks contains none of their text. The existing tests/bench/run-space-size-bench.ts is re-run and its chunks-retained count goes from 0 to the number written." ;
+    kpred:progress "2026-10-13, BUILT (F107.10.2). toTurtleFull takes opts.chunks and writes foldedChunksSection AFTER the statement metadata, under the header FOLDED_CHUNKS_HEADER: sources by id, chunks by position, full IRIs (no prefix dependence), one block per source (two corpora for one source merge, first chunk at a position wins), nothing at all when there are none. Export, import, export is a fixed point (export-chunks.test.ts). The exported Getting started space (F248 starter-everyday-reviewed.ttl, 227 statements) with its 7 sample documents cut into 11 chunks round-trips: 11 written, 11 read, 0 problems, statements byte-equal, second export identical. tests/bench/run-space-size-bench.ts chunks retained: s 0 to 60 of 60, m 0 to 600 of 600. The user's full export (backup.ts fullSpaceTurtle) now folds in the retained sources' passages, read by readFoldedCorpora from each source's chunks.ttl (or cut again from text.md when that file is missing or unreadable); a failure to read them is logged and the export proceeds without." ;
+    kpred:honest-note "WHAT CHANGES FOR PR #351's chunks.ttl WRITER: nothing is removed. retainSource still writes sources/<slug>-<hash8>/chunks.ttl, now a derived CACHE beside the original rather than the authority; its header is rewritten (it said chunks are never part of an exported space, which stopped being true here). The reader of it is importTurtleFull, so files written before the fold keep working. NOT DONE, and it is F107.10.3: only the user's full export folds chunks in. Workspace sync (workspace.svelte.ts), Drive sync and the backups still write a space file WITHOUT chunks, and opening a space does not load chunks from its file, so a space copied alone still loses its passages. A publish cannot contain chunk text because site-export writes claims through toTurtle, which has no chunk input; a test asserts toTurtle never carries them." .
 
 kb:chunk-space-folder rdf:type ktype:Phase ;
     rdfs:label "F107.10.3 — a space copied alone keeps its passages" ;
