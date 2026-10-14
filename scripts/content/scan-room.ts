@@ -7,7 +7,8 @@
  *           poses   COLMAP (pycolmap) sequential matching + incremental mapping
  *           train   Brush (Apache-2.0) trains a splat from the COLMAP folder
  *           check   COLMAP registered >= 50% of the frames AND asset-checks.ts accepts the PLY
- *   output  <out>/splat.ply and <out>/receipt.json (origin "reconstructed")
+ *           compress a LOSSY copy (splat.sog by default, or --format spz) converted back and count/extent-checked
+ *   output  <out>/splat.ply, <out>/splat.<sog|spz> and <out>/receipt.json (origin "reconstructed")
  *
  * A RECONSTRUCTED SPLAT RECORDS WHAT WAS THERE; the receipt is what says so. The tools' exit codes are
  * not evidence: a stage that exits 0 but registers 3 frames, or writes a PLY of NaNs, fails here.
@@ -28,6 +29,7 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { checkSplat } from './asset-checks.js';
+import { compressSplat, verifyCompressed, type CompressFormat } from './splat-compress.js';
 import {
   chooseFps, detectInput, judgeRegistration, parseOdometry, pathLength, selectSharpest, validateReceipt,
   type ScanReceipt,
@@ -80,7 +82,7 @@ function run(stage: string, cmd: string, args: string[], env: NodeJS.ProcessEnv 
 }
 
 export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format)$/.test(argv[i - 1])));
   const inputArg = positional[0];
   if (!inputArg) throw new Error('usage: npm run scan:room -- <Stray Scanner folder | video file> [--out dir] [--steps N] [--frames N]');
   const inputPath = resolve(inputArg);
@@ -164,6 +166,16 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   const splat = checkSplat(ply);
   if (!splat.pass) throw new StageError('check', `splat check failed: ${splat.problems.join('; ')}`);
 
+  // ── compress (lossy; the PLY stays the record, the compressed copy is what a browser should load)
+  console.log('== compress');
+  let compressed: ScanReceipt['compressed'];
+  await timed('compress', () => {
+    const c = compressSplat(ply, { format: (arg(argv, 'format') as CompressFormat | undefined) });
+    if (!c.check.pass) throw new StageError('compress', `compressed copy failed its decode check: ${c.check.problems.join('; ')}`);
+    compressed = { format: c.format, lossy: true, file: c.file, sha256: c.sha256, bytes: c.bytes, ratio: c.ratio, gaussians: c.gaussians, extent: c.extent, check: { pass: c.check.pass, problems: c.check.problems } };
+    console.log(`   ${c.file}: ${(c.bytes / 1e6).toFixed(2)} MB, ${c.ratio}x smaller than the PLY (lossy)`);
+  });
+
   const receipt: ScanReceipt = {
     origin: 'reconstructed',
     input: { kind: input.kind, name: basename(inputPath), sha256: inputHash, bytes: statSync(input.video).size },
@@ -178,6 +190,7 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     gaussians: Number(splat.measured.count),
     output: { file: 'splat.ply', sha256: await sha256File(ply), bytes: statSync(ply).size },
     checks: { registration, splat },
+    compressed,
     ranAt: new Date().toISOString(),
     notes,
   };
@@ -200,6 +213,7 @@ export async function checkScan(dir: string): Promise<string[]> {
   if (await sha256File(ply) !== r.output.sha256) problems.push('splat.ply does not match the receipt hash');
   const c = checkSplat(ply);
   if (!c.pass) problems.push(...c.problems);
+  if (r.compressed) problems.push(...verifyCompressed(resolve(dir), r.compressed));
   return problems;
 }
 

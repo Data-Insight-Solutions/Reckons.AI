@@ -107,6 +107,11 @@ export interface ScanReceipt {
   gaussians: number;
   output: { file: string; sha256: string; bytes: number };
   checks: { registration: Check; splat: Check };
+  /** F58.9.11: a LOSSY compressed copy of output, converted back and checked. Absent on receipts made before it. */
+  compressed?: {
+    format: 'spz' | 'sog'; lossy: true; file: string; sha256: string; bytes: number; ratio: number; gaussians: number; extent: number;
+    check: { pass: boolean; problems: string[] };
+  };
   ranAt: string;
   notes: string[];
 }
@@ -124,5 +129,13 @@ export function validateReceipt(r: ScanReceipt): string[] {
   for (const k of ['frames', 'poses', 'train']) if (!(r.stagesS?.[k] >= 0)) p.push(`stage duration missing: ${k}`);
   if (!r.checks?.registration?.pass) p.push('registration check did not pass');
   if (!r.checks?.splat?.pass) p.push('splat check did not pass');
+  if (r.compressed) {
+    const c = r.compressed;
+    if (!SHA.test(c.sha256 ?? '')) p.push('compressed sha256 missing or malformed');
+    if (c.lossy !== true) p.push('compressed copy is not recorded as lossy');
+    if (!(c.ratio > 1)) p.push(`compressed ratio ${c.ratio} is not a reduction`);
+    if (c.gaussians !== r.gaussians) p.push(`compressed copy has ${c.gaussians} Gaussians, output has ${r.gaussians}`);
+    if (!c.check?.pass) p.push('compressed decode check did not pass');
+  }
   return p;
 }
