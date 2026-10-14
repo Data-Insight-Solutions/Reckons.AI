@@ -840,8 +840,8 @@ test:Workflow-GeneratedAssets-Step1
     kpred:page          "/about" ;
     kpred:screenshot    "/workflows/generated-assets/01-open-example.webp" ;
     kpred:page-name     "the About page" ;
-    skos:definition     "Under example data on the About page, choose Generated assets. It opens as a new space of its own, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
-    kpred:assertion     "The card offers to open the example as a space, and after choosing it the Spaces tab shows Generated assets as the current space." .
+    skos:definition     "Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
+    kpred:assertion     "The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space." .
 
 test:Workflow-GeneratedAssets-Step2
     rdf:type            ktype:TestStep ;

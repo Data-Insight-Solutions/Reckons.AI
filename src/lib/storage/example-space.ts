@@ -35,6 +35,7 @@ export async function openExampleSpace(file: string, name: string, opts: { switc
   } finally {
     db.close();
   }
-  if (opts.switch !== false) switchToKb(entry.id);
+  // Land on the graph: reloading the page the person clicked on hid that the switch happened.
+  if (opts.switch !== false) switchToKb(entry.id, { to: '/' });
   return entry.id;
 }

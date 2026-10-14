@@ -205,6 +205,8 @@
    * follows the node and turns slowly; the space's background splat sits beneath the graph, dimmed,
    * like an island the graph floats over. Neither is raycast, so picking still hits the marker.
    */
+  /** Node keys whose splat has loaded: those nodes stop drawing their marker shape (Matt, 2026-10-14). */
+  let splatDrawnKeys = $state(new Set<string>());
   const splatItems = $derived.by((): SplatItem[] => {
     const items: SplatItem[] = [];
     const byKey = new Map(nodes.map((n) => [n.key, n] as const));
@@ -1875,6 +1877,7 @@
     colorOverride={nodeColorMap.get(n.key) ?? null}
     tripleRank={nodeTypeRankMap.get(n.key) ?? 0.5}
     isLeapNode={leapKeys.has(n.key)}
+    hideShape={splatDrawnKeys.has(n.key)}
     onhover={(k) => (isHistoryMode ? onhover(null) : onhover(k))}
     onclick={(e) => {
       if (isHistoryMode) return;
@@ -1888,7 +1891,11 @@
 {#if splatItems.length > 0}
   <!-- data-splats on the canvas ("loaded/failed") lets a test, or a person in devtools, see that
        the splats actually loaded: nothing else in the DOM can say what WebGL drew. -->
-  <SplatLayer items={splatItems} onstatus={(l, f) => { if (renderer) renderer.domElement.dataset.splats = `${l}/${f}`; }} />
+  <SplatLayer
+    items={splatItems}
+    onstatus={(l, f) => { if (renderer) renderer.domElement.dataset.splats = `${l}/${f}`; }}
+    onloadedkeys={(keys) => (splatDrawnKeys = keys)}
+  />
 {/if}
 
 <!-- Concentric rings: focus (teal, hop-distance) and hub (orange, degree-band) -->

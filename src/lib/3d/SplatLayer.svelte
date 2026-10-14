@@ -30,7 +30,14 @@
   import { onDestroy } from 'svelte';
   import { loadSplatLib, createNormalizedSplat } from './splat';
 
-  let { items, onstatus }: { items: SplatItem[]; onstatus?: (loaded: number, failed: number) => void } = $props();
+  let { items, onstatus, onloadedkeys }: {
+    items: SplatItem[];
+    onstatus?: (loaded: number, failed: number) => void;
+    /** The keys whose splat is loaded and drawn, so a caller can stop drawing what it replaces. */
+    onloadedkeys?: (keys: Set<string>) => void;
+  } = $props();
+  let loadedKeys = $state(new Set<string>());
+  $effect(() => onloadedkeys?.(loadedKeys));
 
   const { renderer, scene } = useThrelte();
   type Live = { url: string; radius: number; group?: THREE.Group; baseScale?: number; dispose?: () => void; failed?: boolean };
@@ -54,7 +61,11 @@
     const wanted = new Map(items.map((i) => [i.key, i]));
     for (const [key, l] of live) {
       const w = wanted.get(key);
-      if (!w || w.url !== l.url || w.radius !== l.radius) { l.dispose?.(); live.delete(key); }
+      if (!w || w.url !== l.url || w.radius !== l.radius) {
+        l.dispose?.();
+        live.delete(key);
+        if (loadedKeys.has(key)) { const next = new Set(loadedKeys); next.delete(key); loadedKeys = next; }
+      }
     }
     for (const item of items) {
       if (live.has(item.key)) continue;
@@ -70,6 +81,7 @@
           entry.dispose = made.dispose;
           scene.add(made.group);
           loaded++;
+          loadedKeys = new Set([...loadedKeys, item.key]);
         } catch (e) {
           entry.failed = true;
           failed++;
