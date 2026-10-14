@@ -39,4 +39,4 @@ The path the README describes, start to finish: put a short note into Reckons.AI
 
 **[Make pictures, clips and 3D splats on your own machine, and see them in a space](../testing/workflow-generated-assets)**
 
-Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat made from that picture.
+Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture.

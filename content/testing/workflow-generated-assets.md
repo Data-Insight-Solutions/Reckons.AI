@@ -7,13 +7,13 @@ parent: "test-workflows"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat made from that picture."
+excerpt: "Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture."
 generated: "docs-kb"
 ---
 
 # Make pictures, clips and 3D splats on your own machine, and see them in a space
 
-Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat made from that picture. A Gaussian splat is a 3D object drawn as many small soft blobs of color, which you can turn and look at from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space.
+Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture. You can turn a splat and look at it from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space.
 
 ### Made on one machine, with no cloud service
 
