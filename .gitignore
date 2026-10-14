@@ -175,10 +175,10 @@ reckons-workspace/knowledge.pending.jsonl.*
 .env.bak*
 .env.*.bak
 
-# Perf-crawl artifacts: the JSON reports are small and worth keeping as evidence;
-# the recordings and frame dumps beside them run to tens of MB and are not.
-tests/visual/results/perf/*
-!tests/visual/results/perf/*.json
+# Perf-crawl artifacts: reports, recordings and frame dumps all stay local (MATT, 2026-10-14:
+# "perf-crawl and button-crawl should be reinstated as jobs, but the test results could be
+# gitignored"). The job regenerates them; they are not evidence worth 170 MB of history.
+tests/visual/results/perf/
 reckons-workspace/stars-scan.state.json
 
 # Personal captures are local data. Ignoring a path does not remove earlier commits

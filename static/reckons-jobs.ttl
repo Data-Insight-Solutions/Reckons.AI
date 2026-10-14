@@ -75,10 +75,10 @@ job:build-guard rdf:type          ktype:OfflineJob ;
 job:button-crawl rdf:type          ktype:OfflineJob ;
     rdfs:label          "button-crawl" ;
     skos:prefLabel      "button-crawl" ;
-    skos:definition     "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`" ;
+    skos:definition     "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a server already running (`npm run dev`, or BASE_URL=...); with none it exits non-zero, which shows as a failed non-blocking job in the sweep, not a green one. Screenshots under tests/visual/screenshots/button-crawl/ are gitignored and stay local" ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/button-crawl.ts" ;
-    kpred:job-enabled   "false" ;
+    kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
 job:ci-graph rdf:type          ktype:OfflineJob ;
@@ -363,10 +363,10 @@ job:naming-ratchet rdf:type          ktype:OfflineJob ;
 job:perf-crawl rdf:type          ktype:OfflineJob ;
     rdfs:label          "perf-crawl" ;
     skos:prefLabel      "perf-crawl" ;
-    skos:definition     "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server — it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta" ;
+    skos:definition     "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a DISPLAY and a running dev server; it aborts (non-blocking failure) rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none, so a headless or serverless sweep will show it failing. Output under tests/visual/results/perf/ is gitignored and stays local. Deeper run: npm run offline:perf -- --ladder --trace-delta" ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/perf-crawl.ts --ladder" ;
-    kpred:job-enabled   "false" ;
+    kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
 job:prompt-audit rdf:type          ktype:OfflineJob ;
