@@ -9682,13 +9682,16 @@ kb:chunk-space-folder rdf:type ktype:Phase ;
 kb:anchor-contract rdf:type ktype:Phase ;
     rdfs:label "F122.1.1 — a statement records the passage span it came from, at extraction time" ;
     kpred:feature-id "F122.1.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:document-evidence-anchors ;
     kpred:estimate "1 day" ;
     kpred:description "Statement gains an optional anchor: chunk IRI (chunkIri already exists), character start and end inside the retained text, and the source hash it was computed against. It is computed once, by the same anchorExcerpt that the view uses today, at the moment grounding verifies the excerpt, and only when grounded is true. Text-only sources get a span and no page or box (never synthesize precision, this entity's constraint). The full DocumentIR and geometry from the entity's decided contract are NOT in this step; they follow the chain." ;
-    kpred:has-file "src/lib/rdf/types.ts", "src/lib/rdf/grounding.ts", "src/lib/rdf/source-cache.ts", "src/lib/ingest/source-chunks.ts", "src/lib/ingest/extraction-run.ts", "src/lib/stores/ingest.svelte.ts" ;
+    kpred:has-file "src/lib/rdf/types.ts", "src/lib/rdf/grounding.ts", "src/lib/rdf/source-cache.ts", "src/lib/ingest/source-chunks.ts", "src/lib/ingest/extraction-run.ts", "src/lib/stores/ingest.svelte.ts", "src/lib/integrations/llm/extractor.ts" ;
+    kpred:tested-by "src/lib/ingest/__tests__/anchor-contract.test.ts" ;
+    kpred:decided "MATT, 2026-10-13: TEXT SPANS ONLY in 0.2.6, and the anchor lives as OPTIONAL FIELDS ON THE STATEMENT; the shared EvidenceAnchor node is derived later and loses nothing." ;
     kpred:proof "Unit: ingesting a fixture document yields statements whose anchor start..end sliced from the retained text equals the excerpt; an ungrounded statement has no anchor; re-chunking the same text yields the same chunk IRI." ;
-    kpred:open-question "Anchor as new fields on Statement, or as a separate EvidenceAnchor stored once and shared (the entity's decided contract says shared anchors are stored once)?" .
+    kpred:progress "2026-10-13, BUILT. Statement.anchor is {chunk, start, end, sourceHash} (EvidenceSpan, types.ts): a chunk IRI, UTF-16 offsets into the text whose SHA-256 is sourceHash. triplesToStatements calls attachAnchors after grounding, so only grounded facts with a hash on their source get one, computed by the same anchorExcerpt the views use (chunked once per batch). The anchor is structurally the StoredSpan {start, end} that locatePassageJump (PR #456) reads. anchorExcerpt's fallback now matches what grounding accepts (case, curly versus straight quotes, dash variants, wrapped whitespace) so a quote that grounded can be placed; this also lets the view-time derivation place those quotes. Local qwen3.6 proposed 12 edge inputs in 23 s; its case-difference item exposed exactly that gap (grounding lowercases, the anchor search did not)." ;
+    kpred:honest-note "NOT DONE: the anchor is not yet written to the file or read back (F122.1.2, so after a reload through a file it is lost and the view falls back to derivation, as before); nothing yet checks it against a changed source (F122.1.3); only the extraction path anchors, so facts already ingested, typed notes and imported files have none. A quote that occurs twice is anchored at its first exact occurrence, which can be the wrong one; the span is a placement, not proof the passage supports the fact." .
 
 kb:anchor-roundtrip rdf:type ktype:Phase ;
     rdfs:label "F122.1.2 — the anchor survives export, import and sync" ;
