@@ -90,9 +90,11 @@ const impls: Record<string, StepImpl> = {
     await expect(card).toContainText(/open as a space/i);
     await snap(card);
     await card.click();
-    // Opening switches to the new space and reloads; the Spaces tab then names it as current.
-    await page.waitForLoadState('load');
-    await page.waitForTimeout(2_500);
+    // Opening switches to the new space and LANDS ON THE GRAPH. It used to reload the About page,
+    // which looked like nothing had happened (Matt, 2026-10-14), and this test hid that by going to
+    // the Spaces tab on its own. So it now checks where the person actually ends up.
+    await page.waitForURL((url) => url.pathname === '/', { timeout: 15_000 });
+    await expect(page.locator('main canvas').first()).toBeVisible({ timeout: 15_000 });
     await page.goto('/kb');
     await expect(page.locator('.kb-entry.current').first()).toContainText(/generated assets/i, { timeout: 10_000 });
   },

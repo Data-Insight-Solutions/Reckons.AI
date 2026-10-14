@@ -45,13 +45,13 @@ TripoSplat guesses the far side of an object from one picture. A splat made this
 
 ### 1. Open the Generated assets example as its own space
 
-Under example data on the About page, choose Generated assets. It opens as a new space of its own, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one.
+Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one.
 
 Where: the About page (`/about`).
 
 <figure class="workflow-shot"><img src="/workflows/generated-assets/01-open-example.webp" width="1280" height="800" alt="Screenshot of step 1, Open the Generated assets example as its own space. A pink box labelled &quot;Generated assets&quot; marks the Generated assets card under example data." loading="lazy" decoding="async" /><figcaption>The pink box marks the Generated assets card under example data.</figcaption></figure>
 
-**What the test checks.** The card offers to open the example as a space, and after choosing it the Spaces tab shows Generated assets as the current space.
+**What the test checks.** The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space.
 
 ### 2. See the pipeline in the graph
 

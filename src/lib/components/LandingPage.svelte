@@ -6,6 +6,7 @@
   import { nudge } from '$lib/stores/tutorial.svelte';
   import { activateOfficialKb, preloadOfficialKb, officialKbError } from '$lib/stores/official-kb.svelte';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
+  import { openExampleSpace } from '$lib/storage/example-space';
   import type { Source } from '$lib/rdf/types';
   import { retainSourceCorpus } from '$lib/stores/source-corpus';
   import { startStory, startExplore } from '$lib/stores/shelly-bridge.svelte';
@@ -27,6 +28,7 @@
   let actionErrorEl: HTMLParagraphElement | undefined = $state();
   let loadingExample = $state<string | null>(null);
   let loadingVisualReview = $state(false);
+  let loadingGenerated = $state(false);
 
   const EXAMPLE_KBS = [
     { id: 'quickstart', icon: '🚀', title: 'Quick-Start Example', body: 'People, projects, decisions, metrics', file: '/starter-quickstart.ttl' },
@@ -129,6 +131,19 @@
       });
     } finally {
       loadingVisualReview = false;
+    }
+  }
+
+  // F58.9: pictures, clips and Gaussian splats made by local models, opened as their OWN space so
+  // trying it never mixes into the space the person is working in. Lands on the graph.
+  async function openGeneratedAssets() {
+    loadingGenerated = true;
+    actionError = null;
+    try {
+      await openExampleSpace('/starter-generated-assets.ttl', 'Generated assets');
+    } catch (error) {
+      actionError = error instanceof Error ? error.message : String(error);
+      loadingGenerated = false;
     }
   }
 
@@ -573,6 +588,22 @@
           <span class="tmpl-loading mono">loading...</span>
         {:else}
           <span class="tmpl-cta">Start review →</span>
+        {/if}
+      </button>
+
+      <button
+        class="template-card"
+        onclick={openGeneratedAssets}
+        disabled={loadingGenerated}
+      >
+        <span class="tmpl-icon">✦</span>
+        <strong class="tmpl-label">Generated assets</strong>
+        <p class="tmpl-desc">Pictures, clips and 3D Gaussian splats made by local models from made-up prompts, each linked to what it was made from. Set a splat as the background.</p>
+        <span class="tmpl-scenario mono">opens as its own space · made on one machine</span>
+        {#if loadingGenerated}
+          <span class="tmpl-loading mono">opening...</span>
+        {:else}
+          <span class="tmpl-cta">Open the space →</span>
         {/if}
       </button>
 

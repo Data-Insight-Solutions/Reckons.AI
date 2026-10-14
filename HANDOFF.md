@@ -1,3 +1,45 @@
+## 2026-10-14 (late) — START HERE. F58.9 follow-ups, Matt's backlog, and a context reset (Claude Code)
+
+**Why this handoff exists:** Matt asked to cut main-thread context ("69% of usage at >150k context; 100% subagent-
+heavy"). The main thread hand-debugged an e2e flake for an hour, which is the mistake in memory agent-orchestration-
+models. NEXT SESSION: Opus plans and decides only; build goes to ONE Sonnet overseer per lane with a tight brief.
+Run the local tier where it fits (local panel for prose, qwen2.5vl for "is the splat visible").
+
+**On dev now:** #463 (F58.9 splat proof of concept), #464 (Matt's five review decisions: crawl jobs back and their
+results gitignored; CodeQL new-alert blocking is NOT live, the admin rule is recorded on kb:release-pipeline; landing
+and docs audits scheduled; n8n note pipeline is the next test workflow). PR #465 (example opens on its graph; splat
+nodes hide their marker; Generated assets on the welcome page): merge when CI is green, after checking its base.
+#462 (F223.1) green, unmerged.
+
+**Known flake, already diagnosed:** tests/e2e/workflow-generated-assets.test.ts `openAsset` picks `.sb-node-row`
+`.first()` for a label, and the search ALSO lists that label as a literal value node (screenshot showed "this node is
+a value, not an entity"). That's about 1 run in 3. Two fixes failed: filtering rows that have `.sb-node-iri`, and
+`hasText: <slug>`; both failed 5/5, so the dropdown's entity rows are not what SearchBar.svelte:255-280 suggests.
+Look at the real dropdown DOM in a headed run before writing a third. Also ask why the label shows up as a literal
+node at all (detailed mode?). Docs screenshots still show marker shapes, so rerun `npm run workflow:shots`.
+
+**Matt's backlog from this session (his words → proposed lane). Plan each in static/reckons-roadmap.ttl first.
+Matt asked for grouping into 0.2.7, 0.2.8 and up to 0.3.0, a roadmap reorganisation, and estimates re-based on
+measured session work (Reckons.AI and his machine, not only Claude Code), as build-in-public evidence that the app
+helps the work:**
+1. Set as space background for IMAGES too, as a flat plane behind the graph (splats stay 3D).
+2. A STORY MODE for the Generated assets space, like the Getting started tour. The visual-test review space also
+   "lacks proper timeline/story setup" (open question on kb:gen-video-to-splat).
+3. A greyed-out REGENERATE button with an (i) explaining how to set up the local generation services.
+4. "Are these generation services proper plugins?" ANSWERED: no. They are host commands (scripts/content/gen-assets.ts),
+   declared as one F166 task; no manifest, no loader, and the app cannot start them. F166 decided "a generation tool is
+   a task with a command, not an integration"; the F61 minimal plugin contract is in 0.2.7. Matt now wants a PLUGIN
+   entity type (wrench icon, "defined within Reckons.AI", more specific than a tool) and a LICENSE entity type
+   (MIT and Apache-2.0 as entities, not literals). Recommend: a Plugin entity is the F61 manifest (command, effects,
+   done-when, license, models), which reconciles F166 with F61. This is a product decision; propose it, don't make it.
+5. HOME OFFICE splat, image first, with more volumetric enclosure for backgrounds, plus a SET OF BACKGROUND SETTINGS
+   (mode backdrop/floor/surround, scale, distance, opacity, spin). TripoSplat makes objects, so try a cutaway-room
+   diorama prompt first; real enclosure probably needs a panorama or reconstruction path (Trial B). Tell Matt when a
+   decent room splat exists, for manual review.
+6. PLACE AND SCALE other splats inside the background (upcoming release).
+7. "OPEN IN" buttons configurable per asset type, with a user default (e.g. Blender for GLB).
+Also open: the CodeQL admin rule (Matt), and perf-crawl failing its budgets on 6/6 routes (non-blocking, worth a look).
+
 ## 2026-10-14 — F58.9 splat proof of concept → PR #463 (dev); 0.2.6 chain status (Claude Code)
 
 **0.2.6:** #456 (F122.1.4) merged to dev. #462 (F223.1) green and mergeable but NOT merged (the auto-mode
