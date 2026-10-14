@@ -4328,12 +4328,14 @@
     will-change: transform;
     transition: transform 35ms linear;
   }
-  /* Always-on preview thumbnail: sits centered above the node label. */
+  /* Always-on preview thumbnail: sits centered above its label. The label is drawn above the
+     anchor point by 5px and grows by up to 1.8x on hover (1.4em above its top edge at most), so the
+     thumbnail's bottom edge clears that by 9px + 1.4em (Matt, 2026-10-14: the label covered it). */
   .node-preview-thumb {
     position: absolute;
     left: 0;
     top: 0;
-    transform: translate(-50%, calc(-100% - 6px));
+    transform: translate(-50%, calc(-100% - 9px - 1.4 * var(--lfs, 11px)));
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--line);
@@ -4361,6 +4363,14 @@
   .node-preview-thumb:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
     border-color: var(--accent);
+  }
+  /* On touch the label's hit wrapper is a centred 45px box (the shared label overlay), so the anchor point is
+     its centre, not its top-left corner. */
+  @media (pointer: coarse) {
+    .node-preview-thumb {
+      left: 50%;
+      top: 50%;
+    }
   }
 
   /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
