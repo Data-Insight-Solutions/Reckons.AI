@@ -75,6 +75,8 @@
     "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
+    "bench:gen:discover": "npx tsx scripts/content/gen-bench-discover.ts --online",
+    "bench:gen": "npx tsx scripts/content/gen-bench.ts",
     "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",
