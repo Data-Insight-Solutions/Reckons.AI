@@ -9216,7 +9216,7 @@ kb:publish-your-version rdf:type ktype:Feature ;
 kb:change-provenance rdf:type ktype:Feature ;
                rdfs:label         "Change provenance — which model made every change, at which exact version, and what the person asked for" ;
                kpred:feature-id   "F254" ;
-               kpred:has-status   "planned" ;
+               kpred:has-status   "in-progress" ;
                kpred:description  "Every change, to a graph or to code, records the model that made it (pinned to the exact revision or digest that ran) and the person's intent: what they asked for, in their own words, and that they approved it. A change with no model was made by a person and says so. A change whose model is not known says 'unknown' rather than guessing." ;
                kpred:decided      "MATT, 2026-10-08: 'we need to track editor model for every change. Auditable user intent is also critical.'" ;
                kpred:measured     "WHAT EXISTS, 2026-10-08. Statements carry proposedBy, a free-form agent name that sometimes includes the model (offline:docs-expand:qwen3:32b) and sometimes does not (offline:graph-lint, extraction-score); verifiedBy names a deterministic check. Ingest records an ExtractionRun whose route attempts name backend and model, with no revision. Commits carry a Co-Authored-By line naming the model family, not a version. Intent exists only by convention: the quoted request in commit messages and in kpred:decided. Nothing requires any of it, and edits made in the app (node panel, chat, merges, review decisions) record no model at all." ;
@@ -9227,7 +9227,7 @@ kb:change-provenance rdf:type ktype:Feature ;
                kpred:open-question "Is intent REQUIRED (a change without it is refused) or recorded whenever it exists?" ;
                kpred:open-question "Granularity: one intent per change, or one per request that produced many changes (an ingest of 200 statements)?" ;
                kpred:open-question "In a shared space, who may read the intent behind another person's change?" ;
-               kpred:remaining    "Nothing built. First: pin every model the app downloads (without a fixed version there is nothing exact to record), then a provenance record on statements written in the app, then the commit trailer check." ;
+               kpred:remaining    "2026-10-13, PARTLY BUILT: (1) every downloaded model is pinned to a commit (PR #404, recorded on kb:model-cache) and (2) the commit-trailer check is built and blocking in CI (kb:change-provenance-commit-trailers, F254.1, PR #423). STILL NOT BUILT: the provenance record on statements written in the app, and the PROV-O model. Original plan, kept for the record: First: pin every model the app downloads (without a fixed version there is nothing exact to record), then a provenance record on statements written in the app, then the commit trailer check." ;
                kpred:relates-to   kb:publish-your-version ;
                kpred:relates-to   kb:provenance-model ;
                kpred:relates-to   kb:model-routing-ledger ;
@@ -9364,7 +9364,6 @@ kb:release-0-2-6 rdf:type ktype:Release ;
     kpred:has-status "planned" ;
     kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
     kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
-    kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:space-file-layout ;
     kpred:has-part kb:graph-proposals .
 
@@ -9413,12 +9412,40 @@ kb:release-0-2-6 kpred:decided "MATT, 2026-10-08, SCOPE. Theme: finish what 0.2.
     kpred:measured "WHO A DEPLOY REACHES, 2026-10-08 (Cloudflare Web Analytics, last 30 days, sampled): reckons.ai had about 170 visits and 880 page loads on 17 of 30 days; about 110 visits came from outside the US (Australia, India, New Zealand, Brazil, the UAE, Canada). 130 visits were to / only; /ingest, /review and /kb had about 10 each. Real but few readers, almost all of the landing page, so 0.2.6 can take big changes; the landing page is the surface to protect." ;
     kpred:has-part kb:graph-proposals ;
     kpred:has-part kb:entity-sets ;
-    kpred:has-part kb:integration-plugin-sdk ;
     kpred:has-part kb:job-backpressure ;
-    kpred:has-part kb:one-graph-canvas ;
-    kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:document-evidence-anchors ;
     kpred:has-part kb:currents-client-unwired .
+
+# 2026-10-13 — DAY-10 CUT (Matt). Scope as data: the parts below are the release.
+kb:release-0-2-6 kpred:starts "2026-10-08" ;
+    kpred:cut "2026-10-18" ;
+    kpred:ends "2026-10-22" ;
+    kpred:decided "MATT, 2026-10-13, DAY-10 CUT MADE EARLY (5 days ahead of the 10-18 cut) after the architect found that none of the headline items had started. STAYS as the release's center: the chunk importer (F107.10, kb:space-file-layout), evidence anchors (F122.1, kb:document-evidence-anchors) and proposals as cited options (F223, kb:graph-proposals). Theme, Matt: 'I want to combine the now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the applications human led element. Real world data and sources lead to real world decisions.' MOVES TO v0.2.7: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin and minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), group B performance (import profiling, F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. has-part now lists what stays plus what is already done; the moved parts are has-part of kb:release-0-2-7." ;
+    kpred:headline kb:space-file-layout ;
+    kpred:headline kb:document-evidence-anchors ;
+    kpred:headline kb:graph-proposals ;
+    kpred:has-part kb:change-provenance-commit-trailers ;
+    kpred:has-part kb:model-cache ;
+    kpred:has-part kb:terminology-maintenance ;
+    kpred:has-part kb:ui-term-audit .
+
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped." ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:set-layout ;
+    kpred:has-part kb:integration-plugin-sdk ;
+    kpred:has-part kb:analyze-job-sets ;
+    kpred:has-part kb:research-watch ;
+    kpred:has-part kb:graph-density-legibility .
+
+kb:change-provenance-commit-trailers rdf:type ktype:Phase ;
+    rdfs:label "F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
+    kpred:feature-id "F254.1" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:change-provenance ;
+    kpred:description "scripts/offline/commit-trailers.ts (job commit-trailers, blocking) fails any agent commit lacking non-empty Model: and Intent: trailers. Built and merged in PR #423 on 2026-10-13. Weakness stated plainly: trailers are self-attested text, so this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it." ;
+    kpred:has-file "scripts/offline/commit-trailers.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts" .
 kb:set-layout rdf:type ktype:Feature ;
                rdfs:label         "Collection layout — nodes grouped strongly by the collections they belong to, overlaps drawn as overlaps" ;
                kpred:feature-id   "F256" ;
@@ -9578,3 +9605,8 @@ kb:job-backpressure kpred:progress "2026-10-13, BACK-PRESSURE NOW COUNTS JOURNAL
 
 kb:job-backpressure kpred:measured "2026-10-13, local panel (scripts/agent/local-panel.ts, qwen3.6 x3 votes, one GPU, serialised by flock). DOCS-REVIEW, 101 rows, 255 s, 100 unanimous and 1 majority; 81 said 'not explained', 20 'explained'. Hand-check of 10 random unanimous items: 8 agree. The 2 misses reveal the weakness: with no page text the panel still answered 'not explained' (4 rows point at pages that no longer exist), and 7 more name a term that is not on the page at all; so 11 of the 81 'unexplained' verdicts are stale or false-positive rows, a harness gap (the task builder should emit n/a when the term is absent). 70 are real. DOCS-EXPAND, 75 drafts, 110 s, 73 unanimous and 2 majority; 38 state a Reckons.AI capability as fact (one repeats the false 'ethics preamble on all prompts' claim) and were rejected in knowledge.decisions.jsonl; 37 judged claim-free were left pending, not accepted. Hand-check of 10 unanimous: 9 agree; the miss was a claim-free verdict on a codebase-as-graph draft that does assert what the graph preserves. Total local time about 6 minutes for 176 judgments; Opus read 20 items plus the escalations. Local gloss drafts for 10 docs-review findings took 24 s: 5 kept nearly as written, 3 lightly edited, 2 rewritten (one invented the meaning of 'currents section')." .
 
+
+# 2026-10-13 — scope-as-data reader (script tier). Counts statuses of a release's has-part entities against its dates.
+kb:work-tiering kpred:has-file "scripts/offline/release-burndown.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/release-burndown.test.ts" ;
+    kpred:progress "2026-10-13, release-burndown BUILT (script tier, advisory): npm run release:burndown reads kb:release-0-2-6's has-part, headline and starts/cut/ends and prints per-status counts, days remaining and a verdict. It counts statuses and dated notes; it does not test anything." .

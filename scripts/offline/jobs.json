@@ -4,6 +4,13 @@
   "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
     {
+      "name": "release-burndown",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-burndown.ts --pending",
+      "desc": "How much of the current release's scope (kpred:has-part on the ktype:Release) is built, against the sprint dates? Per-status counts, each part, days elapsed and remaining, and a verdict naming headline parts not started. Queues one status-update proposal when parts below functional have no dated note in 4+ days. Advisory: it counts statuses, it does not test anything, and a part with no dated note looks untouched even if code moved."
+    },
+    {
       "name": "visual-streams",
       "tier": "agent",
       "enabled": false,
