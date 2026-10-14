@@ -96,7 +96,7 @@
     }
     selected = key;
   }
-  // F122.1.4: Open in source. The source node mounts SourceDocument, which opens and marks the passage.
+  // F122.1.4: Open in source. The selected document mounts SourceDocument, which opens and marks the passage.
   let jump = $state<{ sourceKey: string; statementId: string; nonce: number } | null>(null);
   function openInSource(statementId: string) {
     const statement = statements.find((st: Statement) => st.id === statementId);

@@ -542,10 +542,10 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # the same commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
     kpred:term-ratchet "graph/free/4656" ;
-    kpred:term-ratchet "statement/free/5060" ;
-    kpred:term-ratchet "source/free/4320" ;
+    kpred:term-ratchet "statement/free/5085" ;
+    kpred:term-ratchet "source/free/4348" ;
     kpred:term-ratchet "space/free/699" ;
-    kpred:term-ratchet "node/free/2701" ;
+    kpred:term-ratchet "node/free/2702" ;
     kpred:term-ratchet "export/free/394" ;
     kpred:term-ratchet "share/free/185" ;
     kpred:term-ratchet "set/free/2198" ;

@@ -9581,7 +9581,16 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-6 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped." .
+
+kb:term-ratchet-prose-only rdf:type ktype:Feature ;
+    rdfs:label "Term ratchet counts prose only, not code identifiers" ;
+    kpred:has-status "planned" ;
+    kpred:description "The ambiguity ratchet (F203.6) should count the ambiguous words in prose (comments, user-facing strings, docs) and skip code identifiers such as the Statement type and statement.excerpt, which cannot be renamed without a rewrite. Today every new feature about statements or sources fails the ratchet on identifiers alone and the baseline is raised by hand." ;
+    kpred:decided "MATT, 2026-10-13: the ratchet counts prose only. Evidence: six baseline raises on 2026-10-13, all caused by domain identifiers rather than by ambiguous prose (F122.1.4 in #456 raised statement by 25, source by 28 and node by 1 after its prose was trimmed)." ;
+    kpred:part-of kb:release-0-2-7 .
+kb:release-0-2-7 kpred:has-part kb:term-ratchet-prose-only .
 
 kb:ui-term-audit rdf:type ktype:Feature ;
     rdfs:label "UI terms audit — engineering words and the wrong sense of a word, found on screen by rule" ;

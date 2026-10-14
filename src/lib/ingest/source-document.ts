@@ -103,13 +103,13 @@ export const EMPTY_PASSAGE_NOTE =
   'No statement was placed in this passage. This does not mean it was skipped: which passages extraction read is not recorded yet.';
 
 /**
- * F122.1.4 — "Open in source": where a statement's supporting span sits in the kept text.
+ * F122.1.4 — "Open in source": where a fact's supporting span sits in the kept text.
  *
- * Prefers a stored anchor (a text span; F122.1.1 adds it to Statement later, nothing stores one
+ * Prefers a stored anchor (a text span; F122.1.1 adds it to the fact later, nothing stores one
  * yet) and falls back to finding the saved quote in the kept text, the same way the Evidence
  * section does. A stored span is used only if the kept text at that span is still the quote;
  * otherwise it is ignored, never trusted. Returns null when the quote cannot be found, and the
- * caller must say so: opening the source at the top as if it had worked would be pretending.
+ * caller must say so: opening the document at the top as if it had worked would be pretending.
  */
 export type StoredSpan = { start: number; end: number };
 
@@ -155,4 +155,4 @@ export function locatePassageJump(
 }
 
 export const JUMP_NOT_FOUND =
-  'The saved quote could not be found in the text that was kept, so no passage is marked. The source may have changed since this was extracted.';
+  'The saved quote could not be found in the text that was kept, so no passage is marked. The text may have changed since this was extracted.';

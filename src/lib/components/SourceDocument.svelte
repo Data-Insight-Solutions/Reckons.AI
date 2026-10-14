@@ -17,7 +17,7 @@
     statements: Statement[];
     /** Open an entity (a statement's subject or object) in the source view. */
     onterm: (key: string) => void;
-    /** "Open in source" (F122.1.4): open the passage holding this statement's quote and mark it. */
+    /** "Open in source" (F122.1.4): open the passage holding this fact's quote and mark it. */
     jump?: { statementId: string; nonce: number } | null;
   }>();
 
@@ -51,7 +51,7 @@
     if (!jump || !loaded || jump.nonce === handledNonce) return;
     handledNonce = jump.nonce;
     const target = statements.find((st: Statement) => st.id === jump.statementId);
-    // A stored span would be passed as the third argument once statements carry one (F122.1.1).
+    // A stored span would be passed as the third argument once facts carry one (F122.1.1).
     const found = target ? locatePassageJump(sourceText, target) : null;
     jumpMissing = !found;
     marked = found && target ? { ...found, statementId: target.id } : null;
