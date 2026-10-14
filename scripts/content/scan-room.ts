@@ -121,7 +121,7 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   let extracted = 0, kept = 0;
   const fps = chooseFps(info.durationS, info.fps, Math.round(target * 1.25));
   await timed('frames', async () => {
-    run('frames', 'ffmpeg', ['-v', 'error', '-y', '-i', input.video, '-vf', `fps=${fps}`, '-q:v', '2', join(work, 'cand', '%05d.jpg')]);
+    run('frames', 'ffmpeg', ['-v', 'error', '-y', '-i', input.video, '-vf', `fps=${fps},scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease`, '-q:v', '2', join(work, 'cand', '%05d.jpg')]);
     const cands = readdirSync(join(work, 'cand')).filter((f) => f.endsWith('.jpg')).sort();
     extracted = cands.length;
     if (extracted < 20) throw new StageError('frames', `only ${extracted} frames extracted; need a video with at least a few seconds of motion`);

@@ -7,6 +7,7 @@ download). One shared camera: a phone video has one lens.
 """
 import json, sys, time
 from pathlib import Path
+import os
 import pycolmap
 
 work = Path(sys.argv[1])
@@ -20,7 +21,14 @@ sparse.mkdir(exist_ok=True)
 t0 = time.time()
 reader = pycolmap.ImageReaderOptions()
 reader.camera_model = 'SIMPLE_RADIAL'
-pycolmap.extract_features(str(db), str(images), camera_mode=pycolmap.CameraMode.SINGLE, reader_options=reader)
+# BOUNDED MEMORY. COLMAP's defaults (3200 px, one SIFT extractor per core) took 16.7 GB RSS on 300 iPhone
+# frames at 1920x1440 with 24 cores and the kernel OOM-killed it, taking the editor with it (2026-10-14).
+# Frames are already scaled to <= 1600 px by scan-room.ts; this caps both again in case they are not.
+extraction = pycolmap.FeatureExtractionOptions()
+extraction.max_image_size = 1600
+extraction.num_threads = int(os.environ.get('RECKONS_SCAN_THREADS', min(8, os.cpu_count() or 1)))
+pycolmap.extract_features(str(db), str(images), camera_mode=pycolmap.CameraMode.SINGLE, reader_options=reader,
+                          extraction_options=extraction)
 t1 = time.time()
 match = pycolmap.SequentialPairingOptions()
 match.overlap = 10
