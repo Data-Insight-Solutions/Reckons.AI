@@ -123,4 +123,19 @@ describe('receipt shape', () => {
       expect(p).toMatch(/decode check did not pass/);
     });
   });
+  describe('floater crop (F58.9.11)', () => {
+    const withCrop = (): ScanReceipt => ({
+      ...receipt(),
+      crop: { box: { min: [0, 0, 0], max: [5, 3, 4] }, before: 1010, after: 1000, removed: 10, rawExtent: 380, extent: 5, uncropped: { file: 'splat.uncropped.ply', sha256: hash, bytes: 99 } },
+    });
+    it('accepts a crop whose counts add up', () => { expect(validateReceipt(withCrop())).toEqual([]); });
+    it('refuses counts that do not add up, a crop that is not the output, or a bigger extent', () => {
+      const r = withCrop();
+      r.crop!.removed = 9; r.crop!.after = 999; r.crop!.extent = 400;
+      const p = validateReceipt(r).join('\n');
+      expect(p).toMatch(/do not add up|crop counts/);
+      expect(p).toMatch(/crop kept 999 Gaussians, output has 1000/);
+      expect(p).toMatch(/larger than the raw extent/);
+    });
+  });
 });

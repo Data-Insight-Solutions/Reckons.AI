@@ -7,6 +7,7 @@
  *           poses   COLMAP (pycolmap) sequential matching + incremental mapping
  *           train   Brush (Apache-2.0) trains a splat from the COLMAP folder
  *           check   COLMAP registered >= 50% of the frames AND asset-checks.ts accepts the PLY
+ *           crop    drop floaters outside the robust (1st-99th percentile + margin) box of the Gaussian centres
  *           compress a LOSSY copy (splat.sog by default, or --format spz) converted back and count/extent-checked
  *   output  <out>/splat.ply, <out>/splat.<sog|spz> and <out>/receipt.json (origin "reconstructed")
  *
@@ -24,12 +25,14 @@
  */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { checkSplat } from './asset-checks.js';
-import { compressSplat, verifyCompressed, type CompressFormat } from './splat-compress.js';
+import { compressSplat, cropPly, verifyCompressed, type CompressFormat } from './splat-compress.js';
+import { plyCentres } from '../../src/lib/3d/splat-check.js';
+import { robustExtent } from '../../src/lib/3d/robust-extent.js';
 import {
   chooseFps, detectInput, judgeRegistration, parseOdometry, pathLength, selectSharpest, validateReceipt,
   type ScanReceipt,
@@ -161,6 +164,29 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   });
   if (!existsSync(ply)) throw new StageError('train', `Brush exited 0 but wrote no ${ply} (it wrote: ${readdirSync(out).join(', ')})`);
 
+  // ── crop: drop floaters far outside the room, so they neither inflate the extent nor the compressed file
+  console.log('== crop');
+  const uncropped = join(out, 'splat.uncropped.ply');
+  let crop: ScanReceipt['crop'];
+  await timed('crop', async () => {
+    const raw = checkSplat(ply);
+    if (!raw.pass) throw new StageError('crop', `trained splat failed its check: ${raw.problems.join('; ')}`);
+    const re = robustExtent(await plyCentres(new Uint8Array(readFileSync(ply)), 500_000));
+    if (!re) throw new StageError('crop', 'no usable Gaussian centres');
+    rmSync(uncropped, { force: true });
+    renameSync(ply, uncropped);
+    cropPly(uncropped, ply, re.box);
+    const after = checkSplat(ply);
+    if (!after.pass) throw new StageError('crop', `cropped splat failed its check: ${after.problems.join('; ')}`);
+    const before = Number(raw.measured.count), kept = Number(after.measured.count);
+    crop = {
+      box: { min: re.box.min.map((v) => Number(v.toFixed(4))), max: re.box.max.map((v) => Number(v.toFixed(4))) },
+      before, after: kept, removed: before - kept, rawExtent: Number(raw.measured.rawExtent), extent: Number(after.measured.rawExtent),
+      uncropped: { file: 'splat.uncropped.ply', sha256: await sha256File(uncropped), bytes: statSync(uncropped).size },
+    };
+    console.log(`   ${before} -> ${kept} Gaussians (${before - kept} floaters dropped), extent ${crop.rawExtent} -> ${crop.extent}`);
+  });
+
   // ── check
   console.log('== check');
   const splat = checkSplat(ply);
@@ -190,6 +216,7 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     gaussians: Number(splat.measured.count),
     output: { file: 'splat.ply', sha256: await sha256File(ply), bytes: statSync(ply).size },
     checks: { registration, splat },
+    crop,
     compressed,
     ranAt: new Date().toISOString(),
     notes,

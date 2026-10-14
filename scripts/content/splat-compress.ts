@@ -60,6 +60,14 @@ function transform(args: string[]): void {
   execFileSync(process.execPath, [cmd, '--quiet', '--overwrite', '--gpu', 'cpu', ...args], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 << 20 });
 }
 
+/**
+ * Crop a PLY to a box (the robust box of its own centres, see src/lib/3d/robust-extent.ts), dropping
+ * the floaters outside it. Lossless for the Gaussians that stay: the same tool rewrites them as PLY.
+ */
+export function cropPly(src: string, out: string, box: { min: number[]; max: number[] }): void {
+  transform([src, '--filter-box', [...box.min, ...box.max].map((v) => v.toPrecision(9)).join(','), out]);
+}
+
 /** Decode a compressed splat back to PLY bytes with the same tool, for the check. */
 export function decodeToPly(file: string): Uint8Array {
   const dir = mkdtempSync(join(tmpdir(), 'splat-decode-'));
