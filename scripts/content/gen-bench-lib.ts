@@ -16,16 +16,65 @@ export type GenStage = 'image' | 'video' | 'splat';
 // ── Discovery: licence, format, size ─────────────────────────────────────────
 
 /**
- * Hugging Face licence ids a candidate may carry. Permissive software/data licences only: Apache-2.0,
- * MIT and BSD (the incumbents are Apache-2.0 and MIT), ISC (MIT in all but name), and the two
- * public-domain dedications CC0-1.0 and Unlicense. NOT on the list, on purpose: "other" (which is
- * where Qwen-research and FLUX.1-dev style terms hide), the OpenRAIL family and creativeml-openrail
- * (use restrictions that travel with the weights), anything -nc- (non-commercial), and cc-by-4.0
- * (a content licence; defensible, but it is Matt's call whether attribution is acceptable in a
- * shipped asset, so it stays out until decided). A licence outside this list ends a candidate
- * before download (kb:gen-model-bench constraint).
+ * Hugging Face licence ids a candidate may carry, as an allowlist of exact ids. Permissive software
+ * and data licences: Apache-2.0, MIT and BSD (the incumbents are Apache-2.0 and MIT), ISC (MIT in
+ * all but name), the public-domain dedications CC0-1.0 and Unlicense, and, since F183.2, CC BY 4.0
+ * (permissive on condition of attribution; see licensePolicy). NOT on the list, on purpose:
+ * "other" (where Qwen-research and FLUX.1-dev style terms hide), the OpenRAIL family and
+ * creativeml-openrail (use restrictions that travel with the weights), and every -nc and -nd variant.
+ * cc-by-sa is handled by licensePolicy, not by this list. A licence outside the rules ends a
+ * candidate before download (kb:gen-model-bench constraint). Licence tags are the uploader's claim;
+ * this is a screen from a desk reading, not legal advice (kb:gen-bench-in-graph).
  */
-export const LICENSE_ALLOWLIST = ['apache-2.0', 'mit', 'bsd-2-clause', 'bsd-3-clause', 'bsd', 'isc', 'cc0-1.0', 'unlicense'];
+export const LICENSE_ALLOWLIST = ['apache-2.0', 'mit', 'bsd-2-clause', 'bsd-3-clause', 'bsd', 'isc', 'cc0-1.0', 'unlicense', 'cc-by-4.0'];
+
+export interface LicenseVerdict {
+  allowed: boolean;
+  /** Plain-language reason (the drop reason when not allowed). */
+  reason: string;
+  /** Licences that only permit use if credit travels with the output (CC BY). */
+  attributionRequired: boolean;
+  /** Set for share-alike (copyleft) licences: allowed only when the caller records the flag. */
+  flag: 'share-alike' | null;
+}
+
+/**
+ * The licence rule (Matt, 2026-10-14: Creative Commons is permissive; researched against MIT):
+ * allow cc-by-4.0 (attribution required) and cc0-1.0; deny anything non-commercial (-nc) or
+ * no-derivatives (-nd); allow share-alike (-sa) ONLY when `allowShareAlike` is set, which is the
+ * recorded flag, and mark it. Everything else must be on LICENSE_ALLOWLIST.
+ */
+export function licensePolicy(license: string | null | undefined, opts: { allowShareAlike?: boolean } = {}): LicenseVerdict {
+  const no = (reason: string): LicenseVerdict => ({ allowed: false, reason, attributionRequired: false, flag: null });
+  if (!license) return no('no licence declared');
+  const l = license.toLowerCase();
+  if (/(^|-)n[cd](-|$)/.test(l)) return no(`licence "${license}" restricts commercial use or derivatives, so it is not permissive`);
+  if (/^cc-by-sa(-|$)/.test(l)) {
+    return opts.allowShareAlike
+      ? { allowed: true, reason: `licence "${license}" is share-alike (copyleft); allowed because the share-alike flag was recorded`, attributionRequired: true, flag: 'share-alike' }
+      : { allowed: false, reason: `licence "${license}" is share-alike (copyleft) and needs an explicit recorded flag to be allowed`, attributionRequired: true, flag: 'share-alike' };
+  }
+  if (!LICENSE_ALLOWLIST.includes(l)) return no(`licence "${license}" is not on the allowlist (${LICENSE_ALLOWLIST.join(', ')})`);
+  return { allowed: true, reason: `licence "${license}" is on the allowlist`, attributionRequired: l.startsWith('cc-by'), flag: null };
+}
+
+const CC_URLS: Record<string, string> = {
+  'cc-by-4.0': 'https://creativecommons.org/licenses/by/4.0/',
+  'cc-by-sa-4.0': 'https://creativecommons.org/licenses/by-sa/4.0/',
+};
+
+/**
+ * The text a CC BY model requires to accompany what it produced or was benchmarked as: credit to
+ * the source, a link to the licence, and an indication that changes were made. Empty when the
+ * licence needs none. `changes` should say what WE did (for example "re-quantised weights, run
+ * through stable-diffusion.cpp"), because CC BY asks for an indication of changes.
+ */
+export function attributionFor(repo: string, license: string | null | undefined, changes = 'weights were loaded as published and run unmodified by Reckons.AI'): string {
+  const v = licensePolicy(license, { allowShareAlike: true });
+  if (!license || !v.attributionRequired) return '';
+  const url = CC_URLS[license.toLowerCase()] ?? 'https://creativecommons.org/licenses/';
+  return `Model "${repo}" (https://huggingface.co/${repo}), licensed ${license.toUpperCase()} (${url}). Changes: ${changes}.`;
+}
 
 const GiB = 1024 ** 3;
 
@@ -124,7 +173,8 @@ export function screenCandidate(m: HFRawModel, stage: GenStage, spec: StageSpec 
   if (m.private) return drop('private repository');
   if (m.gated) return drop('gated: downloading needs an account agreement');
   if (!license) return drop('no licence declared');
-  if (!LICENSE_ALLOWLIST.includes(license)) return drop(`licence "${license}" is not on the allowlist (${LICENSE_ALLOWLIST.join(', ')})`);
+  const lp = licensePolicy(license);
+  if (!lp.allowed) return drop(lp.reason);
   if (UNFILTERED.test(`${lower} ${(m.tags ?? []).join(' ')}`)) return drop('name or tags say the weights are unfiltered or adult: outside the content policy for a public example space');
   if (NOT_A_MODEL.test(lower)) return drop('looks like an adapter, encoder or VAE, not a full model');
 
@@ -247,9 +297,10 @@ export interface Budget {
   minSeeds: number;
   /** Incumbent mean quality at or above this leaves no headroom to show an improvement. */
   ceiling: number;
-  allowedLicenses: string[];
+  /** The recorded flag that lets a share-alike (copyleft) licence through. */
+  allowShareAlike: boolean;
 }
-export const DEFAULT_BUDGET: Budget = { maxTimeRatio: 1.5, maxVramMiB: 22 * 1024, minMargin: 0.02, minSeeds: 2, ceiling: 0.95, allowedLicenses: LICENSE_ALLOWLIST };
+export const DEFAULT_BUDGET: Budget = { maxTimeRatio: 1.5, maxVramMiB: 22 * 1024, minMargin: 0.02, minSeeds: 2, ceiling: 0.95, allowShareAlike: false };
 
 export type Verdict = 'upgrade' | 'hold' | 'insufficient-evidence';
 export interface Decision {
@@ -313,7 +364,8 @@ export function decide(inc: Arm, cand: Arm, budget: Budget = DEFAULT_BUDGET): De
 
   const why: string[] = [];
   if (numbers.hardRegressions.length) why.push(`fails hard check(s) the incumbent passes: ${numbers.hardRegressions.join(', ')}`);
-  if (!cand.license || !budget.allowedLicenses.includes(cand.license.toLowerCase())) why.push(`licence "${cand.license ?? 'unknown'}" is not on the allowlist`);
+  const lp = licensePolicy(cand.license, { allowShareAlike: budget.allowShareAlike });
+  if (!lp.allowed) why.push(`licence "${cand.license ?? 'unknown'}" is not on the allowlist: ${lp.reason}`);
   const need = Math.max(numbers.incumbentSpread, budget.minMargin);
   if (!(numbers.delta > numbers.incumbentSpread && numbers.delta >= budget.minMargin)) {
     why.push(`quality gain ${fmt(numbers.delta)} does not exceed the incumbent's own seed spread ${fmt(numbers.incumbentSpread)}`

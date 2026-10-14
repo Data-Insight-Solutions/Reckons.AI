@@ -42,7 +42,7 @@ import {
   MODELS, VIDEO_FRAMES, generateImagePng, generateSplat, generateVideo, type ModelFile, type RunOpts,
 } from './gen-assets.js';
 import {
-  STAGE_SPECS, checklistScore, decide, foregroundMask, generationLock, parseYesNo, readSplatPoints,
+  STAGE_SPECS, attributionFor, checklistScore, decide, foregroundMask, generationLock, parseYesNo, readSplatPoints,
   screenCandidate, splatQuality, splatScore, videoQuality, videoScore,
   type Arm, type BenchRun, type Decision, type GenStage,
 } from './gen-bench-lib.js';
@@ -407,7 +407,7 @@ async function main() {
   const result = {
     date: new Date().toISOString(), feature: 'F183.1', stage, gpu, seeds, judge: stage === 'image' ? { model: judgeModel, num_ctx: 8192, temperature: 0 } : null,
     wallSeconds: Math.round((Date.now() - t0) / 1000),
-    arms: arms.map((a) => ({ id: a.id, license: a.license, weightBytes: a.weightBytes, control: !!a.control, notes: a.notes, models: a.models.map((m) => ({ role: m.role, file: basename(m.path), source: m.source, license: m.license })) })),
+    arms: arms.map((a) => ({ id: a.id, license: a.license, attribution: attributionFor(a.id, a.license.split(' + ')[0].toLowerCase()), weightBytes: a.weightBytes, control: !!a.control, notes: a.notes, models: a.models.map((m) => ({ role: m.role, file: basename(m.path), source: m.source, license: m.license })) })),
     decision, runs: records,
   };
   if (!flag('no-save')) {
@@ -438,7 +438,7 @@ function queueVerdict(stage: GenStage, cand: { id: string; license?: string }, d
     subject: 'urn:kbase:concept/gen-model-bench',
     predicate: `urn:kbase:predicate/bench-verdict-${stage}`,
     object: decision.verdict,
-    note: `[gen-model-bench ${new Date().toISOString().slice(0, 10)}] ${stage}: candidate ${cand.id} (${cand.license ?? 'licence unknown'}) vs incumbent. Quality ${f(n.candidateQuality)} vs ${f(n.incumbentQuality)} (delta ${f(n.delta)}, incumbent seed spread ${f(n.incumbentSpread)}); time ${f(n.timeRatio, 2)}x; peak VRAM ${n.candidatePeakVramMiB ?? 'n/a'} MiB; hard-check regressions ${n.hardRegressions.length}. ${decision.reasons.join(' ')} ${seeds.length} seeds x ${briefs} briefs. Proposal only: MODELS in gen-assets.ts is not edited by the bench.`,
+    note: `[gen-model-bench ${new Date().toISOString().slice(0, 10)}] ${stage}: candidate ${cand.id} (${cand.license ?? 'licence unknown'}${attributionFor(cand.id, cand.license) ? '; ATTRIBUTION REQUIRED: ' + attributionFor(cand.id, cand.license) : ''}) vs incumbent. Quality ${f(n.candidateQuality)} vs ${f(n.incumbentQuality)} (delta ${f(n.delta)}, incumbent seed spread ${f(n.incumbentSpread)}); time ${f(n.timeRatio, 2)}x; peak VRAM ${n.candidatePeakVramMiB ?? 'n/a'} MiB; hard-check regressions ${n.hardRegressions.length}. ${decision.reasons.join(' ')} ${seeds.length} seeds x ${briefs} briefs. Proposal only: MODELS in gen-assets.ts is not edited by the bench.`,
     type: 'suggestion', priority: decision.verdict === 'upgrade' ? 'high' : 'low',
   }], { agent: 'gen-model-bench', recomputes: true });
   console.log(`${queued} proposal queued -> reckons-workspace/knowledge.pending.jsonl`);

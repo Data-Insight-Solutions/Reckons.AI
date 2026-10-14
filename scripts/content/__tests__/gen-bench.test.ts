@@ -11,7 +11,7 @@ import type { HFRawModel } from '../../../tests/visual/hf-model-query';
 import { MODELS, OUTPUTS } from '../gen-assets';
 import { REQUIRED_SPLAT_PROPS } from '../asset-checks';
 import {
-  DEFAULT_BUDGET, LICENSE_ALLOWLIST, STAGE_SPECS, checklistScore, compareRevision, decide, dedupeByFile, foregroundMask, generationLock,
+  DEFAULT_BUDGET, LICENSE_ALLOWLIST, STAGE_SPECS, attributionFor, licensePolicy, checklistScore, compareRevision, decide, dedupeByFile, foregroundMask, generationLock,
   parseYesNo, perSeedQuality, rankForDiscovery, readSplatPoints, repoOfSource, screenCandidate, splatQuality, splatScore, videoQuality, videoScore,
   type Arm, type BenchRun,
 } from '../gen-bench-lib';
@@ -23,6 +23,48 @@ const fx = <T>(n: string): T => JSON.parse(readFileSync(join(import.meta.dirname
 const list = fx<HFRawModel[]>('hf-list-text-to-image.json');
 const byId = (id: string) => list.find((m) => m.id === id)!;
 const info = (r: string) => fx<HFRawModel>(`hf-info-${r.replace('/', '__')}.json`);
+
+describe('licensePolicy: Creative Commons (F183.2)', () => {
+  it('allows cc-by-4.0, and says attribution is required', () => {
+    const v = licensePolicy('cc-by-4.0');
+    expect(v).toMatchObject({ allowed: true, attributionRequired: true, flag: null });
+    expect(licensePolicy('CC-BY-4.0').allowed).toBe(true);
+  });
+  it('allows cc0-1.0 with no attribution duty', () => {
+    expect(licensePolicy('cc0-1.0')).toMatchObject({ allowed: true, attributionRequired: false });
+  });
+  it('denies every non-commercial and no-derivatives variant', () => {
+    for (const l of ['cc-by-nc-4.0', 'cc-by-nd-4.0', 'cc-by-nc-sa-4.0', 'cc-by-nc-nd-4.0', 'cc-by-nc-3.0']) {
+      const v = licensePolicy(l, { allowShareAlike: true });
+      expect(v.allowed, l).toBe(false);
+      expect(v.reason, l).toMatch(/not permissive/);
+    }
+  });
+  it('flags cc-by-sa-4.0: denied by default, allowed only with the recorded flag, and the flag stays on the verdict', () => {
+    expect(licensePolicy('cc-by-sa-4.0')).toMatchObject({ allowed: false, flag: 'share-alike' });
+    expect(licensePolicy('cc-by-sa-4.0', { allowShareAlike: true })).toMatchObject({ allowed: true, flag: 'share-alike', attributionRequired: true });
+  });
+  it('still refuses an unknown or missing licence', () => {
+    expect(licensePolicy('other').allowed).toBe(false);
+    expect(licensePolicy(null).allowed).toBe(false);
+    expect(licensePolicy('cc-by-3.0').allowed).toBe(false);
+  });
+  it('discovery screening drops -nc and -nd before download and keeps cc-by-4.0', () => {
+    const model = (license: string): HFRawModel => ({ id: 'someone/Cool-Z-Image-GGUF', cardData: { license }, tags: ['gguf', 'z-image', 'stable-diffusion.cpp'], siblings: [{ rfilename: 'cool-Q4_K_M.gguf', size: 4 * 1024 ** 3 }] });
+    expect(screenCandidate(model('cc-by-nc-4.0'), 'image').kept).toBe(false);
+    expect(screenCandidate(model('cc-by-nd-4.0'), 'image').reasons[0]).toMatch(/not permissive/);
+    expect(screenCandidate(model('cc-by-sa-4.0'), 'image').reasons[0]).toMatch(/share-alike/);
+    expect(screenCandidate(model('cc-by-4.0'), 'image').kept).toBe(true);
+  });
+  it('attributionFor carries credit, the licence link and an indication of changes; MIT needs none here', () => {
+    const t = attributionFor('someone/Cool-Z-Image-GGUF', 'cc-by-4.0', 're-quantised to Q4_K_M');
+    expect(t).toContain('https://huggingface.co/someone/Cool-Z-Image-GGUF');
+    expect(t).toContain('https://creativecommons.org/licenses/by/4.0/');
+    expect(t).toContain('Changes: re-quantised to Q4_K_M');
+    expect(attributionFor('a/b', 'mit')).toBe('');
+    expect(attributionFor('a/b', 'cc0-1.0')).toBe('');
+  });
+});
 
 describe('screenCandidate: licence, runtime, format, size', () => {
   it('drops a licence that is not on the allowlist, saying which', () => {
@@ -177,6 +219,15 @@ describe('decide: the upgrade rule', () => {
     const d = decide(inc, arm('big', [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9]], { peakVramMiB: 23500 }));
     expect(d.verdict).toBe('hold');
     expect(d.reasons.join(' ')).toMatch(/peak VRAM 23500/);
+  });
+  it('HOLD: share-alike needs the recorded flag; with it the licence passes and is flagged', () => {
+    const win = arm('sa', [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9]], {}, 'cc-by-sa-4.0');
+    expect(decide(inc, win).verdict).toBe('hold');
+    expect(decide(inc, win).reasons.join(' ')).toMatch(/share-alike/);
+    expect(decide(inc, win, { ...DEFAULT_BUDGET, allowShareAlike: true }).verdict).toBe('upgrade');
+  });
+  it('UPGRADE is possible for cc-by-4.0, the same as for MIT', () => {
+    expect(decide(inc, arm('by', [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9]], {}, 'cc-by-4.0')).verdict).toBe('upgrade');
   });
   it('HOLD: a licence off the allowlist, even if everything else wins', () => {
     const d = decide(inc, arm('nc', [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9]], {}, 'cc-by-nc-4.0'));
