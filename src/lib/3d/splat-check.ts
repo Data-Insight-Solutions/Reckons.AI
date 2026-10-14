@@ -14,7 +14,7 @@
 import { robustExtent } from './robust-extent';
 
 /** Centres kept for the robust extent: enough to see a 1% stray population, small enough to sort quickly. */
-const EXTENT_SAMPLE = 100_000;
+export const EXTENT_SAMPLE = 100_000;
 
 export interface SplatCheck {
   pass: boolean;
@@ -236,12 +236,67 @@ export function judgeSplatSpzBytes(raw: Uint8Array, totalLength = raw.length): S
   return { pass: true, problems: [], notes: ['SPZ is checked for header, count and length only; values are not decoded'], measured: { count, version } };
 }
 
-export type SplatKind = 'ply' | 'spz';
+export type SplatKind = 'ply' | 'spz' | 'sog';
 
 /** The extension decides the kind; anything else is refused with the reason. */
 export function splatKindOf(filename: string): SplatKind | null {
-  const m = /\.(ply|spz)$/i.exec(filename);
+  const m = /\.(ply|spz|sog)$/i.exec(filename);
   return m ? (m[1].toLowerCase() as SplatKind) : null;
+}
+
+/** What decoding a compressed splat yields: the count, running totals, and a strided sample of centres. */
+export interface DecodedSplat {
+  count: number;
+  /** Centres with a non-finite coordinate. */
+  nonFinite: number;
+  min: [number, number, number];
+  max: [number, number, number];
+  /** x y z triples, at most EXTENT_SAMPLE of them. */
+  sample: number[];
+}
+
+/**
+ * Decode an SPZ or SOG file and summarise its centres. The browser supplies the renderer's own
+ * decoder (src/lib/3d/splat-decode.ts), which needs Web Workers; without one the check is
+ * header-only and says so.
+ */
+export type SplatDecoder = (file: Blob, kind: 'spz' | 'sog') => Promise<DecodedSplat>;
+
+/**
+ * Judge a decoded SPZ or SOG: pure, so it is unit-tested without a browser. The count in the SPZ
+ * header (when given) must equal what the decoder produced; the centres must be finite and span a
+ * real extent. Opacity is NOT checked here (a decoded centre has none), which the note says.
+ */
+export function judgeDecodedSplat(kind: 'spz' | 'sog', d: DecodedSplat, headerCount?: number): SplatCheck {
+  const problems: string[] = [];
+  if (!(d.count > 0)) problems.push('no Gaussians');
+  if (headerCount !== undefined && headerCount !== d.count) problems.push(`the header says ${headerCount} Gaussians but ${d.count} decoded`);
+  if (d.nonFinite) problems.push(`${d.nonFinite} Gaussian(s) with non-finite centres`);
+  const raw = Math.max(d.max[0] - d.min[0], d.max[1] - d.min[1], d.max[2] - d.min[2]);
+  if (d.count > 0 && !(raw > 1e-4)) problems.push(`degenerate extent ${raw}`);
+  return {
+    pass: problems.length === 0, problems,
+    notes: [`${kind.toUpperCase()} was decoded and its centres checked; opacity and colour were not`],
+    measured: { count: d.count, ...(problems.length ? {} : extentMeasures(raw, d.sample)) },
+  };
+}
+
+/**
+ * SPZ version 4 (what splat-transform writes by default) is NOT gzip: the file starts with the raw
+ * 'NGSP' magic, then the version and the point count, then a table of compressed streams. Versions
+ * 1 to 3 are gzip around the same fields. Only the header can be judged without decoding: a
+ * Gaussian cannot take less than a byte, so a body shorter than the count is truncated.
+ */
+export function judgeSplatSpzV4Header(head: Uint8Array, totalLength: number): SplatCheck {
+  const fail = (p: string): SplatCheck => ({ pass: false, problems: [p], notes: [], measured: {} });
+  if (head.length < 16 || totalLength < 32) return fail('too short to be an SPZ file');
+  const v = new DataView(head.buffer, head.byteOffset, head.byteLength);
+  if (v.getUint32(0, true) !== 0x5053474e) return fail('not an SPZ file (missing NGSP header)');
+  const version = v.getUint32(4, true), count = v.getUint32(8, true);
+  if (version !== 4) return fail(`unsupported SPZ version ${version}`);
+  if (!(count > 0)) return fail('no Gaussians');
+  if (totalLength - 32 < count) return fail(`truncated: ${totalLength - 32} bytes of body for ${count} Gaussians`);
+  return { pass: true, problems: [], notes: ['SPZ v4 header, count and length checked'], measured: { count, version } };
 }
 
 /** Decompress a gzip stream keeping only the first 16 bytes and the total length: no whole-file buffer. */
@@ -258,17 +313,47 @@ async function gunzipHeader(body: ReadableStream<Uint8Array>): Promise<{ head: U
   return { head: head.subarray(0, have), total };
 }
 
-/** Judge a file chosen by the person. Never throws: a failure is a failed check with a reason. */
-export async function judgeSplatFile(filename: string, file: Blob | Uint8Array): Promise<SplatCheck & { kind: SplatKind | null }> {
+/** A .sog is a ZIP (PK 03 04) holding meta.json and WebP images. */
+export function judgeSogHeader(first4: Uint8Array, size: number): SplatCheck {
+  const fail = (p: string): SplatCheck => ({ pass: false, problems: [p], notes: [], measured: {} });
+  if (size < 64) return fail('too short to be a SOG file');
+  if (!(first4[0] === 0x50 && first4[1] === 0x4b && first4[2] === 3 && first4[3] === 4)) {
+    return fail('not a .sog file (a SOG is a ZIP archive; this does not start with one)');
+  }
+  return { pass: true, problems: [], notes: ['SOG is checked for its ZIP header only; values are not decoded'], measured: {} };
+}
+
+/**
+ * Judge a file chosen by the person. Never throws: a failure is a failed check with a reason.
+ * SPZ and SOG are decoded for real when `decode` is given (the browser passes the renderer's
+ * decoder); otherwise only their headers are read, and the check's note says that.
+ */
+export async function judgeSplatFile(filename: string, file: Blob | Uint8Array, decode?: SplatDecoder): Promise<SplatCheck & { kind: SplatKind | null }> {
   const kind = splatKindOf(filename);
   const size = file instanceof Uint8Array ? file.length : file.size;
-  if (!kind) return { kind, pass: false, problems: [`"${filename}" is not a .ply or .spz file`], notes: [], measured: {} };
+  if (!kind) return { kind, pass: false, problems: [`"${filename}" is not a .ply, .spz or .sog file`], notes: [], measured: {} };
   if (size === 0) return { kind, pass: false, problems: ['the file is empty'], notes: [], measured: {} };
   try {
     if (kind === 'ply') return { kind, ...(await judgePlySource(file instanceof Uint8Array ? bytesSource(file) : blobSource(file))) };
-    const body = (file instanceof Uint8Array ? new Response(file as BodyInit).body : typeof file.stream === 'function' ? file.stream() : new Response(file).body)!;
-    const { head, total } = await gunzipHeader(body as ReadableStream<Uint8Array>);
-    return { kind, ...judgeSplatSpzBytes(head, total) };
+    const blob = file instanceof Uint8Array ? new Blob([file as BlobPart]) : file;
+    let header: SplatCheck;
+    let headerCount: number | undefined;
+    if (kind === 'spz') {
+      const first = file instanceof Uint8Array ? file.subarray(0, 32) : await blobSource(blob).read(0, 32);
+      if (first.length >= 4 && first[0] === 0x4e && first[1] === 0x47 && first[2] === 0x53 && first[3] === 0x50) {
+        header = judgeSplatSpzV4Header(first, size);
+      } else {
+        const body = (file instanceof Uint8Array ? new Response(file as BodyInit).body : typeof file.stream === 'function' ? file.stream() : new Response(file).body)!;
+        const { head, total } = await gunzipHeader(body as ReadableStream<Uint8Array>);
+        header = judgeSplatSpzBytes(head, total);
+      }
+      if (header.pass) headerCount = Number(header.measured.count);
+    } else {
+      header = judgeSogHeader(await blobSource(blob).read(0, 4), size);
+    }
+    if (!header.pass || !decode) return { kind, ...header };
+    const decoded = judgeDecodedSplat(kind, await decode(blob, kind), headerCount);
+    return { kind, ...decoded, measured: { ...header.measured, ...decoded.measured } };
   } catch (e) {
     return { kind, pass: false, problems: [`could not read the file: ${(e as Error).message}`], notes: [], measured: {} };
   }

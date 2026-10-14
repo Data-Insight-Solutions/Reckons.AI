@@ -32,7 +32,7 @@ export async function importScan(file: File, origin: SplatOrigin): Promise<Impor
   const res = await importSplatFile(file);
   if (!res.ok) return res;
   const entity = scanEntityIri(res.url);
-  const label = file.name.replace(/\.(ply|spz)$/i, '');
+  const label = file.name.replace(/\.(ply|spz|sog)$/i, '');
   const known = statements().some((s) => s.s.kind === 'iri' && s.s.value === entity && s.status !== 'rejected');
   if (!known) await addStatements(scanStatements(res.url, label, origin, uuid));
   await setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, res.url);

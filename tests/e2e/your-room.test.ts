@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { clearStorage, waitForApp } from './helpers';
+import { compressSplat } from '../../scripts/content/splat-compress';
 
 /**
  * YOUR ROOM (F58.9.7-.10 / kb:room-scene-space): the guided example space opens from About, its
@@ -68,7 +72,7 @@ test('a damaged scan is refused with the reason and changes nothing', async ({ p
   await page.getByTestId('import-scan-input').setInputFiles(bytesFile('bad.ply', plyBytes({ nan: true })));
   await expect(page.getByTestId('import-scan-refused')).toContainText(/non-finite/i, { timeout: 10_000 });
   await page.getByTestId('import-scan-input').setInputFiles(bytesFile('notes.txt', [1, 2, 3]));
-  await expect(page.getByTestId('import-scan-refused')).toContainText(/not a \.ply or \.spz/i);
+  await expect(page.getByTestId('import-scan-refused')).toContainText(/not a \.ply, \.spz or \.sog/i);
   await expect(page.getByTestId('background-settings')).toHaveCount(0);
 });
 
@@ -102,4 +106,30 @@ test('a good scan is stored in the browser, referenced by name, and becomes the 
   // It loads into the 3D graph from IndexedDB.
   await page.goto('/');
   await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '1/0', { timeout: 60_000 });
+});
+
+// F58.9.11: compressed scans are decoded by the renderer's own decoder before they are kept.
+for (const format of ['spz', 'sog'] as const) {
+  test(`a .${format} is decoded for a real count and extent, stored, and drawn`, async ({ page }) => {
+    test.setTimeout(120_000);
+    const dir = mkdtempSync(join(tmpdir(), 'room-compressed-'));
+    try {
+      writeFileSync(join(dir, 'grid.ply'), Buffer.from(plyBytes()));
+      const r = compressSplat(join(dir, 'grid.ply'), { format });
+      expect(r.check.pass, r.check.problems.join()).toBe(true);
+      await page.goto('/kb');
+      await page.getByTestId('import-scan-input').setInputFiles({ name: `grid.${format}`, mimeType: 'application/octet-stream', buffer: readFileSync(join(dir, r.file)) });
+      await expect(page.getByRole('status').filter({ hasText: /now the background/i })).toBeVisible({ timeout: 30_000 });
+      await page.goto('/');
+      await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '1/0', { timeout: 60_000 });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+}
+
+test('a .sog whose archive is not a real SOG is refused with the reason, not stored', async ({ page }) => {
+  await page.goto('/kb');
+  const zipish = Buffer.concat([Buffer.from([0x50, 0x4b, 3, 4]), Buffer.alloc(200, 7)]);
+  await page.getByTestId('import-scan-input').setInputFiles({ name: 'broken.sog', mimeType: 'application/octet-stream', buffer: zipish });
+  await expect(page.getByTestId('import-scan-refused')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('background-settings')).toHaveCount(0);
 });

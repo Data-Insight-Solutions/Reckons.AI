@@ -23,20 +23,20 @@ export type SplatOrigin = 'reconstructed' | 'generated' | 'synthetic';
 
 /**
  * A splat file the person imported lives in the browser's IndexedDB (never as a data: URI in a
- * triple); the triple holds this resolvable reference, `asset:splat/<content-hash>.ply|spz`, which
+ * triple); the triple holds this resolvable reference, `asset:splat/<content-hash>.ply|spz|sog`, which
  * the loader turns into the stored bytes. The same name is the file name in `assets/splats/` on export.
  */
 export const LOCAL_SPLAT_PREFIX = 'asset:splat/';
 export function isLocalSplatUrl(v: string): boolean {
-  return /^asset:splat\/[A-Za-z0-9_-]+\.(ply|spz)$/.test(v);
+  return /^asset:splat\/[A-Za-z0-9_-]+\.(ply|spz|sog)$/.test(v);
 }
 
-/** A rooted path, http(s) URL, data: URI or local asset reference naming a PLY or SPZ file. */
+/** A rooted path, http(s) URL, data: URI or local asset reference naming a PLY, SPZ or SOG file. */
 export function isSplatUrl(v: string): boolean {
   if (isLocalSplatUrl(v)) return true;
   if (!(v.startsWith('/') || v.startsWith('http://') || v.startsWith('https://') || v.startsWith('data:'))) return false;
   if (v.startsWith('data:')) return true;
-  return /\.(ply|spz)([?#].*)?$/i.test(v);
+  return /\.(ply|spz|sog)([?#].*)?$/i.test(v);
 }
 
 const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'superseded' && s.status !== 'pending-removal';
@@ -141,7 +141,7 @@ export const GAUSSIAN_SPLAT_TYPE = 'urn:kbase:type/GaussianSplat';
 
 /** The entity an imported file becomes. Named from the file's content hash, so re-importing is idempotent. */
 export function scanEntityIri(url: string): string {
-  const id = url.replace(/^asset:splat\//, '').replace(/\.(ply|spz)$/, '');
+  const id = url.replace(/^asset:splat\//, '').replace(/\.(ply|spz|sog)$/, '');
   return `urn:kbase:concept/scan-${id.slice(0, 12)}`;
 }
 
@@ -206,7 +206,7 @@ export interface BackgroundSettings {
   opacity: number;
   /** Height of the levelled floor above the room centre, in room units; null until Level the floor finds one. */
   floor: number | null;
-  /** Measured extent of the scan in file units, or null (SPZ files are not decoded, so have none). */
+  /** Measured extent of the scan in file units, or null (null when the file could not be measured). */
   extent: number | null;
 }
 

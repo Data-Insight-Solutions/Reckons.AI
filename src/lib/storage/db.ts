@@ -380,7 +380,7 @@ export type MobileSession = {
   deviceName?: string;
 };
 
-/** An imported Gaussian splat file (F58.9.7). `id` is `<content-hash>.ply|spz`; triples refer to it as `asset:splat/<id>`. */
+/** An imported Gaussian splat file (F58.9.7). `id` is `<content-hash>.ply|spz|sog`; triples refer to it as `asset:splat/<id>`. */
 export type SplatFileRow = { id: string; blob: Blob; filename: string; size: number; importedAt: number };
 
 export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name: string };
