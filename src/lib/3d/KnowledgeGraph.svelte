@@ -27,7 +27,8 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
-  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion } from './splat';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
+  import { roomView } from './room-view';
 
   interactivity();
 
@@ -210,9 +211,23 @@
   const splatItems = $derived.by((): SplatItem[] => {
     const items: SplatItem[] = [];
     const byKey = new Map(nodes.map((n) => [n.key, n] as const));
+    // A node placed in a SURROUND room is drawn at its place and size, still, in the room's frame
+    // (F58.9.9); every other node's splat follows the node and turns, node-sized.
+    const bgUrl = backgroundSplatFrom(statements as Statement[]);
+    const roomSet = backgroundSettingsFrom(statements as Statement[]);
+    const placed = bgUrl && roomSet.mode === 'surround' ? placementsFrom(statements as Statement[]) : new Map();
     for (const [iri, url] of splatMapFrom(statements as Statement[])) {
       const n = byKey.get('i:' + iri);
       if (!n) continue;
+      const pl = placed.get(iri);
+      if (pl) {
+        const yaw = pl.yaw + roomSet.yaw;
+        items.push({
+          key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: pl.scale * roomSet.scale,
+          quaternion: () => qAboutY(yaw), position: () => n.pos,
+        });
+        continue;
+      }
       items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35 });
     }
     const bg = backgroundSplatFrom(statements as Statement[]);
@@ -290,11 +305,50 @@
   const bgRoomCentre = new THREE.Vector3();
   const bgOffset = new THREE.Vector3();
   const centroidTmp = new THREE.Vector3();
+  /** Node key to its world position, for nodes placed in a surround room (F58.9.9). */
+  const placedNodes = new Map<string, { pos: THREE.Vector3; yaw: number }>();
+  const placedTmp = new THREE.Vector3();
+  const roomPlacement = $derived.by(() => {
+    const bg = backgroundSplatFrom(statements as Statement[]);
+    const set = backgroundSettingsFrom(statements as Statement[]);
+    const placed = bg && set.mode === 'surround' ? placementsFrom(statements as Statement[]) : new Map<string, import('./splat').Placement>();
+    return { bg, set, placed };
+  });
+  // Placing or moving a node changes the layout problem: let its neighbours settle around it.
+  $effect(() => { void JSON.stringify([...roomPlacement.placed]); reheat(0.3); });
+
+  /** Each frame: publish the camera and room for "Place in room", and hold placed nodes where they were put (F58.9.9). */
+  function updateRoom() {
+    const rp = roomPlacement;
+    if (placedNodes.size || rp.placed.size) {
+      for (const k of [...placedNodes.keys()]) if (!rp.placed.has(k.slice(2))) placedNodes.delete(k);
+      for (const iri of rp.placed.keys()) if (!placedNodes.has('i:' + iri)) placedNodes.set('i:' + iri, { pos: new THREE.Vector3(), yaw: 0 });
+    }
+    const c = graphCentroid();
+    const centre: [number, number, number] = [c.x + rp.set.offset[0], c.y + rp.set.offset[1], c.z + rp.set.offset[2]];
+    const cam = camera.current;
+    if (cam) { roomView.camera = [cam.position.x, cam.position.y, cam.position.z]; }
+    roomView.target = [cameraTarget.x, cameraTarget.y, cameraTarget.z];
+    roomView.centre = centre; roomView.scale = rp.set.scale; roomView.yaw = rp.set.yaw;
+    roomView.surround = !!rp.bg && rp.set.mode === 'surround'; roomView.live = true;
+    if (!placedNodes.size) return;
+    const frame: RoomFrame = { centre, scale: rp.set.scale, yaw: rp.set.yaw };
+    for (const n of nodes) {
+      if (!placedNodes.has(n.key)) continue;
+      const pl = rp.placed.get(n.key.slice(2));
+      if (!pl) continue;
+      const w = placementWorld(pl, frame);
+      n.pos.set(w.pos[0], w.pos[1], w.pos[2]);
+      n.vel.set(0, 0, 0);
+    }
+  }
   function graphCentroid() {
     centroidTmp.set(0, 0, 0);
     if (!nodes.length) return centroidTmp;
-    for (const n of nodes) centroidTmp.add(n.pos);
-    return centroidTmp.multiplyScalar(1 / nodes.length);
+    // Placed nodes are pinned RELATIVE to this point, so they must not move it.
+    let free = 0;
+    for (const n of nodes) { if (placedNodes.has(n.key)) continue; centroidTmp.add(n.pos); free++; }
+    return free ? centroidTmp.multiplyScalar(1 / free) : centroidTmp;
   }
   function graphFrame() {
     const c = bgFrame.anchor.set(0, 0, 0);
@@ -1494,6 +1548,7 @@
     simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
     if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
     } // end if (simAlpha >= SIM_ALPHA_MIN) — cooled, simulation at rest
+    updateRoom();
     if (simAlpha === 0 && !reportedSettled) {
       reportedSettled = true;
       emitSettled(true);

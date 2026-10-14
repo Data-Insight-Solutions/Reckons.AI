@@ -9,7 +9,7 @@
   import {
     backgroundSplatFrom, splatOriginOf, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, type SplatOrigin,
     backgroundSettingsFrom, BACKGROUND_DEFAULTS, UP_AXES, upAxisQuaternion, fitFloor, levelQuaternion, rotatePoints, qMul, TRIPOSPLAT_BASE,
-    BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE,
+    BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE,
   } from '$lib/3d/splat';
   import { plyCentres } from '$lib/3d/splat-check';
   import { readSplatFile } from '$lib/storage/splat-files';
@@ -50,7 +50,7 @@
     return put(BG_OFFSET_PREDICATE, o.join(' '));
   };
   const resetSettings = async () => {
-    for (const p of [BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE]) await setMeta(SPACE_SUBJECT, p, '');
+    for (const p of [BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE]) await setMeta(SPACE_SUBJECT, p, '');
     levelMsg = '';
   };
 
@@ -67,11 +67,20 @@
       const centres = plyCentres(bytes);
       let q = upAxisQuaternion(set.up);
       if (splatOrientationFor(statements(), background) === 'triposplat') q = qMul(q, TRIPOSPLAT_BASE);
-      const fit = fitFloor(rotatePoints(centres, q));
+      // The room turns about its bounding-box centre, so fit in that frame: then the plane's offset
+      // IS the floor height above the room's centre.
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < centres.length; i++) { const k = i % 3; if (centres[i] < lo[k]) lo[k] = centres[i]; if (centres[i] > hi[k]) hi[k] = centres[i]; }
+      const centred = Float32Array.from(centres, (v, i) => v - (lo[i % 3] + hi[i % 3]) / 2);
+      const fit = fitFloor(rotatePoints(centred, q));
       if (!fit) { levelMsg = 'No flat horizontal surface holds a tenth of the sampled points, so nothing was changed. Check the up axis first.'; return; }
       const lq = levelQuaternion(fit);
       await put(BG_LEVEL_PREDICATE, lq.map((x) => x.toFixed(6)).join(' '));
-      levelMsg = `Removed a ${fit.tiltDeg.toFixed(1)}° tilt; ${(fit.fraction * 100).toFixed(0)}% of ${(centres.length / 3).toLocaleString()} sampled points lie on that plane.`;
+      // A plane above the room's middle is the ceiling, not the floor: levelling is the same, but it is no floor to stand things on.
+      const isFloor = fit.offset < 0;
+      await put(BG_FLOOR_PREDICATE, isFloor ? fit.offset.toFixed(4) : '');
+      levelMsg = `Removed a ${fit.tiltDeg.toFixed(1)}° tilt; ${(fit.fraction * 100).toFixed(0)}% of ${(centres.length / 3).toLocaleString()} sampled points lie on that plane.`
+        + (isFloor ? ' Floor height set.' : ' That plane is above the room\'s middle (a ceiling?), so no floor height was set.');
     } catch (e) {
       levelMsg = `Could not fit: ${(e as Error).message}`;
     }
@@ -123,7 +132,7 @@
       </label>
       <div class="chip-row">
         <button class="pkg-chip" onclick={levelFloor} data-testid="level-floor" title="Fit the dominant horizontal plane to the scan and remove its tilt">Level the floor</button>
-        {#if set.level}<button class="pkg-chip" onclick={() => put(BG_LEVEL_PREDICATE, '')}>remove levelling</button>{/if}
+        {#if set.level}<button class="pkg-chip" onclick={async () => { await put(BG_LEVEL_PREDICATE, ''); await put(BG_FLOOR_PREDICATE, ''); }}>remove levelling</button>{/if}
         <button class="pkg-chip" onclick={resetSettings}>reset settings</button>
       </div>
       {#if levelMsg}<span class="pkg-note pkg-msg mono" role="status">{levelMsg}</span>{/if}

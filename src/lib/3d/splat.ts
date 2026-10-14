@@ -196,9 +196,11 @@ export interface BackgroundSettings {
   /** World offset of the room's centre from the graph's centre. */
   offset: Vec3;
   opacity: number;
+  /** Height of the levelled floor above the room centre, in room units; null until Level the floor finds one. */
+  floor: number | null;
 }
 
-export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5 };
+export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5, floor: null };
 
 const nums = (v: string, n: number): number[] | null => {
   const a = v.trim().split(/[\s,]+/).map(Number);
@@ -209,7 +211,7 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 /** The space's background settings. The newest live value of each wins; anything malformed falls back to its default. */
 export function backgroundSettingsFrom(statements: readonly Statement[]): BackgroundSettings {
   const newest = new Map<string, Statement>();
-  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE]);
+  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE]);
   for (const s of statements) {
     if (s.s.value !== SPACE_SUBJECT || !wanted.has(s.p.value) || s.o.kind !== 'literal' || !live(s)) continue;
     const prev = newest.get(s.p.value);
@@ -224,12 +226,14 @@ export function backgroundSettingsFrom(statements: readonly Statement[]): Backgr
   const opacity = Number(val(BG_OPACITY_PREDICATE));
   const offset = nums(val(BG_OFFSET_PREDICATE) ?? '', 3);
   const level = nums(val(BG_LEVEL_PREDICATE) ?? '', 4);
+  const floor = val(BG_FLOOR_PREDICATE) === undefined ? NaN : Number(val(BG_FLOOR_PREDICATE));
   const resolvedMode: BackgroundMode = mode === 'surround' || mode === 'backdrop' ? mode : d.mode;
   return {
     mode: resolvedMode,
     up: (UP_AXES as readonly string[]).includes(up ?? '') ? (up as UpAxis) : d.up,
     yaw: Number.isFinite(yaw) && val(BG_YAW_PREDICATE) !== undefined ? yaw : d.yaw,
     level: level ? qNormalize(level as Quat) : null,
+    floor: Number.isFinite(floor) ? clamp(floor, -1e4, 1e4) : null,
     scale: Number.isFinite(scale) && scale > 0 ? clamp(scale, 0.001, 1000) : d.scale,
     offset: offset ? (offset.map((x) => clamp(x, -1e4, 1e4)) as Vec3) : d.offset,
     // Unset opacity: a backdrop is dimmed so labels stay readable; a room you are inside is not.
@@ -403,3 +407,108 @@ export function rotatePoints(points: ArrayLike<number>, q: Quat): Float32Array {
 
 /** The levelling correction for a fitted floor: the rotation that takes its normal to +y. */
 export const levelQuaternion = (fit: Pick<FloorFit, 'normal'>): Quat => qBetween(fit.normal, [0, 1, 0]);
+
+// ── Placement (F58.9.9) ──────────────────────────────────────────────────────
+//
+// A node with a splat can be put at a place in the room. Coordinates are ROOM units in the room's
+// own frame: up is +y (after the up axis and the floor level), the origin is the room's centre, and
+// the frame turns with the space's yaw setting, so changing the yaw carries placed things with it.
+// World = room centre + yaw(at * scale). Placement is a setting of the space, not a fact about the
+// thing, so these are meta predicates on the node and never edges. Only a SURROUND room has a fixed
+// scale to place in; a backdrop is resized to the graph every frame.
+
+export const PLACED_AT_PREDICATE = META + 'placed-at';
+export const PLACED_SCALE_PREDICATE = META + 'placed-scale';
+export const PLACED_YAW_PREDICATE = META + 'placed-yaw';
+/** Height of the levelled floor above the room's centre, in room units (negative = below). Set by Level the floor. */
+export const BG_FLOOR_PREDICATE = META + 'background-floor';
+
+export interface Placement {
+  at: Vec3;
+  /** The placed splat's radius, in room units. */
+  scale: number;
+  /** Degrees about the vertical, in the room's frame. */
+  yaw: number;
+}
+
+export const DEFAULT_PLACED_SCALE = 1;
+
+/** Node IRI to placement, from the node's live placed-at (with its optional scale and yaw). */
+export function placementsFrom(statements: readonly Statement[]): Map<string, Placement> {
+  const newest = new Map<string, Statement>();
+  const keep = (s: Statement) => { const k = s.s.value + '|' + s.p.value; const prev = newest.get(k); if (!prev || (s.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) newest.set(k, s); };
+  for (const s of statements) {
+    if (s.s.kind !== 'iri' || s.o.kind !== 'literal' || !live(s)) continue;
+    if (s.p.value === PLACED_AT_PREDICATE || s.p.value === PLACED_SCALE_PREDICATE || s.p.value === PLACED_YAW_PREDICATE) keep(s);
+  }
+  const out = new Map<string, Placement>();
+  for (const s of newest.values()) {
+    if (s.p.value !== PLACED_AT_PREDICATE) continue;
+    const at = nums(s.o.value, 3);
+    if (!at) continue;
+    const sc = Number(newest.get(s.s.value + '|' + PLACED_SCALE_PREDICATE)?.o.value);
+    const yaw = Number(newest.get(s.s.value + '|' + PLACED_YAW_PREDICATE)?.o.value);
+    out.set(s.s.value, {
+      at: at.map((x) => clamp(x, -1e4, 1e4)) as Vec3,
+      scale: Number.isFinite(sc) && sc > 0 ? clamp(sc, 0.02, 1000) : DEFAULT_PLACED_SCALE,
+      yaw: Number.isFinite(yaw) ? yaw : 0,
+    });
+  }
+  return out;
+}
+
+export interface RoomFrame {
+  /** World position of the room's centre. */
+  centre: Vec3;
+  /** World units per room unit (the space's scale setting). */
+  scale: number;
+  /** The space's yaw setting, degrees. */
+  yaw: number;
+}
+
+const round3 = (x: number) => Math.round(x * 1000) / 1000;
+
+/** Where a placement is in the world, how big its splat is drawn, and how it is turned. */
+export function placementWorld(p: Placement, room: RoomFrame): { pos: Vec3; radius: number; yaw: number } {
+  const r = qRotate(qAboutY(room.yaw), [p.at[0] * room.scale, p.at[1] * room.scale, p.at[2] * room.scale]);
+  return { pos: [room.centre[0] + r[0], room.centre[1] + r[1], room.centre[2] + r[2]], radius: p.scale * room.scale, yaw: p.yaw + room.yaw };
+}
+
+/** The inverse of placementWorld's position: a world point in room coordinates. */
+export function worldToRoom(world: Vec3, room: RoomFrame): Vec3 {
+  const d: Vec3 = [world[0] - room.centre[0], world[1] - room.centre[1], world[2] - room.centre[2]];
+  const r = qRotate(qAboutY(-room.yaw), d);
+  return [round3(r[0] / room.scale), round3(r[1] / room.scale), round3(r[2] / room.scale)];
+}
+
+export interface RoomView {
+  camera: Vec3;
+  target: Vec3;
+  /** Floor height above the room centre in room units, or null when Level the floor has not found one. */
+  floor: number | null;
+}
+
+/**
+ * Where "Place in room" puts a new thing: half way from the camera toward what it looks at, on the
+ * floor (its radius above it, so it stands rather than sinks). Without a known floor it sits at the
+ * room's mid height, and the caller says so.
+ */
+export function defaultPlacement(view: RoomView, room: RoomFrame, scale = DEFAULT_PLACED_SCALE): Placement {
+  const mid: Vec3 = [(view.camera[0] + view.target[0]) / 2, room.centre[1], (view.camera[2] + view.target[2]) / 2];
+  const local = worldToRoom(mid, room);
+  return { at: [local[0], round3(view.floor === null ? 0 : view.floor + scale), local[2]], scale, yaw: 0 };
+}
+
+export type PlacementOp =
+  | { kind: 'move'; dx?: number; dy?: number; dz?: number }
+  | { kind: 'turn'; degrees: number }
+  | { kind: 'scale'; factor: number };
+
+/** One adjustment step, pure. Rounded so the stored triple stays readable. */
+export function adjustPlacement(p: Placement, op: PlacementOp): Placement {
+  if (op.kind === 'move') return { ...p, at: [round3(p.at[0] + (op.dx ?? 0)), round3(p.at[1] + (op.dy ?? 0)), round3(p.at[2] + (op.dz ?? 0))] };
+  if (op.kind === 'turn') return { ...p, yaw: round3((((p.yaw + op.degrees + 180) % 360) + 360) % 360 - 180) };
+  return { ...p, scale: round3(clamp(p.scale * op.factor, 0.02, 1000)) };
+}
+
+export const formatPlacementAt = (at: Vec3): string => at.map(round3).join(' ');

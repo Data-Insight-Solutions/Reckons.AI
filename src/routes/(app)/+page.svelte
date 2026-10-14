@@ -15,6 +15,7 @@
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
+  import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
@@ -2727,6 +2728,7 @@
           {:else}
             <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
           {/if}
+          {#if expandedAssetKey && iriFromNodeKey(expandedAssetKey)}<SplatPlacementControls iri={iriFromNodeKey(expandedAssetKey)!} />{/if}
         </div>
       </div>
     {:else}
