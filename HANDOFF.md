@@ -1,3 +1,17 @@
+## 2026-10-14 — F58.9 splat proof of concept → PR #463 (dev); 0.2.6 chain status (Claude Code)
+
+**0.2.6:** #456 (F122.1.4) merged to dev. #462 (F223.1) green and mergeable but NOT merged (the auto-mode
+classifier blocked the merge; Matt's call). Chain: F107.10.1-.3 and F122.1.1-.4 functional; F223.2, .3, .4 and
+conflicts remain, cut 2026-10-18. Parent statuses F107.10/F122.1 still read "planned" in the burndown: stale.
+
+**F58.9 (Matt asked for it on dev for localhost review):** branch `feat/f58-9-local-splat-poc`, PR #463 → dev.
+Local tools live in `~/.local/share/reckons/gen` (27 GB; `scripts/content/gen-setup.sh`). `npm run gen:assets`
+regenerates; `npm run gen:check` is what CI can run. Review: About → example data → Generated assets (opens as its
+own space); docs at /docs/testing/workflow-generated-assets. Weak spots are listed in the PR and in the roadmap
+`kpred:remaining` of kb:splat-* (2D draws no splats; flaky 1/17 e2e; TripoSplat CUDA-init retry; +inf opacity
+repaired upstream defect). Open for Matt: release placement (proposed 0.2.7), and his note that the visual-test
+review space lacks a timeline/story setup (recorded as an open question on kb:gen-video-to-splat).
+
 ## 2026-10-13 — START HERE. 0.2.6 day 6: open PRs landed, local tier measured, e2e workflow docs (Claude Code)
 
 Opus coordinated; Sonnet overseers (own worktrees, 2 at a time) did the work and merged into `dev` (Matt
