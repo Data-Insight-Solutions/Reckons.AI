@@ -280,10 +280,12 @@ export function exampleTtl(receipts: Receipt[]): string {
         `    p:made-with ${lit(MODEL_NAMES[stage])} ;`,
         `    schema:license ${lit([...new Set([st.tool.license, ...st.models.map((m) => m.license)])].join(', '))} ;`,
         `    p:took ${lit(`${st.durationS} s`)} ;`,
-        `    p:seed ${lit(st.settings.seed ?? '')} ;`,
+        // Values read on their own as nodes, so each says what it is: a bare "42" was three nodes'
+        // shared seed and nobody could tell (Matt, 2026-10-14: "whats the 49, 42, and 7?").
+        `    p:seed ${lit(`seed ${st.settings.seed ?? ''}`)} ;`,
       ];
-      if (stage === 'video') lines.push(`    p:frames ${lit(st.check.measured.frames ?? '')} ;`, `    rdfs:comment ${lit(st.input.prompt ?? '')} ;`);
-      if (stage === 'splat') lines.push(`    p:gaussians ${lit(st.settings.gaussians)} ;`,
+      if (stage === 'video') lines.push(`    p:frames ${lit(`${st.check.measured.frames ?? ''} frames`)} ;`, `    rdfs:comment ${lit(st.input.prompt ?? '')} ;`);
+      if (stage === 'splat') lines.push(`    p:gaussians ${lit(`${Number(st.settings.gaussians).toLocaleString('en-US')} Gaussians`)} ;`,
         `    rdfs:comment ${lit(r.role === 'background' ? 'Open it and choose Set as background to put this island behind the graph.' : 'Invented from one picture by TripoSplat: the far side is a guess.')} ;`);
       lines.push(`    p:generated-at ${lit(st.ranAt.slice(0, 10))} .`, '');
       out.push(...lines);

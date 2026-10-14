@@ -28,7 +28,7 @@ kb:gen-carved-turtle-image rdf:type ktype:GeneratedAsset ;
     p:made-with "Z-Image-Turbo (Q8) on stable-diffusion.cpp" ;
     schema:license "MIT, Apache-2.0" ;
     p:took "13.8 s" ;
-    p:seed "42" ;
+    p:seed "seed 42" ;
     p:generated-at "2026-10-14" .
 
 kb:gen-carved-turtle-video rdf:type ktype:GeneratedAsset ;
@@ -38,8 +38,8 @@ kb:gen-carved-turtle-video rdf:type ktype:GeneratedAsset ;
     p:made-with "Wan2.2 TI2V-5B (Q8) on stable-diffusion.cpp" ;
     schema:license "MIT, Apache-2.0" ;
     p:took "52.6 s" ;
-    p:seed "42" ;
-    p:frames "49" ;
+    p:seed "seed 42" ;
+    p:frames "49 frames" ;
     rdfs:comment "the wooden sea turtle figurine swims forward, its flippers paddling up and down, the camera slowly circles around it, soft studio light" ;
     p:generated-at "2026-10-14" .
 
@@ -50,8 +50,8 @@ kb:gen-carved-turtle-splat rdf:type ktype:GeneratedAsset ;
     p:made-with "TripoSplat" ;
     schema:license "MIT" ;
     p:took "33.8 s" ;
-    p:seed "42" ;
-    p:gaussians "32768" ;
+    p:seed "seed 42" ;
+    p:gaussians "32,768 Gaussians" ;
     rdfs:comment "Invented from one picture by TripoSplat: the far side is a guess." ;
     p:generated-at "2026-10-14" .
 
@@ -66,7 +66,7 @@ kb:gen-lighthouse-island-image rdf:type ktype:GeneratedAsset ;
     p:made-with "Z-Image-Turbo (Q8) on stable-diffusion.cpp" ;
     schema:license "MIT, Apache-2.0" ;
     p:took "16.6 s" ;
-    p:seed "7" ;
+    p:seed "seed 7" ;
     p:generated-at "2026-10-14" .
 
 kb:gen-lighthouse-island-video rdf:type ktype:GeneratedAsset ;
@@ -76,8 +76,8 @@ kb:gen-lighthouse-island-video rdf:type ktype:GeneratedAsset ;
     p:made-with "Wan2.2 TI2V-5B (Q8) on stable-diffusion.cpp" ;
     schema:license "MIT, Apache-2.0" ;
     p:took "52.2 s" ;
-    p:seed "7" ;
-    p:frames "49" ;
+    p:seed "seed 7" ;
+    p:frames "49 frames" ;
     rdfs:comment "the lighthouse beam sweeps around, waves lap at the rocks of the small island, the camera slowly orbits the diorama" ;
     p:generated-at "2026-10-14" .
 
@@ -88,7 +88,7 @@ kb:gen-lighthouse-island-splat rdf:type ktype:GeneratedAsset ;
     p:made-with "TripoSplat" ;
     schema:license "MIT" ;
     p:took "50.9 s" ;
-    p:seed "7" ;
-    p:gaussians "65536" ;
+    p:seed "seed 7" ;
+    p:gaussians "65,536 Gaussians" ;
     rdfs:comment "Open it and choose Set as background to put this island behind the graph." ;
     p:generated-at "2026-10-14" .
