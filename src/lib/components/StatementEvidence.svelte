@@ -27,7 +27,7 @@
   });
 
   const evidence = $derived(loaded
-    ? deriveEvidence({ sourceTitle, excerpt: statement.excerpt, sourceText, grounded: statement.grounded })
+    ? deriveEvidence({ sourceTitle, excerpt: statement.excerpt, sourceText, grounded: statement.grounded, anchor: statement.anchor, retainedHash: sourceHash })
     : null);
   const notice = $derived(evidence ? evidenceNotice(evidence) : null);
 </script>
