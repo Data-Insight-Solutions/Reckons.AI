@@ -23,7 +23,7 @@
     selected?: string | null;
     onscene: (scene: ReturnType<typeof projectProvenance>) => void;
     graphTools?: Snippet;
-    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb'; url: string } | null;
+    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb' | 'splat'; url: string } | null;
     onentity: (key: string) => void;
   }>();
   const fullIndex = $derived(buildProvenanceIndex(statements, sources));

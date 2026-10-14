@@ -1,5 +1,5 @@
 {
-  "built": 164,
+  "built": 165,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -899,7 +899,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "a98f1181d164ba51"
+      "pageHash": "024cb1099a89a578"
     },
     {
       "path": "testing/test-suite",
@@ -917,7 +917,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "2f356cee59f96827"
+      "pageHash": "f6b32389c3d49aa8"
     },
     {
       "path": "testing/visual-tests",
@@ -926,7 +926,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "0fb5a23d9856a792"
+      "pageHash": "93ec6c4af94d883a"
     },
     {
       "path": "testing/vlm-workflow-streams",
@@ -936,6 +936,15 @@
       "factCount": 5,
       "floor": "evidence",
       "pageHash": "a2d53b9aa63da703"
+    },
+    {
+      "path": "testing/workflow-generated-assets",
+      "entity": "urn:reckons:test/Workflow-GeneratedAssets",
+      "graph": "docs-testing.ttl",
+      "factHash": "b7ae2d60f4505b61",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "2aa8e42f0282b1e1"
     },
     {
       "path": "testing/workflow-readme-path",

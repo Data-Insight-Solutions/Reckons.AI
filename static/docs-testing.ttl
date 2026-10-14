@@ -794,3 +794,126 @@ test:Workflow-ReadmePath-Step5
     kpred:screenshot    "/workflows/readme-path/05-reckoning.webp" ;
     skos:definition     "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It reads the facts in your space and proposes options and a recommendation, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust." ;
     kpred:assertion     "The request is accepted and a proposal card comes back saying how many facts it is based on. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." .
+
+test:Workflow-GeneratedAssets
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Make pictures, clips and 3D splats on your own machine, and see them in a space" ;
+    skos:definition     """Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat made from that picture. A Gaussian splat is a 3D object drawn as many small soft blobs of color, which you can turn and look at from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space.
+
+### Made on one machine, with no cloud service
+
+| Step | Tool | Model | License | What it made |
+|---|---|---|---|---|
+| Picture from a prompt | stable-diffusion.cpp | Z-Image-Turbo | MIT and Apache-2.0 | a 768×768 picture |
+| Clip from the picture | stable-diffusion.cpp | Wan2.2 TI2V-5B | MIT and Apache-2.0 | a 3-second, 49-frame clip |
+| Splat from the picture | TripoSplat | TripoSplat | MIT | 32,768 or 65,536 Gaussians |
+
+All three run on your own computer. The command is `npm run gen:assets`, which reads made-up prompts from `scripts/content/gen-briefs.json`. Each result gets a receipt beside it that names the tool, every model file with its fingerprint (a SHA-256 hash) and license, the prompt, the seed, how long it took, and whether the result passed its check. Tools and model files live outside the project folder; `scripts/content/gen-setup.sh` downloads them.
+
+### A result is accepted by a check, not by the tool
+
+A model can write a grey square, a clip in which nothing moves, or a splat full of broken numbers, and still report success. So every result is checked by code that knows nothing about the model. The picture must not be flat. The clip must play, and how much it moves is measured. The splat must have the expected number of blobs, real numbers, a real size and visible blobs. On the first run the splat check found a fault in TripoSplat's own file writer: thousands of blobs were saved with an infinite opacity. The pipeline now repairs those values and records how many it repaired.
+
+### A generated splat is invented
+
+TripoSplat guesses the far side of an object from one picture. A splat made this way is decoration, not a record of anything real, and the space says so. A splat rebuilt from many real photographs is a different thing and is not part of this workflow.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** The pictures, clips and splats are the committed results of one run of `npm run gen:assets` on one machine with an NVIDIA RTX 3090 graphics card, on 2026-10-14. Every prompt is made up for this example.
+
+**What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again.""" ;
+    kpred:workflow-id   "generated-assets" ;
+    kpred:test-file     "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-GeneratedAssets-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Open the Generated assets example as its own space" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "open-example" ;
+    kpred:short-label   "Open the example" ;
+    kpred:box-label     "Generated assets" ;
+    kpred:box-target    "the Generated assets card under example data" ;
+    kpred:page          "/about" ;
+    kpred:screenshot    "/workflows/generated-assets/01-open-example.webp" ;
+    kpred:page-name     "the About page" ;
+    skos:definition     "Under example data on the About page, choose Generated assets. It opens as a new space of its own, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
+    kpred:assertion     "The card offers to open the example as a space, and after choosing it the Spaces tab shows Generated assets as the current space." .
+
+test:Workflow-GeneratedAssets-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the pipeline in the graph" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "see-pipeline" ;
+    kpred:short-label   "See the pipeline" ;
+    kpred:box-label     "Prompt → picture → clip and splat" ;
+    kpred:box-target    "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/02-see-pipeline.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node also holds the facts its receipt recorded: the model, the license, the seed and how long it took. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
+    kpred:assertion     "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
+
+test:Workflow-GeneratedAssets-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The picture, made from a prompt" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "picture" ;
+    kpred:short-label   "Picture from a prompt" ;
+    kpred:box-label     "Made by Z-Image-Turbo" ;
+    kpred:box-target    "the enlarged picture" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/03-picture.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
+    kpred:assertion     "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
+
+test:Workflow-GeneratedAssets-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The clip, made from the picture" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "video" ;
+    kpred:short-label   "Clip from the picture" ;
+    kpred:box-label     "Made by Wan2.2" ;
+    kpred:box-target    "the clip, paused part way through" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/04-video.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
+    kpred:assertion     "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
+
+test:Workflow-GeneratedAssets-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The splat, made from the picture" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "splat" ;
+    kpred:short-label   "Splat from the picture" ;
+    kpred:box-label     "Made by TripoSplat" ;
+    kpred:box-target    "the splat viewer, which turns the splat slowly and can be dragged" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/05-splat.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
+    kpred:assertion     "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
+
+test:Workflow-GeneratedAssets-Step6
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Set a splat as the background of the space" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "6"^^xsd:integer ;
+    kpred:step-id       "background" ;
+    kpred:short-label   "Splat as the background" ;
+    kpred:box-label     "The island behind the graph" ;
+    kpred:box-target    "the graph with the lighthouse island splat drawn behind it" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/06-background.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Open the lighthouse island splat and choose Set as background. The island is then drawn large behind the graph, sized to the graph and turning very slowly, and it never gets in the way of choosing a node. The choice is saved with the space, so it travels with an export. Clear background removes it." ;
+    kpred:assertion     "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .

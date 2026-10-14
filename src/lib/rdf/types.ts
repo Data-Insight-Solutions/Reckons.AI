@@ -470,6 +470,8 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
   'urn:kbase:predicate/video',
+  // A node's Gaussian splat file (F58.9.2): a picture of the thing, never an edge to a literal node.
+  'urn:kbase:predicate/splat',
   // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
   // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
   'urn:kbase:predicate/photo-credit',

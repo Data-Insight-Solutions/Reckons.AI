@@ -190,3 +190,4 @@ reckons-workspace/*.jsonl.*
 # Purpose-built public examples belong under static/examples/ or static/starter-*.ttl.
 /share/
 /sites/
+static/generated/**/.image.png
