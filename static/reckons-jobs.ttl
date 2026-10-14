@@ -45,6 +45,15 @@ job:altitude-report rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:anchor-resolution rdf:type          ktype:OfflineJob ;
+    rdfs:label          "anchor-resolution" ;
+    skos:prefLabel      "anchor-resolution" ;
+    skos:definition     "F122.1.2: every fact anchor stored in a space file must name a chunk that is in the same file, belongs to the fact's own source and contains the span's start. A citation that cannot be opened is reported, never dropped or guessed. Reads every .ttl that holds an anchor; zero tokens." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/anchor-resolution.ts --quiet" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:branch-ancestry rdf:type          ktype:OfflineJob ;
     rdfs:label          "branch-ancestry" ;
     skos:prefLabel      "branch-ancestry" ;
@@ -629,9 +638,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 67 of them, 56 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 68 of them, 57 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
