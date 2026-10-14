@@ -764,7 +764,7 @@ export async function readKnowledgeBaseFromFolder(folderName: string): Promise<{
     const assets = new Map<string, Uint8Array>();
     try {
       const assetsDir = await kbDir.getDirectoryHandle('assets');
-      for (const category of ['icons', 'previews', 'models'] as const) {
+      for (const category of ['icons', 'previews', 'models', 'splats'] as const) {
         try {
           const catDir = await assetsDir.getDirectoryHandle(category);
           for await (const entry of (catDir as any).values()) {

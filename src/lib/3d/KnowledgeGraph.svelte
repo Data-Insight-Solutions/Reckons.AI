@@ -27,7 +27,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
-  import { splatMapFrom, backgroundSplatFrom } from './splat';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor } from './splat';
 
   interactivity();
 
@@ -213,14 +213,14 @@
     for (const [iri, url] of splatMapFrom(statements as Statement[])) {
       const n = byKey.get('i:' + iri);
       if (!n) continue;
-      items.push({ key: n.key, url, radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35 });
+      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35 });
     }
     const bg = backgroundSplatFrom(statements as Statement[]);
     if (bg) {
       // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
       // space's size; recomputed each frame because the layout keeps moving.
       items.push({
-        key: 'background', url: bg, radius: 10, opacity: 0.5, spin: 0.02,
+        key: 'background', url: bg, orientation: splatOrientationFor(statements as Statement[], bg), radius: 10, opacity: 0.5, spin: 0.02,
         // size() runs first each frame (SplatLayer), so the frame is computed once per frame.
         size: () => graphFrame().radius, position: () => bgFrame.anchor,
       });

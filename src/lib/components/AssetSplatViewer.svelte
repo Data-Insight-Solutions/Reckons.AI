@@ -7,7 +7,7 @@
   import { OrbitControls } from '@threlte/extras';
   import SplatLayer from '$lib/3d/SplatLayer.svelte';
 
-  let { url }: { url: string } = $props();
+  let { url, orientation = 'triposplat' }: { url: string; orientation?: 'triposplat' | 'none' } = $props();
   let status = $state<'loading' | 'ready' | 'failed'>('loading');
 </script>
 
@@ -17,7 +17,7 @@
       <OrbitControls enableDamping autoRotate autoRotateSpeed={1.2} target={[0, 0, 0]} />
     </T.PerspectiveCamera>
     <SplatLayer
-      items={[{ key: 'asset', url, radius: 1 }]}
+      items={[{ key: 'asset', url, radius: 1, orientation }]}
       onstatus={(loaded, failed) => (status = loaded ? 'ready' : failed ? 'failed' : 'loading')}
     />
   </Canvas>

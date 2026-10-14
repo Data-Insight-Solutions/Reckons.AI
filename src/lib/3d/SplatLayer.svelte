@@ -7,6 +7,8 @@
     /** World radius the splat is scaled to. */
     radius: number;
     opacity?: number;
+    /** Axis convention of the file (default: TripoSplat's). A reconstructed room uses 'none'. */
+    orientation?: 'triposplat' | 'none';
     /** Read every frame; the splat follows it (a node's live position). Omitted = origin. */
     position?: () => THREE_NS.Vector3 | undefined;
     /** Radians per second about the vertical axis. */
@@ -40,7 +42,7 @@
   $effect(() => onloadedkeys?.(loadedKeys));
 
   const { renderer, scene } = useThrelte();
-  type Live = { url: string; radius: number; group?: THREE.Group; baseScale?: number; dispose?: () => void; failed?: boolean };
+  type Live = { url: string; radius: number; orientation?: string; group?: THREE.Group; baseScale?: number; dispose?: () => void; failed?: boolean };
   const live = new Map<string, Live>();
   let splatRenderer: (THREE.Object3D & { dispose(): void }) | null = null;
   let destroyed = false;
@@ -61,7 +63,7 @@
     const wanted = new Map(items.map((i) => [i.key, i]));
     for (const [key, l] of live) {
       const w = wanted.get(key);
-      if (!w || w.url !== l.url || w.radius !== l.radius) {
+      if (!w || w.url !== l.url || w.radius !== l.radius || w.orientation !== l.orientation) {
         l.dispose?.();
         live.delete(key);
         if (loadedKeys.has(key)) { const next = new Set(loadedKeys); next.delete(key); loadedKeys = next; }
@@ -69,12 +71,12 @@
     }
     for (const item of items) {
       if (live.has(item.key)) continue;
-      const entry: Live = { url: item.url, radius: item.radius };
+      const entry: Live = { url: item.url, radius: item.radius, orientation: item.orientation };
       live.set(item.key, entry);
       (async () => {
         try {
           await ensureRenderer();
-          const made = await createNormalizedSplat(THREE, item.url, item.radius, { opacity: item.opacity });
+          const made = await createNormalizedSplat(THREE, item.url, item.radius, { opacity: item.opacity, orientation: item.orientation });
           if (destroyed || live.get(item.key) !== entry) { made.dispose(); return; }
           entry.group = made.group;
           entry.baseScale = made.group.scale.x;
