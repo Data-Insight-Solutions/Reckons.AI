@@ -46,7 +46,7 @@ function statement(over: Partial<Statement> = {}): Statement {
 }
 
 const withObjects = (values: string[]) => values.map((o) => ({
-  id: o, sourceId: 'mcp-pending-x', confidence: 0.7, status: 'pending',
+  id: o, status: 'pending',
   s: { kind: 'iri', value: S }, p: { kind: 'iri', value: P },
   o: { kind: 'literal', value: o }, g: { kind: 'iri', value: 'urn:mcp:pending:x' },
   createdAt: 1, updatedAt: 1,
