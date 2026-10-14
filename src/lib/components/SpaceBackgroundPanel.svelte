@@ -6,7 +6,13 @@
    */
   import { statements } from '$lib/stores/kb.svelte';
   import { importScan, setMeta } from '$lib/stores/space-room';
-  import { backgroundSplatFrom, splatOriginOf, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, type SplatOrigin } from '$lib/3d/splat';
+  import {
+    backgroundSplatFrom, splatOriginOf, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, type SplatOrigin,
+    backgroundSettingsFrom, BACKGROUND_DEFAULTS, UP_AXES, upAxisQuaternion, fitFloor, levelQuaternion, rotatePoints, qMul, TRIPOSPLAT_BASE,
+    BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE,
+  } from '$lib/3d/splat';
+  import { plyCentres } from '$lib/3d/splat-check';
+  import { readSplatFile } from '$lib/storage/splat-files';
 
   const background = $derived(backgroundSplatFrom(statements()));
   const origin = $derived(background ? splatOriginOf(statements(), background) : null);
@@ -34,6 +40,42 @@
     }
   }
   const clear = () => setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, '');
+
+  // ── Settings (F58.9.8): meta triples on the space, never edges ──
+  const set = $derived(backgroundSettingsFrom(statements()));
+  const put = (pred: string, v: string | number) => setMeta(SPACE_SUBJECT, pred, String(v));
+  const num = (e: Event) => Number((e.target as HTMLInputElement).value);
+  const putOffset = (axis: 0 | 1 | 2, e: Event) => {
+    const o = [...set.offset]; const v = num(e); o[axis] = Number.isFinite(v) ? v : 0;
+    return put(BG_OFFSET_PREDICATE, o.join(' '));
+  };
+  const resetSettings = async () => {
+    for (const p of [BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE]) await setMeta(SPACE_SUBJECT, p, '');
+    levelMsg = '';
+  };
+
+  let levelMsg = $state('');
+  /** Fit the dominant horizontal plane to the splat's Gaussian centres and store the tilt to remove. */
+  async function levelFloor() {
+    if (!background) return;
+    levelMsg = 'fitting…';
+    try {
+      let bytes: Uint8Array | null = null;
+      if (background.startsWith('asset:splat/')) bytes = (await readSplatFile(background))?.bytes ?? null;
+      else if (/\.ply(\?|#|$)/i.test(background)) bytes = new Uint8Array(await (await fetch(background)).arrayBuffer());
+      if (!bytes || background.endsWith('.spz')) { levelMsg = 'Level the floor reads PLY files; this background is not one it can read here.'; return; }
+      const centres = plyCentres(bytes);
+      let q = upAxisQuaternion(set.up);
+      if (splatOrientationFor(statements(), background) === 'triposplat') q = qMul(q, TRIPOSPLAT_BASE);
+      const fit = fitFloor(rotatePoints(centres, q));
+      if (!fit) { levelMsg = 'No flat horizontal surface holds a tenth of the sampled points, so nothing was changed. Check the up axis first.'; return; }
+      const lq = levelQuaternion(fit);
+      await put(BG_LEVEL_PREDICATE, lq.map((x) => x.toFixed(6)).join(' '));
+      levelMsg = `Removed a ${fit.tiltDeg.toFixed(1)}° tilt; ${(fit.fraction * 100).toFixed(0)}% of ${(centres.length / 3).toLocaleString()} sampled points lie on that plane.`;
+    } catch (e) {
+      levelMsg = `Could not fit: ${(e as Error).message}`;
+    }
+  }
 </script>
 
 <div class="overlay-group" data-testid="space-background">
@@ -55,6 +97,38 @@
     </div>
   {/if}
   {#if done}<span class="pkg-note pkg-msg mono" role="status">{done}</span>{/if}
+  {#if background}
+    <div class="settings mono" data-testid="background-settings">
+      <div class="chip-row" role="group" aria-label="Background mode">
+        <button class="pkg-chip" class:active={set.mode === 'backdrop'} onclick={() => put(BG_MODE_PREDICATE, 'backdrop')} title="A dimmed scene behind the graph, sized to it">backdrop</button>
+        <button class="pkg-chip" class:active={set.mode === 'surround'} onclick={() => put(BG_MODE_PREDICATE, 'surround')} title="The graph sits inside the room, which keeps its own scale">surround</button>
+      </div>
+      <label>up axis
+        <select class="pkg-chip" value={set.up} onchange={(e) => put(BG_UP_PREDICATE, (e.target as HTMLSelectElement).value)} title="Which of the file's axes points up. Scans from COLMAP-based tools usually point down (−y).">
+          {#each UP_AXES as a}<option value={a}>{a.replace('-', '−')}</option>{/each}
+        </select>
+      </label>
+      <label>yaw {set.yaw}°
+        <input type="range" min="-180" max="180" step="5" value={set.yaw} onchange={(e) => put(BG_YAW_PREDICATE, num(e))} />
+      </label>
+      <label>scale
+        <input type="number" min="0.001" step="0.1" value={set.scale} onchange={(e) => put(BG_SCALE_PREDICATE, num(e))}
+          title={set.mode === 'surround' ? 'World units per file unit. A scan has no true size until you set one.' : 'Multiplier on the automatic size'} />
+      </label>
+      <label>opacity {Math.round(set.opacity * 100)}%
+        <input type="range" min="0" max="1" step="0.05" value={set.opacity} onchange={(e) => put(BG_OPACITY_PREDICATE, num(e))} />
+      </label>
+      <label>offset
+        {#each [0, 1, 2] as k}<input type="number" step="0.5" value={set.offset[k]} onchange={(e) => putOffset(k as 0 | 1 | 2, e)} aria-label={'offset ' + 'xyz'[k]} />{/each}
+      </label>
+      <div class="chip-row">
+        <button class="pkg-chip" onclick={levelFloor} data-testid="level-floor" title="Fit the dominant horizontal plane to the scan and remove its tilt">Level the floor</button>
+        {#if set.level}<button class="pkg-chip" onclick={() => put(BG_LEVEL_PREDICATE, '')}>remove levelling</button>{/if}
+        <button class="pkg-chip" onclick={resetSettings}>reset settings</button>
+      </div>
+      {#if levelMsg}<span class="pkg-note pkg-msg mono" role="status">{levelMsg}</span>{/if}
+    </div>
+  {/if}
   <span class="pkg-note mono">
     {#if background}background: {background.startsWith('asset:splat/') ? 'a scan stored in this browser' : background}{origin ? ` · ${origin}` : ''}
     {:else}.ply or .spz, checked before it is kept. It stays in this browser and travels with an export of the space.{/if}
@@ -71,6 +145,10 @@
   .pkg-chip:hover { border-color: var(--muted-2); color: var(--ink); }
   .pkg-chip:disabled { opacity: 0.5; cursor: default; }
   .pkg-cta { border-color: var(--accent); color: var(--accent); }
+  .pkg-chip.active { border-color: var(--accent); color: var(--accent); }
+  .settings { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.68rem; color: var(--muted); margin-top: 0.3rem; }
+  .settings label { display: flex; align-items: center; gap: 0.5rem; }
+  .settings input[type='number'] { width: 4.5rem; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0.15rem 0.3rem; font-family: var(--font-mono); font-size: 0.68rem; }
   .pkg-note { font-size: 0.6rem; color: var(--muted); opacity: 0.75; padding: 0 0.1rem; }
   .pkg-msg { color: var(--accent); opacity: 1; }
   .pkg-problems { font-size: 0.68rem; color: #d9a441; border: 1px solid #d9a441; border-radius: 6px; padding: 0.4rem 0.6rem; }

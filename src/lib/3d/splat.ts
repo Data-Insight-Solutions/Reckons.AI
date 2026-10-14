@@ -97,14 +97,14 @@ export function loadSplatLib(): Promise<SplatLib> {
 
 /**
  * Load one splat and wrap it in a group normalised to `radius` world units around its own centre,
- * so a node's splat is node-sized whatever scale the file was written at.
+ * so a node's splat is node-sized whatever scale the file was written at (unless `keepScale`).
  */
 export async function createNormalizedSplat(
   three: typeof THREE,
   url: string,
   radius: number,
-  opts: { opacity?: number; orientation?: SplatOrientation } = {},
-): Promise<{ group: THREE.Group; dispose: () => void }> {
+  opts: { opacity?: number; orientation?: SplatOrientation; keepScale?: boolean } = {},
+): Promise<{ group: THREE.Group; inner: THREE.Group; mesh: { opacity: number }; baseQuaternion: THREE.Quaternion; dispose: () => void }> {
   const { SplatMesh } = await loadSplatLib();
   let mesh: InstanceType<typeof SplatMesh>;
   if (isLocalSplatUrl(url)) {
@@ -127,9 +127,10 @@ export async function createNormalizedSplat(
   mesh.position.copy(sphere.center).multiplyScalar(-1);
   inner.add(mesh);
   const group = new three.Group();
-  group.scale.setScalar(sphere.radius > 0 ? radius / sphere.radius : 1);
+  // keepScale (a surround room): one file unit stays one world unit (times the space's scale setting).
+  group.scale.setScalar(!opts.keepScale && sphere.radius > 0 ? radius / sphere.radius : 1);
   group.add(inner);
-  return { group, dispose: () => { group.removeFromParent(); mesh.dispose(); } };
+  return { group, inner, mesh, baseQuaternion: inner.quaternion.clone(), dispose: () => { group.removeFromParent(); mesh.dispose(); } };
 }
 
 // ── Importing a scan (F58.9.7) ───────────────────────────────────────────────
@@ -160,3 +161,245 @@ export function scanStatements(url: string, label: string, origin: SplatOrigin, 
     { id: newId(), s, p: { kind: 'iri', value: SPLAT_ORIGIN_PREDICATE }, o: lit(origin), ...base },
   ];
 }
+
+// ── Background settings (F58.9.8) ────────────────────────────────────────────
+//
+// Settings, not facts: meta triples on <urn:reckons:space>, never edges, so they travel with an
+// export of the space. Unset means the default, so a space made before F58.9.8 looks as it did.
+
+const META = 'urn:kbase:meta/';
+export const BG_MODE_PREDICATE = META + 'background-mode';
+export const BG_UP_PREDICATE = META + 'background-up';
+export const BG_YAW_PREDICATE = META + 'background-yaw';
+export const BG_LEVEL_PREDICATE = META + 'background-level';
+export const BG_SCALE_PREDICATE = META + 'background-scale';
+export const BG_OFFSET_PREDICATE = META + 'background-offset';
+export const BG_OPACITY_PREDICATE = META + 'background-opacity';
+
+/** backdrop: a dimmed scene behind the graph, sized to it. surround: the graph sits INSIDE the room, which keeps its own scale. */
+export type BackgroundMode = 'backdrop' | 'surround';
+export const UP_AXES = ['+y', '-y', '+z', '-z', '+x', '-x'] as const;
+export type UpAxis = (typeof UP_AXES)[number];
+export type Quat = [number, number, number, number];
+export type Vec3 = [number, number, number];
+
+export interface BackgroundSettings {
+  mode: BackgroundMode;
+  /** Which of the FILE's axes points up. */
+  up: UpAxis;
+  /** Degrees about the vertical, after levelling. */
+  yaw: number;
+  /** Floor-levelling correction (a quaternion), or null. Set by Level the floor, never typed. */
+  level: Quat | null;
+  /** Backdrop: multiplier on the automatic size. Surround: world units per file unit. */
+  scale: number;
+  /** World offset of the room's centre from the graph's centre. */
+  offset: Vec3;
+  opacity: number;
+}
+
+export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5 };
+
+const nums = (v: string, n: number): number[] | null => {
+  const a = v.trim().split(/[\s,]+/).map(Number);
+  return a.length === n && a.every(Number.isFinite) ? a : null;
+};
+const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
+
+/** The space's background settings. The newest live value of each wins; anything malformed falls back to its default. */
+export function backgroundSettingsFrom(statements: readonly Statement[]): BackgroundSettings {
+  const newest = new Map<string, Statement>();
+  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE]);
+  for (const s of statements) {
+    if (s.s.value !== SPACE_SUBJECT || !wanted.has(s.p.value) || s.o.kind !== 'literal' || !live(s)) continue;
+    const prev = newest.get(s.p.value);
+    if (!prev || (s.updatedAt ?? 0) >= (prev.updatedAt ?? 0)) newest.set(s.p.value, s);
+  }
+  const val = (p: string) => newest.get(p)?.o.value;
+  const d = BACKGROUND_DEFAULTS;
+  const mode = val(BG_MODE_PREDICATE);
+  const up = val(BG_UP_PREDICATE);
+  const yaw = Number(val(BG_YAW_PREDICATE));
+  const scale = Number(val(BG_SCALE_PREDICATE));
+  const opacity = Number(val(BG_OPACITY_PREDICATE));
+  const offset = nums(val(BG_OFFSET_PREDICATE) ?? '', 3);
+  const level = nums(val(BG_LEVEL_PREDICATE) ?? '', 4);
+  const resolvedMode: BackgroundMode = mode === 'surround' || mode === 'backdrop' ? mode : d.mode;
+  return {
+    mode: resolvedMode,
+    up: (UP_AXES as readonly string[]).includes(up ?? '') ? (up as UpAxis) : d.up,
+    yaw: Number.isFinite(yaw) && val(BG_YAW_PREDICATE) !== undefined ? yaw : d.yaw,
+    level: level ? qNormalize(level as Quat) : null,
+    scale: Number.isFinite(scale) && scale > 0 ? clamp(scale, 0.001, 1000) : d.scale,
+    offset: offset ? (offset.map((x) => clamp(x, -1e4, 1e4)) as Vec3) : d.offset,
+    // Unset opacity: a backdrop is dimmed so labels stay readable; a room you are inside is not.
+    opacity: Number.isFinite(opacity) && val(BG_OPACITY_PREDICATE) !== undefined ? clamp(opacity, 0, 1) : resolvedMode === 'surround' ? 1 : d.opacity,
+  };
+}
+
+// Quaternions are [x, y, z, w]. Only what the settings need; THREE does the rendering.
+export function qNormalize(q: Quat): Quat {
+  const n = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+  return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
+}
+export function qMul(a: Quat, b: Quat): Quat {
+  return [
+    a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1],
+    a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0],
+    a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3],
+    a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2],
+  ];
+}
+export function qRotate(q: Quat, v: Vec3): Vec3 {
+  const [x, y, z, w] = q;
+  const t = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+  return [v[0] + w * t[0] + (y * t[2] - z * t[1]), v[1] + w * t[1] + (z * t[0] - x * t[2]), v[2] + w * t[2] + (x * t[1] - y * t[0])];
+}
+export function qAboutY(degrees: number): Quat {
+  const h = (degrees * Math.PI) / 360;
+  return [0, Math.sin(h), 0, Math.cos(h)];
+}
+/** The shortest rotation taking unit vector `a` to unit vector `b`. */
+export function qBetween(a: Vec3, b: Vec3): Quat {
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  if (dot > 0.999999) return [0, 0, 0, 1];
+  if (dot < -0.999999) {
+    // Antiparallel: a half turn about any axis perpendicular to a.
+    const perp: Vec3 = Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+    const ax = [a[1] * perp[2] - a[2] * perp[1], a[2] * perp[0] - a[0] * perp[2], a[0] * perp[1] - a[1] * perp[0]];
+    const n = Math.hypot(ax[0], ax[1], ax[2]);
+    return [ax[0] / n, ax[1] / n, ax[2] / n, 0];
+  }
+  return qNormalize([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0], 1 + dot]);
+}
+
+const AXIS_VECTORS: Record<UpAxis, Vec3> = { '+x': [1, 0, 0], '-x': [-1, 0, 0], '+y': [0, 1, 0], '-y': [0, -1, 0], '+z': [0, 0, 1], '-z': [0, 0, -1] };
+/** The rotation that makes the file's chosen up axis point up (+y). */
+export const upAxisQuaternion = (up: UpAxis): Quat => qBetween(AXIS_VECTORS[up], [0, 1, 0]);
+
+/** The fixed turn createNormalizedSplat gives a TripoSplat file (Euler XYZ: pi about x, then pi/2 about y). */
+export const TRIPOSPLAT_BASE: Quat = qMul([1, 0, 0, 0], [0, Math.SQRT1_2, 0, Math.SQRT1_2]);
+
+/** The whole orientation of the room: up axis first, then the floor level, then the yaw about the vertical. */
+export function backgroundQuaternion(s: Pick<BackgroundSettings, 'up' | 'level' | 'yaw'>): Quat {
+  let q = upAxisQuaternion(s.up);
+  if (s.level) q = qMul(s.level, q);
+  return qNormalize(qMul(qAboutY(s.yaw), q));
+}
+
+export interface FloorFit {
+  /** Unit normal of the dominant near-horizontal plane, pointing up (y >= 0). */
+  normal: Vec3;
+  /** Plane offset: normal · p = offset. */
+  offset: number;
+  /** Sampled points within the threshold of the plane. */
+  inliers: number;
+  /** inliers / points sampled. */
+  fraction: number;
+  /** Degrees between the plane normal and +y: what levelling removes. */
+  tiltDeg: number;
+}
+
+function rng(seed: number) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/** Smallest-eigenvalue eigenvector of a symmetric 3x3 (cyclic Jacobi). */
+function smallestEigenvector(m: number[][]): Vec3 {
+  const a = m.map((r) => r.slice());
+  const v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 24; sweep++) {
+    let off = 0;
+    for (let p = 0; p < 2; p++) for (let q = p + 1; q < 3; q++) off += a[p][q] * a[p][q];
+    if (off < 1e-24) break;
+    for (let p = 0; p < 2; p++) for (let q = p + 1; q < 3; q++) {
+      if (Math.abs(a[p][q]) < 1e-30) continue;
+      const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) { const akp = a[k][p], akq = a[k][q]; a[k][p] = c * akp - s * akq; a[k][q] = s * akp + c * akq; }
+      for (let k = 0; k < 3; k++) { const apk = a[p][k], aqk = a[q][k]; a[p][k] = c * apk - s * aqk; a[q][k] = s * apk + c * aqk; }
+      for (let k = 0; k < 3; k++) { const vkp = v[k][p], vkq = v[k][q]; v[k][p] = c * vkp - s * vkq; v[k][q] = s * vkp + c * vkq; }
+    }
+  }
+  let best = 0;
+  for (let i = 1; i < 3; i++) if (a[i][i] < a[best][best]) best = i;
+  return [v[0][best], v[1][best], v[2][best]];
+}
+
+/**
+ * Fit the dominant near-horizontal plane to Gaussian centres already expressed with y up (RANSAC on
+ * three-point planes whose normal is within `maxTiltDeg` of +y, refined by PCA of the inliers).
+ * A floor, or a ceiling: both are horizontal, and levelling only needs the tilt. Deterministic for
+ * a given seed. Returns null when there are too few points or no plane holds a tenth of them.
+ */
+export function fitFloor(points: ArrayLike<number>, opts: { iterations?: number; maxTiltDeg?: number; seed?: number; threshold?: number } = {}): FloorFit | null {
+  const n = Math.floor(points.length / 3);
+  if (n < 30) return null;
+  const maxTilt = opts.maxTiltDeg ?? 35;
+  const minCos = Math.cos((maxTilt * Math.PI) / 180);
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) { const x = points[i * 3 + k]; if (x < min[k]) min[k] = x; if (x > max[k]) max[k] = x; }
+  const diag = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
+  if (!(diag > 0)) return null;
+  const thr = opts.threshold ?? diag * 0.01;
+  const rand = rng(opts.seed ?? 1);
+  const count = (nx: number, ny: number, nz: number, d: number) => {
+    let c = 0;
+    for (let i = 0; i < n; i++) if (Math.abs(nx * points[i * 3] + ny * points[i * 3 + 1] + nz * points[i * 3 + 2] - d) < thr) c++;
+    return c;
+  };
+  let best: { n: Vec3; d: number; c: number } | null = null;
+  for (let it = 0; it < (opts.iterations ?? 300); it++) {
+    const i = Math.floor(rand() * n), j = Math.floor(rand() * n), k = Math.floor(rand() * n);
+    if (i === j || j === k || i === k) continue;
+    const ux = points[j * 3] - points[i * 3], uy = points[j * 3 + 1] - points[i * 3 + 1], uz = points[j * 3 + 2] - points[i * 3 + 2];
+    const vx = points[k * 3] - points[i * 3], vy = points[k * 3 + 1] - points[i * 3 + 1], vz = points[k * 3 + 2] - points[i * 3 + 2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz);
+    if (!(len > 1e-12)) continue;
+    nx /= len; ny /= len; nz /= len;
+    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    if (ny < minCos) continue;
+    const d = nx * points[i * 3] + ny * points[i * 3 + 1] + nz * points[i * 3 + 2];
+    const c = count(nx, ny, nz, d);
+    if (!best || c > best.c) best = { n: [nx, ny, nz], d, c };
+  }
+  if (!best) return null;
+  // Refine: PCA of the inliers (the normal is the direction of least variance).
+  const inl: number[] = [];
+  for (let i = 0; i < n; i++) if (Math.abs(best.n[0] * points[i * 3] + best.n[1] * points[i * 3 + 1] + best.n[2] * points[i * 3 + 2] - best.d) < thr) inl.push(i);
+  if (inl.length >= 3) {
+    const mean = [0, 0, 0];
+    for (const i of inl) for (let k = 0; k < 3; k++) mean[k] += points[i * 3 + k] / inl.length;
+    const cov = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const i of inl) {
+      const dv = [points[i * 3] - mean[0], points[i * 3 + 1] - mean[1], points[i * 3 + 2] - mean[2]];
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) cov[r][c] += dv[r] * dv[c];
+    }
+    let [nx, ny, nz] = smallestEigenvector(cov);
+    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    if (ny >= minCos) {
+      const d = nx * mean[0] + ny * mean[1] + nz * mean[2];
+      const c = count(nx, ny, nz, d);
+      if (c >= best.c) best = { n: [nx, ny, nz], d, c };
+    }
+  }
+  const fraction = best.c / n;
+  if (fraction < 0.1) return null;
+  return { normal: best.n, offset: best.d, inliers: best.c, fraction, tiltDeg: (Math.acos(clamp(best.n[1], -1, 1)) * 180) / Math.PI };
+}
+
+/** Rotate a flat xyz array by `q` (new array). */
+export function rotatePoints(points: ArrayLike<number>, q: Quat): Float32Array {
+  const out = new Float32Array(points.length);
+  for (let i = 0; i + 2 < points.length; i += 3) {
+    const r = qRotate(q, [points[i], points[i + 1], points[i + 2]]);
+    out[i] = r[0]; out[i + 1] = r[1]; out[i + 2] = r[2];
+  }
+  return out;
+}
+
+/** The levelling correction for a fitted floor: the rotation that takes its normal to +y. */
+export const levelQuaternion = (fit: Pick<FloorFit, 'normal'>): Quat => qBetween(fit.normal, [0, 1, 0]);

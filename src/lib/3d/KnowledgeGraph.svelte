@@ -27,7 +27,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
-  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor } from './splat';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion } from './splat';
 
   interactivity();
 
@@ -217,13 +217,27 @@
     }
     const bg = backgroundSplatFrom(statements as Statement[]);
     if (bg) {
-      // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
-      // space's size; recomputed each frame because the layout keeps moving.
-      items.push({
-        key: 'background', url: bg, orientation: splatOrientationFor(statements as Statement[], bg), radius: 10, opacity: 0.5, spin: 0.02,
-        // size() runs first each frame (SplatLayer), so the frame is computed once per frame.
-        size: () => graphFrame().radius, position: () => bgFrame.anchor,
-      });
+      const set = backgroundSettingsFrom(statements as Statement[]);
+      const quat = backgroundQuaternion(set);
+      const orientation = splatOrientationFor(statements as Statement[], bg);
+      if (set.mode === 'surround') {
+        // The graph sits INSIDE the room: the room keeps its own scale (one file unit = `scale`
+        // world units), is centred on the graph, and does not turn.
+        items.push({
+          key: 'background', url: bg, orientation, keepScale: true, radius: 1, opacity: set.opacity,
+          size: () => set.scale, quaternion: () => quat,
+          position: () => bgRoomCentre.set(set.offset[0], set.offset[1], set.offset[2]).add(graphCentroid()),
+        });
+      } else {
+        // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
+        // space's size; recomputed each frame because the layout keeps moving.
+        items.push({
+          key: 'background', url: bg, orientation, radius: 10, opacity: set.opacity, spin: 0.02, quaternion: () => quat,
+          // size() runs first each frame (SplatLayer), so the frame is computed once per frame.
+          size: () => graphFrame().radius * set.scale,
+          position: () => bgRoomCentre.copy(bgFrame.anchor).add(bgOffset.set(set.offset[0], set.offset[1], set.offset[2])),
+        });
+      }
     }
     return items;
   });
@@ -273,6 +287,15 @@
    */
   const bgFrame = { anchor: new THREE.Vector3(), radius: 10 };
   const bgDistances: number[] = [];
+  const bgRoomCentre = new THREE.Vector3();
+  const bgOffset = new THREE.Vector3();
+  const centroidTmp = new THREE.Vector3();
+  function graphCentroid() {
+    centroidTmp.set(0, 0, 0);
+    if (!nodes.length) return centroidTmp;
+    for (const n of nodes) centroidTmp.add(n.pos);
+    return centroidTmp.multiplyScalar(1 / nodes.length);
+  }
   function graphFrame() {
     const c = bgFrame.anchor.set(0, 0, 0);
     if (!nodes.length) return bgFrame;
