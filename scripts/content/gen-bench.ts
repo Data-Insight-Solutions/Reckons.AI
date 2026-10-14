@@ -46,7 +46,12 @@ import {
   screenCandidate, splatQuality, splatScore, videoQuality, videoScore,
   type Arm, type BenchRun, type Decision, type GenStage,
 } from './gen-bench-lib.js';
-import { IMAGE_BRIEFS, SEEDS, SPLAT_BRIEFS, VIDEO_BRIEFS } from './gen-bench-tasks.js';
+import { briefsFor, loadBenchTasks, type ImageBrief, type SplatBrief, type Tier, type VideoBrief } from './gen-bench-graph.js';
+
+/** The answer key is read from the Testing graph (static/docs-testing.ttl), F183.2. */
+const TASKS = loadBenchTasks();
+const IMAGE_BRIEFS = TASKS.image;
+const SEEDS = TASKS.seeds;
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const GEN = process.env.RECKONS_GEN_HOME ?? join(homedir(), '.local/share/reckons/gen');
@@ -252,9 +257,10 @@ async function ensureSource(brief: string, work: string, gpu: number): Promise<s
 
 const pin = (gpu: number): Record<string, string> => ({ CUDA_VISIBLE_DEVICES: String(gpu), GGML_VK_VISIBLE_DEVICES: String(gpu) });
 
-async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBriefs: number, gpu: number, work: string, waitS: number, judgeModel: string) {
+async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBriefs: number, tier: Tier | 'all', gpu: number, work: string, waitS: number, judgeModel: string) {
   const records: RunRecord[] = [];
-  const briefs = (stage === 'image' ? IMAGE_BRIEFS : stage === 'video' ? VIDEO_BRIEFS : SPLAT_BRIEFS).slice(0, nBriefs);
+  const briefs = (briefsFor(TASKS, stage, tier) as (ImageBrief | VideoBrief | SplatBrief)[]).slice(0, nBriefs);
+  if (!briefs.length) throw new Error(`no ${tier} briefs for stage ${stage}`);
   for (const arm of arms) {
     const armDir = join(work, arm.id.replace(/[^\w.-]/g, '_'));
     mkdirSync(armDir, { recursive: true });
@@ -274,18 +280,18 @@ async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBrie
         if (stage === 'image') {
           const png = join(armDir, `.${tag}.png`);
           outFile = join(armDir, `${tag}.webp`);
-          generateImagePng((b as typeof IMAGE_BRIEFS[number]).prompt, seed, png, IMG, o);
+          generateImagePng((b as ImageBrief).prompt, seed, png, IMG, o);
           await sharp(png).webp({ quality: 88 }).toFile(outFile);
           rmSync(png, { force: true });
           check = await checkImage(outFile, { width: IMG, height: IMG });
         } else if (stage === 'video') {
-          const vb = b as typeof VIDEO_BRIEFS[number];
+          const vb = b as VideoBrief;
           const src = await ensureSource(vb.sourceImage, work, gpu);
           outFile = join(armDir, `${tag}.webm`);
           generateVideo(src, vb.prompt, seed, outFile, VIDEO_FRAMES, o);
           check = checkVideo(outFile, { frames: VIDEO_FRAMES });
         } else {
-          const sb = b as typeof SPLAT_BRIEFS[number];
+          const sb = b as SplatBrief;
           const src = await ensureSource(sb.sourceImage, work, gpu);
           outFile = join(armDir, `${tag}.ply`);
           generateSplat(src, seed, sb.gaussians, outFile, { ckpts: arm.ckpts, env: pin(gpu) });
@@ -301,16 +307,16 @@ async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBrie
       const peakByGpu = Object.fromEntries([...peaks].map(([i, m]) => [String(i), Math.max(0, m - (base.get(i) ?? 0))]));
       if (!error && check.pass) {
         if (stage === 'video') {
-          const q = videoQuality(videoFrames(outFile), await rgb64(await ensureSource((b as typeof VIDEO_BRIEFS[number]).sourceImage, work, gpu)));
+          const q = videoQuality(videoFrames(outFile), await rgb64(await ensureSource((b as VideoBrief).sourceImage, work, gpu)));
           metrics = { ...q };
           quality = videoScore(q);
         } else if (stage === 'splat') {
           const pts = readSplatPoints(new Uint8Array(readFileSync(outFile)));
-          const src = await ensureSource((b as typeof SPLAT_BRIEFS[number]).sourceImage, work, gpu);
+          const src = await ensureSource((b as SplatBrief).sourceImage, work, gpu);
           const raw = await sharp(src).resize(128, 128, { fit: 'fill' }).removeAlpha().raw().toBuffer();
           const q = pts ? splatQuality(pts, foregroundMask(new Uint8Array(raw), 128, 128)) : null;
           metrics = q ? { ...q } : { error: 'unreadable PLY' };
-          quality = q ? splatScore(q, (b as typeof SPLAT_BRIEFS[number]).expects.depthToWidth) : 0;
+          quality = q ? splatScore(q, (b as SplatBrief).expects.depthToWidth) : 0;
         }
       } else if (!error) quality = 0;
       records.push({
@@ -357,10 +363,13 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.l
 
 async function main() {
   const stage = arg('stage') as GenStage | undefined;
-  if (!stage || !(stage in STAGE_SPECS)) { console.error('usage: npm run bench:gen -- --stage=image|video|splat [--candidate=<owner/repo | dir>] [--seeds=3] [--briefs=N] [--gpu=N] [--wait=S]'); process.exit(2); }
+  if (!stage || !(stage in STAGE_SPECS)) { console.error('usage: npm run bench:gen -- --stage=image|video|splat [--candidate=<owner/repo | dir>] [--seeds=3] [--briefs=N] [--tier=smoke|hard|all] [--gpu=N] [--wait=S]'); process.exit(2); }
   if (arg('redecide')) { await redecide(arg('redecide')!); return; }
   const seeds = SEEDS.slice(0, Number(arg('seeds') ?? 3));
   const nBriefs = Number(arg('briefs') ?? 99);
+  // Image has a hard tier with headroom (F183.2); video and splat briefs are all smoke tier today.
+  const tier = (arg('tier') ?? (stage === 'image' ? 'hard' : 'all')) as Tier | 'all';
+  if (!['smoke', 'hard', 'all'].includes(tier)) { console.error('--tier must be smoke, hard or all'); process.exit(2); }
   const waitS = Number(arg('wait') ?? 0);
   const judgeModel = arg('judge') ?? 'qwen2.5vl:7b';
 
@@ -382,7 +391,7 @@ async function main() {
   mkdirSync(work, { recursive: true });
 
   const t0 = Date.now();
-  const records = await runStage(stage, arms, seeds, nBriefs, gpu, work, waitS, judgeModel);
+  const records = await runStage(stage, arms, seeds, nBriefs, tier, gpu, work, waitS, judgeModel);
   const [inc, other] = arms.map((a) => armOf(a.id, a.license.split(' + ')[0].toLowerCase(), records));
   const decision: Decision = decide(inc, other);
   const spreadArm = perSeedSpreadReport(inc);
