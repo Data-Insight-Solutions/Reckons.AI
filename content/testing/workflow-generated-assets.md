@@ -55,7 +55,7 @@ Where: the About page (`/about`).
 
 ### 2. See the pipeline in the graph
 
-Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node also holds the facts its receipt recorded: the model, the license, the seed and how long it took. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly.
+Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly.
 
 Where: the graph (`/`).
 

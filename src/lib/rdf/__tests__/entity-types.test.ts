@@ -11,6 +11,7 @@ import {
   KB_COLOR,
   KNOWLEDGE_BASE_ENTITY_TYPE,
 } from '../entity-types';
+import { isMetaPredicate, GENERATION_PROVENANCE_PREDICATES } from '../types';
 
 // ── BUILT_IN_TYPES ──────────────────────────────────────────────────────────
 
@@ -49,7 +50,9 @@ describe('BUILT_IN_TYPES', () => {
     // graphs in the wild) and skos:Collection (what the app writes since 2026-09-11). They are
     // deliberately identical in every visible way — a set must not change shape on the canvas
     // because of which dialect wrote it.
-    const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat', 'torus-knot']);
+    // F58.9.5: Image (box-flat), Video (box) and License (cylinder) reuse a shape because the
+    // renderer has no unused shape left; they differ by color and icon, like Document and Web Page.
+    const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat', 'torus-knot', 'box', 'cylinder']);
     const geoCounts = new Map<string, string[]>();
     for (const t of BUILT_IN_TYPES) {
       const list = geoCounts.get(t.geometry) ?? [];
@@ -228,5 +231,57 @@ describe('KnowledgeBase type', () => {
     const resolved = map.get('urn:kbase:type/KnowledgeBase');
     expect(resolved).toBeDefined();
     expect(resolved!.geometry).toBe('tetrahedron-inv');
+  });
+});
+
+describe('media and generation types (F58.9.5)', () => {
+  const byIri = (i: string) => BUILT_IN_TYPES.find((t) => t.iri === i)!;
+  const MEDIA = ['Prompt', 'Image', 'Video', 'Model3D', 'GaussianSplat', 'License'];
+
+  it('Prompt, Image, Video, 3D model, Gaussian splat and License are built in', () => {
+    for (const n of MEDIA) {
+      const t = byIri(`urn:kbase:type/${n}`);
+      expect(t, n).toBeDefined();
+      expect(t.builtIn).toBe(true);
+      expect(t.description.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('the colors of the six are all different', () => {
+    const colors = MEDIA.map((n) => byIri(`urn:kbase:type/${n}`).color);
+    expect(new Set(colors).size).toBe(colors.length);
+  });
+
+  it('a Gaussian splat is glossed in plain English', () => {
+    expect(byIri('urn:kbase:type/GaussianSplat').description).toMatch(/blobs/);
+  });
+
+  it('generated media list their provenance as schema fields', () => {
+    for (const n of ['Image', 'Video', 'Model3D', 'GaussianSplat']) {
+      const fields = byIri(`urn:kbase:type/${n}`).schemaPredicates;
+      for (const p of ['generated-with', 'generated-seed', 'generated-duration', 'generated-at']) {
+        expect(fields, `${n} ${p}`).toContain(`urn:kbase:predicate/${p}`);
+      }
+    }
+    expect(byIri('urn:kbase:type/Video').schemaPredicates).toContain('urn:kbase:predicate/generated-frames');
+    expect(byIri('urn:kbase:type/GaussianSplat').schemaPredicates).toContain('urn:kbase:predicate/generated-gaussians');
+  });
+
+  it('a License carries its SPDX id and URL as fields', () => {
+    expect(byIri('urn:kbase:type/License').schemaPredicates).toEqual([
+      'urn:kbase:predicate/spdx-id', 'urn:kbase:predicate/license-url',
+    ]);
+  });
+
+  it('every schema field of the six is metadata, so no value node is drawn for it', () => {
+    for (const n of MEDIA) {
+      for (const p of byIri(`urn:kbase:type/${n}`).schemaPredicates) expect(isMetaPredicate(p), p).toBe(true);
+    }
+    for (const p of GENERATION_PROVENANCE_PREDICATES) expect(isMetaPredicate(p)).toBe(true);
+  });
+
+  it('links between entities stay visible edges', () => {
+    expect(isMetaPredicate('urn:kbase:predicate/made-from')).toBe(false);
+    expect(isMetaPredicate('https://schema.org/license')).toBe(false);
   });
 });

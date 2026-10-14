@@ -229,6 +229,7 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
 
 export const EXAMPLE_TTL = join(ROOT, 'static/starter-generated-assets.ttl');
 const lit = (v: string | number) => JSON.stringify(String(v));
+const KIND: Record<Stage, string> = { image: 'Image', video: 'Video', splat: 'GaussianSplat' };
 const MODEL_NAMES: Record<Stage, string> = {
   image: 'Z-Image-Turbo (Q8) on stable-diffusion.cpp',
   video: 'Wan2.2 TI2V-5B (Q8) on stable-diffusion.cpp',
@@ -253,8 +254,7 @@ export function exampleTtl(receipts: Receipt[]): string {
     '@prefix p:     <urn:kbase:predicate/> .',
     '@prefix schema: <https://schema.org/> .',
     '',
-    'ktype:Prompt rdf:type ktype:EntityType ; rdfs:label "Prompt" ; p:icon "box" ; p:color "#ffd6b0" .',
-    'ktype:GeneratedAsset rdf:type ktype:EntityType ; rdfs:label "Generated asset" ; p:icon "octahedron" ; p:color "#6dd3c4" .',
+    '## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.',
     '',
     'kb:generated-assets rdf:type ktype:Concept ;',
     '    rdfs:label "Generated on this machine" ;',
@@ -262,6 +262,14 @@ export function exampleTtl(receipts: Receipt[]): string {
     `    p:has ${receipts.map((r) => `kb:gen-${r.slug}-prompt`).join(', ')} .`,
     '',
   ];
+  // License is an entity: assets LINK to it (an edge between two entities), and it carries its own
+  // SPDX id and URL as attributes. Ids and URLs come from the SPDX list, never from the receipt text.
+  const licenses = [...new Set(receipts.flatMap((r) => Object.values(r.stages).flatMap((st) => st ? [st.tool.license, ...st.models.map((m) => m.license)] : [])))].sort();
+  const licId = (l: string) => `kb:license-${l.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  for (const l of licenses) {
+    out.push(`${licId(l)} rdf:type ktype:License ;`, `    rdfs:label ${lit(l)} ;`,
+      `    p:spdx-id ${lit(l)} ;`, `    p:license-url ${lit(`https://spdx.org/licenses/${l}.html`)} .`, '');
+  }
   for (const r of receipts) {
     const img = r.stages.image;
     const id = (k: string) => `kb:gen-${r.slug}-${k}`;
@@ -273,19 +281,19 @@ export function exampleTtl(receipts: Receipt[]): string {
       const noun = stage === 'image' ? 'Image' : stage === 'video' ? 'Video' : 'Splat';
       const media = stage === 'image' ? 'p:photo' : stage === 'video' ? 'p:video' : 'p:splat';
       const lines = [
-        `${id(stage)} rdf:type ktype:GeneratedAsset ;`,
+        `${id(stage)} rdf:type ktype:${KIND[stage]} ;`,
         `    rdfs:label ${lit(`${noun}: ${r.label.toLowerCase()}`)} ;`,
         `    ${media} ${lit(`/generated/${r.slug}/${st.output.file}`)} ;`,
         `    p:made-from ${stage === 'image' ? id('prompt') : id('image')} ;`,
-        `    p:made-with ${lit(MODEL_NAMES[stage])} ;`,
-        `    schema:license ${lit([...new Set([st.tool.license, ...st.models.map((m) => m.license)])].join(', '))} ;`,
-        `    p:took ${lit(`${st.durationS} s`)} ;`,
-        // Values read on their own as nodes, so each says what it is: a bare "42" was three nodes'
-        // shared seed and nobody could tell (Matt, 2026-10-14: "whats the 49, 42, and 7?").
-        `    p:seed ${lit(`seed ${st.settings.seed ?? ''}`)} ;`,
+        `    p:generated-with ${lit(MODEL_NAMES[stage])} ;`,
+        `    schema:license ${[...new Set([st.tool.license, ...st.models.map((m) => m.license)])].sort().map(licId).join(', ')} ;`,
+        `    p:generated-duration ${lit(`${st.durationS} s`)} ;`,
+        // Attributes, not nodes: these predicates are metadata (GENERATION_PROVENANCE_PREDICATES in
+        // src/lib/rdf/types.ts), so the detail panel lists them and the graph draws no node for them.
+        `    p:generated-seed ${lit(st.settings.seed ?? '')} ;`,
       ];
-      if (stage === 'video') lines.push(`    p:frames ${lit(`${st.check.measured.frames ?? ''} frames`)} ;`, `    rdfs:comment ${lit(st.input.prompt ?? '')} ;`);
-      if (stage === 'splat') lines.push(`    p:gaussians ${lit(`${Number(st.settings.gaussians).toLocaleString('en-US')} Gaussians`)} ;`,
+      if (stage === 'video') lines.push(`    p:generated-frames ${lit(st.check.measured.frames ?? '')} ;`, `    rdfs:comment ${lit(st.input.prompt ?? '')} ;`);
+      if (stage === 'splat') lines.push(`    p:generated-gaussians ${lit(Number(st.settings.gaussians))} ;`,
         `    rdfs:comment ${lit(r.role === 'background' ? 'Open it and choose Set as background to put this island behind the graph.' : 'Invented from one picture by TripoSplat: the far side is a guess.')} ;`);
       lines.push(`    p:generated-at ${lit(st.ranAt.slice(0, 10))} .`, '');
       out.push(...lines);

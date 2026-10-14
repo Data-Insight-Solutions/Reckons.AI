@@ -59,9 +59,13 @@ const thumb = (page: Page, label: RegExp) => page.getByRole('button', { name: la
  * flaky (1 run in 3): the force layout sometimes puts a node where its preview is not drawn.
  */
 async function openAsset(page: Page, label: string) {
+  // Search finds an entity by its IRI slug (kb:gen-<slug>-<kind>); its rdfs:label is only a value
+  // node, and picking THAT opens a panel with no preview, which was the "1 in 3" flake.
+  const [kind, name] = label.split(': ');
+  const slug = `gen-${/turtle/.test(name) ? 'carved-turtle' : 'lighthouse-island'}-${kind.toLowerCase()}`;
   await page.keyboard.press('Escape');
-  await page.getByPlaceholder('search nodes or facts…').fill(label);
-  await page.locator('.sb-node-row').filter({ hasText: label }).first().click();
+  await page.getByPlaceholder('search nodes or facts…').fill(slug);
+  await page.locator('.sb-node-row').filter({ has: page.locator('.sb-node-iri') }).filter({ hasText: slug }).first().click();
   const escaped = label.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
   const t = thumb(page, new RegExp('open asset for ' + escaped, 'i'));
   await expect(t).toBeVisible({ timeout: 15_000 });
