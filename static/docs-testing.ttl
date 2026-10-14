@@ -1219,3 +1219,336 @@ bench:splat-one-boat rdf:type bench:Brief ;
     bench:min-silhouette-iou 0.4 ;
     kpred:description "a hull with depth" .
 
+
+## --- hard tier (F183.2): exact counts, legible text, spatial relations, negation, attribute binding, fine detail ---
+
+bench:image-five-apples rdf:type bench:Brief ;
+    rdfs:label "Five red apples in a row" ;
+    skos:broader bench:Task-image ;
+    hnav:order 11 ;
+    bench:tier "hard" ;
+    kpred:prompt "Exactly five red apples in a straight row on a plain white table, evenly spaced, nothing else on the table, soft daylight, product photo" .
+bench:image-five-apples--apples rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 1 ;
+    skos:notation "apples" ;
+    kpred:question "Are there apples in this picture?" .
+bench:image-five-apples--five rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 2 ;
+    skos:notation "five" ;
+    kpred:question "Are there exactly five apples (not four, not six)?" .
+bench:image-five-apples--red rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 3 ;
+    skos:notation "red" ;
+    kpred:question "Are all the apples red?" .
+bench:image-five-apples--row rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 4 ;
+    skos:notation "row" ;
+    kpred:question "Are the apples arranged in a row?" .
+bench:image-five-apples--alone rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 5 ;
+    skos:notation "alone" ;
+    kpred:question "Is the table free of other objects?" .
+
+bench:image-open-sign rdf:type bench:Brief ;
+    rdfs:label "Wooden sign reading OPEN" ;
+    skos:broader bench:Task-image ;
+    hnav:order 12 ;
+    bench:tier "hard" ;
+    kpred:prompt "A wooden shop sign hanging on a red brick wall, the single word \"OPEN\" painted on it in large white capital letters, daylight photo" .
+bench:image-open-sign--sign rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 1 ;
+    skos:notation "sign" ;
+    kpred:question "Is there a sign in this picture?" .
+bench:image-open-sign--text rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 2 ;
+    skos:notation "text" ;
+    kpred:question "Does the sign read the word OPEN, spelled correctly?" .
+bench:image-open-sign--white rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 3 ;
+    skos:notation "white" ;
+    kpred:question "Are the letters white?" .
+bench:image-open-sign--brick rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 4 ;
+    skos:notation "brick" ;
+    kpred:question "Is the wall made of red bricks?" .
+bench:image-open-sign--one-word rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 5 ;
+    skos:notation "one-word" ;
+    kpred:question "Does the sign carry only that one word and no other text?" .
+
+bench:image-cube-sphere rdf:type bench:Brief ;
+    rdfs:label "Red cube left of a blue sphere" ;
+    skos:broader bench:Task-image ;
+    hnav:order 13 ;
+    bench:tier "hard" ;
+    kpred:prompt "A red cube on the left and a blue sphere on the right, resting on a plain grey floor, plain light background, studio render" .
+bench:image-cube-sphere--cube rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 1 ;
+    skos:notation "cube" ;
+    kpred:question "Is there a cube in this picture?" .
+bench:image-cube-sphere--sphere rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 2 ;
+    skos:notation "sphere" ;
+    kpred:question "Is there a sphere in this picture?" .
+bench:image-cube-sphere--cube-red rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 3 ;
+    skos:notation "cube-red" ;
+    kpred:question "Is the cube red?" .
+bench:image-cube-sphere--sphere-blue rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 4 ;
+    skos:notation "sphere-blue" ;
+    kpred:question "Is the sphere blue?" .
+bench:image-cube-sphere--left-right rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 5 ;
+    skos:notation "left-right" ;
+    kpred:question "Is the cube to the left of the sphere?" .
+bench:image-cube-sphere--one-each rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 6 ;
+    skos:notation "one-each" ;
+    kpred:question "Is there exactly one cube and exactly one sphere?" .
+
+bench:image-cat-under-table rdf:type bench:Brief ;
+    rdfs:label "Grey cat under a table, green book on top" ;
+    skos:broader bench:Task-image ;
+    hnav:order 14 ;
+    bench:tier "hard" ;
+    kpred:prompt "A grey cat sitting under a round wooden table, a green book lying on top of the table, bright living room, photo" .
+bench:image-cat-under-table--cat rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 1 ;
+    skos:notation "cat" ;
+    kpred:question "Is there a cat in this picture?" .
+bench:image-cat-under-table--grey rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 2 ;
+    skos:notation "grey" ;
+    kpred:question "Is the cat grey?" .
+bench:image-cat-under-table--under rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 3 ;
+    skos:notation "under" ;
+    kpred:question "Is the cat under the table?" .
+bench:image-cat-under-table--book rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 4 ;
+    skos:notation "book" ;
+    kpred:question "Is there a book on top of the table?" .
+bench:image-cat-under-table--book-green rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 5 ;
+    skos:notation "book-green" ;
+    kpred:question "Is the book green?" .
+bench:image-cat-under-table--one-cat rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 6 ;
+    skos:notation "one-cat" ;
+    kpred:question "Is there exactly one cat?" .
+
+bench:image-empty-street rdf:type bench:Brief ;
+    rdfs:label "Empty street at dawn" ;
+    skos:broader bench:Task-image ;
+    hnav:order 15 ;
+    bench:tier "hard" ;
+    kpred:prompt "An empty city street at dawn with no people and no cars anywhere, a row of closed shop fronts, wet pavement, wide shot, photo" .
+bench:image-empty-street--street rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 1 ;
+    skos:notation "street" ;
+    kpred:question "Is this a city street?" .
+bench:image-empty-street--no-people rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 2 ;
+    skos:notation "no-people" ;
+    kpred:question "Is the picture free of people?" .
+bench:image-empty-street--no-cars rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 3 ;
+    skos:notation "no-cars" ;
+    kpred:question "Is the picture free of cars and other vehicles?" .
+bench:image-empty-street--shops rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 4 ;
+    skos:notation "shops" ;
+    kpred:question "Are there shop fronts along the street?" .
+bench:image-empty-street--wet rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 5 ;
+    skos:notation "wet" ;
+    kpred:question "Does the pavement look wet?" .
+
+bench:image-four-ducks rdf:type bench:Brief ;
+    rdfs:label "Four yellow ducks in a bath" ;
+    skos:broader bench:Task-image ;
+    hnav:order 16 ;
+    bench:tier "hard" ;
+    kpred:prompt "Exactly four yellow rubber ducks floating in a white bathtub full of water, top-down view, bright bathroom" .
+bench:image-four-ducks--ducks rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 1 ;
+    skos:notation "ducks" ;
+    kpred:question "Are there rubber ducks in this picture?" .
+bench:image-four-ducks--four rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 2 ;
+    skos:notation "four" ;
+    kpred:question "Are there exactly four ducks (not three, not five)?" .
+bench:image-four-ducks--yellow rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 3 ;
+    skos:notation "yellow" ;
+    kpred:question "Are all the ducks yellow?" .
+bench:image-four-ducks--bath rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 4 ;
+    skos:notation "bath" ;
+    kpred:question "Are the ducks in a bathtub?" .
+bench:image-four-ducks--water rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 5 ;
+    skos:notation "water" ;
+    kpred:question "Is there water in the bathtub?" .
+
+bench:image-fresh-bread-board rdf:type bench:Brief ;
+    rdfs:label "Chalkboard reading FRESH BREAD" ;
+    skos:broader bench:Task-image ;
+    hnav:order 17 ;
+    bench:tier "hard" ;
+    kpred:prompt "A black chalkboard with the two words \"FRESH BREAD\" handwritten in white chalk capital letters, a wooden frame, leaning against a bakery window" .
+bench:image-fresh-bread-board--board rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 1 ;
+    skos:notation "board" ;
+    kpred:question "Is there a chalkboard in this picture?" .
+bench:image-fresh-bread-board--fresh rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 2 ;
+    skos:notation "fresh" ;
+    kpred:question "Does the board show the word FRESH, spelled correctly?" .
+bench:image-fresh-bread-board--bread rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 3 ;
+    skos:notation "bread" ;
+    kpred:question "Does the board show the word BREAD, spelled correctly?" .
+bench:image-fresh-bread-board--chalk rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 4 ;
+    skos:notation "chalk" ;
+    kpred:question "Is the writing white?" .
+bench:image-fresh-bread-board--only rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 5 ;
+    skos:notation "only" ;
+    kpred:question "Are those two words the only text on the board?" .
+
+bench:image-two-dogs rdf:type bench:Brief ;
+    rdfs:label "Black dog left, white dog right" ;
+    skos:broader bench:Task-image ;
+    hnav:order 18 ;
+    bench:tier "hard" ;
+    kpred:prompt "Two dogs sitting side by side on a brown sofa, a black dog on the left and a white dog on the right, facing the camera, photo" .
+bench:image-two-dogs--two rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 1 ;
+    skos:notation "two" ;
+    kpred:question "Are there exactly two dogs?" .
+bench:image-two-dogs--black-left rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 2 ;
+    skos:notation "black-left" ;
+    kpred:question "Is the dog on the left black?" .
+bench:image-two-dogs--white-right rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 3 ;
+    skos:notation "white-right" ;
+    kpred:question "Is the dog on the right white?" .
+bench:image-two-dogs--sofa rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 4 ;
+    skos:notation "sofa" ;
+    kpred:question "Are the dogs on a sofa?" .
+bench:image-two-dogs--facing rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 5 ;
+    skos:notation "facing" ;
+    kpred:question "Are both dogs facing the camera?" .
+
+bench:image-wristwatch rdf:type bench:Brief ;
+    rdfs:label "Wristwatch at ten past ten" ;
+    skos:broader bench:Task-image ;
+    hnav:order 19 ;
+    bench:tier "hard" ;
+    kpred:prompt "Close-up photo of a silver wristwatch with a white dial and twelve black numerals, the hour hand pointing at ten and the minute hand pointing at two, so it shows ten past ten, thin red second hand" .
+bench:image-wristwatch--watch rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 1 ;
+    skos:notation "watch" ;
+    kpred:question "Is there a wristwatch in this picture?" .
+bench:image-wristwatch--numerals rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 2 ;
+    skos:notation "numerals" ;
+    kpred:question "Does the dial show numerals?" .
+bench:image-wristwatch--ten-ten rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 3 ;
+    skos:notation "ten-ten" ;
+    kpred:question "Does the watch show about ten past ten?" .
+bench:image-wristwatch--second rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 4 ;
+    skos:notation "second" ;
+    kpred:question "Is a thin second hand visible?" .
+bench:image-wristwatch--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 5 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one watch?" .
+
+bench:image-bee-wings rdf:type bench:Brief ;
+    rdfs:label "Honeybee with visible wings on a flower" ;
+    skos:broader bench:Task-image ;
+    hnav:order 20 ;
+    bench:tier "hard" ;
+    kpred:prompt "Macro photo of a single honeybee on a purple flower, both pairs of wings clearly visible and see-through, fine hairs on the body, sharp focus on the bee" .
+bench:image-bee-wings--bee rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 1 ;
+    skos:notation "bee" ;
+    kpred:question "Is there a bee in this picture?" .
+bench:image-bee-wings--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 2 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one bee?" .
+bench:image-bee-wings--flower rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 3 ;
+    skos:notation "flower" ;
+    kpred:question "Is the bee on a purple flower?" .
+bench:image-bee-wings--wings rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 4 ;
+    skos:notation "wings" ;
+    kpred:question "Are the bee's wings clearly visible?" .
+bench:image-bee-wings--hairs rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 5 ;
+    skos:notation "hairs" ;
+    kpred:question "Can fine hairs be seen on the bee's body?" .
+
