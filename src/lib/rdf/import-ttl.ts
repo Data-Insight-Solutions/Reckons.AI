@@ -8,7 +8,7 @@ import { decodePortableMetadata } from './portable-metadata';
  * all state is recovered from the reification blocks which carry status.
  */
 
-import type { Statement, Source, Term, ReviewStatus } from './types';
+import type { Statement, Source, Term, ReviewStatus, EvidenceSpan } from './types';
 import { hasLeakedTermKey } from './types';
 import { notifyImportQuarantine } from './cut-notice';
 import { isAltitude } from './fact-altitude';
@@ -79,6 +79,8 @@ export type ImportResult = {
   chunks: ImportedChunk[];
   /** Chunk-shaped entries that were incomplete or contradictory: reported, never thrown, never imported. */
   chunkProblems?: Array<{ iri: string; reason: string }>;
+  /** Fact anchors that were incomplete or contradictory: the fact imported without one (F122.1.2). */
+  anchorProblems?: Array<{ statement: string; reason: string }>;
   /** SHA-256 of the document text each document's chunks were cut from, by document id, where the file says (dcterms:hasVersion "sha256:..."). */
   chunkVersions?: Record<string, string>;
   sources: Source[];
@@ -215,6 +217,54 @@ function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems:
 }
 
 /**
+ * Read the anchors (F122.1.2): on a fact's annotation, oa:hasTarget [ oa:hasSource <chunk> ;
+ * oa:hasSelector [ a oa:TextPositionSelector ; oa:start N ; oa:end M ] ; dcterms:hasVersion "sha256:..." ].
+ * A complete one becomes the fact's `anchor`. An incomplete one is reported and the fact imports
+ * without it. Every triple of the anchor's blank entries is marked consumed so none of them can reach
+ * the plain-Turtle fallback as a claim. An old file with no anchors reads exactly as before.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function readAnchors(quads: any[], consumed: Set<string>): { anchors: Map<string, EvidenceSpan>; problems: Array<{ statement: string; reason: string }> } {
+  const anchors = new Map<string, EvidenceSpan>();
+  const problems: Array<{ statement: string; reason: string }> = [];
+  const ofBnode = (label: string) => quads.filter((q: any) => q.subject.termType === 'BlankNode' && q.subject.value === label);
+  const nonNeg = (v: string) => (/^\d+$/.test(v.trim()) ? parseInt(v, 10) : null);
+  const pick = (qs: any[], p: string) => qs.filter((x: any) => x.predicate.value === p);
+  for (const q of quads) {
+    if (!q.subject.value.startsWith(STMT_PREFIX) || q.predicate.value !== OA + 'hasTarget') continue;
+    const id = q.subject.value;
+    if (q.object.termType !== 'BlankNode') { problems.push({ statement: id, reason: 'anchor is not a node with a source and a selector' }); continue; }
+    const target = ofBnode(q.object.value);
+    consumed.add('_:' + q.object.value);
+    const sources = pick(target, OA + 'hasSource');
+    const selectors = pick(target, OA + 'hasSelector');
+    const versions = pick(target, DC + 'hasVersion');
+    const why: string[] = [];
+    if (sources.length !== 1 || sources[0].object.termType !== 'NamedNode') why.push('needs exactly one chunk IRI (oa:hasSource)');
+    if (versions.length !== 1) why.push('needs exactly one source version (dcterms:hasVersion)');
+    let start: number | null = null;
+    let end: number | null = null;
+    if (selectors.length !== 1 || selectors[0].object.termType !== 'BlankNode') why.push('needs exactly one text position selector');
+    else {
+      consumed.add('_:' + selectors[0].object.value);
+      const sq = ofBnode(selectors[0].object.value);
+      if (pick(sq, OA + 'start').length === 1) start = nonNeg(pick(sq, OA + 'start')[0].object.value);
+      if (pick(sq, OA + 'end').length === 1) end = nonNeg(pick(sq, OA + 'end')[0].object.value);
+      if (start === null || end === null) why.push('selector start/end missing or not integers');
+      else if (end <= start) why.push('selector ends at or before its start');
+    }
+    if (why.length > 0 || start === null || end === null) { problems.push({ statement: id, reason: why.join('; ') }); continue; }
+    const next: EvidenceSpan = { chunk: sources[0].object.value, start, end, sourceHash: versions[0].object.value.replace(/^(sha256|unverified):/, '') };
+    const have = anchors.get(id);
+    if (!have) anchors.set(id, next);
+    // The same anchor written twice is one anchor; two different ones are a contradiction, and the first stands.
+    else if (JSON.stringify(have) !== JSON.stringify(next)) problems.push({ statement: id, reason: 'more than one, and they differ' });
+  }
+  return { anchors, problems };
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/**
  * Parse an annotated .ttl file back into Statement[] + Source[].
  * Falls back to treating plain (non-annotated) Turtle as confirmed statements.
  */
@@ -241,6 +291,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
   }
 
   const { chunks, chunkProblems, chunkVersions, consumed: chunkSubjects } = readChunkNodes(quads);
+  const { anchors, problems: anchorProblems } = readAnchors(quads, chunkSubjects);
 
   // Maps from IRI → property bag
   const stmtData = new Map<string, Record<string, unknown>>();
@@ -366,6 +417,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
       supersedes: d.supersedes as string | undefined,
       createdAt:  (d.createdAt as number) ?? Date.now(),
       updatedAt:  (d.createdAt as number) ?? Date.now(),
+      ...(anchors.has(iri) ? { anchor: anchors.get(iri) } : {}),
       ...(d.portable as Partial<Statement> | undefined),
     });
   }
@@ -433,5 +485,5 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
 
   if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
-  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
+  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(anchorProblems.length ? { anchorProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }

@@ -481,6 +481,17 @@ export function toTurtleFull(
     if (st.altitude) lines.push(`    meta:altitude "${st.altitude}" ;`);
     if (st.gloss) lines.push(`    meta:gloss ${JSON.stringify(st.gloss)} ;`);
     if (st.excerpt) lines.push(`    meta:excerpt ${JSON.stringify(st.excerpt)} ;`);
+    // F122.1.2: where the quote sits, as a W3C Web Annotation target on the chunk it starts in, so a
+    // fact and its passage are joined inside the one file. Full IRIs: no prefix dependence.
+    if (st.anchor) {
+      const a = st.anchor;
+      const version = /^[0-9a-f]{64}$/i.test(a.sourceHash) ? `sha256:${a.sourceHash}` : `unverified:${a.sourceHash}`;
+      lines.push(
+        `    <http://www.w3.org/ns/oa#hasTarget> [ <http://www.w3.org/ns/oa#hasSource> <${a.chunk}> ;`,
+        `        <http://www.w3.org/ns/oa#hasSelector> [ a <http://www.w3.org/ns/oa#TextPositionSelector> ; <http://www.w3.org/ns/oa#start> ${a.start} ; <http://www.w3.org/ns/oa#end> ${a.end} ] ;`,
+        `        <http://purl.org/dc/terms/hasVersion> ${JSON.stringify(version)} ] ;`,
+      );
+    }
     if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${st.supersedes}> ;`);
     lines.push(`    prov:wasDerivedFrom ${termTTL(st.g, prefixes)} ;`);
     lines.push(`    dc:created "${new Date(st.createdAt).toISOString()}"^^xsd:dateTime .`);

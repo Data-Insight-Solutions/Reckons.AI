@@ -318,6 +318,14 @@
       "desc": "Every publishable docs graph must appear in all four registries (docs-pages SOURCES, docs-compose CORPUS, docs-consolidate CORPUS, a void:Dataset in website.ttl). docs-user-paths.ttl was in one of the four, so composition would have deleted nine published journeys while the orphan gate reported nothing dropped."
     },
     {
+      "name": "anchor-resolution",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/anchor-resolution.ts --quiet",
+      "desc": "F122.1.2: every fact anchor stored in a space file must name a chunk that is in the same file, belongs to the fact's own source and contains the span's start. A citation that cannot be opened is reported, never dropped or guessed. Reads every .ttl that holds an anchor; zero tokens."
+    },
+    {
       "name": "set-integrity",
       "tier": "script",
       "enabled": true,

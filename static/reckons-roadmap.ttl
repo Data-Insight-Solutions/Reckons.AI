@@ -9696,13 +9696,17 @@ kb:anchor-contract rdf:type ktype:Phase ;
 kb:anchor-roundtrip rdf:type ktype:Phase ;
     rdfs:label "F122.1.2 — the anchor survives export, import and sync" ;
     kpred:feature-id "F122.1.2" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:document-evidence-anchors ;
     kpred:depends-on kb:anchor-contract, kb:chunk-importer-parse ;
     kpred:estimate "0.5 day" ;
     kpred:description "serialize.ts writes the anchor on the statement's annotation and import-ttl.ts reads it back, expressed with the W3C Web Annotation selector the chunk vocabulary already uses (oa:TextPositionSelector, the choice F221 recorded in source-chunks.ts); the anchor points at the chunk node by IRI, so statement and passage are joined inside the one space file." ;
-    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/rdf/import-ttl.ts", "src/lib/rdf/__tests__/serialize.test.ts" ;
-    kpred:proof "Unit: a statement with an anchor round-trips; an old file with no anchors imports unchanged. Graph-lint style check (script tier): every anchor IRI in the fixture space resolves to a chunk node." .
+    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/rdf/import-ttl.ts", "src/lib/ingest/anchor-resolution.ts", "scripts/offline/anchor-resolution.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/anchor-roundtrip.test.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/anchor-resolution.test.ts" ;
+    kpred:proof "Unit: a statement with an anchor round-trips; an old file with no anchors imports unchanged. Graph-lint style check (script tier): every anchor IRI in the fixture space resolves to a chunk node." ;
+    kpred:progress "2026-10-13, BUILT. serialize.ts writes a fact's anchor on its annotation as oa:hasTarget [ oa:hasSource <chunk IRI> ; oa:hasSelector [ a oa:TextPositionSelector ; oa:start N ; oa:end M ] ; dcterms:hasVersion \"sha256:...\" ] (full IRIs, no prefix dependence; a non-SHA-256 fallback hash is written as unverified:<hash> and read back identical). import-ttl.ts reads it into Statement.anchor; a malformed anchor is listed in anchorProblems and the fact imports without it; every triple of the anchor's blank nodes is consumed so none reaches the plain-Turtle fallback; an old file with no anchors reads unchanged. Export, import, export is a fixed point with anchors and chunks together (anchor-roundtrip.test.ts, 19 tests). The script-tier check scripts/offline/anchor-resolution.ts (job anchor-resolution, advisory, zero tokens) lists anchors whose chunk is not in the same file, belongs to another document, or does not contain the span's start. Local qwen3.6 proposed 12 inputs in 30 s: its other-document item became the other-source rule and its repeated-triple item the same-anchor-twice rule; its 'import with a partial anchor' items contradicted the reported-not-kept rule and were not used." ;
+    kpred:honest-note "NOT DONE: no file in the repository holds an anchor yet (the check reports 0 anchors across 42 files), because only newly extracted facts get one and nothing has re-extracted a stored space; the Getting started space has none. Workspace and Drive sync write anchors through the same serializer, so a synced space keeps them, but that path was exercised only through the serializer test, not in a browser. The anchor is read back but nothing yet verifies it against the retained text (F122.1.3)." .
 
 kb:anchor-staleness rdf:type ktype:Phase ;
     rdfs:label "F122.1.3 — a changed source marks its anchors stale instead of misplacing them" ;
