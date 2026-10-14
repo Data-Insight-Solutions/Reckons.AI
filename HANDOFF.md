@@ -1,3 +1,69 @@
+## 2026-10-13 — START HERE. 0.2.6 day 6: open PRs landed, local tier measured, e2e workflow docs (Claude Code)
+
+Opus coordinated; Sonnet overseers (own worktrees, 2 at a time) did the work and merged into `dev` (Matt
+authorized overseer merges to dev today; nothing went to staging/main). Matt: "use overseer agents and local
+models. This is a key feature of Reckons.ai and we should continue measuring its benefit."
+
+**Merged into dev (17):** #437 Currents delivery (ported #422's 5-min poll + backoff; #422 closed) · #431 F248
+Getting started · #424 F65→skos:Collection ("set"→"collection" in UI) · #423 commit trailers · #425 branch
+ancestry · #387 UI terms audit · #435 VLM workflow streams · #434 safe deps · #438 review headline honest
+("N waiting for an agent") · #439 CI graph advisory, CodeQL decision, hero hedge · #440 extraction-score demoted,
+script-inventory fixed · #441 + #447 F34.2 test workflow docs (/docs/testing/test-workflows; diagram generated
+from the step triples; 5 boxed WebP shots on Getting started) · #444 local code-review RETIRED · #448 Review no
+longer asks to download a model on entry · #449 back-pressure counts journalled verdicts + 10 doc glosses ·
+#450 per-finding review decisions; a reject touches only the findings it names · #451 Shelly consent asked on use.
+
+**Matt decided today (all recorded as kpred:decided):** keep #437 over #422; Review headline honest; code-review
+paused, then retired (0/49 true); dedupe 300 queue duplicates (done); sample held jobs; CI graph stays advisory;
+CodeQL blocks only on NEW alerts (there were none — the red was not alerts); hero = "Your sources, reviewed by you,
+private by default — growing into an assistant that understands your situation."; extraction-score demoted;
+script-inventory fixed; docs-review/docs-expand stay model-tier ("docs management is above scripts"); 5-min
+Currents poll; no model or Shelly consent prompt until the person reaches for it (#448, #451); crawl data: newest run kept.
+
+**LOCAL-TIER LEDGER (the measurement Matt asked for):**
+- code-review qwen3-coder 0/30 recent + devstral-small-2 0/19 on diffs with known bugs → retired.
+- local panel qwen3.6×3: docs-review 101 items 255 s, 99% unanimous, 8/10 hand-check; docs-expand 75 items
+  110 s, 97% unanimous, 9/10 → 38 uncited-capability drafts rejected, 41 docs-review verdicts recorded.
+  Weakness: the panel answers "not explained" even with no page text (task builder should emit n/a).
+- qwen3.6 gloss drafts: 10 → 5 kept, 3 light edits, 2 rewritten (one invented a meaning).
+- qwen2.5vl /review first-run check: 0/2 true as asked (it read Shelly's floating consent as a blocking modal) —
+  controlled re-run after #451 removed that panel: it STILL reported a blocking modal (it over-flags any floating
+  panel) and never named the real review controls. 0/3 → "is anything blocking" belongs to a DOM-overlap script, not the VLM.
+- Script tier caught every real regression (naming, term, commit-trailer ratchets; competitor-scan "none"/"NONE").
+- Overseers: ~15 Sonnet agents-runs, one 429 session-limit stop (resumed after reset).
+- Mistake to not repeat: no agent tier at session start; Sonnet hand-judged 80 sample rows a panel should have pre-filtered.
+
+**Before opening the app (risk):** 41 per-finding rejects in reckons-workspace/knowledge.decisions.jsonl carry
+`objects`. An app build WITHOUT #450 drains them with the old reject-all-siblings rule and rejects all 101
+docs-review statements (recoverable: rejected statements are kept). Use a dev build at or after #450; reckons.ai
+(main) does not have it. **Restart the reckons MCP server** (`/mcp` reconnect) — the running one predates #450
+and would write a 101-row reject for one finding.
+
+**Rules learned today:** commit-trailers is BLOCKING: a commit with `Co-Authored-By: Claude` needs `Model:` and
+`Intent:` in the same final trailer block (one -m). Worktree agents: first step `git checkout -B <branch> origin/dev`.
+
+**DAY-10 CUT MADE EARLY (Matt, 2026-10-13, after the architect found 0 of 5 headline items started on day 6):**
+0.2.6 keeps F107.10 chunk importer → F122.1 evidence anchors → F223 cited options, one evidence chain. Matt: "combine the
+now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the
+applications human led element." F218/F92 canvas, F256, F61, F255, F246, group B → 0.2.7. In flight at handoff: Overseer L
+(has-part scope links + `npm run release:burndown`, script tier, runs first at session start) and Overseer M (the chain's
+build plan in the roadmap + design questions for Matt). M's plan merged (#452): 11 steps F107.10.1-.3, F122.1.1-.4, F223.1-.4 (~8.5 days + ~1 for conflicts) as roadmap
+entities with depends-on and a user-visible proof each; kb:evidence-chain is the spine. MATT ANSWERED all 6 design
+questions (recorded as kpred:decided): text spans only; anchor = optional Statement fields (EvidenceAnchor node later);
+fold chunks only, originals move in 0.2.7; F223 covers reckoning AND review conflicts (conflicts built last, first to
+slip); unresolved citations shown flagged, never hidden; mcp-server.sh now defaults OLLAMA_BASE_URL to localhost so
+kb_local_* tools work (restart the MCP server). NEXT: run `release:burndown`, then two lanes. Lane A: F107.10.1 → .2 → .3
+→ F122.1.2 → .3. Lane B: F122.1.4 (no deps, start now) → F223.1 → F223.2 → F122.1.1. Then F223.3, F223.4 (reckoning),
+conflicts last. Keep the serialize.ts / import-ttl.ts steps sequential (collision risk). Riskiest: F107.10.3.
+
+**Open / next:** docs-review held at 60 open real findings (the docs work list; also over the limit:
+history-lessons 125, branch-align 111, stars-scan 85, term-senses 74, script-inventory 55). F34.3 (other user
+stories as workflows), F34.4 (phone capture); step 1 still shows "ingest: mock"; default space named "Default
+Graph". Dependabot: #443 replaces #415 (majors, held); #442 overlaps #434 + transformers 4.3.1 (check the 25 MiB
+wasm limit); #413/#375 need a fresh CI run; #379 red. Unanswered: 3 uncalled storage symbols (finish/retire),
+duplicate mobile-voice-capture stubs, HomeAssistant VM-vs-Docker (personal infra — keep out of the public queue).
+0.2.6 big additions (F107.10, F122.1, F223, F218 canvas mode, F61, F255, group B) still unstarted; the cut is 10-18.
+
 ## 2026-10-12 — 0.2.6 Currents delivery through local job review (Codex)
 
 Branch: `feat/v026-currents-arrivals`, based on `origin/dev`. Open the PR against `dev`; Matt merges.
