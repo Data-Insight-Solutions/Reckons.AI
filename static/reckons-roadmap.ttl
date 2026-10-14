@@ -9578,3 +9578,154 @@ kb:job-backpressure kpred:progress "2026-10-13, BACK-PRESSURE NOW COUNTS JOURNAL
 
 kb:job-backpressure kpred:measured "2026-10-13, local panel (scripts/agent/local-panel.ts, qwen3.6 x3 votes, one GPU, serialised by flock). DOCS-REVIEW, 101 rows, 255 s, 100 unanimous and 1 majority; 81 said 'not explained', 20 'explained'. Hand-check of 10 random unanimous items: 8 agree. The 2 misses reveal the weakness: with no page text the panel still answered 'not explained' (4 rows point at pages that no longer exist), and 7 more name a term that is not on the page at all; so 11 of the 81 'unexplained' verdicts are stale or false-positive rows, a harness gap (the task builder should emit n/a when the term is absent). 70 are real. DOCS-EXPAND, 75 drafts, 110 s, 73 unanimous and 2 majority; 38 state a Reckons.AI capability as fact (one repeats the false 'ethics preamble on all prompts' claim) and were rejected in knowledge.decisions.jsonl; 37 judged claim-free were left pending, not accepted. Hand-check of 10 unanimous: 9 agree; the miss was a claim-free verdict on a codebase-as-graph draft that does assert what the graph preserves. Total local time about 6 minutes for 176 judgments; Opus read 20 items plus the escalations. Local gloss drafts for 10 docs-review findings took 24 s: 5 kept nearly as written, 3 lightly edited, 2 rewritten (one invented the meaning of 'currents section')." .
 
+
+# ==============================================================================
+# v0.2.6 SPINE: THE EVIDENCE CHAIN (planning, 2026-10-13, Overseer M)
+# Matt's theme, one chain of three headline features. Plan only: every step below
+# is status planned. kpred:has-file lists files that exist today; files a step
+# CREATES are named in its kpred:creates text and are not claimed as existing.
+# ==============================================================================
+
+kb:evidence-chain rdf:type ktype:Feature ;
+    rdfs:label "The evidence chain — source passages, the statements that cite them, and the decisions that rest on both" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:release-0-2-6 ;
+    kpred:relates-to kb:space-file-layout, kb:document-evidence-anchors, kb:graph-proposals, kb:source-corpus, kb:change-provenance ;
+    kpred:description "One chain with three links, built in this order: (1) a source's passages become nodes in the space's own file (F107.10, kb:space-file-layout); (2) every statement links to the exact passage span it came from (F122.1, kb:document-evidence-anchors); (3) a decision is offered as 2 to 4 options whose citations resolve to statements and, through them, to passages (F223, kb:graph-proposals). Click any claim in a decision and read the source it rests on." ;
+    kpred:decided "MATT, 2026-10-13, 0.2.6 keeps exactly three headline items: the chunk importer (F107.10), document evidence anchors (F122.1) and proposals as 2 to 4 cited options (F223). His theme: 'I want to combine the now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the applications human led element. Real world data and sources lead to real world decisions.'" ;
+    kpred:measured "BUILT VERSUS NEW, 2026-10-13 (read from code, not from the entities' status fields). BUILT: the deterministic chunker with stable chunk IRIs and Turtle output (src/lib/ingest/source-chunks.ts: chunkText, chunkIri, chunksToTurtle, anchorExcerpt); original and text retention (source-corpus.ts, stores/source-corpus.ts, storage/source-corpus-fs.ts); the statement side of the Source View, derived at view time (statement-evidence.ts, StatementEvidence.svelte); the source side, every passage with its statements by status (source-document.ts, SourceDocument.svelte, e2e tests/e2e/source-document.test.ts); Statement.excerpt and Statement.grounded (passage grounding); a one-choice cascade for conflicting facts (option-cascade.ts, decision-journal.ts); a SHACL precedent in static/reckons-vocabulary.ttl (kshape:Altitude). NEW: the importer recognizing chunk nodes (importTurtleFull in import-ttl.ts has no chunk handling at all); chunks inside the space file; a persisted anchor on the statement (today the join is recomputed every time the statement is viewed, from the excerpt string, and nothing is stored or invalidated); an anchor that goes stale when the source revision changes; a jump from a statement to its passage in the source view; the proposal shape, lifecycle, options with citations, and the UI. In short: the groundwork for the first two links exists as code, none of the 11 steps below is built, and the third link (F223) has only the conflict-cascade precedent." ;
+    kpred:constraint "NO CHAIN LINK IS ASSERTED BY A MODEL. Existence of a passage and of an anchor in it is a deterministic check (excerpt containment, source hash equality, citation IRI resolves). Whether the passage SUPPORTS the statement, or the statement supports the option, is judgement and stays a person's call (kb:document-evidence-anchors constraint, kb:passage-grounding). A citation that does not resolve is shown as unresolved, never dropped and never guessed." .
+
+# -- F107.10 the chunk importer: source passages become nodes in the space's file --
+
+kb:chunk-importer-parse rdf:type ktype:Phase ;
+    rdfs:label "F107.10.1 — the importer reads chunk nodes instead of dropping them" ;
+    kpred:feature-id "F107.10.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:space-file-layout ;
+    kpred:estimate "0.5 day" ;
+    kpred:description "importTurtleFull (src/lib/rdf/import-ttl.ts) returns the chunk nodes it finds (dcterms:isPartOf a source, schema:position, rdf:value, oa:TextPositionSelector, the vocabulary source-chunks.ts already writes) in a separate result field, and they never enter the statement store. Today it silently drops every triple that is not an annotated statement, so a space with folded chunks loses them on the first import." ;
+    kpred:has-file "src/lib/rdf/import-ttl.ts", "src/lib/ingest/source-chunks.ts", "src/lib/rdf/__tests__/serialize.test.ts" ;
+    kpred:remaining "NEW FILES, not built: src/lib/rdf/__tests__/import-chunks.test.ts (new)" ;
+    kpred:proof "Unit: a Turtle file holding 3 statements and 12 chunks imports 3 statements and returns 12 chunks, and the statement count, graph view node count and a publish of the same space are unchanged by the chunks (chunks are evidence, never claims). Malformed chunk nodes are reported, not thrown." ;
+    kpred:constraint "Chunks must never become claims: they may not appear in the statement store, the graph view or a publish (space-file-layout remaining item 3)." .
+
+kb:chunk-section-export rdf:type ktype:Phase ;
+    rdfs:label "F107.10.2 — chunks written as their own section of the space file, after the claims" ;
+    kpred:feature-id "F107.10.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:space-file-layout ;
+    kpred:depends-on kb:chunk-importer-parse ;
+    kpred:estimate "0.5 day" ;
+    kpred:description "The serializer writes a space's chunks after the claims under a comment header, in canonical order (by source IRI, then position), so a reader that stops early never parses them and two exports of the same space are byte-identical. The header of chunksToTurtle, which says chunks are never part of an exported space, is rewritten to say they are part of the space file and never part of a published one." ;
+    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/ingest/source-chunks.ts", "src/lib/rdf/__tests__/serialize.test.ts", "src/lib/publish/site-export.ts" ;
+    kpred:proof "Unit: export then import then export is a fixed point with chunks present; a publish of a space with chunks contains none of their text. The existing tests/bench/run-space-size-bench.ts is re-run and its chunks-retained count goes from 0 to the number written." .
+
+kb:chunk-space-folder rdf:type ktype:Phase ;
+    rdfs:label "F107.10.3 — a space copied alone keeps its passages" ;
+    kpred:feature-id "F107.10.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:space-file-layout ;
+    kpred:depends-on kb:chunk-section-export ;
+    kpred:estimate "1 day, likely more" ;
+    kpred:description "Workspace sync loads a space's chunks from its file when the space is opened and writes them when it is saved; retained sources move from the workspace-root sources/ directory to sources/<slug>-<hash8>/ inside the space folder, and the per-source chunks.ttl stops being the authority (the space file is: Matt, 2026-10-06 'fold the chunks in'). A file under the folder that the space file does not list is reported, never adopted or deleted. The full asset manifest (dcat:Distribution, checksums) is NOT in this step; it stays in F107.10 after the chain." ;
+    kpred:has-file "src/lib/stores/workspace.svelte.ts", "src/lib/stores/source-corpus.ts", "src/lib/storage/source-corpus-fs.ts", "src/lib/ingest/source-corpus.ts", "src/lib/stores/__tests__/workspace-source-corpus.test.ts" ;
+    kpred:proof "E2E, user-visible: ingest a synthetic document, export the space's .ttl ALONE (without the sources folder), import it into a clean browser profile, open Sources, and the source view still lists every passage with its statements. Today the passages would be gone." ;
+    kpred:known-issue "Moving sources/ is a migration of data users already have (PR #351 wrote it at the workspace root): the step needs a read of the old location as a fallback and a test for it. This is the step most likely to overrun a day." .
+
+# -- F122.1 evidence anchors: every statement links to its passage span --
+
+kb:anchor-contract rdf:type ktype:Phase ;
+    rdfs:label "F122.1.1 — a statement records the passage span it came from, at extraction time" ;
+    kpred:feature-id "F122.1.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:document-evidence-anchors ;
+    kpred:estimate "1 day" ;
+    kpred:description "Statement gains an optional anchor: chunk IRI (chunkIri already exists), character start and end inside the retained text, and the source hash it was computed against. It is computed once, by the same anchorExcerpt that the view uses today, at the moment grounding verifies the excerpt, and only when grounded is true. Text-only sources get a span and no page or box (never synthesize precision, this entity's constraint). The full DocumentIR and geometry from the entity's decided contract are NOT in this step; they follow the chain." ;
+    kpred:has-file "src/lib/rdf/types.ts", "src/lib/rdf/grounding.ts", "src/lib/rdf/source-cache.ts", "src/lib/ingest/source-chunks.ts", "src/lib/ingest/extraction-run.ts", "src/lib/stores/ingest.svelte.ts" ;
+    kpred:proof "Unit: ingesting a fixture document yields statements whose anchor start..end sliced from the retained text equals the excerpt; an ungrounded statement has no anchor; re-chunking the same text yields the same chunk IRI." ;
+    kpred:open-question "Anchor as new fields on Statement, or as a separate EvidenceAnchor stored once and shared (the entity's decided contract says shared anchors are stored once)?" .
+
+kb:anchor-roundtrip rdf:type ktype:Phase ;
+    rdfs:label "F122.1.2 — the anchor survives export, import and sync" ;
+    kpred:feature-id "F122.1.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:document-evidence-anchors ;
+    kpred:depends-on kb:anchor-contract, kb:chunk-importer-parse ;
+    kpred:estimate "0.5 day" ;
+    kpred:description "serialize.ts writes the anchor on the statement's annotation and import-ttl.ts reads it back, expressed with the W3C Web Annotation selector the chunk vocabulary already uses (oa:TextPositionSelector, the choice F221 recorded in source-chunks.ts); the anchor points at the chunk node by IRI, so statement and passage are joined inside the one space file." ;
+    kpred:has-file "src/lib/rdf/serialize.ts", "src/lib/rdf/import-ttl.ts", "src/lib/rdf/__tests__/serialize.test.ts" ;
+    kpred:proof "Unit: a statement with an anchor round-trips; an old file with no anchors imports unchanged. Graph-lint style check (script tier): every anchor IRI in the fixture space resolves to a chunk node." .
+
+kb:anchor-staleness rdf:type ktype:Phase ;
+    rdfs:label "F122.1.3 — a changed source marks its anchors stale instead of misplacing them" ;
+    kpred:feature-id "F122.1.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:document-evidence-anchors ;
+    kpred:depends-on kb:anchor-roundtrip ;
+    kpred:estimate "0.5 day" ;
+    kpred:description "The evidence section prefers the stored anchor and verifies it (the source hash equals the retained revision's, and the span still contains the excerpt). A mismatch is shown as 'the source changed since this was extracted' with the saved quote, not as a verified passage. Statements with no stored anchor keep today's view-time derivation, so nothing already ingested regresses." ;
+    kpred:has-file "src/lib/ingest/statement-evidence.ts", "src/lib/components/StatementEvidence.svelte", "src/lib/ingest/__tests__/statement-evidence.test.ts" ;
+    kpred:proof "Unit: edit one character before the anchor in the retained text and the evidence kind becomes stale; an old statement without an anchor still resolves as anchored." .
+
+kb:statement-to-passage-jump rdf:type ktype:Phase ;
+    rdfs:label "F122.1.4 — click a statement, the source opens scrolled to the highlighted passage" ;
+    kpred:feature-id "F122.1.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:document-evidence-anchors ;
+    kpred:estimate "1 day" ;
+    kpred:description "The statement-side Evidence section (StatementEvidence.svelte) shows the passage inline today. This adds the same join as a link: Open in source navigates to the Sources inspector for that source, scrolled to that passage with the supporting span highlighted and the other statements of the passage visible. It needs only the derived chunkIndex that deriveEvidence already returns, so it can start before any storage work and later uses the stored anchor." ;
+    kpred:has-file "src/lib/components/StatementEvidence.svelte", "src/lib/components/SourceDocument.svelte", "src/lib/components/SourcesExplorer.svelte", "src/lib/ingest/source-document.ts", "src/routes/(app)/+page.svelte", "tests/e2e/source-document.test.ts", "tests/e2e/provenance-view.test.ts" ;
+    kpred:proof "E2E, user-visible: seed a synthetic long source with a statement quoting its passage 19; click that statement, click Open in source; the Sources inspector shows passage 19 in the viewport with the quote marked, and its statement count matches. Screenshot with a bounding box on the marked span (the F34.2 test-workflow pattern)." ;
+    kpred:honest-note "Whether a deep link exists today is unverified in a browser; a search of src for chunkIndex consumers finds only the two derive modules and SourceDocument.svelte, which suggests it does not." .
+
+# -- F223 proposals as 2 to 4 cited options --
+
+kb:proposal-shape rdf:type ktype:Phase ;
+    rdfs:label "F223.1 — the proposal as a SHACL target shape and a schema:Action lifecycle" ;
+    kpred:feature-id "F223.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:graph-proposals ;
+    kpred:estimate "1 day" ;
+    kpred:description "Matt, 2026-09-29: SHACL shapes for the target state, schema:Action status for the lifecycle. A vocabulary shape for a proposal (what a well-formed proposal carries: a target-state shape reference, 2 to 4 option nodes, one marked recommended, an actionStatus) and a pure module that moves a proposal through PotentialActionStatus, ActiveActionStatus, CompletedActionStatus and FailedActionStatus. A proposal is closed when the graph validates against its target shape; no inference and no model decides that." ;
+    kpred:has-file "static/reckons-vocabulary.ttl", "src/lib/rdf/option-cascade.ts", "src/lib/rdf/decision-journal.ts" ;
+    kpred:remaining "NEW FILES, not built: src/lib/rdf/proposal.ts and src/lib/rdf/__tests__/proposal.test.ts (new)" ;
+    kpred:proof "Unit: a proposal with 5 options, or none marked recommended, or an unknown status fails its shape with a named reason; a proposal whose target shape the fixture graph satisfies is completed, one it does not satisfy stays active. Graph-lint validates the shape file." ;
+    kpred:constraint "The decision-journal rule that an agent may not settle its own proposal carries over unchanged." .
+
+kb:proposal-options-model rdf:type ktype:Phase ;
+    rdfs:label "F223.2 — build 2 to 4 options with the citations each rests on" ;
+    kpred:feature-id "F223.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:graph-proposals ;
+    kpred:depends-on kb:proposal-shape ;
+    kpred:estimate "1 day" ;
+    kpred:description "A pure builder turns a reckoning's candidate options into the shape: near-duplicate drafts from a local model are collapsed, the count is held to 2..4, exactly one is marked recommended, and each option carries citations that are statement IRIs. A citation that does not resolve to a statement in the space is kept visibly unresolved on the option. Matt, 2026-10-08: recommendations were 'a bit leading, but often there were space citations listed with the recommended options', which is what made them checkable." ;
+    kpred:has-file "src/lib/rdf/option-cascade.ts", "src/lib/publish/post-reckoning.ts", "src/routes/(app)/reckoning/+page.svelte" ;
+    kpred:remaining "NEW FILES, not built: extends src/lib/rdf/proposal.ts from step F223.1 with the builder" ;
+    kpred:proof "Unit with synthetic candidates: 6 candidates with 3 near-duplicates collapse to 4; a candidate citing a nonexistent statement is flagged unresolved; no model is called in the test (the collapse is lexical-similarity code, script tier)." .
+
+kb:proposal-citation-resolve rdf:type ktype:Phase ;
+    rdfs:label "F223.3 — a citation resolves through its statement to the source passage" ;
+    kpred:feature-id "F223.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:graph-proposals ;
+    kpred:depends-on kb:proposal-options-model, kb:anchor-roundtrip ;
+    kpred:estimate "0.5 day" ;
+    kpred:description "resolveCitation(statementIri) returns the statement, its anchor and the chunk, with an honest state at each hop: statement missing, statement present with no anchor (the quote alone), anchor stale (F122.1.3), or fully resolved. This function is what makes the chain one chain." ;
+    kpred:has-file "src/lib/ingest/statement-evidence.ts", "src/lib/ingest/source-document.ts" ;
+    kpred:proof "Unit: four fixtures, one per state above, each returns its state; the fully resolved one returns text equal to the retained passage." .
+
+kb:proposal-options-ui rdf:type ktype:Phase ;
+    rdfs:label "F223.4 — the reckoning shows cited options; a citation opens its source passage" ;
+    kpred:feature-id "F223.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:graph-proposals ;
+    kpred:depends-on kb:proposal-citation-resolve, kb:statement-to-passage-jump ;
+    kpred:estimate "1 day" ;
+    kpred:description "Reckoning presents the 2 to 4 options as cards, one marked recommended, each with citation chips. A chip shows the statement; its Open in source reuses the F122.1.4 jump. Accepting an option goes through the existing review gate as a reviewable patch; the card writes nothing. Placed where the user already goes (the reckoning tab); no navigation tab is added, and drawing proposals as nodes on the shared canvas is left until after the chain." ;
+    kpred:has-file "src/routes/(app)/reckoning/+page.svelte", "src/lib/components/StatementCard.svelte", "tests/e2e/workflow-add-review-reckon.test.ts" ;
+    kpred:proof "E2E, user-visible: on the synthetic Getting started space, run a reckoning; see 2 to 4 option cards, one recommended; click a citation chip, then Open in source; the source view opens on the highlighted passage. The whole chain in one test." .
+
+kb:release-0-2-6 kpred:principle "SPINE OF THE RELEASE, Matt 2026-10-13: 'I want to combine the now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the applications human led element. Real world data and sources lead to real world decisions.' The three headline items are one chain (kb:evidence-chain): passages become nodes in the space file (F107.10), statements anchor to passage spans (F122.1), decisions cite statements and through them passages (F223). Anything else in 0.2.6 is judged by whether it serves that chain; at the 2026-10-18 cut, later links move to 0.2.7 before earlier ones, because each link rests on the one before." ;
+    kpred:relates-to kb:evidence-chain .
