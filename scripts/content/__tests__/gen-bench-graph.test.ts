@@ -75,6 +75,20 @@ describe('the committed Testing graph', () => {
     expect(t.video).toHaveLength(4);
     expect(t.splat).toHaveLength(4);
   });
+  it('has a hard image tier of 8 to 10 briefs, and keeps the 5 easy ones as a smoke tier', () => {
+    expect(briefsFor(t, 'image', 'smoke')).toHaveLength(5);
+    const hard = briefsFor(t, 'image', 'hard');
+    expect(hard.length).toBeGreaterThanOrEqual(8);
+    expect(hard.length).toBeLessThanOrEqual(10);
+    expect(new Set(hard.map((b) => b.slug)).size).toBe(hard.length);
+  });
+  it('the hard tier covers counts, text, relations, negation, binding and fine detail', () => {
+    const text = briefsFor(t, 'image', 'hard').map((b) => b.prompt + ' ' + b.checklist.map((c) => c.question).join(' ')).join('\n').toLowerCase();
+    for (const probe of [/exactly (four|five)/, /spelled correctly/, /to the left of/, /under the table/, /free of people/, /is the dog on the left black/, /fine hairs/]) expect(text).toMatch(probe);
+  });
+  it('hard briefs are synthetic: every prompt is self-contained, with no personal marker', () => {
+    for (const b of briefsFor(t, 'image', 'hard')) { expect(b.prompt.length).toBeGreaterThan(40); expect(b.checklist.length).toBeGreaterThanOrEqual(5); }
+  });
   it('gives every image brief a checklist of yes/no questions', () => {
     for (const b of t.image) for (const c of b.checklist) expect(c.question).toMatch(/\?$/);
   });
