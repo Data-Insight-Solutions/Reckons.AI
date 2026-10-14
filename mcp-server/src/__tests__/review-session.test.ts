@@ -325,51 +325,44 @@ describe('choice versus batch — whether accepting one kills the others', () =>
     expect(v.supersedes).toHaveLength(2);
   });
 
-  it('a MULTI-VALUED predicate makes a batch: accepting one supersedes NOTHING', () => {
-    const [d] = groupDecisions(rows('urn:kbase:predicate/principle'), ARITY);
-    expect(d.kind).toBe('batch');
-    expect(d.contested).toBe(false);
-    const v = buildVerdict({ decision: d, verdict: 'accept', claim: d.claims[0].id, actor });
-    expect(v.supersedes).toEqual([]);
-    expect(renderVerdict(v, d)).toContain('untouched and still awaiting review');
+  it('a MULTI-VALUED predicate makes one decision PER FINDING: accepting one cannot close the others', () => {
+    const ds = groupDecisions(rows('urn:kbase:predicate/principle'), ARITY);
+    expect(ds).toHaveLength(3);
+    expect(new Set(ds.map((d) => d.id)).size).toBe(3);
+    for (const d of ds) {
+      expect(d.kind).toBe('single');
+      expect(d.contested).toBe(false);
+      expect(d.claims).toHaveLength(1);
+      const v = buildVerdict({ decision: d, verdict: 'accept', claim: d.claims[0].id, actor });
+      expect(v.supersedes).toEqual([]);
+    }
   });
 
-  it('an UNKNOWN predicate is a batch — unknown must never supersede', () => {
-    const [d] = groupDecisions(rows('urn:kbase:predicate/never-seen-before'), ARITY);
-    expect(d.kind).toBe('batch');
-    expect(buildVerdict({ decision: d, verdict: 'accept', claim: d.claims[0].id, actor }).supersedes).toEqual([]);
+  it('an UNKNOWN predicate is per-finding too — unknown must never group or supersede', () => {
+    const ds = groupDecisions(rows('urn:kbase:predicate/never-seen-before'), ARITY);
+    expect(ds).toHaveLength(3);
+    expect(ds.every((d) => d.kind === 'single')).toBe(true);
   });
 
-  it('ranks a batch BELOW a genuine choice, however large the batch is', () => {
+  it('keeps 94 independent findings independently reviewable', () => {
     const big = Array.from({ length: 94 }, (_, i) =>
       row({ subject: 'urn:kbase:concept/journey-docs', predicate: 'urn:kbase:predicate/principle', object: `term-${i}`, agent: 'offline:docs-review' }));
     const decisions = groupDecisions([...big, ...rows('urn:kbase:predicate/has-status')], ARITY);
     expect(decisions[0].kind).toBe('choice');
-    expect(decisions[decisions.length - 1].claims).toHaveLength(94);
+    expect(decisions.filter((d) => d.subject.endsWith('journey-docs'))).toHaveLength(94);
   });
 
-  it('accepts a whole batch with `all`, and refuses `all` on a choice', () => {
-    const [batch] = groupDecisions(rows('urn:kbase:predicate/principle'), ARITY);
-    const v = buildVerdict({ decision: batch, verdict: 'accept', claim: 'all', actor });
-    expect(v.objects).toEqual(['a', 'b', 'c']);
-    expect(v.supersedes).toEqual([]);
-
+  it('refuses `all` on a choice', () => {
     const [choice] = groupDecisions(rows('urn:kbase:predicate/has-status'), ARITY);
     expect(() => buildVerdict({ decision: choice, verdict: 'accept', claim: 'all', actor }))
       .toThrow(/cannot all be true/);
   });
 
-  it('a batch never escalates, however human its proposers are', () => {
-    const [d] = groupDecisions([
-      row({ predicate: 'urn:kbase:predicate/principle', object: 'a', agent: 'matt' }),
-      row({ predicate: 'urn:kbase:predicate/principle', object: 'b', agent: 'ios-shortcut' }),
-    ], ARITY);
-    expect(d.escalate).toBeNull();
-  });
-
-  it('tells the reader in words that a batch does not compete', () => {
+  it('a reject verdict names its objects, so it cannot spill onto sibling findings', () => {
     const [d] = groupDecisions(rows('urn:kbase:predicate/principle'), ARITY);
-    expect(renderDecision(d)).toContain('this predicate accumulates, so they do not compete');
+    expect(buildVerdict({ decision: d, verdict: 'reject', actor }).objects).toEqual([d.claims[0].object]);
+    const [choice] = groupDecisions(rows('urn:kbase:predicate/has-status'), ARITY);
+    expect(buildVerdict({ decision: choice, verdict: 'reject', actor }).objects).toEqual(choice.claims.map((c) => c.object));
   });
 });
 
@@ -427,13 +420,13 @@ describe('how much evidence before functionality is believed', () => {
     expect(predicateArity(oneEach(MIN_SUBJECTS_FOR_FUNCTIONAL)).get('server-health')).toBe('functional');
   });
 
-  it('so a thinly-evidenced predicate becomes a batch, and accepting supersedes nothing', () => {
+  it('so a thinly-evidenced predicate is per-finding, and accepting supersedes nothing', () => {
     const arity = predicateArity(oneEach(2));
-    const [d] = groupDecisions([
+    const ds = groupDecisions([
       row({ predicate: 'urn:kbase:predicate/server-health', object: 'kernel', agent: 'offline:server-health' }),
       row({ predicate: 'urn:kbase:predicate/server-health', object: 'reboot', agent: 'offline:server-health' }),
     ], arity);
-    expect(d.kind).toBe('batch');
-    expect(buildVerdict({ decision: d, verdict: 'accept', claim: d.claims[0].id, actor }).supersedes).toEqual([]);
+    expect(ds).toHaveLength(2);
+    expect(buildVerdict({ decision: ds[0], verdict: 'accept', claim: ds[0].claims[0].id, actor }).supersedes).toEqual([]);
   });
 });
