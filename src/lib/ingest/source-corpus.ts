@@ -150,11 +150,11 @@ export async function readRetainedText(root: CorpusRoot, hash: string): Promise<
 }
 
 /**
- * The passages of the retained sources, ready to fold into a space file (F107.10.2). Reads each
- * source's chunks.ttl through the importer when it is there (the pre-fold format stays readable and
- * keeps its generation time); otherwise cuts the retained text, which is deterministic. A source
- * with no retained copy contributes nothing. Never throws: a failure to read one source skips that
- * source, because an export must not be lost to a cache.
+ * The passages of the retained documents, ready to fold into a saved file (F107.10.2). Reads each
+ * document's chunks.ttl through the importer when it is there (the pre-fold format stays readable and
+ * keeps its generation time); otherwise cuts the retained text, which is deterministic. A document
+ * with no retained copy contributes nothing. Never throws: a failure to read one document skips that
+ * document, because a save must not be lost to a cache.
  */
 export async function readFoldedCorpora(root: CorpusRoot, sources: Array<{ id: string; hash?: string }>): Promise<FoldedCorpus[]> {
   const out: FoldedCorpus[] = [];
@@ -182,8 +182,84 @@ export async function readFoldedCorpora(root: CorpusRoot, sources: Array<{ id: s
       const text = await dir.readText(TEXT_FILE);
       if (text) out.push({ sourceId: src.id, sha256: src.hash, generatedAt: new Date(0).toISOString(), chunks: chunkText(text) });
     } catch {
-      /* skip this source */
+      /* skip this document */
     }
   }
   return out;
+}
+
+export type AdoptReport = {
+  adopted: string[];
+  /** Already retained here (an original or earlier copy wins; nothing is overwritten). */
+  alreadyHere: string[];
+  /** Not adopted, and why. Reported, never silently dropped. */
+  skipped: Array<{ sourceId: string; reason: string }>;
+};
+
+async function sha256Hex(text: string): Promise<string | null> {
+  if (typeof crypto === 'undefined' || !crypto.subtle) return null;
+  try {
+    const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A saved file that carries its documents' passages (F107.10.2) is opened in a profile that holds
+ * none of them (F107.10.3). Rebuild each document's retained text from the passages, which are
+ * disjoint and together cover it exactly, and write it with its chunks.ttl so the Source View finds
+ * it by the same hash as always. This yields the extracted TEXT, not the original document: the
+ * original bytes are not in the saved file.
+ *
+ * A document is adopted only if its passages are contiguous from 0, their text joins to a string
+ * whose SHA-256 equals the version the file names, and the safety gate passes. Anything else is
+ * reported in `skipped`. A document already retained here is left alone. Never throws.
+ */
+export async function adoptPassages(
+  root: CorpusRoot,
+  corpora: FoldedCorpus[],
+  titles: Record<string, string>,
+): Promise<AdoptReport> {
+  const report: AdoptReport = { adopted: [], alreadyHere: [], skipped: [] };
+  let dirs: string[] = [];
+  try { dirs = await root.listDirs(); } catch { /* an unlistable root adopts nothing below */ }
+  for (const c of corpora) {
+    const skip = (reason: string) => report.skipped.push({ sourceId: c.sourceId, reason });
+    try {
+      if (!c.sha256) { skip('the file names no version for these passages'); continue; }
+      if (findCorpusDir(dirs, c.sha256)) { report.alreadyHere.push(c.sourceId); continue; }
+      const ordered = [...c.chunks].sort((a, b) => a.index - b.index);
+      let at = 0;
+      let contiguous = ordered.length > 0;
+      for (const [i, k] of ordered.entries()) {
+        if (k.index !== i || k.start !== at || k.end - k.start !== k.text.length) { contiguous = false; break; }
+        at = k.end;
+      }
+      if (!contiguous) { skip('the passages do not cover the text from start to end'); continue; }
+      const text = ordered.map((k) => k.text).join('');
+      if (!text) { skip('no text'); continue; }
+      const actual = await sha256Hex(text);
+      if (actual === null) { skip('cannot verify the version here (no SHA-256)'); continue; }
+      if (actual !== c.sha256.toLowerCase()) { skip('the passages do not hash to the version the file names'); continue; }
+      if (classifyText(text).rating === 'blocked') { skip('blocked by the content gate'); continue; }
+      const title = titles[c.sourceId] ?? c.sourceId;
+      const dirName = corpusDirName(title, c.sha256);
+      if (!dirName) { skip('unusable version'); continue; }
+      const dir = await root.openDir(dirName, true);
+      if (!dir) { skip('could not open a folder for it'); continue; }
+      await dir.write(TEXT_FILE, text);
+      await dir.write(CHUNKS_FILE, chunksToTurtle({
+        sourceId: c.sourceId, title, sha256: c.sha256,
+        chunks: ordered.map((k) => ({ ...k, contextStart: k.start })),
+        generatedAt: c.generatedAt,
+      }));
+      dirs.push(dirName);
+      report.adopted.push(c.sourceId);
+    } catch (e) {
+      skip(e instanceof Error ? e.message : String(e));
+    }
+  }
+  return report;
 }

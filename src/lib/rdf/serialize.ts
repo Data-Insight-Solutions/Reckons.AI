@@ -346,9 +346,9 @@ export function toTurtleFull(
     shellyPersona?: ShellyPersonaExport;
     kbStableId?: string;
     /**
-     * The space's source passages (F107.10.2), written LAST under their own header so a reader that
+     * The space's document passages (F107.10.2), written LAST under their own header so a reader that
      * stops early never parses them. Evidence, never claims: the importer returns them apart from
-     * the statements, and toTurtle / site-export never write them.
+     * the facts, and toTurtle / site-copy never write them.
      */
     chunks?: FoldedCorpus[];
   } = {}

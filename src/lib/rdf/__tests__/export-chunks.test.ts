@@ -1,6 +1,6 @@
 /**
- * F107.10.2 — the space file carries its sources' passages, after the claims, and they round-trip
- * through the importer (F107.10.1). Chunks are evidence: a claim export or a publish never has them.
+ * F107.10.2 — the saved file carries its documents' passages, after the claims, and they round-trip
+ * through the importer (F107.10.1). Chunks are evidence: a claim copy or a publish never has them.
  */
 import { describe, it, expect } from 'vitest';
 import { importTurtleFull } from '../import-ttl';
