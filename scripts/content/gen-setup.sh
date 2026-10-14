@@ -8,6 +8,8 @@
 #   bin/sd-vulkan/        stable-diffusion.cpp (MIT), the prebuilt Linux Vulkan release
 #   lib/vk/               a user-space Vulkan loader, if the system has none (Debian/Ubuntu `apt download`)
 #   venv/                 Python 3.11 + torch (CUDA 12.8) for TripoSplat
+#   bin/brush/            Brush (Apache-2.0), the prebuilt Linux x86_64 release, for scan:room (F58.9.6)
+#   venv/ (pycolmap)      COLMAP (BSD-3) as the pycolmap wheel, for scan:room; CPU build, no CUDA toolkit needed
 #   src/TripoSplat/       TripoSplat (MIT), pinned commit
 #   models/               Z-Image-Turbo, Qwen3-4B, Wan2.2 TI2V-5B, umt5-xxl (Apache-2.0); TripoSplat (MIT)
 #
@@ -15,6 +17,8 @@
 set -euo pipefail
 
 G="${RECKONS_GEN_HOME:-$HOME/.local/share/reckons/gen}"
+BRUSH_VERSION="v0.3.0"
+BRUSH_SHA256="4f0f9a8785d1951c62df26aae247c02c5bba32b00f40b06df4e1c9b867399e20"
 SD_RELEASE="master-964-1d0a58a"
 SD_ZIP="sd-master-1d0a58a-bin-Linux-Ubuntu-24.04-x86_64-vulkan.zip"
 TRIPOSPLAT_COMMIT="d8db9e018b413dd9c4a9fe22463781bf98e8e68d"
@@ -42,6 +46,18 @@ if [ ! -x "$G/venv/bin/python" ]; then
   uv pip install -q -p "$G/venv/bin/python" numpy safetensors pillow tqdm
 fi
 
+echo "== pycolmap (COLMAP for scan:room)"
+uv pip install -q -p "$G/venv/bin/python" pycolmap
+
+echo "== Brush $BRUSH_VERSION"
+if [ ! -x "$G/bin/brush/brush_app" ]; then
+  BRUSH_TAR="brush-app-x86_64-unknown-linux-gnu.tar.xz"
+  mkdir -p "$G/dl/brush" "$G/bin/brush"
+  curl -fL --retry 5 -o "$G/dl/brush/$BRUSH_TAR" "https://github.com/ArthurBrussee/brush/releases/download/$BRUSH_VERSION/$BRUSH_TAR"
+  echo "$BRUSH_SHA256  $G/dl/brush/$BRUSH_TAR" | sha256sum -c -
+  tar -xJf "$G/dl/brush/$BRUSH_TAR" -C "$G/bin/brush" --strip-components=1
+fi
+
 echo "== TripoSplat $TRIPOSPLAT_COMMIT"
 if [ ! -d "$G/src/TripoSplat/.git" ]; then
   git clone -q https://github.com/VAST-AI-Research/TripoSplat.git "$G/src/TripoSplat"
@@ -66,4 +82,4 @@ for p in background_removal/birefnet.safetensors clip_vision/dino_v3_vit_h.safet
   fetch VAST-AI/TripoSplat "triposplat/$p" "$p"
 done
 
-echo "== done: $G ($(du -sh "$G" | cut -f1)). Next: npm run gen:assets"
+echo "== done: $G ($(du -sh "$G" | cut -f1)). Next: npm run gen:assets, or npm run scan:room -- <scan>"

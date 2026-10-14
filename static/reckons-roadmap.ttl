@@ -3950,6 +3950,68 @@ kb:media-entity-types rdf:type ktype:Phase ;
     kpred:has-file "src/lib/rdf/entity-types.ts", "src/lib/rdf/types.ts", "scripts/content/gen-assets.ts", "static/starter-generated-assets.ttl" ;
     kpred:tested-by "src/lib/rdf/__tests__/entity-types.test.ts", "tests/e2e/workflow-generated-assets.test.ts" .
 
+# F58.9.6-.10 — a scanned room as the space background, with generated splats placed inside it.
+# MATT, 2026-10-14: "Please let me know if I can scan with an open source mobile app on iOS, export and then import a
+# custom room scene. ... create an interactive space where a user can scan their physical space and import it, then
+# generate images, splats, and place the splat nodes in their background." This also covers backlog items 5 (background
+# settings) and 6 (place and scale splats inside the background) from the 2026-10-14 handoff.
+kb:room-scan-capture rdf:type ktype:Phase ;
+    rdfs:label "F58.9.6 — scan a room on an iPhone and reconstruct it into a Gaussian splat on the person's own machine" ;
+    kpred:feature-id "F58.9.6" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:relates-to kb:space-photorama ;
+    kpred:decided "MATT, 2026-10-14: scan a physical room with an open-source iOS app, export it, import it as a custom room scene." ;
+    kpred:description "Capture with Stray Scanner (MIT, free on the App Store, LiDAR iPhone; exports rgb.mp4, depth PNGs, odometry.csv with per-frame pose and intrinsics) or, on any iPhone, a slow video from the Camera app. A host command, npm run scan:room, extracts frames with ffmpeg, recovers camera poses with COLMAP, trains a splat with Brush (Apache-2.0, reads COLMAP folders) and writes splat.ply plus a receipt (input hash, frame count, registered-image count, tool versions, duration, Gaussian count, output hash). The output is accepted only by the existing splat check (asset-checks.ts) plus a registration check: COLMAP must place at least half of the frames." ;
+    kpred:principle "A reconstructed room RECORDS what was there; it is labelled reconstructed, never generated, and the receipt is what says so." ;
+    kpred:constraint "Optional host tools, never a dependency of the app. The first trial ignores Stray Scanner's ARKit poses because its format documentation does not state the axis or quaternion convention; COLMAP recomputes poses from the video. Using the phone's poses directly is a later speed-up, after a measured comparison." ;
+    kpred:has-file "scripts/content/scan-room.ts", "scripts/content/scan-room-lib.ts", "scripts/content/scan_colmap.py", "scripts/content/scan-synthetic-room.py", "scripts/content/scan-room.tasks.ttl", "scripts/content/gen-setup.sh" ;
+    kpred:tested-by "scripts/content/__tests__/scan-room-lib.test.ts" ;
+    kpred:progress "2026-10-14: npm run scan:room built and run end to end ONCE on a synthetic input. Stages: ffmpeg frames (blurriest dropped by Laplacian variance), COLMAP via pycolmap (sequential matching), Brush v0.3.0 training, then the registration check and asset-checks.ts splat check; receipt.json says origin reconstructed. Tools installed without sudo into ~/.local/share/reckons/gen by gen-setup.sh: Brush from its prebuilt Linux x86_64 release (SHA-256 pinned), COLMAP as the pycolmap 4.2.1 wheel in the existing venv (CPU build; no system colmap, conda or AppImage was needed). `npm run scan:room -- --check <dir>` re-verifies a finished scan from its receipt; the F166 task is scripts/content/scan-room.tasks.ttl." ;
+    kpred:measured "TRIAL 2026-10-14, one run each, RTX 3090 + 24-thread CPU. INPUT: a synthetic 8 s, 960x540, 30 fps video rendered by scripts/content/scan-synthetic-room.py (Blender, a made-up 5 x 5 x 2.6 m room with random-blob textures; no personal capture, no third-party media). 240 frames extracted, 200 kept, COLMAP registered 200 of 200 (26,098 sparse points). Default 30,000 Brush steps: frames 4.6 s, COLMAP 207 s (features 10 s, matching 70 s, mapping 128 s, CPU only), Brush 353 s; 432,501 Gaussians, 102 MB PLY; splat check passed (finite, visible fraction 0.98). A 3,000-step run took 29 s and gave 88,330 Gaussians, 21 MB. Both runs re-verified by --check." ;
+    kpred:remaining "NOT YET TRUE, 2026-10-14: (1) no Stray Scanner export and no real phone video has been run; the Stray folder path is validated by unit tests on synthetic folders only, and the app's pose convention is still unused. (2) The synthetic video is clean: perfect exposure, no motion blur, no rolling shutter, no moving people. COLMAP registering 200 of 200 says nothing about a handheld iPhone clip. (3) Nobody has LOOKED at the trained splat; the checks prove it is a well-formed PLY with real extent, not that it resembles the room. COLMAP scale is arbitrary (the trial extent is 38.7 units for a 5 m room, floaters included). (4) A 100 MB PLY is too large to ship to a browser as is; F58.9.7 needs compression (SPZ) or fewer Gaussians (--max-splats, --sh-degree). (5) pycolmap is CPU-only here; matching and mapping take about 3.5 minutes for 200 frames. (6) Linux x86_64 only; macOS and Windows untested. (7) The F166 task is parsed by the runner (--dry-run) but has not been executed through it." ;
+    kpred:measured "2026-10-14, FIRST REAL CAPTURE (a private Stray Scanner export from Matt's iPhone; not in the repository, kept under ~/.local/share/reckons/scans): 105 s of 1920x1440 video at 60 fps, 375 frames extracted, 300 kept. The first run OOM-killed at 16.7 GB RSS during COLMAP feature extraction (defaults: 3200 px, one extractor per core on 24 cores) and took the editor down with it. With frames scaled to 1600 px and COLMAP capped at 1600 px and 8 threads: COLMAP registered 266 of 300 frames in 339 s, Brush trained 30,000 steps in 790 s, 228,275 Gaussians in 53.9 MB, checks passed, 19 min wall clock, peak RSS 4.56 GB. Imported into the Your room space (F58.9.7 branch) in 3.8 s; Level the floor removed a 33.1 degree tilt with 63% of 20,753 sampled points on the plane. Seen only in headless software rendering, where it looked soft and streaky at close range: visual fidelity is NOT yet judged by a person." .
+
+kb:splat-file-import rdf:type ktype:Phase ;
+    rdfs:label "F58.9.7 — import a PLY or SPZ splat from the device into a space" ;
+    kpred:feature-id "F58.9.7" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-space-background ;
+    kpred:description "From the space's background controls, Import a scan picks a .ply or .spz file; the bytes are kept in the browser's own storage (IndexedDB, not a data: URI in a triple), a GaussianSplat entity is added with kpred:splat pointing at the stored asset and kmeta:splat-origin 'reconstructed' or 'generated', and the space background is set to it. Exporting the space carries the file through the existing kb-assets round-trip, which closes the F58.9.3 gap that a background was only a path." ;
+    kpred:constraint "Nothing leaves the device. A file that fails the splat parse (count, finite values, real extent, the same checks as asset-checks.ts) is refused with the reason shown, not stored." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:splat-background-settings rdf:type ktype:Phase ;
+    rdfs:label "F58.9.8 — background settings: surround or backdrop, orientation, scale, offset, opacity" ;
+    kpred:feature-id "F58.9.8" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-space-background ;
+    kpred:description "Per-space meta triples on <urn:reckons:space>: background mode (backdrop, the F58.9.3 behaviour, or surround, where the graph sits INSIDE the room at real scale), up axis and yaw, scale, offset and opacity. A reconstructed room is NOT given TripoSplat's y-down/+x correction; the orientation comes from the setting, with a Level the floor button that fits the dominant horizontal plane." ;
+    kpred:constraint "Settings, not facts: meta predicates, never edges, travel with an export. Reduced motion stops the background's slow turn (an F58.9.3 gap)." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:splat-placement rdf:type ktype:Phase ;
+    rdfs:label "F58.9.9 — place and scale splat nodes inside the background" ;
+    kpred:feature-id "F58.9.9" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-background-settings, kb:splat-node-view ;
+    kpred:description "A node with a splat can be placed in the room: kmeta:placed-at (x y z in background coordinates), kmeta:placed-scale and kmeta:placed-yaw. A placed node is pinned (the force layout leaves it where it was put) and its splat is drawn at that place and size instead of node-sized. Placing is done from the node's asset viewer: Place in room puts it on the floor in front of the camera, then move, raise, turn and scale controls adjust it; Unplace returns it to the layout." ;
+    kpred:constraint "Picking and labels behave as for any other node. Placement is a setting of the space, not a fact about the thing." ;
+    kpred:remaining "Plan only, 2026-10-14. Free drag with a 3D gizmo is out of scope for the first pass; buttons and a numeric panel first." .
+
+kb:room-scene-space rdf:type ktype:Phase ;
+    rdfs:label "F58.9.10 — a guided Your room space: scan, import, generate, place" ;
+    kpred:feature-id "F58.9.10" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:room-scan-capture, kb:splat-file-import, kb:splat-background-settings, kb:splat-placement ;
+    kpred:description "An example space, opened from About → example data like Generated assets, whose nodes are the four steps in hnav order (the Getting started pattern): Scan your room (phone steps), Reconstruct it (the npm run scan:room command and what it checks), Import the scan (the import button), Generate objects and place them (the gen-assets briefs, then Place in room). It ships with a small synthetic room splat so the space works before anyone scans." ;
+    kpred:constraint "Not a new top-level navigation tab: it is a space, reached where the existing examples are. Generation in the browser is not possible; the Generate step says so and names the host command (the greyed Regenerate idea, backlog item 3)." ;
+    kpred:remaining "Plan only, 2026-10-14. Release placement is Matt's (0.2.7 is proposed for F58.9.1-.5, undecided)." .
+
 kb:release-0-2-7 kpred:proposed "2026-10-14 (agent, not decided): the F58.9 splat proof of concept (F58.9.1-.4) belongs in 0.2.7, not 0.2.6, by Matt's own rule for 0.2.6 that anything not serving the evidence chain waits." .
 kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: 'We should get things on dev so I can review localhost... I want to review both on localhost, dev branch.' The proof of concept merges to dev now for review; which release carries it is still open." ;
     kpred:open-question "MATT, 2026-10-14: 'The visual test review space is interesting, but minimal and without proper timeline/story setup.' What should a review space's timeline and story be (the Getting started starter has one; the visual-review and generated-assets examples do not)?" .
