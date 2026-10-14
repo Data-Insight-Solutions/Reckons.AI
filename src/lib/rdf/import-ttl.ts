@@ -19,6 +19,8 @@ const DC    = 'http://purl.org/dc/terms/';
 const PROV  = 'http://www.w3.org/ns/prov#';
 const KBASE = 'urn:kbase:meta/';
 const XSD   = 'http://www.w3.org/2001/XMLSchema#';
+const SCHEMA = 'https://schema.org/';
+const OA    = 'http://www.w3.org/ns/oa#';
 
 const STMT_PREFIX = 'urn:kbase:stmt/';
 const SRC_PREFIX  = 'urn:kbase:source/';
@@ -51,8 +53,32 @@ export type ShellyPersonaOverrides = {
   responseFrequency?: number;
 };
 
+/**
+ * A source passage read from a space file (F107.10.1). Evidence, never a claim: it is returned
+ * beside the statements and never enters the statement store, the graph view or a publish.
+ */
+export type ImportedChunk = {
+  /** The chunk's IRI, e.g. urn:kbase:source/<id>/chunk/<n>. */
+  iri: string;
+  /** The source it is part of (dcterms:isPartOf), as a source id when it is a urn:kbase:source/ IRI. */
+  sourceId: string;
+  /** 0-based order in the source (schema:position). */
+  index: number;
+  /** Content range [start, end) in the source text (oa:TextPositionSelector). */
+  start: number;
+  end: number;
+  /** The passage text (rdf:value). */
+  text: string;
+  /** When it was derived, ISO 8601 (prov:generatedAtTime), if the file says. */
+  generatedAt?: string;
+};
+
 export type ImportResult = {
   statements: Statement[];
+  /** Source passages found in the file. Empty when it holds none. Never statements. */
+  chunks: ImportedChunk[];
+  /** Chunk-shaped nodes that were incomplete or contradictory: reported, never thrown, never imported. */
+  chunkProblems?: Array<{ iri: string; reason: string }>;
   sources: Source[];
   /** Statements imported from a clean (non-annotated) Turtle file get this status */
   cleanImportCount: number;
@@ -102,6 +128,85 @@ function n3ToTerm(term: any): Term | null {
 }
 
 /**
+ * Find the chunk nodes in a parsed file. A chunk is a node that is dcterms:isPartOf an IRI AND
+ * carries at least one of schema:position, rdf:value, oa:hasSelector; the second condition keeps
+ * a space that is isPartOf a set from being mistaken for a passage. Complete chunks are returned;
+ * incomplete ones are reported. Either way every triple of the node, and of its selector blank
+ * node, is marked consumed so none of them can fall into the plain-Turtle statement fallback.
+ * `consumed` holds subject values (blank nodes as '_:' + label).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function readChunkNodes(quads: any[]): { chunks: ImportedChunk[]; chunkProblems: Array<{ iri: string; reason: string }>; consumed: Set<string> } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bySubject = new Map<string, any[]>();
+  for (const q of quads) {
+    if (q.subject.termType !== 'NamedNode') continue;
+    const list = bySubject.get(q.subject.value);
+    if (list) list.push(q); else bySubject.set(q.subject.value, [q]);
+  }
+  const consumed = new Set<string>();
+  const chunks: ImportedChunk[] = [];
+  const chunkProblems: Array<{ iri: string; reason: string }> = [];
+  const nonNegInt = (v: string) => (/^\d+$/.test(v.trim()) ? parseInt(v, 10) : null);
+
+  for (const [iri, qs] of bySubject) {
+    const has = (p: string) => qs.some((q) => q.predicate.value === p);
+    const parts = qs.filter((q) => q.predicate.value === DC + 'isPartOf' && q.object.termType === 'NamedNode');
+    if (parts.length === 0) continue;
+    if (!has(SCHEMA + 'position') && !has(RDF + 'value') && !has(OA + 'hasSelector')) continue;
+
+    consumed.add(iri);
+    const selectors = qs.filter((q) => q.predicate.value === OA + 'hasSelector');
+    for (const sel of selectors) if (sel.object.termType === 'BlankNode') consumed.add('_:' + sel.object.value);
+    const one = (p: string) => qs.filter((q) => q.predicate.value === p);
+
+    const problems: string[] = [];
+    const values = one(RDF + 'value');
+    const positions = one(SCHEMA + 'position');
+    if (parts.length > 1 && new Set(parts.map((q) => q.object.value)).size > 1) problems.push('part of more than one source');
+    if (values.length !== 1 || values[0].object.termType !== 'Literal') problems.push(values.length === 0 ? 'no text (rdf:value)' : 'text is not a single literal');
+    const index = positions.length === 1 ? nonNegInt(positions[0].object.value) : null;
+    if (index === null) problems.push(positions.length === 0 ? 'no position (schema:position)' : 'position is not a single non-negative integer');
+    let start: number | null = null;
+    let end: number | null = null;
+    if (selectors.length !== 1 || selectors[0].object.termType !== 'BlankNode') {
+      problems.push(selectors.length === 0 ? 'no text position selector' : 'not exactly one text position selector');
+    } else {
+      const sq = quads.filter((q) => q.subject.termType === 'BlankNode' && q.subject.value === selectors[0].object.value);
+      const sv = (p: string) => sq.filter((q) => q.predicate.value === p);
+      if (sv(OA + 'start').length === 1) start = nonNegInt(sv(OA + 'start')[0].object.value);
+      if (sv(OA + 'end').length === 1) end = nonNegInt(sv(OA + 'end')[0].object.value);
+      if (start === null || end === null) problems.push('selector start/end missing or not integers');
+      else if (end < start) problems.push('selector ends before it starts');
+    }
+    if (problems.length > 0 || index === null || start === null || end === null) {
+      chunkProblems.push({ iri, reason: problems.join('; ') });
+      continue;
+    }
+    const generated = one(PROV + 'generatedAtTime')[0]?.object.value;
+    const sourceIri = parts[0].object.value;
+    chunks.push({
+      iri,
+      sourceId: sourceIri.startsWith(SRC_PREFIX) ? sourceIri.slice(SRC_PREFIX.length) : sourceIri,
+      index, start, end,
+      text: values[0].object.value,
+      ...(generated ? { generatedAt: generated } : {}),
+    });
+  }
+  // Duplicate (source, index): the first wins, the rest are reported. Order is canonical either way.
+  const seen = new Set<string>();
+  const kept: ImportedChunk[] = [];
+  chunks.sort((a, b) => (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : a.index - b.index || (a.iri < b.iri ? -1 : 1)));
+  for (const c of chunks) {
+    const key = `${c.sourceId}\u0000${c.index}`;
+    if (seen.has(key)) { chunkProblems.push({ iri: c.iri, reason: `duplicate position ${c.index} in source ${c.sourceId}` }); continue; }
+    seen.add(key);
+    kept.push(c);
+  }
+  return { chunks: kept, chunkProblems, consumed };
+}
+
+/**
  * Parse an annotated .ttl file back into Statement[] + Source[].
  * Falls back to treating plain (non-annotated) Turtle as confirmed statements.
  */
@@ -127,6 +232,8 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     quads = new Parser({ format: 'TriG' }).parse(repaired.text);
   }
 
+  const { chunks, chunkProblems, consumed: chunkSubjects } = readChunkNodes(quads);
+
   // Maps from IRI → property bag
   const stmtData = new Map<string, Record<string, unknown>>();
   const srcData  = new Map<string, Record<string, unknown>>();
@@ -139,6 +246,9 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     const sv: string = quad.subject.value;
     const pv: string = quad.predicate.value;
     const ov = quad.object;
+
+    // A passage (or its selector) is evidence: it is read by readChunkNodes, never a claim.
+    if (chunkSubjects.has(sv) || (quad.subject.termType === 'BlankNode' && chunkSubjects.has('_:' + sv))) continue;
 
     if (sv.startsWith(STMT_PREFIX)) {
       if (!stmtData.has(sv)) stmtData.set(sv, {});
@@ -315,5 +425,5 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
 
   if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
-  return { statements, sources, cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
+  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }
