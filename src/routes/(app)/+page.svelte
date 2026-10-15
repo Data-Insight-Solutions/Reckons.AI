@@ -12,6 +12,7 @@
   import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
@@ -3054,6 +3055,11 @@
       {:else}
         <button class="link-add-btn mono link-add-btn--inline" onclick={() => { addingLink = true; newLinkKind = 'url'; }}>+ add url / path</button>
       {/if}
+    {/if}
+
+    <!-- F34.5: pass / fail / note on a step of a release review space (shown only on nodes that carry a review verdict) -->
+    {#if selected?.startsWith('i:')}
+      <ReviewVerdict entityIri={iriFromNodeKey(selected) ?? ''} />
     {/if}
 
     <!-- Per-entity 3D model -->

@@ -93,6 +93,14 @@
       "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
     },
     {
+      "name": "release-review-space",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-review-space.ts --check",
+      "blocking": true,
+      "desc": "F34.5. Fails when a generated static/review-<version>.ttl (the per-release visual review space opened from About) differs from what the roadmap's release has-part features and the Testing graph's TestWorkflows generate. Regenerate with npx tsx scripts/offline/release-review-space.ts. Deterministic, no model."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,
