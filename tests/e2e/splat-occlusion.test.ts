@@ -21,8 +21,8 @@ test('a marker behind a node splat is hidden by the splat\'s depth proxy', async
   const canvas = page.locator('main canvas[data-splats]').first();
   await expect(canvas).toHaveAttribute('data-splats', '2/0', { timeout: 60_000 });
   await page.waitForFunction(() => {
-    const c = document.querySelector('main canvas[data-splats]') as unknown as { __rk?: { scene: { userData: { splatOccluders?: Map<string, unknown> } } } };
-    return (c?.__rk?.scene.userData.splatOccluders?.size ?? 0) >= 1;
+    const c = document.querySelector('main canvas[data-splats]') as unknown as { __rk?: { scene: { userData: { splatOccluders?: Record<string, unknown> } } } };
+    return (c?.__rk?.scene.userData.splatOccluders ? Object.keys(c.__rk.scene.userData.splatOccluders).length : 0) >= 1;
   }, null, { timeout: 30_000 });
   await page.waitForTimeout(2_000);
 
@@ -30,7 +30,7 @@ test('a marker behind a node splat is hidden by the splat\'s depth proxy', async
     const c = document.querySelector('main canvas[data-splats]') as unknown as HTMLCanvasElement & { __rk: any };
     const { scene, getCamera, renderer } = c.__rk;
     const camera = getCamera();
-    const proxies: any[] = [...scene.userData.splatOccluders.values()];
+    const proxies: any[] = Object.values(scene.userData.splatOccluders);
     const frame = () => new Promise<number>((r) => requestAnimationFrame((t) => r(t)));
     const avgFrameMs = async (n: number) => { let last = await frame(); const t0 = last; for (let i = 0; i < n; i++) last = await frame(); return (last - t0) / n; };
 

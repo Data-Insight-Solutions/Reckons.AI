@@ -261,7 +261,7 @@
     }
     return items;
   });
-  /** F58.9.13: node key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
+  /** F58.9.13: entity key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
   const splatOccluderWorld = $derived(new Map(splatItems.filter((i) => i.occludes).map((i) => [i.key, occluderRadius(i.radius)])));
 
   type Node = {
@@ -1711,7 +1711,7 @@
           // Screen radius: worldRadius / (tan(fov/2) * rawDist) * halfH
           const meshScale = 0.85 + 0.45 * Math.log2(1 + n.degree);
           let screenRadius = (meshScale * 0.32 / (CAM_HALF_TAN * rawDist)) * halfH;
-          // A drawn node splat hides labels behind it too: widen its disc to the splat's core.
+          // A drawn entity splat hides labels behind it too: widen its disc to the splat's core.
           const core = splatDrawnKeys.has(n.key) ? splatOccluderWorld.get(n.key) : undefined;
           if (core) screenRadius = Math.max(screenRadius, projectedRadius(core, rawDist, CAM_HALF_TAN, halfH));
           allProjected.push({ key: n.key, label: n.label, sx, sy, rawDist, adjDist, screenRadius });
