@@ -3,7 +3,7 @@
  *
  * The file lives in this browser's IndexedDB (`splatFiles`) as a Blob: the chosen File is stored as
  * it is, so a 100 MB scan is never copied into a JavaScript buffer and never becomes a data: URI
- * inside a triple. A triple refers to it as `asset:splat/<id>.ply|spz`, and the same name is the
+ * inside a triple. A triple refers to it as `asset:splat/<id>.ply|spz|sog`, and the same name is the
  * file name under `assets/splats/` when the space is exported (kb-assets). Nothing leaves the device.
  *
  * SIZE. Measured on the scan:room lane (2026-10-14): Brush at its default 30k steps wrote a 102 MB
@@ -27,7 +27,7 @@ export type ImportedSplat =
 const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
 
 /** Advice that is true for how reconstructed scans are made, shown with a size warning or refusal. */
-export const SIZE_ADVICE = 'Re-run the reconstruction with fewer training steps (3k steps gave 21 MB and 88,000 Gaussians against 102 MB and 432,501 at the 30k default) or convert it to .spz, which is much smaller.';
+export const SIZE_ADVICE = 'Re-run the reconstruction with fewer training steps (3k steps gave 21 MB and 88,000 Gaussians against 102 MB and 432,501 at the 30k default) or convert it to .sog or .spz (npm run splat:compress), which are about 5 to 20 times smaller.';
 
 /**
  * A content id without reading the whole file into one buffer: SHA-256 of the size plus up to 1 MB
@@ -60,7 +60,9 @@ export function localSplatId(url: string): string | null {
 /** Check a chosen file and, only if it passes, store it. A refused file is not stored. */
 export async function importSplatFile(file: File | (Blob & { name: string }), database: KBaseDB = defaultDb): Promise<ImportedSplat> {
   if (file.size > MAX_SPLAT_BYTES) return { ok: false, problems: [`the file is ${mb(file.size)}; the limit is ${mb(MAX_SPLAT_BYTES)}. ${SIZE_ADVICE}`] };
-  const check = await judgeSplatFile(file.name, file);
+  // SPZ and SOG are decoded with the renderer's own decoder (browser only); PLY is walked in chunks.
+  const decode = typeof Worker === 'undefined' ? undefined : (await import('$lib/3d/splat-decode')).decodeSplatCentres;
+  const check = await judgeSplatFile(file.name, file, decode);
   if (!check.pass || !check.kind) return { ok: false, problems: check.problems.length ? check.problems : ['the file is not a usable splat'] };
   const id = await contentId(file, check.kind);
   const had = await database.splatFiles.get(id);
@@ -74,7 +76,7 @@ export async function importSplatFile(file: File | (Blob & { name: string }), da
 
 /** Store a file that arrived with an imported space (kb-import), under the name it was exported with. */
 export async function storeSplatBytes(database: KBaseDB, id: string, bytes: Uint8Array, filename = id): Promise<void> {
-  if (!/^[A-Za-z0-9_-]+\.(ply|spz)$/.test(id)) return;
+  if (!/^[A-Za-z0-9_-]+\.(ply|spz|sog)$/.test(id)) return;
   await database.splatFiles.put({ id, blob: new Blob([bytes as BlobPart]), filename, size: bytes.length, importedAt: Date.now() });
 }
 
@@ -84,7 +86,7 @@ export async function readSplatFile(url: string, database: KBaseDB = defaultDb):
   if (!id) return null;
   const row: SplatFileRow | undefined = await database.splatFiles.get(id);
   if (!row) return null;
-  return { blob: row.blob, kind: id.endsWith('.spz') ? 'spz' : 'ply', filename: row.filename };
+  return { blob: row.blob, kind: id.endsWith('.spz') ? 'spz' : id.endsWith('.sog') ? 'sog' : 'ply', filename: row.filename };
 }
 
 /** Is this reference's file present in this browser? */

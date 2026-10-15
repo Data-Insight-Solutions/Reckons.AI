@@ -76,6 +76,7 @@
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
     "scan:room": "npx tsx scripts/content/scan-room.ts",
+    "splat:compress": "npx tsx scripts/content/splat-compress.ts",
     "scan:quality": "npx tsx scripts/content/scan-quality.ts",
     "bench:gen:discover": "npx tsx scripts/content/gen-bench-discover.ts --online",
     "bench:gen": "npx tsx scripts/content/gen-bench.ts",
@@ -198,6 +199,7 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@internationalized/date": "^3.12.4",
+    "@playcanvas/splat-transform": "3.8.0",
     "@playwright/test": "^1.63.0",
     "@rdfjs/dataset": "^2.0.3",
     "@storybook/svelte-vite": "^10.6.1",

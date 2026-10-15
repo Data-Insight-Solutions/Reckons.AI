@@ -106,4 +106,36 @@ describe('receipt shape', () => {
     const r = receipt(); r.frames.registered = 201;
     expect(validateReceipt(r).join()).toMatch(/inconsistent/);
   });
+  describe('compressed copy (F58.9.11)', () => {
+    const withCopy = (): ScanReceipt => ({
+      ...receipt(),
+      compressed: { format: 'sog', lossy: true, file: 'splat.sog', sha256: hash, bytes: 10, ratio: 9.9, gaussians: 1000, extent: 5, check: { pass: true, problems: [] } },
+    });
+    it('accepts a receipt with a decoded, lossy, smaller copy', () => { expect(validateReceipt(withCopy())).toEqual([]); });
+    it('refuses a copy that is not smaller, lost Gaussians, failed its decode or hides that it is lossy', () => {
+      const r = withCopy();
+      Object.assign(r.compressed!, { ratio: 1, gaussians: 999, lossy: false });
+      r.compressed!.check = { pass: false, problems: ['x'] };
+      const p = validateReceipt(r).join('\n');
+      expect(p).toMatch(/not a reduction/);
+      expect(p).toMatch(/999 Gaussians, output has 1000/);
+      expect(p).toMatch(/not recorded as lossy/);
+      expect(p).toMatch(/decode check did not pass/);
+    });
+  });
+  describe('floater crop (F58.9.11)', () => {
+    const withCrop = (): ScanReceipt => ({
+      ...receipt(),
+      crop: { box: { min: [0, 0, 0], max: [5, 3, 4] }, before: 1010, after: 1000, removed: 10, rawExtent: 380, extent: 5, uncropped: { file: 'splat.uncropped.ply', sha256: hash, bytes: 99 } },
+    });
+    it('accepts a crop whose counts add up', () => { expect(validateReceipt(withCrop())).toEqual([]); });
+    it('refuses counts that do not add up, a crop that is not the output, or a bigger extent', () => {
+      const r = withCrop();
+      r.crop!.removed = 9; r.crop!.after = 999; r.crop!.extent = 400;
+      const p = validateReceipt(r).join('\n');
+      expect(p).toMatch(/do not add up|crop counts/);
+      expect(p).toMatch(/crop kept 999 Gaussians, output has 1000/);
+      expect(p).toMatch(/larger than the raw extent/);
+    });
+  });
 });

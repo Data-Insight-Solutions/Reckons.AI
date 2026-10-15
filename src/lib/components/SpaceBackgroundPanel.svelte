@@ -66,9 +66,11 @@
     try {
       let blob: Blob | null = null;
       if (background.startsWith('asset:splat/')) blob = (await readSplatFile(background))?.blob ?? null;
-      else if (/\.ply(\?|#|$)/i.test(background)) blob = await (await fetch(background)).blob();
-      if (!blob || background.endsWith('.spz')) { levelMsg = 'Level the floor reads PLY files; this background is not one it can read here.'; return; }
-      const centres = await plyCentresFromSource(blobSource(blob));
+      else if (/\.(ply|spz|sog)(\?|#|$)/i.test(background)) blob = await (await fetch(background)).blob();
+      if (!blob) { levelMsg = 'Level the floor could not read this background here.'; return; }
+      const bgKind = /\.(spz|sog)(\?|#|$)/i.exec(background)?.[1].toLowerCase();
+      // PLY is read in chunks; SPZ and SOG are decoded by the renderer's decoder (the same one that draws them).
+      const centres = bgKind ? await (await import('$lib/3d/splat-decode')).sampleCentres(blob, bgKind as 'spz' | 'sog') : await plyCentresFromSource(blobSource(blob));
       let q = upAxisQuaternion(bg.up);
       if (splatOrientationFor(statements(), background) === 'triposplat') q = qMul(q, TRIPOSPLAT_BASE);
       // The room turns about its bounding-box centre, so fit in that frame: then the plane's offset
@@ -100,7 +102,7 @@
       <option value="generated">generated (invented)</option>
     </select>
     {#if background}<button class="pkg-chip" onclick={clear} data-testid="clear-background">Clear background</button>{/if}
-    <input bind:this={picker} type="file" accept=".ply,.spz" hidden onchange={onpick} data-testid="import-scan-input" />
+    <input bind:this={picker} type="file" accept=".ply,.spz,.sog" hidden onchange={onpick} data-testid="import-scan-input" />
   </div>
   {#if busy}<span class="pkg-note mono">checking the file…</span>{/if}
   {#if problems.length}
@@ -145,7 +147,7 @@
   {/if}
   <span class="pkg-note mono">
     {#if background}background: {background.startsWith('asset:splat/') ? 'a scan stored in this browser' : background}{origin ? ` · ${origin}` : ''}
-    {:else}.ply or .spz, checked before it is kept. It stays in this browser and travels with an export of the space.{/if}
+    {:else}.ply, .spz or .sog, checked before it is kept. It stays in this browser and travels with an export of the space.{/if}
   </span>
 </div>
 

@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { Blob as NodeBlob } from 'node:buffer';
 import { makePly, makeSpz } from './ply-fixture';
-import { judgeSplatFile, splatKindOf, plyCentres } from '../splat-check';
+import { judgeSplatFile, judgeDecodedSplat, judgeSogHeader, judgeSplatSpzV4Header, splatKindOf, plyCentres, type DecodedSplat } from '../splat-check';
 import {
   isSplatUrl, isLocalSplatUrl, splatOrientationFor, splatOriginOf, scanStatements, scanEntityIri, backgroundSplatFrom,
   BACKGROUND_SPLAT_PREDICATE, SPACE_SUBJECT,
@@ -31,7 +31,7 @@ describe('judgeSplatFile', () => {
   });
 
   it('refuses each failure with its reason', async () => {
-    expect((await judgeSplatFile('room.obj', makePly(8))).problems[0]).toMatch(/not a \.ply or \.spz/);
+    expect((await judgeSplatFile('room.obj', makePly(8))).problems[0]).toMatch(/not a \.ply, \.spz or \.sog/);
     expect((await judgeSplatFile('room.ply', new Uint8Array(0))).problems[0]).toMatch(/empty/);
     expect((await judgeSplatFile('room.ply', new TextEncoder().encode('hello'))).problems[0]).toMatch(/no PLY header/);
     expect((await judgeSplatFile('room.ply', makePly(64, { truncate: 40 }))).problems.join()).toMatch(/truncated/);
@@ -72,7 +72,73 @@ describe('large files', () => {
     const huge = Object.defineProperty(fileOf('huge.ply', makePly(64)), 'size', { value: MAX_SPLAT_BYTES + 1 });
     const r = await importSplatFile(huge, db);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.problems[0]).toMatch(/limit.*\.spz/s);
+    if (!r.ok) expect(r.problems[0]).toMatch(/limit.*\.sog or \.spz/s);
+  });
+});
+
+describe('SOG and decoded SPZ/SOG (F58.9.11)', () => {
+  const zip = (n: number) => { const b = new Uint8Array(n); b.set([0x50, 0x4b, 3, 4]); return b; };
+  const decoded = (over: Partial<DecodedSplat> = {}): DecodedSplat => ({
+    count: 100, nonFinite: 0, min: [-2, 0, -2], max: [2, 2.6, 2],
+    sample: Array.from({ length: 300 }, (_, i) => [(i % 7) - 3, (i % 3), (i % 5) - 2][i % 3]), ...over,
+  });
+
+  it('knows .sog by extension, without regard to case', () => {
+    expect(splatKindOf('room.SOG')).toBe('sog');
+    expect(isSplatUrl('/generated/x/room.sog')).toBe(true);
+    expect(isLocalSplatUrl('asset:splat/0123abcd.sog')).toBe(true);
+  });
+  it('a SOG that is not a ZIP is refused; one that is passes on its header and SAYS values were not decoded', async () => {
+    expect((await judgeSplatFile('room.sog', new TextEncoder().encode('x'.repeat(100)))).problems[0]).toMatch(/not a \.sog file/);
+    const ok = await judgeSplatFile('room.sog', zip(100));
+    expect(ok.pass).toBe(true);
+    expect(ok.kind).toBe('sog');
+    expect(ok.notes.join()).toMatch(/not decoded/);
+    expect(judgeSogHeader(zip(8), 8).problems[0]).toMatch(/too short/);
+  });
+  it('accepts SPZ version 4 (raw NGSP, not gzip) by its header and refuses a truncated or wrong-version one', async () => {
+    const v4 = (count: number, size: number, version = 4) => {
+      const b = new Uint8Array(size);
+      const v = new DataView(b.buffer);
+      v.setUint32(0, 0x5053474e, true); v.setUint32(4, version, true); v.setUint32(8, count, true);
+      return b;
+    };
+    const ok = await judgeSplatFile('room.spz', v4(1000, 2000));
+    expect(ok.pass).toBe(true);
+    expect(ok.measured.version).toBe(4);
+    expect(judgeSplatSpzV4Header(v4(1000, 100), 100).problems[0]).toMatch(/truncated/);
+    expect(judgeSplatSpzV4Header(v4(1000, 2000, 5), 2000).problems[0]).toMatch(/unsupported SPZ version 5/);
+    expect(judgeSplatSpzV4Header(v4(0, 2000), 2000).problems[0]).toMatch(/no Gaussians/);
+  });
+  it('with a decoder, an SPZ/SOG gets a real count and extent', async () => {
+    const dec = async () => decoded();
+    const sog = await judgeSplatFile('room.sog', zip(100), dec);
+    expect(sog.pass).toBe(true);
+    expect(sog.measured.count).toBe(100);
+    expect(Number(sog.measured.rawExtent)).toBeCloseTo(4);
+    expect(sog.notes.join()).toMatch(/decoded/);
+    const spz = await judgeSplatFile('room.spz', await makeSpz(100), dec);
+    expect(spz.pass).toBe(true);
+    expect(spz.measured.extent).toBeDefined();
+  });
+  it('refuses a decode that disagrees with the header, has NaNs, or has no extent', async () => {
+    expect((await judgeSplatFile('room.spz', await makeSpz(100), async () => decoded({ count: 99 }))).problems.join()).toMatch(/header says 100.*99 decoded/);
+    expect(judgeDecodedSplat('sog', decoded({ nonFinite: 3 })).problems.join()).toMatch(/3 Gaussian\(s\) with non-finite centres/);
+    expect(judgeDecodedSplat('sog', decoded({ min: [0, 0, 0], max: [0, 0, 0] })).problems.join()).toMatch(/degenerate extent/);
+    expect(judgeDecodedSplat('spz', decoded({ count: 0 })).problems.join()).toMatch(/no Gaussians/);
+  });
+  it('a decoder that throws becomes a failed check, not an exception', async () => {
+    const r = await judgeSplatFile('room.sog', zip(100), async () => { throw new Error('worker died'); });
+    expect(r.pass).toBe(false);
+    expect(r.problems[0]).toMatch(/could not read the file: worker died/);
+  });
+  it('the measured extent of a decoded file ignores far floaters', () => {
+    const sample: number[] = [];
+    for (let i = 0; i < 3000; i++) sample.push(((i * 37) % 100) / 20 - 2.5, ((i * 11) % 100) / 40, ((i * 53) % 100) / 25 - 2);
+    for (let i = 0; i < 5; i++) sample.push(400 + i, 300, 0);
+    const r = judgeDecodedSplat('sog', { count: 3005, nonFinite: 0, min: [-2.5, 0, -2], max: [404, 300, 2], sample });
+    expect(Number(r.measured.rawExtent)).toBeGreaterThan(400);
+    expect(Number(r.measured.extent)).toBeLessThan(7);
   });
 });
 

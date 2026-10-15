@@ -33,6 +33,8 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { checkImage, checkSplat, checkVideo, type Check } from './asset-checks.js';
+import { compressSplat, verifyCompressed, type CompressedReceipt } from './splat-compress.js';
+import { validateReceipt, type ScanReceipt } from './scan-room-lib.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT_ROOT = join(ROOT, 'static/generated');
@@ -100,6 +102,8 @@ export interface StageReceipt {
   durationS: number;
   output: { file: string; sha256: string; bytes: number };
   check: Check;
+  /** Splat stage only (F58.9.11): a LOSSY compressed copy beside the PLY, with its own decode check. */
+  compressed?: CompressedReceipt;
 }
 export interface Receipt { slug: string; label: string; role: Brief['role']; generated: true; stages: Partial<Record<Stage, StageReceipt>> }
 
@@ -193,13 +197,15 @@ async function stageSplat(b: Brief, dir: string): Promise<StageReceipt> {
   const t = Date.now();
   const run = generateSplat(src, b.seed, b.gaussians, out);
   const commit = execFileSync('git', ['-C', TRIPO_SRC, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
-  return finish('splat', b, dir, out, t,
+  const r = await finish('splat', b, dir, out, t,
     { gaussians: b.gaussians, steps: run.steps, seed: b.seed, peakGiB: run.peakGiB, torch: run.torch,
       // Upstream writes +inf opacities; triposplat_run.py clamps them and says how many (see there).
       opacityRepaired: run.opacityRepaired },
     { image: OUTPUTS.image, imageSha256: await sha256File(src, false) },
     { name: 'TripoSplat', license: 'MIT', version: `commit ${commit}`, repo: 'https://github.com/VAST-AI-Research/TripoSplat' },
     checkSplat(out, { count: b.gaussians }));
+  if (r.check.pass) r.compressed = compressSplat(out);
+  return r;
 }
 
 /**
@@ -262,7 +268,16 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
     }
     const rfile = join(root, slug, 'receipt.json');
     if (!existsSync(rfile)) { ok = false; lines.push(`✗ ${slug}: no receipt.json`); continue; }
-    const receipt = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt;
+    const parsed = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt | ScanReceipt;
+    // A RECONSTRUCTED room (scan:room --export): only the compressed splat is committed, so that is what is verified.
+    if ('origin' in parsed && parsed.origin === 'reconstructed') {
+      const scan = parsed;
+      const problems = [...validateReceipt(scan), ...(scan.compressed ? verifyCompressed(join(root, slug), scan.compressed) : ['no compressed copy in the receipt'])];
+      if (problems.length) { ok = false; lines.push(`✗ ${slug} (reconstructed): ${problems.join('; ')}`); }
+      else lines.push(`✓ ${slug} (reconstructed${scan.synthetic ? ' from a synthetic video' : ''}): ${scan.compressed!.file} ${scan.compressed!.gaussians} Gaussians, ${(scan.compressed!.bytes / 1e6).toFixed(2)} MB (${scan.compressed!.ratio}x, lossy, decode-checked)`);
+      continue;
+    }
+    const receipt = parsed as Receipt;
     for (const stage of Object.keys(OUTPUTS) as Stage[]) {
       const r = receipt.stages[stage];
       if (!r) { ok = false; lines.push(`✗ ${slug}/${stage}: no receipt for this stage`); continue; }
@@ -271,8 +286,9 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
       const hash = sha256Bytes(readFileSync(file));
       const check = stage === 'image' ? await checkImage(file) : stage === 'video' ? checkVideo(file) : checkSplat(file, { count: Number(r.settings.gaussians) });
       const problems = [...(hash === r.output.sha256 ? [] : ['file differs from its receipt']), ...check.problems];
+      if (stage === 'splat' && r.compressed) problems.push(...verifyCompressed(join(root, slug), r.compressed));
       if (problems.length) { ok = false; lines.push(`✗ ${slug}/${stage}: ${problems.join('; ')}`); }
-      else lines.push(`✓ ${slug}/${stage}: ${r.output.file} ${JSON.stringify(check.measured)}${check.notes.length ? '  note: ' + check.notes.join('; ') : ''}`);
+      else lines.push(`✓ ${slug}/${stage}: ${r.output.file} ${JSON.stringify(check.measured)}${r.compressed ? `  + ${r.compressed.file} ${(r.compressed.bytes / 1e6).toFixed(2)} MB (${r.compressed.ratio}x, lossy, decode-checked)` : ''}${check.notes.length ? '  note: ' + check.notes.join('; ') : ''}`);
     }
   }
   return { ok, lines };
@@ -357,7 +373,8 @@ export function exampleTtl(receipts: Receipt[]): string {
 
 function readReceipts(root = OUT_ROOT): Receipt[] {
   return readdirSync(root).filter((d) => existsSync(join(root, d, 'receipt.json'))).sort()
-    .map((d) => JSON.parse(readFileSync(join(root, d, 'receipt.json'), 'utf8')) as Receipt);
+    .map((d) => JSON.parse(readFileSync(join(root, d, 'receipt.json'), 'utf8')) as Receipt | ScanReceipt)
+    .filter((r): r is Receipt => !('origin' in r)); // a published scan has its own receipt shape and no generated stages
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
@@ -376,7 +393,10 @@ async function main() {
   }
   const { briefs } = JSON.parse(readFileSync(join(ROOT, 'scripts/content/gen-briefs.json'), 'utf8')) as { briefs: Brief[] };
   const only = arg('brief');
-  const stages = (arg('stage') ?? 'image,video,splat').split(',') as Stage[];
+  const stageArg = arg('stage') ?? 'image,video,splat';
+  // --stage=compress: add the compressed copy to splats that already exist (no GPU, no regeneration).
+  const backfill = stageArg === 'compress';
+  const stages = (backfill ? '' : stageArg).split(',').filter(Boolean) as Stage[];
   let failed = false;
   for (const b of briefs.filter((x) => !only || x.slug === only)) {
     const dir = join(OUT_ROOT, b.slug);
@@ -385,6 +405,15 @@ async function main() {
     const receipt: Receipt = existsSync(rfile) ? JSON.parse(readFileSync(rfile, 'utf8'))
       : { slug: b.slug, label: b.label, role: b.role, generated: true, stages: {} };
     Object.assign(receipt, { label: b.label, role: b.role });
+    if (backfill) {
+      const sp = receipt.stages.splat;
+      if (!sp) { console.log(`${b.slug} / compress … no splat stage yet`); failed = true; continue; }
+      sp.compressed = compressSplat(join(dir, sp.output.file));
+      writeFileSync(rfile, JSON.stringify(receipt, null, 2) + '\n');
+      console.log(`${b.slug} / compress … ${sp.compressed.check.pass ? 'accepted' : 'REJECTED'} ${sp.compressed.file} ${sp.compressed.bytes} bytes, ${sp.compressed.ratio}x`);
+      if (!sp.compressed.check.pass) failed = true;
+      continue;
+    }
     for (const stage of stages) {
       process.stdout.write(`${b.slug} / ${stage} … `);
       const r = stage === 'image' ? await stageImage(b, dir) : stage === 'video' ? await stageVideo(b, dir) : await stageSplat(b, dir);
