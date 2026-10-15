@@ -85,7 +85,7 @@ function run(stage: string, cmd: string, args: string[], env: NodeJS.ProcessEnv 
 }
 
 export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree|max-scale-fraction)$/.test(argv[i - 1])));
   const inputArg = positional[0];
   if (!inputArg) throw new Error('usage: npm run scan:room -- <Stray Scanner folder | video file> [--out dir] [--steps N] [--frames N]');
   const inputPath = resolve(inputArg);
@@ -102,11 +102,20 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   const out = resolve(arg(argv, 'out') ?? join(homedir(), '.local/share/reckons/scans', inputHash.slice(0, 12)));
   mkdirSync(out, { recursive: true });
   const work = join(out, 'work');
-  rmSync(work, { recursive: true, force: true });
-  mkdirSync(join(work, 'cand'), { recursive: true });
-  mkdirSync(join(work, 'images'), { recursive: true });
-  const notes: string[] = [];
-  const stagesS: Record<string, number> = {};
+  // --resume: keep the trained splat (splat.uncropped.ply) and its receipt, and redo only crop, reduce and compress
+  // with new settings. It exists because training is half an hour and the later stages take seconds.
+  const prior = argv.includes('--resume') ? JSON.parse(readFileSync(join(out, 'receipt.json'), 'utf8')) as ScanReceipt : null;
+  if (prior) {
+    if (!existsSync(join(out, 'splat.uncropped.ply'))) throw new Error('--resume needs splat.uncropped.ply in the out dir');
+    if (prior.crop && await sha256File(join(out, 'splat.uncropped.ply')) !== prior.crop.uncropped.sha256) throw new Error('--resume: splat.uncropped.ply does not match the receipt');
+    if (prior.input.sha256 !== inputHash) throw new Error('--resume: the receipt was made from a different input');
+  } else {
+    rmSync(work, { recursive: true, force: true });
+    mkdirSync(join(work, 'cand'), { recursive: true });
+    mkdirSync(join(work, 'images'), { recursive: true });
+  }
+  const notes: string[] = prior ? [...prior.notes] : [];
+  const stagesS: Record<string, number> = prior ? { ...prior.stagesS } : {};
   const timed = async <T>(name: string, f: () => Promise<T> | T) => {
     const t = Date.now();
     try { return await f(); } finally { stagesS[name] = Number(((Date.now() - t) / 1000).toFixed(1)); console.log(`   ${name}: ${stagesS[name]}s`); }
@@ -121,10 +130,20 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     if (Math.abs(rows.length - approxFrames) > Math.max(5, approxFrames * 0.05)) notes.push('odometry row count differs from the video frame count by more than 5%');
   }
 
+  let extracted = 0, kept = 0, registered = 0, pycolmap = 'unknown';
+  const fps = chooseFps(info.durationS, info.fps, Math.round(target * 1.25));
+  const ply = join(out, 'splat.ply');
+  const uncropped = join(out, 'splat.uncropped.ply');
+  let registration = judgeRegistration(0, 0);
+  if (prior) {
+    ({ extracted, kept, registered } = prior.frames);
+    pycolmap = prior.tools.pycolmap;
+    registration = prior.checks.registration;
+    copyFileSync(uncropped, ply);
+    console.log('== resume: frames, poses and training are kept from the earlier run');
+  } else {
   // ── frames
   console.log(`== frames (${info.width}x${info.height}, ${info.durationS.toFixed(1)} s, ${info.fps.toFixed(1)} fps)`);
-  let extracted = 0, kept = 0;
-  const fps = chooseFps(info.durationS, info.fps, Math.round(target * 1.25));
   await timed('frames', async () => {
     run('frames', 'ffmpeg', ['-v', 'error', '-y', '-i', input.video, '-vf', `fps=${fps},scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease`, '-q:v', '2', join(work, 'cand', '%05d.jpg')]);
     const cands = readdirSync(join(work, 'cand')).filter((f) => f.endsWith('.jpg')).sort();
@@ -149,13 +168,12 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     registered = j.registered; pycolmap = j.version ?? 'unknown';
     notes.push(`colmap: ${j.models} model(s), ${j.points} sparse points, features ${j.featuresS}s, matching ${j.matchingS}s, mapping ${j.mappingS}s`);
   });
-  const registration = judgeRegistration(registered, kept);
+  registration = judgeRegistration(registered, kept);
   console.log(`   registered ${registered} of ${kept}`);
   if (!registration.pass) throw new StageError('poses', registration.problems.join('; '));
 
   // ── train
   console.log(`== train (Brush, ${steps} steps)`);
-  const ply = join(out, 'splat.ply');
   rmSync(ply, { force: true });
   await timed('train', () => {
     run('train', BRUSH, [work, '--total-steps', String(steps), '--export-every', String(steps), '--export-path', out, '--export-name', 'splat.ply',
@@ -163,10 +181,13 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
       { ...process.env, LD_LIBRARY_PATH: `${VK_LIB}:${process.env.LD_LIBRARY_PATH ?? ''}` });
   });
   if (!existsSync(ply)) throw new StageError('train', `Brush exited 0 but wrote no ${ply} (it wrote: ${readdirSync(out).join(', ')})`);
+  }
 
   // ── crop: drop floaters far outside the room, so they neither inflate the extent nor the compressed file
+  // Large Gaussians draw the long streaks seen outside a room's walls (measured 2026-10-14: removing the 1.8% above
+  // 2% of the extent took the streaks away), so they are dropped with the floaters. Log-space sizes are not used: stats and -V read linear scale.
+  const maxScaleFraction = Number(arg(argv, 'max-scale-fraction', '0.02'));
   console.log('== crop');
-  const uncropped = join(out, 'splat.uncropped.ply');
   let crop: ScanReceipt['crop'];
   await timed('crop', async () => {
     const raw = checkSplat(ply);
@@ -175,16 +196,18 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     if (!re) throw new StageError('crop', 'no usable Gaussian centres');
     rmSync(uncropped, { force: true });
     renameSync(ply, uncropped);
-    cropPly(uncropped, ply, re.box);
+    const maxScale = maxScaleFraction > 0 ? maxScaleFraction * Math.min(raw.measured.extent as number, re.extent) : undefined;
+    cropPly(uncropped, ply, re.box, maxScale);
     const after = checkSplat(ply);
     if (!after.pass) throw new StageError('crop', `cropped splat failed its check: ${after.problems.join('; ')}`);
     const before = Number(raw.measured.count), kept = Number(after.measured.count);
     crop = {
       box: { min: re.box.min.map((v) => Number(v.toFixed(4))), max: re.box.max.map((v) => Number(v.toFixed(4))) },
       before, after: kept, removed: before - kept, rawExtent: Number(raw.measured.rawExtent), extent: Number(after.measured.rawExtent),
+      maxScale: maxScale === undefined ? null : Number(maxScale.toFixed(4)),
       uncropped: { file: 'splat.uncropped.ply', sha256: await sha256File(uncropped), bytes: statSync(uncropped).size },
     };
-    console.log(`   ${before} -> ${kept} Gaussians (${before - kept} floaters dropped), extent ${crop.rawExtent} -> ${crop.extent}`);
+    console.log(`   ${before} -> ${kept} Gaussians (${before - kept} floaters and oversized Gaussians dropped), extent ${crop.rawExtent} -> ${crop.extent}`);
   });
 
   // ── reduce (optional, lossy): --max-gaussians N and/or --sh-degree 0..3, so the shipped file fits a budget
@@ -262,9 +285,32 @@ export async function checkScan(dir: string): Promise<string[]> {
   return problems;
 }
 
+/**
+ * `--export <scan dir> <dest dir> [--synthetic "note"]`: publish a finished scan into the repository.
+ * Copies ONLY the compressed splat and a receipt that says so (the PLY is far too big to commit and
+ * stays in the scan dir). The scan is re-verified first, and the copy is verified after.
+ */
+export async function exportScan(dir: string, dest: string, syntheticNote?: string): Promise<void> {
+  const problems = await checkScan(dir);
+  if (problems.length) throw new Error(`refusing to publish a scan that does not verify:\n${problems.join('\n')}`);
+  const r = JSON.parse(readFileSync(join(resolve(dir), 'receipt.json'), 'utf8')) as ScanReceipt;
+  if (!r.compressed) throw new Error('this scan has no compressed copy to publish');
+  mkdirSync(resolve(dest), { recursive: true });
+  copyFileSync(join(resolve(dir), r.compressed.file), join(resolve(dest), r.compressed.file));
+  const published: ScanReceipt = {
+    ...r,
+    synthetic: syntheticNote ? { note: syntheticNote, generator: 'scripts/content/scan-synthetic-room.py' } : undefined,
+    published: { files: [r.compressed.file, 'receipt.json'], note: `${r.output.file} (${(r.output.bytes / 1e6).toFixed(1)} MB) and ${r.crop?.uncropped.file ?? 'the uncropped PLY'} are not committed; hashes are recorded here. Verify the committed copy with npm run gen:check.` },
+  };
+  writeFileSync(join(resolve(dest), 'receipt.json'), JSON.stringify(published, null, 2) + '\n');
+  console.log(`published ${r.compressed.file} and receipt.json to ${dest}`);
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const a = process.argv.slice(2);
-  const run = a[0] === '--check'
+  const run = a[0] === '--export'
+    ? exportScan(a[1], a[2], arg(a, 'synthetic')).then(() => undefined)
+    : a[0] === '--check'
     ? checkScan(a[1] ?? '.').then((p) => { if (p.length) throw new Error(p.join('\n')); console.log('scan receipt and splat verified'); })
     : scanRoom(a);
   run.catch((e) => { console.error(`\nFAILED ${e.message}`); process.exit(1); });

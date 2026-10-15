@@ -34,6 +34,7 @@ import { join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { checkImage, checkSplat, checkVideo, type Check } from './asset-checks.js';
 import { compressSplat, verifyCompressed, type CompressedReceipt } from './splat-compress.js';
+import { validateReceipt, type ScanReceipt } from './scan-room-lib.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT_ROOT = join(ROOT, 'static/generated');
@@ -227,7 +228,16 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
     }
     const rfile = join(root, slug, 'receipt.json');
     if (!existsSync(rfile)) { ok = false; lines.push(`✗ ${slug}: no receipt.json`); continue; }
-    const receipt = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt;
+    const parsed = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt | ScanReceipt;
+    // A RECONSTRUCTED room (scan:room --export): only the compressed splat is committed, so that is what is verified.
+    if ('origin' in parsed && parsed.origin === 'reconstructed') {
+      const scan = parsed;
+      const problems = [...validateReceipt(scan), ...(scan.compressed ? verifyCompressed(join(root, slug), scan.compressed) : ['no compressed copy in the receipt'])];
+      if (problems.length) { ok = false; lines.push(`✗ ${slug} (reconstructed): ${problems.join('; ')}`); }
+      else lines.push(`✓ ${slug} (reconstructed${scan.synthetic ? ' from a synthetic video' : ''}): ${scan.compressed!.file} ${scan.compressed!.gaussians} Gaussians, ${(scan.compressed!.bytes / 1e6).toFixed(2)} MB (${scan.compressed!.ratio}x, lossy, decode-checked)`);
+      continue;
+    }
+    const receipt = parsed as Receipt;
     for (const stage of Object.keys(OUTPUTS) as Stage[]) {
       const r = receipt.stages[stage];
       if (!r) { ok = false; lines.push(`✗ ${slug}/${stage}: no receipt for this stage`); continue; }
@@ -323,7 +333,8 @@ export function exampleTtl(receipts: Receipt[]): string {
 
 function readReceipts(root = OUT_ROOT): Receipt[] {
   return readdirSync(root).filter((d) => existsSync(join(root, d, 'receipt.json'))).sort()
-    .map((d) => JSON.parse(readFileSync(join(root, d, 'receipt.json'), 'utf8')) as Receipt);
+    .map((d) => JSON.parse(readFileSync(join(root, d, 'receipt.json'), 'utf8')) as Receipt | ScanReceipt)
+    .filter((r): r is Receipt => !('origin' in r)); // a published scan has its own receipt shape and no generated stages
 }
 
 // ── CLI ──────────────────────────────────────────────────────────────────────

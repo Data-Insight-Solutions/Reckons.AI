@@ -1,6 +1,7 @@
 ## Your room — a guided example space (F58.9.10, kb:room-scene-space).
 ## Four steps in order: scan a room, reconstruct it, import the scan, then generate objects and place them in it.
-## The room shown here is SYNTHETIC: a made-up room written by scripts/content/synthetic-room.ts so the
+## The room shown here is SYNTHETIC: a made-up living room, rendered as a video by Blender
+## (scripts/content/scan-synthetic-room.py) and RECONSTRUCTED into this splat by npm run scan:room, so the
 ## space works before anyone has scanned theirs. It is not a scan of any place. The turtle is the
 ## generated splat from the Generated assets example, placed in the room.
 
@@ -15,12 +16,12 @@
 @prefix room:  <urn:reckons:room/> .
 
 ## The space's own settings (F58.9.3, F58.9.8): settings, never edges. The room surrounds the graph and
-## keeps its own scale (2 world units per metre); its floor is 1.3 room units below its centre.
+## is fitted to 10 world units by its robust extent (24.7 file units, so scale 0.4); COLMAP's axes point down, so up is -y.
 <urn:reckons:space>
-    kmeta:background-splat "/generated/synthetic-room/splat.ply" ;
+    kmeta:background-splat "/generated/synthetic-room/splat.spz" ;
     kmeta:background-mode  "surround" ;
-    kmeta:background-scale "2" ;
-    kmeta:background-floor "-1.3" .
+    kmeta:background-up    "-y" ;
+    kmeta:background-scale "0.4" .
 
 kb:your-room rdf:type ktype:Concept ;
     rdfs:label "Your room" ;
@@ -61,9 +62,9 @@ room:step-generate rdf:type ktype:Concept ;
 
 room:synthetic-room rdf:type ktype:GaussianSplat ;
     rdfs:label "Splat: a made-up room (synthetic)" ;
-    p:splat "/generated/synthetic-room/splat.ply" ;
+    p:splat "/generated/synthetic-room/splat.spz" ;
     kmeta:splat-origin "synthetic" ;
-    rdfs:comment "SYNTHETIC. Written from arithmetic by scripts/content/synthetic-room.ts: a wooden floor, three walls and four coloured blocks, about nine and a half thousand Gaussians. It is not a scan of any place and no model made it. Its receipt is static/generated/synthetic-room/synthetic.json." .
+    rdfs:comment "SYNTHETIC. A made-up living room (plank floor, rug, sofa, shelves, window, pictures) rendered as a 10 second, 300 frame video in Blender, then reconstructed on this machine by npm run scan:room (COLMAP poses, Brush training, floaters cropped, thinned to 280,000 Gaussians with no view-dependent colour, stored as .spz, 4.9 MB, lossy). It is not a scan of any place. Its receipt is static/generated/synthetic-room/receipt.json." .
 
 room:turtle rdf:type ktype:GaussianSplat ;
     rdfs:label "Splat: carved wooden sea turtle" ;
