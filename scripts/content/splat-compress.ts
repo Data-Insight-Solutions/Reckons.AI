@@ -82,8 +82,11 @@ export function reducePly(src: string, out: string, opts: { shDegree?: number; m
  * Crop a PLY to a box (the robust box of its own centres, see src/lib/3d/robust-extent.ts), dropping
  * the floaters outside it. Lossless for the Gaussians that stay: the same tool rewrites them as PLY.
  */
-export function cropPly(src: string, out: string, box: { min: number[]; max: number[] }): void {
-  transform([src, '--filter-box', [...box.min, ...box.max].map((v) => v.toPrecision(9)).join(','), out]);
+export function cropPly(src: string, out: string, box: { min: number[]; max: number[] }, maxScale?: number): void {
+  const args = [src, '--filter-box', [...box.min, ...box.max].map((v) => v.toPrecision(9)).join(',')];
+  // Also drop Gaussians bigger than maxScale on any axis (linear scale, file units): they are the streaks, not the surfaces.
+  if (maxScale) for (const k of [0, 1, 2]) args.push('--filter-value', `scale_${k},lt,${maxScale.toPrecision(6)}`);
+  transform([...args, out]);
 }
 
 /** Decode a compressed splat back to PLY bytes with the same tool, for the check. */

@@ -3,8 +3,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { judgeSplatPly, type SplatCheck } from '../../../src/lib/3d/splat-check';
-import { buildRoom } from '../synthetic-room';
 import { compressSplat, decodeToPly, judgeCompressed, verifyCompressed } from '../splat-compress';
+
+/** A deterministic PLY of `n` Gaussians scattered in a 5 x 2.6 x 4 slab (synthetic; nothing real). */
+function slabPly(n: number): Uint8Array {
+  const props = ['x', 'y', 'z', 'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity', 'scale_0', 'scale_1', 'scale_2', 'rot_0', 'rot_1', 'rot_2', 'rot_3'];
+  const head = `ply\nformat binary_little_endian 1.0\nelement vertex ${n}\n${props.map((p) => `property float ${p}`).join('\n')}\nend_header\n`;
+  const body = new Float32Array(n * props.length);
+  let a = 12345;
+  const rnd = () => { a = (a * 1664525 + 1013904223) >>> 0; return a / 4294967296; };
+  for (let i = 0; i < n; i++) body.set([(rnd() - 0.5) * 5, rnd() * 2.6, (rnd() - 0.5) * 4, rnd() - 0.5, rnd() - 0.5, rnd() - 0.5, 2, -4, -4, -4, 1, 0, 0, 0], i * props.length);
+  const out = new Uint8Array(head.length + body.byteLength);
+  out.set(new TextEncoder().encode(head));
+  out.set(new Uint8Array(body.buffer), head.length);
+  return out;
+}
 
 const ok = (count: number, extent: number): SplatCheck => ({ pass: true, problems: [], notes: [], measured: { count, extent } });
 
@@ -23,7 +36,7 @@ describe('compressSplat (real converter, synthetic room)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'splat-compress-test-'));
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
   const ply = join(dir, 'room.ply');
-  writeFileSync(ply, buildRoom().bytes);
+  writeFileSync(ply, slabPly(9000));
 
   it('refuses SOG without a GPU named, instead of running for hours on the CPU', () => {
     const was = process.env.RECKONS_SPLAT_GPU;

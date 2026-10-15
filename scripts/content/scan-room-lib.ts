@@ -107,10 +107,14 @@ export interface ScanReceipt {
   gaussians: number;
   output: { file: string; sha256: string; bytes: number };
   checks: { registration: Check; splat: Check };
+  /** Set when the INPUT video is itself synthetic (a rendered made-up room): what made it. */
+  synthetic?: { note: string; generator: string };
+  /** Set on a receipt published into the repository: the PLY is NOT committed (too large), only these files. */
+  published?: { files: string[]; note: string };
   /** F58.9.11: Gaussians outside the robust box of their own centres (floaters) were dropped from `output`. */
   crop?: {
     box: { min: number[]; max: number[] }; before: number; after: number; removed: number;
-    rawExtent: number; extent: number; uncropped: { file: string; sha256: string; bytes: number };
+    rawExtent: number; extent: number; maxScale?: number | null; uncropped: { file: string; sha256: string; bytes: number };
   };
   /** F58.9.11: the cropped PLY was thinned to ship: SH bands dropped and/or adaptive decimation. Lossy. */
   reduce?: { before: number; after: number; shDegree: number | null; maxGaussians: number | null };
