@@ -44,7 +44,7 @@ export function reviewFileName(version: string): string {
   return `review-${version}.ttl`;
 }
 
-interface Feature {
+type Feature = {
   iri: string;
   label: string;
   featureId: string;
@@ -54,7 +54,7 @@ interface Feature {
   tests: Set<string>;
 }
 
-export interface ReviewStats {
+export type ReviewStats = {
   version: string;
   parts: number;
   workflows: number;
