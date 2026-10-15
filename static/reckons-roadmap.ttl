@@ -4028,6 +4028,66 @@ kb:release-0-2-7 kpred:proposed "2026-10-14 (agent, not decided): the F58.9 spla
 kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: 'We should get things on dev so I can review localhost... I want to review both on localhost, dev branch.' The proof of concept merges to dev now for review; which release carries it is still open." ;
     kpred:open-question "MATT, 2026-10-14: 'The visual test review space is interesting, but minimal and without proper timeline/story setup.' What should a review space's timeline and story be (the Getting started starter has one; the visual-review and generated-assets examples do not)?" .
 
+# F58.9.12-.15 and F34.5. MATT, 2026-10-14, after viewing his reconstructed studio: "it is not great, but my scan process
+# could be better. The blob when zoomed out is very bad... can we set the scale and the focal point/center of the splat
+# in some way, can we clean up the messy data, potentially with those user inputs? We should look for existing open
+# source code to plugin if possible ... Existing plugins or local dependencies prefered. Plugins may just be the local
+# environment knowledge for this device that says a CLI tool is available?"
+kb:splat-refine rdf:type ktype:Phase ;
+    rdfs:label "F58.9.12 — refine a splat: focal point, crop, scale and floater clean-up, from the person's own inputs" ;
+    kpred:feature-id "F58.9.12" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-file-import, kb:splat-background-settings ;
+    kpred:decided "MATT, 2026-10-14: set the scale and the focal point/center, clean up the messy data with the person's inputs; prefer existing open-source plugins or local dependencies." ;
+    kpred:description "In the space background controls: pick the focal point (click a point in the room), a keep-radius, and optionally a known distance between two picked points to set true scale. A refine runs splat-transform (PlayCanvas, MIT, already a dependency through F58.9.11): --filter-nan, an opacity floor, --filter-floaters, --filter-cluster seeded at the focal point, --filter-sphere at the radius, then --translate so the focal point is the origin and --scale for the measured distance. The refined file replaces the background as a NEW asset, and the original is kept, so a refine can be undone. For finer hand editing, an Open in SuperSplat action (PlayCanvas, MIT, self-hostable) is offered only where the device has it." ;
+    kpred:measured "2026-10-14, Matt's studio (private), CORRECTED the same evening: 228,275 Gaussians; distance from the median centre is 12.6 units at the 50th percentile, 20.9 at the 90th, 60.5 at the 99th and 305.7 at the furthest, and 32.5% have opacity below 0.05. The long tail of floaters is the 'very bad blob' seen zoomed out and the 379-unit extent. (The first version of this line read Brush's PLY columns in the wrong order and reported a 0.4-unit core; Brush writes f_dc before x, y, z. Read properties by name.)" ;
+    kpred:open-question "Matt: 'Plugins may just be the local environment knowledge for this device that says a CLI tool is available?' Proposed, not decided: a device-capability entity in the person's private local graph (tool, command, version, licence, how it was detected, date), written by a script that probes the host. The app offers an action only when that entity exists. This would be the minimal Plugin, compatible with F61's manifest, without a loader." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:splat-occlusion rdf:type ktype:Phase ;
+    rdfs:label "F58.9.13 — splat nodes hide the nodes behind them" ;
+    kpred:feature-id "F58.9.13" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-node-view ;
+    kpred:decided "MATT, 2026-10-14: 'The splat nodes on the graph lack good occlusion of other nodes behind them.'" ;
+    kpred:description "Gaussian splats are blended without writing depth, so markers, labels and edges behind a node's splat draw through it. Use the renderer's depth option if it has one, or write an opaque proxy (the splat's high-opacity core as a depth-only mesh or sphere) into the depth buffer, so whatever is behind a node splat is hidden while the splat itself still blends. A background room never occludes the graph." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:scan-quality rdf:type ktype:Phase ;
+    rdfs:label "F58.9.14 — measure a room scan's quality and coach the person toward a better one" ;
+    kpred:feature-id "F58.9.14" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:room-scan-capture ;
+    kpred:decided "MATT, 2026-10-14: quality is due to speed of movement, consistency of movement and the angles captured; a manual phone scan will never be perfect; measure these metrics and train people to get better scans. A small object can be prepared (plain background, good lighting); a room cannot, since the person is only so tall and a phone has no stabilization." ;
+    kpred:description "npm run scan:quality (script tier, no model) reads a Stray Scanner export or a video and reports: blur per frame (Laplacian variance) and the share of blurry frames; speed (metres per second and degrees per second from odometry.csv) with its peaks; smoothness (jerk); coverage (the spread of view directions and positions, and holes in yaw); exposure stability; and after reconstruction, COLMAP's registered share and reprojection error. Each metric has a plain-language tip (for example 'you turned faster than 45 degrees a second for 12 seconds; turn half as fast'). The receipt keeps the metrics, so successive scans can be compared." ;
+    kpred:remaining "Plan only, 2026-10-14. Thresholds must come from measured scans, not guesses." .
+
+kb:own-space-walkthrough rdf:type ktype:Phase ;
+    rdfs:label "F58.9.15 — scanning your own space, offered only after someone is comfortable with Reckons.AI" ;
+    kpred:feature-id "F58.9.15" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:scan-quality, kb:splat-refine ;
+    kpred:decided "MATT, 2026-10-14: 'We need a nice walkthrough of how to do this to the user's own space, after they are comfortable with Reckons.AI and its private by design structure. We want a getting started to be very non-invasive, where a lidar scan of their personal space is very invasive.'" ;
+    kpred:description "A story-mode walkthrough (the Getting started pattern), never part of Getting started itself and never prompted. It opens from the Your room example with a plain statement of what a scan captures (everything visible in the home, including other people's belongings) and where it goes (only this device; nothing is uploaded; export is the person's own act). Steps: prepare the room, capture (with the scan:quality tips), reconstruct, refine, place objects." ;
+    kpred:constraint "Opt-in at every step. The walkthrough never asks for camera or file access until the person chooses that step." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:release-review-spaces rdf:type ktype:Phase ;
+    rdfs:label "F34.5 — one visual review space per release, its main workflows as visual tests for manual review" ;
+    kpred:feature-id "F34.5" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:deep-testing ;
+    kpred:depends-on kb:test-workflow-docs ;
+    kpred:relates-to kb:release-0-2-6, kb:release-0-2-7 ;
+    kpred:decided "MATT, 2026-10-14: 'We really do need a visual testing review graph, maybe make one for each version? So, we should make a 0.2.6 and 0.2.7, etc. release test graph with main workflows developed as visual tests in a space made for manual review.' Earlier the same day: the visual-review space lacks a proper timeline and story setup." ;
+    kpred:description "For each release, a generated starter space (static/review-<version>.ttl) whose nodes are that release's headline workflows in story order (hnav), each with its TestWorkflow steps, the screenshot per step from npm run workflow:shots, the assertion it checks and a review verdict the person sets (pass, fail, note). Generated from the release's has-part features and the TestWorkflow entities, never hand-written, and opened from About like the other examples." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+
 # -- Spatial / Map Force Layout (F59) ------------------------------------------
 # A new force mode that positions nodes by real-world LOCATION, not just graph
 # relation. Raised 2026-07-10. The existing force modes (free/focus/source/type/
