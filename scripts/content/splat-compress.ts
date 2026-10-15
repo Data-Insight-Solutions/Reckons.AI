@@ -22,8 +22,15 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { judgeSplatPly, type SplatCheck } from '../../src/lib/3d/splat-check';
 
 export type CompressFormat = 'spz' | 'sog';
-/** Chosen from the F58.9.11 measurements (see kb:splat-compression); change it only with new numbers. */
-export const DEFAULT_FORMAT: CompressFormat = 'sog';
+/**
+ * SPZ by default, from the F58.9.11 measurements (kb:splat-compression): on 760,719 Gaussians SPZ took
+ * 4.5 s on the CPU (17.5 MB) while SOG on the CPU did not finish in over 3 hours; SOG with a GPU took
+ * 9 s and was 26% smaller (12.9 MB). A default that can take hours is not a default, so SOG is opt-in
+ * and needs a GPU named in RECKONS_SPLAT_GPU (the splat-transform adapter index, see --list-gpus).
+ */
+export const DEFAULT_FORMAT: CompressFormat = 'spz';
+/** No conversion should take longer than this; SOG on a CPU would. */
+const TRANSFORM_TIMEOUT_MS = 15 * 60 * 1000;
 
 export interface CompressedReceipt {
   format: CompressFormat;
@@ -54,10 +61,21 @@ function transformBin(): { cmd: string; version: string } {
   return { cmd: join(dir, bin), version: pkg.version };
 }
 
-/** Run splat-transform with the given positional args and flags; CPU only (no GPU contention, deterministic). */
-function transform(args: string[]): void {
+/**
+ * Run splat-transform. CPU by default (no GPU contention, seconds for everything except SOG). SOG
+ * encoding is GPU work: pass `gpu` (an adapter index) or it is refused rather than left to run for hours on a CPU.
+ */
+function transform(args: string[], gpu?: string): void {
   const { cmd } = transformBin();
-  execFileSync(process.execPath, [cmd, '--quiet', '--overwrite', '--gpu', 'cpu', ...args], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 << 20 });
+  execFileSync(process.execPath, [cmd, '--quiet', '--overwrite', '--gpu', gpu ?? 'cpu', ...args], { stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 << 20, timeout: TRANSFORM_TIMEOUT_MS });
+}
+
+/** Reduce a PLY for shipping: drop spherical harmonics above `shDegree` and/or decimate to `maxGaussians` (adaptive). */
+export function reducePly(src: string, out: string, opts: { shDegree?: number; maxGaussians?: number }): void {
+  const args = [src];
+  if (opts.shDegree !== undefined) args.push('--filter-harmonics', String(opts.shDegree));
+  if (opts.maxGaussians) args.push('--decimate-adaptive', String(opts.maxGaussians));
+  transform([...args, out]);
 }
 
 /**
@@ -101,7 +119,12 @@ export function compressSplat(plyPath: string, opts: { format?: CompressFormat; 
   const srcBytes = new Uint8Array(readFileSync(src));
   const source = judgeSplatPly(srcBytes);
   if (!source.pass) throw new Error(`${basename(src)} is not a usable splat: ${source.problems.join('; ')}`);
-  transform([src, out]);
+  let gpu: string | undefined;
+  if (format === 'sog') {
+    gpu = process.env.RECKONS_SPLAT_GPU;
+    if (gpu === undefined || gpu === 'cpu') throw new Error('SOG encoding needs a GPU (on the CPU it did not finish in over 3 hours on 760k Gaussians). Set RECKONS_SPLAT_GPU to an adapter index from `splat-transform --list-gpus`, or use --format spz.');
+  }
+  transform([src, out], gpu);
   const decoded = judgeSplatPly(decodeToPly(out));
   const verdict = judgeCompressed(source, decoded);
   const bytes = readFileSync(out);

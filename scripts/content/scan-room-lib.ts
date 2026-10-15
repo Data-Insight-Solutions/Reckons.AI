@@ -112,6 +112,8 @@ export interface ScanReceipt {
     box: { min: number[]; max: number[] }; before: number; after: number; removed: number;
     rawExtent: number; extent: number; uncropped: { file: string; sha256: string; bytes: number };
   };
+  /** F58.9.11: the cropped PLY was thinned to ship: SH bands dropped and/or adaptive decimation. Lossy. */
+  reduce?: { before: number; after: number; shDegree: number | null; maxGaussians: number | null };
   /** F58.9.11: a LOSSY compressed copy of output, converted back and checked. Absent on receipts made before it. */
   compressed?: {
     format: 'spz' | 'sog'; lossy: true; file: string; sha256: string; bytes: number; ratio: number; gaussians: number; extent: number;
@@ -137,10 +139,12 @@ export function validateReceipt(r: ScanReceipt): string[] {
   if (r.crop) {
     const c = r.crop;
     if (c.before !== c.after + c.removed) p.push(`crop counts do not add up: ${c.before} before, ${c.after} after, ${c.removed} removed`);
-    if (c.after !== r.gaussians) p.push(`crop kept ${c.after} Gaussians, output has ${r.gaussians}`);
+    const expected = r.reduce ? r.reduce.before : r.gaussians;
+    if (c.after !== expected) p.push(`crop kept ${c.after} Gaussians, ${r.reduce ? 'reduce started from' : 'output has'} ${expected}`);
     if (!(c.extent <= c.rawExtent)) p.push('cropped extent is larger than the raw extent');
     if (!SHA.test(c.uncropped?.sha256 ?? '')) p.push('uncropped sha256 missing or malformed');
   }
+  if (r.reduce && r.reduce.after !== r.gaussians) p.push(`reduce left ${r.reduce.after} Gaussians, output has ${r.gaussians}`);
   if (r.compressed) {
     const c = r.compressed;
     if (!SHA.test(c.sha256 ?? '')) p.push('compressed sha256 missing or malformed');

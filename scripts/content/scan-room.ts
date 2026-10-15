@@ -8,7 +8,7 @@
  *           train   Brush (Apache-2.0) trains a splat from the COLMAP folder
  *           check   COLMAP registered >= 50% of the frames AND asset-checks.ts accepts the PLY
  *           crop    drop floaters outside the robust (1st-99th percentile + margin) box of the Gaussian centres
- *           compress a LOSSY copy (splat.sog by default, or --format spz) converted back and count/extent-checked
+ *           compress a LOSSY copy (splat.spz by default; --format sog needs a GPU via RECKONS_SPLAT_GPU) converted back and count/extent-checked
  *   output  <out>/splat.ply, <out>/splat.<sog|spz> and <out>/receipt.json (origin "reconstructed")
  *
  * A RECONSTRUCTED SPLAT RECORDS WHAT WAS THERE; the receipt is what says so. The tools' exit codes are
@@ -30,7 +30,7 @@ import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { checkSplat } from './asset-checks.js';
-import { compressSplat, cropPly, verifyCompressed, type CompressFormat } from './splat-compress.js';
+import { compressSplat, cropPly, reducePly, verifyCompressed, type CompressFormat } from './splat-compress.js';
 import { plyCentres } from '../../src/lib/3d/splat-check.js';
 import { robustExtent } from '../../src/lib/3d/robust-extent.js';
 import {
@@ -85,7 +85,7 @@ function run(stage: string, cmd: string, args: string[], env: NodeJS.ProcessEnv 
 }
 
 export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree)$/.test(argv[i - 1])));
   const inputArg = positional[0];
   if (!inputArg) throw new Error('usage: npm run scan:room -- <Stray Scanner folder | video file> [--out dir] [--steps N] [--frames N]');
   const inputPath = resolve(inputArg);
@@ -187,6 +187,23 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     console.log(`   ${before} -> ${kept} Gaussians (${before - kept} floaters dropped), extent ${crop.rawExtent} -> ${crop.extent}`);
   });
 
+  // ── reduce (optional, lossy): --max-gaussians N and/or --sh-degree 0..3, so the shipped file fits a budget
+  const maxG = arg(argv, 'max-gaussians') ? Number(arg(argv, 'max-gaussians')) : null;
+  const shDeg = arg(argv, 'sh-degree') !== undefined ? Number(arg(argv, 'sh-degree')) : null;
+  let reduce: ScanReceipt['reduce'];
+  if (maxG || shDeg !== null) {
+    console.log(`== reduce (max ${maxG ?? 'any'} Gaussians, SH degree ${shDeg ?? 'kept'})`);
+    await timed('reduce', () => {
+      const full = join(out, 'splat.cropped.ply');
+      rmSync(full, { force: true });
+      renameSync(ply, full);
+      reducePly(full, ply, { shDegree: shDeg ?? undefined, maxGaussians: maxG ?? undefined });
+      const before = Number(checkSplat(full).measured.count), after = Number(checkSplat(ply).measured.count);
+      reduce = { before, after, shDegree: shDeg, maxGaussians: maxG };
+      console.log(`   ${before} -> ${after} Gaussians`);
+    });
+  }
+
   // ── check
   console.log('== check');
   const splat = checkSplat(ply);
@@ -217,6 +234,7 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     output: { file: 'splat.ply', sha256: await sha256File(ply), bytes: statSync(ply).size },
     checks: { registration, splat },
     crop,
+    reduce,
     compressed,
     ranAt: new Date().toISOString(),
     notes,
