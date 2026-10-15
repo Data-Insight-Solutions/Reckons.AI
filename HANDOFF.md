@@ -1,4 +1,43 @@
-## 2026-10-14 (night) — START HERE. Room scans, splat refine, release review spaces (Claude Code)
+## 2026-10-15 — START HERE. Background controls in the graph view (Claude Code)
+
+**In flight:** a Sonnet agent is building F58.9.16 on `feat/f58-9-16-background-in-view` (no PR yet when this was
+written):
+- background settings in the graph view's FILTERS panel (surround/backdrop, manual scale, yaw, opacity, up axis, level,
+  SET FOCAL POINT);
+- "Place in room" renamed to "Place in space";
+- placement mode collapses the large asset preview and shows a compact placement bar over the graph;
+- free and focus layouts spread out, measured before and after.
+
+Check its PR (`gh pr list`), verify base dev, then merge when green (the scratch merge-when-green helper is described in
+the 2026-10-14 night entry).
+
+**Add to that lane or the next one:**
+- an unknown `?kb=` falls back to the default graph without telling the person (resolveKbParam), so a not-yet-synced
+  space looks like the wrong graph. Add a "space not found yet" notice.
+- Matt's studio space (`reckons-workspace/kbs/my-studio/`, private) now holds the 450-frame SPZ (1.54M Gaussians,
+  37.7 MB) as background, plus a thinned 18.9 MB version as a second splat node. Level the floor fitted only 18% of
+  points, so it may be tilted.
+
+**Environment:**
+- Port 5291 runs Matt's test server from the worktree `agent-a295e916fb7a98470`, detached at origin/dev. Never stop it
+  without restarting it; to update it, `git checkout --detach origin/dev` there and restart vite.
+- The machine hit the inotify watcher limit (ENOSPC): about 25 leftover agent worktrees. Offer to prune the merged
+  ones (count first, check each for uncommitted work, ask), or Matt raises fs.inotify.max_user_watches with sudo.
+
+**Review queue batch 2026-10-15:** 2 accepted, 3 rejected as stale. Deferred for Matt:
+- whether the zero-byte sync-file data-loss fix (reported 2026-09-04) shipped;
+- the AWS context-ontology-accelerator claim (F21 positioning);
+- the stores module dead-weight flag.
+
+Producers server-health and known-issue re-emit items that are already fixed; they should check current state first.
+
+**Matt's decisions still pending:**
+- F58.9 in 0.2.7 (recommended);
+- SPZ default vs GPU-only SOG;
+- whether the 4.9 MB Your room's softness is acceptable;
+- pruning worktrees.
+
+## 2026-10-14 (night) — earlier. Room scans, splat refine, release review spaces (Claude Code)
 
 **Merged into dev today** (all CI green, base verified): #469 scan:room (F58.9.6), #470 import a scan, background
 settings, placement and the Your room space (F58.9.7-.10), #475 generation-model bench with tasks in the Testing graph
