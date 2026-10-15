@@ -27,6 +27,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
+  import { occluderRadius, projectedRadius } from './splat-occlusion';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, splatOriginOf, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
   import { roomView } from './room-view';
 
@@ -228,11 +229,11 @@
         const yaw = pl.yaw + roomSet.yaw;
         items.push({
           key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: pl.scale * roomSet.scale,
-          quaternion: () => qAboutY(yaw), position: () => n.pos,
+          quaternion: () => qAboutY(yaw), position: () => n.pos, occludes: true,
         });
         continue;
       }
-      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35 });
+      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35, occludes: true });
     }
     const bg = backgroundSplatFrom(statements as Statement[]);
     if (bg) {
@@ -260,6 +261,8 @@
     }
     return items;
   });
+  /** F58.9.13: entity key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
+  const splatOccluderWorld = $derived(new Map(splatItems.filter((i) => i.occludes).map((i) => [i.key, occluderRadius(i.radius)])));
 
   type Node = {
     key: string;
@@ -368,7 +371,7 @@
     c.z -= r * 2.4;
     return bgFrame;
   }
-  const { camera, renderer } = useThrelte();
+  const { camera, renderer, scene: threeScene } = useThrelte();
   let previousCanvasWidth = 0;
   let previousCanvasHeight = 0;
   let previousCameraAspect = 0;
@@ -1707,7 +1710,10 @@
           const sy = (-projVec.y * 0.5 + 0.5) * canvas.clientHeight;
           // Screen radius: worldRadius / (tan(fov/2) * rawDist) * halfH
           const meshScale = 0.85 + 0.45 * Math.log2(1 + n.degree);
-          const screenRadius = (meshScale * 0.32 / (CAM_HALF_TAN * rawDist)) * halfH;
+          let screenRadius = (meshScale * 0.32 / (CAM_HALF_TAN * rawDist)) * halfH;
+          // A drawn entity splat hides labels behind it too: widen its disc to the splat's core.
+          const core = splatDrawnKeys.has(n.key) ? splatOccluderWorld.get(n.key) : undefined;
+          if (core) screenRadius = Math.max(screenRadius, projectedRadius(core, rawDist, CAM_HALF_TAN, halfH));
           allProjected.push({ key: n.key, label: n.label, sx, sy, rawDist, adjDist, screenRadius });
         }
 
@@ -1975,7 +1981,12 @@
        the splats actually loaded: nothing else in the DOM can say what WebGL drew. -->
   <SplatLayer
     items={splatItems}
-    onstatus={(l, f) => { if (renderer) renderer.domElement.dataset.splats = `${l}/${f}`; }}
+    onstatus={(l, f) => {
+      if (!renderer) return;
+      renderer.domElement.dataset.splats = `${l}/${f}`;
+      // Read by tests/e2e/splat-occlusion.test.ts to probe pixels; nothing in the app reads it.
+      (renderer.domElement as unknown as { __rk?: unknown }).__rk = { scene: threeScene, getCamera: () => camera.current, renderer };
+    }}
     onloadedkeys={(keys) => (splatDrawnKeys = keys)}
   />
 {/if}

@@ -4048,12 +4048,15 @@ kb:splat-refine rdf:type ktype:Phase ;
 kb:splat-occlusion rdf:type ktype:Phase ;
     rdfs:label "F58.9.13 — splat nodes hide the nodes behind them" ;
     kpred:feature-id "F58.9.13" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:gen-video-to-splat ;
     kpred:depends-on kb:splat-node-view ;
     kpred:decided "MATT, 2026-10-14: 'The splat nodes on the graph lack good occlusion of other nodes behind them.'" ;
     kpred:description "Gaussian splats are blended without writing depth, so markers, labels and edges behind a node's splat draw through it. Use the renderer's depth option if it has one, or write an opaque proxy (the splat's high-opacity core as a depth-only mesh or sphere) into the depth buffer, so whatever is behind a node splat is hidden while the splat itself still blends. A background room never occludes the graph." ;
-    kpred:remaining "Plan only, 2026-10-14." .
+    kpred:has-file "src/lib/3d/splat-occlusion.ts", "src/lib/3d/SplatLayer.svelte", "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-occlusion.test.ts", "tests/e2e/splat-occlusion.test.ts" ;
+    kpred:progress "2026-10-14: (a) was rejected: gaussian-splat-lite's depthWrite writes depth for every fragment of every splat ('normally leave off, because most of a Splat is transparent'), so a splat's faint fringe would hide markers. Built (b): SplatLayer adds one depth-only proxy per node splat (items with occludes: true; the background room never sets it), a shared unit sphere with BackSide, colorWrite false, depthWrite true, renderOrder -10, raycast disabled (never a picking target), sized 0.8 of the splat's bounding radius. Only the far hemisphere writes depth, so the splat is not clipped and what lies beyond it is. Labels are DOM, not depth-tested: the existing label sphere-occlusion pass now widens a drawn node splat's disc to its core. Proven by 4 unit tests and a Playwright pixel probe on the Generated assets example: a magenta sphere placed directly behind each node splat changed 62 to 1349 pixels of a 96x96 window with the proxy off and at most 1 with it on (4 runs; the control is layout-dependent, so the test tries every on-screen splat and requires one to show through). Frame time, headless Chromium on SwiftShader (ANGLE Vulkan software GL, 1280x800): about 113 ms/frame with proxies on, 120 to 127 ms with them off, so no measurable cost (the difference is noise and ordering; SwiftShader is not a GPU)." ;
+    kpred:remaining "The 0.8 fraction is a constant, not fitted to each splat's opacity (the renderer exposes no per-splat statistics), so a very sparse or non-spherical splat will hide a little empty space behind it, and an edge that leaves a node through its own splat is hidden past the far shell. Label hiding is a screen-disc test against the node's splat core, not a per-pixel depth test. Not checked on a real GPU. Not checked: a splat under the Your room placement transform other than by the shared code path." .
 
 kb:scan-quality rdf:type ktype:Phase ;
     rdfs:label "F58.9.14 — measure a room scan's quality and coach the person toward a better one" ;
