@@ -209,8 +209,6 @@
    */
   /** Node keys whose splat has loaded: those nodes stop drawing their marker shape (Matt, 2026-10-14). */
   let splatDrawnKeys = $state(new Set<string>());
-  /** F58.9.13: node key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
-  const splatOccluderWorld = $derived(new Map(splatItems.filter((i) => i.occludes).map((i) => [i.key, occluderRadius(i.radius)])));
   const splatItems = $derived.by((): SplatItem[] => {
     const items: SplatItem[] = [];
     const byKey = new Map(nodes.map((n) => [n.key, n] as const));
@@ -263,6 +261,8 @@
     }
     return items;
   });
+  /** F58.9.13: node key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
+  const splatOccluderWorld = $derived(new Map(splatItems.filter((i) => i.occludes).map((i) => [i.key, occluderRadius(i.radius)])));
 
   type Node = {
     key: string;
