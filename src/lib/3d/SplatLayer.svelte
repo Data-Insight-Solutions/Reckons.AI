@@ -19,6 +19,8 @@
     spin?: number;
     /** Read every frame: a world radius that overrides `radius` (e.g. sized to the graph). */
     size?: () => number;
+    /** F58.9.13: write a depth-only proxy so markers and edges behind this splat are hidden. Entity splats only; a background room never opts in. */
+    occludes?: boolean;
   };
 </script>
 
@@ -35,6 +37,7 @@
   import { useTask, useThrelte } from '@threlte/core';
   import { onDestroy } from 'svelte';
   import { loadSplatLib, createNormalizedSplat } from './splat';
+  import { occluderRadius } from './splat-occlusion';
 
   let { items, onstatus, onloadedkeys }: {
     items: SplatItem[];
@@ -49,6 +52,13 @@
   const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   type Live = { url: string; radius: number; orientation?: string; keepScale?: boolean; group?: THREE.Group; inner?: THREE.Group; mesh?: { opacity: number }; baseQuaternion?: THREE.Quaternion; baseScale?: number; dispose?: () => void; failed?: boolean };
   const live = new Map<string, Live>();
+  // F58.9.13: one shared unit sphere; BackSide so only the far hemisphere writes depth and the splat
+  // (in front of it) is not clipped. colorWrite off: it paints nothing. Drawn first (renderOrder < 0).
+  const proxyGeometry = new THREE.SphereGeometry(1, 20, 14);
+  const proxyMaterial = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: true, depthTest: true, side: THREE.BackSide });
+  const proxies: Record<string, THREE.Mesh> = {};
+  // Reachable from tests and devtools: the proxies, so a check can switch them off and compare.
+  scene.userData.splatOccluders = proxies;
   let splatRenderer: (THREE.Object3D & { dispose(): void }) | null = null;
   let destroyed = false;
   let loaded = $state(0);
@@ -109,6 +119,20 @@
       if (item.size && l.baseScale) g.scale.setScalar((l.baseScale * item.size()) / item.radius);
       const p = item.position?.();
       if (p) g.position.copy(p);
+      if (item.occludes) {
+        let proxy = proxies[item.key];
+        if (!proxy) {
+          proxy = new THREE.Mesh(proxyGeometry, proxyMaterial);
+          proxy.renderOrder = -10;
+          proxy.raycast = () => {}; // never a picking target
+          proxy.frustumCulled = false;
+          proxies[item.key] = proxy;
+          scene.add(proxy);
+        }
+        proxy.position.copy(g.position);
+        const pr = occluderRadius(item.size ? item.size() : item.radius);
+        proxy.scale.x = proxy.scale.y = proxy.scale.z = pr;
+      }
       // Settings change live without reloading the file.
       if (item.opacity !== undefined && l.mesh && l.mesh.opacity !== item.opacity) l.mesh.opacity = item.opacity;
       const q = item.quaternion?.();
@@ -118,8 +142,18 @@
     }
   });
 
+  // A proxy goes when its item stops occluding or is gone/replaced.
+  $effect(() => {
+    const keep = items.filter((i) => i.occludes && loadedKeys.has(i.key)).map((i) => i.key);
+    for (const [k, m] of Object.entries(proxies)) if (!keep.includes(k)) { scene.remove(m); delete proxies[k]; }
+  });
+
   onDestroy(() => {
     destroyed = true;
+    for (const [k, m] of Object.entries(proxies)) { scene.remove(m); delete proxies[k]; }
+    delete scene.userData.splatOccluders;
+    proxyGeometry.dispose();
+    proxyMaterial.dispose();
     for (const l of live.values()) l.dispose?.();
     live.clear();
     if (splatRenderer) { scene.remove(splatRenderer); splatRenderer.dispose(); }

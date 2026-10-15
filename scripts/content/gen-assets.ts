@@ -44,14 +44,34 @@ const VK_LIB = join(GEN, 'lib/vk/usr/lib/x86_64-linux-gnu');
 const PY = join(GEN, 'venv/bin/python');
 const TRIPO_SRC = join(GEN, 'src/TripoSplat');
 const M = join(GEN, 'models');
+const modelPath = (p: string) => resolve(M, p);
+const byRole = (models: ModelFile[], role: string) => {
+  const m = models.find((x) => x.role === role);
+  if (!m) throw new Error(`model set has no '${role}'`);
+  return modelPath(m.path);
+};
+
+/**
+ * Overrides so a stage can run with an alternative model set (F183.1 gen-model-bench). Everything is
+ * optional and the defaults are exactly the incumbent run: `gen:assets` passes none of them.
+ */
+export interface RunOpts {
+  models?: ModelFile[];
+  /** Extra environment for the child process, e.g. to pin one GPU. */
+  env?: Record<string, string>;
+  /** Extra stable-diffusion.cpp arguments (a candidate that needs a flag the incumbent does not). */
+  extraArgs?: string[];
+}
 
 export interface Brief {
   slug: string; label: string; imagePrompt: string; videoPrompt: string;
   seed: number; gaussians: number; role: 'node' | 'background';
 }
 
-interface ModelFile { role: string; path: string; source: string; license: string }
-const MODELS: Record<'image' | 'video' | 'splat', ModelFile[]> = {
+/** `path` is relative to RECKONS_GEN_HOME/models, or absolute (a bench candidate kept in its own folder). */
+export interface ModelFile { role: string; path: string; source: string; license: string }
+/** The incumbent model set per stage. The bench (gen-bench.ts, F183.1) READS this and never edits it. */
+export const MODELS: Record<'image' | 'video' | 'splat', ModelFile[]> = {
   image: [
     { role: 'diffusion', path: 'zimage/z_image_turbo-Q8_0.gguf', source: 'https://huggingface.co/leejet/Z-Image-Turbo-GGUF', license: 'Apache-2.0' },
     { role: 'text encoder', path: 'zimage/Qwen3-4B-Instruct-2507-Q8_0.gguf', source: 'https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF', license: 'Apache-2.0' },
@@ -103,9 +123,9 @@ async function sha256File(file: string, cache = true): Promise<string> {
 }
 const sha256Bytes = (b: Buffer) => createHash('sha256').update(b).digest('hex');
 
-async function modelEntries(stage: Stage) {
-  return Promise.all(MODELS[stage].map(async (m) => {
-    const file = join(M, m.path);
+async function modelEntries(stage: Stage, models: ModelFile[] = MODELS[stage]) {
+  return Promise.all(models.map(async (m) => {
+    const file = modelPath(m.path);
     if (!existsSync(file)) throw new Error(`missing model ${file} — run scripts/content/gen-setup.sh`);
     return { role: m.role, file: m.path.split('/').pop()!, sha256: await sha256File(file), bytes: statSync(file).size, license: m.license, source: m.source };
   }));
@@ -115,18 +135,24 @@ function sdVersion(): string {
   const out = execFileSync(join(SD_DIR, 'sd-cli'), ['--version'], { encoding: 'utf8', env: sdEnv() }).trim();
   return /commit\s+(\w+)/.exec(out)?.[1] ? `commit ${/commit\s+(\w+)/.exec(out)![1]} (Vulkan build)` : out.split('\n')[0];
 }
-function sdEnv() { return { ...process.env, LD_LIBRARY_PATH: `${VK_LIB}:${SD_DIR}` }; }
-function sd(args: string[]) { execFileSync(join(SD_DIR, 'sd-cli'), args, { env: sdEnv(), stdio: ['ignore', 'ignore', 'pipe'], maxBuffer: 64 << 20 }); }
+function sdEnv(extra: Record<string, string> = {}) { return { ...process.env, LD_LIBRARY_PATH: `${VK_LIB}:${SD_DIR}`, ...extra }; }
+function sd(args: string[], extra: Record<string, string> = {}) { execFileSync(join(SD_DIR, 'sd-cli'), args, { env: sdEnv(extra), stdio: ['ignore', 'ignore', 'pipe'], maxBuffer: 64 << 20 }); }
 
 // ── Stages ────────────────────────────────────────────────────────────────────
+
+/** Text → PNG with the image model set. The caller owns `png`. */
+export function generateImagePng(prompt: string, seed: number, png: string, size = 768, o: RunOpts = {}): void {
+  const m = o.models ?? MODELS.image;
+  sd(['--diffusion-model', byRole(m, 'diffusion'), '--llm', byRole(m, 'text encoder'), '--vae', byRole(m, 'vae'),
+    '-p', prompt, '--cfg-scale', '1.0', '--steps', '8', '-W', String(size), '-H', String(size), '--seed', String(seed), ...(o.extraArgs ?? []), '-o', png], o.env);
+}
 
 async function stageImage(b: Brief, dir: string): Promise<StageReceipt> {
   const size = 768;
   const tmp = join(dir, '.image.png'); // scratch, git-ignored, deleted once the WebP is written
   const settings = { width: size, height: size, steps: 8, cfgScale: 1, sampler: 'euler', seed: b.seed };
   const t = Date.now();
-  sd(['--diffusion-model', join(M, MODELS.image[0].path), '--llm', join(M, MODELS.image[1].path), '--vae', join(M, MODELS.image[2].path),
-    '-p', b.imagePrompt, '--cfg-scale', '1.0', '--steps', '8', '-W', String(size), '-H', String(size), '--seed', String(b.seed), '-o', tmp]);
+  generateImagePng(b.imagePrompt, b.seed, tmp, size);
   const out = join(dir, OUTPUTS.image);
   await sharp(tmp).webp({ quality: 88 }).toFile(out);
   rmSync(tmp, { force: true });
@@ -135,27 +161,41 @@ async function stageImage(b: Brief, dir: string): Promise<StageReceipt> {
     await checkImage(out, { width: size, height: size }));
 }
 
+export const VIDEO_FRAMES = 49;
+
+/** Image + prompt → WebM with the video model set. */
+export function generateVideo(src: string, prompt: string, seed: number, out: string, frames = VIDEO_FRAMES, o: RunOpts = {}): void {
+  const m = o.models ?? MODELS.video;
+  sd(['-M', 'vid_gen', '--diffusion-model', byRole(m, 'diffusion'), '--t5xxl', byRole(m, 'text encoder'), '--vae', byRole(m, 'vae'),
+    '-i', src, '-p', prompt, '--cfg-scale', '6.0', '--sampling-method', 'euler', '--steps', '20', '-W', '512', '-H', '512',
+    '--video-frames', String(frames), '--fps', '16', '--flow-shift', '3.0', '--seed', String(seed), ...(o.extraArgs ?? []), '-o', out], o.env);
+}
+
 async function stageVideo(b: Brief, dir: string): Promise<StageReceipt> {
   const src = sourceImage(dir);
-  const frames = 49;
+  const frames = VIDEO_FRAMES;
   const settings = { width: 512, height: 512, frames, fps: 16, steps: 20, cfgScale: 6, flowShift: 3, sampler: 'euler', seed: b.seed };
   const out = join(dir, OUTPUTS.video);
   const t = Date.now();
-  sd(['-M', 'vid_gen', '--diffusion-model', join(M, MODELS.video[0].path), '--t5xxl', join(M, MODELS.video[1].path), '--vae', join(M, MODELS.video[2].path),
-    '-i', src, '-p', b.videoPrompt, '--cfg-scale', '6.0', '--sampling-method', 'euler', '--steps', '20', '-W', '512', '-H', '512',
-    '--video-frames', String(frames), '--fps', '16', '--flow-shift', '3.0', '--seed', String(b.seed), '-o', out]);
+  generateVideo(src, b.videoPrompt, b.seed, out, frames);
   return finish('video', b, dir, out, t, settings, { prompt: b.videoPrompt, image: OUTPUTS.image, imageSha256: await sha256File(src, false) },
     { name: 'stable-diffusion.cpp', license: 'MIT', version: sdVersion(), repo: 'https://github.com/leejet/stable-diffusion.cpp' },
     checkVideo(out, { frames }));
+}
+
+/** Image → PLY with TripoSplat. `o.ckpts` / `o.src` point at an alternative weights directory or checkout. */
+export function generateSplat(image: string, seed: number, gaussians: number, out: string,
+  o: { ckpts?: string; src?: string; env?: Record<string, string> } = {}): { steps: number; peakGiB: number; torch: string; opacityRepaired: number } {
+  const log = gpuRun(PY, ['-I', join(ROOT, 'scripts/content/triposplat_run.py'), '--src', o.src ?? TRIPO_SRC, '--ckpts', o.ckpts ?? join(M, 'triposplat'),
+    '--image', image, '--out', out, '--gaussians', String(gaussians), '--seed', String(seed)], o.env);
+  return JSON.parse(log.trim().split('\n').pop()!);
 }
 
 async function stageSplat(b: Brief, dir: string): Promise<StageReceipt> {
   const src = sourceImage(dir);
   const out = join(dir, OUTPUTS.splat);
   const t = Date.now();
-  const log = gpuRun(PY, ['-I', join(ROOT, 'scripts/content/triposplat_run.py'), '--src', TRIPO_SRC, '--ckpts', join(M, 'triposplat'),
-    '--image', src, '--out', out, '--gaussians', String(b.gaussians), '--seed', String(b.seed)]);
-  const run = JSON.parse(log.trim().split('\n').pop()!);
+  const run = generateSplat(src, b.seed, b.gaussians, out);
   const commit = execFileSync('git', ['-C', TRIPO_SRC, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
   const r = await finish('splat', b, dir, out, t,
     { gaussians: b.gaussians, steps: run.steps, seed: b.seed, peakGiB: run.peakGiB, torch: run.torch,
@@ -183,9 +223,9 @@ function sourceImage(dir: string): string {
  * TripoSplat run started seconds after another GPU process exited; the same command succeeded on
  * retry. Any other failure is thrown at once.
  */
-function gpuRun(cmd: string, args: string[]): string {
+function gpuRun(cmd: string, args: string[], env?: Record<string, string>): string {
   for (let attempt = 1; ; attempt++) {
-    try { return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+    try { return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...(env ? { env: { ...process.env, ...env } } : {}) }); }
     catch (e) {
       const err = String((e as { stderr?: string }).stderr ?? e);
       if (attempt >= 2 || !/CUDA driver initialization failed/.test(err)) throw e;
