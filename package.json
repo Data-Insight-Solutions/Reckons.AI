@@ -76,6 +76,7 @@
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
     "scan:room": "npx tsx scripts/content/scan-room.ts",
+    "scan:quality": "npx tsx scripts/content/scan-quality.ts",
     "docs:compose": "npx tsx scripts/docs-compose.ts",
     "docs:consolidate": "npx tsx scripts/offline/docs-consolidate.ts",
     "website:align": "npx tsx scripts/offline/website-align.ts",

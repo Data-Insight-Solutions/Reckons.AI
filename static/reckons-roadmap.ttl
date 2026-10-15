@@ -4058,12 +4058,16 @@ kb:splat-occlusion rdf:type ktype:Phase ;
 kb:scan-quality rdf:type ktype:Phase ;
     rdfs:label "F58.9.14 — measure a room scan's quality and coach the person toward a better one" ;
     kpred:feature-id "F58.9.14" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "scaffolded" ;
+    kpred:has-file "scripts/content/scan-quality.ts", "scripts/content/scan-quality-lib.ts" ;
+    kpred:tested-by "scripts/content/__tests__/scan-quality.test.ts" ;
     kpred:part-of kb:gen-video-to-splat ;
     kpred:depends-on kb:room-scan-capture ;
     kpred:decided "MATT, 2026-10-14: quality is due to speed of movement, consistency of movement and the angles captured; a manual phone scan will never be perfect; measure these metrics and train people to get better scans. A small object can be prepared (plain background, good lighting); a room cannot, since the person is only so tall and a phone has no stabilization." ;
     kpred:description "npm run scan:quality (script tier, no model) reads a Stray Scanner export or a video and reports: blur per frame (Laplacian variance) and the share of blurry frames; speed (metres per second and degrees per second from odometry.csv) with its peaks; smoothness (jerk); coverage (the spread of view directions and positions, and holes in yaw); exposure stability; and after reconstruction, COLMAP's registered share and reprojection error. Each metric has a plain-language tip (for example 'you turned faster than 45 degrees a second for 12 seconds; turn half as fast'). The receipt keeps the metrics, so successive scans can be compared." ;
-    kpred:remaining "Plan only, 2026-10-14. Thresholds must come from measured scans, not guesses." .
+    kpred:measured "2026-10-14, Matt's studio scan (private), one capture, 105.1 s: linear speed median 0.12 m/s, p95 0.31, peak 0.76 (above 0.8 m/s for 0 s); angular speed median 13.5 deg/s, p95 29.0, peak 61.1 (above 45 deg/s for 0.3 s); jerk median 8.3 m/s3, p95 38.8; yaw coverage 12 of 12 bins, 0 empty; path 14.84 m; blur median Laplacian variance 430.2, 1% of 210 frames below 100; brightness spread 15.7; COLMAP registered 89% (266 of 300 kept frames). Tips given: 1 (jerk)." ;
+    kpred:progress "2026-10-14: scripts/content/scan-quality.ts and scan-quality-lib.ts built on feat/f58-9-14-scan-quality; npm run scan:quality reads a Stray Scanner folder (odometry for speed, jerk, yaw coverage, path length; rgb.mp4 frames at 2 fps, decoded in memory, for blur and exposure) or a video (blur and exposure only), and --receipt adds the COLMAP registered share. Parsers are imported from scan-room-lib.ts. 13 synthetic unit tests (slow smooth sweep against a fast stop-go sweep) pass. Run once on one private studio scan; the numbers are in kpred:measured. Status is scaffolded, not functional: the thresholds in QUALITY_THRESHOLDS are first guesses from one scan, so a tip is not yet evidence that a scan is worse. Not yet built: the tips in the app UI, the F58.9.15 walkthrough, and any comparison across successive scans." ;
+    kpred:remaining "Thresholds must come from several measured scans, rated by the person who made them, before any tip is trusted. The first guesses are not calibrated." .
 
 kb:own-space-walkthrough rdf:type ktype:Phase ;
     rdfs:label "F58.9.15 — scanning your own space, offered only after someone is comfortable with Reckons.AI" ;
