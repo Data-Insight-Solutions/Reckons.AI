@@ -93,6 +93,14 @@
       "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
     },
     {
+      "name": "release-review-space",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-review-space.ts --check",
+      "blocking": true,
+      "desc": "F34.5. Fails when a generated static/review-<version>.ttl (the per-release visual review space opened from About) differs from what the roadmap's release has-part features and the Testing graph's TestWorkflows generate. Regenerate with npx tsx scripts/offline/release-review-space.ts. Deterministic, no model."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,
@@ -499,6 +507,20 @@
       "blocking": true,
       "cmd": "npx tsx scripts/offline/ui-terms.ts --check",
       "desc": "F203.7 UI terms ratchet (Matt, 2026-10-07: detect backend engineering terms on screen and inconsistent words). Visible template text only: jargon from kpred:ui-jargon and prefixed standards labels, and 'graph' meaning a space by rule (lib/term-sense-rules.ts). Counts may fall, never rise; baselines are kpred:ui-term-ratchet on the terminology scheme."
+    },
+    {
+      "name": "gen-model-discover",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npm run bench:gen:discover",
+      "desc": "F183.1: for each local generation stage, is the incumbent Hugging Face file still the bytes the receipt recorded, and which newer licensed, loadable, one-GPU-sized models exist? Script tier (rules, zero tokens) but ONLINE and opt-in: the command carries --online, and it is disabled in the sweep so nothing reaches out unasked. Output is a candidate list with a reason per drop; downloads and likes order it and are never evidence of quality."
+    },
+    {
+      "name": "gen-model-bench",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npm run bench:gen -- --stage=image",
+      "desc": "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts."
     }
   ]
 }
