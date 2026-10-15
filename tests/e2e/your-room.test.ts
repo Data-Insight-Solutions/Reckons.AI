@@ -133,3 +133,52 @@ test('a .sog whose archive is not a real SOG is refused with the reason, not sto
   await expect(page.getByTestId('import-scan-refused')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('background-settings')).toHaveCount(0);
 });
+
+// F58.9.16: background settings in the graph view's filters panel, and placement without the large preview.
+test('Your room: set surround and scale from the filters panel, place the turtle with the bar, the large preview is gone', async ({ page }) => {
+  test.setTimeout(240_000);
+  await openYourRoom(page);
+  await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '2/0', { timeout: 60_000 });
+
+  // The Background section is in the graph view's Filters & layout panel, with the same controls as the Graphs tab.
+  const panel = page.getByTestId('graph-background-settings');
+  await expect(panel).toBeVisible();
+  await panel.getByTestId('bg-mode-backdrop').click();
+  await expect(panel.getByTestId('bg-mode-backdrop')).toHaveClass(/active/);
+  await panel.getByTestId('bg-mode-surround').click();
+  await expect(panel.getByTestId('bg-mode-surround')).toHaveClass(/active/);
+  const scale = panel.getByTestId('bg-scale');
+  await scale.fill('12');
+  await scale.press('Tab');
+  await expect(scale).toHaveValue('12');
+  // Set focal point: click a point in the 3D view; the room's centre moves to it and the point is stored.
+  await panel.getByTestId('set-focal-point').click();
+  await expect(panel.getByTestId('background-message')).toContainText(/click the point in the 3d view/i, { timeout: 30_000 });
+  await page.locator('main canvas').first().click({ position: { x: 760, y: 420 } });
+  await expect(panel.getByTestId('focal-readout')).toBeVisible({ timeout: 15_000 });
+  await expect(panel.getByTestId('background-message')).toContainText(/focal point set|floor plane/i);
+
+  // Open the turtle's splat (selected nodes always show their preview), then start placing.
+  await page.goto('/?sel=' + encodeURIComponent('i:urn:reckons:room/turtle'));
+  const open = page.getByRole('button', { name: /open asset for splat/i }).first();
+  await expect(open).toBeVisible({ timeout: 30_000 });
+  await open.click();
+  await expect(page.locator('.asset-large')).toBeVisible();
+  const controls = page.getByTestId('splat-placement');
+  if (await controls.getByRole('button', { name: /^unplace$/i }).count()) await controls.getByRole('button', { name: /^unplace$/i }).click();
+  await controls.getByTestId('place-in-space').click();
+
+  // Placement mode: the large preview is gone, a compact bar floats over the graph instead.
+  await expect(page.getByTestId('placement-bar')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('.asset-large')).toBeHidden();
+  const readout = page.getByTestId('placement-readout');
+  await expect(readout).toBeVisible();
+  const before = await readout.innerText();
+  await page.getByTestId('placement-bar').getByRole('button', { name: 'Move right' }).click();
+  await expect.poll(() => readout.innerText()).not.toBe(before);
+  await page.screenshot({ path: process.env.ROOM_SHOT ?? 'test-results/placement.png' });
+
+  // Escape leaves placement mode.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('placement-bar')).toHaveCount(0);
+});
