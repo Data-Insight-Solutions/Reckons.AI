@@ -1552,3 +1552,18 @@ bench:image-bee-wings--hairs rdf:type bench:ChecklistItem ;
     skos:notation "hairs" ;
     kpred:question "Can fine hairs be seen on the bee's body?" .
 
+
+## --- Run summary written back as data (F183.2): the measured claim lives beside the task it measured ---
+
+bench:Result-image-2026-10-14 rdf:type bench:RunSummary ;
+    rdfs:label "Image bench run, hard tier, 2026-10-14" ;
+    skos:broader bench:Task-image ;
+    bench:run-date "2026-10-14" ;
+    bench:tier "hard" ;
+    bench:judge "qwen2.5vl:7b" ;
+    bench:arm "incumbent: Z-Image-Turbo Q8_0 (Apache-2.0), quality 0.913, 14.0 s/run, peak 11992 MiB, 30 of 30 hard checks" ;
+    bench:arm "candidate: vnbot-ai/Z-Image-Turbo-GGUF Q4_K_M (apache-2.0), quality 0.907, 16.5 s/run, peak 10503 MiB, 30 of 30 hard checks" ;
+    bench:incumbent-seed-spread "0.060" ;
+    bench:quality-delta "-0.007" ;
+    bench:verdict "hold" ;
+    kpred:description "10 hard briefs x 3 seeds x 2 arms = 60 images, judged item by item. The verdict is hold, not insufficient-evidence: the incumbent mean 0.913 is under the 0.95 ceiling, so the ceiling rule did not trigger. The arms do not separate (delta -0.007 against an incumbent seed spread of 0.060). The briefs now have headroom: counts and a spatial scene vary (five-apples 0.4 to 1.0, four-ducks 0.6 to 1.0), but 6 of 10 briefs are still perfect for both arms. The judge is a 7B vision model whose answers on counts are themselves uncertain; none of its answers were checked by a human." .
