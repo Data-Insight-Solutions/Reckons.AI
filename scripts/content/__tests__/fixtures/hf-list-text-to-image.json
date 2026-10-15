@@ -1,0 +1,483 @@
+[
+ {
+  "_id": "6ab000f1a587030ee97d13cf",
+  "id": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized",
+  "cardData": {
+   "license": "other",
+   "base_model": [
+    "Qwen/Qwen-Image-2.1"
+   ]
+  },
+  "gated": false,
+  "lastModified": "2026-10-12T07:10:55.000Z",
+  "likes": 4287,
+  "sha": "7959e658915f52274897fb573ffeda49de8dc16b",
+  "downloads": 2315771,
+  "gguf": {
+   "total": 7115124736,
+   "architecture": "qwen_image21",
+   "totalFileSize": 14230272800
+  },
+  "tags": [
+   "gguf",
+   "qwen",
+   "image-generation",
+   "comfyui",
+   "comfyui-gguf",
+   "mlx",
+   "fp8",
+   "nvfp4",
+   "text-to-image",
+   "base_model:Qwen/Qwen-Image-2.1",
+   "base_model:quantized:Qwen/Qwen-Image-2.1",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-09-20T15:51:13.000Z"
+ },
+ {
+  "_id": "6ab12b706c54573d0df4c903",
+  "id": "unsloth/Qwen-Image-2.1-GGUF",
+  "cardData": {
+   "license": "other",
+   "base_model": "Qwen/Qwen-Image-2.1"
+  },
+  "gated": false,
+  "lastModified": "2026-09-22T22:34:12.000Z",
+  "likes": 400,
+  "sha": "2c31ccd392b367a6637841a143813320a02dff55",
+  "downloads": 1150207,
+  "gguf": {
+   "total": 7115124736,
+   "totalFileSize": 14230275808
+  },
+  "tags": [
+   "gguf",
+   "quantized",
+   "unsloth",
+   "qwen",
+   "image-generation",
+   "text-to-image",
+   "en",
+   "zh",
+   "base_model:Qwen/Qwen-Image-2.1",
+   "base_model:quantized:Qwen/Qwen-Image-2.1",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-09-21T13:04:48.000Z"
+ },
+ {
+  "_id": "6948791fc522cdf43eda93f4",
+  "id": "unsloth/Z-Image-Turbo-GGUF",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": "Tongyi-MAI/Z-Image-Turbo"
+  },
+  "gated": false,
+  "lastModified": "2026-01-08T02:11:45.000Z",
+  "likes": 278,
+  "sha": "6c80814333b7b6a70a2e5b469a7c6437ce65de0f",
+  "downloads": 1082546,
+  "gguf": {
+   "total": 6154908736,
+   "architecture": "lumina2",
+   "totalFileSize": 12311939136
+  },
+  "tags": [
+   "ggml",
+   "gguf",
+   "quantized",
+   "unsloth",
+   "text-to-image",
+   "en",
+   "arxiv:2511.22699",
+   "arxiv:2511.22677",
+   "arxiv:2511.13649",
+   "base_model:Tongyi-MAI/Z-Image-Turbo",
+   "base_model:quantized:Tongyi-MAI/Z-Image-Turbo",
+   "license:apache-2.0",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2025-12-21T22:47:59.000Z"
+ },
+ {
+  "_id": "6ab200c00904bf4177659aa5",
+  "id": "Viggle/Qwen-Image-2.1-viggle-turbo",
+  "cardData": {
+   "license": "other",
+   "base_model": "Qwen/Qwen-Image-2.1"
+  },
+  "gated": false,
+  "lastModified": "2026-10-01T02:44:17.000Z",
+  "likes": 729,
+  "sha": "009a44a895ef85f7e643c80fdca9543795248867",
+  "downloads": 477981,
+  "gguf": {
+   "total": 7115124736,
+   "architecture": "qwen_image",
+   "totalFileSize": 4335931552
+  },
+  "tags": [
+   "diffusers",
+   "safetensors",
+   "gguf",
+   "lora",
+   "text-to-image",
+   "image-to-image",
+   "image-editing",
+   "distillation",
+   "turbo",
+   "few-step",
+   "qwen-image",
+   "comfyui",
+   "int8",
+   "fp8",
+   "quantized",
+   "base_model:Qwen/Qwen-Image-2.1",
+   "base_model:adapter:Qwen/Qwen-Image-2.1",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-09-22T04:14:56.000Z"
+ },
+ {
+  "_id": "695388c1ba013749b94e8ae5",
+  "id": "unsloth/Qwen-Image-2512-GGUF",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": "Qwen/Qwen-Image-2512"
+  },
+  "gated": false,
+  "lastModified": "2026-01-06T22:28:00.000Z",
+  "likes": 428,
+  "sha": "1626d7531f84b4d2ea1cd6d2e69f41ec027dd354",
+  "downloads": 322470,
+  "gguf": {
+   "total": 20430401088,
+   "architecture": "qwen_image",
+   "totalFileSize": 40872114720
+  },
+  "tags": [
+   "gguf",
+   "quantized",
+   "unsloth",
+   "qwen",
+   "text-to-image",
+   "en",
+   "zh",
+   "arxiv:2508.02324",
+   "base_model:Qwen/Qwen-Image-2512",
+   "base_model:quantized:Qwen/Qwen-Image-2512",
+   "license:apache-2.0",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2025-12-30T08:09:37.000Z"
+ },
+ {
+  "_id": "6ac916b8a58766dba416dd3f",
+  "id": "AtomicChat/Qwen-Image-2.1-Turbo-Uncensored-GGUF",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": [
+    "Qwen/Qwen3-VL-8B-Instruct"
+   ]
+  },
+  "gated": false,
+  "lastModified": "2026-10-13T20:02:46.000Z",
+  "likes": 449,
+  "sha": "df96693dbdfb8738c0bf1bbd0337d149808db948",
+  "downloads": 258320,
+  "gguf": {
+   "total": 8190735360,
+   "architecture": "qwen3vl",
+   "context_length": 262144,
+   "quantize_imatrix_file": "/work/stageE/imatrix.gguf",
+   "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {%- if messages[0].content is string %}\n            {{- messages[0].content }}\n        {%- else %}\n            {%- for content in messages[0].content %}\n                {%- if 'text' in content %}\n                    {{- content.text }}\n                {%- endif %}\n            {%- endfor %}\n        {%- endif %}\n        {{- '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' }}\n        {%- if messages[0].content is string %}\n            {{- messages[0].content }}\n        {%- else %}\n            {%- for content in messages[0].content %}\n                {%- if 'text' in content %}\n                    {{- content.text }}\n                {%- endif %}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set image_count = namespace(value=0) %}\n{%- set video_count = namespace(value=0) %}\n{%- for message in messages %}\n    {%- if message.role == \"user\" %}\n        {{- '<|im_start|>' + message.role + '\\n' }}\n        {%- if message.content is string %}\n            {{- message.content }}\n        {%- else %}\n            {%- for content in message.content %}\n                {%- if content.type == 'image' or 'image' in content or 'image_url' in content %}\n                    {%- set image_count.value = image_count.value + 1 %}\n                    {%- if add_vision_id %}Picture {{ image_count.value }}: {% endif -%}\n                    <|vision_start|><|image_pad|><|vision_end|>\n                {%- elif content.type == 'video' or 'video' in content %}\n                    {%- set video_count.value = video_count.value + 1 %}\n                    {%- if add_vision_id %}Video {{ video_count.value }}: {% endif -%}\n                    <|vision_start|><|video_pad|><|vision_end|>\n                {%- elif 'text' in content %}\n                    {{- content.text }}\n                {%- endif %}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {{- '<|im_start|>' + message.role + '\\n' }}\n        {%- if message.content is string %}\n            {{- message.content }}\n        {%- else %}\n            {%- for content_item in message.content %}\n                {%- if 'text' in content_item %}\n                    {{- content_item.text }}\n                {%- endif %}\n            {%- endfor %}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and message.content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {%- if message.content is string %}\n            {{- message.content }}\n        {%- else %}\n            {%- for content in message.content %}\n                {%- if content.type == 'image' or 'image' in content or 'image_url' in content %}\n                    {%- set image_count.value = image_count.value + 1 %}\n                    {%- if add_vision_id %}Picture {{ image_count.value }}: {% endif -%}\n                    <|vision_start|><|image_pad|><|vision_end|>\n                {%- elif content.type == 'video' or 'video' in content %}\n                    {%- set video_count.value = video_count.value + 1 %}\n                    {%- if add_vision_id %}Video {{ video_count.value }}: {% endif -%}\n                    <|vision_start|><|video_pad|><|vision_end|>\n                {%- elif 'text' in content %}\n                    {{- content.text }}\n                {%- endif %}\n            {%- endfor %}\n        {%- endif %}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n{%- endif %}\n",
+   "bos_token": "<|endoftext|>",
+   "eos_token": "<|im_end|>",
+   "totalFileSize": 3336289216
+  },
+  "tags": [
+   "gguf",
+   "atomic-chat",
+   "qwen",
+   "qwen-image",
+   "qwen3-vl",
+   "text-encoder",
+   "stable-diffusion.cpp",
+   "abliteration",
+   "refusal-direction",
+   "text-to-image",
+   "base_model:Qwen/Qwen3-VL-8B-Instruct",
+   "base_model:finetune:Qwen/Qwen3-VL-8B-Instruct",
+   "license:apache-2.0",
+   "endpoints_compatible",
+   "region:us",
+   "imatrix",
+   "conversational"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-10-09T16:30:48.000Z"
+ },
+ {
+  "_id": "6ac9ce27a0d63e6bb9b1a519",
+  "id": "unsloth/Qwen-Image-2.1-Turbo-GGUF",
+  "cardData": {
+   "license": "other",
+   "base_model": "Qwen/Qwen-Image-2.1-Turbo"
+  },
+  "gated": false,
+  "lastModified": "2026-10-10T05:34:23.000Z",
+  "likes": 44,
+  "sha": "5d1f9f759ea877ae556cda88dbec958b62ad3809",
+  "downloads": 223523,
+  "gguf": {
+   "total": 7115124736,
+   "architecture": "qwen_image",
+   "totalFileSize": 14230275904
+  },
+  "tags": [
+   "gguf",
+   "quantized",
+   "unsloth",
+   "qwen",
+   "image-generation",
+   "turbo",
+   "text-to-image",
+   "en",
+   "zh",
+   "base_model:Qwen/Qwen-Image-2.1-Turbo",
+   "base_model:quantized:Qwen/Qwen-Image-2.1-Turbo",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-10-10T05:33:27.000Z"
+ },
+ {
+  "_id": "66bd677b84c23e82ae7e0f57",
+  "id": "city96/FLUX.1-dev-gguf",
+  "cardData": {
+   "license": "other",
+   "base_model": "black-forest-labs/FLUX.1-dev"
+  },
+  "gated": false,
+  "lastModified": "2024-08-18T08:14:09.000Z",
+  "likes": 1477,
+  "sha": "3c60ac659f4b1f2ab3ca8bd4488272069b36a148",
+  "downloads": 185126,
+  "gguf": {
+   "total": 11901408320,
+   "architecture": "flux",
+   "totalFileSize": 23802870944
+  },
+  "tags": [
+   "gguf",
+   "text-to-image",
+   "image-generation",
+   "flux",
+   "base_model:black-forest-labs/FLUX.1-dev",
+   "base_model:quantized:black-forest-labs/FLUX.1-dev",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2024-08-15T02:27:07.000Z"
+ },
+ {
+  "_id": "6aafdcc07099aa60c3f68cd5",
+  "id": "leejet/Qwen-Image-2.1-GGUF",
+  "cardData": {
+   "base_model": [
+    "Qwen/Qwen-Image-2.1"
+   ]
+  },
+  "gated": false,
+  "lastModified": "2026-09-20T14:47:00.000Z",
+  "likes": 43,
+  "sha": "cc11433936a06e9765f7c0c0b1f0436cfd2b9856",
+  "downloads": 165616,
+  "gguf": {
+   "total": 7115124736,
+   "totalFileSize": 2561716256
+  },
+  "tags": [
+   "gguf",
+   "text-to-image",
+   "stable-diffusion.cpp",
+   "en",
+   "zh",
+   "base_model:Qwen/Qwen-Image-2.1",
+   "base_model:quantized:Qwen/Qwen-Image-2.1",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-09-20T13:16:48.000Z"
+ },
+ {
+  "_id": "69de95be7f53e967ae2c813b",
+  "id": "unsloth/ERNIE-Image-Turbo-GGUF",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": "baidu/ERNIE-Image-Turbo"
+  },
+  "gated": false,
+  "lastModified": "2026-04-14T23:56:23.000Z",
+  "likes": 231,
+  "sha": "a38270280633a5d318a9f51c18ef95eefb07c423",
+  "downloads": 151549,
+  "gguf": {
+   "total": 8033490048,
+   "architecture": "wan",
+   "totalFileSize": 16067707584
+  },
+  "tags": [
+   "ggml",
+   "gguf",
+   "text-to-image",
+   "unsloth",
+   "base_model:baidu/ERNIE-Image-Turbo",
+   "base_model:quantized:baidu/ERNIE-Image-Turbo",
+   "license:apache-2.0",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-04-14T19:30:06.000Z"
+ },
+ {
+  "_id": "69c4f1dcbe88d9e8c2b195eb",
+  "id": "wikeeyang/Flux2-Klein-9B-True-V2",
+  "cardData": {
+   "license": "other",
+   "base_model": [
+    "black-forest-labs/FLUX.2-klein-9B"
+   ]
+  },
+  "gated": false,
+  "lastModified": "2026-07-13T11:28:53.000Z",
+  "likes": 210,
+  "sha": "9c9fe9880029a4e0c4af5ca7d86e83cdb83eea83",
+  "downloads": 131707,
+  "gguf": {
+   "total": 9078581248,
+   "architecture": "flux",
+   "totalFileSize": 5716892032
+  },
+  "tags": [
+   "diffusers",
+   "gguf",
+   "text-to-image",
+   "en",
+   "zh",
+   "base_model:black-forest-labs/FLUX.2-klein-9B",
+   "base_model:finetune:black-forest-labs/FLUX.2-klein-9B",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-03-26T08:44:12.000Z"
+ },
+ {
+  "_id": "697945dfb8a99cd529d90889",
+  "id": "unsloth/Z-Image-GGUF",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": "Tongyi-MAI/Z-Image"
+  },
+  "gated": false,
+  "lastModified": "2026-01-28T06:04:22.000Z",
+  "likes": 198,
+  "sha": "c9913e69743c5d9dfa7fdac58a0cc5709a17aa08",
+  "downloads": 124596,
+  "gguf": {
+   "total": 6154908736,
+   "architecture": "lumina2",
+   "totalFileSize": 12311939136
+  },
+  "tags": [
+   "ggml",
+   "gguf",
+   "unsloth",
+   "quantized",
+   "text-to-image",
+   "en",
+   "arxiv:2511.22699",
+   "base_model:Tongyi-MAI/Z-Image",
+   "base_model:quantized:Tongyi-MAI/Z-Image",
+   "license:apache-2.0",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-01-27T23:10:23.000Z"
+ },
+ {
+  "_id": "66bd6834f4f021dce64b20d3",
+  "id": "city96/FLUX.1-schnell-gguf",
+  "cardData": {
+   "license": "apache-2.0",
+   "base_model": "black-forest-labs/FLUX.1-schnell"
+  },
+  "gated": false,
+  "lastModified": "2024-08-18T08:13:37.000Z",
+  "likes": 362,
+  "sha": "f495746ed9c5efcf4661f53ef05401dceadc17d2",
+  "downloads": 121563,
+  "gguf": {
+   "total": 11891178560,
+   "architecture": "flux",
+   "totalFileSize": 23782411168
+  },
+  "tags": [
+   "gguf",
+   "text-to-image",
+   "image-generation",
+   "flux",
+   "base_model:black-forest-labs/FLUX.1-schnell",
+   "base_model:quantized:black-forest-labs/FLUX.1-schnell",
+   "license:apache-2.0",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2024-08-15T02:30:12.000Z"
+ },
+ {
+  "_id": "6ac9005cb0d942380f2eb91f",
+  "id": "AtomicChat/Qwen-Image-2.1-Turbo-GGUF",
+  "cardData": {
+   "license": "other",
+   "base_model": "Qwen/Qwen-Image-2.1-Turbo"
+  },
+  "gated": false,
+  "lastModified": "2026-10-13T20:02:49.000Z",
+  "likes": 30,
+  "sha": "f5996597b053664d0885cfaa0dcc88afb47f92f6",
+  "downloads": 108919,
+  "gguf": {
+   "total": 7115124736,
+   "totalFileSize": 2553333472
+  },
+  "tags": [
+   "gguf",
+   "stable-diffusion.cpp",
+   "qwen",
+   "qwen-image",
+   "text-to-image",
+   "image-editing",
+   "imatrix",
+   "quantized",
+   "atomic-chat",
+   "base_model:Qwen/Qwen-Image-2.1-Turbo",
+   "base_model:quantized:Qwen/Qwen-Image-2.1-Turbo",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "text-to-image",
+  "createdAt": "2026-10-09T14:55:24.000Z"
+ }
+]
