@@ -25,7 +25,14 @@ describe('compressSplat (real converter, synthetic room)', () => {
   const ply = join(dir, 'room.ply');
   writeFileSync(ply, buildRoom().bytes);
 
-  for (const format of ['spz', 'sog'] as const) {
+  it('refuses SOG without a GPU named, instead of running for hours on the CPU', () => {
+    const was = process.env.RECKONS_SPLAT_GPU;
+    delete process.env.RECKONS_SPLAT_GPU;
+    try { expect(() => compressSplat(ply, { format: 'sog' })).toThrow(/needs a GPU/); } finally { if (was !== undefined) process.env.RECKONS_SPLAT_GPU = was; }
+  });
+
+  // SOG is GPU work: it is exercised only when RECKONS_SPLAT_GPU names an adapter (it did on 2026-10-14, adapter 1).
+  for (const format of (process.env.RECKONS_SPLAT_GPU ? ['spz', 'sog'] : ['spz']) as ('spz' | 'sog')[]) {
     it(`${format}: smaller, same count, extent kept, recorded as lossy, and re-verifiable`, () => {
       const r = compressSplat(ply, { format });
       expect(r.check.pass, r.check.problems.join()).toBe(true);

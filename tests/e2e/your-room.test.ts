@@ -109,13 +109,13 @@ test('a good scan is stored in the browser, referenced by name, and becomes the 
 });
 
 // F58.9.11: compressed scans are decoded by the renderer's own decoder before they are kept.
-for (const format of ['spz', 'sog'] as const) {
+for (const format of (process.env.RECKONS_SPLAT_GPU ? ['spz', 'sog'] : ['spz']) as ('spz' | 'sog')[]) {
   test(`a .${format} is decoded for a real count and extent, stored, and drawn`, async ({ page }) => {
     test.setTimeout(120_000);
     const dir = mkdtempSync(join(tmpdir(), 'room-compressed-'));
     try {
       writeFileSync(join(dir, 'grid.ply'), Buffer.from(plyBytes()));
-      const r = compressSplat(join(dir, 'grid.ply'), { format });
+      const r = compressSplat(join(dir, 'grid.ply'), { format }); // sog needs RECKONS_SPLAT_GPU
       expect(r.check.pass, r.check.problems.join()).toBe(true);
       await page.goto('/kb');
       await page.getByTestId('import-scan-input').setInputFiles({ name: `grid.${format}`, mimeType: 'application/octet-stream', buffer: readFileSync(join(dir, r.file)) });
