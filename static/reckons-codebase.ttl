@@ -368,6 +368,7 @@ code:threed  rdf:type     ktype:Concept ;
              skos:broader code:repo ;
              kpred:has-file "src/lib/3d/KnowledgeGraph.svelte" ;
              kpred:has-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+             kpred:has-file "src/lib/3d/__tests__/ply-fixture.ts" ;
              kpred:has-file "src/lib/3d/ar/ARShell.svelte" ;
              kpred:has-file "src/lib/3d/vr/VRShell.svelte" .
 

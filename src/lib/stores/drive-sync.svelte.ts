@@ -189,7 +189,8 @@ export async function driveSyncPush(): Promise<number> {
           const af = await ensureAssetsFolder();
           if (af) {
             const existingAssets = new Map((await listFolderFiles(af)).map((f) => [f.name, f.id]));
-            for (const a of ser.assets) {
+            // Imported splat files (F58.9.7) are tens of MB and Drive pull does not restore them: not uploaded.
+            for (const a of ser.assets.filter((x) => x.category !== 'splats')) {
               const driveName = `${stem}__${a.category}__${a.filename}`;
               await uploadBinaryToFolder(driveName, a.data, extToMime(a.filename), af, existingAssets.get(driveName));
             }

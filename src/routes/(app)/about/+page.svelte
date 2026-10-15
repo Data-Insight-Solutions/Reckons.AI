@@ -59,6 +59,17 @@
       entities: 9,
       triples: 81
     },
+    {
+      // F58.9.10: a guided space. The room in it is SYNTHETIC; the steps say how to use a real scan.
+      id: 'your-room',
+      icon: '⌂',
+      title: 'Your room',
+      body: 'Scan a room, bring it in as the background, and place generated objects inside it. Four steps, with a made-up room so you can try them first. Opens as its own space.',
+      file: '/starter-your-room.ttl',
+      space: 'Your room',
+      entities: 7,
+      triples: 53
+    },
   ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 
   let loadingKb = $state<string | null>(null);

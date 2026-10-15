@@ -207,6 +207,19 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
   let ok = true;
   if (!existsSync(root)) return { ok: false, lines: [`no ${root}`] };
   for (const slug of readdirSync(root).filter((d) => statSync(join(root, d)).isDirectory()).sort()) {
+    // A SYNTHETIC asset (scripts/content/synthetic-room.ts) is written by arithmetic, not a model:
+    // it has no stages, only a hash and the splat check.
+    const synth = join(root, slug, 'synthetic.json');
+    if (existsSync(synth)) {
+      const s = JSON.parse(readFileSync(synth, 'utf8')) as { output: { file: string; sha256: string } };
+      const file = join(root, slug, s.output.file);
+      if (!existsSync(file)) { ok = false; lines.push(`✗ ${slug}: ${s.output.file} missing`); continue; }
+      const check = checkSplat(file);
+      const problems = [...(sha256Bytes(readFileSync(file)) === s.output.sha256 ? [] : ['file differs from its receipt']), ...check.problems];
+      if (problems.length) { ok = false; lines.push(`✗ ${slug} (synthetic): ${problems.join('; ')}`); }
+      else lines.push(`✓ ${slug} (synthetic): ${s.output.file} ${JSON.stringify(check.measured)}`);
+      continue;
+    }
     const rfile = join(root, slug, 'receipt.json');
     if (!existsSync(rfile)) { ok = false; lines.push(`✗ ${slug}: no receipt.json`); continue; }
     const receipt = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt;

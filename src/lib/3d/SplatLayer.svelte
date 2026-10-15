@@ -7,8 +7,14 @@
     /** World radius the splat is scaled to. */
     radius: number;
     opacity?: number;
+    /** Axis convention of the file (default: TripoSplat's). A reconstructed room uses 'none'. */
+    orientation?: 'triposplat' | 'none';
     /** Read every frame; the splat follows it (a node's live position). Omitted = origin. */
     position?: () => THREE_NS.Vector3 | undefined;
+    /** Keep the file's own scale (one file unit = one world unit, times the group's scale) instead of normalising to `radius`. */
+    keepScale?: boolean;
+    /** Extra rotation [x,y,z,w] applied over the file's own orientation; read every frame. */
+    quaternion?: () => [number, number, number, number] | undefined;
     /** Radians per second about the vertical axis. */
     spin?: number;
     /** Read every frame: a world radius that overrides `radius` (e.g. sized to the graph). */
@@ -40,7 +46,8 @@
   $effect(() => onloadedkeys?.(loadedKeys));
 
   const { renderer, scene } = useThrelte();
-  type Live = { url: string; radius: number; group?: THREE.Group; baseScale?: number; dispose?: () => void; failed?: boolean };
+  const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  type Live = { url: string; radius: number; orientation?: string; keepScale?: boolean; group?: THREE.Group; inner?: THREE.Group; mesh?: { opacity: number }; baseQuaternion?: THREE.Quaternion; baseScale?: number; dispose?: () => void; failed?: boolean };
   const live = new Map<string, Live>();
   let splatRenderer: (THREE.Object3D & { dispose(): void }) | null = null;
   let destroyed = false;
@@ -61,7 +68,7 @@
     const wanted = new Map(items.map((i) => [i.key, i]));
     for (const [key, l] of live) {
       const w = wanted.get(key);
-      if (!w || w.url !== l.url || w.radius !== l.radius) {
+      if (!w || w.url !== l.url || w.radius !== l.radius || w.orientation !== l.orientation || w.keepScale !== l.keepScale) {
         l.dispose?.();
         live.delete(key);
         if (loadedKeys.has(key)) { const next = new Set(loadedKeys); next.delete(key); loadedKeys = next; }
@@ -69,14 +76,17 @@
     }
     for (const item of items) {
       if (live.has(item.key)) continue;
-      const entry: Live = { url: item.url, radius: item.radius };
+      const entry: Live = { url: item.url, radius: item.radius, orientation: item.orientation, keepScale: item.keepScale };
       live.set(item.key, entry);
       (async () => {
         try {
           await ensureRenderer();
-          const made = await createNormalizedSplat(THREE, item.url, item.radius, { opacity: item.opacity });
+          const made = await createNormalizedSplat(THREE, item.url, item.radius, { opacity: item.opacity, orientation: item.orientation, keepScale: item.keepScale });
           if (destroyed || live.get(item.key) !== entry) { made.dispose(); return; }
           entry.group = made.group;
+          entry.inner = made.inner;
+          entry.mesh = made.mesh;
+          entry.baseQuaternion = made.baseQuaternion;
           entry.baseScale = made.group.scale.x;
           entry.dispose = made.dispose;
           scene.add(made.group);
@@ -99,7 +109,12 @@
       if (item.size && l.baseScale) g.scale.setScalar((l.baseScale * item.size()) / item.radius);
       const p = item.position?.();
       if (p) g.position.copy(p);
-      if (item.spin) g.rotation.y += item.spin * delta;
+      // Settings change live without reloading the file.
+      if (item.opacity !== undefined && l.mesh && l.mesh.opacity !== item.opacity) l.mesh.opacity = item.opacity;
+      const q = item.quaternion?.();
+      if (q && l.inner && l.baseQuaternion) l.inner.quaternion.set(q[0], q[1], q[2], q[3]).multiply(l.baseQuaternion);
+      // Reduced motion stops the slow turn (an F58.9.3 gap).
+      if (item.spin && !still) g.rotation.y += item.spin * delta;
     }
   });
 

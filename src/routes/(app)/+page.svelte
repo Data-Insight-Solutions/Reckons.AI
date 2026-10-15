@@ -15,7 +15,8 @@
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
-  import { splatMapFrom, backgroundSplatFrom, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
+  import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -2717,7 +2718,7 @@
       <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-media asset-glb asset-splat" aria-label="Gaussian splat, generated">
-        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} />{/key}
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
         <!-- Inside the splat's own box, top left: the viewer's top-right controls sit beside the
              search bar, and a wider button there slid underneath it (the e2e click was
              intercepted, 2026-10-14). -->
@@ -2727,6 +2728,7 @@
           {:else}
             <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
           {/if}
+          {#if expandedAssetKey && iriFromNodeKey(expandedAssetKey)}<SplatPlacementControls iri={iriFromNodeKey(expandedAssetKey)!} />{/if}
         </div>
       </div>
     {:else}
@@ -2775,7 +2777,7 @@
       <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-fs-media asset-glb">
-        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} />{/key}
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
       </div>
     {:else}
       <div class="asset-fs-media asset-glb">

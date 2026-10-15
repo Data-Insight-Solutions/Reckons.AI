@@ -55,7 +55,14 @@ export const LEGACY_TO_ASSET: Record<string, string> = {
 
 // ── Categories ──────────────────────────────────────────────────────────────
 
-export type AssetCategory = 'icons' | 'previews' | 'models';
+export type AssetCategory = 'icons' | 'previews' | 'models' | 'splats';
+
+/**
+ * Imported Gaussian splat files (F58.9.7) are the fourth kind. They need no extra reference triple:
+ * the space's own statements already name each file as `asset:splat/<id>`, and the file is written
+ * as `assets/splats/<id>`, so the name is the link. kb-import puts it back in IndexedDB on import.
+ */
+export const SPLAT_ASSET_DIR = 'splats';
 
 export const PREDICATE_TO_DIR: Record<string, AssetCategory> = {
   [ASSET_ICON]:    'icons',
@@ -63,7 +70,7 @@ export const PREDICATE_TO_DIR: Record<string, AssetCategory> = {
   [ASSET_MODEL]:   'models',
 };
 
-export const DIR_TO_PREDICATE: Record<AssetCategory, string> = {
+export const DIR_TO_PREDICATE: Record<Exclude<AssetCategory, 'splats'>, string> = {
   icons:    ASSET_ICON,
   previews: ASSET_PREVIEW,
   models:   ASSET_MODEL,
@@ -173,6 +180,16 @@ export async function collectAssets(database: KBaseDB): Promise<CollectedAsset[]
     }
   }
 
+  // Splats — imported scans, the whole file (the name is its content hash)
+  for (const row of await database.splatFiles.toArray()) {
+    assets.push({
+      entityIri: `asset:splat/${row.id}`,
+      category: 'splats',
+      filename: row.id,
+      data: new Uint8Array(await row.blob.arrayBuffer()),
+    });
+  }
+
   return assets;
 }
 
@@ -206,11 +223,12 @@ export async function assetTriples(
     byCategory.set(a.category, list);
   }
 
-  const labels: Record<AssetCategory, string> = {
+  const labels: Record<Exclude<AssetCategory, 'splats'>, string> = {
     icons: '2D node icons', previews: 'Hover preview images', models: '3D node models',
   };
 
-  for (const cat of ['icons', 'previews', 'models'] as AssetCategory[]) {
+  for (const cat of ['icons', 'previews', 'models'] as const) {
+    // (splats have no reference triple: the statements already name the file; see SPLAT_ASSET_DIR)
     const entries = byCategory.get(cat);
     if (!entries?.length) continue;
     lines.push(`# ${labels[cat]}`);

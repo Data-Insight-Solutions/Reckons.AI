@@ -103,83 +103,9 @@ export function checkVideo(file: string, expect?: { frames?: number }): Check {
 }
 
 // ── Gaussian splat (PLY) ─────────────────────────────────────────────────────
-
-const PLY_SIZES: Record<string, number> = {
-  char: 1, uchar: 1, int8: 1, uint8: 1, short: 2, ushort: 2, int16: 2, uint16: 2,
-  int: 4, uint: 4, int32: 4, uint32: 4, float: 4, float32: 4, double: 8, float64: 8,
-};
-
-/** The properties a 3DGS renderer needs. Higher-order SH (f_rest_*) is optional. */
-export const REQUIRED_SPLAT_PROPS = ['x', 'y', 'z', 'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity',
-  'scale_0', 'scale_1', 'scale_2', 'rot_0', 'rot_1', 'rot_2', 'rot_3'];
-
-/** Parse a binary little-endian 3DGS PLY and judge it. Pure over the bytes. */
-export function judgeSplatPly(bytes: Uint8Array, expect?: { count?: number }): Check {
-  const problems: string[] = [];
-  const fail = (p: string): Check => ({ pass: false, problems: [p], notes: [], measured: {} });
-  const headEnd = findHeaderEnd(bytes);
-  if (headEnd < 0) return fail('no PLY header (end_header not found)');
-  const header = new TextDecoder().decode(bytes.subarray(0, headEnd)).split('\n').map((l) => l.trim());
-  if (header[0] !== 'ply') return fail('not a PLY file');
-  if (!header.includes('format binary_little_endian 1.0')) return fail('only binary_little_endian PLY is checked');
-  let count = 0;
-  let inVertex = false;
-  const props: { name: string; type: string; offset: number }[] = [];
-  let stride = 0;
-  for (const line of header) {
-    const parts = line.split(/\s+/);
-    if (parts[0] === 'element') { inVertex = parts[1] === 'vertex'; if (inVertex) count = Number(parts[2]); }
-    else if (parts[0] === 'property' && inVertex) {
-      if (parts[1] === 'list') return fail('list properties are not a 3DGS layout');
-      const size = PLY_SIZES[parts[1]];
-      if (!size) return fail(`unknown property type ${parts[1]}`);
-      props.push({ name: parts[2], type: parts[1], offset: stride });
-      stride += size;
-    }
-  }
-  const missing = REQUIRED_SPLAT_PROPS.filter((p) => !props.some((q) => q.name === p));
-  if (missing.length) problems.push(`missing properties: ${missing.join(', ')}`);
-  if (!(count > 0)) problems.push('no Gaussians');
-  if (expect?.count && count !== expect.count) problems.push(`${count} Gaussians, expected ${expect.count}`);
-  const body = bytes.length - headEnd;
-  if (body < count * stride) problems.push(`truncated: ${body} bytes of body for ${count} x ${stride}`);
-  if (problems.length) return { pass: false, problems, notes: [], measured: { count } };
-
-  const view = new DataView(bytes.buffer, bytes.byteOffset + headEnd, count * stride);
-  const off = (n: string) => props.find((p) => p.name === n)!.offset;
-  const floatProps = props.filter((p) => p.type === 'float' || p.type === 'float32');
-  const [ox, oy, oz, oo] = [off('x'), off('y'), off('z'), off('opacity')];
-  const min = [Infinity, Infinity, Infinity];
-  const max = [-Infinity, -Infinity, -Infinity];
-  let nonFinite = 0;
-  let visible = 0;
-  for (let i = 0; i < count; i++) {
-    const base = i * stride;
-    for (const p of floatProps) if (!Number.isFinite(view.getFloat32(base + p.offset, true))) { nonFinite++; break; }
-    const xyz = [view.getFloat32(base + ox, true), view.getFloat32(base + oy, true), view.getFloat32(base + oz, true)];
-    for (let k = 0; k < 3; k++) { if (xyz[k] < min[k]) min[k] = xyz[k]; if (xyz[k] > max[k]) max[k] = xyz[k]; }
-    // Opacity is stored as a logit; sigmoid > 0.05 is a Gaussian a viewer would actually draw.
-    if (1 / (1 + Math.exp(-view.getFloat32(base + oo, true))) > 0.05) visible++;
-  }
-  const extent = Math.max(max[0] - min[0], max[1] - min[1], max[2] - min[2]);
-  if (nonFinite) problems.push(`${nonFinite} Gaussian(s) with non-finite values`);
-  if (!(extent > 1e-4)) problems.push(`degenerate extent ${extent}`);
-  if (visible < count * 0.05) problems.push(`only ${visible} of ${count} Gaussians are visible (opacity)`);
-  return {
-    pass: problems.length === 0, problems, notes: [],
-    measured: { count, bytesPerGaussian: stride, extent: Number(extent.toFixed(4)), visibleFraction: Number((visible / count).toFixed(3)) },
-  };
-}
-
-function findHeaderEnd(bytes: Uint8Array): number {
-  const marker = new TextEncoder().encode('end_header\n');
-  const limit = Math.min(bytes.length - marker.length, 64 * 1024);
-  outer: for (let i = 0; i <= limit; i++) {
-    for (let j = 0; j < marker.length; j++) if (bytes[i + j] !== marker[j]) continue outer;
-    return i + marker.length;
-  }
-  return -1;
-}
+// The parse lives in src/lib/3d/splat-check.ts so the browser's Import a scan runs the SAME checks.
+import { judgeSplatPly } from '../../src/lib/3d/splat-check';
+export { judgeSplatPly, REQUIRED_SPLAT_PROPS } from '../../src/lib/3d/splat-check';
 
 export function checkSplat(file: string, expect?: { count?: number }): Check {
   try { return judgeSplatPly(new Uint8Array(readFileSync(file)), expect); }
