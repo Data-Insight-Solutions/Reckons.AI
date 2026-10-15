@@ -17,6 +17,9 @@
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
+  import BackgroundSettingsControls from '$lib/components/BackgroundSettingsControls.svelte';
+  import PlacementBar from '$lib/components/PlacementBar.svelte';
+  import { placement as placementMode, stopPlacing } from '$lib/stores/placement-mode.svelte';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
@@ -1466,8 +1469,11 @@
   // Auto-expand: when on, the selected node's asset opens large automatically as
   // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
   // if the user went there. Manual mode leaves expansion to a thumbnail click.
+  // Placement mode (F58.9.16): the large preview covered the graph, so the person could not see the
+  // splat move inside the background. Starting placement collapses it and keeps it collapsed.
+  $effect(() => { if (placementMode.iri) collapseAsset(); });
   $effect(() => {
-    if (!autoExpandAssets) return;
+    if (!autoExpandAssets || placementMode.iri) return;
     const a = selected ? nodeAssetFor(iriFromNodeKey(selected)) : null;
     if (a) expandedAssetKey = selected;
     else { expandedAssetKey = null; assetFullscreen = false; }
@@ -2161,10 +2167,16 @@
 </script>
 
 <svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape' && placementMode.iri) { stopPlacing(); return; }
   if (e.key === 'Escape' && expandedAssetKey) {
     if (assetFullscreen) assetFullscreen = false; else collapseAsset();
   }
 }} />
+
+<!-- Placement mode (F58.9.16): the large preview is collapsed and this compact bar floats over the graph. -->
+{#if placementMode.iri}
+  <PlacementBar iri={placementMode.iri} />
+{/if}
 
 {#snippet graphTools()}
   <!-- FORCE -->
@@ -2288,6 +2300,16 @@
       </Popover.Root>
     </div>
   </div>
+
+  <!-- BACKGROUND (F58.9.16) — the space's background scan: surround or backdrop, scale, focal point.
+       Only when the space has one, and only in 3D (the settings are not drawn in 2D). The same
+       component the Graphs tab uses. -->
+  {#if backgroundSplat && !use2D && webglAvailable}
+  <div class="overlay-group" data-testid="graph-background-settings">
+    <span class="group-label mono">background</span>
+    <BackgroundSettingsControls />
+  </div>
+  {/if}
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
   {#if layout === 'timeline'}
@@ -2705,6 +2727,7 @@
        measured each time rather than hardcoded to the 360/320 defaults. -->
   <div
     class="asset-large"
+    class:placing-hidden={!!placementMode.iri}
     style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
     transition:fade={{ duration: 140 }}
   >
@@ -4382,6 +4405,8 @@
   }
 
   /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
+  /* Placement mode hides the large preview at once, without waiting for its fade (the fade needs frames, and a heavy room can starve them). */
+  .asset-large.placing-hidden { display: none; }
   .asset-large {
     position: fixed;
     /* Inset by the measured side-panel gutters so the image centres in the free space between

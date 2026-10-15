@@ -1,42 +1,34 @@
 <script lang="ts">
   /**
-   * Place a node's splat in the space's room (F58.9.9): Place in room, then move, raise, turn and
-   * scale in steps, and Unplace. Buttons, not a gizmo: every step is a number the person can read
-   * and an export carries. Moves are along the ROOM's axes, not the camera's.
+   * Start placing a node's splat in the space's background (F58.9.9, F58.9.16). Place in space puts
+   * it on the floor in front of the camera and enters placement mode: the large preview collapses
+   * and a compact bar (PlacementBar) floats over the graph, so the person sees the splat move inside
+   * the background. A placed node offers Adjust in space and Unplace.
    */
   import { statements } from '$lib/stores/kb.svelte';
-  import { placeInRoom, adjustInRoom, unplace } from '$lib/stores/space-room';
-  import { placementsFrom, type PlacementOp } from '$lib/3d/splat';
+  import { placeInRoom, unplace } from '$lib/stores/space-room';
+  import { placementsFrom } from '$lib/3d/splat';
+  import { startPlacing } from '$lib/stores/placement-mode.svelte';
 
   let { iri }: { iri: string } = $props();
   const placement = $derived(placementsFrom(statements()).get(iri) ?? null);
   let msg = $state('');
 
-  const MOVE = 0.25, TURN = 15, SCALE = 1.25;
-  async function place() { msg = (await placeInRoom(iri)).message; }
-  const step = (op: PlacementOp) => () => adjustInRoom(iri, op);
+  async function place() {
+    const res = await placeInRoom(iri);
+    msg = res.message;
+    if (res.ok) startPlacing(iri);
+  }
 </script>
 
 <div class="place" data-testid="splat-placement">
   {#if !placement}
-    <button class="pl-btn mono" onclick={place} title="Put this splat in the space's room, on the floor in front of the camera">Place in room</button>
+    <button class="pl-btn mono" onclick={place} data-testid="place-in-space" title="Put this splat in the space's background, on the floor in front of the camera">Place in space</button>
   {:else}
-    <div class="pl-row" role="group" aria-label="Move in the room">
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dx: -MOVE })} aria-label="Move left" title="Move left (room axis)">←</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dx: MOVE })} aria-label="Move right" title="Move right (room axis)">→</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dz: -MOVE })} aria-label="Move back" title="Move back (room axis)">↑</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dz: MOVE })} aria-label="Move forward" title="Move forward (room axis)">↓</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dy: MOVE })} aria-label="Raise" title="Raise">⤒</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'move', dy: -MOVE })} aria-label="Lower" title="Lower">⤓</button>
-    </div>
-    <div class="pl-row" role="group" aria-label="Turn and scale">
-      <button class="pl-btn mono" onclick={step({ kind: 'turn', degrees: -TURN })} aria-label="Turn left" title="Turn left 15°">↺</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'turn', degrees: TURN })} aria-label="Turn right" title="Turn right 15°">↻</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'scale', factor: 1 / SCALE })} aria-label="Smaller" title="Smaller">−</button>
-      <button class="pl-btn mono" onclick={step({ kind: 'scale', factor: SCALE })} aria-label="Larger" title="Larger">+</button>
+    <div class="pl-row">
+      <button class="pl-btn mono" onclick={() => startPlacing(iri)} data-testid="adjust-in-space" title="Move, raise, turn and scale this splat inside the background">Adjust in space</button>
       <button class="pl-btn mono" onclick={() => unplace(iri)} title="Return this node to the layout">Unplace</button>
     </div>
-    <span class="pl-read mono" data-testid="placement-readout">at {placement.at.join(' ')} · size {placement.scale} · turn {placement.yaw}°</span>
   {/if}
   {#if msg}<span class="pl-read mono" role="status">{msg}</span>{/if}
 </div>
