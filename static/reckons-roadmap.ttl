@@ -490,6 +490,94 @@ kb:personal-assistant rdf:type ktype:Feature ;
                kpred:consequence  "WHICH IS WHAT ACTUALLY UNLOCKS THE FEATURE. A proactive assistant that had to transmit to be useful would be in permanent tension with a local-first product, and that tension would be resolved by whoever was shipping fastest. Local matching removes the tension instead of managing it, so proactive help stops being a compromise and becomes an ordinary capability — the strongest reason to build it this way rather than the most virtuous one." ;
                kpred:honest-note  "NONE OF THE ASSISTANT IS BUILT (2026-09-10). No suggestion engine, no notification surface, no subscription model, no ignore-always store, and no scheduling that would run a gatherer unasked. The SUBSTRATE largely exists — Indico ingest, the filesystem workspace, local Whisper and Kokoro, `reckons --listen`, local embeddings — so this is composition rather than greenfield, but the constraints above are worth more than the feature, because they are what would be quietly dropped first." .
 
+# -- F258: time-series support for timelines and scheduling, before v0.3.0 -------
+
+kb:personal-assistant kpred:has-part kb:time-series-planning .
+
+kb:time-series-planning rdf:type ktype:Feature ;
+    rdfs:label "Time-series forecasting for timelines and scheduling" ;
+    kpred:feature-id "F258" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:personal-assistant ;
+    kpred:relates-to kb:day-sprints, kb:priority-today, kb:calendar-management, kb:structured-data, kb:timeline-undated-lane, kb:host-observability, kb:ref-timestral ;
+    kpred:description "Near-term temporal data and forecasting support for the personal assistant: construct evidence-backed timelines, estimate recurring workload and capacity, and use those estimates in reviewable scheduling suggestions. Timestral is the first numerical forecasting candidate to evaluate; adoption depends on measured benefit over simple local baselines." ;
+    kpred:decided "MATT, 2026-10-16: use the Reckons.AI MCP and canonical roadmap for these time-series enhancements, near term and before the v0.3.0 release, rather than saving a separate Markdown review. The preceding review named Timestral for time-series analysis, timeline construction and scheduling." ;
+    kpred:proposed "WORKING RELEASE ALLOCATION, 2026-10-16: start and target this sequence in v0.2.7. Matt's requested boundary is completion in a 0.2.x release before v0.3.0; the exact 0.2.x allocation is this plan's proposal, not an independently approved release date. Do not expand the already-cut v0.2.6 evidence-chain scope." ;
+    kpred:constraint "OBSERVED EVENTS, COMMITMENTS AND FORECASTS HAVE DIFFERENT MEANINGS. A numeric prediction cannot supply a missing historical event date or become a confirmed calendar commitment. Preserve F59.2's undated lane and source evidence; forecasts carry their issue time, horizon and uncertainty." ;
+    kpred:constraint "LOCAL-FIRST AND OPTIONAL. Raw numeric series stay in a local data artifact; the graph holds identities, provenance, summaries and proposals, consistent with F172's facts-not-metrics decision and F118's external calculation ownership. The static app must remain useful without a Python service, downloaded weights or a cloud account." ;
+    kpred:constraint "ACCEPTANCE BEFORE v0.3.0: all four phases are functional, the browser path and failure cases are verified, and user documentation is generated from the graphs before release promotion. This is a roadmap dependency, not a claim that a new automated release gate already exists. Timestral may be rejected by the benchmark while the feature proceeds with a validated baseline." ;
+    kpred:has-phase kb:temporal-series-contract, kb:time-series-evaluation, kb:local-forecast-provider, kb:forecast-scheduling-proposals ;
+    kpred:honest-note "PLANNED, 2026-10-16. This branch records scope, ordering and acceptance criteria only. No Timestral inference, numeric-series adapter, forecast display or scheduling integration has been built or benchmarked for Reckons.AI." ;
+    kpred:test-coverage "none" .
+
+kb:temporal-series-contract rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — temporal evidence and numeric-series contract" ;
+    kpred:feature-id "F258.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:time-series-planning ;
+    hnav:order 1 ;
+    kpred:depends-on kb:timeline-undated-lane ;
+    kpred:relates-to kb:provenance-model, kb:structured-data ;
+    kpred:description "Define one bounded import contract for timestamped numeric observations and sourced events: series identity, units, timezone, sampling interval, source revision, event-validity interval and recorded-at time. Build a deterministic adapter for a purpose-built local fixture before adding model inference. Derive daily workload or completed-effort buckets without confusing unknown observations with zero." ;
+    kpred:proposed "Use Ontolith's separate validity and assertion-time concepts as a design reference, without replacing the graph store: https://github.com/ontolith/ontolith/blob/main/site_docs/tutorials/bitemporal-queries.md . Expose sourced event ordering in the existing timeline view; undated and ambiguous events remain explicitly unresolved." ;
+    kpred:constraint "ACCEPTANCE: synthetic fixtures cover out-of-order/duplicate observations, irregular sampling, missing values versus zero, incompatible units, date-only events, timezone and daylight-saving boundaries, corrections and unknown dates. The adapter's ordering and bucketing are deterministic, and import/export preserves source revision plus event and recorded time. No model invents historical dates." ;
+    kpred:remaining "Implement the contract and adapter, link the resulting code and tests, and document the chosen temporal predicates and numeric artifact format in the graph." ;
+    kpred:test-coverage "none" .
+
+kb:time-series-evaluation rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — Timestral and baseline forecasting evaluation" ;
+    kpred:feature-id "F258.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:time-series-planning ;
+    hnav:order 2 ;
+    kpred:depends-on kb:temporal-series-contract ;
+    kpred:relates-to kb:ref-timestral, kb:work-tiering ;
+    kpred:description "A reproducible local harness compares Timestral-5M and Timestral-28M with last-value, weekly-seasonal and rolling-average baselines for a bounded daily workload/capacity use case. Use rolling-origin evaluation and only covariates available at each forecast origin. Synthetic fixtures verify mechanics; predictive usefulness requires representative, permitted history kept outside the public repository." ;
+    kpred:constraint "ACCEPTANCE: record dataset revision, split boundaries, model/checkpoint revision, commands, hardware class, MAE, quantile loss, empirical interval coverage, CPU latency and peak memory, including failures. Declare the primary metric, baseline-selection procedure, coverage tolerance and resource budgets before inspecting held-out results. Recommend Timestral only if it beats the strongest selected baseline on held-out primary error and meets those budgets; otherwise record the negative result and select the baseline. Insufficient history produces an explicit unavailable result." ;
+    kpred:remaining "Build the script-tier evaluation and result validation, run the bounded trials, and record the measured provider decision as graph evidence. Keep model probability, benchmark rank and scheduling usefulness distinct." ;
+    kpred:test-coverage "none" .
+
+kb:local-forecast-provider rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — optional local forecasting provider" ;
+    kpred:feature-id "F258.3" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:time-series-planning ;
+    hnav:order 3 ;
+    kpred:depends-on kb:time-series-evaluation ;
+    kpred:relates-to kb:integration-plugin-sdk, kb:local-host-mode ;
+    kpred:description "Expose the selected forecaster behind an optional per-user adapter with a validated request/result schema. A validated simple baseline remains available without Timestral. If Timestral qualifies, isolate its Python/PyTorch runtime and explicitly configured local endpoint or file exchange from the static browser app; use cached model files for offline inference after an explicit download." ;
+    kpred:constraint "ACCEPTANCE: the browser can request and inspect a bounded forecast through the configured local transport; setup and results are usable without terminal commands in the ordinary app flow. Verify origin/access restrictions, no automatic cloud fallback, cancellation, timeouts, missing runtime/weights, invalid outputs and offline execution. Results identify units, input revision, model version, issue time, horizon and quantiles; changed inputs mark earlier results stale. Download size and model license are disclosed before activation." ;
+    kpred:remaining "Choose the narrow local transport using the existing integration contracts, implement the adapter and provenance envelope, and verify the no-provider baseline path and provider failures. No general application backend or browser Timestral port is assumed." ;
+    kpred:test-coverage "none" .
+
+kb:forecast-scheduling-proposals rdf:type ktype:Phase ;
+    rdfs:label "Phase 4 — forecast-informed timeline and scheduling suggestions" ;
+    kpred:feature-id "F258.4" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:time-series-planning ;
+    hnav:order 4 ;
+    kpred:depends-on kb:local-forecast-provider ;
+    kpred:relates-to kb:day-sprints, kb:priority-today, kb:calendar-write, kb:graph-proposals ;
+    kpred:description "Show forecast workload/capacity and uncertainty alongside sourced events in the existing timeline and proposal surfaces. Combine those estimates with the person's explicit availability, existing commitments, task deadlines and dependencies to propose daily work allocations and buffers. Link each suggestion to the inputs and constraints that produced it; aggregate throughput is not evidence for the duration of an unrelated unique task." ;
+    kpred:constraint "ACCEPTANCE: a synthetic scheduling story has fixed events, open tasks, a capacity forecast, an overload and insufficient-history cases. Suggestions respect hard availability, existing commitments, deadlines and dependency order; infeasible constraints are reported rather than silently relaxed. Forecasts and their ranges remain visually distinct from historical facts and commitments, are traceable to source/model revisions, and can be rejected. A stale or unavailable forecast falls back to explicit inputs and says why." ;
+    kpred:constraint "USE EXISTING PRODUCT SURFACES. No new top-level navigation tab. Accepting a suggestion does not silently write a calendar: any external write remains subject to F99.2's explicit confirmation and available write channel. Reliable background reminders and a complete scheduler are not claimed by this slice." ;
+    kpred:remaining "Implement the smallest browser workflow for viewing and reviewing forecast-informed allocations; verify desktop and phone behavior plus the baseline-only path. Add a graph-backed test story and generated feature documentation before 0.2.x release promotion." ;
+    kpred:test-coverage "none" .
+
+kb:ref-timestral rdf:type ktype:Reference ;
+    rdfs:label "Timestral — candidate local numerical forecasting models" ;
+    kpred:repo-url "https://github.com/mistralai/timestral" ;
+    kpred:relates-to kb:time-series-planning, kb:time-series-evaluation ;
+    kpred:description "Reviewed 2026-10-16: Mistral's probabilistic multivariate time-series models support historical and known-future covariates. The published inference package uses Python/PyTorch on CPU or GPU; no browser runtime was present in the inspected repository. The 5M and 28M variants are the first evaluation candidates." ;
+    kpred:license "Code: Apache-2.0. Model weights: Modified MIT, separately licensed." ;
+    kpred:constraint "The inspected weight license withholds rights when the company or employer's global consolidated revenue exceeded USD 20 million in the preceding month, unless separately licensed. Review the exact pinned checkpoint license before distribution; the code license does not cover weights. Source: https://huggingface.co/mistralai/Timestral-5M/raw/main/LICENSE ." ;
+    kpred:evidence "Primary sources reviewed 2026-10-16: https://github.com/mistralai/timestral and https://mistral.ai/news/timestral/ . Upstream benchmark rankings are reported by Mistral, not local measurements of personal scheduling quality. No Reckons.AI inference benchmark has run." .
+
 kb:priority-today rdf:type     ktype:Feature ;
                rdfs:label   "'What is my priority today?'" ;
                kpred:feature-id   "F99.1" ;
@@ -9678,7 +9766,18 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
     kpred:has-part kb:local-host-mode ;
     kpred:has-part kb:lan-https ;
-    kpred:has-part kb:agents-in-app .
+    kpred:has-part kb:agents-in-app ;
+    kpred:has-part kb:time-series-planning ;
+    kpred:proposed "2026-10-16: allocate F258's four phases to this near-term release in dependency order: temporal contract and timelines, Timestral/baseline evaluation, optional local provider, then forecast-informed scheduling suggestions. Matt requested delivery before v0.3.0; this working v0.2.7 allocation may be refined within 0.2.x without representing the feature as already built." .
+
+kb:release-0-3-0 rdf:type ktype:Release ;
+    rdfs:label "v0.3.0" ;
+    kpred:version "0.3.0" ;
+    kpred:has-status "planned" ;
+    kpred:description "Release boundary recorded for Matt's 2026-10-16 instruction that the time-series enhancements land beforehand. This entry does not establish a release date or the complete v0.3.0 scope." ;
+    kpred:depends-on kb:time-series-planning ;
+    kpred:decided "MATT, 2026-10-16: roadmap the time-series enhancements near term, before the v0.3.0 version release." ;
+    kpred:constraint "F258 and all four phases must be functional and released in 0.2.x before v0.3.0 promotion, or Matt explicitly revises that boundary. This is a planning prerequisite; no new automated CI promotion check is implemented by this roadmap edit." .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
 
