@@ -578,6 +578,97 @@ kb:ref-timestral rdf:type ktype:Reference ;
     kpred:constraint "The inspected weight license withholds rights when the company or employer's global consolidated revenue exceeded USD 20 million in the preceding month, unless separately licensed. Review the exact pinned checkpoint license before distribution; the code license does not cover weights. Source: https://huggingface.co/mistralai/Timestral-5M/raw/main/LICENSE ." ;
     kpred:evidence "Primary sources reviewed 2026-10-16: https://github.com/mistralai/timestral and https://mistral.ai/news/timestral/ . Upstream benchmark rankings are reported by Mistral, not local measurements of personal scheduling quality. No Reckons.AI inference benchmark has run." .
 
+# -- F259: enclosure monitoring, policies and early warnings -------------------
+
+kb:enclosure-monitoring rdf:type ktype:Feature ;
+    rdfs:label "Enclosure monitoring — live observations, alert policies and capacity warnings" ;
+    kpred:feature-id "F259" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:time-series-planning, kb:int-homeassistant, kb:digital-twin-orchestration, kb:currents, kb:ios-note-capture, kb:event-broker ;
+    kpred:description "An opt-in private space relates enclosures, their occupants, sensors, equipment and alert policies. Bring timestamped observations and camera events into Currents, explain equipment and environmental exceptions, and warn when forecast conditions could exceed heating, cooling or stored-energy capacity. Generic examples cover poultry, insect rearing and aquaculture; actual installations and thresholds remain private." ;
+    kpred:decided "MATT, 2026-10-16: configure thresholds and alerts in a space, reuse the voice-note gathering pattern, support live data through Currents with configurable refresh and integrations, and combine Home Assistant, Z-Wave and ESP32 devices with camera events and extreme-weather warnings." ;
+    kpred:proposed "NEAR-TERM WORKING ALLOCATION: include this concrete application of F258 in v0.2.7, before v0.3.0. Implement one synthetic enclosure end to end before adding more device families. Exact release allocation is proposed; no installation, species setpoint or equipment size is approved by this plan." ;
+    kpred:constraint "PROTECTION RUNS LOCALLY WITHOUT THE BROWSER. Independent equipment controls and a configured always-on Home Assistant or local executor own protective actions and urgent notifications. Reckons.AI owns reviewable policy, evidence and forecasts; a closed tab, unavailable model, delayed review or disconnected integration must not suspend an already activated local rule. Neither software notifications nor camera detection guarantee animal safety." ;
+    kpred:constraint "OPTIONAL PER-USER INTEGRATIONS. ESPHome is the initial ESP32 adapter candidate, Home Assistant owns Z-Wave management, and local camera detection reuses F115. Home Assistant is optional for camera ingest, preserving F115's existing boundary. n8n may buffer observations or deliver optional notifications but is not a required backend. Keep credentials, locations, video, device inventories and real enclosure policies outside public graphs and fixtures." ;
+    kpred:has-phase kb:enclosure-policy-space, kb:live-sensor-currents, kb:enclosure-alert-execution, kb:enclosure-capacity-forecast ;
+    kpred:honest-note "PLANNED, 2026-10-16. Existing voice-note capture and n8n Currents arrivals are useful substrate, not an implemented live enclosure monitor. No device has been flashed, Home Assistant configured, alert deployed or animal-safe operating envelope established by this change." ;
+    kpred:test-coverage "none" .
+
+kb:enclosure-policy-space rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — enclosure configuration and policy in a private space" ;
+    kpred:feature-id "F259.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:enclosure-monitoring ;
+    hnav:order 1 ;
+    kpred:description "Represent enclosure and occupant profiles, sensor-to-location mappings, units, calibration and equipment dependencies in the existing space surfaces. A policy specifies warning and critical limits, recovery limits, dwell time, rate-of-change limits, maximum observation age, notification routes, escalation and acknowledgement. Track battery reserve, mains availability, measured power/flow and capacity where relevant. Retain manual care observations through the existing note capture path." ;
+    kpred:constraint "ACCEPTANCE: a purpose-built synthetic space can configure distinct terrestrial, insect-rearing and aquatic profiles, validate units and bounds, explain each rule, and show draft versus activated policy revisions. Real species/strain, life stage, stocking, water volume, climate and equipment must be known before choosing operating limits. No universal safe-temperature defaults or silently active rules from imported graphs; a conversational proposal is not activation. Use existing space and integration settings, with no new top-level tab." ;
+    kpred:remaining "Define the profile and policy schemas, a synthetic template and editing/activation flow. Bind secret references locally and document which executor is responsible for each activated rule." ;
+    kpred:test-coverage "none" .
+
+kb:live-sensor-currents rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — live sensor and event Currents with explicit freshness" ;
+    kpred:feature-id "F259.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:enclosure-monitoring ;
+    hnav:order 2 ;
+    kpred:depends-on kb:enclosure-policy-space, kb:temporal-series-contract, kb:currents-client-wiring ;
+    kpred:relates-to kb:int-homeassistant, kb:event-broker, kb:integration-health ;
+    kpred:description "Add sensor/event adapters and per-integration delivery settings to Currents. Start with a narrow opt-in Home Assistant state/event adapter; evaluate its authenticated WebSocket stream or a local buffered export, with bounded polling fallback. Reuse F169 for MQTT consumers without requiring a broker for the HA path. Configure sensor sampling, transport/polling interval and display refresh independently; push events should not wait for a feed polling cycle. Report the effective cadence and last observation time." ;
+    kpred:measured "2026-10-16: src/lib/integrations/n8n/currents-poll.ts uses a fixed five-minute arrivals interval and a thirty-minute maximum backoff, and accepts rss/url/topic/tasks definitions. cadenceMinutes configures a current's collection schedule; it is not a configurable live sensor delivery interval. Browser polling runs only while the app is open." ;
+    kpred:constraint "ACCEPTANCE: authenticate only to the configured endpoint; respect CSP, CORS and HTTPS-to-local transport constraints without broadly relaxing origins. Preserve source and event IDs, sequence/revision, observed-at and received-at timestamps, units and quality. Test reconnect, duplicate and late events, rebooted producers, bounded replay/retention, dropped-history disclosure, invalid readings, unknown/unavailable states, cancellation and space switching. Missing is not zero, and an old retained value is not current health." ;
+    kpred:constraint "BUFFER LIKE VOICE CAPTURE, BUT DO NOT DELAY URGENT ALERTS FOR REVIEW. Collect and alert on the local executor while the browser is closed; drain buffered evidence when it reopens. Raw high-frequency series stay with the local recorder or bounded artifacts. The graph receives provenance, selected summaries and incidents through its existing write/review rules; every sample need not become a review task. Editing or activating an alert policy remains separate from ingesting an observation." ;
+    kpred:remaining "Implement the minimal HA adapter and synthetic transport fixtures, configurable bounded cadence, freshness UI and buffered catch-up. Integrations must expose unavailable/unsupported capabilities rather than imply that selecting a source makes it live." ;
+    kpred:test-coverage "none" .
+
+kb:enclosure-alert-execution rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — local threshold, equipment-health and intrusion alerts" ;
+    kpred:feature-id "F259.3" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:enclosure-monitoring ;
+    hnav:order 3 ;
+    kpred:depends-on kb:live-sensor-currents ;
+    kpred:relates-to kb:digital-twin-orchestration, kb:frigate-stack, kb:notification-relevancy ;
+    kpred:description "Compile or export validated, explicitly activated policies to the configured always-on local executor, and reconcile the applied policy revision back into the space. Detect environmental limit breaches, implausible/stale readings, equipment command-versus-measurement mismatch, power/communications failure and enclosure intrusion events. Correlate camera observations using enclosure zones, timestamps and event identity; preserve uncertainty about animal identity." ;
+    kpred:constraint "ACCEPTANCE: test disconnected probes, stuck readings where independently detectable, pump-on with missing measured flow, heater-on with inadequate temperature response, missing heartbeat and power loss. Test expected occupants versus a synthetic unknown animal entering a protected zone, multiple observations of one event, uncertain classification, notification delivery failure, acknowledgement, escalation, recovery and restart. Verify urgent local alerts with the Reckons.AI tab closed and the model offline; report when the executor or delivery path itself is unavailable." ;
+    kpred:constraint "NO UNSUPPORTED DETECTION PROMISE. A named predator requires a detector/classifier that supports and has been evaluated for that class under the installation's day/night conditions. Frigate's default published object list does not include fox (checked 2026-10-16); use honest unknown-animal evidence and test detection coverage rather than relabelling dog as fox. Keep frames local. Dedupe and cooldown must preserve escalation and distinct incidents, and acknowledgement must not falsely report recovery." ;
+    kpred:constraint "ACTIVATION RECEIPT REQUIRED. A saved policy is not a running rule. Show requested/applied revision, executor heartbeat and failed deployment; retain the last valid local rule if a replacement fails. An imported graph or LLM response cannot execute an arbitrary HA service or shell command. Critical equipment fallback and independent thermostatic/over-temperature protection are installation concerns to verify explicitly, not capabilities inferred from an on/off switch." ;
+    kpred:remaining "Implement deterministic policy validation and bounded local execution/export, read-back receipts, incident lifecycle and synthetic closed-browser failure stories. Do not make a large model or camera classification the sole protective control." ;
+    kpred:test-coverage "none" .
+
+kb:enclosure-capacity-forecast rdf:type ktype:Phase ;
+    rdfs:label "Phase 4 — weather, thermal capacity and solar-energy shortfall warnings" ;
+    kpred:feature-id "F259.4" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:enclosure-monitoring ;
+    hnav:order 4 ;
+    kpred:depends-on kb:enclosure-alert-execution, kb:local-forecast-provider ;
+    kpred:description "Combine timestamped weather forecasts with enclosure measurements and explicit equipment capacity to estimate whether conditions may cross configured limits before intervention. For an outdoor solar-powered system, include usable battery energy, measured load, heating duty, charge/discharge losses, expected solar yield and backup availability. Record water volume, insulation, cover, exposure and observed thermal response before estimating heating sufficiency; rated panel watts alone cannot establish overnight energy availability." ;
+    kpred:constraint "ACCEPTANCE: replay synthetic cold-night, heatwave, prolonged low-sunlight, failed-pump and stale-weather cases. Show estimated time/range to the configured limit, limiting equipment or energy budget, source issue time, forecast horizon and uncertainty. A simple calibrated thermal/trend and energy-balance model is the baseline; evaluate Timestral as an optional improvement under F258, not as the first safety mechanism. Insufficient history, unknown capacity or unsupported weather input produces an explicit unknown, never an assurance that conditions are safe." ;
+    kpred:constraint "PREVENT FALSE REASSURANCE. Water temperature is not air temperature; pump command or current is not proof of water flow or dissolved oxygen. Preserve separate measured water-quality and oxygen evidence where required by the configured husbandry profile. Solar power needs storage or another supply through darkness and sustained bad weather. Validate both continuous and startup power and reserve energy, and distinguish confirmed readings from predicted conditions and proposed interventions." ;
+    kpred:remaining "Define the capacity inputs and forecast validation corpus, compare warning lead time and missed/false alerts with deterministic baselines, and expose reviewable recommendations in the existing space/timeline. No solar equipment, heater rating, stocking density or companion species is selected by this generic roadmap." ;
+    kpred:test-coverage "none" .
+
+kb:enclosure-monitoring kpred:relates-to kb:ref-cores3 ;
+    kpred:evidence "Primary references checked 2026-10-16: Home Assistant event subscriptions https://contributors.home-assistant.io/core/internals/websocket-api/ ; Z-Wave controller boundary https://www.home-assistant.io/integrations/zwave_js/ ; local camera object classes https://docs.frigate.video/configuration/objects/ and zone semantics https://docs.frigate.video/configuration/zones/ ; solar storage limitations https://www.energy.gov/cmei/systems/solar-integration-solar-energy-and-storage-basics . These document candidate integrations, not a tested Reckons.AI installation." .
+
+kb:ref-cores3 rdf:type ktype:Reference ;
+    rdfs:label "M5Stack CoreS3 — candidate local display, voice and sensor hub" ;
+    kpred:relates-to kb:enclosure-monitoring, kb:ios-note-capture ;
+    kpred:description "Generic device profile, checked 2026-10-16: ESP32-S3, 2.4 GHz Wi-Fi, 16 MB flash, 8 MB PSRAM, touch display, dual microphones, speaker and external expansion ports. ESPHome has a CoreS3 configuration example and M5Stack documents Home Assistant use. This is a candidate display/voice/sensor hub, not a declaration of a user's installed hardware." ;
+    kpred:constraint "Environmental and water-quality measurement needs suitable external probes. Validate the exact board variant, pin allocation, power rails, firmware and housing before installation. Z-Wave requires a separate controller managed by HA; the onboard camera is not an evaluated outdoor/night predator detector. A simpler ESP32 can serve as a dedicated remote probe node without the display/voice peripherals." ;
+    kpred:evidence "https://docs.m5stack.com/en/core/CoreS3 and https://devices.esphome.io/devices/m5stack-cores3/ ." .
+
+kb:time-series-planning kpred:relates-to kb:enclosure-monitoring .
+kb:int-homeassistant kpred:relates-to kb:enclosure-monitoring ;
+    kpred:proposed "2026-10-16: F259.2 is the first narrowly scoped sensor-state/event delivery slice for enclosure monitoring. It may proceed alongside F115; camera event ingest remains independent of HA and no general integration SDK is a prerequisite for the bounded adapter." .
+kb:currents kpred:relates-to kb:live-sensor-currents .
+kb:digital-twin-orchestration kpred:relates-to kb:enclosure-alert-execution .
+
 kb:priority-today rdf:type     ktype:Feature ;
                rdfs:label   "'What is my priority today?'" ;
                kpred:feature-id   "F99.1" ;
@@ -7656,7 +7747,23 @@ kb:generation-coupling rdf:type ktype:Decision ;
                kpred:relates-to   kb:meme-with-context ;
                kpred:relates-to   kb:integration-plugin-sdk ;
                kpred:open-question "Does a generation task need a new EFFECT? The current five — read-only, queue-write, source-write, external-read, external-write — do not distinguish \u0027writes a file into my assets folder\u0027 from \u0027rewrites my source tree\u0027, and both are source-write today. An `asset-write` effect would let generation run under autonomy (F165) without granting anything else." ;
-               kpred:remaining    "The catalogue is a list of commands nobody has run. Needed: one generation task end to end — a real command, a real done-when, a real outcome — before any of this is more than a well-licensed list." .
+               kpred:remaining    "2026-10-16 correction: F58.9.1 has working local generation scripts and checked asset receipts, so the earlier claim that no generation command had run is obsolete. The remaining conversational gap is F166.1: Shelly cannot yet dispatch an asset job and attach its validated result in the originating space." ;
+               kpred:has-phase kb:shelly-generation-jobs .
+
+kb:shelly-generation-jobs rdf:type ktype:Phase ;
+    rdfs:label "Shelly — request a local image-to-splat job and attach its actual result" ;
+    kpred:feature-id "F166.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:generation-coupling ;
+    kpred:depends-on kb:splat-local-pipeline, kb:splat-node-view ;
+    kpred:relates-to kb:shelly-skills, kb:agent-orchestration, kb:local-host-mode ;
+    kpred:description "Expose a bounded local-generation job request to Shelly using the existing task/command/receipt pipeline. Resolve the active space and reference entity, enqueue image generation followed by a dependent Gaussian-splat stage, and attach the checked outputs to a new sibling asset entity using the existing photo/splat predicates. Show queued, running, failed and completed states from runner receipts." ;
+    kpred:measured "2026-10-16 code inspection: src/lib/types/turtle-chat.ts and src/lib/integrations/llm/turtle-chat.ts offer graph edits, navigation, filtered queries and scraping, but no asset-job dispatch action. scripts/content/gen-assets.ts already generates real images and splats and validates outputs with receipts. Invented splat-matrix or splat-pixels literals are not a substitute for a generated file." ;
+    kpred:constraint "ACCEPTANCE: a synthetic conversation requests another asset beside an existing example; one authorized job creates a real image, then a real Gaussian-splat file, and a new entity in the originating space without overwriting the example. Verify receipt and file hashes, image/splat validity, provenance, generated-content labels and rendered result. Retry/replayed messages must not create duplicate jobs or assets. A failed image prevents the dependent splat stage; cancellation and a space switch cannot attach output to the wrong space." ;
+    kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
+    kpred:remaining "Implement capability discovery, the typed action and dispatcher, safe prompt/parameter serialization, runner transport, job lifecycle and receipt-driven attachment. The existing script writes repository demonstration assets; per-user job inputs and output directories must be isolated in the user's private workspace before app dispatch. No new image or splat is generated by this roadmap change." ;
+    kpred:test-coverage "none" .
 
 ## =============================================================================
 ## F167: Ranking by fit, and composing by type  (Matt, 2026-08-28)
@@ -9768,6 +9875,9 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     kpred:has-part kb:lan-https ;
     kpred:has-part kb:agents-in-app ;
     kpred:has-part kb:time-series-planning ;
+    kpred:has-part kb:enclosure-monitoring ;
+    kpred:has-part kb:shelly-generation-jobs ;
+    kpred:proposed "2026-10-16: F259 enclosure monitoring and F166.1 Shelly generation dispatch are additional proposed near-term slices, targeting this reach release before v0.3.0. F259 builds the private policy space, live Currents, local alert execution and capacity warnings in order. This allocation is planning, not a claim of implementation or an approved hardware deployment." ;
     kpred:proposed "2026-10-16: allocate F258's four phases to this near-term release in dependency order: temporal contract and timelines, Timestral/baseline evaluation, optional local provider, then forecast-informed scheduling suggestions. Matt requested delivery before v0.3.0; this working v0.2.7 allocation may be refined within 0.2.x without representing the feature as already built." .
 
 kb:release-0-3-0 rdf:type ktype:Release ;
