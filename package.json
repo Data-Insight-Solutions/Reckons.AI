@@ -234,7 +234,7 @@
     "marked": "^18.0.14",
     "n3": "^2.7.12",
     "qrcode": "^1.5.4",
-    "sanitize-html": "^2.17.7",
+    "sanitize-html": "^2.18.0",
     "tesseract.js": "^7.0.0",
     "three": "^0.186.1",
     "uuid": "^14.0.2"
