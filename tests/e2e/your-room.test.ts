@@ -169,13 +169,14 @@ test('Your room: set surround and scale from the filters panel, place the turtle
   await controls.getByTestId('place-in-space').click();
 
   // Placement mode: the large preview is gone, a compact bar floats over the graph instead.
-  await expect(page.getByTestId('placement-bar')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('placement-bar')).toBeVisible({ timeout: 60_000 });
   await expect(page.locator('.asset-large')).toBeHidden();
   const readout = page.getByTestId('placement-readout');
   await expect(readout).toBeVisible();
   const before = await readout.innerText();
   await page.getByTestId('placement-bar').getByRole('button', { name: 'Move right' }).click();
-  await expect.poll(() => readout.innerText()).not.toBe(before);
+  // CI runners starve the main thread while the splat renders (this test took 2.4 min there), so the write-then-render round trip gets 20 s, not the 5 s default.
+  await expect.poll(() => readout.innerText(), { timeout: 20_000 }).not.toBe(before);
   await page.screenshot({ path: process.env.ROOM_SHOT ?? 'test-results/placement.png' });
 
   // Escape leaves placement mode.
