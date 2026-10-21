@@ -18,6 +18,16 @@
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
+test:GeneratedAssetStory rdf:type ktype:Concept ;
+    rdfs:label "Interactive asset generation story" ;
+    skos:broader test:TestSuite ;
+    skos:definition "Open Generated assets, choose Create an asset with Shelly, enter a synthetic image prompt, and wait for a checked result before choosing a video or Gaussian splat. The browser tests drive an OPFS file-queue fixture using existing checked media; they do not run GPU models. They cover image-to-video-to-splat provenance, reopening and reload without duplicate jobs/assets, failed-image retry, cancellation, corruption refusal, unavailable derivations and a space switch during generation. Protocol and runner unit tests reject command/path injection, inconsistent receipts, cross-space dependencies, stale heartbeats and interrupted-job replay." ;
+    kpred:command "npx playwright test tests/e2e/generated-assets-story.test.ts --project=desktop-chrome --project=mobile-android" ;
+    kpred:honest-note "Real generation requires a separate local run with installed tools/models and a private workspace. File checks establish decodability and structural validity, not artistic quality. Browser fixtures are not evidence of a GPU run." ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a09-b009-000000000009" .
 
@@ -1567,3 +1577,11 @@ bench:Result-image-2026-10-14 rdf:type bench:RunSummary ;
     bench:quality-delta "-0.007" ;
     bench:verdict "hold" ;
     kpred:description "10 hard briefs x 3 seeds x 2 arms = 60 images, judged item by item. The verdict is hold, not insufficient-evidence: the incumbent mean 0.913 is under the 0.95 ceiling, so the ceiling rule did not trigger. The arms do not separate (delta -0.007 against an incumbent seed spread of 0.060). The briefs now have headroom: counts and a spatial scene vary (five-apples 0.4 to 1.0, four-ducks 0.6 to 1.0), but 6 of 10 briefs are still perfect for both arms. The judge is a 7B vision model whose answers on counts are themselves uncertain; none of its answers were checked by a human." .
+
+test:ThreeExampleNodes rdf:type ktype:Concept ;
+    rdfs:label "Three.js example loading and isolation" ;
+    skos:broader test:TestSuite ;
+    skos:definition "Attach a synthetic official-host WebGL example through node details. Before Load, there is no remote request or iframe. After a real WebGL draw, the viewer reports running. Verify parent-document and storage isolation, CSP network restrictions after document replacement, top-navigation denial, Stop/remove, HTTP and script errors, context loss, unsupported graphics APIs, a render deadline, forged-message refusal and a missing heartbeat. Desktop and phone Chromium use deterministic intercepted upstream responses, including the production SAMEORIGIN frame header." ;
+    kpred:command "npx playwright test tests/e2e/three-example.test.ts --project=desktop-chrome --project=mobile-android" ;
+    kpred:honest-note "Fixtures verify the viewer boundary, not compatibility with every changing upstream example. An iframe does not guarantee containment of GPU-driver or browser-process crashes. WebGPU-specific device behavior needs a compatible device; the deterministic scene uses WebGL2." ;
+    kpred:tested-by "tests/e2e/three-example.test.ts", "src/lib/3d/__tests__/three-example.test.ts" .

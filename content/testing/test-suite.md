@@ -16,7 +16,7 @@ related:
 
 Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
-<p class="derived">It has 5 parts below.</p>
+<p class="derived">It has 7 parts below.</p>
 
 ## In this section
 
@@ -28,9 +28,17 @@ The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app tre
 
 A test workflow is one whole task a person does in Reckons.AI, written down as numbered steps and then run, step by step, by an automated test in a real browser.
 
+**[Interactive asset generation story](../testing/generated-asset-story)**
+
+Open Generated assets, choose Create an asset with Shelly, enter a synthetic image prompt, and wait for a checked result before choosing a video or Gaussian splat.
+
 **[Local VLM workflow streams](../testing/vlm-workflow-streams)**
 
 Each stream uses fresh browser storage, synthetic UI inputs and an explicit loopback app origin.
+
+**[Three.js example loading and isolation](../testing/three-example-nodes)**
+
+Attach a synthetic official-host WebGL example through node details.
 
 ### Unit Tests
 

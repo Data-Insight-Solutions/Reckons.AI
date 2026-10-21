@@ -1,7 +1,7 @@
 ---
 title: "The add menu"
 slug: "add-menu"
-order: 1036
+order: 1038
 section: "Features"
 parent: "ingest"
 template: doc

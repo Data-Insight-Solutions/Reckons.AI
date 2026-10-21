@@ -1,7 +1,7 @@
 ---
 title: "Make pictures, clips and 3D splats on your own machine, and see them in a space"
 slug: "workflow-generated-assets"
-order: 1010
+order: 1011
 section: "Testing"
 parent: "test-workflows"
 template: doc

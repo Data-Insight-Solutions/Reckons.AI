@@ -155,6 +155,14 @@ export default defineConfig({
     }
   },
   worker: { format: 'es' },
+  // Agent worktrees, private workspaces and test output are never imported by the app, but
+  // watching them exhausts the inotify limit (ENOSPC) and stops dev reloads altogether.
+  server: {
+    watch: {
+      ignored: ['**/.claude/**', '**/reckons-workspace/**', '**/mcp-workspace/**',
+        '**/tests/visual/screenshots/**', '**/test-results/**', '**/playwright-report/**'],
+    },
+  },
   optimizeDeps: { exclude: ['@huggingface/transformers', 'onnxruntime-web'] },
   ssr: { noExternal: ['bits-ui', 'svelte-toolbelt', 'runed'] }
 });

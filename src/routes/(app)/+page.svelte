@@ -15,6 +15,9 @@
   import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import ThreeExampleViewer from '$lib/components/ThreeExampleViewer.svelte';
+  import ThreeExampleEditor from '$lib/components/ThreeExampleEditor.svelte';
+  import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
@@ -1396,9 +1399,18 @@
   async function setBackgroundSplat(url: string | null) {
     await setSchemaField(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, url ?? '');
   }
-  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat'; url: string };
+  const threeExampleMap = $derived(threeExampleMapFrom(statements()));
+  async function setThreeExample(iri: string, url: string) {
+    if (officialKbActive()) return;
+    // Imported metadata can contain multiple values. Removing the attachment clears them all.
+    for (const s of statements().filter(s => s.s.value === iri && s.p.value === THREE_EXAMPLE_PREDICATE
+      && s.status !== 'rejected' && s.status !== 'superseded')) await setStatus(s.id, 'rejected');
+    await setSchemaField(iri, THREE_EXAMPLE_PREDICATE, url);
+  }
+  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat' | 'three'; url: string };
   function nodeAssetFor(iri: string | null): NodeAsset | null {
     if (!iri) return null;
+    const example = threeExampleMap.get(iri); if (example) return { kind: 'three', url: example };
     const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
     const splat = splatMap.get(iri); if (splat) return { kind: 'splat', url: splat };
     const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
@@ -2609,7 +2621,7 @@
         <button
           type="button"
           class="node-preview-thumb"
-          class:glb-badge={a.kind === 'glb' || a.kind === 'splat'}
+          class:glb-badge={a.kind === 'glb' || a.kind === 'splat' || a.kind === 'three'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
@@ -2618,6 +2630,8 @@
             <img src={a.url} alt="" loading="lazy" />
           {:else if a.kind === 'video'}
             <video src={a.url} muted loop autoplay playsinline></video>
+          {:else if a.kind === 'three'}
+            ◈ Three.js
           {:else if a.kind === 'splat'}
             ✦ Splat
           {:else}
@@ -2717,6 +2731,10 @@
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-media asset-glb asset-splat" aria-label="Gaussian splat, generated">
         {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
@@ -2776,6 +2794,10 @@
     {:else if expandedAsset.kind === 'video'}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-fs-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
@@ -2811,7 +2833,7 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if perspective === 'statements' && selected && nodeDetails}
+{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three')}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -3110,6 +3132,15 @@
           </div>
         {/if}
       </div>
+    {/if}
+
+    {#if selected?.startsWith('i:') && iriFromNodeKey(selected)}
+      {@const exampleIri = iriFromNodeKey(selected)!}
+      {#key exampleIri}
+        <ThreeExampleEditor value={threeExampleMap.get(exampleIri) ?? ''} disabled={officialKbActive()}
+          onchange={(url) => setThreeExample(exampleIri, url)}
+          onopen={() => { expandedAssetKey = selected; assetFullscreen = isCompact(); }} />
+      {/key}
     {/if}
 
     <!-- Per-entity image preview (hover card) -->
