@@ -2022,6 +2022,7 @@ kb:feature-lifecycle-vocab rdf:type ktype:Feature ;
 
 kb:honest-status rdf:type      ktype:Concept ;
                rdfs:label   "Honest status — always describe the current state truthfully" ;
+               kpred:decided      "MATT, 2026-10-14: \"I think Codex worked on the Readme, but yes we need to have regular audits of all landing pages, and even documentation.\" The audit is scheduled, not ad hoc: claim-audit (weekly, script tier; scope now README, SAFETY, COUNSEL-BRIEF, app shell, landing page, about page), docs-staleness (weekly, script tier, added 2026-10-14) and docs-review (daily, local model, proposals only) in reckons-workspace/schedules.ttl. Weakness: claim-audit only catches unhedged mentions of planned features and miscounted numbers; generated /docs pages are covered by staleness, not by a claim check." ;
                kpred:part-of      kb:reckons-ai ;
                kpred:description  "Every user-facing, legal, and internal document must distinguish WHAT IS BUILT from WHAT IS INTENDED, at the point of each claim — not in a footnote. Aspiration written in the present tense is a lie with good manners. This applies hardest to SAFETY.md, COUNSEL-BRIEF.md, and any status shown in the app: overclaiming a control we cannot exercise is itself a liability (and it is the specific failure the 2026-07-12 session committed and then corrected). It also applies to the roadmap: kpred:has-status must reflect reality, and a feature is not 'functional' because we wish it were." ;
                kpred:principle    "Never describe a control we do not have. If a gate is planned, say PLANNED — in the sentence that mentions the gate." ;
@@ -3405,6 +3406,7 @@ kb:partial-facts rdf:type ktype:Feature ;
 
 kb:release-pipeline rdf:type ktype:Feature ;
                kpred:decided      "MATT, 2026-10-13, ON CODEQL AT A DEV -> MAIN PROMOTION: block only on NEW alerts the promotion introduces. Alerts already open on main are a separate backlog, not a promotion gate. MEASURED 2026-10-13: this is already how GitHub code scanning behaves on a pull request (the PR check compares against the base branch), the CodeQL analyze job is not in the required checks of .github/ruleset-main.json (it only advises), the repository has 0 open code-scanning alerts, and the last two promotions (#390, #419) had CodeQL green. The only red CodeQL runs on record are dev pushes: #382 (2026-10-07, 2m37s, while the safety attestation was also failing) and one from 2026-07-17 (12s, a workflow fault). So no config change was made: nothing in the config gates on pre-existing alerts." ;
+               kpred:decided      "MATT, 2026-10-14: \"I think new CodeQL should block, but not existing.\" Same line as 2026-10-13, now with intent to BLOCK. HONEST STATUS 2026-10-14: nothing blocks yet. The CodeQL analyze job is not a required check in .github/ruleset-main.json and no code_scanning rule is in it, so a new alert is advisory today. The smallest correct control is a code_scanning rule (tool CodeQL, security_alerts_threshold high_or_higher, alerts_threshold errors) added to the live ruleset: GitHub evaluates it on the PR against the base branch, so it blocks new alerts and ignores alerts already open on main. It is a repository ruleset setting that needs admin rights, so it is Matt's to apply; ruleset-main.json is an export of the live config and was left unedited so it does not claim a rule that is not live." ;
                kpred:remaining    "IF CODEQL IS MADE A REQUIRED CHECK when branch protection is enforced (see enforcement-plan; not enforced as of 2026-10-13), require the PR-scoped code scanning result (new alerts vs base) and NOT a count of open alerts on main, so the decision of 2026-10-13 stays true. Add the check to .github/ruleset-main.json only after it has reported on main." ;
                kpred:touches-module code:test-bench ;
                kpred:tested-by    "tests/bench/scoring.test.ts" ;
@@ -3444,6 +3446,7 @@ kb:release-notes rdf:type ktype:Phase ;
 
 kb:deep-testing rdf:type ktype:Feature ;
                rdfs:label    "Deep Testing & Living Coverage" ;
+               kpred:decided      "MATT, 2026-10-14: \"perf-crawl and button-crawl should be reinstated as jobs, but the test results could be gitignored.\" Both jobs are enabled again in scripts/offline/jobs.json (non-blocking; each needs a running dev server, and perf-crawl a DISPLAY, so a serverless sweep shows them failing rather than green). Their output directories are gitignored and the tracked perf results were untracked, not deleted." ;
                kpred:feature-id   "F34" ;
                kpred:has-status   "scaffolded" ;
                kpred:in-dev       "2026-07-09"^^xsd:date ;
@@ -3874,6 +3877,243 @@ kb:gen-video-to-splat rdf:type ktype:Feature ;
                kpred:remaining "Plan only. No reconstruction benchmark or browser splat renderer was built in this session; runtime availability and hardware suitability must be checked before the trial. No mandatory external game engine or hosted service is assumed." ;
                kpred:relates-to kb:space-photorama, kb:generation-coupling ;
                kpred:relates-to   kb:int-game-engine .
+
+# F58.9 PROOF OF CONCEPT, 2026-10-14 (Matt: "I want to do some proof of concept work on gaussian
+# splats soon. I think graph nodes could have a splat that you see, as well as maybe setting splats
+# as your background... Lets generate image from text, video and gaussian from image, and show that
+# process in a e2e test workflow with documentation." Local models first, self-hostable tools.)
+kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: proof of concept now, local models primarily and self-hostable tools: text to image, then video and a Gaussian splat from that image; a graph node shows its splat, a splat can be a space's background; the process shown as an end-to-end test workflow with documentation. Renderer candidate named by Matt: Gaussian-Splat-Lite (a starred repository)." ;
+    kpred:measured "2026-10-14, FIRST RUNS ON THIS MACHINE (two RTX 3090, stable-diffusion.cpp master-964 Vulkan build with a user-space Vulkan loader, no CUDA toolkit): Z-Image-Turbo Q8 text to image 768x768 in 15 s; Wan2.2 TI2V-5B Q8 image to video 512x512x33 frames in 42 s; TripoSplat image to 32,768 and 131,072 Gaussians in 30 s at 4.6 GiB peak (torch 2.11 cu128). The first video barely moved: the model did not follow a turntable prompt, so the video check measures motion instead of trusting the exit code." ;
+    kpred:principle "RECONSTRUCTION IS NOT GENERATION. TripoSplat INVENTS the unseen side of an object from one picture; a splat reconstructed from photographs or video (Trial B, Splatfacto/vid2scene) RECORDS what was there. A generated splat is decoration and is labelled as generated wherever it appears; it is never evidence." .
+
+kb:splat-local-pipeline rdf:type ktype:Phase ;
+    rdfs:label "F58.9.1 — text to image, image to video and to a Gaussian splat, each a local command with an independent check" ;
+    kpred:feature-id "F58.9.1" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:generation-coupling ;
+    kpred:description "A script (scripts/content/gen-assets.ts) runs three local tools on the person's own machine: stable-diffusion.cpp with Z-Image-Turbo (text to image), stable-diffusion.cpp with Wan2.2 TI2V-5B (image to video) and TripoSplat (image to Gaussian splat). Each stage writes a receipt (tool and commit, model files with SHA-256 and licence, prompt, seed, settings, duration, output hash) and is accepted only by an independent check: the image is not flat, the video decodes and moves, the splat parses with the expected count, finite values and a real extent. The stages are also declared as F166 tasks (kpred:command plus kpred:done-when) so the existing runner can execute them." ;
+    kpred:constraint "All three tools and every model weight are permissive (MIT or Apache-2.0); the receipt records each licence separately from the tool's. Weights live outside the repository (RECKONS_GEN_HOME, default ~/.local/share/reckons/gen). Prompts are synthetic. CI has no GPU, so CI checks the committed outputs and receipts, never runs the models." ;
+    kpred:proof "A person with the tools installed runs npm run gen:assets and gets, per brief, an image, a video and a splat with receipts; the check mode passes on every committed output and fails on a flat image, a still video and a truncated splat (unit tests)." ;
+    kpred:has-file "scripts/content/gen-assets.ts", "scripts/content/asset-checks.ts", "scripts/content/triposplat_run.py", "scripts/content/gen-briefs.json", "scripts/content/gen-setup.sh", "scripts/content/generated-assets.tasks.ttl", "static/generated/carved-turtle/receipt.json", "static/generated/lighthouse-island/receipt.json" ;
+    kpred:tested-by "scripts/content/__tests__/asset-checks.test.ts" ;
+    kpred:progress "2026-10-14, BUILT AND RUN: two synthetic briefs produced six outputs, all accepted by their checks (npm run gen:check). Timings on one RTX 3090 (Vulkan build): image 14-20 s, 49-frame video about 53 s, splat 34-52 s including model load. The splat check caught an upstream TripoSplat defect on the first run (opacity written as +inf for 1,480 to 10,601 Gaussians); triposplat_run.py clamps them and the receipt records the count. A flat top-down prompt gave a coin-flat splat; a three-quarter-view prompt gave real depth. TripoSplat's first CUDA initialisation failed with 'CUDA driver initialization failed' on 3 of 6 runs and succeeded on one retry; cause unknown, the retry is logged." ;
+    kpred:remaining "The F166 task (scripts/content/generated-assets.tasks.ttl) parses and the runner lists it, but it has not been executed through the runner. The app cannot start a generation; it only shows committed results. CUDA build of stable-diffusion.cpp not tried (no toolkit installed); Vulkan used. Only tested on Ubuntu 24.04." .
+
+kb:splat-node-view rdf:type ktype:Phase ;
+    rdfs:label "F58.9.2 — a node can carry a Gaussian splat, seen in the 3D graph and in the asset viewer" ;
+    kpred:feature-id "F58.9.2" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "A p:splat literal on a node (a PLY or SPZ path) is presentation, like p:photo and p:video. The node shows a splat badge, the large and fullscreen viewers orbit it, and the 3D graph draws it at the node. Rendering is Gaussian-Splat-Lite (Apache-2.0, three.js >= 0.186, WebGL2 or WebGPU), loaded only when a splat is on screen because it is about 0.75 MB compressed." ;
+    kpred:constraint "Lazy import only; a failed load leaves the ordinary marker. Graph picking, labels and layout must not change because a splat is present." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/SplatLayer.svelte", "src/lib/components/AssetSplatViewer.svelte", "src/lib/3d/KnowledgeGraph.svelte", "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: splat badge, large and fullscreen orbit viewer, and node splats in the 3D graph, proven by the e2e workflow (the canvas reports loaded/failed splats in data-splats). Orientation measured by projecting both splats' centres: TripoSplat writes y down and faces its picture along +x." ;
+    kpred:remaining "3D graph only; the 2D graph shows the splat badge but not the splat. Measured only under headless SwiftShader (the app warned of 11 fps); no frame-time measurement on a real GPU or a phone. Layout spacing does not yet account for a splat's size the way it does for a GLB." .
+
+kb:splat-space-background rdf:type ktype:Phase ;
+    rdfs:label "F58.9.3 — a splat as the background of a space" ;
+    kpred:feature-id "F58.9.3" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:relates-to kb:space-photorama ;
+    kpred:description "Set as background, from a splat in the asset viewer, writes one graph-level setting (<urn:reckons:space> kmeta:background-splat) so it travels with an export of the space; the 3D graph then draws that splat large behind the nodes, and Clear background removes it. This is Photorama phase 2 with a generated splat instead of a reconstructed one." ;
+    kpred:constraint "A background must not take picking or label contrast from the graph; it is never raycast and is drawn at half opacity (set, but not visibly confirmed on 2026-10-14: the island still looked near full strength in the screenshot). It is a setting, not a fact, so it is a meta predicate and never an edge." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/KnowledgeGraph.svelte", "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: Set as background and Clear background in the splat viewer write and clear <urn:reckons:space> kmeta:background-splat; the 3D graph draws that splat behind the graph, sized to the graph each frame. First placed below the graph, it fell outside the camera fit and was never seen; moved behind." ;
+    kpred:remaining "Not shown in 2D. Half opacity is set but the island did not look dimmed in the screenshot. No reduced-motion handling for its slow turn. Export carries the setting as a triple, but the PLY file itself is only a path, so a space exported to another machine needs the file to exist there." .
+
+kb:splat-e2e-workflow rdf:type ktype:Phase ;
+    rdfs:label "F58.9.4 — the generated-assets path as a test workflow page with screenshots" ;
+    kpred:feature-id "F58.9.4" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-node-view, kb:splat-space-background, kb:test-workflow-docs ;
+    kpred:description "A TestWorkflow in docs-testing.ttl (the F34.2 pattern) walks: generate the image, the video, the splat (shown as the committed outputs and their receipts), open the Generated assets example as a space, see each asset on its node, see the splat in the 3D graph, set a splat as the background. The e2e test reads its steps from the graph and the screenshots come from npm run workflow:shots." ;
+    kpred:honest-note "The browser test cannot run the models (no GPU in CI): it checks that the committed outputs pass their checks and that the app shows them. The generation itself is proven by the receipts from a run on Matt's machine, dated in each receipt." ;
+    kpred:has-file "static/docs-testing.ttl", "content/testing/workflow-generated-assets.md", "static/workflows/generated-assets/01-open-example.webp", "static/starter-generated-assets.ttl", "src/lib/storage/example-space.ts", "src/routes/(app)/about/+page.svelte" ;
+    kpred:tested-by "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:progress "2026-10-14: six-step TestWorkflow, page generated at /docs/testing/workflow-generated-assets with six captured screenshots. The example opens as its own space from the About page. FLAKE, said out loud: opening a node's preview by its 'preview all' thumbnail failed 1 run in 3 (the force layout put the node where no preview is drawn); after switching to search-then-open it passed 16 of 17 runs, the one failure the same symptom in step 5. Not yet run in CI." .
+
+kb:media-entity-types rdf:type ktype:Phase ;
+    rdfs:label "F58.9.5 — Prompt, Image, Video, 3D model, Gaussian splat and License as standard entity types, with generation provenance as attributes" ;
+    kpred:feature-id "F58.9.5" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-e2e-workflow ;
+    kpred:decided "MATT, 2026-10-14: \"Prompt should be a standard Entity type, also we should have Image, Video, and GLB, Splat Etc as entity types, with Generation provenance as part of the attributes of each.\" Earlier the same day: \"License should also be an entity type.\" (A Plugin type was NOT decided and is not added.)" ;
+    kpred:description "Six built-in types in BUILT_IN_TYPES (urn:kbase:type/Prompt, Image, Video, Model3D, GaussianSplat, License). Generation provenance (generated-with, -seed, -duration, -at, -frames, -gaussians) and a License's spdx-id and license-url are literal ATTRIBUTES: they are listed in each type's schemaPredicates (the detail panel's metadata section) and are metadata predicates (isMetaPredicate), so the graph draws no value node for them. Entity links stay edges: made-from (asset to Prompt or source image) and license (asset to a License entity). The Generated assets example is written from the receipts with these types." ;
+    kpred:honest-note "Geometry is NOT fully distinct: the renderer has 13 shapes and all but three were taken, so Image shares the flat slab with Document and Web Page, Video the cube with Organization, and License the cylinder with Tool; they differ by color and icon, as Document and Web Page already do. A real fix is new shapes in four renderers, not done here. The GLB type has no generated example yet (the pipeline makes none). Existing graphs that wrote p:made-with, p:took, p:seed as value nodes keep them; only the Generated assets example was rewritten." ;
+    kpred:has-file "src/lib/rdf/entity-types.ts", "src/lib/rdf/types.ts", "scripts/content/gen-assets.ts", "static/starter-generated-assets.ttl" ;
+    kpred:tested-by "src/lib/rdf/__tests__/entity-types.test.ts", "tests/e2e/workflow-generated-assets.test.ts" .
+
+# F58.9.6-.10 — a scanned room as the space background, with generated splats placed inside it.
+# MATT, 2026-10-14: "Please let me know if I can scan with an open source mobile app on iOS, export and then import a
+# custom room scene. ... create an interactive space where a user can scan their physical space and import it, then
+# generate images, splats, and place the splat nodes in their background." This also covers backlog items 5 (background
+# settings) and 6 (place and scale splats inside the background) from the 2026-10-14 handoff.
+kb:room-scan-capture rdf:type ktype:Phase ;
+    rdfs:label "F58.9.6 — scan a room on an iPhone and reconstruct it into a Gaussian splat on the person's own machine" ;
+    kpred:feature-id "F58.9.6" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:relates-to kb:space-photorama ;
+    kpred:decided "MATT, 2026-10-14: scan a physical room with an open-source iOS app, export it, import it as a custom room scene." ;
+    kpred:description "Capture with Stray Scanner (MIT, free on the App Store, LiDAR iPhone; exports rgb.mp4, depth PNGs, odometry.csv with per-frame pose and intrinsics) or, on any iPhone, a slow video from the Camera app. A host command, npm run scan:room, extracts frames with ffmpeg, recovers camera poses with COLMAP, trains a splat with Brush (Apache-2.0, reads COLMAP folders) and writes splat.ply plus a receipt (input hash, frame count, registered-image count, tool versions, duration, Gaussian count, output hash). The output is accepted only by the existing splat check (asset-checks.ts) plus a registration check: COLMAP must place at least half of the frames." ;
+    kpred:principle "A reconstructed room RECORDS what was there; it is labelled reconstructed, never generated, and the receipt is what says so." ;
+    kpred:constraint "Optional host tools, never a dependency of the app. The first trial ignores Stray Scanner's ARKit poses because its format documentation does not state the axis or quaternion convention; COLMAP recomputes poses from the video. Using the phone's poses directly is a later speed-up, after a measured comparison." ;
+    kpred:has-file "scripts/content/scan-room.ts", "scripts/content/scan-room-lib.ts", "scripts/content/scan_colmap.py", "scripts/content/scan-synthetic-room.py", "scripts/content/scan-room.tasks.ttl", "scripts/content/gen-setup.sh" ;
+    kpred:tested-by "scripts/content/__tests__/scan-room-lib.test.ts" ;
+    kpred:progress "2026-10-14: npm run scan:room built and run end to end ONCE on a synthetic input. Stages: ffmpeg frames (blurriest dropped by Laplacian variance), COLMAP via pycolmap (sequential matching), Brush v0.3.0 training, then the registration check and asset-checks.ts splat check; receipt.json says origin reconstructed. Tools installed without sudo into ~/.local/share/reckons/gen by gen-setup.sh: Brush from its prebuilt Linux x86_64 release (SHA-256 pinned), COLMAP as the pycolmap 4.2.1 wheel in the existing venv (CPU build; no system colmap, conda or AppImage was needed). `npm run scan:room -- --check <dir>` re-verifies a finished scan from its receipt; the F166 task is scripts/content/scan-room.tasks.ttl." ;
+    kpred:measured "TRIAL 2026-10-14, one run each, RTX 3090 + 24-thread CPU. INPUT: a synthetic 8 s, 960x540, 30 fps video rendered by scripts/content/scan-synthetic-room.py (Blender, a made-up 5 x 5 x 2.6 m room with random-blob textures; no personal capture, no third-party media). 240 frames extracted, 200 kept, COLMAP registered 200 of 200 (26,098 sparse points). Default 30,000 Brush steps: frames 4.6 s, COLMAP 207 s (features 10 s, matching 70 s, mapping 128 s, CPU only), Brush 353 s; 432,501 Gaussians, 102 MB PLY; splat check passed (finite, visible fraction 0.98). A 3,000-step run took 29 s and gave 88,330 Gaussians, 21 MB. Both runs re-verified by --check." ;
+    kpred:remaining "NOT YET TRUE, 2026-10-14: (1) no Stray Scanner export and no real phone video has been run; the Stray folder path is validated by unit tests on synthetic folders only, and the app's pose convention is still unused. (2) The synthetic video is clean: perfect exposure, no motion blur, no rolling shutter, no moving people. COLMAP registering 200 of 200 says nothing about a handheld iPhone clip. (3) Nobody has LOOKED at the trained splat; the checks prove it is a well-formed PLY with real extent, not that it resembles the room. COLMAP scale is arbitrary (the trial extent is 38.7 units for a 5 m room, floaters included). (4) A 100 MB PLY is too large to ship to a browser as is; F58.9.7 needs compression (SPZ) or fewer Gaussians (--max-splats, --sh-degree). (5) pycolmap is CPU-only here; matching and mapping take about 3.5 minutes for 200 frames. (6) Linux x86_64 only; macOS and Windows untested. (7) The F166 task is parsed by the runner (--dry-run) but has not been executed through it." ;
+    kpred:measured "2026-10-14, FIRST REAL CAPTURE (a private Stray Scanner export from Matt's iPhone; not in the repository, kept under ~/.local/share/reckons/scans): 105 s of 1920x1440 video at 60 fps, 375 frames extracted, 300 kept. The first run OOM-killed at 16.7 GB RSS during COLMAP feature extraction (defaults: 3200 px, one extractor per core on 24 cores) and took the editor down with it. With frames scaled to 1600 px and COLMAP capped at 1600 px and 8 threads: COLMAP registered 266 of 300 frames in 339 s, Brush trained 30,000 steps in 790 s, 228,275 Gaussians in 53.9 MB, checks passed, 19 min wall clock, peak RSS 4.56 GB. Imported into the Your room space (F58.9.7 branch) in 3.8 s; Level the floor removed a 33.1 degree tilt with 63% of 20,753 sampled points on the plane. Seen only in headless software rendering, where it looked soft and streaky at close range: visual fidelity is NOT yet judged by a person." ;
+    kpred:measured "2026-10-14 evening, SECOND RUN on the same private studio capture with --frames 450: 563 frames extracted, 450 kept, COLMAP registered 437 of 450 (97%, against 266 of 300 = 89% at 300 frames) in 768 s; Brush 30,000 steps took 2,344 s and wrote 2,800,164 Gaussians in 660.8 MB (12x the 300-frame run); 52 min wall clock, peak RSS 4.6 GB. After an opacity floor of 0.05 and a sphere crop at the 95th-percentile distance: 1,542,412 Gaussians, 37.7 MB as SPZ, 18.9 MB after a 50% decimate. More frames registered far better but Brush densified far more, so the size needs a Gaussian cap. Visual fidelity not yet judged by a person." .
+
+kb:splat-file-import rdf:type ktype:Phase ;
+    rdfs:label "F58.9.7 — import a PLY or SPZ splat from the device into a space" ;
+    kpred:feature-id "F58.9.7" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-space-background ;
+    kpred:description "From the space's background controls, Import a scan picks a .ply or .spz file; the bytes are kept in the browser's own storage (IndexedDB, not a data: URI in a triple), a GaussianSplat entity is added with kpred:splat pointing at the stored asset and kmeta:splat-origin 'reconstructed' or 'generated', and the space background is set to it. Exporting the space carries the file through the existing kb-assets round-trip, which closes the F58.9.3 gap that a background was only a path." ;
+    kpred:constraint "Nothing leaves the device. A file that fails the splat parse (count, finite values, real extent, the same checks as asset-checks.ts) is refused with the reason shown, not stored." ;
+    kpred:has-file "src/lib/3d/splat-check.ts", "src/lib/storage/splat-files.ts", "src/lib/storage/kb-assets.ts", "src/lib/stores/space-room.ts", "src/lib/stores/kb-import.ts", "src/lib/components/SpaceBackgroundPanel.svelte", "scripts/content/asset-checks.ts" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-import.test.ts", "tests/e2e/your-room.test.ts" ;
+    kpred:progress "2026-10-14: Import a scan (Graphs tab, space background) accepts .ply and .spz, checks the bytes with the same code as the generation pipeline (src/lib/3d/splat-check.ts, read in 4 MB chunks), refuses a bad file with the reason, stores the File as a Blob in IndexedDB (db v9 splatFiles, content-hash name, never a data: URI), adds a GaussianSplat entity with kmeta:splat-origin and sets the background. Export writes assets/splats/ through kb-assets and import restores it. Proven by unit tests and an e2e (bad file refused, good file stored and loaded). A synthetic 102 MB, 432,501-Gaussian PLY shaped like the measured scan:room output imported in 1.8 s and loaded into the 3D graph in 1.8 s under headless SwiftShader." ;
+    kpred:remaining "SIZE LIMITS: over 50 MB imports with a warning showing the measured size; over 300 MB is refused with guidance (fewer training steps: 3k steps gave 21 MB and 88,000 Gaussians against 102 MB and 432,501 at the 30k default; or .spz). The 300 MB ceiling is a judgement, three times the one measured default, not a measurement. Never tried: a real reconstructed scan (only synthetic files), a phone, a real GPU, or main-thread jank (not measured). The content id hashes the size plus 1 MB from the start, middle and end, not the whole file. Export and workspace sync copy a splat into memory, so a very large one is heavy there; Google Drive sync deliberately skips splats, and so does Drive pull. SPZ is checked for header, count and length only, not decoded, so it has no measured extent. Splat files are per-space in IndexedDB and are not shown in the share-package counts." .
+
+kb:splat-background-settings rdf:type ktype:Phase ;
+    rdfs:label "F58.9.8 — background settings: surround or backdrop, orientation, scale, offset, opacity" ;
+    kpred:feature-id "F58.9.8" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-space-background ;
+    kpred:description "Per-space meta triples on <urn:reckons:space>: background mode (backdrop, the F58.9.3 behaviour, or surround, where the graph sits INSIDE the room at real scale), up axis and yaw, scale, offset and opacity. A reconstructed room is NOT given TripoSplat's y-down/+x correction; the orientation comes from the setting, with a Level the floor button that fits the dominant horizontal plane." ;
+    kpred:constraint "Settings, not facts: meta predicates, never edges, travel with an export. Reduced motion stops the background's slow turn (an F58.9.3 gap)." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/SplatLayer.svelte", "src/lib/3d/KnowledgeGraph.svelte", "src/lib/components/SpaceBackgroundPanel.svelte" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-settings.test.ts" ;
+    kpred:progress "2026-10-14: meta triples on <urn:reckons:space> for mode (backdrop or surround), up axis, yaw, scale, offset, opacity, the floor level and the measured extent; live in the panel and applied without reloading the file. A reconstructed room gets no TripoSplat correction. Surround keeps the room's own scale with the graph inside it. Reduced motion stops every splat's slow turn and the viewer's auto-rotate. Level the floor fits the dominant near-horizontal plane (seeded RANSAC, PCA refinement) to sampled Gaussian centres: recovered synthetic tilts of 0, 4, 12 and -9 degrees to within half a degree in unit tests. SCALE: COLMAP's scale is arbitrary (a 5 m room measured 38.7 units), so a surround room is NOT assumed to be metres: unless the person sets a scale, the room's longest measured side is fitted to 10 world units. The synthetic Your room space sets its own scale." ;
+    kpred:remaining "Level the floor has only been run on synthetic points and on the synthetic room, never on a real scan, and takes the dominant plane to be the floor unless it lies above the room's middle (then it levels but sets no floor height). It reads PLY only. Surround was checked to load and draw under headless SwiftShader, not judged by eye on a real room or a real GPU; whether the default fit of 10 units suits a real room is untested. An SPZ background has no measured extent, so surround falls back to scale 1. Settings are not shown in 2D. The settings panel has no visual regression coverage." .
+
+kb:splat-placement rdf:type ktype:Phase ;
+    rdfs:label "F58.9.9 — place and scale splat nodes inside the background" ;
+    kpred:feature-id "F58.9.9" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-background-settings, kb:splat-node-view ;
+    kpred:description "A node with a splat can be placed in the room: kmeta:placed-at (x y z in background coordinates), kmeta:placed-scale and kmeta:placed-yaw. A placed node is pinned (the force layout leaves it where it was put) and its splat is drawn at that place and size instead of node-sized. Placing is done from the node's asset viewer: Place in room puts it on the floor in front of the camera, then move, raise, turn and scale controls adjust it; Unplace returns it to the layout." ;
+    kpred:constraint "Picking and labels behave as for any other node. Placement is a setting of the space, not a fact about the thing." ;
+    kpred:has-file "src/lib/3d/splat.ts", "src/lib/3d/room-view.ts", "src/lib/3d/KnowledgeGraph.svelte", "src/lib/stores/space-room.ts", "src/lib/components/SplatPlacementControls.svelte" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-placement.test.ts", "tests/e2e/your-room.test.ts" ;
+    kpred:progress "2026-10-14: kmeta:placed-at (room units), placed-scale and placed-yaw on a node; a placed node is pinned relative to the room every frame and its splat drawn there, still, at that size; asset-viewer buttons Place in room, move, raise, turn, scale and Unplace (no gizmo), and a readout of the numbers. Place in room puts it half way from the camera toward the graph, on the floor when Level the floor found one. Pure helpers unit-tested; the placed carved turtle in the Your room space loads in the e2e (data-splats 2/0)." ;
+    kpred:remaining "Works in a surround room only (a backdrop resizes every frame); it says so rather than doing nothing. The buttons, the pinning against a moving layout and Place in room's choice of spot were not exercised by a browser test (only that a placed splat loads); the Place in room default is arithmetic on the camera and has not been judged by eye. Not in 2D. Moves are along the room's axes, not the camera's. No drag, no gizmo, no collision with the room's own furniture." .
+
+kb:room-scene-space rdf:type ktype:Phase ;
+    rdfs:label "F58.9.10 — a guided Your room space: scan, import, generate, place" ;
+    kpred:feature-id "F58.9.10" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:room-scan-capture, kb:splat-file-import, kb:splat-background-settings, kb:splat-placement ;
+    kpred:description "An example space, opened from About → example data like Generated assets, whose nodes are the four steps in hnav order (the Getting started pattern): Scan your room (phone steps), Reconstruct it (the npm run scan:room command and what it checks), Import the scan (the import button), Generate objects and place them (the gen-assets briefs, then Place in room). It ships with a small synthetic room splat so the space works before anyone scans." ;
+    kpred:constraint "Not a new top-level navigation tab: it is a space, reached where the existing examples are. Generation in the browser is not possible; the Generate step says so and names the host command (the greyed Regenerate idea, backlog item 3)." ;
+    kpred:has-file "static/starter-your-room.ttl", "static/generated/synthetic-room/splat.spz", "static/generated/synthetic-room/receipt.json", "src/routes/(app)/about/+page.svelte", "scripts/content/gen-assets.ts" ;
+    kpred:tested-by "tests/e2e/your-room.test.ts" ;
+    kpred:progress "2026-10-14: a Your room example space (static/starter-your-room.ttl) of four hnav-ordered steps, opened from About like Generated assets, with a synthetic room (first a procedural 9,539-Gaussian one, REPLACED in F58.9.11 by a reconstruction of a rendered room: static/generated/synthetic-room/splat.spz, receipt.json, covered by npm run gen:check) as a surround background and the generated carved turtle placed in it. An e2e opens it from About and sees the room and the turtle load into the 3D graph (data-splats 2/0). The Reconstruct step names npm run scan:room as in review (PR #468, not merged to dev)." ;
+    kpred:remaining "Scaffolded, not functional: the space opens and loads, but no person has walked the four steps with a real scan (none has been reconstructed or imported here), and the layout of the room around the four step nodes has been seen only in a headless screenshot at best. The room is synthetic and says so. The Generate step cannot run in the browser and only names the host command. Not added to the landing page's example list. No TestWorkflow page with screenshots yet." .
+
+kb:splat-compression rdf:type ktype:Phase ;
+    rdfs:label "F58.9.11 — compress Gaussian splats, crop floaters, and a better Your room example" ;
+    kpred:feature-id "F58.9.11" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:room-scan-capture, kb:splat-file-import, kb:room-scene-space ;
+    kpred:decided "MATT, 2026-10-14: 'The Your Room example should be a bit better than it is... very splotchy and low resolution right now.' and 'Is there a compression for gaussian splats that we could implement thats open source?'" ;
+    kpred:description "Open-source compression of reconstructed splats: @playcanvas/splat-transform 3.8.0 (MIT, devDependency, host scripts only) converts PLY to SPZ (Niantic, MIT) or SOG (PlayCanvas); the renderer gaussian-splat-lite already loads both. npm run splat:compress, scan:room and the gen-assets splat stage write the lossy copy and record its hash, size and ratio; each copy is converted back and checked for equal count and extent within 2%. A robust extent (1st-99th percentile box of the centres plus 10%) crops far floaters before compressing and sizes the app's surround fit, and scan:room also drops Gaussians larger than 2% of the extent, which draw the streaks outside a room's walls. The app imports .sog as well as .ply and .spz, decoding SPZ and SOG with the renderer's own decoder. The Your room example is now a reconstruction of a higher-quality synthetic Blender room." ;
+    kpred:constraint "The format is chosen by measurement, not reputation. Lossy compression is recorded as lossy in the receipt. splat-transform never ships to the browser. The example room is synthetic and labelled so; committed splat output stays near 5 MB. No private capture is used." ;
+    kpred:has-file "scripts/content/splat-compress.ts", "scripts/content/scan-room.ts", "scripts/content/scan-room-lib.ts", "scripts/content/scan-synthetic-room.py", "scripts/content/gen-assets.ts", "src/lib/3d/robust-extent.ts", "src/lib/3d/splat-check.ts", "src/lib/3d/splat-decode.ts", "src/lib/storage/splat-files.ts", "static/generated/synthetic-room/receipt.json", "static/generated/synthetic-room/splat.spz" ;
+    kpred:tested-by "scripts/content/__tests__/splat-compress.test.ts", "src/lib/3d/__tests__/robust-extent.test.ts", "src/lib/3d/__tests__/splat-import.test.ts", "tests/e2e/your-room.test.ts" ;
+    kpred:measured "2026-10-14, one run each, RTX 3090. FORMAT: a 1600x900, 300 frame Blender render of a made-up room, reconstructed (COLMAP 300 of 300 registered, Brush 30,000 steps), floaters cropped: 760,719 Gaussians, 179.5 MB PLY. SPZ v4 on the CPU: 4.5 s, 17.5 MB (10.3x). SOG on the CPU: did NOT finish in over 3 hours (stopped); SOG on a GPU (splat-transform -g 1): 9 s, 12.9 MB (13.9x, 26% smaller than SPZ). So SPZ is the default (CPU, seconds, any machine); SOG is opt-in and refused unless RECKONS_SPLAT_GPU names an adapter. Dropping spherical harmonics made SPZ 12.6 MB; thinning to 300,000 Gaussians with no SH gave 5.0 MB. FLOATERS: on that reconstruction the raw bounding box was 141.5 units and the robust box 24.9 (0.39% of Gaussians outside it); on a second training run 193.4 to 24.7. A surround fit to the raw box would have scaled the room by 10/141.5 = 0.07; by the robust box 0.40, 5.7 times larger. Removing the 1.8% of Gaussians larger than 2% of the extent took away the long streaks that surrounded the room in the browser. BROWSER: .spz and .sog files decode, store and draw in headless Chromium (e2e)." ;
+    kpred:progress "2026-10-14: built and verified. splat-compress.ts (decode-back check), crop and --max-gaussians/--sh-degree/--max-scale-fraction/--resume stages in scan:room, an export that publishes only the compressed copy and a receipt, gen:check verifying it, .sog import with real decode, SPZ v4 header handling. The Your room space now uses static/generated/synthetic-room/splat.spz: 280,000 Gaussians, 4.86 MB, reconstructed from a rendered synthetic video; the procedural generator and its 9,539-Gaussian room were removed." ;
+    kpred:remaining "WEAK SPOTS, 2026-10-14: (1) LOOKED AT in headless software rendering only (SwiftShader, 12-14 fps), not on a real GPU or by Matt. Zoomed out the room is a clean block; zoomed inside it, the sofa, cushions and bookshelf are recognisable but still soft and smeared, so the example is better than blobs, NOT sharp, and still splotchy at close range. (2) The 4.9 MB budget cost view-dependent colour (SH 0) and 63% of the Gaussians (thinned to 280,000 from 739,000), by adaptive decimation, which is a lossy shortcut and not a retrain with a cap. (3) The robust extent is a percentile rule: a far cluster above about 1% per side defeats it, and a long corridor would be mis-sized; it has been tried on one synthetic reconstruction and unit-tested points, not on a variety of real scans. (4) Floaters whose CENTRES are inside the box but which are large are handled only by the scale cap (2% of the extent, a judgement from one room). (5) The surround framing (scale 0.4, up -y) was set by eye on one render; Level the floor found a plane near the room centre that I did not trust, so no level or floor height is baked. (6) SOG was proven only on this machine's GPU adapter 1; no pixel difference between PLY, SPZ and SOG renders was measured, so how much SPZ or SOG cost in looks is unknown. (7) The ratio recorded in the receipt is against the thinned PLY (3.2x); against the full cropped PLY it is much larger. (8) Linux x86_64 only. (9) A real iPhone scan seen by Matt was still a bad blob: the real fix for that is choosing the centre and scale and cleaning the data (F58.9.12, planned), not this lane." .
+
+kb:release-0-2-7 kpred:proposed "2026-10-14 (agent, not decided): the F58.9 splat proof of concept (F58.9.1-.4) belongs in 0.2.7, not 0.2.6, by Matt's own rule for 0.2.6 that anything not serving the evidence chain waits." .
+kb:gen-video-to-splat kpred:decided "MATT, 2026-10-14: 'We should get things on dev so I can review localhost... I want to review both on localhost, dev branch.' The proof of concept merges to dev now for review; which release carries it is still open." ;
+    kpred:open-question "MATT, 2026-10-14: 'The visual test review space is interesting, but minimal and without proper timeline/story setup.' What should a review space's timeline and story be (the Getting started starter has one; the visual-review and generated-assets examples do not)?" .
+
+# F58.9.12-.15 and F34.5. MATT, 2026-10-14, after viewing his reconstructed studio: "it is not great, but my scan process
+# could be better. The blob when zoomed out is very bad... can we set the scale and the focal point/center of the splat
+# in some way, can we clean up the messy data, potentially with those user inputs? We should look for existing open
+# source code to plugin if possible ... Existing plugins or local dependencies prefered. Plugins may just be the local
+# environment knowledge for this device that says a CLI tool is available?"
+kb:splat-refine rdf:type ktype:Phase ;
+    rdfs:label "F58.9.12 — refine a splat: focal point, crop, scale and floater clean-up, from the person's own inputs" ;
+    kpred:feature-id "F58.9.12" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-file-import, kb:splat-background-settings ;
+    kpred:decided "MATT, 2026-10-14: set the scale and the focal point/center, clean up the messy data with the person's inputs; prefer existing open-source plugins or local dependencies." ;
+    kpred:description "In the space background controls: pick the focal point (click a point in the room), a keep-radius, and optionally a known distance between two picked points to set true scale. A refine runs splat-transform (PlayCanvas, MIT, already a dependency through F58.9.11): --filter-nan, an opacity floor, --filter-floaters, --filter-cluster seeded at the focal point, --filter-sphere at the radius, then --translate so the focal point is the origin and --scale for the measured distance. The refined file replaces the background as a NEW asset, and the original is kept, so a refine can be undone. For finer hand editing, an Open in SuperSplat action (PlayCanvas, MIT, self-hostable) is offered only where the device has it." ;
+    kpred:measured "2026-10-14, Matt's studio (private), CORRECTED the same evening: 228,275 Gaussians; distance from the median centre is 12.6 units at the 50th percentile, 20.9 at the 90th, 60.5 at the 99th and 305.7 at the furthest, and 32.5% have opacity below 0.05. The long tail of floaters is the 'very bad blob' seen zoomed out and the 379-unit extent. (The first version of this line read Brush's PLY columns in the wrong order and reported a 0.4-unit core; Brush writes f_dc before x, y, z. Read properties by name.)" ;
+    kpred:open-question "Matt: 'Plugins may just be the local environment knowledge for this device that says a CLI tool is available?' Proposed, not decided: a device-capability entity in the person's private local graph (tool, command, version, licence, how it was detected, date), written by a script that probes the host. The app offers an action only when that entity exists. This would be the minimal Plugin, compatible with F61's manifest, without a loader." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:splat-occlusion rdf:type ktype:Phase ;
+    rdfs:label "F58.9.13 — splat nodes hide the nodes behind them" ;
+    kpred:feature-id "F58.9.13" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-node-view ;
+    kpred:decided "MATT, 2026-10-14: 'The splat nodes on the graph lack good occlusion of other nodes behind them.'" ;
+    kpred:description "Gaussian splats are blended without writing depth, so markers, labels and edges behind a node's splat draw through it. Use the renderer's depth option if it has one, or write an opaque proxy (the splat's high-opacity core as a depth-only mesh or sphere) into the depth buffer, so whatever is behind a node splat is hidden while the splat itself still blends. A background room never occludes the graph." ;
+    kpred:has-file "src/lib/3d/splat-occlusion.ts", "src/lib/3d/SplatLayer.svelte", "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-occlusion.test.ts", "tests/e2e/splat-occlusion.test.ts" ;
+    kpred:progress "2026-10-14: (a) was rejected: gaussian-splat-lite's depthWrite writes depth for every fragment of every splat ('normally leave off, because most of a Splat is transparent'), so a splat's faint fringe would hide markers. Built (b): SplatLayer adds one depth-only proxy per node splat (items with occludes: true; the background room never sets it), a shared unit sphere with BackSide, colorWrite false, depthWrite true, renderOrder -10, raycast disabled (never a picking target), sized 0.8 of the splat's bounding radius. Only the far hemisphere writes depth, so the splat is not clipped and what lies beyond it is. Labels are DOM, not depth-tested: the existing label sphere-occlusion pass now widens a drawn node splat's disc to its core. Proven by 4 unit tests and a Playwright pixel probe on the Generated assets example: a magenta sphere placed directly behind each node splat changed 62 to 1349 pixels of a 96x96 window with the proxy off and at most 1 with it on (4 runs; the control is layout-dependent, so the test tries every on-screen splat and requires one to show through). Frame time, headless Chromium on SwiftShader (ANGLE Vulkan software GL, 1280x800): about 113 ms/frame with proxies on, 120 to 127 ms with them off, so no measurable cost (the difference is noise and ordering; SwiftShader is not a GPU)." ;
+    kpred:remaining "The 0.8 fraction is a constant, not fitted to each splat's opacity (the renderer exposes no per-splat statistics), so a very sparse or non-spherical splat will hide a little empty space behind it, and an edge that leaves a node through its own splat is hidden past the far shell. Label hiding is a screen-disc test against the node's splat core, not a per-pixel depth test. Not checked on a real GPU. Not checked: a splat under the Your room placement transform other than by the shared code path." .
+
+kb:scan-quality rdf:type ktype:Phase ;
+    rdfs:label "F58.9.14 — measure a room scan's quality and coach the person toward a better one" ;
+    kpred:feature-id "F58.9.14" ;
+    kpred:has-status "scaffolded" ;
+    kpred:has-file "scripts/content/scan-quality.ts", "scripts/content/scan-quality-lib.ts" ;
+    kpred:tested-by "scripts/content/__tests__/scan-quality.test.ts" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:room-scan-capture ;
+    kpred:decided "MATT, 2026-10-14: quality is due to speed of movement, consistency of movement and the angles captured; a manual phone scan will never be perfect; measure these metrics and train people to get better scans. A small object can be prepared (plain background, good lighting); a room cannot, since the person is only so tall and a phone has no stabilization." ;
+    kpred:description "npm run scan:quality (script tier, no model) reads a Stray Scanner export or a video and reports: blur per frame (Laplacian variance) and the share of blurry frames; speed (metres per second and degrees per second from odometry.csv) with its peaks; smoothness (jerk); coverage (the spread of view directions and positions, and holes in yaw); exposure stability; and after reconstruction, COLMAP's registered share and reprojection error. Each metric has a plain-language tip (for example 'you turned faster than 45 degrees a second for 12 seconds; turn half as fast'). The receipt keeps the metrics, so successive scans can be compared." ;
+    kpred:measured "2026-10-14, Matt's studio scan (private), one capture, 105.1 s: linear speed median 0.12 m/s, p95 0.31, peak 0.76 (above 0.8 m/s for 0 s); angular speed median 13.5 deg/s, p95 29.0, peak 61.1 (above 45 deg/s for 0.3 s); jerk median 8.3 m/s3, p95 38.8; yaw coverage 12 of 12 bins, 0 empty; path 14.84 m; blur median Laplacian variance 430.2, 1% of 210 frames below 100; brightness spread 15.7; COLMAP registered 89% (266 of 300 kept frames). Tips given: 1 (jerk)." ;
+    kpred:progress "2026-10-14: scripts/content/scan-quality.ts and scan-quality-lib.ts built on feat/f58-9-14-scan-quality; npm run scan:quality reads a Stray Scanner folder (odometry for speed, jerk, yaw coverage, path length; rgb.mp4 frames at 2 fps, decoded in memory, for blur and exposure) or a video (blur and exposure only), and --receipt adds the COLMAP registered share. Parsers are imported from scan-room-lib.ts. 13 synthetic unit tests (slow smooth sweep against a fast stop-go sweep) pass. Run once on one private studio scan; the numbers are in kpred:measured. Status is scaffolded, not functional: the thresholds in QUALITY_THRESHOLDS are first guesses from one scan, so a tip is not yet evidence that a scan is worse. Not yet built: the tips in the app UI, the F58.9.15 walkthrough, and any comparison across successive scans." ;
+    kpred:remaining "Thresholds must come from several measured scans, rated by the person who made them, before any tip is trusted. The first guesses are not calibrated." .
+
+kb:own-space-walkthrough rdf:type ktype:Phase ;
+    rdfs:label "F58.9.15 — scanning your own space, offered only after someone is comfortable with Reckons.AI" ;
+    kpred:feature-id "F58.9.15" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:scan-quality, kb:splat-refine ;
+    kpred:decided "MATT, 2026-10-14: 'We need a nice walkthrough of how to do this to the user's own space, after they are comfortable with Reckons.AI and its private by design structure. We want a getting started to be very non-invasive, where a lidar scan of their personal space is very invasive.'" ;
+    kpred:description "A story-mode walkthrough (the Getting started pattern), never part of Getting started itself and never prompted. It opens from the Your room example with a plain statement of what a scan captures (everything visible in the home, including other people's belongings) and where it goes (only this device; nothing is uploaded; export is the person's own act). Steps: prepare the room, capture (with the scan:quality tips), reconstruct, refine, place objects." ;
+    kpred:constraint "Opt-in at every step. The walkthrough never asks for camera or file access until the person chooses that step." ;
+    kpred:remaining "Plan only, 2026-10-14." .
+
+kb:release-review-spaces rdf:type ktype:Phase ;
+    rdfs:label "F34.5 — one visual review space per release, its main workflows as visual tests for manual review" ;
+    kpred:feature-id "F34.5" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:deep-testing ;
+    kpred:depends-on kb:test-workflow-docs ;
+    kpred:relates-to kb:release-0-2-6, kb:release-0-2-7 ;
+    kpred:decided "MATT, 2026-10-14: 'We really do need a visual testing review graph, maybe make one for each version? So, we should make a 0.2.6 and 0.2.7, etc. release test graph with main workflows developed as visual tests in a space made for manual review.' Earlier the same day: the visual-review space lacks a proper timeline and story setup." ;
+    kpred:description "For each release, a generated starter space (static/review-<version>.ttl) whose nodes are that release's headline workflows in story order (hnav), each with its TestWorkflow steps, the screenshot per step from npm run workflow:shots, the assertion it checks and a review verdict the person sets (pass, fail, note). Generated from the release's has-part features and the TestWorkflow entities, never hand-written, and opened from About like the other examples." ;
+    kpred:has-file "scripts/offline/release-review-space.ts", "static/review-0.2.6.ttl", "static/review-0.2.7.ttl", "src/lib/components/ReviewVerdict.svelte", "src/routes/(app)/about/+page.svelte", "scripts/offline/jobs.json" ;
+    kpred:tested-by "scripts/__tests__/release-review-space.test.ts", "tests/e2e/release-review.test.ts" ;
+    kpred:progress "2026-10-14, BUILT, STATUS planned -> scaffolded. scripts/offline/release-review-space.ts (script tier, no model) reads a release's has-part features (kpred:headline ones first) and joins each to a TestWorkflow when the workflow's kpred:test-file is among the feature's kpred:tested-by (its part-of descendants included). It writes static/review-<version>.ttl: the release as root, one hnav-ordered node per workflow, a node per step with the step text, its p:photo screenshot, what the test checks and a kmeta:review-verdict starting at unreviewed, and ONE node 'No visual test yet' listing every part with no workflow. --check fails a stale file (job release-review-space, blocking, same pattern as md-align). Both spaces open from About under example data as Review 0.2.6 and Review 0.2.7, no new tab. The verdict (pass, fail, clear, and a note) is written as kmeta:review-verdict and kmeta:review-note on the step by ReviewVerdict.svelte in the node panel; no existing review UI recorded a judgement of a screenshot (the Review tab settles proposed claims), so this is a small new surface inside the panel. 8 unit tests on a synthetic roadmap fixture; 2 e2e tests." ;
+    kpred:measured "2026-10-14, generated from the roadmap as it stands: v0.2.6 has 1 workflow (the README path, 5 steps, via kb:test-workflow-docs) and 13 of 14 parts marked No visual test yet; v0.2.7 has 0 workflows and 12 of 12 parts marked No visual test yet. The 0.2.7 space is therefore, today, a list of its own gaps. That is the finding, not a defect of the generator." ;
+    kpred:remaining "WHY SCAFFOLDED, NOT FUNCTIONAL: (1) no person has yet reviewed a release with it, and Matt's complaint that the visual-review space lacks a proper timeline and story is addressed only by the Getting started pattern (hnav order plus next/prev, workflows then gap node); whether that reads as a timeline is unseen by a human. (2) The 0.2.7 space has no workflow, so the first node a reviewer meets is the gap node; F58.9 (generated-assets workflow) would fill it but was proposed for 0.2.7, never decided, so it is not added. (3) A workflow is joined to a feature only through kpred:tested-by matching kpred:test-file; a feature whose workflow is not linked that way shows as a gap even if a workflow exists. (4) The entity and fact counts on the two About cards are typed by hand and go stale when a file is regenerated. (5) A verdict lives in the space it was set in; there is no roll-up of verdicts per release yet." .
+
 
 # -- Spatial / Map Force Layout (F59) ------------------------------------------
 # A new force mode that positions nodes by real-world LOCATION, not just graph
@@ -6176,6 +6416,7 @@ kb:structural-grounding rdf:type ktype:Feature ;
 
 kb:perf-crawl rdf:type ktype:Feature ;
     rdfs:label "Performance crawl — GPU-real, and it asserts on time" ;
+    kpred:decided "MATT, 2026-10-14: \"perf-crawl and button-crawl should be reinstated as jobs, but the test results could be gitignored.\" Job re-enabled (non-blocking); tests/visual/results/perf/ is gitignored in full." ;
     kpred:feature-id "F140" ;
     kpred:has-status "functional" ;
     kpred:priority "high" ;
@@ -7531,6 +7772,42 @@ kb:task-model-bench rdf:type   ktype:Feature ;
                kpred:relates-to   kb:tenet-evidence ;
                kpred:relates-to   kb:tenet-open ;
                kpred:remaining    "The task definition, a shared runner, and fixtures for the named modalities: video-with-audio and image-with-text. Nothing exists for either today." .
+
+kb:gen-model-bench rdf:type ktype:Phase ;
+    rdfs:label "F183.1 — benchmark each generation stage and say when a newer Hugging Face model should replace the current one" ;
+    kpred:feature-id "F183.1" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:relates-to kb:gen-video-to-splat, kb:splat-local-pipeline, kb:local-model-bench ;
+    kpred:decided "MATT, 2026-10-14: \"we need to add benchmarking for the generation features, to indicate if we should update to a newer hugginface model for a given plugin.\"" ;
+    kpred:description "The unit is a GENERATION STAGE (text to image, image to video, image to splat; room reconstruction once F58.9.6 lands), the F166 tasks in scripts/content/generated-assets.tasks.ttl. Each stage has a bench task: fixed synthetic briefs and seeds, a hand-written checklist per brief (the ground truth), the incumbent model set read from scripts/content/gen-assets.ts, and candidates. Candidates come from two sources: a newer revision of an incumbent repository (its Hugging Face sha or lastModified differs from the receipt) and a discovery query (Hugging Face pipeline tag, a licence allowlist, a runtime the stage can load, a size that fits one 24 GB GPU). Every arm runs the same briefs and seeds and is scored on its hard checks (asset-checks.ts), quality (image: checklist items confirmed by the local VLM judge; video: motion, flicker and first-frame fidelity; splat: depth-to-width ratio, finite values and silhouette agreement with the source image), and cost (seconds, peak VRAM, bytes on disk, licence). A script applies the decision rule and emits a proposal, upgrade or hold, with the numbers, to knowledge.pending.jsonl. It never edits gen-assets.ts." ;
+    kpred:principle "A BENCHMARK NEEDS A GROUND TRUTH OR IT IS A VIBE (F183). An upgrade is proposed only when the candidate passes every hard check the incumbent passes, beats it on quality by more than the spread between seeds of the incumbent alone, and stays inside the cost budget. Downloads and likes rank discovery; they are never evidence of quality." ;
+    kpred:constraint "Discovery is ONLINE and opt-in (like npm run security:dependencies); scoring runs fully local. GPU runs are manual or scheduled, never CI: there is no GPU in CI. Until the GPU lease (0.2.7) exists, the bench pins one GPU and refuses to start while another generation job holds it. A licence outside the allowlist ends a candidate before download." ;
+    kpred:open-question "The user's request says 'for a given plugin'. These stages are not plugins today (HANDOFF 2026-10-14: host commands declared as F166 tasks, no manifest); whether a Plugin entity becomes the F61 manifest is undecided and Matt's. This bench keys on the stage, so it can move under a Plugin entity unchanged if that is decided." ;
+    kpred:has-file "scripts/content/gen-bench.ts", "scripts/content/gen-bench-lib.ts", "scripts/content/gen-bench-graph.ts", "scripts/content/gen-bench-discover.ts" ;
+    kpred:tested-by "scripts/content/__tests__/gen-bench.test.ts" ;
+    kpred:progress "BUILT 2026-10-14 on feat/f183-1-gen-model-bench: (1) bench tasks per stage (first in gen-bench-tasks.ts; since F183.2 in the Testing graph, read by gen-bench-graph.ts), 5 image briefs with hand-written yes/no checklists, 4 video and 4 splat briefs with numeric expectations, 3 fixed seeds (the task-as-graph-entity question stays F183\u0027s and open). (2) npm run bench:gen:discover (online, needs --online): checks each incumbent file\u0027s receipt SHA-256 against Hugging Face and lists candidates by pipeline tag with a licence allowlist, a runtime-loadable format and a one-GPU size cap, a reason for every drop; filters are unit-tested on recorded API JSON. (3) npm run bench:gen -- --stage=image|video|splat [--candidate=owner/repo|dir]: same briefs and seeds for both arms, hard checks from asset-checks.ts, quality (image: local qwen2.5vl:7b checklist with per-item answers saved; video: motion, flicker, first-frame fidelity; splat: depth-to-width, finite values, silhouette IoU), seconds, peak VRAM, weight bytes, licence; pins one GPU and refuses to start (exit 3) while any other generation job runs, which it demonstrated against a live Brush job. (4) decide() is a pure unit-tested function: upgrade only if no hard-check regression, quality gain above the incumbent\u0027s own seed spread (and a 0.02 floor), time within 1.5x, VRAM within 22 GiB; otherwise hold, or insufficient-evidence. It queues one suggestion per stage to knowledge.pending.jsonl and never edits MODELS in gen-assets.ts. (5) jobs gen-model-discover and gen-model-bench registered, both disabled in the sweep." ;
+    kpred:measured "DISCOVERY RAN 2026-10-14 (online). Incumbent revisions: all 3 image, 3 video and 6 splat files are byte-identical to their receipts (SHA-256 vs the repository LFS hash). Image: 12 candidates survive (licence allowlist, stable-diffusion.cpp evidence, one-GPU size), led by drop-in re-quantisations of the same Z-Image-Turbo (vnbot-ai Q4_K_M 4.7 GiB, unsloth BF16 11.5 GiB); of 160 listed, 112 dropped for a licence off the allowlist (mostly \u0027other\u0027), 10 as unfiltered or adult weights. Video: 12 survive, all different architectures or sizes from the incumbent so each needs a recipe. Splat: 0 survive, because the runner loads only TripoSplat. Metrics sanity check on the two committed assets: video motion 0.0076 and 0.0068 (below the 0.01 low-motion note), splat silhouette IoU 0.54 and 0.58. FIRST REAL IMAGE RUN 2026-10-14 (GPU 0, qwen2.5vl:7b judge, 5 briefs x 3 seeds, 15 images per arm): incumbent Z-Image-Turbo Q8 vs the vnbot-ai Q4_K_M drop-in (Apache-2.0, 4.7 GiB, SHA-256 verified): hard checks 15/15 each; checklist quality 0.960 incumbent vs 0.987 candidate; 15.0 vs 13.0 s per image (0.87x); peak VRAM 11992 vs 10502 MiB (the run\u0027s own processes); incumbent seed-to-seed spread 0.000. The incumbent re-run against itself (control) gave 0.960 again, identical per brief. The pure rule at first said upgrade, but 28 of 30 images scored a perfect checklist, so the whole 0.027 gain was two answers on one item (the white lid of the teapot): no headroom. decide() now returns insufficient-evidence when the incumbent scores 0.95 or more, and the queued proposal says so. Video and splat were not benchmarked." ;
+    kpred:honest-note "THE BENCH HAS NOT PRODUCED AN UPGRADE DECISION, AND THE FIRST RUN SHOWED WHY. The image briefs are too easy for the incumbent (0.960 mean, 28 of 30 perfect), so they cannot rank two models that both draw these subjects; the ceiling rule (added after seeing that result, not before) turns that into insufficient-evidence rather than a false upgrade. Harder briefs (counts of four or more, spatial relations, small text) are needed before an image verdict can mean anything. The first attempt also read +0 MiB card-wide VRAM on the pinned GPU, so peak VRAM now comes from the run\u0027s own processes in nvidia-smi. The video and splat paths ran only as unit tests and on the two committed assets: no video or splat generation was benchmarked. Their quality scores are proxies with uncalibrated equal weights, and the splat silhouette takes the best of 24 axis and flip configurations, which flatters every arm a little. The judge is one local 7B model; its answers are saved per item so a person can disagree." ;
+    kpred:remaining "Harder image briefs so the bench has headroom, then a re-run; the same for video (4 briefs x 3 seeds x ~53 s per arm) and splat (~34 s per run); a recipe (bench-candidate.json) for any different-architecture candidate before it can run; calibrating the video and splat score weights against a human ranking; the GPU lease (0.2.7) to replace the process check." .
+
+kb:gen-bench-in-graph rdf:type ktype:Phase ;
+    rdfs:label "F183.2 — generation bench tasks live in the Testing graph, harder image briefs, and the Creative Commons allowlist" ;
+    kpred:feature-id "F183.2" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:depends-on kb:gen-model-bench ;
+    kpred:relates-to kb:tenet-evidence, kb:tenet-open ;
+    kpred:decided "MATT, 2026-10-14: \"benchmarks should be within graph space, testing space?\" and \"I believe creative commons is permissive yes, you could research its alignment with say MIT.\"" ;
+    kpred:description "Three changes to the F183.1 bench. (1) The bench tasks (a BenchTask per stage, briefs as ordered children with prompt, seeds and checklist items) move from scripts/content/gen-bench-tasks.ts into static/docs-testing.ttl, and gen-bench.ts reads them from the graph; this answers F183's open question (is the task definition a graph entity) as yes, in the Testing graph beside the TestWorkflow entities because a bench task is a test with a ground truth, and because the run summaries written back as triples are the measured claims kb:tenet-evidence asks for. (2) Harder image briefs (exact counts, legible text, spatial relations, negation, attribute binding, fine detail) so the bench has headroom; the five F183.1 briefs stay as a smoke tier. (3) The licence allowlist admits CC BY 4.0 and CC0, denies every NC and ND variant, and flags SA, with the attribution text a CC BY model requires carried in the bench output." ;
+    kpred:principle "CREATIVE COMMONS VERSUS MIT, RESEARCHED 2026-10-14 (NOT LEGAL ADVICE; counsel has not reviewed it). CC BY 4.0 is permissive: copying, adaptation and commercial use are allowed on condition of attribution (credit, a link to the licence, and an indication of changes), which makes it comparable to MIT in effect. Differences: Creative Commons itself recommends against CC licences for software; CC licences expressly grant no patent rights (MIT has no express patent clause either; Apache-2.0 has one); CC BY adds a no-additional-restrictions clause (no DRM that restricts the licensed rights). Variants: NC (non-commercial) and ND (no derivatives) are NOT permissive; SA (share-alike) is copyleft; CC0 is a public-domain dedication. Rule implemented: allow cc-by-4.0 and cc0-1.0, deny any -nc and -nd, allow -sa only with a recorded flag." ;
+    kpred:constraint "A model released under CC BY is usable only while its attribution text travels with the bench output and any receipt. This bench records that text; it does not by itself make a shipped asset compliant." ;
+    kpred:honest-note "Licence handling here is a screening rule from a desk reading of the licence texts, not legal advice. Hugging Face licence tags are the uploader's claim and can be wrong. The tasks, loader, harder image briefs, licence rule and one image run are built; video and splat are not exercised on hard briefs." ;
+    kpred:has-file "scripts/content/gen-bench.ts", "scripts/content/gen-bench-lib.ts", "scripts/content/gen-bench-graph.ts", "static/docs-testing.ttl" ;
+    kpred:tested-by "scripts/content/__tests__/gen-bench-graph.test.ts" ;
+    kpred:progress "STEPS 2-5 BUILT 2026-10-14 (licence rule: licensePolicy and attributionFor in gen-bench-lib.ts, unit-tested; ten hard image briefs with the five easy ones kept as the smoke tier; --tier selects). STEP 2 DETAIL: a BenchTask per stage in static/docs-testing.ttl (urn:reckons:bench/), briefs and checklist items as hnav:order children, seeds as triples; scripts/content/gen-bench-graph.ts parses them with N3 and fails loudly on a malformed task; gen-bench-tasks.ts is deleted. WHY THE TESTING GRAPH: a bench task is a test with a ground truth, the TestWorkflow entities there are already read by tests, and the run summaries written back as triples are the measured claims kb:tenet-evidence asks for." ;
+    kpred:measured "RUN 2026-10-14, image stage, hard tier (10 briefs x 3 seeds x 2 arms, judge qwen2.5vl:7b, GPU 0): incumbent Z-Image-Turbo Q8_0 0.913 against the vnbot-ai Q4_K_M re-quant 0.907, delta -0.007, incumbent seed spread 0.060, hard checks 30 of 30 both, 14.0 against 16.5 s/run. Verdict HOLD. The ceiling rule did NOT trigger (0.913 is under 0.95), which is the change from the easy briefs (0.960, 28 of 30 perfect, insufficient-evidence). The harder briefs have headroom but did not separate these two models: they are as good as each other within noise. Summary is in the Testing graph as bench:Result-image-2026-10-14; per-image JSON is in tests/bench/results/ (gitignored, local)." ;
+    kpred:remaining "Judge reliability on counts and text has not been checked against a human; 6 of 10 hard briefs are still perfect for both arms, so a still-harder tier would separate more; video and splat have no hard tier or run yet." .
 
 kb:tenet-alignment rdf:type    ktype:Feature ;
                rdfs:label   "Tenet alignment — checking the roadmap against what we say we believe" ;
@@ -9550,6 +9827,7 @@ kb:test-workflow-docs rdf:type ktype:Feature ;
     kpred:constraint "THE TEST AND THE PAGE SHARE ONE STEP LIST. tests/e2e/workflow-readme-path.test.ts reads its steps from the TestStep triples and fails if a step has no implementation or an implementation has no step. The diagram is computed from the same triples, so a step cannot appear on the page without being run, nor run without appearing." ;
     kpred:progress "2026-10-13, BUILT: the plan (this entity), the flagship TestWorkflow and its five TestSteps in docs-testing.ttl, the diagram computed from them, the Test workflows hub and the workflow page (/docs/testing/workflow-readme-path), the e2e test that reads its steps from the graph and fails on a mismatch in either direction, npm run workflow:shots, and the five annotated WebP screenshots (20-25 KB each, static/workflows/readme-path/, desktop 1280x800), captured with the mock backend. WHAT IS WEAKER THAN IT SOUNDS: the screenshots are of a clean profile into which the test types its own made-up note, NOT of the F248 Getting started space, so they do not yet show that data; the test checks the app responds at each step, not that an extracted claim or a proposal is good; and the diagram cannot drift from the steps but the step TEXT can still disagree with what the test body does, which only a human reading catches." ;
     kpred:progress "2026-10-13, REFINED (Overseer H): the five screenshots are re-captured on the synthetic Getting started space (F248), not on the test's own throwaway note. Each box now sits on what its step is about and what its assertion checks (a claim card, its accept button, the current space's card, the proposal card), and the page names it (kpred:box-target, kpred:page-name). The reckoning screenshot uses a scripted reply (globalThis.__RECKONS_MOCK_REPLY__, read only by the mock provider) written to read like a real reckoning about the Getting started notes; the page says in its 'How these screenshots were made' section that the reply is scripted and that the step-1 note is read by a stand-in extractor whose claims are placeholders. The diagram is now top-to-bottom at readable size on desktop and phone. Two product bugs the screenshots exposed are fixed: the Spaces count line said '1 sources' (src/lib/utils/count-label.ts) and the default space showed the engineering word 'kbase' as a badge. WEAKER THAN IT SOUNDS: the claims waiting in steps 2 and 3 come from the Getting started space, not from the note step 1 types (the mock extractor's output is placeholder text), so the test does not yet show one note turned into good claims; the default space is still named 'Default Graph'; a background graph node still shows the mock extractor's slugified note text." ;
+    kpred:decided "MATT, 2026-10-14: \"Workflows of many types need tested, including offline, but I'm fine focusing on my MCP N8N note pipeline for now.\" So the NEXT F34.3 test workflow is the MCP -> n8n note pipeline; offline workflows matter and come later. NOT BUILT: no such workflow story exists yet as of 2026-10-14." ;
     kpred:remaining "F34.3 (the other user stories as workflows) and F34.4 (a phone-width capture of the app itself). Status stays in-progress until a person has judged the page cohesive on staging." ;
     kpred:has-file "scripts/lib/test-workflow.ts" ;
     kpred:has-file "scripts/offline/test-workflow-check.ts" ;
@@ -9581,7 +9859,16 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-6 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped." .
+
+kb:term-ratchet-prose-only rdf:type ktype:Feature ;
+    rdfs:label "Term ratchet counts prose only, not code identifiers" ;
+    kpred:has-status "planned" ;
+    kpred:description "The ambiguity ratchet (F203.6) should count the ambiguous words in prose (comments, user-facing strings, docs) and skip code identifiers such as the Statement type and statement.excerpt, which cannot be renamed without a rewrite. Today every new feature about statements or sources fails the ratchet on identifiers alone and the baseline is raised by hand." ;
+    kpred:decided "MATT, 2026-10-13: the ratchet counts prose only. Evidence: six baseline raises on 2026-10-13, all caused by domain identifiers rather than by ambiguous prose (F122.1.4 in #456 raised statement by 25, source by 28 and node by 1 after its prose was trimmed)." ;
+    kpred:part-of kb:release-0-2-7 .
+kb:release-0-2-7 kpred:has-part kb:term-ratchet-prose-only .
 
 kb:ui-term-audit rdf:type ktype:Feature ;
     rdfs:label "UI terms audit — engineering words and the wrong sense of a word, found on screen by rule" ;
@@ -9725,13 +10012,15 @@ kb:anchor-staleness rdf:type ktype:Phase ;
 kb:statement-to-passage-jump rdf:type ktype:Phase ;
     rdfs:label "F122.1.4 — click a statement, the source opens scrolled to the highlighted passage" ;
     kpred:feature-id "F122.1.4" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:document-evidence-anchors ;
     kpred:estimate "1 day" ;
     kpred:description "The statement-side Evidence section (StatementEvidence.svelte) shows the passage inline today. This adds the same join as a link: Open in source navigates to the Sources inspector for that source, scrolled to that passage with the supporting span highlighted and the other statements of the passage visible. It needs only the derived chunkIndex that deriveEvidence already returns, so it can start before any storage work and later uses the stored anchor." ;
-    kpred:has-file "src/lib/components/StatementEvidence.svelte", "src/lib/components/SourceDocument.svelte", "src/lib/components/SourcesExplorer.svelte", "src/lib/ingest/source-document.ts", "src/routes/(app)/+page.svelte", "tests/e2e/source-document.test.ts", "tests/e2e/provenance-view.test.ts" ;
+    kpred:has-file "src/lib/components/StatementEvidence.svelte", "src/lib/ingest/__tests__/source-document.test.ts", "tests/e2e/starter-provenance.test.ts", "src/lib/components/SourceDocument.svelte", "src/lib/components/SourcesExplorer.svelte", "src/lib/ingest/source-document.ts", "src/routes/(app)/+page.svelte", "tests/e2e/source-document.test.ts", "tests/e2e/provenance-view.test.ts" ;
     kpred:proof "E2E, user-visible: seed a synthetic long source with a statement quoting its passage 19; click that statement, click Open in source; the Sources inspector shows passage 19 in the viewport with the quote marked, and its statement count matches. Screenshot with a bounding box on the marked span (the F34.2 test-workflow pattern)." ;
-    kpred:honest-note "Whether a deep link exists today is unverified in a browser; a search of src for chunkIndex consumers finds only the two derive modules and SourceDocument.svelte, which suggests it does not." .
+    kpred:honest-note "Whether a deep link exists today is unverified in a browser; a search of src for chunkIndex consumers finds only the two derive modules and SourceDocument.svelte, which suggests it does not." ;
+    kpred:progress "Built 2026-10-13: Open in source button in the Evidence section (shown only when the quote is found in the kept text); SourcesExplorer selects the source and SourceDocument opens that passage, marks the supporting span and scrolls it into view (locatePassageJump in source-document.ts). Proven by e2e on the Getting started space and on a three-passage synthetic source, at 1280 and 390 px. When the quote is not found no button is offered and the Evidence section already says why; a jump that cannot place the quote shows that in plain words instead of opening at the top." ;
+    kpred:remaining "The jump reads a stored text-span anchor when one is passed (locatePassageJump verifies it against the quote, else falls back to the quote match), but nothing stores an anchor yet: that is F122.1.1. Statements from sources with no kept text, or whose quote has changed, get no jump. The Reckoning citation chip reuse (F223) is not built." .
 
 # -- F223 proposals as 2 to 4 cited options --
 
@@ -9789,3 +10078,176 @@ kb:release-0-2-6 kpred:principle "SPINE OF THE RELEASE, Matt 2026-10-13: 'I want
 kb:document-evidence-anchors kpred:decided "MATT, 2026-10-13, FOR 0.2.6: anchors are TEXT SPANS ONLY (character spans in the retained text); page numbers, PDF boxes and the full DocumentIR come later with local PDF extraction, honoring 'never synthesize precision'. The anchor lives as OPTIONAL FIELDS ON THE STATEMENT for 0.2.6; the shared EvidenceAnchor node decided in principle is derived from those fields later, losing nothing." .
 kb:space-file-layout kpred:decided "MATT, 2026-10-13, FOR 0.2.6: FOLD CHUNKS ONLY. A source's passages fold into the space's own file; retained originals stay at the workspace root and move into the space folder in 0.2.7 with a careful migration, because originals are the one unrecoverable piece of user data. Accepted cost for one release: a space copied alone has its passages but not its original document." .
 kb:graph-proposals kpred:decided "MATT, 2026-10-13, FOR 0.2.6: cited options cover BOTH reckoning output and review conflicts (settleConflict), so the two decision surfaces share one options model. Built in that order: reckoning first, conflicts last, so conflicts can move to 0.2.7 without blocking the reckoning if the cut is tight. An option whose citation cannot be resolved is SHOWN, FLAGGED UNRESOLVED, never hidden: hiding it would silently drop a judgment (kb:evidence-chain)." .
+
+kb:task-model-bench kpred:decided "MATT, 2026-10-14, answering this feature's open question (is the task definition a graph entity): \"benchmarks should be within graph space, testing space?\" Placed in the Testing graph (static/docs-testing.ttl) as bench:BenchTask entities, built under kb:gen-bench-in-graph (F183.2). The question mark in his sentence was a request to confirm the placement, done in that PR." .
+
+
+kb:shelly-generation-jobs rdf:type ktype:Phase ;
+    rdfs:label "Shelly — request a local image-to-splat job and attach its actual result" ;
+    kpred:feature-id "F166.1" ;
+    kpred:has-status "scaffolded" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:generation-coupling ;
+    kpred:depends-on kb:splat-local-pipeline, kb:splat-node-view ;
+    kpred:relates-to kb:shelly-skills, kb:agent-orchestration, kb:local-host-mode ;
+    kpred:description "Expose a bounded local-generation job request to Shelly using the existing task/command/receipt pipeline. Resolve the active space and reference entity, enqueue image generation followed by a dependent Gaussian-splat stage, and attach the checked outputs to a new sibling asset entity using the existing photo/splat predicates. Show queued, running, failed and completed states from runner receipts." ;
+    kpred:measured "2026-10-16 code inspection: src/lib/types/turtle-chat.ts and src/lib/integrations/llm/turtle-chat.ts offer graph edits, navigation, filtered queries and scraping, but no asset-job dispatch action. scripts/content/gen-assets.ts already generates real images and splats and validates outputs with receipts. Invented splat-matrix or splat-pixels literals are not a substitute for a generated file." ;
+    kpred:constraint "ACCEPTANCE: a synthetic conversation requests another asset beside an existing example; one authorized job creates a real image, then a real Gaussian-splat file, and a new entity in the originating space without overwriting the example. Verify receipt and file hashes, image/splat validity, provenance, generated-content labels and rendered result. Retry/replayed messages must not create duplicate jobs or assets. A failed image prevents the dependent splat stage; cancellation and a space switch cannot attach output to the wrong space." ;
+    kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
+    kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story. Free-form Shelly chat job actions, remote runner transport and additional derivation adapters remain unbuilt. Starting the runner is an explicit local setup step." ;
+    kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch remains unbuilt" ;
+    kpred:has-phase kb:generated-assets-story .
+
+kb:generated-assets-story rdf:type ktype:Phase ;
+    rdfs:label "Interactive Generated assets story — prompt, image, then derivations" ;
+    kpred:feature-id "F166.1.1" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "Shelly asks what image the user wants, submits a bounded local generation job, waits for a verified receipt, then offers video, Gaussian splat or another image. The story lives in the Generated assets example and uses the existing Shelly story picker. A connected workspace folder transports typed requests and receipts to an opt-in local runner; prompts and outputs stay in that private workspace. Nothing runs merely from opening a story." ;
+    kpred:decided "Matt, 2026-10-20: the generated assets space needs interactive story mode. Shelly asks what image to generate, it runs, then asks whether to make video, splat or other derivations." ;
+    kpred:constraint "Offer only capabilities declared by the running adapter. Preserve prompts and request IDs across reconnect/reload; verify output hashes and successful receipts before attaching. Keep output in the originating space. Cancellation and failed images must prevent dependent jobs. New derived entities link to their actual source image. No shell commands or paths come from story triples." ;
+    kpred:has-file "src/lib/components/GenerationStory.svelte" ;
+    kpred:has-file "src/lib/generation/protocol.ts" ;
+    kpred:has-file "src/lib/generation/workspace-client.ts" ;
+    kpred:has-file "src/lib/generation/attach.ts" ;
+    kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:has-file "scripts/content/gen-assets.ts" ;
+    kpred:has-file "static/starter-generated-assets.ttl" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:measured "2026-10-20: a synthetic local acceptance run produced an independently checked image in 13.6 s, a dependent video in 55.9 s and a dependent 32768-Gaussian splat in 35.4 s. Earlier attempts exposed and corrected an invalid Gaussian count and a missing installed npm dependency. Artifacts and receipts remain outside the public repository. These checks establish valid files, not artistic quality." .
+
+
+kb:generated-assets-onboarding rdf:type ktype:Phase ;
+    rdfs:label "Asset creation as Getting started — capability and setup guidance" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:decided "Matt, 2026-10-20: once refined enough, the interactive asset story should become Getting started. Distinguish bundled assets and tools from capabilities requiring local setup; provide links and setup guides. Explain agent-assisted plugin/integration installation with an explicit warning when granting device or SSH control." ;
+    kpred:description "Prepare the generation story as a candidate Getting started journey, including a useful no-setup path and capability discovery. Guidance can explain how an external, explicitly authorized agent installs local tools or optional services such as Indico and n8n. No in-app agent installer or automatic SSH grant is implied." ;
+    kpred:remaining "The capability inventory and setup guides accompany F166.1.1. Replacing the current Getting started entry is deferred until the journey is refined and reviewed, as requested." .
+
+kb:threejs-example-nodes rdf:type ktype:Phase ;
+    rdfs:label "Three.js examples attached to nodes with isolated loading and failure recovery" ;
+    kpred:has-status "in-progress" ;
+    kpred:part-of kb:asset-viewer ;
+    kpred:decided "Matt, 2026-10-20: allow users to use https://threejs.org/examples/ on nodes, with crash protection when each example loads in case of incompatibility or errors." ;
+    kpred:description "Build an isolated, explicitly started example viewer attached to a node. Constrain supported sources, check browser capabilities, stop on timeout/error, provide retry and unload resources on close. Do not run imported example code inside the graph renderer. The first implementation is a node-attached viewer in the existing asset surface. Presenting an example as the node itself, or as the graph background, are the two follow-up phases below; both keep the example inside the same sandbox." ;
+    kpred:decided "Matt, 2026-10-20, answering viewer versus in-graph appearance: both. Some examples are more of an object and some more of a scene; a scene could ideally be set as the background." ;
+    kpred:has-phase kb:threejs-example-node-appearance ;
+    kpred:has-phase kb:threejs-example-background ;
+    kpred:constraint "Isolation is not a guarantee against a browser or GPU-process crash. A document load event is not proof that a remote scene rendered successfully. Arbitrary upstream examples may need different capabilities, assets and permissions. Imported graphs must never automatically execute examples or grant device access." .
+
+kb:threejs-example-node-appearance rdf:type ktype:Phase ;
+    rdfs:label "Three.js example as a node's appearance (object-like examples)" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:threejs-example-nodes ;
+    kpred:depends-on kb:threejs-example-nodes ;
+    kpred:description "Show an object-like example (a model, a character, a single animated mesh) as the node's own appearance in the graph. The example still runs in the sandboxed frame, never in the graph renderer: either a live frame anchored to the node's on-screen position while it is loaded, or a still frame the sandbox posts back and the graph uses as the node's image." ;
+    kpred:constraint "At most one live example at a time, started explicitly; every other node shows its still frame or its ordinary marker. A still frame is an image, not proof the example still runs. The example keeps its own camera: it cannot follow the graph's 3D camera, so in 3D view the anchored frame is a flat card." .
+
+kb:threejs-example-background rdf:type ktype:Phase ;
+    rdfs:label "Three.js example scene as the graph background (scene-like examples)" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:threejs-example-nodes ;
+    kpred:depends-on kb:threejs-example-nodes ;
+    kpred:relates-to kb:asset-viewer ;
+    kpred:description "Offer Set as background for a scene-like example, beside the existing splat and image backgrounds: the sandboxed frame fills the view behind a transparent graph canvas. The graph keeps pointer input by default; an explicit Interact with background toggle hands input to the example and back. Same Load, timeout, heartbeat and Stop handling as the viewer; a failed background unloads and the graph returns to its normal backdrop." ;
+    kpred:has-file "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/3d/three-example-session.svelte.ts", "src/lib/3d/three-example.ts" ;
+    kpred:tested-by "tests/e2e/three-example.test.ts" ;
+    kpred:remaining "Verified only against a synthetic example in desktop Chrome and an Android-emulated Chrome; no real threejs.org example was run, and GPU load with a heavy example was not measured. The splat-replaces-example path is not covered by an e2e test. Escape cannot reach the page while the example has focus." ;
+    kpred:constraint "The background example does not share the graph's camera, depth or lighting; nodes do not sit inside the scene, they float in front of it. Running a heavy example and the graph together doubles GPU load; the background must be stoppable from the graph view, not only from node details. Imported graphs never auto-start a background example." .
+
+kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20: avoid Tripo and Meshy for the core tutorials. Do as many cutting-edge, browser-only, no-install workflows as possible. The local runner (TripoSplat, stable-diffusion.cpp) stays as an optional advanced path, not the Getting started path." ;
+    kpred:has-phase kb:browser-generation-tutorial .
+
+kb:browser-generation-tutorial rdf:type ktype:Phase ;
+    rdfs:label "Browser-only generation tutorial — no install, no Tripo or Meshy" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:generated-assets-story ;
+    kpred:description "A Getting started generation story whose every stage runs in the browser (WebGPU/WASM via the bundled @huggingface/transformers runtime) with nothing to install. Candidate stages to MEASURE before committing: prompt to image with an in-browser text-to-image model; image to depth, then a parallax camera move (a video without a video model) or a depth-displaced mesh/point set (a 3D asset without TripoSplat); background removal for a cut-out sprite or texture. Each candidate is kept or dropped on measured download size, time on a mid-range laptop and phone, and a visual check, not on a model card." ;
+    kpred:constraint "Model downloads are large (hundreds of MB to over 1 GB) and must be shown and confirmed before they start; the story must say which stages work on this device and fall back to the example assets when WebGPU is missing. A depth-derived 3D asset is a relief of one view, not an object with a back; say so where the result is shown." ;
+    kpred:remaining "Everything: no browser generation stage is built. First step is a measured shortlist of models per stage." .
+
+kb:game-development kpred:decided "MATT, 2026-10-20: a game generator could follow asset generation in complexity: select or prompt the game style and mechanics, with three.js game outputs for publishing. Status stays speculative." ;
+    kpred:open-question "Does a generator that PUBLISHES three.js games contradict the honest note 'we ship no engine … a layer over other people's engines'? A thin runtime (game loop, input, Rapier physics, asset loading) plus per-genre templates the generator parameterizes is closer to shipping an engine than to a layer. Matt's call: amend the note, or keep the runtime an opt-in integration." ;
+    kpred:has-phase kb:game-genre-templates .
+
+kb:game-genre-templates rdf:type ktype:Phase ;
+    rdfs:label "Genre templates on a shared three.js runtime, parameterized by the graph" ;
+    kpred:part-of kb:game-development ;
+    kpred:has-status "speculative" ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:relates-to kb:int-game-engine ;
+    kpred:description "Instead of generating engine code per game, a small shared runtime (render loop, input, an ECS, Rapier physics via WASM, GLB/splat loading, audio, save) and a few genre templates (platformer, top-down, walking sim, racing, puzzle) whose rules, tuning and assets are graph facts. Style and mechanics selection fills a template; generated assets fill its slots; the output is a static three.js bundle that plays in the same sandboxed frame as the Three.js example viewer." ;
+    kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
+    kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
+
+## Getting started "Create" chapter, zoom-to-leap and a showcase splat (Matt, 2026-10-20)
+## "We need to do a good story mode version of this image gen, then 3d splat gen, for the getting
+## started space. ... make leaps/jumps from space to space work by zooming into a node closely, and set
+## a leap node with a splat to zoom into. ... optimize the quality of the splat, have a highly detailed
+## example, that many people couldn't generate on their machine, ... tell users what the system
+## resources are required to do it free locally."
+
+kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20 (later, after a successful local image-to-splat run): the Getting started space gets a story-mode image-then-splat chapter, plus a zoom-to-leap highlight using a splat leap node, a highly detailed showcase splat and the measured resources needed to generate it free locally. This refines the earlier same-day note: the no-install path stays the default (the showcase, and the browser-only tutorial once built); local generation is offered with its requirements stated, not required." ;
+    kpred:decided "Matt, 2026-10-20: the Create chapter REPLACES 'This Weekend' (static/starter-everyday.ttl) as the Getting started story." ;
+    kpred:has-phase kb:showcase-splat ;
+    kpred:has-phase kb:generation-resource-requirements ;
+    kpred:has-phase kb:zoom-to-leap ;
+    kpred:has-phase kb:getting-started-create-chapter ;
+    kpred:has-phase kb:doorway-leap .
+
+kb:showcase-splat rdf:type ktype:Phase ;
+    rdfs:label "Showcase splat — a highly detailed generated example, quality pushed and measured" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "Generate one generic, purpose-built example (image then splat) at the highest quality the local pipeline reaches on Matt's 2x RTX 3090: sweep the TripoSplat settings that trade detail for memory and time (Gaussian count, input resolution, sampling steps), keep the run whose output is visibly better by a recorded visual check, then compress it (SPZ) to a size the app can ship. Record every run's settings, peak VRAM, time and file size as graph data, like the F183 generation bench." ;
+    kpred:constraint "Public example: generic and purpose-built, no personal content. A shipped asset has a size budget (the Your room example is 4.9 MB); the uncompressed original stays out of the repository. 'Many people could not generate this' must be backed by the measured peak VRAM, not asserted." ;
+    kpred:remaining "Everything." .
+
+kb:generation-resource-requirements rdf:type ktype:Phase ;
+    rdfs:label "Resources required to generate free locally — measured per stage" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:showcase-splat ;
+    kpred:description "A per-stage table (image, video, splat at standard and showcase quality): peak GPU memory, system RAM, disk for model weights, and time, each measured on a named machine. Shown in the Create chapter and the generation setup guide, next to the one-time weight download size. The story uses it to say what this device can and cannot do instead of failing late." ;
+    kpred:constraint "Only measured numbers, each labeled with the machine it was measured on (initially 2x RTX 3090, 24 GB each). A minimum requirement is stated only after a run on that smaller configuration; otherwise say 'measured on X; smaller GPUs untested'." ;
+    kpred:remaining "Everything." .
+
+kb:zoom-to-leap rdf:type ktype:Phase ;
+    rdfs:label "Zoom-to-leap — zoom closely into a leap node to cross into its space" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:description "In the 3D and 2D graph views, zooming the camera close to a leap node (urn:reckons:leap) past a threshold, held briefly, performs that leap through the existing switchToKb resolution. A visible 'Entering <space>' ring fills during the dwell; zooming out or Escape cancels; Back returns to the space you came from. A leap node that carries a splat is the showcase: you zoom into the splat and arrive in the other space." ;
+    kpred:principle "ONE LEAP MECHANISM (inherited from kb:multi-graph-stories). Zooming is a new way to TRIGGER a leap, not a second cross-graph path; target resolution, missing-target behaviour and provenance stay those of KBLeap." ;
+    kpred:constraint "Never fires by accident: threshold plus dwell, and never during an automatic camera move (focus, story playback, fly-to). Respects reduced motion (no zoom animation; the ring and a click still work). A leap whose target is not on this device says so instead of switching. Keyboard and touch users get an equivalent explicit action." ;
+    kpred:remaining "Everything." .
+
+kb:getting-started-create-chapter rdf:type ktype:Phase ;
+    rdfs:label "Getting started Create chapter — Shelly-led image, then splat, ending in a zoom-to-leap" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:soft-onboarding ;
+    kpred:depends-on kb:showcase-splat ;
+    kpred:depends-on kb:generation-resource-requirements ;
+    kpred:depends-on kb:zoom-to-leap ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:description "The Getting started story (replacing 'This Weekend', Matt 2026-10-20). Shelly asks what image to make. Without local generation she shows the showcase image and splat, says what generating it free locally requires (the measured table) and links the setup guide; with the runner connected she runs the existing generated-assets story (image, then splat). The chapter ends on a leap node wearing the showcase splat: zoom into it to arrive in the Generated assets space." ;
+    kpred:constraint "Works with nothing installed. Never starts a download or a generation without an explicit choice. The browser-only tutorial (kb:browser-generation-tutorial) replaces the 'needs local setup' branch when it exists." ;
+    kpred:remaining "Everything." .
+
+kb:doorway-leap rdf:type ktype:Phase ;
+    rdfs:label "Doorway leap — walk through a door at a leap node into the target space" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:depends-on kb:zoom-to-leap ;
+    kpred:decided "Matt, 2026-10-20: attempt a high-quality doorway transition: set the leap node inside a doorway the user can walk through, possibly with three.js on the node." ;
+    kpred:description "In the 3D graph, a leap node can present as a doorway: a door frame at the node, and through its opening the target space's preview (the leap node's splat when it has one, otherwise the existing ghost-graph preview), masked to the opening with the stencil buffer. Moving the camera through the door plane inside the opening performs the leap (the zoom-to-leap trigger, made spatial); a Walk through action does the same for keyboard, touch and reduced-motion users. The 2D graph falls back to the zoom-to-leap ring." ;
+    kpred:principle "OUR OWN RENDERER, NOT A SANDBOXED EXAMPLE. The doorway is code in the graph renderer because walking through needs the graph's camera; a threejs.org example runs in an isolated frame with its own camera and cannot share it (kb:threejs-example-nodes). Ideas can be borrowed from the examples; their code is not executed here." ;
+    kpred:constraint "The inside view renders only while the door is near and on screen, and loads its preview lazily; frame time is measured with and without it. Crossing is detected as the camera's path crossing the opening between two frames, never by distance alone, so orbiting past the door does not leap. Automatic camera moves never cross." ;
+    kpred:remaining "Everything." .

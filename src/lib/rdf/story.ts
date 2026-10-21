@@ -61,6 +61,8 @@ export interface Story {
   autoplay: boolean;
   /** Seconds between auto-advance steps */
   pace: number;
+  /** An explicit built-in interaction; graph prose never becomes executable code. */
+  interaction?: 'generate-assets';
 }
 
 /**
@@ -95,6 +97,7 @@ export function extractStories(stmts: Statement[]): Story[] {
     const description = getLiteral(`${STORY_NS}description`) ?? '';
     const autoplay = getLiteral(`${STORY_NS}autoplay`) === 'true';
     const pace = parseInt(getLiteral(`${STORY_NS}pace`) ?? '8', 10);
+    const interaction = getLiteral(`${STORY_NS}interaction`) === 'generate-assets' ? 'generate-assets' as const : undefined;
 
     // Find steps linked to this story
     const stepIris = new Set<string>();
@@ -144,8 +147,23 @@ export function extractStories(stmts: Statement[]): Story[] {
     // Sort by order
     steps.sort((a, b) => a.order - b.order);
 
-    stories.push({ id: storyIri, label, description, steps, autoplay, pace });
+    stories.push({ id: storyIri, label, description, steps, autoplay, pace, interaction });
   }
 
+  // Previously imported Generated assets examples predate the story triples. Offer the same
+  // built-in interaction without rewriting the person's graph or making them re-import it.
+  if (!stories.some(s => s.interaction === 'generate-assets')
+    && confirmed.some(s => s.s.kind === 'iri' && s.s.value === 'urn:kbase:concept/generated-assets'
+      && s.p.value === RDF_TYPE && s.o.value === 'urn:kbase:type/Concept')) {
+    stories.push({
+      id: `${STORY_NS}create-generated-asset`, label: 'Create an asset with Shelly',
+      description: 'Describe an image, generate it locally, then choose a derivation.',
+      autoplay: false, pace: 8, interaction: 'generate-assets',
+      steps: [
+        { id: `${STORY_NS}generate-image`, order: 1, title: 'Imagine an image', content: 'What image would you like me to generate?', highlights: [] },
+        { id: `${STORY_NS}derive-asset`, order: 2, title: 'Choose what happens next', content: 'Choose a video, Gaussian splat or another image.', highlights: [] },
+      ],
+    });
+  }
   return stories.sort((a, b) => a.label.localeCompare(b.label));
 }

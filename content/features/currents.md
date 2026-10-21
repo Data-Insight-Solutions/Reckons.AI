@@ -1,7 +1,7 @@
 ---
 title: "Currents"
 slug: "currents"
-order: 1006
+order: 1007
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

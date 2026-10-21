@@ -73,6 +73,8 @@ tests/bench/results/
 mcp-workspace/
 
 # Reckons workspace (transient files)
+# Generation runner jobs hold private prompts and outputs (npm run gen:serve refuses an unignored folder).
+reckons-workspace/.reckons-generation/
 reckons-workspace/kbs/*/pending.jsonl
 reckons-workspace/kbs/*/sources.json
 reckons-workspace/knowledge.ttl
@@ -175,10 +177,10 @@ reckons-workspace/knowledge.pending.jsonl.*
 .env.bak*
 .env.*.bak
 
-# Perf-crawl artifacts: the JSON reports are small and worth keeping as evidence;
-# the recordings and frame dumps beside them run to tens of MB and are not.
-tests/visual/results/perf/*
-!tests/visual/results/perf/*.json
+# Perf-crawl artifacts: reports, recordings and frame dumps all stay local (MATT, 2026-10-14:
+# "perf-crawl and button-crawl should be reinstated as jobs, but the test results could be
+# gitignored"). The job regenerates them; they are not evidence worth 170 MB of history.
+tests/visual/results/perf/
 reckons-workspace/stars-scan.state.json
 
 # Personal captures are local data. Ignoring a path does not remove earlier commits
@@ -190,3 +192,4 @@ reckons-workspace/*.jsonl.*
 # Purpose-built public examples belong under static/examples/ or static/starter-*.ttl.
 /share/
 /sites/
+static/generated/**/.image.png

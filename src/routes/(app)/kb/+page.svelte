@@ -19,6 +19,7 @@
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
+  import SpaceBackgroundPanel from '$lib/components/SpaceBackgroundPanel.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
   import { recommendDuplicateChoice, describeProbe, type KbProbe } from '$lib/storage/kb-duplicate-choice';
@@ -1743,6 +1744,14 @@
     <h3>share package &amp; sync</h3>
   </div>
   <GraphPackagePanel statementCount={statements().length} />
+</section>
+
+<!-- Space background (F58.9.7): a scanned room from this device, drawn behind the 3D graph. -->
+<section class="section">
+  <div class="section-head">
+    <h3>space background</h3>
+  </div>
+  <SpaceBackgroundPanel />
 </section>
 
 

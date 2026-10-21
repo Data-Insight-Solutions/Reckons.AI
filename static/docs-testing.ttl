@@ -18,6 +18,16 @@
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
 
+test:GeneratedAssetStory rdf:type ktype:Concept ;
+    rdfs:label "Interactive asset generation story" ;
+    skos:broader test:TestSuite ;
+    skos:definition "Open Generated assets, choose Create an asset with Shelly, enter a synthetic image prompt, and wait for a checked result before choosing a video or Gaussian splat. The browser tests drive an OPFS file-queue fixture using existing checked media; they do not run GPU models. They cover image-to-video-to-splat provenance, reopening and reload without duplicate jobs/assets, failed-image retry, cancellation, corruption refusal, unavailable derivations and a space switch during generation. Protocol and runner unit tests reject command/path injection, inconsistent receipts, cross-space dependencies, stale heartbeats and interrupted-job replay." ;
+    kpred:command "npx playwright test tests/e2e/generated-assets-story.test.ts --project=desktop-chrome --project=mobile-android" ;
+    kpred:honest-note "Real generation requires a separate local run with installed tools/models and a private workspace. File checks establish decodability and structural validity, not artistic quality. Browser fixtures are not evidence of a GPU run." ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a09-b009-000000000009" .
 
@@ -794,3 +804,784 @@ test:Workflow-ReadmePath-Step5
     kpred:screenshot    "/workflows/readme-path/05-reckoning.webp" ;
     skos:definition     "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It reads the facts in your space and proposes options and a recommendation, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust." ;
     kpred:assertion     "The request is accepted and a proposal card comes back saying how many facts it is based on. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." .
+
+test:Workflow-GeneratedAssets
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Make pictures, clips and 3D splats on your own machine, and see them in a space" ;
+    skos:definition     """Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture. You can turn a splat and look at it from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space.
+
+### Made on one machine, with no cloud service
+
+| Step | Tool | Model | License | What it made |
+|---|---|---|---|---|
+| Picture from a prompt | stable-diffusion.cpp | Z-Image-Turbo | MIT and Apache-2.0 | a 768×768 picture |
+| Clip from the picture | stable-diffusion.cpp | Wan2.2 TI2V-5B | MIT and Apache-2.0 | a 3-second, 49-frame clip |
+| Splat from the picture | TripoSplat | TripoSplat | MIT | 32,768 or 65,536 Gaussians |
+
+All three run on your own computer. The command is `npm run gen:assets`, which reads made-up prompts from `scripts/content/gen-briefs.json`. Each result gets a receipt beside it that names the tool, every model file with its fingerprint (a SHA-256 hash) and license, the prompt, the seed, how long it took, and whether the result passed its check. Tools and model files live outside the project folder; `scripts/content/gen-setup.sh` downloads them.
+
+### A result is accepted by a check, not by the tool
+
+A model can write a grey square, a clip in which nothing moves, or a splat full of broken numbers, and still report success. So every result is checked by code that knows nothing about the model. The picture must not be flat. The clip must play, and how much it moves is measured. The splat must have the expected number of blobs, real numbers, a real size and visible blobs. On the first run the splat check found a fault in TripoSplat's own file writer: thousands of blobs were saved with an infinite opacity. The pipeline now repairs those values and records how many it repaired.
+
+### A generated splat is invented
+
+TripoSplat guesses the far side of an object from one picture. A splat made this way is decoration, not a record of anything real, and the space says so. A splat rebuilt from many real photographs is a different thing and is not part of this workflow.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** The pictures, clips and splats are the committed results of one run of `npm run gen:assets` on one machine with an NVIDIA RTX 3090 graphics card, on 2026-10-14. Every prompt is made up for this example.
+
+**What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again.""" ;
+    kpred:workflow-id   "generated-assets" ;
+    kpred:test-file     "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-GeneratedAssets-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Open the Generated assets example as its own space" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "open-example" ;
+    kpred:short-label   "Open the example" ;
+    kpred:box-label     "Generated assets" ;
+    kpred:box-target    "the Generated assets card under example data" ;
+    kpred:page          "/about" ;
+    kpred:screenshot    "/workflows/generated-assets/01-open-example.webp" ;
+    kpred:page-name     "the About page" ;
+    skos:definition     "Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
+    kpred:assertion     "The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space." .
+
+test:Workflow-GeneratedAssets-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the pipeline in the graph" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "see-pipeline" ;
+    kpred:short-label   "See the pipeline" ;
+    kpred:box-label     "Prompt → picture → clip and splat" ;
+    kpred:box-target    "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/02-see-pipeline.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
+    kpred:assertion     "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
+
+test:Workflow-GeneratedAssets-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The picture, made from a prompt" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "picture" ;
+    kpred:short-label   "Picture from a prompt" ;
+    kpred:box-label     "Made by Z-Image-Turbo" ;
+    kpred:box-target    "the enlarged picture" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/03-picture.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
+    kpred:assertion     "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
+
+test:Workflow-GeneratedAssets-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The clip, made from the picture" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "video" ;
+    kpred:short-label   "Clip from the picture" ;
+    kpred:box-label     "Made by Wan2.2" ;
+    kpred:box-target    "the clip, paused part way through" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/04-video.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
+    kpred:assertion     "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
+
+test:Workflow-GeneratedAssets-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "The splat, made from the picture" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "splat" ;
+    kpred:short-label   "Splat from the picture" ;
+    kpred:box-label     "Made by TripoSplat" ;
+    kpred:box-target    "the splat viewer, which turns the splat slowly and can be dragged" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/05-splat.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
+    kpred:assertion     "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
+
+test:Workflow-GeneratedAssets-Step6
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Set a splat as the background of the space" ;
+    kpred:part-of       test:Workflow-GeneratedAssets ;
+    kpred:step-order    "6"^^xsd:integer ;
+    kpred:step-id       "background" ;
+    kpred:short-label   "Splat as the background" ;
+    kpred:box-label     "The island behind the graph" ;
+    kpred:box-target    "the graph with the lighthouse island splat drawn behind it" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/generated-assets/06-background.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Open the lighthouse island splat and choose Set as background. The island is then drawn large behind the graph, sized to the graph and turning very slowly, and it never gets in the way of choosing a node. The choice is saved with the space, so it travels with an export. Clear background removes it." ;
+    kpred:assertion     "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .
+
+
+## =============================================================================
+## Generation bench tasks (F183.2, kb:gen-bench-in-graph)
+## =============================================================================
+## A BenchTask is one generation stage (image, video, splat). Its briefs are ordered
+## children (skos:broader the task, hnav:order); a brief's checklist items are ordered
+## children of the brief. The ground truth lives here, in the graph, so that the
+## benchmark corpus and its measured results are queryable (kb:tenet-evidence).
+## scripts/content/gen-bench-graph.ts reads exactly this shape; a malformed task fails
+## loudly. Everything is synthetic: no brief comes from anybody's notes.
+##   bench:tier  smoke = easy, kept to catch a broken runner; hard = has headroom.
+## The licence rule candidates are held to is kpred:principle on kb:gen-bench-in-graph.
+
+@prefix bench: <urn:reckons:bench/> .
+@prefix kb:    <urn:kbase:concept/> .
+
+bench:BenchTask rdf:type rdfs:Class ; rdfs:label "Generation bench task" ;
+    kpred:description "One generation stage with its fixed seeds and ordered briefs. The stage is image, video or splat." .
+bench:Brief rdf:type rdfs:Class ; rdfs:label "Bench brief" ;
+    kpred:description "One synthetic input for a stage, with a hand-written answer key: a yes/no checklist for images, numeric expectations for video and splat." .
+bench:ChecklistItem rdf:type rdfs:Class ; rdfs:label "Checklist item" ;
+    kpred:description "One yes/no question put to the local vision judge. The expected answer is always yes." .
+
+bench:Task-image rdf:type bench:BenchTask ;
+    rdfs:label "Image generation bench (text to image)" ;
+    hnav:order 120 ;
+    bench:stage "image" ;
+    skos:broader test:TestSuite ;
+    kpred:relates-to kb:gen-bench-in-graph ;
+    bench:seed 101 ;
+    bench:seed 202 ;
+    bench:seed 303 .
+
+bench:Task-video rdf:type bench:BenchTask ;
+    rdfs:label "Video generation bench (image to video)" ;
+    hnav:order 121 ;
+    bench:stage "video" ;
+    skos:broader test:TestSuite ;
+    kpred:relates-to kb:gen-bench-in-graph ;
+    bench:seed 101 ;
+    bench:seed 202 ;
+    bench:seed 303 .
+
+bench:Task-splat rdf:type bench:BenchTask ;
+    rdfs:label "Splat generation bench (image to splat)" ;
+    hnav:order 122 ;
+    bench:stage "splat" ;
+    skos:broader test:TestSuite ;
+    kpred:relates-to kb:gen-bench-in-graph ;
+    bench:seed 101 ;
+    bench:seed 202 ;
+    bench:seed 303 .
+
+bench:image-red-lighthouse rdf:type bench:Brief ;
+    rdfs:label "Red lighthouse on a shore" ;
+    skos:broader bench:Task-image ;
+    hnav:order 1 ;
+    bench:tier "smoke" ;
+    kpred:prompt "A tall lighthouse painted with red and white horizontal stripes standing on a rocky shore, the sea behind it, clear blue sky, wide shot, daylight photo" .
+bench:image-red-lighthouse--lighthouse rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-red-lighthouse ;
+    hnav:order 1 ;
+    skos:notation "lighthouse" ;
+    kpred:question "Is there a lighthouse in this picture?" .
+bench:image-red-lighthouse--red rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-red-lighthouse ;
+    hnav:order 2 ;
+    skos:notation "red" ;
+    kpred:question "Is the lighthouse painted at least partly red?" .
+bench:image-red-lighthouse--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-red-lighthouse ;
+    hnav:order 3 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one lighthouse (not two or more)?" .
+bench:image-red-lighthouse--sea rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-red-lighthouse ;
+    hnav:order 4 ;
+    skos:notation "sea" ;
+    kpred:question "Is there sea or open water visible?" .
+bench:image-red-lighthouse--sky rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-red-lighthouse ;
+    hnav:order 5 ;
+    skos:notation "sky" ;
+    kpred:question "Is a blue sky visible?" .
+
+bench:image-one-boat rdf:type bench:Brief ;
+    rdfs:label "A single rowing boat at sunrise" ;
+    skos:broader bench:Task-image ;
+    hnav:order 2 ;
+    bench:tier "smoke" ;
+    kpred:prompt "A single wooden rowing boat floating alone on calm water at sunrise, low warm light, mist on the water, nobody in the boat" .
+bench:image-one-boat--boat rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-one-boat ;
+    hnav:order 1 ;
+    skos:notation "boat" ;
+    kpred:question "Is there a boat in this picture?" .
+bench:image-one-boat--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-one-boat ;
+    hnav:order 2 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one boat (not two or more)?" .
+bench:image-one-boat--wood rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-one-boat ;
+    hnav:order 3 ;
+    skos:notation "wood" ;
+    kpred:question "Does the boat look like it is made of wood?" .
+bench:image-one-boat--water rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-one-boat ;
+    hnav:order 4 ;
+    skos:notation "water" ;
+    kpred:question "Is the boat on water?" .
+bench:image-one-boat--empty rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-one-boat ;
+    hnav:order 5 ;
+    skos:notation "empty" ;
+    kpred:question "Is the boat free of people?" .
+
+bench:image-blue-teapot rdf:type bench:Brief ;
+    rdfs:label "Blue teapot on a wooden table" ;
+    skos:broader bench:Task-image ;
+    hnav:order 3 ;
+    bench:tier "smoke" ;
+    kpred:prompt "A blue ceramic teapot with a white lid on a wooden table, studio product photo, plain light background, soft even lighting" .
+bench:image-blue-teapot--teapot rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-blue-teapot ;
+    hnav:order 1 ;
+    skos:notation "teapot" ;
+    kpred:question "Is there a teapot in this picture?" .
+bench:image-blue-teapot--blue rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-blue-teapot ;
+    hnav:order 2 ;
+    skos:notation "blue" ;
+    kpred:question "Is the teapot mostly blue?" .
+bench:image-blue-teapot--lid rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-blue-teapot ;
+    hnav:order 3 ;
+    skos:notation "lid" ;
+    kpred:question "Does the teapot have a white lid?" .
+bench:image-blue-teapot--table rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-blue-teapot ;
+    hnav:order 4 ;
+    skos:notation "table" ;
+    kpred:question "Is the teapot standing on a wooden surface?" .
+bench:image-blue-teapot--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-blue-teapot ;
+    hnav:order 5 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one teapot?" .
+
+bench:image-three-apples rdf:type bench:Brief ;
+    rdfs:label "Three green apples on a plate" ;
+    skos:broader bench:Task-image ;
+    hnav:order 4 ;
+    bench:tier "smoke" ;
+    kpred:prompt "Exactly three green apples in a row on a round white plate, top-down view slightly angled, plain wooden table, soft daylight" .
+bench:image-three-apples--apples rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-three-apples ;
+    hnav:order 1 ;
+    skos:notation "apples" ;
+    kpred:question "Are there apples in this picture?" .
+bench:image-three-apples--three rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-three-apples ;
+    hnav:order 2 ;
+    skos:notation "three" ;
+    kpred:question "Are there exactly three apples?" .
+bench:image-three-apples--green rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-three-apples ;
+    hnav:order 3 ;
+    skos:notation "green" ;
+    kpred:question "Are the apples green?" .
+bench:image-three-apples--plate rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-three-apples ;
+    hnav:order 4 ;
+    skos:notation "plate" ;
+    kpred:question "Are the apples on a plate?" .
+bench:image-three-apples--white rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-three-apples ;
+    hnav:order 5 ;
+    skos:notation "white" ;
+    kpred:question "Is the plate white?" .
+
+bench:image-turtle-three-quarter rdf:type bench:Brief ;
+    rdfs:label "Wooden sea turtle, three-quarter view" ;
+    skos:broader bench:Task-image ;
+    hnav:order 5 ;
+    bench:tier "smoke" ;
+    kpred:prompt "A hand-carved wooden sea turtle figurine with a high domed shell, standing on its four flippers, three-quarter view from the front and slightly above, the whole figurine visible, studio photo on a plain light grey background" .
+bench:image-turtle-three-quarter--turtle rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-turtle-three-quarter ;
+    hnav:order 1 ;
+    skos:notation "turtle" ;
+    kpred:question "Is there a turtle figurine in this picture?" .
+bench:image-turtle-three-quarter--wood rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-turtle-three-quarter ;
+    hnav:order 2 ;
+    skos:notation "wood" ;
+    kpred:question "Does the figurine look carved from wood?" .
+bench:image-turtle-three-quarter--three-quarter rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-turtle-three-quarter ;
+    hnav:order 3 ;
+    skos:notation "three-quarter" ;
+    kpred:question "Is the turtle seen from an angle (three-quarter view), rather than straight from above or straight from the side?" .
+bench:image-turtle-three-quarter--whole rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-turtle-three-quarter ;
+    hnav:order 4 ;
+    skos:notation "whole" ;
+    kpred:question "Is the whole turtle visible, with nothing cut off by the edge of the picture?" .
+bench:image-turtle-three-quarter--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-turtle-three-quarter ;
+    hnav:order 5 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one turtle?" .
+
+bench:video-red-lighthouse rdf:type bench:Brief ;
+    rdfs:label "Lighthouse and waves" ;
+    skos:broader bench:Task-video ;
+    hnav:order 1 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-red-lighthouse ;
+    kpred:prompt "waves roll in and break against the rocks below the lighthouse, clouds drift slowly across the sky, the camera pushes in gently" ;
+    bench:min-motion 0.01 ;
+    kpred:description "water and clouds move; the lighthouse stays put" .
+
+bench:video-one-boat rdf:type bench:Brief ;
+    rdfs:label "Boat drifting" ;
+    skos:broader bench:Task-video ;
+    hnav:order 2 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-one-boat ;
+    kpred:prompt "the wooden rowing boat drifts slowly forward on the calm water, ripples spread out from it, mist moves across the surface" ;
+    bench:min-motion 0.01 ;
+    kpred:description "the boat drifts and the water ripples" .
+
+bench:video-blue-teapot rdf:type bench:Brief ;
+    rdfs:label "Teapot steam" ;
+    skos:broader bench:Task-video ;
+    hnav:order 3 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-blue-teapot ;
+    kpred:prompt "steam rises from the spout of the blue teapot, the camera slowly circles around the table" ;
+    bench:min-motion 0.01 ;
+    kpred:description "steam rises and the viewpoint turns" .
+
+bench:video-turtle-three-quarter rdf:type bench:Brief ;
+    rdfs:label "Turtle swims" ;
+    skos:broader bench:Task-video ;
+    hnav:order 4 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-turtle-three-quarter ;
+    kpred:prompt "the wooden sea turtle figurine swims forward, its flippers paddling up and down, the camera slowly orbits around it" ;
+    bench:min-motion 0.01 ;
+    kpred:description "flippers move and the camera orbits" .
+
+bench:splat-blue-teapot rdf:type bench:Brief ;
+    rdfs:label "Teapot" ;
+    skos:broader bench:Task-splat ;
+    hnav:order 1 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-blue-teapot ;
+    bench:gaussians 32768 ;
+    bench:depth-to-width-min 0.3 ;
+    bench:depth-to-width-max 1.6 ;
+    bench:min-silhouette-iou 0.5 ;
+    kpred:description "a rounded solid, not a flat card" .
+
+bench:splat-turtle-three-quarter rdf:type bench:Brief ;
+    rdfs:label "Turtle" ;
+    skos:broader bench:Task-splat ;
+    hnav:order 2 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-turtle-three-quarter ;
+    bench:gaussians 32768 ;
+    bench:depth-to-width-min 0.3 ;
+    bench:depth-to-width-max 1.6 ;
+    bench:min-silhouette-iou 0.5 ;
+    kpred:description "a solid with a domed shell" .
+
+bench:splat-three-apples rdf:type bench:Brief ;
+    rdfs:label "Apples on a plate" ;
+    skos:broader bench:Task-splat ;
+    hnav:order 3 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-three-apples ;
+    bench:gaussians 32768 ;
+    bench:depth-to-width-min 0.2 ;
+    bench:depth-to-width-max 1.6 ;
+    bench:min-silhouette-iou 0.5 ;
+    kpred:description "three solids on a disc" .
+
+bench:splat-one-boat rdf:type bench:Brief ;
+    rdfs:label "Boat" ;
+    skos:broader bench:Task-splat ;
+    hnav:order 4 ;
+    bench:tier "smoke" ;
+    bench:source-brief bench:image-one-boat ;
+    bench:gaussians 32768 ;
+    bench:depth-to-width-min 0.2 ;
+    bench:depth-to-width-max 1.6 ;
+    bench:min-silhouette-iou 0.4 ;
+    kpred:description "a hull with depth" .
+
+
+## --- hard tier (F183.2): exact counts, legible text, spatial relations, negation, attribute binding, fine detail ---
+
+bench:image-five-apples rdf:type bench:Brief ;
+    rdfs:label "Five red apples in a row" ;
+    skos:broader bench:Task-image ;
+    hnav:order 11 ;
+    bench:tier "hard" ;
+    kpred:prompt "Exactly five red apples in a straight row on a plain white table, evenly spaced, nothing else on the table, soft daylight, product photo" .
+bench:image-five-apples--apples rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 1 ;
+    skos:notation "apples" ;
+    kpred:question "Are there apples in this picture?" .
+bench:image-five-apples--five rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 2 ;
+    skos:notation "five" ;
+    kpred:question "Are there exactly five apples (not four, not six)?" .
+bench:image-five-apples--red rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 3 ;
+    skos:notation "red" ;
+    kpred:question "Are all the apples red?" .
+bench:image-five-apples--row rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 4 ;
+    skos:notation "row" ;
+    kpred:question "Are the apples arranged in a row?" .
+bench:image-five-apples--alone rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-five-apples ;
+    hnav:order 5 ;
+    skos:notation "alone" ;
+    kpred:question "Is the table free of other objects?" .
+
+bench:image-open-sign rdf:type bench:Brief ;
+    rdfs:label "Wooden sign reading OPEN" ;
+    skos:broader bench:Task-image ;
+    hnav:order 12 ;
+    bench:tier "hard" ;
+    kpred:prompt "A wooden shop sign hanging on a red brick wall, the single word \"OPEN\" painted on it in large white capital letters, daylight photo" .
+bench:image-open-sign--sign rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 1 ;
+    skos:notation "sign" ;
+    kpred:question "Is there a sign in this picture?" .
+bench:image-open-sign--text rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 2 ;
+    skos:notation "text" ;
+    kpred:question "Does the sign read the word OPEN, spelled correctly?" .
+bench:image-open-sign--white rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 3 ;
+    skos:notation "white" ;
+    kpred:question "Are the letters white?" .
+bench:image-open-sign--brick rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 4 ;
+    skos:notation "brick" ;
+    kpred:question "Is the wall made of red bricks?" .
+bench:image-open-sign--one-word rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-open-sign ;
+    hnav:order 5 ;
+    skos:notation "one-word" ;
+    kpred:question "Does the sign carry only that one word and no other text?" .
+
+bench:image-cube-sphere rdf:type bench:Brief ;
+    rdfs:label "Red cube left of a blue sphere" ;
+    skos:broader bench:Task-image ;
+    hnav:order 13 ;
+    bench:tier "hard" ;
+    kpred:prompt "A red cube on the left and a blue sphere on the right, resting on a plain grey floor, plain light background, studio render" .
+bench:image-cube-sphere--cube rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 1 ;
+    skos:notation "cube" ;
+    kpred:question "Is there a cube in this picture?" .
+bench:image-cube-sphere--sphere rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 2 ;
+    skos:notation "sphere" ;
+    kpred:question "Is there a sphere in this picture?" .
+bench:image-cube-sphere--cube-red rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 3 ;
+    skos:notation "cube-red" ;
+    kpred:question "Is the cube red?" .
+bench:image-cube-sphere--sphere-blue rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 4 ;
+    skos:notation "sphere-blue" ;
+    kpred:question "Is the sphere blue?" .
+bench:image-cube-sphere--left-right rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 5 ;
+    skos:notation "left-right" ;
+    kpred:question "Is the cube to the left of the sphere?" .
+bench:image-cube-sphere--one-each rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cube-sphere ;
+    hnav:order 6 ;
+    skos:notation "one-each" ;
+    kpred:question "Is there exactly one cube and exactly one sphere?" .
+
+bench:image-cat-under-table rdf:type bench:Brief ;
+    rdfs:label "Grey cat under a table, green book on top" ;
+    skos:broader bench:Task-image ;
+    hnav:order 14 ;
+    bench:tier "hard" ;
+    kpred:prompt "A grey cat sitting under a round wooden table, a green book lying on top of the table, bright living room, photo" .
+bench:image-cat-under-table--cat rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 1 ;
+    skos:notation "cat" ;
+    kpred:question "Is there a cat in this picture?" .
+bench:image-cat-under-table--grey rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 2 ;
+    skos:notation "grey" ;
+    kpred:question "Is the cat grey?" .
+bench:image-cat-under-table--under rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 3 ;
+    skos:notation "under" ;
+    kpred:question "Is the cat under the table?" .
+bench:image-cat-under-table--book rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 4 ;
+    skos:notation "book" ;
+    kpred:question "Is there a book on top of the table?" .
+bench:image-cat-under-table--book-green rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 5 ;
+    skos:notation "book-green" ;
+    kpred:question "Is the book green?" .
+bench:image-cat-under-table--one-cat rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-cat-under-table ;
+    hnav:order 6 ;
+    skos:notation "one-cat" ;
+    kpred:question "Is there exactly one cat?" .
+
+bench:image-empty-street rdf:type bench:Brief ;
+    rdfs:label "Empty street at dawn" ;
+    skos:broader bench:Task-image ;
+    hnav:order 15 ;
+    bench:tier "hard" ;
+    kpred:prompt "An empty city street at dawn with no people and no cars anywhere, a row of closed shop fronts, wet pavement, wide shot, photo" .
+bench:image-empty-street--street rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 1 ;
+    skos:notation "street" ;
+    kpred:question "Is this a city street?" .
+bench:image-empty-street--no-people rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 2 ;
+    skos:notation "no-people" ;
+    kpred:question "Is the picture free of people?" .
+bench:image-empty-street--no-cars rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 3 ;
+    skos:notation "no-cars" ;
+    kpred:question "Is the picture free of cars and other vehicles?" .
+bench:image-empty-street--shops rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 4 ;
+    skos:notation "shops" ;
+    kpred:question "Are there shop fronts along the street?" .
+bench:image-empty-street--wet rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-empty-street ;
+    hnav:order 5 ;
+    skos:notation "wet" ;
+    kpred:question "Does the pavement look wet?" .
+
+bench:image-four-ducks rdf:type bench:Brief ;
+    rdfs:label "Four yellow ducks in a bath" ;
+    skos:broader bench:Task-image ;
+    hnav:order 16 ;
+    bench:tier "hard" ;
+    kpred:prompt "Exactly four yellow rubber ducks floating in a white bathtub full of water, top-down view, bright bathroom" .
+bench:image-four-ducks--ducks rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 1 ;
+    skos:notation "ducks" ;
+    kpred:question "Are there rubber ducks in this picture?" .
+bench:image-four-ducks--four rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 2 ;
+    skos:notation "four" ;
+    kpred:question "Are there exactly four ducks (not three, not five)?" .
+bench:image-four-ducks--yellow rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 3 ;
+    skos:notation "yellow" ;
+    kpred:question "Are all the ducks yellow?" .
+bench:image-four-ducks--bath rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 4 ;
+    skos:notation "bath" ;
+    kpred:question "Are the ducks in a bathtub?" .
+bench:image-four-ducks--water rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-four-ducks ;
+    hnav:order 5 ;
+    skos:notation "water" ;
+    kpred:question "Is there water in the bathtub?" .
+
+bench:image-fresh-bread-board rdf:type bench:Brief ;
+    rdfs:label "Chalkboard reading FRESH BREAD" ;
+    skos:broader bench:Task-image ;
+    hnav:order 17 ;
+    bench:tier "hard" ;
+    kpred:prompt "A black chalkboard with the two words \"FRESH BREAD\" handwritten in white chalk capital letters, a wooden frame, leaning against a bakery window" .
+bench:image-fresh-bread-board--board rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 1 ;
+    skos:notation "board" ;
+    kpred:question "Is there a chalkboard in this picture?" .
+bench:image-fresh-bread-board--fresh rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 2 ;
+    skos:notation "fresh" ;
+    kpred:question "Does the board show the word FRESH, spelled correctly?" .
+bench:image-fresh-bread-board--bread rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 3 ;
+    skos:notation "bread" ;
+    kpred:question "Does the board show the word BREAD, spelled correctly?" .
+bench:image-fresh-bread-board--chalk rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 4 ;
+    skos:notation "chalk" ;
+    kpred:question "Is the writing white?" .
+bench:image-fresh-bread-board--only rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-fresh-bread-board ;
+    hnav:order 5 ;
+    skos:notation "only" ;
+    kpred:question "Are those two words the only text on the board?" .
+
+bench:image-two-dogs rdf:type bench:Brief ;
+    rdfs:label "Black dog left, white dog right" ;
+    skos:broader bench:Task-image ;
+    hnav:order 18 ;
+    bench:tier "hard" ;
+    kpred:prompt "Two dogs sitting side by side on a brown sofa, a black dog on the left and a white dog on the right, facing the camera, photo" .
+bench:image-two-dogs--two rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 1 ;
+    skos:notation "two" ;
+    kpred:question "Are there exactly two dogs?" .
+bench:image-two-dogs--black-left rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 2 ;
+    skos:notation "black-left" ;
+    kpred:question "Is the dog on the left black?" .
+bench:image-two-dogs--white-right rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 3 ;
+    skos:notation "white-right" ;
+    kpred:question "Is the dog on the right white?" .
+bench:image-two-dogs--sofa rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 4 ;
+    skos:notation "sofa" ;
+    kpred:question "Are the dogs on a sofa?" .
+bench:image-two-dogs--facing rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-two-dogs ;
+    hnav:order 5 ;
+    skos:notation "facing" ;
+    kpred:question "Are both dogs facing the camera?" .
+
+bench:image-wristwatch rdf:type bench:Brief ;
+    rdfs:label "Wristwatch at ten past ten" ;
+    skos:broader bench:Task-image ;
+    hnav:order 19 ;
+    bench:tier "hard" ;
+    kpred:prompt "Close-up photo of a silver wristwatch with a white dial and twelve black numerals, the hour hand pointing at ten and the minute hand pointing at two, so it shows ten past ten, thin red second hand" .
+bench:image-wristwatch--watch rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 1 ;
+    skos:notation "watch" ;
+    kpred:question "Is there a wristwatch in this picture?" .
+bench:image-wristwatch--numerals rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 2 ;
+    skos:notation "numerals" ;
+    kpred:question "Does the dial show numerals?" .
+bench:image-wristwatch--ten-ten rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 3 ;
+    skos:notation "ten-ten" ;
+    kpred:question "Does the watch show about ten past ten?" .
+bench:image-wristwatch--second rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 4 ;
+    skos:notation "second" ;
+    kpred:question "Is a thin second hand visible?" .
+bench:image-wristwatch--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-wristwatch ;
+    hnav:order 5 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one watch?" .
+
+bench:image-bee-wings rdf:type bench:Brief ;
+    rdfs:label "Honeybee with visible wings on a flower" ;
+    skos:broader bench:Task-image ;
+    hnav:order 20 ;
+    bench:tier "hard" ;
+    kpred:prompt "Macro photo of a single honeybee on a purple flower, both pairs of wings clearly visible and see-through, fine hairs on the body, sharp focus on the bee" .
+bench:image-bee-wings--bee rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 1 ;
+    skos:notation "bee" ;
+    kpred:question "Is there a bee in this picture?" .
+bench:image-bee-wings--one rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 2 ;
+    skos:notation "one" ;
+    kpred:question "Is there exactly one bee?" .
+bench:image-bee-wings--flower rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 3 ;
+    skos:notation "flower" ;
+    kpred:question "Is the bee on a purple flower?" .
+bench:image-bee-wings--wings rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 4 ;
+    skos:notation "wings" ;
+    kpred:question "Are the bee's wings clearly visible?" .
+bench:image-bee-wings--hairs rdf:type bench:ChecklistItem ;
+    skos:broader bench:image-bee-wings ;
+    hnav:order 5 ;
+    skos:notation "hairs" ;
+    kpred:question "Can fine hairs be seen on the bee's body?" .
+
+
+## --- Run summary written back as data (F183.2): the measured claim lives beside the task it measured ---
+
+bench:Result-image-2026-10-14 rdf:type bench:RunSummary ;
+    rdfs:label "Image bench run, hard tier, 2026-10-14" ;
+    skos:broader bench:Task-image ;
+    bench:run-date "2026-10-14" ;
+    bench:tier "hard" ;
+    bench:judge "qwen2.5vl:7b" ;
+    bench:arm "incumbent: Z-Image-Turbo Q8_0 (Apache-2.0), quality 0.913, 14.0 s/run, peak 11992 MiB, 30 of 30 hard checks" ;
+    bench:arm "candidate: vnbot-ai/Z-Image-Turbo-GGUF Q4_K_M (apache-2.0), quality 0.907, 16.5 s/run, peak 10503 MiB, 30 of 30 hard checks" ;
+    bench:incumbent-seed-spread "0.060" ;
+    bench:quality-delta "-0.007" ;
+    bench:verdict "hold" ;
+    kpred:description "10 hard briefs x 3 seeds x 2 arms = 60 images, judged item by item. The verdict is hold, not insufficient-evidence: the incumbent mean 0.913 is under the 0.95 ceiling, so the ceiling rule did not trigger. The arms do not separate (delta -0.007 against an incumbent seed spread of 0.060). The briefs now have headroom: counts and a spatial scene vary (five-apples 0.4 to 1.0, four-ducks 0.6 to 1.0), but 6 of 10 briefs are still perfect for both arms. The judge is a 7B vision model whose answers on counts are themselves uncertain; none of its answers were checked by a human." .
+
+test:ThreeExampleNodes rdf:type ktype:Concept ;
+    rdfs:label "Three.js example loading and isolation" ;
+    skos:broader test:TestSuite ;
+    skos:definition "Attach a synthetic official-host WebGL example through node details. Before Load, there is no remote request or iframe. After a real WebGL draw, the viewer reports running. Verify parent-document and storage isolation, CSP network restrictions after document replacement, top-navigation denial, Stop/remove, HTTP and script errors, context loss, unsupported graphics APIs, a render deadline, forged-message refusal and a missing heartbeat. Desktop and phone Chromium use deterministic intercepted upstream responses, including the production SAMEORIGIN frame header." ;
+    kpred:command "npx playwright test tests/e2e/three-example.test.ts --project=desktop-chrome --project=mobile-android" ;
+    kpred:honest-note "Fixtures verify the viewer boundary, not compatibility with every changing upstream example. An iframe does not guarantee containment of GPU-driver or browser-process crashes. WebGPU-specific device behavior needs a compatible device; the deterministic scene uses WebGL2." ;
+    kpred:tested-by "tests/e2e/three-example.test.ts", "src/lib/3d/__tests__/three-example.test.ts" .

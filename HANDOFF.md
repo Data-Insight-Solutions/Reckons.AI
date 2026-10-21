@@ -1,3 +1,160 @@
+## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
+
+Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
+Fixed: the Three.js e2e failed on Chromium because the test's X-Frame-Options route makes Chrome's Local
+Network Access block the sandbox's own script on loopback (test-only launch flag, commented). `vite.config.ts`
+now ignores worktrees, workspaces and screenshot folders (the ENOSPC watcher error).
+Matt's decisions recorded in the roadmap: Three.js examples as node appearance AND as background (planned
+phases); core tutorials browser-only, no Tripo or Meshy (`kb:browser-generation-tutorial`, planned); game
+generator as speculative genre templates under F143, with an open question on the "we ship no engine" note.
+Working split from now on: Opus designs and writes initial code; a Sonnet agent runs long tests and basic fixes.
+
+## 2026-10-20 — Interactive generated-assets story (Codex)
+
+Active branch: `feat/generated-assets-story`, based on `dev`. Implements F166.1.1: Shelly asks for an image, waits for a checked local runner receipt, then offers video/splat/another image. Runner: `npm run gen:serve -- --workspace=/private/workspace`; use the same connected folder in the browser. No general backend or free-form chat dispatch. Generated assets remain private; generated facts arrive pending review.
+
+Matt's follow-up: this may become Getting started after refinement. Capability/setup guides now distinguish bundled viewers, local models and external agents. Device/SSH installation guidance warns about granted authority. The existing Getting started entry is not replaced yet.
+
+Also requested: Three.js examples attached to nodes, with loading failure protection. `kb:threejs-example-nodes` records the plan and the browser/GPU isolation limitation. Viewer versus in-graph scene presentation is being clarified; no implementation is claimed here.
+
+Validation as of 2026-10-20: full unit suite 4,200 passed, 14 TODOs. Live synthetic image/video/splat checks succeeded (13.6/55.9/35.4 seconds); initial failures found and fixed an invalid splat count and an incomplete npm install. Final browser/check/build/CI results belong to the PR, not these provisional numbers. Startup script sweep: 50/54 clean, with existing button-crawl, perf-crawl, jobs-graph and naming-ratchet failures. Local /kb visual ran on a disposable copy of browser data; output remains private.
+
+The machine's inotify limit is still reached by old worktrees. Local testing uses a temporary Vite config that ignores `.claude` and workspace folders; no other user's server was stopped. See prior environment notes below.
+
+## 2026-10-15 — START HERE. Background controls in the graph view (Claude Code)
+
+**In flight:** a Sonnet agent is building F58.9.16 on `feat/f58-9-16-background-in-view` (no PR yet when this was
+written):
+- background settings in the graph view's FILTERS panel (surround/backdrop, manual scale, yaw, opacity, up axis, level,
+  SET FOCAL POINT);
+- "Place in room" renamed to "Place in space";
+- placement mode collapses the large asset preview and shows a compact placement bar over the graph;
+- free and focus layouts spread out, measured before and after.
+
+Check its PR (`gh pr list`), verify base dev, then merge when green (the scratch merge-when-green helper is described in
+the 2026-10-14 night entry).
+
+**Add to that lane or the next one:**
+- an unknown `?kb=` falls back to the default graph without telling the person (resolveKbParam), so a not-yet-synced
+  space looks like the wrong graph. Add a "space not found yet" notice.
+- Matt's studio space (`reckons-workspace/kbs/my-studio/`, private) now holds the 450-frame SPZ (1.54M Gaussians,
+  37.7 MB) as background, plus a thinned 18.9 MB version as a second splat node. Level the floor fitted only 18% of
+  points, so it may be tilted.
+
+**Environment:**
+- Port 5291 runs Matt's test server from the worktree `agent-a295e916fb7a98470`, detached at origin/dev. Never stop it
+  without restarting it; to update it, `git checkout --detach origin/dev` there and restart vite.
+- The machine hit the inotify watcher limit (ENOSPC): about 25 leftover agent worktrees. Offer to prune the merged
+  ones (count first, check each for uncommitted work, ask), or Matt raises fs.inotify.max_user_watches with sudo.
+
+**Review queue batch 2026-10-15:** 2 accepted, 3 rejected as stale. Deferred for Matt:
+- whether the zero-byte sync-file data-loss fix (reported 2026-09-04) shipped;
+- the AWS context-ontology-accelerator claim (F21 positioning);
+- the stores module dead-weight flag.
+
+Producers server-health and known-issue re-emit items that are already fixed; they should check current state first.
+
+**Matt's decisions still pending:**
+- F58.9 in 0.2.7 (recommended);
+- SPZ default vs GPU-only SOG;
+- whether the 4.9 MB Your room's softness is acceptable;
+- pruning worktrees.
+
+## 2026-10-14 (night) — earlier. Room scans, splat refine, release review spaces (Claude Code)
+
+**Merged into dev today** (all CI green, base verified): #469 scan:room (F58.9.6), #470 import a scan, background
+settings, placement and the Your room space (F58.9.7-.10), #475 generation-model bench with tasks in the Testing graph
+(F183.1-.2), #476 plan (F58.9.12-.15, F34.5), #477 scan:quality (F58.9.14), #478 review spaces per release (F34.5),
+#479 splat-node occlusion (F58.9.13). #480 SPZ/SOG compression, floater crop and the reconstructed Your room (F58.9.11):
+queued to merge when green (dev was merged into it to clear a package.json conflict).
+
+**Matt's private studio scan** (never commit, never describe its contents): input in `~/.local/share/reckons/scans/input/`,
+runs in `studio-out/` (300 frames, 228k Gaussians) and `studio-450/` (450 frames, 2.8M Gaussians, 661 MB), cropped SPZ
+copies in each `refine/`. A private workspace space is at `reckons-workspace/kbs/my-studio/` (gitignored) and opens with
+`?kb=my-studio` after a workspace sync. Matt viewed the 300-frame splat on 2026-10-14: "not great", a "very bad blob"
+zoomed out (long floater tail: p99 distance 60, max 306). Brush writes f_dc before x,y,z: read PLY properties BY NAME.
+
+**Next lanes (planned in the roadmap, not built):**
+1. F58.9.12 splat refine: focal point, radius, known-distance scale, floater clean-up via splat-transform (already a
+   dependency through #480), new asset and keep the original. Open in SuperSplat only where the device has it. The
+   device-capability "plugin" idea is an open question, not a decision.
+2. F58.9.15 own-space walkthrough: opt-in, never in Getting started (Matt: a room scan is invasive).
+3. TestWorkflows for each release's headline features: Review 0.2.6 has 1 workflow (13 of 14 parts lack one); Review
+   0.2.7 has 0 of 12.
+4. A Gaussian cap for scan:room (450 frames gave 12x the Gaussians).
+
+**Matt's decisions pending:** release placement of F58.9 (recommended: 0.2.7, which also gives Review 0.2.7 a real
+workflow); SPZ default vs GPU-only SOG (26% smaller); whether the 4.9 MB Your room's softness is acceptable.
+
+**Process lessons (measured today):**
+- Force-push is blocked by the auto-mode classifier. Fix conflicts by merging dev INTO the branch (merge commits are
+  exempt from commit-trailers), not by rebasing.
+- Trailers must sit in the last paragraph with Co-Authored-By: no blank line between `Intent:` and `Co-Authored-By:`.
+- Every lane adds npm scripts at the same line of package.json, which caused four conflicts today.
+- Briefs must name the blocking script-tier checks (commit-trailers, codebase-coverage, term-ratchet, graph-catalog):
+  the first room PR failed three of them.
+- An unbounded COLMAP run (3200 px, 24 threads) OOM-killed the machine and VSCode. Run heavy jobs under
+  `systemd-run --user --scope -p MemoryMax=…`. SOG compression on CPU ran over 3 hours; SPZ takes seconds.
+- The merge-when-green helper (scratch script: wait on checks, require base dev and CLEAN, retry UNKNOWN) did the
+  merging at zero tokens; worth promoting to scripts/.
+- A Haiku overseer built scan:quality correctly from a tight brief.
+
+## 2026-10-14 (late) — earlier today. F58.9 follow-ups, Matt's backlog, and a context reset (Claude Code)
+
+**Why this handoff exists:** Matt asked to cut main-thread context ("69% of usage at >150k context; 100% subagent-
+heavy"). The main thread hand-debugged an e2e flake for an hour, which is the mistake in memory agent-orchestration-
+models. NEXT SESSION: Opus plans and decides only; build goes to ONE Sonnet overseer per lane with a tight brief.
+Run the local tier where it fits (local panel for prose, qwen2.5vl for "is the splat visible").
+
+**On dev now:** #463 (F58.9 splat proof of concept), #464 (Matt's five review decisions: crawl jobs back and their
+results gitignored; CodeQL new-alert blocking is NOT live, the admin rule is recorded on kb:release-pipeline; landing
+and docs audits scheduled; n8n note pipeline is the next test workflow). PR #465 (example opens on its graph; splat
+nodes hide their marker; Generated assets on the welcome page): merge when CI is green, after checking its base.
+#462 (F223.1) green, unmerged.
+
+**Known flake, already diagnosed:** tests/e2e/workflow-generated-assets.test.ts `openAsset` picks `.sb-node-row`
+`.first()` for a label, and the search ALSO lists that label as a literal value node (screenshot showed "this node is
+a value, not an entity"). That's about 1 run in 3. Two fixes failed: filtering rows that have `.sb-node-iri`, and
+`hasText: <slug>`; both failed 5/5, so the dropdown's entity rows are not what SearchBar.svelte:255-280 suggests.
+Look at the real dropdown DOM in a headed run before writing a third. Also ask why the label shows up as a literal
+node at all (detailed mode?). Docs screenshots still show marker shapes, so rerun `npm run workflow:shots`.
+
+**Matt's backlog from this session (his words → proposed lane). Plan each in static/reckons-roadmap.ttl first.
+Matt asked for grouping into 0.2.7, 0.2.8 and up to 0.3.0, a roadmap reorganisation, and estimates re-based on
+measured session work (Reckons.AI and his machine, not only Claude Code), as build-in-public evidence that the app
+helps the work:**
+1. Set as space background for IMAGES too, as a flat plane behind the graph (splats stay 3D).
+2. A STORY MODE for the Generated assets space, like the Getting started tour. The visual-test review space also
+   "lacks proper timeline/story setup" (open question on kb:gen-video-to-splat).
+3. A greyed-out REGENERATE button with an (i) explaining how to set up the local generation services.
+4. "Are these generation services proper plugins?" ANSWERED: no. They are host commands (scripts/content/gen-assets.ts),
+   declared as one F166 task; no manifest, no loader, and the app cannot start them. F166 decided "a generation tool is
+   a task with a command, not an integration"; the F61 minimal plugin contract is in 0.2.7. Matt now wants a PLUGIN
+   entity type (wrench icon, "defined within Reckons.AI", more specific than a tool) and a LICENSE entity type
+   (MIT and Apache-2.0 as entities, not literals). Recommend: a Plugin entity is the F61 manifest (command, effects,
+   done-when, license, models), which reconciles F166 with F61. This is a product decision; propose it, don't make it.
+5. HOME OFFICE splat, image first, with more volumetric enclosure for backgrounds, plus a SET OF BACKGROUND SETTINGS
+   (mode backdrop/floor/surround, scale, distance, opacity, spin). TripoSplat makes objects, so try a cutaway-room
+   diorama prompt first; real enclosure probably needs a panorama or reconstruction path (Trial B). Tell Matt when a
+   decent room splat exists, for manual review.
+6. PLACE AND SCALE other splats inside the background (upcoming release).
+7. "OPEN IN" buttons configurable per asset type, with a user default (e.g. Blender for GLB).
+Also open: the CodeQL admin rule (Matt), and perf-crawl failing its budgets on 6/6 routes (non-blocking, worth a look).
+
+## 2026-10-14 — F58.9 splat proof of concept → PR #463 (dev); 0.2.6 chain status (Claude Code)
+
+**0.2.6:** #456 (F122.1.4) merged to dev. #462 (F223.1) green and mergeable but NOT merged (the auto-mode
+classifier blocked the merge; Matt's call). Chain: F107.10.1-.3 and F122.1.1-.4 functional; F223.2, .3, .4 and
+conflicts remain, cut 2026-10-18. Parent statuses F107.10/F122.1 still read "planned" in the burndown: stale.
+
+**F58.9 (Matt asked for it on dev for localhost review):** branch `feat/f58-9-local-splat-poc`, PR #463 → dev.
+Local tools live in `~/.local/share/reckons/gen` (27 GB; `scripts/content/gen-setup.sh`). `npm run gen:assets`
+regenerates; `npm run gen:check` is what CI can run. Review: About → example data → Generated assets (opens as its
+own space); docs at /docs/testing/workflow-generated-assets. Weak spots are listed in the PR and in the roadmap
+`kpred:remaining` of kb:splat-* (2D draws no splats; flaky 1/17 e2e; TripoSplat CUDA-init retry; +inf opacity
+repaired upstream defect). Open for Matt: release placement (proposed 0.2.7), and his note that the visual-test
+review space lacks a timeline/story setup (recorded as an open question on kb:gen-video-to-splat).
+
 ## 2026-10-13 — START HERE. 0.2.6 day 6: open PRs landed, local tier measured, e2e workflow docs (Claude Code)
 
 Opus coordinated; Sonnet overseers (own worktrees, 2 at a time) did the work and merged into `dev` (Matt

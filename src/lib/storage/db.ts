@@ -380,6 +380,9 @@ export type MobileSession = {
   deviceName?: string;
 };
 
+/** An imported Gaussian splat file (F58.9.7). `id` is `<content-hash>.ply|spz|sog`; triples refer to it as `asset:splat/<id>`. */
+export type SplatFileRow = { id: string; blob: Blob; filename: string; size: number; importedAt: number };
+
 export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name: string };
 
 /**
@@ -409,6 +412,7 @@ export class KBaseDB extends Dexie {
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
   kbSnapshots!: Table<KnowledgeBaseSnapshotRow, string>;
   extractionRuns!: Table<ExtractionRun, string>;
+  splatFiles!: Table<SplatFileRow, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -498,6 +502,22 @@ export class KBaseDB extends Dexie {
       icon2dOverrides: 'id',
       kbSnapshots: 'id, kbId, createdAt',
       extractionRuns: 'id, sourceId, startedAt, status'
+    });
+    // v9: imported Gaussian splat files (F58.9.7). Additive: one new store, no data transform.
+    this.version(9).stores({
+      sources: 'id, ingestedAt, kind, trustLevel',
+      statements: 'id, sourceId, status, [s.value+p.value], createdAt',
+      settings: 'key',
+      changelog: '++id, timestamp, action, statementId, sourceId, entityKey',
+      mergeDecisions: '++id, timestamp, entityKeyA, entityKeyB',
+      trustEvents: '++id, timestamp, sourceId',
+      glbOverrides: 'id',
+      workspace: 'id',
+      entityGifs: 'id',
+      icon2dOverrides: 'id',
+      kbSnapshots: 'id, kbId, createdAt',
+      extractionRuns: 'id, sourceId, startedAt, status',
+      splatFiles: 'id'
     });
   }
 }

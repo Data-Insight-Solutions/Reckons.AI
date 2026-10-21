@@ -93,6 +93,14 @@
       "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
     },
     {
+      "name": "release-review-space",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-review-space.ts --check",
+      "blocking": true,
+      "desc": "F34.5. Fails when a generated static/review-<version>.ttl (the per-release visual review space opened from About) differs from what the roadmap's release has-part features and the Testing graph's TestWorkflows generate. Regenerate with npx tsx scripts/offline/release-review-space.ts. Deterministic, no model."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,
@@ -208,9 +216,9 @@
     {
       "name": "button-crawl",
       "tier": "script",
-      "enabled": false,
+      "enabled": true,
       "cmd": "npx tsx scripts/offline/button-crawl.ts",
-      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
+      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a server already running (`npm run dev`, or BASE_URL=...); with none it exits non-zero, which shows as a failed non-blocking job in the sweep, not a green one. Screenshots under tests/visual/screenshots/button-crawl/ are gitignored and stay local"
     },
     {
       "name": "graph-economics",
@@ -292,9 +300,9 @@
     {
       "name": "perf-crawl",
       "tier": "script",
-      "enabled": false,
+      "enabled": true,
       "cmd": "npx tsx scripts/offline/perf-crawl.ts --ladder",
-      "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server — it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
+      "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a DISPLAY and a running dev server; it aborts (non-blocking failure) rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none, so a headless or serverless sweep will show it failing. Output under tests/visual/results/perf/ is gitignored and stays local. Deeper run: npm run offline:perf -- --ladder --trace-delta"
     },
     {
       "name": "docs-staleness",
@@ -499,6 +507,20 @@
       "blocking": true,
       "cmd": "npx tsx scripts/offline/ui-terms.ts --check",
       "desc": "F203.7 UI terms ratchet (Matt, 2026-10-07: detect backend engineering terms on screen and inconsistent words). Visible template text only: jargon from kpred:ui-jargon and prefixed standards labels, and 'graph' meaning a space by rule (lib/term-sense-rules.ts). Counts may fall, never rise; baselines are kpred:ui-term-ratchet on the terminology scheme."
+    },
+    {
+      "name": "gen-model-discover",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npm run bench:gen:discover",
+      "desc": "F183.1: for each local generation stage, is the incumbent Hugging Face file still the bytes the receipt recorded, and which newer licensed, loadable, one-GPU-sized models exist? Script tier (rules, zero tokens) but ONLINE and opt-in: the command carries --online, and it is disabled in the sweep so nothing reaches out unasked. Output is a candidate list with a reason per drop; downloads and likes order it and are never evidence of quality."
+    },
+    {
+      "name": "gen-model-bench",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npm run bench:gen -- --stage=image",
+      "desc": "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts."
     }
   ]
 }

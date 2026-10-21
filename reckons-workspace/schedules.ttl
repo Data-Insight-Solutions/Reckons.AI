@@ -117,6 +117,15 @@ sched:claim-audit rdf:type ktype:Schedule ;
     kpred:enabled   "true" ;
     kpred:description "Hand-written claims against the graph." .
 
+sched:docs-staleness rdf:type ktype:Schedule ;
+    rdfs:label      "Docs staleness" ;
+    kpred:every     "1w" ;
+    kpred:command   "npx tsx scripts/offline/docs-staleness.ts --quiet" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Generated docs pages whose graph facts moved since generation. Part of the regular landing-page and documentation audit (MATT, 2026-10-14), with claim-audit (README, landing page, about page, SAFETY, COUNSEL-BRIEF) and docs-review." .
+
 sched:safety-attestation rdf:type ktype:Schedule ;
     rdfs:label      "Safety attestation" ;
     kpred:every     "1w" ;

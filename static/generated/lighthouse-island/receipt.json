@@ -1,0 +1,230 @@
+{
+  "slug": "lighthouse-island",
+  "label": "Lighthouse island diorama",
+  "role": "background",
+  "generated": true,
+  "stages": {
+    "image": {
+      "stage": "image",
+      "tool": {
+        "name": "stable-diffusion.cpp",
+        "license": "MIT",
+        "version": "commit 1d0a58a (Vulkan build)",
+        "repo": "https://github.com/leejet/stable-diffusion.cpp"
+      },
+      "models": [
+        {
+          "role": "diffusion",
+          "file": "z_image_turbo-Q8_0.gguf",
+          "sha256": "df1c5baa86d1398c979495a6072dbcee79444fdb884a2445582ba0769c44e9a1",
+          "bytes": 6577440704,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/leejet/Z-Image-Turbo-GGUF"
+        },
+        {
+          "role": "text encoder",
+          "file": "Qwen3-4B-Instruct-2507-Q8_0.gguf",
+          "sha256": "391c1e410fd9f4cf2de2b510273b56a84c19ce18f4fa3bfb3774031dac4ef068",
+          "bytes": 4280405600,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF"
+        },
+        {
+          "role": "vae",
+          "file": "ae.safetensors",
+          "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38",
+          "bytes": 335304388,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/Comfy-Org/z_image_turbo"
+        }
+      ],
+      "input": {
+        "prompt": "A miniature diorama of a small rocky island with a white and red lighthouse, a few pine trees and a wooden jetty, centered, whole island visible, isometric view, plain dark blue background, soft light"
+      },
+      "settings": {
+        "width": 768,
+        "height": 768,
+        "steps": 8,
+        "cfgScale": 1,
+        "sampler": "euler",
+        "seed": 7
+      },
+      "ranAt": "2026-10-14T14:10:40.302Z",
+      "durationS": 16.6,
+      "output": {
+        "file": "image.webp",
+        "sha256": "097b22eda26d6ae3298f6d02f6fd7d36ad47944ed123e957f51edd7f4da6984c",
+        "bytes": 43884
+      },
+      "check": {
+        "pass": true,
+        "problems": [],
+        "notes": [],
+        "measured": {
+          "width": 768,
+          "height": 768,
+          "maxChannelStdev": 38.02
+        }
+      }
+    },
+    "video": {
+      "stage": "video",
+      "tool": {
+        "name": "stable-diffusion.cpp",
+        "license": "MIT",
+        "version": "commit 1d0a58a (Vulkan build)",
+        "repo": "https://github.com/leejet/stable-diffusion.cpp"
+      },
+      "models": [
+        {
+          "role": "diffusion",
+          "file": "Wan2.2-TI2V-5B-Q8_0.gguf",
+          "sha256": "57bece983817ab2f957546683bb670f13be7d99022d45674840cd999a050ea8f",
+          "bytes": 5400179040,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF"
+        },
+        {
+          "role": "text encoder",
+          "file": "umt5-xxl-encoder-Q8_0.gguf",
+          "sha256": "2521d4de0bf9e1cc6549866463ceae85e4ec3239bc6063f7488810be39033bbc",
+          "bytes": 6043068256,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/city96/umt5-xxl-encoder-gguf"
+        },
+        {
+          "role": "vae",
+          "file": "Wan2.2_VAE.safetensors",
+          "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156",
+          "bytes": 1409400960,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/QuantStack/Wan2.2-TI2V-5B-GGUF"
+        }
+      ],
+      "input": {
+        "prompt": "the lighthouse beam sweeps around, waves lap at the rocks of the small island, the camera slowly orbits the diorama",
+        "image": "image.webp",
+        "imageSha256": "097b22eda26d6ae3298f6d02f6fd7d36ad47944ed123e957f51edd7f4da6984c"
+      },
+      "settings": {
+        "width": 512,
+        "height": 512,
+        "frames": 49,
+        "fps": 16,
+        "steps": 20,
+        "cfgScale": 6,
+        "flowShift": 3,
+        "sampler": "euler",
+        "seed": 7
+      },
+      "ranAt": "2026-10-14T14:15:45.430Z",
+      "durationS": 52.2,
+      "output": {
+        "file": "video.webm",
+        "sha256": "b385608e6864e95dcf9d675cbeea97f0f1aa58898831d7b300b1f57fe97a7653",
+        "bytes": 1510044
+      },
+      "check": {
+        "pass": true,
+        "problems": [],
+        "notes": [],
+        "measured": {
+          "width": 512,
+          "height": 512,
+          "frames": 49,
+          "durationS": 3,
+          "motion": 0.0543
+        }
+      }
+    },
+    "splat": {
+      "stage": "splat",
+      "tool": {
+        "name": "TripoSplat",
+        "license": "MIT",
+        "version": "commit d8db9e0",
+        "repo": "https://github.com/VAST-AI-Research/TripoSplat"
+      },
+      "models": [
+        {
+          "role": "diffusion_models",
+          "file": "triposplat_fp16.safetensors",
+          "sha256": "c870b97ac1d6bc9177608a5ec625e19ef9f3c5019aa68f64b0fb7803abcd6d20",
+          "bytes": 741106994,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "triposplat_vae_decoder_fp16.safetensors",
+          "sha256": "ed0d0c3d43b599e326845d0ec70f3cf77be9a55e2d97627ac3b34d2830763cc8",
+          "bytes": 576148442,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "triposplat_vae_encoder_fp16.safetensors",
+          "sha256": "602625a8027b9ed48c6bb817f773b70877038f05349c71be1117c1fca7e2ded7",
+          "bytes": 682078640,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "clip_vision",
+          "file": "dino_v3_vit_h.safetensors",
+          "sha256": "a29ef35101a16966972a0d50732a6f3a608ff7cfffb2afa9bbe9007cb842cc53",
+          "bytes": 1681247696,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "flux2-vae.safetensors",
+          "sha256": "d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5",
+          "bytes": 336213556,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "background_removal",
+          "file": "birefnet.safetensors",
+          "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+          "bytes": 444473596,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        }
+      ],
+      "input": {
+        "image": "image.webp",
+        "imageSha256": "097b22eda26d6ae3298f6d02f6fd7d36ad47944ed123e957f51edd7f4da6984c"
+      },
+      "settings": {
+        "gaussians": 65536,
+        "steps": 20,
+        "seed": 7,
+        "peakGiB": 4.59,
+        "torch": "2.11.0+cu128",
+        "opacityRepaired": 23502
+      },
+      "ranAt": "2026-10-14T14:25:19.757Z",
+      "durationS": 50.9,
+      "output": {
+        "file": "splat.ply",
+        "sha256": "271f25f0c6e658f8c24cd0eebcffc833339dbe092cddce1894767a48d3d39571",
+        "bytes": 4456863
+      },
+      "check": {
+        "pass": true,
+        "problems": [],
+        "notes": [],
+        "measured": {
+          "count": 65536,
+          "bytesPerGaussian": 68,
+          "extent": 0.6861,
+          "visibleFraction": 0.992
+        }
+      }
+    }
+  }
+}

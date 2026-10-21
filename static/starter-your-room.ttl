@@ -1,0 +1,77 @@
+## Your room — a guided example space (F58.9.10, kb:room-scene-space).
+## Four steps in order: scan a room, reconstruct it, import the scan, then generate objects and place them in it.
+## The room shown here is SYNTHETIC: a made-up living room, rendered as a video by Blender
+## (scripts/content/scan-synthetic-room.py) and RECONSTRUCTED into this splat by npm run scan:room, so the
+## space works before anyone has scanned theirs. It is not a scan of any place. The turtle is the
+## generated splat from the Generated assets example, placed in the room.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix kmeta: <urn:kbase:meta/> .
+@prefix hnav:  <urn:reckons:nav/> .
+@prefix room:  <urn:reckons:room/> .
+
+## The space's own settings (F58.9.3, F58.9.8): settings, never edges. The room surrounds the graph and
+## is fitted to 10 world units by its robust extent (24.7 file units, so scale 0.4); COLMAP's axes point down, so up is -y.
+<urn:reckons:space>
+    kmeta:background-splat "/generated/synthetic-room/splat.spz" ;
+    kmeta:background-mode  "surround" ;
+    kmeta:background-up    "-y" ;
+    kmeta:background-scale "0.4" .
+
+kb:your-room rdf:type ktype:Concept ;
+    rdfs:label "Your room" ;
+    rdfs:comment "Scan a real room with a phone, turn the scan into a Gaussian splat on your own computer, bring it in as this space's background, and place generated objects inside it. The room you see here is synthetic, so you can try every step first." ;
+    p:has room:step-scan, room:step-reconstruct, room:step-import, room:step-generate .
+
+room:step-scan rdf:type ktype:Concept ;
+    rdfs:label "1. Scan your room" ;
+    rdfs:comment "On an iPhone, either record a slow video of the room from the Camera app, or use Stray Scanner (free, open source, needs an iPhone with LiDAR). Walk slowly, keep the camera moving sideways more than turning, and cover each wall from two angles. Send the file to the computer that will do step 2. Nothing leaves your devices." ;
+    hnav:order "1"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
+    hnav:next  room:step-reconstruct .
+
+room:step-reconstruct rdf:type ktype:Concept ;
+    rdfs:label "2. Reconstruct it" ;
+    rdfs:comment "On that computer, the command npm run scan:room is meant to turn the capture into splat.ply: it extracts frames with ffmpeg, recovers the camera positions with COLMAP, trains the splat with Brush, and writes a receipt. IT IS IN REVIEW (PR #468, not merged to dev yet), so it may not be in your copy of the project. It is a host command, never part of the app. Real reconstructions are large: Brush at its default 30k steps wrote a 102 MB file of 432,501 Gaussians in one measured run, and COLMAP's scale is arbitrary (a 5 m room measured 38.7 units), so step 3 fits the room to the graph instead of assuming metres. It will accept the result only if COLMAP placed at least half the frames and the splat passes the same check Import a scan uses in step 3." ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
+    hnav:prev  room:step-scan ;
+    hnav:next  room:step-import .
+
+room:step-import rdf:type ktype:Concept ;
+    rdfs:label "3. Import the scan" ;
+    rdfs:comment "In the Graphs tab, under space background, press Import a scan and pick the .ply or .spz file. It is checked first and refused, with the reason, if it is damaged. It is kept in this browser (not uploaded) and becomes the background. A file over 50 MB imports with a warning (use fewer training steps, or .spz); over 300 MB it is refused. Choose surround so the graph sits inside the room. If the room looks sideways, change the up axis (scans from COLMAP-based tools usually point down, so try the minus-y choice), then press Level the floor." ;
+    p:uses room:synthetic-room ;
+    hnav:order "3"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
+    hnav:prev  room:step-reconstruct ;
+    hnav:next  room:step-generate .
+
+room:step-generate rdf:type ktype:Concept ;
+    rdfs:label "4. Generate objects and place them" ;
+    rdfs:comment "A browser cannot run the models. On a computer that has the tools, npm run gen:assets makes a picture, a clip and a Gaussian splat from a prompt (the Generated assets example shows the results). Open a splat on its node and press Place in room: it stands on the floor in front of the camera, and the move, raise, turn and size buttons adjust it. The carved turtle in this room was placed that way. Unplace returns it to the layout." ;
+    p:uses room:turtle ;
+    hnav:order "4"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
+    hnav:prev  room:step-import .
+
+room:synthetic-room rdf:type ktype:GaussianSplat ;
+    rdfs:label "Splat: a made-up room (synthetic)" ;
+    p:splat "/generated/synthetic-room/splat.spz" ;
+    kmeta:splat-origin "synthetic" ;
+    rdfs:comment "SYNTHETIC. A made-up living room (plank floor, rug, sofa, shelves, window, pictures) rendered as a 10 second, 300 frame video in Blender, then reconstructed on this machine by npm run scan:room (COLMAP poses, Brush training, floaters cropped, thinned to 280,000 Gaussians with no view-dependent colour, stored as .spz, 4.9 MB, lossy). It is not a scan of any place. Its receipt is static/generated/synthetic-room/receipt.json." .
+
+room:turtle rdf:type ktype:GaussianSplat ;
+    rdfs:label "Splat: carved wooden sea turtle" ;
+    p:splat "/generated/carved-turtle/splat.ply" ;
+    kmeta:splat-origin "generated" ;
+    p:generated-with "TripoSplat" ;
+    rdfs:comment "Generated: invented from one picture of a made-up prompt, so its far side is a guess. The same file as in the Generated assets example." ;
+    kmeta:placed-at    "1.1 -0.9 0.7" ;
+    kmeta:placed-scale "0.4" ;
+    kmeta:placed-yaw   "-30" .

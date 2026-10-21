@@ -75,10 +75,10 @@ job:build-guard rdf:type          ktype:OfflineJob ;
 job:button-crawl rdf:type          ktype:OfflineJob ;
     rdfs:label          "button-crawl" ;
     skos:prefLabel      "button-crawl" ;
-    skos:definition     "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`" ;
+    skos:definition     "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a server already running (`npm run dev`, or BASE_URL=...); with none it exits non-zero, which shows as a failed non-blocking job in the sweep, not a green one. Screenshots under tests/visual/screenshots/button-crawl/ are gitignored and stay local" ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/button-crawl.ts" ;
-    kpred:job-enabled   "false" ;
+    kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
 job:ci-graph rdf:type          ktype:OfflineJob ;
@@ -261,6 +261,24 @@ job:extraction-score rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:gen-model-bench rdf:type          ktype:OfflineJob ;
+    rdfs:label          "gen-model-bench" ;
+    skos:prefLabel      "gen-model-bench" ;
+    skos:definition     "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "npm run bench:gen -- --stage=image" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
+job:gen-model-discover rdf:type          ktype:OfflineJob ;
+    rdfs:label          "gen-model-discover" ;
+    skos:prefLabel      "gen-model-discover" ;
+    skos:definition     "F183.1: for each local generation stage, is the incumbent Hugging Face file still the bytes the receipt recorded, and which newer licensed, loadable, one-GPU-sized models exist? Script tier (rules, zero tokens) but ONLINE and opt-in: the command carries --online, and it is disabled in the sweep so nothing reaches out unasked. Output is a candidate list with a reason per drop; downloads and likes order it and are never evidence of quality." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npm run bench:gen:discover" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:graph-economics rdf:type          ktype:OfflineJob ;
     rdfs:label          "graph-economics" ;
     skos:prefLabel      "graph-economics" ;
@@ -363,10 +381,10 @@ job:naming-ratchet rdf:type          ktype:OfflineJob ;
 job:perf-crawl rdf:type          ktype:OfflineJob ;
     rdfs:label          "perf-crawl" ;
     skos:prefLabel      "perf-crawl" ;
-    skos:definition     "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server — it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta" ;
+    skos:definition     "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a DISPLAY and a running dev server; it aborts (non-blocking failure) rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none, so a headless or serverless sweep will show it failing. Output under tests/visual/results/perf/ is gitignored and stays local. Deeper run: npm run offline:perf -- --ladder --trace-delta" ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/perf-crawl.ts --ladder" ;
-    kpred:job-enabled   "false" ;
+    kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
 job:prompt-audit rdf:type          ktype:OfflineJob ;
@@ -413,6 +431,15 @@ job:release-burndown rdf:type          ktype:OfflineJob ;
     kpred:command       "npx tsx scripts/offline/release-burndown.ts --pending" ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
+
+job:release-review-space rdf:type          ktype:OfflineJob ;
+    rdfs:label          "release-review-space" ;
+    skos:prefLabel      "release-review-space" ;
+    skos:definition     "F34.5. Fails when a generated static/review-<version>.ttl (the per-release visual review space opened from About) differs from what the roadmap's release has-part features and the Testing graph's TestWorkflows generate. Regenerate with npx tsx scripts/offline/release-review-space.ts. Deterministic, no model." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/release-review-space.ts --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "true" .
 
 job:rename-pr rdf:type          ktype:OfflineJob ;
     rdfs:label          "rename-pr" ;
@@ -633,14 +660,14 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
+    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 68 of them, 57 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 71 of them, 59 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

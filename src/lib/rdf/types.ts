@@ -461,6 +461,17 @@ export const STMT_PREFIX = 'urn:kbase:stmt/';
  * a finding is still a decision you rule on, just not a thing the graph pretends to know about. */
 export const TEST_TELEMETRY_PREFIX = 'urn:reckons:test/';
 
+/** Generation provenance of an Image, Video, 3D model, Gaussian splat or Prompt: which model made it,
+ * the seed, how long the run took, when, and the size of what it made. Literal-valued attributes. */
+export const GENERATION_PROVENANCE_PREDICATES = [
+  'urn:kbase:predicate/generated-with',
+  'urn:kbase:predicate/generated-seed',
+  'urn:kbase:predicate/generated-duration',
+  'urn:kbase:predicate/generated-at',
+  'urn:kbase:predicate/generated-frames',
+  'urn:kbase:predicate/generated-gaussians',
+] as const;
+
 /** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
  * the raw data-URI or URL as a junk literal node, so they're metadata here.
@@ -470,10 +481,19 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   'urn:kbase:predicate/icon2d',
   'urn:kbase:predicate/photo',
   'urn:kbase:predicate/video',
+  // A node's Gaussian splat file (F58.9.2): a picture of the thing, never an edge to a literal node.
+  'urn:kbase:predicate/splat',
   // Provenance ABOUT a photo — who made it, where to check the licence. Belongs in the detail
   // panel beside the image, never as an edge to a literal node holding a credit line or a URL.
   'urn:kbase:predicate/photo-credit',
   'urn:kbase:predicate/photo-source',
+  // F58.9.5: how a generated asset was made, and what a License is. These are ATTRIBUTES of the
+  // node (read by the detail panel through its type's schemaPredicates), never edges to value
+  // nodes: a bare "42" or "49" in the graph meant nothing (Matt, 2026-10-14: "whats the 49, 42,
+  // and 7?"). Entity-to-entity links (made-from, license) stay visible edges and are NOT listed.
+  ...GENERATION_PROVENANCE_PREDICATES,
+  'urn:kbase:predicate/spdx-id',
+  'urn:kbase:predicate/license-url',
 ]);
 
 /**

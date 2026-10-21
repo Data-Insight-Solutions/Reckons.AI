@@ -1,7 +1,7 @@
 ---
 title: "Local VLM workflow streams"
 slug: "vlm-workflow-streams"
-order: 1006
+order: 1007
 section: "Testing"
 parent: "test-suite"
 template: doc

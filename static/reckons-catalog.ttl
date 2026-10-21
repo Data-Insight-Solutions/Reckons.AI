@@ -86,6 +86,8 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-competitive ,
         graph:reckons-generation-tools ,
         graph:reckons-ci ,
+        graph:review-0-2-6 ,
+        graph:review-0-2-7 ,
         graph:reckons-jobs ,
         graph:reckons-production ,
         graph:reckons-roadmap ,
@@ -98,10 +100,12 @@ graph:catalog a dcat:Catalog ;
         graph:starter-assets ,
         graph:starter-everyday ,
         graph:starter-everyday-reviewed ,
+        graph:starter-generated-assets ,
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
+        graph:starter-your-room ,
         graph:website ,
         graph:website-status .
 
@@ -246,10 +250,32 @@ graph:reckons-vocabulary a void:Dataset ;
     dcterms:type role:reference ;
     dcterms:source "static/reckons-vocabulary.ttl" .
 
+graph:review-0-2-6 a void:Dataset ;
+    dcterms:title "Release review: v0.2.6" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/review-0.2.6.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
+
+graph:review-0-2-7 a void:Dataset ;
+    dcterms:title "Release review: v0.2.7" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/review-0.2.7.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
+
 graph:starter-assets a void:Dataset ;
     dcterms:title "Starter: assets" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-assets.ttl" .
+
+graph:starter-generated-assets a void:Dataset ;
+    dcterms:title "Starter: generated assets" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-generated-assets.ttl" .
+
+graph:starter-your-room a void:Dataset ;
+    dcterms:title "Starter: your room" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-your-room.ttl" .
 
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;
