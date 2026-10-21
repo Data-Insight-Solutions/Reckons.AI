@@ -662,10 +662,10 @@
       "path": "features/threejs-examples",
       "entity": "urn:reckons:feature/ThreeExamples",
       "graph": "docs-features.ttl",
-      "factHash": "7452b65aa51c1cb6",
+      "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "220cae17a6b97aab"
+      "pageHash": "6df151f23c3049a0"
     },
     {
       "path": "guide/getting-started",

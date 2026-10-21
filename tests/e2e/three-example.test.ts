@@ -150,3 +150,89 @@ test('the isolated document keeps its network policy after replacement', async (
   await expect(body).toHaveAttribute('data-navigation','blocked');
   expect(leaked).toBe(false);
 });
+
+// ---- Graph background (kb:threejs-example-background) ----
+async function closeViewer(page: Page) {
+  const fullscreenClose = page.locator('.asset-fs-close');
+  if (await fullscreenClose.isVisible()) await fullscreenClose.click();
+  else await page.locator('.asset-large .asset-controls button[title="Close"]').click();
+}
+async function setBackground(page: Page) {
+  await closeViewer(page);
+  await page.getByRole('button',{name:'Set as background',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Clear background',exact:true})).toBeVisible();
+}
+// Close the node panel (a bottom sheet on phones) and the search dropdown so the graph and its bar are reachable.
+async function toGraph(page: Page) {
+  const close = page.locator('.np-close-btn');
+  if (await close.isVisible()) await close.click();
+  await expect(close).toHaveCount(0);
+}
+const bar = (page: Page) => page.getByRole('group',{name:'Background example'});
+
+test('a background example never loads by itself, sits behind a clickable graph, and stops from the graph view', async ({page}) => {
+  let requests = 0;
+  page.on('request', r => { if (r.url().startsWith('https://threejs.org/')) requests++; });
+  await stub(page); await attach(page); await setBackground(page); await toGraph(page);
+  await expect(bar(page)).toContainText('webgl_reckons_fixture');
+  await expect(page.locator('iframe[title="Three.js example background"]')).toHaveCount(0);
+  expect(requests).toBe(0);
+  await bar(page).getByRole('button',{name:'Load',exact:true}).click();
+  await expect(bar(page)).toContainText('Background running');
+  const iframe = page.locator('iframe[title="Three.js example background"]');
+  await expect(iframe).toHaveAttribute('sandbox','allow-scripts');
+  expect(await iframe.evaluate(el => getComputedStyle(el).pointerEvents)).toBe('none');
+  // The frame is behind the graph: the element at the middle of the stage is not the iframe.
+  const top = await page.evaluate(() => { const r = document.querySelector('.graph')!.getBoundingClientRect();
+    return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 3)?.tagName; });
+  expect(top).not.toBe('IFRAME');
+  await bar(page).getByRole('button',{name:'Stop',exact:true}).click();
+  await expect(iframe).toHaveCount(0);
+  await expect(bar(page)).toContainText('Background: webgl_reckons_fixture');
+  await expect(bar(page).getByRole('button',{name:'Load',exact:true})).toBeVisible();
+});
+
+test('Interact with background hands input to the example and back', async ({page}) => {
+  await stub(page); await attach(page); await setBackground(page); await toGraph(page);
+  await bar(page).getByRole('button',{name:'Load',exact:true}).click();
+  await expect(bar(page)).toContainText('Background running');
+  const iframe = page.locator('iframe[title="Three.js example background"]');
+  const toggle = bar(page).getByRole('button',{name:'Interact with background',exact:true});
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed','true');
+  expect(await iframe.evaluate(el => getComputedStyle(el.parentElement!).pointerEvents)).toBe('auto');
+  expect(await page.evaluate(() => { const g = document.querySelector('.graph')!;
+    return [...g.children].filter(c => !c.classList.contains('three-bg-layer') && !c.classList.contains('three-bg-bar'))
+      .every(c => getComputedStyle(c).pointerEvents === 'none'); })).toBe(true);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed','false');
+  expect(await iframe.evaluate(el => getComputedStyle(el.parentElement!).pointerEvents)).toBe('none');
+});
+
+test('a failing background example unloads, shows the error with Retry, and the graph backdrop returns', async ({page}) => {
+  await stub(page, "throw new Error('Synthetic background failure')"); await attach(page); await setBackground(page); await toGraph(page);
+  await bar(page).getByRole('button',{name:'Load',exact:true}).click();
+  await expect(bar(page).getByRole('alert')).toContainText('Synthetic background failure');
+  await expect(page.locator('iframe[title="Three.js example background"]')).toHaveCount(0);
+  await expect(bar(page).getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+  await expect(page.locator('.graph.bg-example-live')).toHaveCount(0);
+});
+
+test('the graph is see-through only while the example runs', async ({page}) => {
+  await stub(page); await attach(page); await setBackground(page); await toGraph(page);
+  const bg = () => page.locator('.graph').evaluate(el => getComputedStyle(el).backgroundColor);
+  expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
+  await bar(page).getByRole('button',{name:'Load',exact:true}).click();
+  await expect(bar(page)).toContainText('Background running');
+  expect(await bg()).toBe('rgba(0, 0, 0, 0)');
+  await bar(page).getByRole('button',{name:'Stop',exact:true}).click();
+  expect(await bg()).not.toBe('rgba(0, 0, 0, 0)');
+});
+
+test('Clear background in the node editor removes the bar', async ({page}) => {
+  await stub(page); await attach(page); await setBackground(page);
+  await expect(bar(page)).toBeVisible();
+  // Clear from the node editor, then confirm the bar goes.
+  await page.getByRole('button',{name:'Clear background',exact:true}).click();
+  await expect(bar(page)).toHaveCount(0);
+});

@@ -22,6 +22,12 @@ Attach an interactive example from [the Three.js gallery](https://threejs.org/ex
 3. Choose **Open example viewer**, then **Load example**. Opening a space, selecting the node or importing its attachment does not execute the example. The explicit load contacts threejs.org and runs its third-party code on your graphics hardware.
 4. Use **Stop example** or close the viewer to unload it. A failed example offers **Retry example**. Editing or removing the attachment is available in node details. An attached example takes precedence over that node's other asset previews until removed.
 
+### As the graph background
+
+With an example attached, choose **Set as background** in node details. A bar then appears in the graph view reading "Background: &lt;example name&gt;" with **Load**. Nothing starts until you choose Load, including after a reload or when you open an imported graph. Once running, the bar offers **Interact with background** (sends mouse and touch input to the example until you press the button again or Escape; Escape does not work while the example itself has keyboard focus, so use the button) and **Stop**. A failed background unloads and the bar shows the error and **Retry**. A space has one background: setting an example replaces a background splat, and setting a splat replaces the example.
+
+The background is a separate scene. It does not share the graph's camera, depth or lighting, so nodes float in front of it instead of sitting inside it, and it does not follow the graph camera. It runs a second scene beside the graph, which roughly adds its GPU load to the graph's; stop it on a slow device. The same sandbox and failure-containment limits below apply.
+
 ### Loading protection and its limits
 
 The viewer uses a sandboxed frame without same-origin privileges, forms, popups or top-level navigation. The example cannot read Reckons.AI's document or browser storage. Camera, microphone, location, clipboard, fullscreen and XR permissions are not granted. The frame allows scripts and assets from threejs.org; examples requiring other origins or permissions may fail.
