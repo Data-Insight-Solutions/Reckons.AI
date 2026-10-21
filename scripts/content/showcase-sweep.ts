@@ -6,7 +6,7 @@
  *   - GPU memory: the run's OWN processes only, from nvidia-smi --query-compute-apps (the same
  *     monitor the F183 gen-model-bench uses, startVramMonitor in gen-bench.ts), so another lane's job
  *     on the card is not counted. Also torch's allocator peak, reported by triposplat_run.py.
- *   - System RAM: the child's peak resident set (ru_maxrss), reported by triposplat_run.py.
+ *   - System RAM: the child's peak resident memory (ru_maxrss), reported by triposplat_run.py.
  *   - Time: wall clock including model load, and the generate part separately.
  *   - Sizes: PLY and SPZ bytes. Validity: checkSplat (the same independent check gen:check uses).
  *

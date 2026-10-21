@@ -491,10 +491,10 @@
       "path": "features/generation-setup",
       "entity": "urn:reckons:feature/GenerationSetup",
       "graph": "docs-features.ttl",
-      "factHash": "2723c9440934b614",
+      "factHash": "992f6fa06a98219f",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "53f3112f6c49f9e5"
+      "pageHash": "b4fd3323e1784030"
     },
     {
       "path": "features/git-analysis-features",

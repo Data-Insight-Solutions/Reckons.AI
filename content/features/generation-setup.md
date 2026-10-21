@@ -43,10 +43,10 @@ Measured on 2x RTX 3090 (24 GB each, one card used per run), driver 575.57.08, R
 
 | Stage | Peak GPU memory | Peak system RAM | Time | Weights to download (on disk) |
 | --- | --- | --- | --- | --- |
-| Image, standard (768 px, 8 steps) | 11,992 MiB (11.7 GiB) | 1.2 GiB | 15.6 s | 11.2 GB (Z-Image-Turbo set) |
+| Image, standard (768 px, 8 steps) | 11,992 MiB (11.7 GiB) | 1.2 GiB | 15.6 s | 11.2 GB (Z-Image-Turbo weights) |
 | Image, showcase (1024 px, 8 steps) | 13,258 MiB (12.9 GiB) | 1.2 GiB | 19.5 s | the same files |
-| Video (49 frames, 512 px, 20 steps) | 17,356 MiB (16.9 GiB) | 1.5 GiB | 58.8 s | 12.9 GB (Wan2.2 set) |
-| Splat, standard (32,768 Gaussians, 20 steps) | 6,998 MiB (6.8 GiB) | 5.3 GiB | 31.5 s (11.2 s load + 20.3 s generate) | 4.5 GB (TripoSplat set) |
+| Video (49 frames, 512 px, 20 steps) | 17,356 MiB (16.9 GiB) | 1.5 GiB | 58.8 s | 12.9 GB (Wan2.2 weights) |
+| Splat, standard (32,768 Gaussians, 20 steps) | 6,998 MiB (6.8 GiB) | 5.3 GiB | 31.5 s (11.2 s load + 20.3 s generate) | 4.5 GB (TripoSplat weights) |
 | Splat, showcase (262,144 Gaussians, 20 steps) | 7,000 MiB (6.8 GiB) | 5.3 GiB | 33.7 s (11.0 s load + 22.7 s generate) | the same files |
 
 All three weight sets together are 28.5 GB. Smaller GPUs are untested: nothing here was run on a card below 24 GB, so no minimum is claimed. The splat stage's peak is about 7 GB at both quality levels, because the Gaussian count only changes how many points the decoder writes out, so the video stage (about 17 GB) is the one a smaller card is most likely to fail. The image numbers include 1024 px because the splat model resizes its input to 1024 px anyway. System RAM was read as the largest single process, so a machine that also runs a browser and other tools needs more than this column alone.
