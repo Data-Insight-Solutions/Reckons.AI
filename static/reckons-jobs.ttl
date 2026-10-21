@@ -261,6 +261,24 @@ job:extraction-score rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:gen-model-bench rdf:type          ktype:OfflineJob ;
+    rdfs:label          "gen-model-bench" ;
+    skos:prefLabel      "gen-model-bench" ;
+    skos:definition     "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "npm run bench:gen -- --stage=image" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
+job:gen-model-discover rdf:type          ktype:OfflineJob ;
+    rdfs:label          "gen-model-discover" ;
+    skos:prefLabel      "gen-model-discover" ;
+    skos:definition     "F183.1: for each local generation stage, is the incumbent Hugging Face file still the bytes the receipt recorded, and which newer licensed, loadable, one-GPU-sized models exist? Script tier (rules, zero tokens) but ONLINE and opt-in: the command carries --online, and it is disabled in the sweep so nothing reaches out unasked. Output is a candidate list with a reason per drop; downloads and likes order it and are never evidence of quality." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npm run bench:gen:discover" ;
+    kpred:job-enabled   "false" ;
+    kpred:job-blocking  "false" .
+
 job:graph-economics rdf:type          ktype:OfflineJob ;
     rdfs:label          "graph-economics" ;
     skos:prefLabel      "graph-economics" ;
@@ -642,14 +660,14 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
+    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 69 of them, 58 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 71 of them, 59 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

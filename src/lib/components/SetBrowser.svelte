@@ -5,7 +5,7 @@
     index: ProvenanceIndex;
     sources: ProvenanceSource[];
     mode: 'folders' | 'list' | 'gallery';
-    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb' | 'splat'; url: string } | null;
+    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb' | 'splat' | 'three'; url: string } | null;
     onselect: (key: string) => void;
   }>();
   const groups = $derived((sources as ProvenanceSource[]).flatMap((source) => source.groups.map((group) => ({ source, group }))));
@@ -58,7 +58,7 @@
             {#each preview(group) as member (member.key)}
               <div class="member-tile">
                 {#if member.asset?.kind === 'image'}<img src={member.asset.url} alt="" loading="lazy" />
-                {:else}<span class="member-initial">{member.asset?.kind === 'video' ? '▷' : member.asset?.kind === 'glb' ? '◇' : member.asset?.kind === 'splat' ? '✦' : member.label.slice(0, 1).toUpperCase()}</span>{/if}
+                {:else}<span class="member-initial">{member.asset?.kind === 'video' ? '▷' : (member.asset?.kind === 'glb' || member.asset?.kind === 'three') ? '◇' : member.asset?.kind === 'splat' ? '✦' : member.label.slice(0, 1).toUpperCase()}</span>{/if}
                 <span>{member.label}</span>
               </div>
             {/each}

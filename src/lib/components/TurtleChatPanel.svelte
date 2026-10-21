@@ -29,6 +29,7 @@
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
+  import GenerationStory from './GenerationStory.svelte';
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
@@ -588,7 +589,7 @@
       if (found) {
         openStory(found);
         // Auto-play if requested (e.g. from "Getting started" button)
-        if (storyAutoPlayRequested()) {
+        if (storyAutoPlayRequested() && !found.interaction) {
           clearStoryAutoPlay();
           setTimeout(() => toggleAutoPlay(), 100);
         }
@@ -606,7 +607,7 @@
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
     // Play step 0 — voice plays only if user has explicitly enabled it
-    playStoryStep(story, 0);
+    if (!story.interaction) playStoryStep(story, 0);
     tab = 'explore';
   }
 
@@ -1578,7 +1579,9 @@
 
   <!-- ── Explore tab (stories + LLM tour) ── -->
   <Tabs.Content value="explore" class="tcp-tab-content">
-    {#if currentStory}
+    {#if currentStory?.interaction === 'generate-assets'}
+      <GenerationStory onexit={() => { stopAutoPlay(); stopStory(); currentStory = null; }} />
+    {:else if currentStory}
       <!-- Story playback -->
       <div class="chat">
         <div class="msg-list" bind:this={storyListRef}>

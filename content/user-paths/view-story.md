@@ -71,4 +71,4 @@ The last step of a good story is an open question, not a summary. It is the diff
 
 - [3D / 2D Knowledge Graph](../features/graph3-d)
 - [Shelly (AI Assistant)](../features/shelly)
-- [Shelly (AI Assistant)](../features/shelly)
+- [Story System](../features/story-system)

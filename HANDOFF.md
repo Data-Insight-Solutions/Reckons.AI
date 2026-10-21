@@ -1,3 +1,26 @@
+## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
+
+Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
+Fixed: the Three.js e2e failed on Chromium because the test's X-Frame-Options route makes Chrome's Local
+Network Access block the sandbox's own script on loopback (test-only launch flag, commented). `vite.config.ts`
+now ignores worktrees, workspaces and screenshot folders (the ENOSPC watcher error).
+Matt's decisions recorded in the roadmap: Three.js examples as node appearance AND as background (planned
+phases); core tutorials browser-only, no Tripo or Meshy (`kb:browser-generation-tutorial`, planned); game
+generator as speculative genre templates under F143, with an open question on the "we ship no engine" note.
+Working split from now on: Opus designs and writes initial code; a Sonnet agent runs long tests and basic fixes.
+
+## 2026-10-20 — Interactive generated-assets story (Codex)
+
+Active branch: `feat/generated-assets-story`, based on `dev`. Implements F166.1.1: Shelly asks for an image, waits for a checked local runner receipt, then offers video/splat/another image. Runner: `npm run gen:serve -- --workspace=/private/workspace`; use the same connected folder in the browser. No general backend or free-form chat dispatch. Generated assets remain private; generated facts arrive pending review.
+
+Matt's follow-up: this may become Getting started after refinement. Capability/setup guides now distinguish bundled viewers, local models and external agents. Device/SSH installation guidance warns about granted authority. The existing Getting started entry is not replaced yet.
+
+Also requested: Three.js examples attached to nodes, with loading failure protection. `kb:threejs-example-nodes` records the plan and the browser/GPU isolation limitation. Viewer versus in-graph scene presentation is being clarified; no implementation is claimed here.
+
+Validation as of 2026-10-20: full unit suite 4,200 passed, 14 TODOs. Live synthetic image/video/splat checks succeeded (13.6/55.9/35.4 seconds); initial failures found and fixed an invalid splat count and an incomplete npm install. Final browser/check/build/CI results belong to the PR, not these provisional numbers. Startup script sweep: 50/54 clean, with existing button-crawl, perf-crawl, jobs-graph and naming-ratchet failures. Local /kb visual ran on a disposable copy of browser data; output remains private.
+
+The machine's inotify limit is still reached by old worktrees. Local testing uses a temporary Vite config that ignores `.claude` and workspace folders; no other user's server was stopped. See prior environment notes below.
+
 ## 2026-10-15 — START HERE. Background controls in the graph view (Claude Code)
 
 **In flight:** a Sonnet agent is building F58.9.16 on `feat/f58-9-16-background-in-view` (no PR yet when this was

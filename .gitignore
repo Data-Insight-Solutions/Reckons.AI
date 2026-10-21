@@ -73,6 +73,8 @@ tests/bench/results/
 mcp-workspace/
 
 # Reckons workspace (transient files)
+# Generation runner jobs hold private prompts and outputs (npm run gen:serve refuses an unignored folder).
+reckons-workspace/.reckons-generation/
 reckons-workspace/kbs/*/pending.jsonl
 reckons-workspace/kbs/*/sources.json
 reckons-workspace/knowledge.ttl

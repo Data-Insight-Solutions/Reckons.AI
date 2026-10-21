@@ -1,7 +1,7 @@
 ---
 title: "Shelly (AI Assistant)"
 slug: "shelly"
-order: 1030
+order: 1032
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -31,9 +31,9 @@ Local text-to-speech for story walkthroughs. 82M model cached in browser. Falls 
 
 Each graph can embed its own AI assistant personality using the shelly: vocabulary. A work graph might have a direct, technical persona while a personal graph has a calm guide. Persona travels with the .ttl file.
 
-### Story System
+**[Story System](../features/story-system)**
 
-Guided walkthroughs defined as triples using the story: vocabulary. Steps can highlight entities, trigger prompts, and pose questions. Playback with countdown timer and TTS. Shareable via .ttl files.
+Guided walkthroughs defined as triples using the story: vocabulary.
 
 ### Whisper STT
 
