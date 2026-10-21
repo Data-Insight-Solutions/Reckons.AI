@@ -8931,7 +8931,7 @@ kb:jobs-graph-as-source rdf:type ktype:Feature ;
 kb:published-space-directory rdf:type ktype:Feature ;
     rdfs:label "Published-space directory — a registry of publishers, or nothing" ;
     kpred:feature-id "F217" ;
-    kpred:has-status "speculative" ;
+    kpred:has-status "planned" ;
     kpred:priority "low" ;
     kpred:description "Matt (2026-09-23): a central place to publish a space as flat files without standing up a domain — ideally a static hosted directory with a storage bucket — so publishing does not require owning a website. NOT DESIGNED, explicitly roadmap rather than work, and recorded mainly so its constraints are written down before anyone builds toward it." ;
     kpred:constraint "THE SAFETY STANDARDS MUST BE WELL TESTED BEFORE THE CAPABILITY EXISTS, which is Matt's condition and inverts the usual order. Publishing gates today are kb:publish-safety-gate, and kb:honest-status already records the 2026-07-12 incident where SAFETY.md claimed publishing was gated while F66 was merely planned. A directory is the case where that gap stops being embarrassing and becomes someone else's problem: we would be carrying content on our own infrastructure." ;
@@ -8939,6 +8939,61 @@ kb:published-space-directory rdf:type ktype:Feature ;
     kpred:decided "NOT LAUNCHING IS A LIVE OPTION AND IS NAMED AS ONE. 'Potentially we never even launch that directory.' A feature whose failure mode is hosting illegal material does not get built because it was on a list; it gets built only if the controls are real first, and shelving it costs this product nothing it cannot get another way." ;
     kpred:open-question "REGISTRY OR HOST — these are different businesses and the choice is the whole feature. Matt's alternative: 'users self hosting their own published spaces, and reviewing and publishing others that request them to. Then the central repository search is a registry of PUBLISHERS and what they published.' A registry stores POINTERS and its worst case is a dead link; a host stores CONTENT and its worst case is carrying something criminal. The registry version also fits the local-first stance and the integration-boundaries rule, where a central service is never a hard dependency of the core app." ;
     kpred:relates-to kb:graph-publishing, kb:publisher-subscriptions, kb:reference-graph-catalogue, kb:publish-safety-gate .
+
+kb:published-space-directory kpred:decided "MATT, 2026-10-21, after registering reckons.space at Cloudflare: 'reckons.space will be the root for the space registry. We need provenance of who is sharing, we regulate and restrict content on our registry, not on user's computers and through other file sharing systems.' This answers the REGISTRY OR HOST question with REGISTRY, names its root, makes sharer provenance a requirement, and draws the regulation boundary at what the registry lists. It is the F66 rule (gate only what we carry, kb:adult-content-policy) applied to a directory. Status moved from speculative to planned on this decision." ;
+    kpred:proposed "AGENT, 2026-10-21, NOT DECIDED: the registry LISTS and does not STORE. An entry is a publisher, a signed manifest and a pointer to where the publisher hosts the space, pinned by content hash. What was reviewed is the hash; if the bytes at the pointer change, the hash no longer matches, the app refuses to open it as listed, and the entry is suspended until it is reviewed again. A pointer's worst case is a dead or suspended link; a stored copy's worst case is us carrying something criminal. Whether reckons.space ever stores copies (for availability) stays open for Matt." ;
+    kpred:constraint "THE REGULATION BOUNDARY. The app never scans, blocks or reports what a person keeps on their own computer or shares through any other channel (email, a USB stick, their own website, another file-sharing service). The registry decides only what IT lists. Refusing a listing does not delete, hide or flag the space anywhere else." ;
+    kpred:constraint "A SIGNATURE PROVES A KEY, NOT A PERSON. Provenance of who is sharing has two halves: the manifest is signed by the publisher's key (checkable by anyone, offline), and the key is bound to a real-world identity by a proof the registry verifies (a DNS TXT or .well-known file on a domain they control, or a code-hosting account). Until the second half exists, a listing must say 'signed by key …' and never 'published by <name>'." ;
+    kpred:has-phase kb:signed-share-manifest, kb:registry-listing-policy, kb:registry-root, kb:registry-in-app .
+
+kb:signed-share-manifest rdf:type ktype:Phase ;
+    rdfs:label "Signed share manifest — who shared this space, when, and exactly which bytes" ;
+    kpred:feature-id "F217.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:description "Every exported or published space package carries a manifest: the publisher's public key, the time, a content hash of every file in the package, and a signature over all of it (Ed25519 through WebCrypto, in the browser, no server). On import the app verifies the signature and the hashes and shows the result where the import is reviewed: signed and intact, signed but altered, or unsigned. Useful on its own before any registry exists: a person can tell whether a space a friend sent is the one the friend made." ;
+    kpred:constraint "Local-first: keys are generated and kept on the device, exportable for backup, never sent anywhere. An unsigned package still imports; the manifest adds evidence, it does not gate private sharing." ;
+    kpred:remaining "Nothing built (2026-10-21). Design questions: key backup and loss (a lost key cannot sign an update to an old listing), key rotation, and whether the manifest is a graph (triples about the package, kpred:content-hash) or a JSON sidecar." ;
+    kpred:relates-to kb:publish-safety-gate .
+
+kb:registry-listing-policy rdf:type ktype:Phase ;
+    rdfs:label "Registry listing policy — what reckons.space refuses, how it takes down, tested before anything is listed" ;
+    kpred:feature-id "F217.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:signed-share-manifest ;
+    kpred:description "The controls the registry needs before it lists anything, built and tested first (Matt's condition on F217): a written listing policy; a review step before a listing goes live; report, suspend and takedown with a reason recorded; refusal of a publisher key; an audit log of every listing decision; and a synthetic test suite that drives each control. Runs the existing deterministic content checks (classifyStatement, the publish safety gate) over a submitted package, and records that automatic checks are a first pass, not the review." ;
+    kpred:constraint "The policy names what the registry will not list and what it does when it learns of a listing it should not carry, including the legal reporting duties for illegal content. That part needs legal review (COUNSEL-BRIEF.md) before launch and must not be claimed as done until it has had one." ;
+    kpred:remaining "Nothing built or written (2026-10-21)." .
+
+kb:registry-root rdf:type ktype:Phase ;
+    rdfs:label "reckons.space — the registry root: a static index of publishers and the spaces they list" ;
+    kpred:feature-id "F217.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-listing-policy ;
+    kpred:description "reckons.space serves the reviewed index as static files: publishers (key, verified identity proof), their listed spaces (pointer, content hash, manifest, listing date, status) and suspensions. Static hosting on the Cloudflare account that holds the domain; no accounts, and no app state on the server. Submissions arrive as a signed request and wait in the review queue from F217.2." ;
+    kpred:constraint "A registry is still a central service, so per AGENTS.md integration boundaries it is never a hard dependency: the app works fully with reckons.space unreachable, and a person can point the app at a different registry root." ;
+    kpred:remaining "Domain registered 2026-10-21 (Cloudflare); nothing is served there." .
+
+kb:registry-in-app rdf:type ktype:Phase ;
+    rdfs:label "Registry in the app — browse listed spaces, open one verified, request a listing" ;
+    kpred:feature-id "F217.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-root ;
+    kpred:description "Listed spaces appear as ghost spaces in the Spaces view (F218) until opened. Opening one fetches from the publisher's pointer, verifies hash and signature against the listing, and imports with every fact pending review, like any other import. A request to list a space signs its manifest and submits it; the app shows its review state and never claims a listing is live before the registry says so." ;
+    kpred:relates-to kb:meta-graph-view .
+
+kb:release-0-3-0 rdf:type ktype:Release ;
+    rdfs:label "v0.3.0" ;
+    kpred:version "0.3.0" ;
+    kpred:has-status "planned" ;
+    kpred:description "PROPOSED BY AN AGENT 2026-10-21, NOT DECIDED: the sharing release. reckons.space as the space registry root, with provenance of every sharer and controls tested before the first listing. Signed manifests (F217.1) can land earlier, since they need no server." ;
+    kpred:has-part kb:signed-share-manifest ;
+    kpred:has-part kb:registry-listing-policy ;
+    kpred:has-part kb:registry-root ;
+    kpred:has-part kb:registry-in-app .
 
 # -- F218: The Spaces view — a meta-graph of the whole ecosystem --------------
 kb:meta-graph-view rdf:type ktype:Feature ;
@@ -10185,6 +10240,55 @@ kb:game-genre-templates rdf:type ktype:Phase ;
     kpred:description "Instead of generating engine code per game, a small shared runtime (render loop, input, an ECS, Rapier physics via WASM, GLB/splat loading, audio, save) and a few genre templates (platformer, top-down, walking sim, racing, puzzle) whose rules, tuning and assets are graph facts. Style and mechanics selection fills a template; generated assets fill its slots; the output is a static three.js bundle that plays in the same sandboxed frame as the Three.js example viewer." ;
     kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
     kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
+
+## =============================================================================
+## F260: A simulator, so a reckoning can be RUN instead of argued (Matt, 2026-10-20)
+## =============================================================================
+## "Build a simulator, and then we reckon it. reckoning text and reckoning 3d spatial problems also."
+## Matt chose the 3D physical scene: the graph is the scene, and a spatial reckoning's proposals are
+## simulated and checked against the target.
+
+kb:reckoning-simulator rdf:type ktype:Feature ;
+    rdfs:label "Reckoning simulator — a 3D physical scene that runs each proposal against the target" ;
+    kpred:feature-id "F260" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:reckoning-composition ;
+    kpred:relates-to kb:game-genre-templates ;
+    kpred:decided "Matt, 2026-10-20: build a simulator and reckon it; reckon text problems and 3D spatial problems. Asked what to simulate, he chose a 3D physical scene (over a process simulator or one engine for both)." ;
+    kpred:description "A space can be a physical scene: nodes are rigid bodies (shape, mass, friction, restitution, static or dynamic, start pose from the existing placement settings). A spatial reckoning takes that scene as the SITUATION, a TARGET written as text plus checkable conditions (A inside region R, A rests on B, nothing falls below the floor, A reaches height h), and returns PROPOSALS as structured scene edits (move, add, remove, change a property, apply an impulse). Each proposal is simulated for a fixed time and scored against the conditions; the reckoning shows which proposals actually reached the target, with the final poses and a replay, and accepted edits arrive as pending facts for review." ;
+    kpred:principle "A PROPOSAL THAT CLAIMS TO WORK IS NOT EVIDENCE THAT IT WORKS (the mission's thesis applied to reckoning). Today a reckoning's proposals are argued from the graph; a simulated proposal is checked. The verifier is deterministic code (script tier): the language model proposes, the simulator and the condition checks decide." ;
+    kpred:principle "ONE SCENE, TWO RUNTIMES. The same simulation module runs in a browser Web Worker (replay in the 3D graph) and headless in Node (MCP kb_reckoning, CI determinism tests), on Rapier (WASM, Apache-2.0) with a fixed timestep." ;
+    kpred:constraint "Determinism is claimed only as far as it is tested: same build, same inputs, same steps give the same poses (checked in CI). A proposal edit is schema-validated before it is simulated; nothing from a model executes as code. Simulation is bounded in steps and bodies. Text reckoning keeps working unchanged; spatial reckoning is an addition, not a replacement." ;
+    kpred:open-question "How are body shapes taken from rich assets — the GLB's bounding box, a convex hull, or a splat's extent — and is a visibly wrong collision shape acceptable in phase 1?" ;
+    kpred:has-phase kb:sim-core ;
+    kpred:has-phase kb:sim-spatial-reckoning ;
+    kpred:has-phase kb:sim-replay .
+
+kb:sim-core rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — scene from graph, Rapier step, condition checks (headless and worker)" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 1 ;
+    kpred:has-status "planned" ;
+    kpred:description "Pure scene-from-statements reader (body meta predicates on nodes, reusing the placement predicates for pose); a Rapier world built from it; a fixed-step runner returning final poses and a sampled trajectory; a small condition vocabulary evaluated deterministically. One purpose-built example space (e.g. a ramp, a ball and a cup) to prove it. Unit tests: determinism across two runs, each condition true and false." ;
+    kpred:remaining "Everything." .
+
+kb:sim-spatial-reckoning rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — spatial reckoning: proposals as scene edits, simulated and scored" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "The reckoning page and kb_reckoning accept a physical scene as the situation and conditions as the target; the model returns edits in a validated schema; each is simulated and scored; the result lists pass or fail per proposal with the evidence (which condition, final poses). Measured: how often a proposal the model presents as working fails in simulation." ;
+    kpred:remaining "Everything." .
+
+kb:sim-replay rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — replay in the 3D graph view" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 3 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "Play a simulated run in the 3D graph view from its trajectory, with a scrubber; compare two proposals side by side. The graph's own force layout is paused for nodes that are bodies in the scene." ;
+    kpred:remaining "Everything." .
 
 ## Getting started "Create" chapter, zoom-to-leap and a showcase splat (Matt, 2026-10-20)
 ## "We need to do a good story mode version of this image gen, then 3d splat gen, for the getting
