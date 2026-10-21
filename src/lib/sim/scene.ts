@@ -47,6 +47,9 @@ export interface Body {
 }
 
 export interface Refusal { id: string; reason: string }
+
+/** Ids that would reach an object's prototype if any consumer used them as a plain-object key. */
+const RESERVED_IDS = new Set(['__proto__', 'constructor', 'prototype']);
 export interface Scene { bodies: Body[]; refusals: Refusal[] }
 
 const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'superseded' && s.status !== 'pending-removal';
@@ -100,6 +103,7 @@ export function sceneFromStatements(statements: readonly Statement[]): Scene {
   for (const iri of subjects) {
     const id = localName(iri);
     const refuse = (reason: string) => refusals.push({ id, reason });
+    if (RESERVED_IDS.has(id)) { refuse(`id "${id}" names an object internal and cannot be a body`); continue; }
     if (seen.has(id)) { refuse(`id "${id}" is also used by ${seen.get(id)}`); continue; }
     seen.set(id, iri);
 

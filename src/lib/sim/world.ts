@@ -77,25 +77,23 @@ export async function simulate(scene: Scene, opts: SimOptions): Promise<SimResul
     handles.push({ id: b.id, body: rb, collider: world.createCollider(desc, rb) });
   }
 
-  const snapshot = (): Record<string, Pose> => {
-    const out: Record<string, Pose> = {};
-    for (const h of handles) {
-      const t = h.body.translation(), r = h.body.rotation(), v = h.body.linvel();
-      out[h.id] = { position: [t.x, t.y, t.z], rotation: [r.x, r.y, r.z, r.w], velocity: [v.x, v.y, v.z] };
-    }
-    return out;
-  };
+  // Body ids come from the graph, so they are never used as computed keys on a plain object
+  // (an id of "__proto__" would write the prototype). Maps inside, Object.fromEntries at the edge.
+  const snapshot = (): Record<string, Pose> => Object.fromEntries(handles.map((h) => {
+    const t = h.body.translation(), r = h.body.rotation(), v = h.body.linvel();
+    return [h.id, { position: [t.x, t.y, t.z], rotation: [r.x, r.y, r.z, r.w], velocity: [v.x, v.y, v.z] }];
+  }));
 
-  const maxY: Record<string, number> = {}, minY: Record<string, number> = {};
-  for (const h of handles) { const y = h.body.translation().y; maxY[h.id] = y; minY[h.id] = y; }
+  const maxY = new Map<string, number>(), minY = new Map<string, number>();
+  for (const h of handles) { const y = h.body.translation().y; maxY.set(h.id, y); minY.set(h.id, y); }
   const trajectory: Frame[] = [{ step: 0, t: 0, poses: snapshot() }];
   try {
     for (let i = 1; i <= steps; i++) {
       world.step();
       for (const h of handles) {
         const y = h.body.translation().y;
-        if (y > maxY[h.id]) maxY[h.id] = y;
-        if (y < minY[h.id]) minY[h.id] = y;
+        if (y > maxY.get(h.id)!) maxY.set(h.id, y);
+        if (y < minY.get(h.id)!) minY.set(h.id, y);
       }
       if (i % sampleEvery === 0 || i === steps) trajectory.push({ step: i, t: i * dt, poses: snapshot() });
     }
@@ -108,7 +106,7 @@ export async function simulate(scene: Scene, opts: SimOptions): Promise<SimResul
       if (touching) contacts.push(a.id < b.id ? [a.id, b.id] : [b.id, a.id]);
     }
     contacts.sort((x, y) => (x[0] + x[1] < y[0] + y[1] ? -1 : 1));
-    return { steps, dt, final: trajectory[trajectory.length - 1].poses, trajectory, maxY, minY, contacts };
+    return { steps, dt, final: trajectory[trajectory.length - 1].poses, trajectory, maxY: Object.fromEntries(maxY), minY: Object.fromEntries(minY), contacts };
   } finally {
     world.free();
   }

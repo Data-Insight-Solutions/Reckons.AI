@@ -40,6 +40,11 @@ describe('scene reader', () => {
     expect(s.refusals[0].reason).toMatch(/also used/);
     expect(parseShape('capsule 0.2 0.5')).toEqual({ kind: 'capsule', r: 0.2, halfHeight: 0.5 });
   });
+  it('refuses ids that name object internals, so none can reach a prototype', () => {
+    const s = sceneFromStatements(statementsFromTtl(`@prefix m: <urn:kbase:meta/> . <urn:a:__proto__> m:sim-shape "sphere 1" ; m:placed-at "0 0 0" . <urn:a:constructor> m:sim-shape "sphere 1" ; m:placed-at "0 0 0" .`));
+    expect(s.bodies).toEqual([]);
+    expect(s.refusals.map((r) => r.reason)).toEqual([expect.stringMatching(/object internal/), expect.stringMatching(/object internal/)]);
+  });
   it('lists conditions from the target node', () => {
     const c = conditionsFromStatements(statementsFromTtl(P + `kb:t m:sim-condition "atRest(all)" .`));
     expect(c).toEqual([{ subject: 'urn:kbase:concept/t', text: 'atRest(all)' }]);
