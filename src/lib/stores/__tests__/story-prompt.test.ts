@@ -36,6 +36,14 @@ const step = (n: number) => st(`urn:kbase:concept/step-${n}`, RDF_TYPE, 'urn:rec
 beforeEach(() => vi.clearAllMocks());
 
 describe('detectStory', () => {
+  it('offers the interactive story for already-imported Generated assets examples', () => {
+    const graph = [st('urn:kbase:concept/generated-assets', RDF_TYPE, 'urn:kbase:type/Concept')];
+    expect(detectStory(graph)).toEqual({ steps: 2, title: 'Create an asset with Shelly' });
+    promptStoryIfPresent(graph, 'generated-assets');
+    pushNotification.mock.calls.at(-1)![0].action.onclick();
+    expect(startStory).toHaveBeenCalledWith('urn:reckons:story/create-generated-asset');
+    expect(detectStory(graph.map(s => ({ ...s, status: 'rejected' as const })))).toEqual({ steps: 0, title: undefined });
+  });
   it('counts step SUBJECTS, not triples', () => {
     // A step node carries title, content, order, layout… Counting statements would report a
     // five-step story as seventeen steps.

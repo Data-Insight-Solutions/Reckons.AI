@@ -74,6 +74,7 @@
     "workflow:shots": "npx tsx scripts/workflow-shots.ts",
     "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
+    "gen:serve": "npx tsx scripts/content/generation-runner.ts",
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
     "scan:room": "npx tsx scripts/content/scan-room.ts",
     "splat:compress": "npx tsx scripts/content/splat-compress.ts",

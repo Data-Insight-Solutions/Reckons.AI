@@ -65,6 +65,10 @@ export function detectStory(statements: readonly Statement[]): StoryPresence {
     }
   }
 
+  if (stepSubjects.size === 0) {
+    const legacy = extractStories([...statements]).find(s => s.interaction === 'generate-assets');
+    if (legacy) return { steps: legacy.steps.length, title: legacy.label };
+  }
   return { steps: stepSubjects.size, title };
 }
 

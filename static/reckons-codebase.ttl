@@ -17,6 +17,19 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix code:   <urn:reckons:code/> .
 
+code:generation
+    rdf:type ktype:Concept ;
+    rdfs:label "Local generation story and workspace queue" ;
+    skos:definition "Typed image/video/splat requests, capability discovery, receipt verification and idempotent attachment in the originating space. Shelly uses a built-in interactive story. An optional file-queue runner invokes the existing local generation commands in private job directories." ;
+    kpred:has-file "src/lib/generation/protocol.ts" ;
+    kpred:has-file "src/lib/generation/workspace-client.ts" ;
+    kpred:has-file "src/lib/generation/attach.ts" ;
+    kpred:has-file "src/lib/components/GenerationStory.svelte" ;
+    kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0a-b00a-000000000010" .
 
@@ -997,3 +1010,10 @@ code:local-security-audits rdf:type ktype:Concept ;
     kpred:description "Read-only Linux host probes and explicit online npm lockfile audits. Shared agent output contains aggregate counts; evidence and local policy remain private. Registered script-tier jobs provide reusable invocations without a daemon or inbound listener." ;
     kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
     kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
+
+code:three-example-viewer rdf:type ktype:Concept ;
+    rdfs:label "Isolated Three.js example attachments" ;
+    skos:broader code:threed ;
+    kpred:description "Strict official-example URL metadata, an inert node editor, and a user-started sandboxed viewer. A separate static document owns the remote-code CSP and reports graphics activity, failures and heartbeat to the parent. The application's CSP is not widened." ;
+    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "static/three-example.html", "static/three-example.js" ;
+    kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .

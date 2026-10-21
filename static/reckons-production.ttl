@@ -9,6 +9,15 @@
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 @prefix schema:  <https://schema.org/> .
 
+kb:generated-assets-story rdf:type ktype:Feature ;
+    rdfs:label "Interactive generated assets story" ;
+    kpred:has-status "functional" ;
+    kpred:description "F166.1.1 — Shelly collects an image prompt, dispatches a bounded job through an explicitly connected local workspace runner, then offers available video and Gaussian-splat derivations. Receipt and file hashes gate attachment to the originating space. Output facts remain pending review. General free-form chat dispatch and other tool adapters remain unbuilt." ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/stores/__tests__/story-prompt.test.ts" .
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Reckons.AI Production Status KB
 # ══════════════════════════════════════════════════════════════════════════════
@@ -574,3 +583,9 @@ kb:local-security-audits a ktype:Feature ;
     kpred:has-status "functional" ;
     kpred:description "Local tooling, not a hosted app capability: npm run host:check inspects Linux without privilege escalation; npm run security:dependencies explicitly contacts the npm registry for tracked lockfiles. Reports remain in private state outside Git. A passing check is scoped evidence, not certification that a device or deployment is secure." ;
     kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .
+
+kb:threejs-example-nodes rdf:type ktype:Feature ;
+    rdfs:label "Three.js example node viewer" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "Official WebGL/WebGPU example links can be attached to a node and explicitly loaded in a sandboxed frame. A separate CSP, graphics checks, error/context-loss reports, render deadline and heartbeat watchdog provide failure containment; browser/GPU-process crashes cannot be guaranteed contained. No remote code is run by merely importing or opening a graph." ;
+    kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .

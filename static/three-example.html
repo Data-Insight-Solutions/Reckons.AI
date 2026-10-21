@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Separate from app.html: remote scripts are permitted only in this opaque-origin sandbox. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://threejs.org; style-src 'unsafe-inline' https://threejs.org; connect-src https://threejs.org; img-src data: blob: https://threejs.org; media-src blob: https://threejs.org; font-src https://threejs.org; worker-src blob: https://threejs.org; base-uri https://threejs.org; form-action 'none'; object-src 'none'; frame-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Isolated Three.js example</title>
+</head>
+<body><p>Loading example…</p><script src="/three-example.js"></script></body>
+</html>

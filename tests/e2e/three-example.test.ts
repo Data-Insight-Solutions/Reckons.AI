@@ -1,0 +1,152 @@
+import { test, expect, type Page } from '@playwright/test';
+import { clearStorage, waitForApp } from './helpers';
+
+// attach() re-serves three-example.html through page.route to add production's X-Frame-Options.
+// Chrome treats a fulfilled document as public address space, so Local Network Access then blocks
+// the sandboxed frame's own /three-example.js from 127.0.0.1. Production serves both from one
+// public host; only this loopback test needs the check off.
+test.use({ launchOptions: { args: ['--disable-features=LocalNetworkAccessChecks'] } });
+
+const example = 'https://threejs.org/examples/webgl_reckons_fixture.html';
+// Purpose-built synthetic example. CI never depends on upstream demo changes or network access.
+const scene = `
+  const canvas = document.createElement('canvas'); document.body.append(canvas);
+  const gl = canvas.getContext('webgl2');
+  const shader = (type, text) => { const s = gl.createShader(type); gl.shaderSource(s,text); gl.compileShader(s); return s; };
+  const p = gl.createProgram();
+  gl.attachShader(p, shader(gl.VERTEX_SHADER, '#version 300 es\\nvoid main(){vec2 p[3]=vec2[3](vec2(-1,-1),vec2(3,-1),vec2(-1,3));gl_Position=vec4(p[gl_VertexID],0,1);}'));
+  gl.attachShader(p, shader(gl.FRAGMENT_SHADER, '#version 300 es\\nprecision mediump float;out vec4 c;void main(){c=vec4(0,1,0,1);}'));
+  gl.linkProgram(p); gl.useProgram(p); gl.drawArrays(gl.TRIANGLES,0,3);
+  try { parent.document.body; document.body.dataset.parentAccess='yes'; } catch { document.body.dataset.parentAccess='blocked'; }
+  try { localStorage.setItem('escape','yes'); document.body.dataset.storageAccess='yes'; } catch { document.body.dataset.storageAccess='blocked'; }
+`;
+async function stub(page: Page, script = scene, status = 200) {
+  await page.route('https://threejs.org/**', route => route.fulfill({
+    status, headers: { 'access-control-allow-origin': '*' }, contentType:'text/html',
+    body:`<!doctype html><html><head><title>Synthetic example</title></head><body><script type="module">${script}</script></body></html>`,
+  }));
+}
+async function attach(page: Page) {
+  // Production serves static files with SAMEORIGIN. Verify that header together with the
+  // opaque-origin sandbox, rather than testing only Vite's more permissive response.
+  await page.route('**/three-example.html?**', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'x-frame-options': 'SAMEORIGIN' } });
+  });
+  await clearStorage(page); await waitForApp(page);
+  await page.goto('/about');
+  await page.locator('.starter-card', { hasText: /generated assets/i }).click();
+  await page.waitForURL(url => url.pathname === '/');
+  await expect(page.locator('main canvas').first()).toBeVisible();
+  const collapse = page.getByRole('button', { name: 'Collapse notifications', exact:true });
+  if (await collapse.isVisible()) await collapse.click();
+  await page.getByPlaceholder('search nodes or facts…').fill('gen-carved-turtle-image');
+  await page.locator('.sb-node-row').filter({has: page.locator('.sb-node-iri')}).filter({hasText:'gen-carved-turtle-image'}).first().click();
+  await page.getByRole('button',{name:'Attach Three.js example',exact:true}).click();
+  await page.getByLabel('Example URL', {exact:true}).fill(example);
+  await page.getByRole('button',{name:'Attach example',exact:true}).click();
+  await page.getByRole('button',{name:'Open example viewer',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Load example',exact:true})).toBeVisible();
+}
+
+test('node attachments are inert until loaded, isolated, stoppable, and removable', async ({page}) => {
+  let requests = 0;
+  page.on('request', r => { if (r.url().startsWith('https://threejs.org/')) requests++; });
+  await stub(page); await attach(page);
+  expect(requests).toBe(0);
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.getByText('Example running',{exact:true})).toBeVisible();
+  const frame = page.frameLocator('iframe[title="Interactive Three.js example"]');
+  await expect(frame.locator('body')).toHaveAttribute('data-parent-access','blocked');
+  await expect(frame.locator('body')).toHaveAttribute('data-storage-access','blocked');
+  await expect(page.locator('.three-example-viewer iframe')).toHaveAttribute('sandbox','allow-scripts');
+  if (process.env.STORY_CAPTURE_DIR) await page.screenshot({path:`${process.env.STORY_CAPTURE_DIR}/${test.info().project.name}-three.png`});
+  await page.getByRole('button',{name:'Stop example',exact:true}).click();
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+  await expect(page.getByText('Example stopped and unloaded.')).toBeVisible();
+  const fullscreenClose = page.locator('.asset-fs-close');
+  if (await fullscreenClose.isVisible()) {
+    await fullscreenClose.click();
+  } else await page.locator('.asset-large .asset-controls button[title="Close"]').click();
+  await page.getByRole('button',{name:'Remove example',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Attach Three.js example',exact:true})).toBeVisible();
+});
+
+test('fetch and runtime errors unload the example; retry and context loss are handled', async ({page}) => {
+  await stub(page, '', 404); await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('HTTP 404');
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+  await stub(page, "throw new Error('Synthetic incompatible example')");
+  await page.getByRole('button',{name:'Retry example',exact:true}).click();
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('Synthetic incompatible example');
+  await stub(page);
+  await page.getByRole('button',{name:'Retry example',exact:true}).click();
+  await expect(page.getByText('Example running',{exact:true})).toBeVisible();
+  await page.frameLocator('iframe[title="Interactive Three.js example"]').locator('canvas').evaluate(canvas => {
+    (canvas as HTMLCanvasElement).getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext();
+  });
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('graphics context was lost');
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+});
+
+test('a loaded document without a rendered scene times out and ignores forged messages', async ({page}) => {
+  await page.clock.install();
+  await stub(page, 'document.body.textContent="No rendered scene";'); await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.frameLocator('iframe[title="Interactive Three.js example"]').locator('body')).toContainText('No rendered scene');
+  await page.evaluate(() => {
+    const frame = document.querySelector('.three-example-viewer iframe') as HTMLIFrameElement;
+    window.postMessage({channel:'reckons-three-example',token:new URL(frame.src).searchParams.get('token'),type:'rendered'}, '*');
+  });
+  await expect(page.getByText('Loading example…',{exact:true})).toBeVisible();
+  await page.clock.fastForward(46_000);
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('did not render within 45 seconds');
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+});
+
+test('missing graphics support fails before downloading the example', async ({page}) => {
+  await page.addInitScript(() => {
+    if (location.pathname !== '/three-example.html') return;
+    HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+  });
+  let downloaded = false;
+  page.on('request', r => { if (r.url() === example) downloaded = true; });
+  await stub(page); await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('cannot provide the graphics API');
+  expect(downloaded).toBe(false);
+});
+
+test('a missing heartbeat unloads a previously rendered example', async ({page}) => {
+  await page.clock.install();
+  await stub(page); await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.getByText('Example running',{exact:true})).toBeVisible();
+  await page.frameLocator('iframe[title="Interactive Three.js example"]').locator('body').evaluate(() => {
+    // Stop this isolated document's existing timers. Virtual clocks use large timer IDs;
+    // get the current sequence rather than assuming it starts at 1.
+    const last = window.setInterval(() => {}, 60_000);
+    for (let id = last; id >= Math.max(0, last - 10); id--) clearInterval(id);
+  });
+  await page.clock.fastForward(12_000);
+  await expect(page.locator('.three-example-viewer [role="alert"]')).toContainText('stopped responding');
+  await expect(page.locator('.three-example-viewer iframe')).toHaveCount(0);
+});
+
+test('the isolated document keeps its network policy after replacement', async ({page}) => {
+  await stub(page, scene + `
+    fetch('https://example.invalid/blocked').then(() => document.body.dataset.external='allowed', () => document.body.dataset.external='blocked');
+    try { parent.location.href='https://example.invalid/navigation'; } catch { document.body.dataset.navigation='blocked'; }
+  `);
+  let leaked = false;
+  await page.route('https://example.invalid/**', route => { leaked = true; return route.fulfill({body:'unexpected'}); });
+  await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.getByText('Example running',{exact:true})).toBeVisible();
+  const body = page.frameLocator('iframe[title="Interactive Three.js example"]').locator('body');
+  await expect(body).toHaveAttribute('data-external','blocked');
+  await expect(body).toHaveAttribute('data-navigation','blocked');
+  expect(leaked).toBe(false);
+});
