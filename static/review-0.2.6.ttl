@@ -84,7 +84,7 @@ rev:gap rdf:type ktype:Concept ;
 
 rev:gap-f107-10 rdf:type ktype:Concept ;
     rdfs:label "F107.10 One self-contained space: its folder, its schema, and the order of one large Turtle file" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/import-chunks.test.ts, src/lib/rdf/__tests__/export-chunks.test.ts, src/lib/ingest/__tests__/source-corpus.test.ts, src/lib/stores/__tests__/space-passages-roundtrip.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/import-chunks.test.ts, src/lib/rdf/__tests__/export-chunks.test.ts, src/lib/ingest/__tests__/source-corpus.test.ts, src/lib/stores/__tests__/space-passages-roundtrip.test.ts)." .
 
 rev:gap-f223 rdf:type ktype:Concept ;
     rdfs:label "F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer" ;

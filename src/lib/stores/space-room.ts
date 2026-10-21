@@ -7,7 +7,7 @@ import { statements, addStatements, setStatus } from './kb.svelte';
 import { importSplatFile, type ImportedSplat } from '$lib/storage/splat-files';
 import {
   scanStatements, scanEntityIri, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, type SplatOrigin,
-  backgroundSplatFrom, backgroundSettingsFrom, BG_EXTENT_PREDICATE, placementsFrom, defaultPlacement, adjustPlacement, formatPlacementAt,
+  backgroundSplatFrom, backgroundSettingsFrom, BG_EXTENT_PREDICATE, BG_MODE_PREDICATE, BG_SCALE_PREDICATE, placementsFrom, defaultPlacement, adjustPlacement, formatPlacementAt,
   PLACED_AT_PREDICATE, PLACED_SCALE_PREDICATE, PLACED_YAW_PREDICATE, DEFAULT_PLACED_SCALE, type Placement, type PlacementOp,
 } from '$lib/3d/splat';
 import { roomView } from '$lib/3d/room-view';
@@ -51,22 +51,31 @@ async function writePlacement(iri: string, p: Placement, was?: Placement) {
 }
 
 /**
- * Put a node's splat in the room: on the floor, half way from the camera toward the graph. Says why
- * when it cannot, instead of silently doing nothing.
+ * Put a node's splat in the space's background: on the floor, half way from the camera toward the
+ * graph. Says why when it cannot, instead of silently doing nothing.
+ *
+ * A BACKDROP is switched to surround first, with a note. Placement needs a frame that holds still:
+ * a backdrop is re-fitted to the graph every frame, so a splat placed in it would swim as the layout
+ * settles. Switching (and saying so) was chosen over refusing, because refusing left a person with
+ * the controls on screen and nothing they could do (Matt, 2026-10-15).
  */
 export async function placeInRoom(iri: string): Promise<{ ok: boolean; message: string }> {
-  const sts = statements();
-  const bg = backgroundSettingsFrom(sts);
-  if (!backgroundSplatFrom(sts)) return { ok: false, message: 'This space has no room yet. Import a scan first (Graphs tab, space background).' };
-  if (bg.mode !== 'surround') return { ok: false, message: 'Switch the background to "surround" to place things in the room (Graphs tab, space background).' };
-  if (!roomView.live) return { ok: false, message: 'Open the 3D graph first, so the room has a camera to place things in front of.' };
+  if (!backgroundSplatFrom(statements())) return { ok: false, message: 'This space has no background yet. Import a scan first (Graphs tab, space background).' };
+  if (!roomView.live) return { ok: false, message: 'Open the 3D graph first, so the space has a camera to place things in front of.' };
+  let switched = '';
+  if (backgroundSettingsFrom(statements()).mode !== 'surround') {
+    await setMeta(SPACE_SUBJECT, BG_MODE_PREDICATE, 'surround');
+    await setMeta(SPACE_SUBJECT, BG_SCALE_PREDICATE, ''); // a backdrop multiplier means something else in surround
+    switched = 'Switched the background to surround so placement holds still (a backdrop resizes with the graph). ';
+  }
+  const bg = backgroundSettingsFrom(statements());
   const p = defaultPlacement(
     { camera: roomView.camera, target: roomView.target, floor: bg.floor },
     { centre: roomView.centre, scale: bg.scale, yaw: bg.yaw },
     1 / bg.scale, // one world unit of radius, whatever the scan's own scale
   );
   await writePlacement(iri, p);
-  return { ok: true, message: bg.floor === null ? "Placed at the room's mid height: run Level the floor to stand it on the floor." : 'Placed on the floor.' };
+  return { ok: true, message: switched + (bg.floor === null ? "Placed at the space's mid height: run Level the floor to stand it on the floor." : 'Placed on the floor.') };
 }
 
 /** One step: move, raise, turn or scale a placed node. No-op for a node that is not placed. */
