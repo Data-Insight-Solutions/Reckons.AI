@@ -10197,7 +10197,8 @@ kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20 (later, after a s
     kpred:has-phase kb:showcase-splat ;
     kpred:has-phase kb:generation-resource-requirements ;
     kpred:has-phase kb:zoom-to-leap ;
-    kpred:has-phase kb:getting-started-create-chapter .
+    kpred:has-phase kb:getting-started-create-chapter ;
+    kpred:has-phase kb:doorway-leap .
 
 kb:showcase-splat rdf:type ktype:Phase ;
     rdfs:label "Showcase splat — a highly detailed generated example, quality pushed and measured" ;
@@ -10237,4 +10238,15 @@ kb:getting-started-create-chapter rdf:type ktype:Phase ;
     kpred:depends-on kb:generated-assets-story ;
     kpred:description "A story-mode chapter in the Getting started space. Shelly asks what image to make. Without local generation she shows the showcase image and splat, says what generating it free locally requires (the measured table) and links the setup guide; with the runner connected she runs the existing generated-assets story (image, then splat). The chapter ends on a leap node wearing the showcase splat: zoom into it to arrive in the Generated assets space." ;
     kpred:constraint "Works with nothing installed. Never starts a download or a generation without an explicit choice. The browser-only tutorial (kb:browser-generation-tutorial) replaces the 'needs local setup' branch when it exists." ;
+    kpred:remaining "Everything." .
+
+kb:doorway-leap rdf:type ktype:Phase ;
+    rdfs:label "Doorway leap — walk through a door at a leap node into the target space" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:depends-on kb:zoom-to-leap ;
+    kpred:decided "Matt, 2026-10-20: attempt a high-quality doorway transition: set the leap node inside a doorway the user can walk through, possibly with three.js on the node." ;
+    kpred:description "In the 3D graph, a leap node can present as a doorway: a door frame at the node, and through its opening the target space's preview (the leap node's splat when it has one, otherwise the existing ghost-graph preview), masked to the opening with the stencil buffer. Moving the camera through the door plane inside the opening performs the leap (the zoom-to-leap trigger, made spatial); a Walk through action does the same for keyboard, touch and reduced-motion users. The 2D graph falls back to the zoom-to-leap ring." ;
+    kpred:principle "OUR OWN RENDERER, NOT A SANDBOXED EXAMPLE. The doorway is code in the graph renderer because walking through needs the graph's camera; a threejs.org example runs in an isolated frame with its own camera and cannot share it (kb:threejs-example-nodes). Ideas can be borrowed from the examples; their code is not executed here." ;
+    kpred:constraint "The inside view renders only while the door is near and on screen, and loads its preview lazily; frame time is measured with and without it. Crossing is detected as the camera's path crossing the opening between two frames, never by distance alone, so orbiting past the door does not leap. Automatic camera moves never cross." ;
     kpred:remaining "Everything." .
