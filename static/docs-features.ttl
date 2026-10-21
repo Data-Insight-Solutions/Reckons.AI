@@ -741,3 +741,21 @@ Before downloading the example, the frame checks for graphics API availability. 
 **This is failure containment, not guaranteed crash protection.** An iframe is not a dedicated operating-system process. A severe browser, shared rendering-thread or GPU-driver failure can still freeze or crash the tab before its watchdog runs. Use a lighter example if your device struggles. Example compatibility and upstream contents can change.
 
 No local models, plugins or SSH setup are needed for these viewers. They require internet access to threejs.org and compatible browser graphics support. This does not generate or copy an asset into your space; the saved node metadata holds a link. See the [Three.js compatibility guide](https://threejs.org/manual/pages/webgl-compatibility-check.html), and [generation setup](/docs/features/generation-setup) for creating your own image, video or splat.""" .
+
+
+## =============================================================================
+## Reckoning simulator (F260), phase 1 only
+## =============================================================================
+
+feat:SimCore rdf:type ktype:Concept ;
+    rdfs:label "Physical scene simulator (early, command line only)" ;
+    kpred:page-slug "physical-scene-simulator" ;
+    skos:exactMatch kb:reckoning-simulator ;
+    skos:broader feat:StorySystem ;
+    skos:definition """A space can describe a small physical scene, and a command checks whether a goal comes true in it. This is the first step of a larger plan and, today, it is a developer tool: it has no screen in the app, no replay, and the reckoning does not use it yet.
+
+Each node with a shape (a box, sphere or capsule) is a rigid body with a mass, friction and bounciness, and a start position taken from the node's placement setting. A target node lists goals in a small fixed vocabulary, such as `inside(ball, cup-zone)` or `aboveFloor(all, -0.1)`. A goal that is misspelled or names a body that does not exist is reported and never run.
+
+To try it, run `npm run sim:run -- --file=static/starter-sim-ramp-cup.ttl`. The command simulates 10 seconds, prints PASS or FAIL for each goal with the final position of every moving body, and exits with an error code if any goal fails. The example ball, as given, starts too low on the ramp to clear the cup's lip, so the run fails; moving it higher up the ramp makes the same run pass.
+
+The physics engine is Rapier. The same run with the same inputs gives the same positions on the same build, which is tested; this is not a promise across different builds or browsers. Runs are limited in length and in the number of bodies. Later phases are planned to let a reckoning propose changes to a scene and test each one here, and to replay a run in the 3D graph view.""" .

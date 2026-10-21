@@ -30,6 +30,19 @@ code:generation
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:tested-by "tests/e2e/generated-assets-story.test.ts" .
 
+code:sim
+    rdf:type ktype:Concept ;
+    rdfs:label "Physical scene simulator (F260 phase 1)" ;
+    skos:definition "Reads rigid bodies from node meta predicates (sim-shape, sim-mass, sim-static, sim-sensor, sim-friction, sim-restitution, sim-velocity, sim-tilt; pose from placed-at and placed-yaw), steps them with Rapier at a fixed timestep, and checks sim-condition literals (inside, restsOn, aboveFloor, reachesHeight, atRest, within). Rapier loads by dynamic import only; no app code imports this module yet. Headless runner: npm run sim:run." ;
+    kpred:has-file "src/lib/sim/scene.ts" ;
+    kpred:has-file "src/lib/sim/world.ts" ;
+    kpred:has-file "src/lib/sim/conditions.ts" ;
+    kpred:has-file "src/lib/sim/ttl.ts" ;
+    kpred:has-file "src/lib/sim/sim.worker.ts" ;
+    kpred:has-file "scripts/sim/run.ts" ;
+    kpred:has-file "static/starter-sim-ramp-cup.ttl" ;
+    kpred:tested-by "src/lib/sim/__tests__/sim.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0a-b00a-000000000010" .
 
