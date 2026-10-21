@@ -21,8 +21,7 @@ They may have stopped when the session ended — check each branch and PR before
 **Matt's decisions today (all in the roadmap):** Three.js examples both as node appearance and background;
 core tutorials browser-only (no Tripo/Meshy), local runner optional; Getting started gets an image-then-splat
 chapter with a splat doorway leap; game generator = speculative genre templates (F143); simulator = 3D physical
-scene (F260). **Open for Matt:** Create chapter joins or replaces "This Weekend"; F143 "we ship no engine" note
-vs publishing games; HomeAssistant VM vs Docker; red CodeQL as a promotion gate.
+scene (F260). **Decided by Matt at wrap-up:** Create REPLACES 'This Weekend'; F143 — we may be the engine, but not publishing or server-based: plugin framework, minimal-dependency core; HomeAssistant → Docker. **Still open:** CodeQL — Matt answered 'Yes, a red CodeQL blocks promotion', which conflicts with his 2026-10-13/14 decision (block NEW alerts only, not existing); the summary he answered dropped the 'all alerts already open' qualifier. Confirm before changing the gate.
 
 **Incidents:** the main checkout's node_modules was emptied at 21:10 (likeliest: a worktree had node_modules
 symlinked to it) — reinstalled; never symlink node_modules into worktrees. `npm run gen:serve` in
