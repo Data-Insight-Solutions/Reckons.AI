@@ -5948,7 +5948,7 @@ kb:reviewable-graph-patches rdf:type ktype:Feature ;
 kb:document-evidence-anchors rdf:type ktype:Feature ;
     rdfs:label "Document evidence anchors — page, block, span and geometry provenance" ;
     kpred:feature-id "F122.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:priority "high" ;
     kpred:part-of kb:source-reference-copy ;
     kpred:depends-on kb:passage-grounding ;
@@ -9261,7 +9261,7 @@ kb:meta-graph-view kpred:decided "MATT, 2026-10-06, SETS LIVE IN THE TTLS: 'Sets
 kb:space-file-layout rdf:type ktype:Feature ;
     rdfs:label "One self-contained space: its folder, its schema, and the order of one large Turtle file" ;
     kpred:feature-id "F107.10" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:part-of kb:stabilization-trust-boundaries ;
     kpred:relates-to kb:canonical-graph-package ;
     kpred:relates-to kb:workspace-index ;
@@ -10250,3 +10250,10 @@ kb:doorway-leap rdf:type ktype:Phase ;
     kpred:principle "OUR OWN RENDERER, NOT A SANDBOXED EXAMPLE. The doorway is code in the graph renderer because walking through needs the graph's camera; a threejs.org example runs in an isolated frame with its own camera and cannot share it (kb:threejs-example-nodes). Ideas can be borrowed from the examples; their code is not executed here." ;
     kpred:constraint "The inside view renders only while the door is near and on screen, and loads its preview lazily; frame time is measured with and without it. Crossing is detected as the camera's path crossing the opening between two frames, never by distance alone, so orbiting past the door does not leap. Automatic camera moves never cross." ;
     kpred:remaining "Everything." .
+
+# ── v0.2.6 close-out, 2026-10-21 (agent) ──────────────────────────────────────
+kb:document-evidence-anchors kpred:progress "2026-10-21: planned → in-progress. All four phases (F122.1.1-.4) are functional. The feature's DONE WHEN is not yet met in two of its five parts: no test uses a rotated multi-page fixture (grep of src/**/*.test.ts for 'rotat' finds only 3D tests), and no test asserts that graph publication excludes the original document bytes. It stays below functional until those two are tested." .
+
+kb:space-file-layout kpred:progress "2026-10-21: planned → in-progress. The 0.2.6 slice Matt decided on 2026-10-13 (FOLD CHUNKS ONLY) is functional: F107.10.1-.3. Moving retained originals into the space folder is the decided 0.2.7 follow-up, so the whole feature is not functional yet." .
+
+kb:release-0-2-6 kpred:proposed "AGENT, 2026-10-21, NOT DECIDED — CLOSE-OUT. The release ends 2026-10-22, three days past its 2026-10-18 cut. Of the three headline parts, F107.10 and F122.1 are in-progress with every phase functional (see their progress notes), and F223 is planned: F223.1 is PR #462, and F223.2-.4 have not started. Proposal: F223.1 lands in 0.2.6 if Matt approves #462, and F223.2-.4 move to 0.2.7 with the same reason as the 2026-10-13 cut (moved because not started, not dropped). A dev → staging promotion carries all of dev, about 272 commits on 2026-10-21. That includes work outside the 0.2.6 scope that went to dev anyway: F58.9 splats and room scans, F166.1 generated assets, and Three.js examples as nodes and backgrounds. The promotion notes should list those as carried, not as 0.2.6 headline work." .
