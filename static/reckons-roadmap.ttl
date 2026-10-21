@@ -10184,3 +10184,57 @@ kb:game-genre-templates rdf:type ktype:Phase ;
     kpred:description "Instead of generating engine code per game, a small shared runtime (render loop, input, an ECS, Rapier physics via WASM, GLB/splat loading, audio, save) and a few genre templates (platformer, top-down, walking sim, racing, puzzle) whose rules, tuning and assets are graph facts. Style and mechanics selection fills a template; generated assets fill its slots; the output is a static three.js bundle that plays in the same sandboxed frame as the Three.js example viewer." ;
     kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
     kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
+
+## Getting started "Create" chapter, zoom-to-leap and a showcase splat (Matt, 2026-10-20)
+## "We need to do a good story mode version of this image gen, then 3d splat gen, for the getting
+## started space. ... make leaps/jumps from space to space work by zooming into a node closely, and set
+## a leap node with a splat to zoom into. ... optimize the quality of the splat, have a highly detailed
+## example, that many people couldn't generate on their machine, ... tell users what the system
+## resources are required to do it free locally."
+
+kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20 (later, after a successful local image-to-splat run): the Getting started space gets a story-mode image-then-splat chapter, plus a zoom-to-leap highlight using a splat leap node, a highly detailed showcase splat and the measured resources needed to generate it free locally. This refines the earlier same-day note: the no-install path stays the default (the showcase, and the browser-only tutorial once built); local generation is offered with its requirements stated, not required." ;
+    kpred:open-question "Does the Create chapter join the existing Getting started story ('This Weekend', static/starter-everyday.ttl) as a later chapter, or replace it? Planned as a later chapter until Matt decides; replacing what Getting started IS is his call." ;
+    kpred:has-phase kb:showcase-splat ;
+    kpred:has-phase kb:generation-resource-requirements ;
+    kpred:has-phase kb:zoom-to-leap ;
+    kpred:has-phase kb:getting-started-create-chapter .
+
+kb:showcase-splat rdf:type ktype:Phase ;
+    rdfs:label "Showcase splat — a highly detailed generated example, quality pushed and measured" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "Generate one generic, purpose-built example (image then splat) at the highest quality the local pipeline reaches on Matt's 2x RTX 3090: sweep the TripoSplat settings that trade detail for memory and time (Gaussian count, input resolution, sampling steps), keep the run whose output is visibly better by a recorded visual check, then compress it (SPZ) to a size the app can ship. Record every run's settings, peak VRAM, time and file size as graph data, like the F183 generation bench." ;
+    kpred:constraint "Public example: generic and purpose-built, no personal content. A shipped asset has a size budget (the Your room example is 4.9 MB); the uncompressed original stays out of the repository. 'Many people could not generate this' must be backed by the measured peak VRAM, not asserted." ;
+    kpred:remaining "Everything." .
+
+kb:generation-resource-requirements rdf:type ktype:Phase ;
+    rdfs:label "Resources required to generate free locally — measured per stage" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:showcase-splat ;
+    kpred:description "A per-stage table (image, video, splat at standard and showcase quality): peak GPU memory, system RAM, disk for model weights, and time, each measured on a named machine. Shown in the Create chapter and the generation setup guide, next to the one-time weight download size. The story uses it to say what this device can and cannot do instead of failing late." ;
+    kpred:constraint "Only measured numbers, each labeled with the machine it was measured on (initially 2x RTX 3090, 24 GB each). A minimum requirement is stated only after a run on that smaller configuration; otherwise say 'measured on X; smaller GPUs untested'." ;
+    kpred:remaining "Everything." .
+
+kb:zoom-to-leap rdf:type ktype:Phase ;
+    rdfs:label "Zoom-to-leap — zoom closely into a leap node to cross into its space" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:description "In the 3D and 2D graph views, zooming the camera close to a leap node (urn:reckons:leap) past a threshold, held briefly, performs that leap through the existing switchToKb resolution. A visible 'Entering <space>' ring fills during the dwell; zooming out or Escape cancels; Back returns to the space you came from. A leap node that carries a splat is the showcase: you zoom into the splat and arrive in the other space." ;
+    kpred:principle "ONE LEAP MECHANISM (inherited from kb:multi-graph-stories). Zooming is a new way to TRIGGER a leap, not a second cross-graph path; target resolution, missing-target behaviour and provenance stay those of KBLeap." ;
+    kpred:constraint "Never fires by accident: threshold plus dwell, and never during an automatic camera move (focus, story playback, fly-to). Respects reduced motion (no zoom animation; the ring and a click still work). A leap whose target is not on this device says so instead of switching. Keyboard and touch users get an equivalent explicit action." ;
+    kpred:remaining "Everything." .
+
+kb:getting-started-create-chapter rdf:type ktype:Phase ;
+    rdfs:label "Getting started Create chapter — Shelly-led image, then splat, ending in a zoom-to-leap" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:soft-onboarding ;
+    kpred:depends-on kb:showcase-splat ;
+    kpred:depends-on kb:generation-resource-requirements ;
+    kpred:depends-on kb:zoom-to-leap ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:description "A story-mode chapter in the Getting started space. Shelly asks what image to make. Without local generation she shows the showcase image and splat, says what generating it free locally requires (the measured table) and links the setup guide; with the runner connected she runs the existing generated-assets story (image, then splat). The chapter ends on a leap node wearing the showcase splat: zoom into it to arrive in the Generated assets space." ;
+    kpred:constraint "Works with nothing installed. Never starts a download or a generation without an explicit choice. The browser-only tutorial (kb:browser-generation-tutorial) replaces the 'needs local setup' branch when it exists." ;
+    kpred:remaining "Everything." .
