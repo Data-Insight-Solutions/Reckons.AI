@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { threeExampleUrl, threeExampleMapFrom, THREE_EXAMPLE_PREDICATE } from '../three-example';
+import { threeExampleUrl, threeExampleMapFrom, THREE_EXAMPLE_PREDICATE, BACKGROUND_THREE_EXAMPLE_PREDICATE, backgroundThreeExampleFrom } from '../three-example';
 import type { Statement } from '$lib/rdf/types';
 
 describe('official Three.js example attachments', () => {
@@ -26,5 +26,24 @@ describe('official Three.js example attachments', () => {
       row('https://threejs.org/examples/#webgl_old', 'pending-removal'),
       row('https://other.test/example.js'), row('https://threejs.org/examples/#webgl_valid'),
     ]).get('urn:example:node')).toBe('https://threejs.org/examples/webgl_valid.html');
+  });
+});
+
+describe('backgroundThreeExampleFrom', () => {
+  const st = (o: string, status = 'confirmed', s = 'urn:reckons:space') => ({
+    id: o, s: { kind: 'iri', value: s }, p: { kind: 'iri', value: BACKGROUND_THREE_EXAMPLE_PREDICATE },
+    o: { kind: 'literal', value: o }, status,
+  }) as unknown as Statement;
+  it('reads a confirmed official example on the space subject', () => {
+    expect(backgroundThreeExampleFrom([st('https://threejs.org/examples/#webgl_animation_keyframes')]))
+      .toBe('https://threejs.org/examples/webgl_animation_keyframes.html');
+  });
+  it('ignores pending (an imported graph cannot propose a running background), rejected, other subjects and other hosts', () => {
+    expect(backgroundThreeExampleFrom([
+      st('https://threejs.org/examples/webgl_a.html', 'pending'),
+      st('https://threejs.org/examples/webgl_b.html', 'rejected'),
+      st('https://threejs.org/examples/webgl_c.html', 'confirmed', 'urn:kbase:concept/x'),
+      st('https://evil.example/examples/webgl_d.html'),
+    ])).toBeNull();
   });
 });

@@ -31,3 +31,19 @@ export function threeExampleMapFrom(statements: readonly Statement[]): Map<strin
   }
   return result;
 }
+
+/**
+ * The space's background example: one replaceable setting on the space subject, like the
+ * background splat. Reading it never starts anything; the person loads it from the graph view.
+ */
+export const BACKGROUND_THREE_EXAMPLE_PREDICATE = 'urn:kbase:meta/background-three-example';
+
+export function backgroundThreeExampleFrom(statements: readonly Statement[], space = 'urn:reckons:space'): string | null {
+  for (const s of statements) {
+    if (s.p.value !== BACKGROUND_THREE_EXAMPLE_PREDICATE || s.s.kind !== 'iri' || s.s.value !== space || s.o.kind !== 'literal'
+      || ['rejected', 'superseded', 'pending-removal', 'pending'].includes(s.status)) continue;
+    const url = threeExampleUrl(s.o.value);
+    if (url) return url;
+  }
+  return null;
+}
