@@ -10193,7 +10193,7 @@ kb:game-genre-templates rdf:type ktype:Phase ;
 ## resources are required to do it free locally."
 
 kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20 (later, after a successful local image-to-splat run): the Getting started space gets a story-mode image-then-splat chapter, plus a zoom-to-leap highlight using a splat leap node, a highly detailed showcase splat and the measured resources needed to generate it free locally. This refines the earlier same-day note: the no-install path stays the default (the showcase, and the browser-only tutorial once built); local generation is offered with its requirements stated, not required." ;
-    kpred:open-question "Does the Create chapter join the existing Getting started story ('This Weekend', static/starter-everyday.ttl) as a later chapter, or replace it? Planned as a later chapter until Matt decides; replacing what Getting started IS is his call." ;
+    kpred:decided "Matt, 2026-10-20: the Create chapter REPLACES 'This Weekend' (static/starter-everyday.ttl) as the Getting started story." ;
     kpred:has-phase kb:showcase-splat ;
     kpred:has-phase kb:generation-resource-requirements ;
     kpred:has-phase kb:zoom-to-leap ;
@@ -10244,7 +10244,7 @@ kb:getting-started-create-chapter rdf:type ktype:Phase ;
     kpred:depends-on kb:generation-resource-requirements ;
     kpred:depends-on kb:zoom-to-leap ;
     kpred:depends-on kb:generated-assets-story ;
-    kpred:description "A story-mode chapter in the Getting started space. Shelly asks what image to make. Without local generation she shows the showcase image and splat, says what generating it free locally requires (the measured table) and links the setup guide; with the runner connected she runs the existing generated-assets story (image, then splat). The chapter ends on a leap node wearing the showcase splat: zoom into it to arrive in the Generated assets space." ;
+    kpred:description "The Getting started story (replacing 'This Weekend', Matt 2026-10-20). Shelly asks what image to make. Without local generation she shows the showcase image and splat, says what generating it free locally requires (the measured table) and links the setup guide; with the runner connected she runs the existing generated-assets story (image, then splat). The chapter ends on a leap node wearing the showcase splat: zoom into it to arrive in the Generated assets space." ;
     kpred:constraint "Works with nothing installed. Never starts a download or a generation without an explicit choice. The browser-only tutorial (kb:browser-generation-tutorial) replaces the 'needs local setup' branch when it exists." ;
     kpred:remaining "Everything." .
 
