@@ -1,3 +1,36 @@
+## 2026-10-20 (night) — START HERE. Four agents in flight; onboarding, doorway, drag/controls, simulator (Claude Code)
+
+**Merged to dev today:** #490 generated-assets story + Three.js examples on nodes and as background (replaced
+#488/#489), #491 vite 8.3.4 audit fix. **Open:** #495 worker.log for generation failures; #496 plan (Getting
+started Create chapter, zoom-to-leap, doorway leap, showcase splat, measured requirements); #497 plan F260
+reckoning simulator. Check `gh pr list` — agents may have merged #496/#497 and their own PRs since.
+
+**Agents launched at session end (Sonnet; each in its own worktree under this session's scratchpad, own npm ci).
+They may have stopped when the session ended — check each branch and PR before assuming done:**
+1. `feat/showcase-splat` — quality sweep of TripoSplat on the 3090s, showcase SPZ, requirements table. Merges
+   when green. Matt judges "better" from the comparison renders it reports.
+2. `feat/zoom-doorway-leap` — zoom-to-leap + doorway (stencil-masked preview, crossing math). NOT to be merged
+   before Matt tries it (server port 5190).
+3. #485 fix+merge, then `feat/node-drag-controls` — drag/pin in 2D+3D, Pin/Unpin replaces "Place in room",
+   Tweakpane per-node motion controls. NOT merged before Matt tries it (port 5191).
+4. `feat/f260-sim-core` — Rapier scene-from-graph, conditions, `npm run sim:run`, ramp/ball/cup example.
+   Merges when green.
+
+**Matt's decisions today (all in the roadmap):** Three.js examples both as node appearance and background;
+core tutorials browser-only (no Tripo/Meshy), local runner optional; Getting started gets an image-then-splat
+chapter with a splat doorway leap; game generator = speculative genre templates (F143); simulator = 3D physical
+scene (F260). **Open for Matt:** Create chapter joins or replaces "This Weekend"; F143 "we ship no engine" note
+vs publishing games; HomeAssistant VM vs Docker; red CodeQL as a promotion gate.
+
+**Incidents:** the main checkout's node_modules was emptied at 21:10 (likeliest: a worktree had node_modules
+symlinked to it) — reinstalled; never symlink node_modules into worktrees. `npm run gen:serve` in
+reckons-workspace needed `.reckons-generation/` ignored (merged in #490). Matt ran image→splat locally
+successfully after the reinstall.
+
+**Cost note (Matt's usage panel, 2026-10-20):** 100% of usage from subagent-heavy sessions, 53% at >150k
+context, 43% from general-purpose subagents. Next session: start fresh from this entry, keep the main thread
+short, and give agents tighter briefs.
+
 ## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
 
 Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
