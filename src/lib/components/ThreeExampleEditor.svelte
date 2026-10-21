@@ -1,7 +1,9 @@
 <script lang="ts">
   import { threeExampleUrl } from '$lib/3d/three-example';
-  let { value = '', disabled = false, onchange, onopen }: {
-    value?: string; disabled?: boolean; onchange: (url: string) => Promise<void>; onopen: () => void;
+  let { value = '', disabled = false, isBackground = false, onchange, onopen, onbackground }: {
+    value?: string; disabled?: boolean; isBackground?: boolean; onchange: (url: string) => Promise<void>; onopen: () => void;
+    /** Set (true) or clear (false) this example as the space background. Omit to hide the button. */
+    onbackground?: (on: boolean) => Promise<void>;
   } = $props();
   let draft = $state('');
   let editing = $state(false);
@@ -29,6 +31,7 @@
     <span class="example-name">{value.split('/').pop()?.replace('.html', '')}</span>
     <div class="actions">
       <button onclick={onopen}>Open example viewer</button>
+      {#if onbackground}<button onclick={() => onbackground(!isBackground)} disabled={disabled}>{isBackground ? 'Clear background' : 'Set as background'}</button>{/if}
       <button onclick={() => { draft = value; editing = true; }} disabled={disabled || saving}>Edit example</button>
       <button onclick={() => save(true)} disabled={disabled || saving}>Remove example</button>
     </div>

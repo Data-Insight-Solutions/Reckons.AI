@@ -10149,11 +10149,14 @@ kb:threejs-example-node-appearance rdf:type ktype:Phase ;
 
 kb:threejs-example-background rdf:type ktype:Phase ;
     rdfs:label "Three.js example scene as the graph background (scene-like examples)" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:part-of kb:threejs-example-nodes ;
     kpred:depends-on kb:threejs-example-nodes ;
     kpred:relates-to kb:asset-viewer ;
     kpred:description "Offer Set as background for a scene-like example, beside the existing splat and image backgrounds: the sandboxed frame fills the view behind a transparent graph canvas. The graph keeps pointer input by default; an explicit Interact with background toggle hands input to the example and back. Same Load, timeout, heartbeat and Stop handling as the viewer; a failed background unloads and the graph returns to its normal backdrop." ;
+    kpred:has-file "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/3d/three-example-session.svelte.ts", "src/lib/3d/three-example.ts" ;
+    kpred:tested-by "tests/e2e/three-example.test.ts" ;
+    kpred:remaining "Verified only against a synthetic example in desktop Chrome and an Android-emulated Chrome; no real threejs.org example was run, and GPU load with a heavy example was not measured. The splat-replaces-example path is not covered by an e2e test. Escape cannot reach the page while the example has focus." ;
     kpred:constraint "The background example does not share the graph's camera, depth or lighting; nodes do not sit inside the scene, they float in front of it. Running a heavy example and the graph together doubles GPU load; the background must be stoppable from the graph view, not only from node details. Imported graphs never auto-start a background example." .
 
 kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20: avoid Tripo and Meshy for the core tutorials. Do as many cutting-edge, browser-only, no-install workflows as possible. The local runner (TripoSplat, stable-diffusion.cpp) stays as an optional advanced path, not the Getting started path." ;

@@ -17,7 +17,9 @@
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
   import ThreeExampleViewer from '$lib/components/ThreeExampleViewer.svelte';
   import ThreeExampleEditor from '$lib/components/ThreeExampleEditor.svelte';
-  import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
+  import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE, backgroundThreeExampleFrom, BACKGROUND_THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
+  import ThreeExampleBackground from '$lib/components/ThreeExampleBackground.svelte';
+  import { setMeta } from '$lib/stores/space-room';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
@@ -1397,7 +1399,18 @@
   const backgroundSplat = $derived(backgroundSplatFrom(statements()));
   /** Set (or, with null, clear) the space's background splat — a setting, so one replaceable meta triple. */
   async function setBackgroundSplat(url: string | null) {
+    // One background at a time: a splat replaces an example background.
+    if (url && backgroundExample) await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, '');
     await setSchemaField(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, url ?? '');
+  }
+  const backgroundExample = $derived(backgroundThreeExampleFrom(statements()));
+  let backgroundExampleLive = $state(false);
+  let backgroundInteract = $state(false);
+  /** Set (or clear) the space's background Three.js example; it replaces a background splat. Never starts it. */
+  async function setBackgroundExample(url: string | null) {
+    if (officialKbActive()) return;
+    if (url && backgroundSplat) await setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, '');
+    await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, url ?? '');
   }
   const threeExampleMap = $derived(threeExampleMapFrom(statements()));
   async function setThreeExample(iri: string, url: string) {
@@ -2384,7 +2397,14 @@
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
     data-graph-settled={showingLanding || graphSettled}
+    class:bg-example-live={backgroundExampleLive && !showingLanding}
+    class:bg-example-interact={backgroundInteract && !showingLanding}
   >
+  {#if backgroundExample && perspective === 'statements' && !showingLanding}
+    {#key backgroundExample}
+      <ThreeExampleBackground url={backgroundExample} bind:live={backgroundExampleLive} bind:interact={backgroundInteract} />
+    {/key}
+  {/if}
   {#if showingSourcesEmpty}
     <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
   {:else if showingLanding}
@@ -3138,6 +3158,8 @@
       {@const exampleIri = iriFromNodeKey(selected)!}
       {#key exampleIri}
         <ThreeExampleEditor value={threeExampleMap.get(exampleIri) ?? ''} disabled={officialKbActive()}
+          isBackground={!!backgroundExample && backgroundExample === threeExampleMap.get(exampleIri)}
+          onbackground={(on) => setBackgroundExample(on ? threeExampleMap.get(exampleIri) ?? null : null)}
           onchange={(url) => setThreeExample(exampleIri, url)}
           onopen={() => { expandedAssetKey = selected; assetFullscreen = isCompact(); }} />
       {/key}
@@ -3490,6 +3512,12 @@
     margin: 0;
     position: relative;
   }
+  /* A Three.js example background sits at z-index -1 inside this stage; isolating it keeps it above
+     the stage's own backdrop but behind the graph. While it runs the backdrop is clear. */
+  .graph { isolation: isolate; }
+  .graph.bg-example-live { background: transparent; }
+  /* Interact with background: the graph layer lets input through; the example's bar stays clickable. */
+  .graph.bg-example-interact > :global(:not(.three-bg-layer):not(.three-bg-bar)) { pointer-events: none; }
   .graph-landing {
     overflow: visible; /* landing page scrolls inside its own container */
   }
