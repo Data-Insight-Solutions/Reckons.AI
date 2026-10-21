@@ -10185,6 +10185,55 @@ kb:game-genre-templates rdf:type ktype:Phase ;
     kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
     kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
 
+## =============================================================================
+## F260: A simulator, so a reckoning can be RUN instead of argued (Matt, 2026-10-20)
+## =============================================================================
+## "Build a simulator, and then we reckon it. reckoning text and reckoning 3d spatial problems also."
+## Matt chose the 3D physical scene: the graph is the scene, and a spatial reckoning's proposals are
+## simulated and checked against the target.
+
+kb:reckoning-simulator rdf:type ktype:Feature ;
+    rdfs:label "Reckoning simulator — a 3D physical scene that runs each proposal against the target" ;
+    kpred:feature-id "F260" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:reckoning-composition ;
+    kpred:relates-to kb:game-genre-templates ;
+    kpred:decided "Matt, 2026-10-20: build a simulator and reckon it; reckon text problems and 3D spatial problems. Asked what to simulate, he chose a 3D physical scene (over a process simulator or one engine for both)." ;
+    kpred:description "A space can be a physical scene: nodes are rigid bodies (shape, mass, friction, restitution, static or dynamic, start pose from the existing placement settings). A spatial reckoning takes that scene as the SITUATION, a TARGET written as text plus checkable conditions (A inside region R, A rests on B, nothing falls below the floor, A reaches height h), and returns PROPOSALS as structured scene edits (move, add, remove, change a property, apply an impulse). Each proposal is simulated for a fixed time and scored against the conditions; the reckoning shows which proposals actually reached the target, with the final poses and a replay, and accepted edits arrive as pending facts for review." ;
+    kpred:principle "A PROPOSAL THAT CLAIMS TO WORK IS NOT EVIDENCE THAT IT WORKS (the mission's thesis applied to reckoning). Today a reckoning's proposals are argued from the graph; a simulated proposal is checked. The verifier is deterministic code (script tier): the language model proposes, the simulator and the condition checks decide." ;
+    kpred:principle "ONE SCENE, TWO RUNTIMES. The same simulation module runs in a browser Web Worker (replay in the 3D graph) and headless in Node (MCP kb_reckoning, CI determinism tests), on Rapier (WASM, Apache-2.0) with a fixed timestep." ;
+    kpred:constraint "Determinism is claimed only as far as it is tested: same build, same inputs, same steps give the same poses (checked in CI). A proposal edit is schema-validated before it is simulated; nothing from a model executes as code. Simulation is bounded in steps and bodies. Text reckoning keeps working unchanged; spatial reckoning is an addition, not a replacement." ;
+    kpred:open-question "How are body shapes taken from rich assets — the GLB's bounding box, a convex hull, or a splat's extent — and is a visibly wrong collision shape acceptable in phase 1?" ;
+    kpred:has-phase kb:sim-core ;
+    kpred:has-phase kb:sim-spatial-reckoning ;
+    kpred:has-phase kb:sim-replay .
+
+kb:sim-core rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — scene from graph, Rapier step, condition checks (headless and worker)" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 1 ;
+    kpred:has-status "planned" ;
+    kpred:description "Pure scene-from-statements reader (body meta predicates on nodes, reusing the placement predicates for pose); a Rapier world built from it; a fixed-step runner returning final poses and a sampled trajectory; a small condition vocabulary evaluated deterministically. One purpose-built example space (e.g. a ramp, a ball and a cup) to prove it. Unit tests: determinism across two runs, each condition true and false." ;
+    kpred:remaining "Everything." .
+
+kb:sim-spatial-reckoning rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — spatial reckoning: proposals as scene edits, simulated and scored" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "The reckoning page and kb_reckoning accept a physical scene as the situation and conditions as the target; the model returns edits in a validated schema; each is simulated and scored; the result lists pass or fail per proposal with the evidence (which condition, final poses). Measured: how often a proposal the model presents as working fails in simulation." ;
+    kpred:remaining "Everything." .
+
+kb:sim-replay rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — replay in the 3D graph view" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 3 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "Play a simulated run in the 3D graph view from its trajectory, with a scrubber; compare two proposals side by side. The graph's own force layout is paused for nodes that are bodies in the scene." ;
+    kpred:remaining "Everything." .
+
 ## Getting started "Create" chapter, zoom-to-leap and a showcase splat (Matt, 2026-10-20)
 ## "We need to do a good story mode version of this image gen, then 3d splat gen, for the getting
 ## started space. ... make leaps/jumps from space to space work by zooming into a node closely, and set
