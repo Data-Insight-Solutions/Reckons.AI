@@ -32,6 +32,7 @@ kb:generated-assets-story rdf:type ktype:Feature ;
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
                schema:url     "https://reckons.ai" ;
+               kpred:registered-domain "reckons.space — registered 2026-10-21 at Cloudflare, beside the other domains. NOTHING IS SERVED THERE YET and its purpose is undecided (Matt's call); it was bought the day the competitive graph filed SYNFIELD (synfield.space), Slow Roads and Morf." ;
                schema:codeRepository    "https://github.com/Data-Insight-Solutions/Reckons.AI" ;
                kpred:built-with  kb:sveltekit ;
                kpred:built-with  kb:typescript ;
