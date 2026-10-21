@@ -16,6 +16,8 @@ They may have stopped when the session ended — check each branch and PR before
 4. `feat/f260-sim-core` — Rapier scene-from-graph, conditions, `npm run sim:run`, ramp/ball/cup example.
    Merges when green.
 
+**Next small build (planned as `kb:example-space-catalog`):** one example catalog for landing + About, `?example=<id>` links, and a ratchet against unlisted starter files.
+
 **Matt's decisions today (all in the roadmap):** Three.js examples both as node appearance and background;
 core tutorials browser-only (no Tripo/Meshy), local runner optional; Getting started gets an image-then-splat
 chapter with a splat doorway leap; game generator = speculative genre templates (F143); simulator = 3D physical

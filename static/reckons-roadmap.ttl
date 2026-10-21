@@ -10184,3 +10184,13 @@ kb:game-genre-templates rdf:type ktype:Phase ;
     kpred:description "Instead of generating engine code per game, a small shared runtime (render loop, input, an ECS, Rapier physics via WASM, GLB/splat loading, audio, save) and a few genre templates (platformer, top-down, walking sim, racing, puzzle) whose rules, tuning and assets are graph facts. Style and mechanics selection fills a template; generated assets fill its slots; the output is a static three.js bundle that plays in the same sandboxed frame as the Three.js example viewer." ;
     kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
     kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
+
+kb:example-space-catalog rdf:type ktype:Phase ;
+    rdfs:label "One example-space catalog — featured on landing, all on About, direct links" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:soft-onboarding ;
+    kpred:decided "Matt, 2026-10-20: better list the featured example spaces, and all example spaces, from the landing and About pages." ;
+    kpred:evidence "2026-10-20: About lists 5 example spaces and LandingPage.svelte hard-codes a different set; static/ holds 9 starter-*.ttl files, so some examples are reachable from neither page." ;
+    kpred:description "A single catalog module both pages render from: id, title, description, icon, file, category, featured flag, and what it needs (nothing, WebGPU, the local runner). Landing shows the featured examples and an 'All examples' link; About shows every example grouped by category. A ?example=<id> link opens an example space from a fresh browser (today ?kb= only resolves spaces already opened once)." ;
+    kpred:constraint "Script-tier ratchet: CI fails when a static/starter-*.ttl file is neither in the catalog nor listed as deliberately excluded with a reason, so the lists cannot drift again." ;
+    kpred:remaining "Everything." .
