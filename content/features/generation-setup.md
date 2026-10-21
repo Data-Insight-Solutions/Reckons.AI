@@ -49,7 +49,7 @@ Measured on 2x RTX 3090 (24 GB each, one card used per run), driver 575.57.08, R
 | Splat, standard (32,768 Gaussians, 20 steps) | 6,998 MiB (6.8 GiB) | 5.3 GiB | 31.5 s (11.2 s load + 20.3 s generate) | 4.5 GB (TripoSplat weights) |
 | Splat, showcase (262,144 Gaussians, 20 steps) | 7,000 MiB (6.8 GiB) | 5.3 GiB | 33.7 s (11.0 s load + 22.7 s generate) | the same files |
 
-All three weight sets together are 28.5 GB. Smaller GPUs are untested: nothing here was run on a card below 24 GB, so no minimum is claimed. The splat stage's peak is about 7 GB at both quality levels, because the Gaussian count only changes how many points the decoder writes out, so the video stage (about 17 GB) is the one a smaller card is most likely to fail. The image numbers include 1024 px because the splat model resizes its input to 1024 px anyway. System RAM was read as the largest single process, so a machine that also runs a browser and other tools needs more than this column alone.
+All three models' weights together are 28.5 GB. Smaller GPUs are untested: nothing here was run on a card below 24 GB, so no minimum is claimed. The splat stage's peak is about 7 GB at both quality levels, because the Gaussian count only changes how many points the decoder writes out, so the video stage (about 17 GB) is the one a smaller card is most likely to fail. The image numbers include 1024 px because the splat model resizes its input to 1024 px anyway. System RAM was read as the largest single process, so a machine that also runs a browser and other tools needs more than this column alone.
 
 ### Tools and integration guides
 
