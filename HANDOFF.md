@@ -1,3 +1,45 @@
+## 2026-10-21 — START HERE. 0.2.6 close-out, reckons.space registry, two blocked decisions (Claude Code)
+
+**Release pipeline (Matt, reconfirmed today):** dev takes developments without his approval; Claude merges into dev
+(verify base dev first). Matt's FIRST review is the cohesive version on staging, his SECOND is staging → main.
+dev is about 280 commits ahead of staging; nothing promoted since 0.2.5.1 (2026-10-08). 0.2.6 ends 2026-10-22.
+
+**Merged into dev today:** #495 worker log, #497 F260 plan, #500 F58.9.16 background settings, #503 competitive
+(Morf, Slow Roads, SYNFIELD), #504 + #506 F217 registry plan, #505 0.2.6 close-out statuses.
+
+**Open, each blocked:**
+- #462 F223.1 (0.2.6 headline), #507 F122.1 tests, #498 F260.1 sim core: all fail the TERM RATCHET on code
+  identifiers (Statement, statementId, sourceHash), not prose. Matt decided 2026-10-13 "the ratchet counts prose
+  only" (kb:term-ratchet-prose-only, scheduled 0.2.7). The prose classifier + 29 tests are written, UNCOMMITTED, on
+  `feat/term-ratchet-prose-only` in the main checkout. Moving baselines to prose (all LOWER: statement 5306→974,
+  source 4709→1481, graph 4780→3301) was blocked by the auto-mode classifier as "CI Bypass". Matt's call:
+  approve the migration (recommended), raise baselines per PR, or move F223.1 to 0.2.7.
+- #501 showcase splat: adds a third splat, so 3 e2e assertions need 2/0→3/0 (workflow-generated-assets:116,
+  splat-occlusion:22) and 3/0→4/0 (:168). Classifier blocked the edit as "Security Test Removal". Matt's call.
+- #498 also has "Deploy Gate — Graph Render Smoke" red (not diagnosed) and one medium CodeQL alert
+  (sim.worker.ts missing origin check; recommend dismiss: a dedicated worker only hears its creator).
+- #499 (2026-10-20 night handoff) is superseded by this entry.
+
+**Lost overnight, and why:** the doorway-leap and node drag/pin agents stopped at the session limit (23:44) and
+their /tmp worktrees were wiped by the 08:23 reboot; nothing was pushed. Two drag/pin files were rebuilt from the
+transcript onto `wip/node-controls-recovered` (not wired). Both lanes are 0.2.7, after the promotion. Rule now in
+memory: persistent worktrees under .claude/worktrees/, push after every step, never "safe to leave" with agents
+in flight.
+
+**Found today:** F122.1 page/bbox/region anchors were never built; anchors are text spans only. F122.1 stays
+in-progress; its page and region clauses go to 0.2.7. F223.2-.4 not started: proposed for 0.2.7.
+
+**Matt's decisions recorded today:** reckons.space (bought 2026-10-21, Cloudflare) is the root of the space
+REGISTRY; sharer provenance required; regulate only what the registry lists (F217 planned, F217.1-.4). Longer
+shape, future only: PayloadCMS backend, Stripe store, refinement marketplace, generation for hire (F217.5-.8,
+speculative); a publication is one or more spaces (kb:space-publication). Open: list vs store; AGENTS.md
+"no backend" and Option C "no accounts" need new wording before any backend.
+
+**Next, in order:** (1) Matt's two decisions above; (2) land #462/#507/#498/#501; (3) the 0.2.6 release
+commit like 3e51e11 (package.json 0.2.6, release entity, content/releases/v0-2-6.md, website.ttl entry, groupings:
+evidence chain / Getting started and review honesty / spaces in 3D and generated assets (carried) / collections /
+behind the scenes / plans only); (4) visual:local on /kb; (5) dev → staging PR for Matt's review.
+
 ## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
 
 Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
