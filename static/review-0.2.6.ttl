@@ -92,7 +92,7 @@ rev:gap-f223 rdf:type ktype:Concept ;
 
 rev:gap-f122-1 rdf:type ktype:Concept ;
     rdfs:label "F122.1 Document evidence anchors — page, block, span and geometry provenance" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/ingest/__tests__/anchor-contract.test.ts, src/lib/rdf/__tests__/anchor-roundtrip.test.ts, scripts/offline/__tests__/anchor-resolution.test.ts, src/lib/ingest/__tests__/anchor-staleness.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/ingest/__tests__/anchor-contract.test.ts, src/lib/ingest/__tests__/anchor-staleness.test.ts, src/lib/rdf/__tests__/anchor-roundtrip.test.ts, scripts/offline/__tests__/anchor-resolution.test.ts, src/lib/stores/__tests__/space-passages-roundtrip.test.ts, src/lib/ingest/__tests__/anchor-multipage.test.ts, src/lib/stores/__tests__/export-excludes-originals.test.ts)." .
 
 rev:gap-f33-2 rdf:type ktype:Concept ;
     rdfs:label "F33.2 CI as a graph — every check, what it guards, and whether it can block a merge" ;

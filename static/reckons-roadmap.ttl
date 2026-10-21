@@ -5948,7 +5948,7 @@ kb:reviewable-graph-patches rdf:type ktype:Feature ;
 kb:document-evidence-anchors rdf:type ktype:Feature ;
     rdfs:label "Document evidence anchors — page, block, span and geometry provenance" ;
     kpred:feature-id "F122.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:priority "high" ;
     kpred:part-of kb:source-reference-copy ;
     kpred:depends-on kb:passage-grounding ;
@@ -5964,6 +5964,8 @@ kb:document-evidence-anchors rdf:type ktype:Feature ;
     kpred:decided "STORAGE AND EXPORT. DocumentIR and anchor geometry live beside the reviewed source copy under the private sources boundary or an OPFS fallback; the graph stores compact anchor identity, source revision and excerpt provenance. Normal graph export may include those compact anchors. Raw PDFs/images and retained third-party source bodies remain excluded from published graph packages by construction." ;
     kpred:constraint "NEVER SYNTHESIZE PRECISION. A parser that returns plain text gets a verified text span and no page/bbox. Missing geometry is unknown, not page 1 at 0,0. If sourceHash no longer matches the retained revision, the anchor is stale and cannot be shown as currently verified until remapped or re-extracted." ;
     kpred:constraint "EXISTENCE AND FAITHFULNESS ARE DIFFERENT CHECKS. Exact excerpt/span containment and bbox bounds are deterministic. Whether the passage actually supports the proposed fact is semantic judgement and remains a critic/human signal; a real quote can still be irrelevant evidence." ;
+    kpred:tested-by "src/lib/ingest/__tests__/anchor-contract.test.ts", "src/lib/ingest/__tests__/anchor-staleness.test.ts", "src/lib/rdf/__tests__/anchor-roundtrip.test.ts", "scripts/offline/__tests__/anchor-resolution.test.ts", "src/lib/stores/__tests__/space-passages-roundtrip.test.ts", "src/lib/ingest/__tests__/anchor-multipage.test.ts", "src/lib/stores/__tests__/export-excludes-originals.test.ts" ;
+    kpred:progress "STATUS CHECK 2026-10-21 — NOT functional, and the reason is stated here rather than hidden. BUILT AND TESTED: text-span anchors (F122.1.1), their Turtle round trip as W3C Web Annotation targets (F122.1.2), staleness on a changed source revision (F122.1.3), text-only degrading to a span or the quote alone, stable re-extraction of a synthetic three-page fixture, and the guarantee that no export serializer or the site file set contains retained original bytes (export-excludes-original test; the control proves the original is retained). NOT BUILT: the DocumentIR, one-based page index and normalized bbox on an anchor, rotation-independent geometry, and opening the retained page with a highlighted region. Nothing in src/ carries a page or bbox, so those DONE WHEN clauses are it.todo in anchor-multipage.test.ts, not green. Two of five clauses are verified only at text level." ;
     kpred:remaining "DONE WHEN a rotated multi-page fixture yields stable anchors; selecting a proposed fact opens the correct retained page and highlights the correct region; text-only input degrades honestly to a span; changing the source revision invalidates rather than misplaces the anchor; and graph publication excludes the original document bytes." .
 
 # F135.3 — iai-pme lesson, reconciled with F135: memory may be a source, never authority.
