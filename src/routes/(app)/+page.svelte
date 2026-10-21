@@ -15,6 +15,11 @@
   import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import ThreeExampleViewer from '$lib/components/ThreeExampleViewer.svelte';
+  import ThreeExampleEditor from '$lib/components/ThreeExampleEditor.svelte';
+  import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE, backgroundThreeExampleFrom, BACKGROUND_THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
+  import ThreeExampleBackground from '$lib/components/ThreeExampleBackground.svelte';
+  import { setMeta } from '$lib/stores/space-room';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import BackgroundSettingsControls from '$lib/components/BackgroundSettingsControls.svelte';
@@ -1397,11 +1402,31 @@
   const backgroundSplat = $derived(backgroundSplatFrom(statements()));
   /** Set (or, with null, clear) the space's background splat — a setting, so one replaceable meta triple. */
   async function setBackgroundSplat(url: string | null) {
+    // One background at a time: a splat replaces an example background.
+    if (url && backgroundExample) await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, '');
     await setSchemaField(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, url ?? '');
   }
-  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat'; url: string };
+  const backgroundExample = $derived(backgroundThreeExampleFrom(statements()));
+  let backgroundExampleLive = $state(false);
+  let backgroundInteract = $state(false);
+  /** Set (or clear) the space's background Three.js example; it replaces a background splat. Never starts it. */
+  async function setBackgroundExample(url: string | null) {
+    if (officialKbActive()) return;
+    if (url && backgroundSplat) await setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, '');
+    await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, url ?? '');
+  }
+  const threeExampleMap = $derived(threeExampleMapFrom(statements()));
+  async function setThreeExample(iri: string, url: string) {
+    if (officialKbActive()) return;
+    // Imported metadata can contain multiple values. Removing the attachment clears them all.
+    for (const s of statements().filter(s => s.s.value === iri && s.p.value === THREE_EXAMPLE_PREDICATE
+      && s.status !== 'rejected' && s.status !== 'superseded')) await setStatus(s.id, 'rejected');
+    await setSchemaField(iri, THREE_EXAMPLE_PREDICATE, url);
+  }
+  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat' | 'three'; url: string };
   function nodeAssetFor(iri: string | null): NodeAsset | null {
     if (!iri) return null;
+    const example = threeExampleMap.get(iri); if (example) return { kind: 'three', url: example };
     const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
     const splat = splatMap.get(iri); if (splat) return { kind: 'splat', url: splat };
     const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
@@ -2394,7 +2419,14 @@
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
     data-graph-settled={showingLanding || graphSettled}
+    class:bg-example-live={backgroundExampleLive && !showingLanding}
+    class:bg-example-interact={backgroundInteract && !showingLanding}
   >
+  {#if backgroundExample && perspective === 'statements' && !showingLanding}
+    {#key backgroundExample}
+      <ThreeExampleBackground url={backgroundExample} bind:live={backgroundExampleLive} bind:interact={backgroundInteract} />
+    {/key}
+  {/if}
   {#if showingSourcesEmpty}
     <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
   {:else if showingLanding}
@@ -2631,7 +2663,7 @@
         <button
           type="button"
           class="node-preview-thumb"
-          class:glb-badge={a.kind === 'glb' || a.kind === 'splat'}
+          class:glb-badge={a.kind === 'glb' || a.kind === 'splat' || a.kind === 'three'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
@@ -2640,6 +2672,8 @@
             <img src={a.url} alt="" loading="lazy" />
           {:else if a.kind === 'video'}
             <video src={a.url} muted loop autoplay playsinline></video>
+          {:else if a.kind === 'three'}
+            ◈ Three.js
           {:else if a.kind === 'splat'}
             ✦ Splat
           {:else}
@@ -2740,6 +2774,10 @@
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-media asset-glb asset-splat" aria-label="Gaussian splat, generated">
         {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
@@ -2799,6 +2837,10 @@
     {:else if expandedAsset.kind === 'video'}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-fs-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
     {:else if expandedAsset.kind === 'splat'}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
@@ -2834,7 +2876,7 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if perspective === 'statements' && selected && nodeDetails}
+{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three')}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -3133,6 +3175,17 @@
           </div>
         {/if}
       </div>
+    {/if}
+
+    {#if selected?.startsWith('i:') && iriFromNodeKey(selected)}
+      {@const exampleIri = iriFromNodeKey(selected)!}
+      {#key exampleIri}
+        <ThreeExampleEditor value={threeExampleMap.get(exampleIri) ?? ''} disabled={officialKbActive()}
+          isBackground={!!backgroundExample && backgroundExample === threeExampleMap.get(exampleIri)}
+          onbackground={(on) => setBackgroundExample(on ? threeExampleMap.get(exampleIri) ?? null : null)}
+          onchange={(url) => setThreeExample(exampleIri, url)}
+          onopen={() => { expandedAssetKey = selected; assetFullscreen = isCompact(); }} />
+      {/key}
     {/if}
 
     <!-- Per-entity image preview (hover card) -->
@@ -3482,6 +3535,12 @@
     margin: 0;
     position: relative;
   }
+  /* A Three.js example background sits at z-index -1 inside this stage; isolating it keeps it above
+     the stage's own backdrop but behind the graph. While it runs the backdrop is clear. */
+  .graph { isolation: isolate; }
+  .graph.bg-example-live { background: transparent; }
+  /* Interact with background: the graph layer lets input through; the example's bar stays clickable. */
+  .graph.bg-example-interact > :global(:not(.three-bg-layer):not(.three-bg-bar)) { pointer-events: none; }
   .graph-landing {
     overflow: visible; /* landing page scrolls inside its own container */
   }

@@ -10098,3 +10098,108 @@ kb:space-file-layout kpred:decided "MATT, 2026-10-13, FOR 0.2.6: FOLD CHUNKS ONL
 kb:graph-proposals kpred:decided "MATT, 2026-10-13, FOR 0.2.6: cited options cover BOTH reckoning output and review conflicts (settleConflict), so the two decision surfaces share one options model. Built in that order: reckoning first, conflicts last, so conflicts can move to 0.2.7 without blocking the reckoning if the cut is tight. An option whose citation cannot be resolved is SHOWN, FLAGGED UNRESOLVED, never hidden: hiding it would silently drop a judgment (kb:evidence-chain)." .
 
 kb:task-model-bench kpred:decided "MATT, 2026-10-14, answering this feature's open question (is the task definition a graph entity): \"benchmarks should be within graph space, testing space?\" Placed in the Testing graph (static/docs-testing.ttl) as bench:BenchTask entities, built under kb:gen-bench-in-graph (F183.2). The question mark in his sentence was a request to confirm the placement, done in that PR." .
+
+
+kb:shelly-generation-jobs rdf:type ktype:Phase ;
+    rdfs:label "Shelly — request a local image-to-splat job and attach its actual result" ;
+    kpred:feature-id "F166.1" ;
+    kpred:has-status "scaffolded" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:generation-coupling ;
+    kpred:depends-on kb:splat-local-pipeline, kb:splat-node-view ;
+    kpred:relates-to kb:shelly-skills, kb:agent-orchestration, kb:local-host-mode ;
+    kpred:description "Expose a bounded local-generation job request to Shelly using the existing task/command/receipt pipeline. Resolve the active space and reference entity, enqueue image generation followed by a dependent Gaussian-splat stage, and attach the checked outputs to a new sibling asset entity using the existing photo/splat predicates. Show queued, running, failed and completed states from runner receipts." ;
+    kpred:measured "2026-10-16 code inspection: src/lib/types/turtle-chat.ts and src/lib/integrations/llm/turtle-chat.ts offer graph edits, navigation, filtered queries and scraping, but no asset-job dispatch action. scripts/content/gen-assets.ts already generates real images and splats and validates outputs with receipts. Invented splat-matrix or splat-pixels literals are not a substitute for a generated file." ;
+    kpred:constraint "ACCEPTANCE: a synthetic conversation requests another asset beside an existing example; one authorized job creates a real image, then a real Gaussian-splat file, and a new entity in the originating space without overwriting the example. Verify receipt and file hashes, image/splat validity, provenance, generated-content labels and rendered result. Retry/replayed messages must not create duplicate jobs or assets. A failed image prevents the dependent splat stage; cancellation and a space switch cannot attach output to the wrong space." ;
+    kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
+    kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story. Free-form Shelly chat job actions, remote runner transport and additional derivation adapters remain unbuilt. Starting the runner is an explicit local setup step." ;
+    kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch remains unbuilt" ;
+    kpred:has-phase kb:generated-assets-story .
+
+kb:generated-assets-story rdf:type ktype:Phase ;
+    rdfs:label "Interactive Generated assets story — prompt, image, then derivations" ;
+    kpred:feature-id "F166.1.1" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:splat-local-pipeline ;
+    kpred:description "Shelly asks what image the user wants, submits a bounded local generation job, waits for a verified receipt, then offers video, Gaussian splat or another image. The story lives in the Generated assets example and uses the existing Shelly story picker. A connected workspace folder transports typed requests and receipts to an opt-in local runner; prompts and outputs stay in that private workspace. Nothing runs merely from opening a story." ;
+    kpred:decided "Matt, 2026-10-20: the generated assets space needs interactive story mode. Shelly asks what image to generate, it runs, then asks whether to make video, splat or other derivations." ;
+    kpred:constraint "Offer only capabilities declared by the running adapter. Preserve prompts and request IDs across reconnect/reload; verify output hashes and successful receipts before attaching. Keep output in the originating space. Cancellation and failed images must prevent dependent jobs. New derived entities link to their actual source image. No shell commands or paths come from story triples." ;
+    kpred:has-file "src/lib/components/GenerationStory.svelte" ;
+    kpred:has-file "src/lib/generation/protocol.ts" ;
+    kpred:has-file "src/lib/generation/workspace-client.ts" ;
+    kpred:has-file "src/lib/generation/attach.ts" ;
+    kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:has-file "scripts/content/gen-assets.ts" ;
+    kpred:has-file "static/starter-generated-assets.ttl" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:measured "2026-10-20: a synthetic local acceptance run produced an independently checked image in 13.6 s, a dependent video in 55.9 s and a dependent 32768-Gaussian splat in 35.4 s. Earlier attempts exposed and corrected an invalid Gaussian count and a missing installed npm dependency. Artifacts and receipts remain outside the public repository. These checks establish valid files, not artistic quality." .
+
+
+kb:generated-assets-onboarding rdf:type ktype:Phase ;
+    rdfs:label "Asset creation as Getting started — capability and setup guidance" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:decided "Matt, 2026-10-20: once refined enough, the interactive asset story should become Getting started. Distinguish bundled assets and tools from capabilities requiring local setup; provide links and setup guides. Explain agent-assisted plugin/integration installation with an explicit warning when granting device or SSH control." ;
+    kpred:description "Prepare the generation story as a candidate Getting started journey, including a useful no-setup path and capability discovery. Guidance can explain how an external, explicitly authorized agent installs local tools or optional services such as Indico and n8n. No in-app agent installer or automatic SSH grant is implied." ;
+    kpred:remaining "The capability inventory and setup guides accompany F166.1.1. Replacing the current Getting started entry is deferred until the journey is refined and reviewed, as requested." .
+
+kb:threejs-example-nodes rdf:type ktype:Phase ;
+    rdfs:label "Three.js examples attached to nodes with isolated loading and failure recovery" ;
+    kpred:has-status "in-progress" ;
+    kpred:part-of kb:asset-viewer ;
+    kpred:decided "Matt, 2026-10-20: allow users to use https://threejs.org/examples/ on nodes, with crash protection when each example loads in case of incompatibility or errors." ;
+    kpred:description "Build an isolated, explicitly started example viewer attached to a node. Constrain supported sources, check browser capabilities, stop on timeout/error, provide retry and unload resources on close. Do not run imported example code inside the graph renderer. The first implementation is a node-attached viewer in the existing asset surface. Presenting an example as the node itself, or as the graph background, are the two follow-up phases below; both keep the example inside the same sandbox." ;
+    kpred:decided "Matt, 2026-10-20, answering viewer versus in-graph appearance: both. Some examples are more of an object and some more of a scene; a scene could ideally be set as the background." ;
+    kpred:has-phase kb:threejs-example-node-appearance ;
+    kpred:has-phase kb:threejs-example-background ;
+    kpred:constraint "Isolation is not a guarantee against a browser or GPU-process crash. A document load event is not proof that a remote scene rendered successfully. Arbitrary upstream examples may need different capabilities, assets and permissions. Imported graphs must never automatically execute examples or grant device access." .
+
+kb:threejs-example-node-appearance rdf:type ktype:Phase ;
+    rdfs:label "Three.js example as a node's appearance (object-like examples)" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:threejs-example-nodes ;
+    kpred:depends-on kb:threejs-example-nodes ;
+    kpred:description "Show an object-like example (a model, a character, a single animated mesh) as the node's own appearance in the graph. The example still runs in the sandboxed frame, never in the graph renderer: either a live frame anchored to the node's on-screen position while it is loaded, or a still frame the sandbox posts back and the graph uses as the node's image." ;
+    kpred:constraint "At most one live example at a time, started explicitly; every other node shows its still frame or its ordinary marker. A still frame is an image, not proof the example still runs. The example keeps its own camera: it cannot follow the graph's 3D camera, so in 3D view the anchored frame is a flat card." .
+
+kb:threejs-example-background rdf:type ktype:Phase ;
+    rdfs:label "Three.js example scene as the graph background (scene-like examples)" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:threejs-example-nodes ;
+    kpred:depends-on kb:threejs-example-nodes ;
+    kpred:relates-to kb:asset-viewer ;
+    kpred:description "Offer Set as background for a scene-like example, beside the existing splat and image backgrounds: the sandboxed frame fills the view behind a transparent graph canvas. The graph keeps pointer input by default; an explicit Interact with background toggle hands input to the example and back. Same Load, timeout, heartbeat and Stop handling as the viewer; a failed background unloads and the graph returns to its normal backdrop." ;
+    kpred:has-file "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/3d/three-example-session.svelte.ts", "src/lib/3d/three-example.ts" ;
+    kpred:tested-by "tests/e2e/three-example.test.ts" ;
+    kpred:remaining "Verified only against a synthetic example in desktop Chrome and an Android-emulated Chrome; no real threejs.org example was run, and GPU load with a heavy example was not measured. The splat-replaces-example path is not covered by an e2e test. Escape cannot reach the page while the example has focus." ;
+    kpred:constraint "The background example does not share the graph's camera, depth or lighting; nodes do not sit inside the scene, they float in front of it. Running a heavy example and the graph together doubles GPU load; the background must be stoppable from the graph view, not only from node details. Imported graphs never auto-start a background example." .
+
+kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20: avoid Tripo and Meshy for the core tutorials. Do as many cutting-edge, browser-only, no-install workflows as possible. The local runner (TripoSplat, stable-diffusion.cpp) stays as an optional advanced path, not the Getting started path." ;
+    kpred:has-phase kb:browser-generation-tutorial .
+
+kb:browser-generation-tutorial rdf:type ktype:Phase ;
+    rdfs:label "Browser-only generation tutorial — no install, no Tripo or Meshy" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:generated-assets-onboarding ;
+    kpred:relates-to kb:generated-assets-story ;
+    kpred:description "A Getting started generation story whose every stage runs in the browser (WebGPU/WASM via the bundled @huggingface/transformers runtime) with nothing to install. Candidate stages to MEASURE before committing: prompt to image with an in-browser text-to-image model; image to depth, then a parallax camera move (a video without a video model) or a depth-displaced mesh/point set (a 3D asset without TripoSplat); background removal for a cut-out sprite or texture. Each candidate is kept or dropped on measured download size, time on a mid-range laptop and phone, and a visual check, not on a model card." ;
+    kpred:constraint "Model downloads are large (hundreds of MB to over 1 GB) and must be shown and confirmed before they start; the story must say which stages work on this device and fall back to the example assets when WebGPU is missing. A depth-derived 3D asset is a relief of one view, not an object with a back; say so where the result is shown." ;
+    kpred:remaining "Everything: no browser generation stage is built. First step is a measured shortlist of models per stage." .
+
+kb:game-development kpred:decided "MATT, 2026-10-20: a game generator could follow asset generation in complexity: select or prompt the game style and mechanics, with three.js game outputs for publishing. Status stays speculative." ;
+    kpred:open-question "Does a generator that PUBLISHES three.js games contradict the honest note 'we ship no engine … a layer over other people's engines'? A thin runtime (game loop, input, Rapier physics, asset loading) plus per-genre templates the generator parameterizes is closer to shipping an engine than to a layer. Matt's call: amend the note, or keep the runtime an opt-in integration." ;
+    kpred:has-phase kb:game-genre-templates .
+
+kb:game-genre-templates rdf:type ktype:Phase ;
+    rdfs:label "Genre templates on a shared three.js runtime, parameterized by the graph" ;
+    kpred:part-of kb:game-development ;
+    kpred:has-status "speculative" ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:relates-to kb:int-game-engine ;
+    kpred:description "Instead of generating engine code per game, a small shared runtime (render loop, input, an ECS, Rapier physics via WASM, GLB/splat loading, audio, save) and a few genre templates (platformer, top-down, walking sim, racing, puzzle) whose rules, tuning and assets are graph facts. Style and mechanics selection fills a template; generated assets fill its slots; the output is a static three.js bundle that plays in the same sandboxed frame as the Three.js example viewer." ;
+    kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
+    kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .

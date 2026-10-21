@@ -1,7 +1,7 @@
 ---
 title: "Page Screenshots"
 slug: "page-screenshots"
-order: 1012
+order: 1013
 section: "Testing"
 parent: "visual-tests"
 template: doc

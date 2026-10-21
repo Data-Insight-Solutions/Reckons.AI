@@ -1,4 +1,66 @@
-## 2026-10-14 (night) — START HERE. Room scans, splat refine, release review spaces (Claude Code)
+## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
+
+Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
+Fixed: the Three.js e2e failed on Chromium because the test's X-Frame-Options route makes Chrome's Local
+Network Access block the sandbox's own script on loopback (test-only launch flag, commented). `vite.config.ts`
+now ignores worktrees, workspaces and screenshot folders (the ENOSPC watcher error).
+Matt's decisions recorded in the roadmap: Three.js examples as node appearance AND as background (planned
+phases); core tutorials browser-only, no Tripo or Meshy (`kb:browser-generation-tutorial`, planned); game
+generator as speculative genre templates under F143, with an open question on the "we ship no engine" note.
+Working split from now on: Opus designs and writes initial code; a Sonnet agent runs long tests and basic fixes.
+
+## 2026-10-20 — Interactive generated-assets story (Codex)
+
+Active branch: `feat/generated-assets-story`, based on `dev`. Implements F166.1.1: Shelly asks for an image, waits for a checked local runner receipt, then offers video/splat/another image. Runner: `npm run gen:serve -- --workspace=/private/workspace`; use the same connected folder in the browser. No general backend or free-form chat dispatch. Generated assets remain private; generated facts arrive pending review.
+
+Matt's follow-up: this may become Getting started after refinement. Capability/setup guides now distinguish bundled viewers, local models and external agents. Device/SSH installation guidance warns about granted authority. The existing Getting started entry is not replaced yet.
+
+Also requested: Three.js examples attached to nodes, with loading failure protection. `kb:threejs-example-nodes` records the plan and the browser/GPU isolation limitation. Viewer versus in-graph scene presentation is being clarified; no implementation is claimed here.
+
+Validation as of 2026-10-20: full unit suite 4,200 passed, 14 TODOs. Live synthetic image/video/splat checks succeeded (13.6/55.9/35.4 seconds); initial failures found and fixed an invalid splat count and an incomplete npm install. Final browser/check/build/CI results belong to the PR, not these provisional numbers. Startup script sweep: 50/54 clean, with existing button-crawl, perf-crawl, jobs-graph and naming-ratchet failures. Local /kb visual ran on a disposable copy of browser data; output remains private.
+
+The machine's inotify limit is still reached by old worktrees. Local testing uses a temporary Vite config that ignores `.claude` and workspace folders; no other user's server was stopped. See prior environment notes below.
+
+## 2026-10-15 — START HERE. Background controls in the graph view (Claude Code)
+
+**In flight:** a Sonnet agent is building F58.9.16 on `feat/f58-9-16-background-in-view` (no PR yet when this was
+written):
+- background settings in the graph view's FILTERS panel (surround/backdrop, manual scale, yaw, opacity, up axis, level,
+  SET FOCAL POINT);
+- "Place in room" renamed to "Place in space";
+- placement mode collapses the large asset preview and shows a compact placement bar over the graph;
+- free and focus layouts spread out, measured before and after.
+
+Check its PR (`gh pr list`), verify base dev, then merge when green (the scratch merge-when-green helper is described in
+the 2026-10-14 night entry).
+
+**Add to that lane or the next one:**
+- an unknown `?kb=` falls back to the default graph without telling the person (resolveKbParam), so a not-yet-synced
+  space looks like the wrong graph. Add a "space not found yet" notice.
+- Matt's studio space (`reckons-workspace/kbs/my-studio/`, private) now holds the 450-frame SPZ (1.54M Gaussians,
+  37.7 MB) as background, plus a thinned 18.9 MB version as a second splat node. Level the floor fitted only 18% of
+  points, so it may be tilted.
+
+**Environment:**
+- Port 5291 runs Matt's test server from the worktree `agent-a295e916fb7a98470`, detached at origin/dev. Never stop it
+  without restarting it; to update it, `git checkout --detach origin/dev` there and restart vite.
+- The machine hit the inotify watcher limit (ENOSPC): about 25 leftover agent worktrees. Offer to prune the merged
+  ones (count first, check each for uncommitted work, ask), or Matt raises fs.inotify.max_user_watches with sudo.
+
+**Review queue batch 2026-10-15:** 2 accepted, 3 rejected as stale. Deferred for Matt:
+- whether the zero-byte sync-file data-loss fix (reported 2026-09-04) shipped;
+- the AWS context-ontology-accelerator claim (F21 positioning);
+- the stores module dead-weight flag.
+
+Producers server-health and known-issue re-emit items that are already fixed; they should check current state first.
+
+**Matt's decisions still pending:**
+- F58.9 in 0.2.7 (recommended);
+- SPZ default vs GPU-only SOG;
+- whether the 4.9 MB Your room's softness is acceptable;
+- pruning worktrees.
+
+## 2026-10-14 (night) — earlier. Room scans, splat refine, release review spaces (Claude Code)
 
 **Merged into dev today** (all CI green, base verified): #469 scan:room (F58.9.6), #470 import a scan, background
 settings, placement and the Your room space (F58.9.7-.10), #475 generation-model bench with tasks in the Testing graph
