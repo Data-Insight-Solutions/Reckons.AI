@@ -103,3 +103,17 @@ describe('private generation queue', () => {
     } finally { runner.close(); }
   });
 });
+
+describe('lastErrorLine', () => {
+  it('names the error line from a crashed worker, not the stack frame or the Node banner', async () => {
+    const { lastErrorLine } = await import('../generation-runner');
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const dir = mkdtempSync(join(tmpdir(), 'worker-log-'));
+    const log = join(dir, 'worker.log');
+    writeFileSync(log, "node:internal/modules/package_json_reader:256\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /x/\n    at Object.getPackageJSONURL (node:internal)\n\nNode.js v22.17.1\n");
+    expect(lastErrorLine(log)).toBe("Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /x/");
+    expect(lastErrorLine(join(dir, 'missing.log'))).toBe('');
+  });
+});
