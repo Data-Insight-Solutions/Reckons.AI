@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import { anchorFor, attachAnchors } from '../source-chunks';
 import { checkAnchor } from '../statement-evidence';
-import type { Source } from '../../rdf/types';
+import type { EvidenceSpan, Source } from '../../rdf/types';
 
 type Page = { n: number; rotation: 0 | 90 | 180 | 270; text: string };
 const PAGES: Page[] = [
@@ -62,7 +62,7 @@ describe('rotated multi-page fixture: anchors are stable (text-span level)', () 
   it('attachAnchors on a batch gives the same result as anchoring one by one, and is repeatable', () => {
     const text = extract(PAGES);
     const src = sourceFor(text);
-    const facts = QUOTES.map((q) => ({ excerpt: q, grounded: true }));
+    const facts: { excerpt: string; grounded: boolean; anchor?: EvidenceSpan }[] = QUOTES.map((q) => ({ excerpt: q, grounded: true }));
     const a = attachAnchors(facts, src, text);
     expect(a.map((f) => f.anchor)).toEqual(QUOTES.map((q) => anchorFor(src, text, q)));
     expect(attachAnchors(facts, src, text)).toEqual(a);
