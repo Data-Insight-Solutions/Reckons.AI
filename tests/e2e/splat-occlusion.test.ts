@@ -19,6 +19,7 @@ test('a marker behind a node splat is hidden by the splat\'s depth proxy', async
   await page.locator('.starter-card', { hasText: /generated assets/i }).click();
   await page.waitForURL((url) => url.pathname === '/', { timeout: 15_000 });
   const canvas = page.locator('main canvas[data-splats]').first();
+  // The showcase music box is over the startup budget, so it is not counted until asked for.
   await expect(canvas).toHaveAttribute('data-splats', '2/0', { timeout: 60_000 });
   await page.waitForFunction(() => {
     const c = document.querySelector('main canvas[data-splats]') as unknown as { __rk?: { scene: { userData: { splatOccluders?: Record<string, unknown> } } } };
