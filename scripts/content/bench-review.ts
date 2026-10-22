@@ -192,8 +192,9 @@ function emit() {
   writeFileSync(join(dir, `${SPACE_ID}.ttl`), ttl);
   console.log(`wrote ${join(dir, `${SPACE_ID}.ttl`)} (${ttl.length} bytes)`);
   // The app fetches assets from the site root, so the dev server must see them: link the folder into static/ (gitignored).
-  const link = join(ROOT, 'static', SPACE_ID);
-  try { lstatSync(link); } catch { symlinkSync(dir, link); console.log(`linked ${link} -> ${dir}`); }
+  const linkDir = join(ROOT, 'static', SPACE_ID), link = join(linkDir, 'assets');
+  mkdirSync(linkDir, { recursive: true });
+  try { lstatSync(link); } catch { symlinkSync(assets, link); console.log(`linked ${link} -> ${assets}`); }
 }
 
 /** Public copy: webp, SPZ only, a hard budget, and no local identifier in anything written. */

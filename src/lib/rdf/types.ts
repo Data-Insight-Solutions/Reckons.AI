@@ -492,6 +492,9 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   // nodes: a bare "42" or "49" in the graph meant nothing (Matt, 2026-10-14: "whats the 49, 42,
   // and 7?"). Entity-to-entity links (made-from, license) stay visible edges and are NOT listed.
   ...GENERATION_PROVENANCE_PREDICATES,
+  // F183.3 review space: what a bench branch differs by and what was measured, literal attributes of the branch node.
+  ...['differs-by', 'seconds', 'peak-vram-mib', 'peak-ram-mib', 'output-bytes', 'checks-passed', 'checks-failed', 'fps', 'vision-hint', 'scene-file']
+    .map((n) => `urn:kbase:predicate/${n}`),
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
 ]);
