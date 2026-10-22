@@ -1028,5 +1028,5 @@ code:three-example-viewer rdf:type ktype:Concept ;
     rdfs:label "Isolated Three.js example attachments" ;
     skos:broader code:threed ;
     kpred:description "Strict official-example URL metadata, an inert node editor, and a user-started sandboxed viewer. A separate static document owns the remote-code CSP and reports graphics activity, failures and heartbeat to the parent. The application's CSP is not widened." ;
-    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "src/lib/components/ThreeExampleBackground.svelte", "src/lib/3d/three-example-session.svelte.ts", "static/three-example.html", "static/three-example.js" ;
+    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/BackgroundExampleControls.svelte", "src/lib/3d/three-example-session.svelte.ts", "static/three-example.html", "static/three-example.js" ;
     kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .
