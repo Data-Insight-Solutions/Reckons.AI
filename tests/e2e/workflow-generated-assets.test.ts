@@ -113,7 +113,8 @@ const impls: Record<string, StepImpl> = {
     await expect.poll(() => page.getByRole('button', { name: /open asset for (image|video|splat):/i }).count(), { timeout: 15_000 })
       .toBeGreaterThanOrEqual(3);
     // Both node splats have loaded into the 3D graph (the canvas reports "loaded/failed").
-    await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '2/0', { timeout: 30_000 });
+    // Three node splats: the turtle, the island and the showcase music box (kb:showcase-splat).
+    await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '3/0', { timeout: 30_000 });
     await page.waitForTimeout(1_500);
     await snap(page.locator('main canvas').first());
   },
@@ -165,8 +166,8 @@ const impls: Record<string, StepImpl> = {
     await expect(page.getByRole('button', { name: /^clear background$/i })).toBeVisible({ timeout: 5_000 });
     await closeLarge(page);
     await page.keyboard.press('Escape'); // close the node's details so the backdrop is visible
-    // The island has loaded into the 3D graph as a third splat, behind the two node splats.
-    await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '3/0', { timeout: 30_000 });
+    // The island has loaded into the 3D graph as a fourth splat, behind the three node splats.
+    await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '4/0', { timeout: 30_000 });
     await page.waitForTimeout(1_500);
     await snap(page.locator('main canvas').first());
   },
