@@ -7824,6 +7824,27 @@ kb:gen-bench-in-graph rdf:type ktype:Phase ;
     kpred:measured "RUN 2026-10-14, image stage, hard tier (10 briefs x 3 seeds x 2 arms, judge qwen2.5vl:7b, GPU 0): incumbent Z-Image-Turbo Q8_0 0.913 against the vnbot-ai Q4_K_M re-quant 0.907, delta -0.007, incumbent seed spread 0.060, hard checks 30 of 30 both, 14.0 against 16.5 s/run. Verdict HOLD. The ceiling rule did NOT trigger (0.913 is under 0.95), which is the change from the easy briefs (0.960, 28 of 30 perfect, insufficient-evidence). The harder briefs have headroom but did not separate these two models: they are as good as each other within noise. Summary is in the Testing graph as bench:Result-image-2026-10-14; per-image JSON is in tests/bench/results/ (gitignored, local)." ;
     kpred:remaining "Judge reliability on counts and text has not been checked against a human; 6 of 10 hard briefs are still perfect for both arms, so a still-harder tier would separate more; video and splat have no hard tier or run yet." .
 
+kb:bench-review-space rdf:type ktype:Phase ;
+    rdfs:label "F183.3 — a private review space for local generation settings: one prompt, branches that each detail how they differ" ;
+    kpred:feature-id "F183.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:depends-on kb:gen-model-bench, kb:splat-local-pipeline ;
+    kpred:relates-to kb:tenet-evidence, kb:tenet-open ;
+    kpred:decided "MATT, 2026-10-21: \"Lets setup benchmarking for local splat generation settings, and three.js generation, and show the results to me in a space for qualitative human review.\" Then: \"Start with the same prompt, graph out the steps and detail the differences of each branch.\"" ;
+    kpred:description "One prompt is the root node of a review space. Two pipelines hang off it, every step a node in order (hnav:order, hnav:next). SPLAT: prompt, one image, then one branch per TripoSplat settings config (the CONFIGS of scripts/content/showcase-sweep.ts), all from the SAME image so only the splat settings differ. THREE.JS: prompt, scene code written by a local code model, headless render, and a repair step when the render failed (the error fed back once); one branch per installed code model, at most four. Each branch node carries kpred:differs-by (only what differs from that pipeline\u0027s baseline branch), the measured values as separate literals (seconds, own-process peak VRAM, system RAM peak, output bytes, checks passed and failed, frames per second), its picture (p:photo) and kmeta:review-verdict unreviewed so the ReviewVerdict panel lets a person mark pass, fail or a note. The space is written to reckons-workspace/kbs/bench-generation/ (gitignored: splats are megabytes) beside a results.jsonl, by npm run bench:review." ;
+    kpred:constraint "Local only, one GPU pinned, never two GPU jobs at once, each heavy job under systemd-run with MemoryMax. A vision-model checklist on a screenshot is a HINT recorded beside the branch, never a pass or a fail; the pass or fail is the person\u0027s." ;
+    kpred:remaining "The run has not produced the space yet (this entry is planned until it has). Opening a generated Three.js scene INSIDE the viewer is not done, see kb:bench-three-viewer." .
+
+kb:bench-three-viewer rdf:type ktype:Phase ;
+    rdfs:label "F183.4 — open a generated Three.js scene in the viewer (needs a decision about same-origin generated sources)" ;
+    kpred:feature-id "F183.4" ;
+    kpred:has-status "speculative" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:depends-on kb:bench-review-space ;
+    kpred:open-question "src/lib/3d/three-example.ts accepts only https://threejs.org/examples/ today, and that is a security boundary (a sandboxed frame with constrained sources). The F183.3 review space therefore shows a generated scene as a screenshot (p:photo) plus a link to the local HTML file, not inside the viewer. Opening it inside the viewer means admitting a same-origin generated source (code a local model wrote), which is a different trust class from a named public host. Whether to admit it, and under what sandbox, is Matt\u0027s decision; the allow-list was NOT widened by F183.3." ;
+    kpred:remaining "The decision, then the sandbox design, then the code." .
+
 kb:tenet-alignment rdf:type    ktype:Feature ;
                rdfs:label   "Tenet alignment — checking the roadmap against what we say we believe" ;
                kpred:feature-id   "F184" ;
