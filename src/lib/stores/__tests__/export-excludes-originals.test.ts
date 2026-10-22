@@ -1,11 +1,11 @@
 /**
- * F122.1 DONE WHEN, part 2 — graph publication/export excludes the original document bytes.
+ * F122.1 DONE WHEN, part 2 — nothing the app writes out (saved files, a published site) holds the original document bytes.
  *
- * A synthetic "PDF" with unmistakable marker bytes is retained under a source corpus folder. Every
- * export serializer the app has is then run over a graph that cites that source, and none of their
+ * A synthetic "PDF" with unmistakable marker bytes is retained under a corpus folder for originals. Every
+ * serializer the app has for writing files out is then run over facts that cite that document, and none of their
  * output may contain the marker, its base64, its hex, the original.* filename, or the corpus path.
  * A control assertion proves the original really IS retained, so the exclusion is not vacuous.
- * Passages (text) legitimately travel in a space file (F107.10); the original document does not.
+ * Passages (text) legitimately travel in a saved file (F107.10); the original document does not.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { toTurtle, toTurtleFull, toNQuads, toTriG } from '../../rdf/serialize';
@@ -60,7 +60,7 @@ function expectNoOriginal(out: string, label: string) {
   expect(out.includes(`${CORPUS_DIR}/`), `${label} must not point into the corpus folder`).toBe(false);
 }
 
-describe('exports exclude the retained original document bytes', () => {
+describe('written-out files exclude the retained original document bytes', () => {
   it('control: the original IS retained in the corpus folder (so the exclusion below means something)', async () => {
     const { f } = await fixture();
     const files = [...f.dirs.values()].flatMap((d) => [...d.entries()]);
@@ -69,12 +69,12 @@ describe('exports exclude the retained original document bytes', () => {
     expect(original![1]).toEqual(bytes);
   });
 
-  it('the fixture statement really carries an anchor (so the anchor export path is exercised)', async () => {
+  it('the fixture fact really carries an anchor (so the anchor-writing path is exercised)', async () => {
     const { statements } = await fixture();
     expect(statements[0].anchor).toBeDefined();
   });
 
-  it('toTurtleFull (space export) with passages folded in carries text and anchors, never the original', async () => {
+  it('toTurtleFull (the complete save) with passages folded in carries text and anchors, never the original', async () => {
     const { f, source, statements } = await fixture();
     const folded = await readFoldedCorpora(f.root, [source]);
     expect(folded.length).toBe(1);
@@ -92,7 +92,7 @@ describe('exports exclude the retained original document bytes', () => {
     expectNoOriginal(toTriG(statements), 'toTriG');
   });
 
-  it('the published site file set never contains the original', async () => {
+  it('the files of the published site never contain the original', async () => {
     const { statements } = await fixture();
     const files = buildSiteFiles(statements);
     for (const [path, body] of Object.entries(files)) {

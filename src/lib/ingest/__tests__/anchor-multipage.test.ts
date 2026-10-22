@@ -2,7 +2,7 @@
  * F122.1 DONE WHEN, part 1 — a rotated multi-page fixture yields STABLE anchors.
  *
  * HONEST SCOPE (2026-10-21): the shipped anchor is a TEXT SPAN (EvidenceSpan: chunk, start, end,
- * sourceHash). There is no page index, bbox or DocumentIR in the code, so "page and geometry survive
+ * and a hash of the text it was cut from). There is no page index, bbox or DocumentIR in the code, so "page and geometry survive
  * rotation" cannot be tested and is marked it.todo below rather than faked. What IS tested: a
  * synthetic three-page document (page rotations 0/90/270 recorded as metadata, text joined page by
  * page the way a text extractor emits it) yields anchors that slice back to their quotes, land in
