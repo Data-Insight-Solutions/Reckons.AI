@@ -10470,3 +10470,6 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
     kpred:constraint "TripoSplat makes OBJECTS from one image; a room seen from the inside is not an object, so the object path does not stretch to it (the 2026-10-14 handoff predicted this). Which open models can make a seamless 360-degree panorama locally, and under which licence, has not been checked; the trial starts by checking that." ;
     kpred:honest-note "On Matt's question, 'I don't think three.js is generat-able open source currently': a Three.js scene is JavaScript, so a local code model can WRITE one (a procedural room of boxes, lights and materials, the way Slow Roads builds scenery from parameters), but no open model is known here that turns a prompt into a finished Three.js scene file. Generated images and splats are the established open path; a code-written procedural room is a cheaper experiment worth one trial." ;
     kpred:relates-to kb:generation-coupling, kb:room-scene-space .
+
+kb:splat-node-view kpred:has-file "src/lib/3d/splat-budget.ts" ;
+    kpred:tested-by "src/lib/3d/__tests__/splat-budget.test.ts", "tests/e2e/splat-on-demand.test.ts" .
