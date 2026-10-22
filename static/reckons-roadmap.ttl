@@ -10327,7 +10327,7 @@ kb:game-genre-templates rdf:type ktype:Phase ;
 kb:reckoning-simulator rdf:type ktype:Feature ;
     rdfs:label "Reckoning simulator — a 3D physical scene that runs each proposal against the target" ;
     kpred:feature-id "F260" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:relates-to kb:reckoning-composition ;
     kpred:relates-to kb:game-genre-templates ;
     kpred:decided "Matt, 2026-10-20: build a simulator and reckon it; reckon text problems and 3D spatial problems. Asked what to simulate, he chose a 3D physical scene (over a process simulator or one engine for both)." ;
@@ -10344,9 +10344,13 @@ kb:sim-core rdf:type ktype:Phase ;
     rdfs:label "Phase 1 — scene from graph, Rapier step, condition checks (headless and worker)" ;
     kpred:part-of kb:reckoning-simulator ;
     hnav:order 1 ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
+    kpred:has-file "src/lib/sim/scene.ts", "src/lib/sim/world.ts", "src/lib/sim/conditions.ts", "src/lib/sim/ttl.ts", "src/lib/sim/sim.worker.ts", "scripts/sim/run.ts", "static/starter-sim-ramp-cup.ttl" ;
+    kpred:tested-by "src/lib/sim/__tests__/sim.test.ts" ;
     kpred:description "Pure scene-from-statements reader (body meta predicates on nodes, reusing the placement predicates for pose); a Rapier world built from it; a fixed-step runner returning final poses and a sampled trajectory; a small condition vocabulary evaluated deterministically. One purpose-built example space (e.g. a ramp, a ball and a cup) to prove it. Unit tests: determinism across two runs, each condition true and false." ;
-    kpred:remaining "Everything." .
+    kpred:remaining "Not built: any reckoning integration (phase 2), any replay or UI (phase 3). The worker wrapper has only a smoke test of its message handler in Node, not a test inside a real browser Worker. Poses carry yaw from the existing placement predicates plus an added sim-tilt (degrees about z) because a ramp needs a slope; a body has no other pitch or roll at the start. Regions for inside() are axis-aligned boxes. Rapier is not imported by any app code yet, so its effect on the browser bundle is zero today and must be re-measured when phase 3 loads it." ;
+    kpred:measured "DETERMINISM, tested 2026-10-20 on rapier3d-compat 0.21.0, Node 22: two runs of static/starter-sim-ramp-cup.ttl (600 steps, dt 1/60) gave identical final poses and identical sampled trajectories compared as JSON of the unrounded numbers. Same build and inputs only; not tested across engine versions, browsers or CPUs." ;
+    kpred:measured "EXAMPLE, run 2026-10-20 with npm run sim:run: as given (ball placed-at 0.6 1.25 0) FAIL inside(ball, cup-zone), the ball rests at x=2.116 after rolling back from the cup lip, exit 1; with the ball moved higher up the ramp (placed-at -1.5 1.9 0) PASS, the ball rests at x=5.750 against the cup's back wall, exit 0. aboveFloor(all, -0.1) passes in both." .
 
 kb:sim-spatial-reckoning rdf:type ktype:Phase ;
     rdfs:label "Phase 2 — spatial reckoning: proposals as scene edits, simulated and scored" ;
@@ -10438,3 +10442,28 @@ kb:document-evidence-anchors kpred:progress "2026-10-21: planned → in-progress
 kb:space-file-layout kpred:progress "2026-10-21: planned → in-progress. The 0.2.6 slice Matt decided on 2026-10-13 (FOLD CHUNKS ONLY) is functional: F107.10.1-.3. Moving retained originals into the space folder is the decided 0.2.7 follow-up, so the whole feature is not functional yet." .
 
 kb:release-0-2-6 kpred:proposed "AGENT, 2026-10-21, NOT DECIDED — CLOSE-OUT. The release ends 2026-10-22, three days past its 2026-10-18 cut. Of the three headline parts, F107.10 and F122.1 are in-progress with every phase functional (see their progress notes), and F223 is planned: F223.1 is PR #462, and F223.2-.4 have not started. Proposal: F223.1 lands in 0.2.6 if Matt approves #462, and F223.2-.4 move to 0.2.7 with the same reason as the 2026-10-13 cut (moved because not started, not dropped). A dev → staging promotion carries all of dev, about 272 commits on 2026-10-21. That includes work outside the 0.2.6 scope that went to dev anyway: F58.9 splats and room scans, F166.1 generated assets, and Three.js examples as nodes and backgrounds. The promotion notes should list those as carried, not as 0.2.6 headline work." .
+
+# ── Automated dev review, and a generated room (Matt, 2026-10-21) ─────────────
+
+kb:dev-review-orchestrator rdf:type ktype:Feature ;
+    rdfs:label "Automated dev review — every PR into dev checked, reviewed and merged by orchestrated agents" ;
+    kpred:feature-id "F33.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:release-pipeline ;
+    kpred:decided "MATT, 2026-10-21: 'I don't want to approve every merge to dev... I want to approve before features are staged, and then after reviewing staging for the version that all gets promoted to main (the most important review).' And: 'For mis-alignment, or terminology ratchet, you should fix the issues. We need to maintain a claude orchestrated review for dev, all automated.' So dev has no human gate: agents check, fix and merge. Matt's two reviews are the staging promotion and staging to main." ;
+    kpred:description "One script runs the dev gate for each open PR into dev: confirm base dev, wait for CI, run the script tier, and for a PR that changes UI files (src/**/*.svelte, src/lib/3d, routes) run visual:local against a preview of the branch, with the local vision model answering the narrow visual questions it is good at. Failures are routed instead of reported: a ratchet, alignment or regenerated-file failure goes to an agent that fixes it on the branch, and a design question goes into the staging review notes for Matt. A green PR merges with no human step." ;
+    kpred:principle "TIERS, ENFORCED BY THE SCRIPT RATHER THAN REMEMBERED. On 2026-10-21 a whole session ran no local-model job and no visual:local run on its own UI change, though AGENTS.md says to; the same happened on 2026-07-18. A rule an agent must remember is skipped under load. The orchestrator makes the cheap tiers the default path: scripts first, local models for visual and many-item judgments, and Sonnet only for fixes and reviews that need reading code." ;
+    kpred:constraint "The auto-mode classifier blocks some dev-level actions (a subagent merging, or editing ratchet baselines) as 'merge without review' or 'CI bypass'. The orchestrator must work inside it. Where it cannot, the fix is a permission rule Matt adds once, not a per-PR approval." ;
+    kpred:open-question "Where does it run? Session-driven (like the queue worker: only while a Claude Code session is active, on the subscription) or CI-hosted (a GitHub Action calling Claude needs a metered API key, the separate rail in funding-and-inference-cost). Recommend session-driven first: it already has the heartbeat, the GPU gate and the local models." ;
+    kpred:remaining "Nothing in the repository yet (2026-10-21). A scratch merge-when-green script (base dev, CLEAN state, retry on UNKNOWN) has merged 9 PRs today at zero tokens; it is the first piece to check in." ;
+    kpred:relates-to kb:work-tiering, kb:local-panel .
+
+kb:prompt-generated-room rdf:type ktype:Phase ;
+    rdfs:label "Generated room — a space background made from a text prompt" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:space-photorama ;
+    kpred:decided "MATT, 2026-10-21: 'Synthetic room splat is not loading. I think we need a prompt generated room. Similar to the object generation I've seen through image to splat.'" ;
+    kpred:description "A person types a room ('a cosy study with bookshelves and a window at dusk') and gets a background that surrounds the graph. Cheapest path first: text to an equirectangular 360-degree panorama with a local image model, shown as a sphere around the graph. Three.js draws that natively, so it needs no splat at all, and it is the Phase 1 panorama this feature already plans. Second path, to evaluate: panorama or multi-view images to a splat, so the room has depth when the camera moves." ;
+    kpred:constraint "TripoSplat makes OBJECTS from one image; a room seen from the inside is not an object, so the object path does not stretch to it (the 2026-10-14 handoff predicted this). Which open models can make a seamless 360-degree panorama locally, and under which licence, has not been checked; the trial starts by checking that." ;
+    kpred:honest-note "On Matt's question, 'I don't think three.js is generat-able open source currently': a Three.js scene is JavaScript, so a local code model can WRITE one (a procedural room of boxes, lights and materials, the way Slow Roads builds scenery from parameters), but no open model is known here that turns a prompt into a finished Three.js scene file. Generated images and splats are the established open path; a code-written procedural room is a cheaper experiment worth one trial." ;
+    kpred:relates-to kb:generation-coupling, kb:room-scene-space .
