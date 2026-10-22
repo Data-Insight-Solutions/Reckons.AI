@@ -21,7 +21,7 @@
     size?: () => number;
     /** F58.9.13: write a depth-only proxy so markers and edges behind this splat are hidden. Entity splats only; a background room never opts in. */
     occludes?: boolean;
-    /** Node splats: held back when over NODE_SPLAT_STARTUP_BUDGET, until splatDemand.request(key). Never the background. */
+    /** Entity splats: held back when over ENTITY_SPLAT_STARTUP_BUDGET, until splatDemand.request(key). Never the background. */
     deferrable?: boolean;
   };
 </script>

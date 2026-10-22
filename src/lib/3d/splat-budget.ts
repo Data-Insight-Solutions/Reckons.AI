@@ -1,20 +1,20 @@
 /**
- * F58.9 on-demand node splats: a node splat with more Gaussians than the budget does not load when a
- * space opens. The count is read from the file header, so deciding costs a few bytes, not the file.
+ * F58.9 on-demand entity splats: an entity splat with more Gaussians than the budget does not load at
+ * startup. The count is read from the file header, so deciding costs a few bytes, not the file.
  */
 import { isLocalSplatUrl } from './splat';
 
 /**
- * Most Gaussians a node splat may have and still load at startup. Measured 2026-10-21 on headless
+ * Most Gaussians an entity splat may have and still load at startup. Measured 2026-10-21 on headless
  * SwiftShader: the Generated assets example drew 9.4 fps with its two small splats and 3.2 fps once a
  * 262,144-Gaussian splat was always on, which timed out three e2e specs on a 2-core CI runner.
- * A splat over this loads when its node is opened or "Load 3D splat" is pressed. The 2D budget of
+ * A splat over this loads when its entity is opened or "Load 3D splat" is pressed. The 2D budget of
  * the page is unaffected by a splat that is not loaded.
  */
-export const NODE_SPLAT_STARTUP_BUDGET = 131_072;
+export const ENTITY_SPLAT_STARTUP_BUDGET = 131_072;
 
 /** True when a splat of `count` Gaussians must wait to be asked for. An unknown count never defers. */
-export function overStartupBudget(count: number | undefined, budget = NODE_SPLAT_STARTUP_BUDGET): boolean {
+export function overStartupBudget(count: number | undefined, budget = ENTITY_SPLAT_STARTUP_BUDGET): boolean {
   return typeof count === 'number' && count > budget;
 }
 
@@ -85,5 +85,5 @@ async function headerOfStream(body: ReadableStream<Uint8Array>): Promise<Uint8Ar
     async pull(c) { const x = await reader.read(); if (x.done) c.close(); else c.enqueue(x.value); },
     cancel() { return reader.cancel().catch(() => {}); },
   });
-  return firstBytes(joined.pipeThrough(new DecompressionStream('gzip')), 16);
+  return firstBytes(joined.pipeThrough(new DecompressionStream('gzip') as unknown as ReadableWritablePair<Uint8Array, Uint8Array>), 16);
 }
