@@ -1,7 +1,7 @@
 <script lang="ts">
   /**
    * The state line and Load / Stop / Retry / Interact buttons for a Three.js example background.
-   * Used by the on-graph bar and by the View settings panel, both reading ONE ThreeExampleSession,
+   * Used by the floating bar and by the View settings panel, both reading ONE ThreeExampleSession,
    * so what one shows the other cannot contradict. `onclear` adds a Clear background button.
    */
   import type { ThreeExampleSession } from '$lib/3d/three-example-session.svelte';

@@ -1411,7 +1411,7 @@
   const backgroundExample = $derived(backgroundThreeExampleFrom(statements()));
   let backgroundExampleLive = $state(false);
   let backgroundInteract = $state(false);
-  /** The running example background's session, bound up from ThreeExampleBackground so the panel shares it. */
+  /** The running example background's session, bound up from ThreeExampleBackground so the panel uses it too. */
   let backgroundExampleSession = $state<ThreeExampleSession>();
   /** Set (or clear) the space's background Three.js example; it replaces a background splat. Never starts it. */
   async function setBackgroundExample(url: string | null) {
@@ -2332,7 +2332,7 @@
 
   <!-- BACKGROUND (F58.9.16) — whatever the space has behind it. A splat: surround or backdrop, scale,
        focal point (3D only; the settings are not drawn in 2D), the same component the Graphs tab uses.
-       A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the on-graph bar. -->
+       A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the floating bar. -->
   {#if (backgroundSplat && !use2D && webglAvailable) || backgroundExample}
   <div class="overlay-group" data-testid="graph-background-settings">
     <span class="group-label mono">background</span>

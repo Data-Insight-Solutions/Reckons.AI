@@ -13,7 +13,7 @@
 
   import BackgroundExampleControls from './BackgroundExampleControls.svelte';
 
-  // `session` is bound up so the View settings panel drives this very session, never a second one.
+  // `session` is bound up so the View settings panel drives this very session, never another.
   let { url, interact = $bindable(false), live = $bindable(false), session: shared = $bindable() }: {
     url: string; interact?: boolean; live?: boolean; session?: ThreeExampleSession;
   } = $props();
