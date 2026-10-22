@@ -21,6 +21,8 @@
     size?: () => number;
     /** F58.9.13: write a depth-only proxy so markers and edges behind this splat are hidden. Entity splats only; a background room never opts in. */
     occludes?: boolean;
+    /** Node splats: held back when over NODE_SPLAT_STARTUP_BUDGET, until splatDemand.request(key). Never the background. */
+    deferrable?: boolean;
   };
 </script>
 
@@ -38,6 +40,8 @@
   import { onDestroy } from 'svelte';
   import { loadSplatLib, createNormalizedSplat } from './splat';
   import { occluderRadius } from './splat-occlusion';
+  import { overStartupBudget, readSplatGaussianCount } from './splat-budget';
+  import { splatDemand } from '$lib/stores/splat-demand.svelte';
 
   let { items, onstatus, onloadedkeys }: {
     items: SplatItem[];
@@ -66,6 +70,22 @@
 
   $effect(() => onstatus?.(loaded, failed));
 
+  // On-demand loading: per key, true = over the startup budget (wait to be asked), false = load now.
+  // Absent = the header has not been read yet. Keyed by url too, so a replaced file is re-measured.
+  let budgetVerdict = $state<Record<string, { url: string; over: boolean }>>({});
+  const measuring = new Set<string>();
+  function measure(item: SplatItem) {
+    const id = item.key + '\n' + item.url;
+    if (measuring.has(id)) return;
+    measuring.add(id);
+    void readSplatGaussianCount(item.url).then((count) => {
+      if (destroyed) return;
+      const over = overStartupBudget(count);
+      if (over && count !== undefined) { splatDemand.deferred.add(item.key); splatDemand.counts.set(item.key, count); }
+      budgetVerdict = { ...budgetVerdict, [item.key]: { url: item.url, over } };
+    });
+  }
+
   async function ensureRenderer() {
     if (splatRenderer) return;
     const { GaussianSplatRenderer } = await loadSplatLib();
@@ -84,8 +104,15 @@
         if (loadedKeys.has(key)) { const next = new Set(loadedKeys); next.delete(key); loadedKeys = next; }
       }
     }
+    for (const k of [...splatDemand.deferred]) if (!wanted.has(k)) { splatDemand.deferred.delete(k); splatDemand.counts.delete(k); }
     for (const item of items) {
       if (live.has(item.key)) continue;
+      if (item.deferrable && !splatDemand.requested.has(item.key)) {
+        const v = budgetVerdict[item.key];
+        if (!v || v.url !== item.url) { measure(item); continue; }
+        if (v.over) continue;
+      }
+      splatDemand.deferred.delete(item.key);
       const entry: Live = { url: item.url, radius: item.radius, orientation: item.orientation, keepScale: item.keepScale };
       live.set(item.key, entry);
       (async () => {
@@ -150,6 +177,7 @@
 
   onDestroy(() => {
     destroyed = true;
+    splatDemand.reset();
     for (const [k, m] of Object.entries(proxies)) { scene.remove(m); delete proxies[k]; }
     delete scene.userData.splatOccluders;
     proxyGeometry.dispose();

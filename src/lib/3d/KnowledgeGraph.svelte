@@ -231,11 +231,11 @@
         const yaw = pl.yaw + roomSet.yaw;
         items.push({
           key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: pl.scale * roomSet.scale,
-          quaternion: () => qAboutY(yaw), position: () => n.pos, occludes: true,
+          quaternion: () => qAboutY(yaw), position: () => n.pos, occludes: true, deferrable: true,
         });
         continue;
       }
-      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35, occludes: true });
+      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35, occludes: true, deferrable: true });
     }
     const bg = backgroundSplatFrom(statements as Statement[]);
     if (bg) {
