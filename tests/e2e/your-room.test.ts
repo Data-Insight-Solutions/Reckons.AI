@@ -140,7 +140,7 @@ test('Your room: set surround and scale from the filters panel, place the turtle
   await openYourRoom(page);
   await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '2/0', { timeout: 60_000 });
 
-  // The Background section is in the graph view's Filters & layout panel, with the same controls as the Graphs tab.
+  // The Background section is in the graph view's View settings panel, with the same controls as the Graphs tab.
   const panel = page.getByTestId('graph-background-settings');
   await expect(panel).toBeVisible();
   await panel.getByTestId('bg-mode-backdrop').click();
