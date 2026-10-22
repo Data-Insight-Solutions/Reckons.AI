@@ -12,6 +12,7 @@
  */
 
 import { loadWithDeviceFallback, type InferenceDevice } from './device-select';
+import { revisionFor } from './model-revisions';
 
 const FALLBACK_MODEL = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
@@ -83,6 +84,7 @@ async function initPipeline(id: number, model: string): Promise<void> {
   const loaded = await loadWithDeviceFallback((device) =>
     pipeline('text-generation', model, {
       device,
+      revision: revisionFor(model),
       dtype: 'q4',
       progress_callback: (p: { status: string; progress?: number }) => {
         post({ id, type: 'progress', status: p.status, progress: p.progress });

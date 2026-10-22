@@ -466,7 +466,7 @@
     if (semanticFailed) { semanticAnalyzing = false; semanticReady = true; return; }
     semanticAnalyzing = true;
     semanticDiff = null;
-    semanticEnrichDiff(sDiff, ex).then(enriched => {
+    semanticEnrichDiff(sDiff, ex, { onlyIfModelReady: true }).then(enriched => {
       if (myVersion === semanticVersion) {
         semanticDiff = enriched;
         semanticAnalyzing = false;

@@ -1,0 +1,127 @@
+{
+  "origin": "reconstructed",
+  "input": {
+    "kind": "video",
+    "name": "room.mp4",
+    "sha256": "d12a67c2b2b56f3d27d5c6ed593495396b13e253e228de0a892f627228be4ae9",
+    "bytes": 13428115
+  },
+  "frames": {
+    "extracted": 300,
+    "kept": 300,
+    "registered": 300,
+    "fps": 30
+  },
+  "tools": {
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5+esm15 Copyright (c) 2000-2023 the FFmpeg developers",
+    "pycolmap": "4.2.1",
+    "brush": "brush-cli 0.3.0"
+  },
+  "settings": {
+    "totalSteps": 30000,
+    "targetFrames": 300,
+    "matching": "sequential overlap 10",
+    "cameraModel": "SIMPLE_RADIAL single camera",
+    "minRegisteredFraction": 0.5,
+    "seed": 42
+  },
+  "stagesS": {
+    "frames": 7.6,
+    "poses": 207.4,
+    "train": 1836.8,
+    "crop": 3.6,
+    "reduce": 41.2,
+    "compress": 1
+  },
+  "gaussians": 280000,
+  "output": {
+    "file": "splat.ply",
+    "sha256": "defb619b0cd96d8847d3c8e5f8377cc701c7e82d8adf6a04bf9265f15de435a4",
+    "bytes": 15680362
+  },
+  "checks": {
+    "registration": {
+      "pass": true,
+      "problems": [],
+      "notes": [],
+      "measured": {
+        "registered": 300,
+        "total": 300,
+        "fraction": 1
+      }
+    },
+    "splat": {
+      "pass": true,
+      "problems": [],
+      "notes": [],
+      "measured": {
+        "count": 280000,
+        "bytesPerGaussian": 56,
+        "extent": 24.4408,
+        "rawExtent": 24.6229,
+        "strayFraction": 0.0001,
+        "visibleFraction": 0.819
+      }
+    }
+  },
+  "crop": {
+    "box": {
+      "min": [
+        -12.3526,
+        -5.1582,
+        -11.7744
+      ],
+      "max": [
+        12.442,
+        5.244,
+        11.9869
+      ]
+    },
+    "before": 755905,
+    "after": 738830,
+    "removed": 17075,
+    "rawExtent": 193.435,
+    "extent": 24.6229,
+    "maxScale": 0.4959,
+    "uncropped": {
+      "file": "splat.uncropped.ply",
+      "sha256": "1b03361c44df434b7d3e8ef3a674535f7fde4027e556ccbb48a5b46937138f93",
+      "bytes": 178395131
+    }
+  },
+  "reduce": {
+    "before": 738830,
+    "after": 280000,
+    "shDegree": 0,
+    "maxGaussians": 280000
+  },
+  "compressed": {
+    "format": "spz",
+    "lossy": true,
+    "file": "splat.spz",
+    "sha256": "b8e76189d898ec72f9936950c18bb3462336ce929721622c7004ba88c8890cd4",
+    "bytes": 4862415,
+    "ratio": 3.22,
+    "gaussians": 280000,
+    "extent": 24.6228,
+    "check": {
+      "pass": true,
+      "problems": []
+    }
+  },
+  "ranAt": "2026-10-15T01:03:48.737Z",
+  "notes": [
+    "colmap: 2 model(s), 22128 sparse points, features 59s, matching 28.3s, mapping 119.7s"
+  ],
+  "synthetic": {
+    "note": "The input video is a Blender render (scripts/content/scan-synthetic-room.py, seed 7, 300 frames, 1600x900, Cycles 40 samples) of a made-up 5 x 4 x 2.6 m living room. It records no real place.",
+    "generator": "scripts/content/scan-synthetic-room.py"
+  },
+  "published": {
+    "files": [
+      "splat.spz",
+      "receipt.json"
+    ],
+    "note": "splat.ply (15.7 MB) and splat.uncropped.ply are not committed; hashes are recorded here. Verify the committed copy with npm run gen:check."
+  }
+}

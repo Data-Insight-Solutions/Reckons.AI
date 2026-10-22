@@ -15,7 +15,7 @@ generated: "docs-kb"
 
 > **Functional** — built and working, with rough edges still being smoothed.
 
-Some words in this codebase mean several different things: graph, node, export and share. Every day a check counts their plain, unqualified uses, and that count may fall but never rise, so new code cannot add more ambiguity without saying why. Once a week, three different local models vote on which meaning each use has, and only the uses they disagree on come back for a person. When a batch of names can be renamed safely, it arrives as a pull request to review, never as a direct change.
+Some words in this codebase mean several different things: graph, node, export and share. Every day a check counts their plain, unqualified uses in prose (comments, text in quotes, words on screen and docs pages, but not the names of things in code, which cannot be reworded without a rename), and that count may fall but never rise, so new code cannot add more ambiguity without saying why. Once a week, three different local models vote on which meaning each use has, and only the uses they disagree on come back for a person. When a batch of names can be renamed safely, it arrives as a pull request to review, never as a direct change.
 
 <p class="derived">This is built and working.</p>
 

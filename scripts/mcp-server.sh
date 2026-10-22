@@ -41,4 +41,16 @@ if [ ! -f mcp-server/dist/index.js ]; then
   exit 1
 fi
 
+# The offline jobs write their queue to reckons-workspace/knowledge.pending.jsonl. The review tools
+# read it too, and journal verdicts beside it where the app drains them. Override with
+# RECKONS_QUEUE_WORKSPACE=/path; if unset and the directory is absent, only per-graph queues show.
+# Local model tools (kb_local_summarize, kb_local_extract, kb_generate_page) are opt-in per call and
+# answer "set OLLAMA_BASE_URL" when it is unset. Default it to the local Ollama port so a session asked
+# to use the local tier can (Matt, 2026-10-13). If Ollama is not running, the tools say so.
+export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
+
+if [ -z "${RECKONS_QUEUE_WORKSPACE:-}" ] && [ -d reckons-workspace ]; then
+  export RECKONS_QUEUE_WORKSPACE="$PWD/reckons-workspace"
+fi
+
 exec node mcp-server/dist/index.js --kb mcp-workspace "$@"

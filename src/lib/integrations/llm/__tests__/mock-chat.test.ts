@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveChatProvider, turtleChat } from '../turtle-chat';
+import { mockChatReply, resolveChatProvider, turtleChat } from '../turtle-chat';
 
 const context = {
   statementCount: 7,
@@ -29,5 +29,23 @@ describe('mock chat backend', () => {
 
     expect(result.message).toContain('7 verified statements');
     expect(result.actions).toEqual([]);
+  });
+
+  it('returns a reply a browser test scripted, and only through the mock provider', async () => {
+    const g = globalThis as { __RECKONS_MOCK_REPLY__?: string };
+    g.__RECKONS_MOCK_REPLY__ = 'OVERVIEW\nA scripted reply.';
+    try {
+      const result = await turtleChat({
+        provider: 'mock',
+        apiKey: '',
+        messages: [{ role: 'user', content: 'Help me decide.' }],
+        kbContext: context,
+      });
+      expect(result.message).toContain('A scripted reply.');
+      expect(mockChatReply(3)).toBe('OVERVIEW\nA scripted reply.');
+    } finally {
+      delete g.__RECKONS_MOCK_REPLY__;
+    }
+    expect(mockChatReply(3)).toContain('3 verified');
   });
 });

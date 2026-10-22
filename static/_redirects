@@ -28,7 +28,6 @@
 /docs/architecture/ttl-gap-context-loading  /docs/architecture/ttl-vs-markdown-gaps  301
 /docs/architecture/ttl-gap-discovery  /docs/architecture/ttl-vs-markdown-gaps  301
 /docs/architecture/ttl-gap-procedural  /docs/architecture/ttl-vs-markdown-gaps  301
-/docs/features/content-safety-features  /docs/guide/what-is-reckons-ai  301
 /docs/features/cross-kb-alignment  /docs/guide/what-is-reckons-ai  301
 /docs/features/diff-summary  /docs/features/compare  301
 /docs/features/disambiguation  /docs/guide/what-is-reckons-ai  301
@@ -41,9 +40,7 @@
 /docs/features/reckoning  /docs/learn/reckoning  301
 /docs/features/release-notes  /docs/features/published-docs  301
 /docs/features/source-monitoring  /docs/features/source-refresh  301
-/docs/features/story-system  /docs/features/shelly  301
 /docs/features/trust-system  /docs/guide/what-is-reckons-ai  301
-/docs/features/ttl-export  /docs/guide/what-is-reckons-ai  301
 /docs/features/turtle-persona  /docs/features/shelly  301
 /docs/features/whisper-stt-features  /docs/features/shelly  301
 /docs/guide/architecture-guide  /docs/guide/what-is-reckons-ai  301
@@ -115,6 +112,17 @@
 /docs/testing/settings-page  /docs/testing/page-screenshots  301
 /docs/testing/unit-tests  /docs/testing/test-suite  301
 /docs/testing/user-story-tests  /docs/testing/visual-tests  301
+/docs/testing/workflow-generated-assets-step1  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-generated-assets-step2  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-generated-assets-step3  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-generated-assets-step4  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-generated-assets-step5  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-generated-assets-step6  /docs/testing/workflow-generated-assets  301
+/docs/testing/workflow-readme-path-step1  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step2  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step3  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step4  /docs/testing/workflow-readme-path  301
+/docs/testing/workflow-readme-path-step5  /docs/testing/workflow-readme-path  301
 /docs/timeline-ecosystem/ai-alliance  /docs/timeline-ecosystem/semantic-web-organizations  301
 /docs/timeline-ecosystem/anthropic  /docs/timeline-ecosystem/semantic-web-organizations  301
 /docs/timeline-ecosystem/apache-jena  /docs/timeline-ecosystem/semantic-web-organizations  301

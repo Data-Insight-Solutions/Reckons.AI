@@ -23,6 +23,7 @@
  * and has no transformers/ort dependency of its own.
  */
 import { loadWithDeviceFallback, type InferenceDevice } from '$lib/integrations/llm/device-select';
+import { revisionFor } from '$lib/integrations/llm/model-revisions';
 
 /** Local alias — cannot import type from @huggingface/transformers (see note above) */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,6 +86,18 @@ async function isEmbedCached(model: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * True when the embedding model is already loaded or already cached on this device, so using it
+ * costs no download and needs no consent. Passive features (the Review page's similarity hints)
+ * ask this FIRST and quietly do without when it is false: opening a page must never raise a
+ * "Download model?" dialog; only something the person clicked that needs a model may.
+ */
+export async function isEmbedderReady(): Promise<boolean> {
+  const model = resolveModel();
+  if (extractor && loadedModel === model) return true;
+  return isEmbedCached(model);
 }
 
 /** How long to wait for an embedding model load before giving up (ms). Mirrors wasm.ts. */
@@ -183,6 +196,7 @@ async function loadEmbedder(): Promise<FeatureExtractionPipeline> {
   const load = loadWithDeviceFallback((device) =>
     pipeline('feature-extraction', MODEL, {
       device,
+      revision: revisionFor(MODEL),
       dtype: 'q8',
       progress_callback: (p: { status: string; progress?: number }) => {
         for (const cb of embedProgressCallbacks) cb(p.status, p.progress ?? 0);

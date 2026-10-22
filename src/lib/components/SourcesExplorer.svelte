@@ -23,7 +23,7 @@
     selected?: string | null;
     onscene: (scene: ReturnType<typeof projectProvenance>) => void;
     graphTools?: Snippet;
-    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb'; url: string } | null;
+    assetFor: (iri: string) => { kind: 'image' | 'video' | 'glb' | 'splat' | 'three'; url: string } | null;
     onentity: (key: string) => void;
   }>();
   const fullIndex = $derived(buildProvenanceIndex(statements, sources));
@@ -95,6 +95,15 @@
       controls.expanded = new Set([...controls.expanded, ...containing]);
     }
     selected = key;
+  }
+  // F122.1.4: Open in source. The selected document mounts SourceDocument, which opens and marks the passage.
+  let jump = $state<{ sourceKey: string; statementId: string; nonce: number } | null>(null);
+  function openInSource(statementId: string) {
+    const statement = statements.find((st: Statement) => st.id === statementId);
+    const source = statement && index.sources.find((s) => s.id === statement.sourceId);
+    if (!source) return;
+    selectNode(source.key);
+    jump = { sourceKey: source.key, statementId, nonce: (jump?.nonce ?? 0) + 1 };
   }
   function webLink(uri: string | undefined): string | null {
     if (!uri) return null;
@@ -185,7 +194,8 @@
           runs={runs.filter((run) => run.sourceId === source.id)} loading={loadingRuns} error={runError} />
         <!-- Every statement of the source, whatever the review filter, so a passage's counts are its whole yield. -->
         <SourceDocument sourceId={source.id} sourceHash={source.source?.hash}
-          statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []} onterm={selectNode} />
+          statements={fullIndex.sources.find((s) => s.id === source.id)?.statements ?? []} onterm={selectNode}
+          jump={jump && jump.sourceKey === source.key ? jump : null} />
         <h4>Extracted entity groups</h4>
         {#each source.groups as group (group.key)}
           <button class="detail-row" onclick={() => selected = group.key}>{group.label} <span>{group.members.length} entities →</span></button>
@@ -220,7 +230,7 @@
             {#if statement.excerpt && statement.grounded !== false}
               <small>{statement.grounded === true ? 'Excerpt matched the source text.' : 'Excerpt retained; a source-text match was not recorded.'}</small>
             {/if}
-            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} sourceHash={sources.find((s: Source) => s.id === statement.sourceId)?.hash} />
+            <StatementEvidence {statement} sourceTitle={index.sources.find((s) => s.id === statement.sourceId)?.title ?? 'Source not recorded'} sourceHash={sources.find((s: Source) => s.id === statement.sourceId)?.hash} onopensource={openInSource} />
           </div>
         {/each}
       </div>

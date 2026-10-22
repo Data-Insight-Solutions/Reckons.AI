@@ -593,7 +593,8 @@ export async function syncNotesGraphToWorkspace(id: string): Promise<boolean> {
     });
     registerStableId(id, stableId, statements.length);
     const assets = await collectAssets(graph);
-    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + await assetTriples(graph, assets);
+    const { passagesForSave } = await import('./source-corpus');
+    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId, chunks: await passagesForSave(sources) }) + await assetTriples(graph, assets);
     return await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
   } finally { graph.close(); }
 }
@@ -763,7 +764,7 @@ export async function readKnowledgeBaseFromFolder(folderName: string): Promise<{
     const assets = new Map<string, Uint8Array>();
     try {
       const assetsDir = await kbDir.getDirectoryHandle('assets');
-      for (const category of ['icons', 'previews', 'models'] as const) {
+      for (const category of ['icons', 'previews', 'models', 'splats'] as const) {
         try {
           const catDir = await assetsDir.getDirectoryHandle(category);
           for await (const entry of (catDir as any).values()) {
@@ -834,7 +835,8 @@ export async function syncAllKbs(): Promise<number> {
       // per-KB folder file round-trips without dropping review state on a later re-pull.
       const assets = await collectAssets(kbDb);
       const assetTtl = await assetTriples(kbDb, assets);
-      const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + assetTtl;
+      const { passagesForSave } = await import('./source-corpus');
+      const ttl = toTurtleFull(statements, sources, { kbStableId: stableId, chunks: await passagesForSave(sources) }) + assetTtl;
 
       await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
       synced++;
@@ -901,7 +903,8 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
     if (entry) {
       const assets = await collectAssets(db);
       const assetTtl = await assetTriples(db, assets);
-      const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId });
+      const { passagesForSave } = await import('./source-corpus');
+      const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId, chunks: await passagesForSave(sources) });
       await writeKnowledgeBaseToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }

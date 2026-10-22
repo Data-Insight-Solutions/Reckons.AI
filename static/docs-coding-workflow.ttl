@@ -275,7 +275,44 @@ cw:TerminologyMaintenance rdf:type ktype:Concept ;
     kpred:part-of       cw:CodingWorkflow ;
     hnav:order          113 ;
     kpred:has-status    "functional" ;
-    skos:definition     "Some words in this codebase mean several different things: graph, node, export and share. Every day a check counts their plain, unqualified uses, and that count may fall but never rise, so new code cannot add more ambiguity without saying why. Once a week, three different local models vote on which meaning each use has, and only the uses they disagree on come back for a person. When a batch of names can be renamed safely, it arrives as a pull request to review, never as a direct change." ;
+    skos:definition     "Some words in this codebase mean several different things: graph, node, export and share. Every day a check counts their plain, unqualified uses in prose (comments, text in quotes, words on screen and docs pages, but not the names of things in code, which cannot be reworded without a rename), and that count may fall but never rise, so new code cannot add more ambiguity without saying why. Once a week, three different local models vote on which meaning each use has, and only the uses they disagree on come back for a person. When a batch of names can be renamed safely, it arrives as a pull request to review, never as a direct change." ;
     kpred:principle     "THE COUNT CAN BE RAISED, BUT ONLY WITH A REASON WRITTEN NEXT TO IT. On its first evening the baseline was raised three times, each with the reason recorded in the terminology graph: other work had landed first, docs that quote the words while explaining them, and a page title that uses the word the screen shows." ;
     kpred:honest-note   "THE WEEKLY PARTS HAVE NOT RUN YET. The daily check blocks in CI today. The weekly vote is scheduled but has not run on its own, the automatic rename pull request has never been opened (its trial run stops before that step), and the third model chosen for the vote is not installed, so another stands in." ;
-    kpred:relates-to    kb:terminology-maintenance .
+    kpred:relates-to    kb:terminology-maintenance ;
+    kpred:relates-to    kb:term-ratchet-prose-only .
+
+cw:UiTermsAudit rdf:type       ktype:Concept ;
+    rdfs:label          "Checking that the screen speaks the user's words" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          112 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "npm run offline:all includes ui-terms, which reads the text people actually see in every screen and checks it against the terminology graph. It flags words that describe how the product is built, such as triple or IRI, with the everyday word to use instead, and it finds 'graph' where the product means a space. A count of each may fall but never rise, so a new screen cannot add more." ;
+    kpred:principle     "RULES BEFORE MODELS, AND MODELS ONLY AFTER CALIBRATION. A local model asked the same question agreed with itself every time and was right 3 times in 59. The rules are scored against those 59 hand-labelled sentences and must make no mistakes on them." ;
+    kpred:honest-note   "TEXT BUILT WHILE THE APP RUNS IS NOT SEEN. A space named Default Graph by the app shows 'graph' on screen, but no source line says so; a pass over rendered pages is still to come." ;
+    kpred:relates-to    kb:ui-term-audit .
+
+cw:CiGraph rdf:type            ktype:Concept ;
+    rdfs:label          "Which checks can stop a merge" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          114 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "The CI workflow files are the rules GitHub runs; static/reckons-ci.ttl is a graph generated from them by scripts/ci-graph.ts. It answers what a contributor needs to know before relying on a green tick: which checks can stop a merge to main, which only report, what each one runs, and which part of the product each one guards. When it was first generated it found 15 checks: 8 can stop a merge to main, and 7 only advise, among them the safety attestation, the dependency audits and the release-notes check." ;
+    kpred:honest-note   "THE GRAPH ITSELF ONLY ADVISES. A stale CI graph is fixed by running the script again, so its own check reports rather than blocks. Only main has merge rules; dev and staging have none yet." ;
+    kpred:relates-to    kb:ci-graph .
+
+cw:CommitTrailers rdf:type     ktype:Concept ;
+    rdfs:label          "Which model made a change, and why" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          115 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "A commit written by an AI agent ends with two lines: Model, naming the exact model that wrote it, and Intent, saying in one sentence what the person asked for. A blocking check in CI refuses an agent commit without them. A second check refuses a pull request into dev that carries commits found only on main. Models the app downloads are pinned to an exact version for the same reason: a change should be able to name what made it." ;
+    kpred:honest-note   "COMMITS ONLY, SO FAR. Facts written inside the app do not yet record the model and its exact version; that is the next part of this work." ;
+    kpred:relates-to    kb:change-provenance-commit-trailers .
+
+cw:ReadmeIntroduction rdf:type ktype:Concept ;
+    rdfs:label          "A README that says what leaves your device" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          116 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "The README introduces Reckons.AI through what a person does with it: sources, review, connected spaces and reckonings. Its key words link to these docs pages. It lists each integration and says plainly which ones send data off your device, rather than claiming that nothing ever leaves it. Feature inventories, provider rankings and counts that went stale were removed." ;
+    kpred:relates-to    kb:readme-space-guide .

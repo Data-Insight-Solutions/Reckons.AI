@@ -4,6 +4,20 @@
   "_blocking": "blocking=true means `run-all --ci` exits non-zero if this job fails. Reserve it for failures you cannot take back after a push. Everything else is ADVISORY: it reports and queues pending findings, and never blocks a merge — a gate that cries wolf gets switched off, and then it protects nothing.",
   "jobs": [
     {
+      "name": "release-burndown",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-burndown.ts --pending",
+      "desc": "How much of the current release's scope (kpred:has-part on the ktype:Release) is built, against the sprint dates? Per-status counts, each part, days elapsed and remaining, and a verdict naming headline parts not started. Queues one status-update proposal when parts below functional have no dated note in 4+ days. Advisory: it counts statuses, it does not test anything, and a part with no dated note looks untouched even if code moved."
+    },
+    {
+      "name": "visual-streams",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npm run visual:streams -- --base=http://localhost:4173",
+      "desc": "Opt-in local VLM scripted and exploratory workflow streams. Requires an explicitly started branch preview on the chosen port and OLLAMA_BASE_URL. Private receipts and review proposals; disabled in sweeps because a preview is not assumed to exist. Configure streams in scripts/visual-streams/examples.json or pass --config."
+    },
+    {
       "name": "queue-dedupe",
       "tier": "script",
       "enabled": true,
@@ -32,6 +46,14 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/claim-audit.ts --pending",
       "desc": "ASYNC alignment: sweeps the hand-written surfaces align(1) cannot generate (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy) for claims the graph contradicts — an unbuilt feature described as working, or a countable claim that is simply wrong. Emits PROPOSALS for review; never gates a build, because 'is this sentence overclaiming' is a judgment"
+    },
+    {
+      "name": "commit-trailers",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/commit-trailers.ts",
+      "desc": "F254 phase 1a. Every AGENT commit (Co-Authored-By naming a model, or a Model: trailer) must carry non-empty Model: and Intent: trailers; merges and human commits are exempt. Range origin/dev..HEAD, or commits since 2026-10-13T17:56Z (the instant #423 merged) on dev itself. Trailers are self-attested text: this catches forgetting, not lying, and an agent that omits every model-naming trailer is invisible to it."
     },
     {
       "name": "version-align",
@@ -63,6 +85,22 @@
       "desc": "Graph invariants: dead has-file/tested-by links, bad status, duplicate feature-ids, dangling refs, incomplete features"
     },
     {
+      "name": "test-workflow-check",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/test-workflow-check.ts",
+      "blocking": true,
+      "desc": "F34.2. Every step of every test workflow (the Testing docs section) has a screenshot, every linked screenshot is a real .webp under static/, and the e2e test file names every step. Blocking: a step with no screenshot, or a link to a missing file, fails CI (the flagship screenshots were committed 2026-10-13)."
+    },
+    {
+      "name": "release-review-space",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/release-review-space.ts --check",
+      "blocking": true,
+      "desc": "F34.5. Fails when a generated static/review-<version>.ttl (the per-release visual review space opened from About) differs from what the roadmap's release has-part features and the Testing graph's TestWorkflows generate. Regenerate with npx tsx scripts/offline/release-review-space.ts. Deterministic, no model."
+    },
+    {
       "name": "tenet-align",
       "tier": "script",
       "enabled": true,
@@ -80,8 +118,9 @@
       "name": "extraction-score",
       "tier": "agent",
       "enabled": true,
-      "cmd": "npx tsx scripts/offline/extraction-score.ts --pending",
-      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL)."
+      "queues": false,
+      "cmd": "npx tsx scripts/offline/extraction-score.ts",
+      "desc": "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only."
     },
     {
       "name": "shacl-validate",
@@ -177,9 +216,9 @@
     {
       "name": "button-crawl",
       "tier": "script",
-      "enabled": false,
+      "enabled": true,
       "cmd": "npx tsx scripts/offline/button-crawl.ts",
-      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Disabled by default because it needs a server already running — `npm run dev`, then enable this or run `npm run offline:all -- --only=button-crawl`"
+      "desc": "F34: clicks every interactive element on every route; flags crashes, blank screens, SILENT no-ops, and sub-44px touch targets. Pure local JS (no Ollama). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a server already running (`npm run dev`, or BASE_URL=...); with none it exits non-zero, which shows as a failed non-blocking job in the sweep, not a green one. Screenshots under tests/visual/screenshots/button-crawl/ are gitignored and stay local"
     },
     {
       "name": "graph-economics",
@@ -215,13 +254,6 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/docs-expand.ts --limit=10",
       "desc": "Drafts prose for docs entities too thin to be a page (under 45 words, the same threshold docs-pages.ts uses to decide what earns a URL). Grounded on the entity's own triples plus its parent and siblings, so the draft matches the register of the pages around it. PROPOSAL ONLY: emits suggestions to knowledge.pending.jsonl and never edits a TTL. Note this is NOT doc generation — scripts/docs-pages.ts renders the pages and stays deterministic, because md-align requires byte-identical regeneration."
-    },
-    {
-      "name": "code-review",
-      "tier": "agent",
-      "enabled": true,
-      "cmd": "npx tsx scripts/offline/code-review.ts --base=${CODE_REVIEW_BASE:-origin/dev}",
-      "desc": "Local coding model (qwen3-coder) reviews the branch diff → findings to pending review (needs OLLAMA_BASE_URL)"
     },
     {
       "name": "visual-diff",
@@ -268,9 +300,9 @@
     {
       "name": "perf-crawl",
       "tier": "script",
-      "enabled": false,
+      "enabled": true,
       "cmd": "npx tsx scripts/offline/perf-crawl.ts --ladder",
-      "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). DISABLED in the sweep because it needs a DISPLAY and a running dev server — it aborts rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none. Run it manually: npm run dev, then npm run offline:perf -- --ladder --trace-delta"
+      "desc": "F140 GPU-real performance crawl: a HEADED browser on the real GPU, asserting on TIME (long tasks, time-to-usable, settled velocity). Reinstated 2026-10-14 (MATT: reinstate, results gitignored). Needs a DISPLAY and a running dev server; it aborts (non-blocking failure) rather than silently falling back to SwiftShader, since a green perf report from a software rasterizer is worse than none, so a headless or serverless sweep will show it failing. Output under tests/visual/results/perf/ is gitignored and stays local. Deeper run: npm run offline:perf -- --ladder --trace-delta"
     },
     {
       "name": "docs-staleness",
@@ -292,6 +324,14 @@
       "enabled": true,
       "cmd": "npx tsx scripts/offline/docs-graph-registration.ts --quiet",
       "desc": "Every publishable docs graph must appear in all four registries (docs-pages SOURCES, docs-compose CORPUS, docs-consolidate CORPUS, a void:Dataset in website.ttl). docs-user-paths.ttl was in one of the four, so composition would have deleted nine published journeys while the orphan gate reported nothing dropped."
+    },
+    {
+      "name": "anchor-resolution",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/anchor-resolution.ts --quiet",
+      "desc": "F122.1.2: every fact anchor stored in a space file must name a chunk that is in the same file, belongs to the fact's own source and contains the span's start. A citation that cannot be opened is reported, never dropped or guessed. Reads every .ttl that holds an anchor; zero tokens."
     },
     {
       "name": "set-integrity",
@@ -332,6 +372,14 @@
       "blocking": false,
       "cmd": "npx tsx scripts/jobs-graph.ts --check",
       "desc": "The graph view of these jobs (static/reckons-jobs.ttl) must match jobs.json. A task is a triple (F87); this keeps the two in step until the graph becomes the source."
+    },
+    {
+      "name": "ci-graph",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/ci-graph.ts --check",
+      "desc": "CI as a graph (F33.2): static/reckons-ci.ttl must match .github/workflows/*.yml and .github/ruleset-main.json. Answers what stops a bad merge to main, which checks only advise, and which roadmap features each check guards. Also reports a required check no workflow produces. Advisory, like jobs-graph: a stale graph is fixed by regenerating it, not by blocking a merge."
     },
     {
       "name": "landing-data",
@@ -423,12 +471,20 @@
       "desc": "Codebase-to-graph coverage ratchet (Matt, 2026-10-07: improve codebase-to-graph alignment). The number of tracked code files that no graph names with kpred:has-file or kpred:tested-by may fall, never rise; baseline kpred:coverage-ratchet on code:repo in static/reckons-codebase.ttl. A new file is linked in the same PR that adds it. `--list` classifies every unlinked file; `--apply` links the ones its folder evidence decides."
     },
     {
+      "name": "branch-ancestry",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/branch-ancestry.ts",
+      "desc": "A PR into dev or staging must not carry commits that exist only on main. Found 2026-10-09: agent worktrees start from main, so three PRs meant for dev carried main's promotion merges and a safety attestation, which no test or conflict revealed. BLOCKING because merged, main's history would land in dev, and a well-meant deletion of it would reach main on the next promotion. Promotions into main are exempt; a back-merge of main is allowed only from a branch named main or sync/main-*."
+    },
+    {
       "name": "term-ratchet",
       "tier": "script",
       "enabled": true,
       "blocking": true,
       "cmd": "npx tsx scripts/offline/term-usage.ts --check",
-      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
+      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses in prose (comments, strings, markup text, docs; not code identifiers) may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
     },
     {
       "name": "terminology-sweep",
@@ -443,6 +499,28 @@
       "enabled": false,
       "cmd": "npx tsx scripts/agent/rename-pr.ts --term=kb",
       "desc": "F203.6 weekly: apply the next safe rename batch in a fresh worktree, run the gates, open a PR to dev when all are green; keeps the worktree and names the gate when not. Pushes and opens a PR, so it is scheduled, never part of the sweep."
+    },
+    {
+      "name": "ui-terms",
+      "tier": "script",
+      "enabled": true,
+      "blocking": true,
+      "cmd": "npx tsx scripts/offline/ui-terms.ts --check",
+      "desc": "F203.7 UI terms ratchet (Matt, 2026-10-07: detect backend engineering terms on screen and inconsistent words). Visible template text only: jargon from kpred:ui-jargon and prefixed standards labels, and 'graph' meaning a space by rule (lib/term-sense-rules.ts). Counts may fall, never rise; baselines are kpred:ui-term-ratchet on the terminology scheme."
+    },
+    {
+      "name": "gen-model-discover",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npm run bench:gen:discover",
+      "desc": "F183.1: for each local generation stage, is the incumbent Hugging Face file still the bytes the receipt recorded, and which newer licensed, loadable, one-GPU-sized models exist? Script tier (rules, zero tokens) but ONLINE and opt-in: the command carries --online, and it is disabled in the sweep so nothing reaches out unasked. Output is a candidate list with a reason per drop; downloads and likes order it and are never evidence of quality."
+    },
+    {
+      "name": "gen-model-bench",
+      "tier": "agent",
+      "enabled": false,
+      "cmd": "npm run bench:gen -- --stage=image",
+      "desc": "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts."
     }
   ]
 }

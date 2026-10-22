@@ -26,7 +26,7 @@
  * and lookup signals are therefore required for antonym detection.
  */
 
-import { embedMany, cosine } from '../embed';
+import { embedMany, cosine, isEmbedderReady } from '../embed';
 import type { Diff, DiffEntry } from './diff';
 import type { Statement } from './types';
 
@@ -219,8 +219,23 @@ function recountSummary(entries: DiffEntry[]): Diff['summary'] {
  * (e.g. model not yet downloaded, no network) — the structural diff is
  * always valid and safe to display.
  */
-export async function semanticEnrichDiff(diff: Diff, existing: Statement[]): Promise<Diff> {
+export async function semanticEnrichDiff(
+  diff: Diff,
+  existing: Statement[],
+  opts: { onlyIfModelReady?: boolean } = {},
+): Promise<Diff> {
   if (diff.entries.length === 0) return diff;
+
+  // Passive callers (opening Review) must not trigger a model download prompt. Review works
+  // without a model: the person decides each fact. Similarity hints appear only when the
+  // embedding model is already on the device. (MATT, 2026-10-13.)
+  if (opts.onlyIfModelReady) {
+    try {
+      if (!(await isEmbedderReady())) return diff;
+    } catch {
+      return diff;
+    }
+  }
 
   try {
     return await _enrich(diff, existing);

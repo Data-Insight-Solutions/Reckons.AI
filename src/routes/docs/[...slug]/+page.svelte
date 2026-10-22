@@ -233,6 +233,12 @@
        labels at about 7px — a picture technically present and practically unreadable. A diagram
        is worth its height, and the reader can scroll. */
   }
+  /* A top-to-bottom diagram of a few short steps: kept at its natural size (readable, 16px labels)
+     instead of stretched to the column, and centered. Phone width shows it unshrunk. */
+  .doc-prose :global(figure.diagram-stack svg) {
+    max-width: 340px;
+    margin: 0 auto;
+  }
   .doc-prose :global(figure.diagram figcaption) {
     margin-top: 0.9rem;
     padding-top: 0.75rem;
@@ -242,5 +248,32 @@
     line-height: 1.5;
     color: var(--muted);
   }
+
+  /* F34.2 — a test-workflow step's annotated screenshot, or the honest "not captured yet" box. */
+  .doc-prose :global(figure.workflow-shot) {
+    margin: 1.1rem 0;
+    padding: 0.6rem;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .doc-prose :global(figure.workflow-shot img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+  .doc-prose :global(figure.workflow-shot figcaption) {
+    margin-top: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .doc-prose :global(figure.workflow-shot-missing) {
+    border-style: dashed;
+    text-align: center;
+    color: var(--muted);
+  }
+  .doc-prose :global(figure.workflow-shot-missing p) { margin: 0.4rem 0; font-size: 0.9rem; }
 
 </style>

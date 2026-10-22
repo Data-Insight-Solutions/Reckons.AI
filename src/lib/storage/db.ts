@@ -242,6 +242,8 @@ export type SettingsRecord = {
    * no /webhook suffix (callers append that per-endpoint).
    */
   n8nBaseUrl?: string;
+  /** Explicit local opt-in for Currents delivery; deliberately not imported from graph metadata. */
+  n8nCurrentsEnabled?: boolean;
   /**
    * When set, POST a small summary to the n8n review webhook
    * (/webhook/reckons-review) whenever new facts land for review — so n8n can
@@ -335,6 +337,7 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   indicoApiToken: import.meta.env.VITE_INDICO_API_TOKEN || undefined,
   indicoCategoryId: import.meta.env.VITE_INDICO_CATEGORY_ID || undefined,
   n8nNotifyOnReview: false,
+  n8nCurrentsEnabled: false,
   embeddingThreshold: 0.85,
   autoConfirmHighConfidence: false,
   // A year, deliberately conservative: the first sweep a user runs should surprise nobody.
@@ -377,6 +380,9 @@ export type MobileSession = {
   deviceName?: string;
 };
 
+/** An imported Gaussian splat file (F58.9.7). `id` is `<content-hash>.ply|spz|sog`; triples refer to it as `asset:splat/<id>`. */
+export type SplatFileRow = { id: string; blob: Blob; filename: string; size: number; importedAt: number };
+
 export type WorkspaceRow = { id: string; handle: FileSystemDirectoryHandle; name: string };
 
 /**
@@ -406,6 +412,7 @@ export class KBaseDB extends Dexie {
   icon2dOverrides!: Table<Icon2dOverrideRow, string>;
   kbSnapshots!: Table<KnowledgeBaseSnapshotRow, string>;
   extractionRuns!: Table<ExtractionRun, string>;
+  splatFiles!: Table<SplatFileRow, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -495,6 +502,22 @@ export class KBaseDB extends Dexie {
       icon2dOverrides: 'id',
       kbSnapshots: 'id, kbId, createdAt',
       extractionRuns: 'id, sourceId, startedAt, status'
+    });
+    // v9: imported Gaussian splat files (F58.9.7). Additive: one new store, no data transform.
+    this.version(9).stores({
+      sources: 'id, ingestedAt, kind, trustLevel',
+      statements: 'id, sourceId, status, [s.value+p.value], createdAt',
+      settings: 'key',
+      changelog: '++id, timestamp, action, statementId, sourceId, entityKey',
+      mergeDecisions: '++id, timestamp, entityKeyA, entityKeyB',
+      trustEvents: '++id, timestamp, sourceId',
+      glbOverrides: 'id',
+      workspace: 'id',
+      entityGifs: 'id',
+      icon2dOverrides: 'id',
+      kbSnapshots: 'id, kbId, createdAt',
+      extractionRuns: 'id, sourceId, startedAt, status',
+      splatFiles: 'id'
     });
   }
 }
@@ -656,6 +679,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       autoRefreshIntervalMinutes: m.autoRefreshIntervalMinutes,
       showTutorialHints: m.showTutorialHints,
       n8nBaseUrl: m.n8nBaseUrl,
+      n8nCurrentsEnabled: m.n8nCurrentsEnabled,
       n8nNotifyOnReview: m.n8nNotifyOnReview,
       turtleSettings: JSON.parse(JSON.stringify(m.turtleSettings))
     };

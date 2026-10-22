@@ -1,7 +1,7 @@
 ---
 title: "Prefer-Local Routing"
 slug: "prefer-local"
-order: 1025
+order: 1033
 section: "Features"
 parent: "llm-backends"
 template: doc
