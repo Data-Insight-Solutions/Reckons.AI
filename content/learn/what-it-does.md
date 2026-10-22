@@ -70,7 +70,7 @@ The review queue shows what CHANGED rather than everything found: new claims, cl
 Accepted facts carry their source, the excerpt they came from, and when you accepted them. You can scrub the graph backwards through time, export the whole thing as a plain-text .ttl file, and keep several independent graphs that do not see each other.
 
 - [History Mode](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
-- [Turtle Export](../guide/what-is-reckons-ai) <span class="link-note">— on the What Is Reckons.AI page</span>
+- [Turtle Export](../features/ttl-export)
 - [Multi-Graph Management](../features/multi-kb)
 - [Graph Identity](../features/multi-kb) <span class="link-note">— on the Multi-Graph Management page</span>
 

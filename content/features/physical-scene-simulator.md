@@ -1,7 +1,7 @@
 ---
 title: "Physical scene simulator (early, command line only)"
 slug: "physical-scene-simulator"
-order: 1025
+order: 1030
 section: "Features"
 parent: "story-system"
 template: doc

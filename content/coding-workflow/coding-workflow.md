@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-<p class="derived">It has 17 parts below, 6 of which are not built yet.</p>
+<p class="derived">It has 20 parts below, 6 of which are not built yet.</p>
 
 ## Why it is this way
 
@@ -45,5 +45,8 @@ Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the
 <a class="card" href="../coding-workflow/reproducible-builds"><span class="card-title">A fresh checkout that behaves like CI</span><span class="card-status">scaffolded</span><span class="card-text">The goal: clone the repository, install once, and every check, test and build runs the same on your machine as in CI, with nothing downloaded behind your back.</span></a>
 <a class="card" href="../coding-workflow/ui-terms-audit"><span class="card-title">Checking that the screen speaks the user's words</span><span class="card-text">npm run offline:all includes ui-terms, which reads the text people actually see in every screen and checks it against the terminology graph.</span></a>
 <a class="card" href="../coding-workflow/terminology-maintenance"><span class="card-title">Keeping words consistent, as a standing job</span><span class="card-text">Some words in this codebase mean several different things: graph, node, export and share.</span></a>
+<a class="card" href="../coding-workflow/ci-graph"><span class="card-title">Which checks can stop a merge</span><span class="card-text">The CI workflow files are the rules GitHub runs; static/reckons-ci.ttl is a graph generated from them by scripts/ci-graph.ts.</span></a>
+<a class="card" href="../coding-workflow/commit-trailers"><span class="card-title">Which model made a change, and why</span><span class="card-text">A commit written by an AI agent ends with two lines: Model, naming the exact model that wrote it, and Intent, saying in one sentence what the person asked for.</span></a>
+<a class="card" href="../coding-workflow/readme-introduction"><span class="card-title">A README that says what leaves your device</span><span class="card-text">The README introduces Reckons.AI through what a person does with it: sources, review, connected spaces and reckonings.</span></a>
 
 </div>

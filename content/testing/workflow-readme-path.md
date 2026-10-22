@@ -1,7 +1,7 @@
 ---
 title: "Add a source, review it, see it in a space, ask for a reckoning"
 slug: "workflow-readme-path"
-order: 1001
+order: 1002
 section: "Testing"
 parent: "test-workflows"
 template: doc
