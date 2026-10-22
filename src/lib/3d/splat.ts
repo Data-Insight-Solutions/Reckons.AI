@@ -43,9 +43,9 @@ const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'supersed
 
 /** Entity IRI → splat URL, from p:splat literals. */
 /**
- * Bundled files that were replaced by a different file name. A graph saved in the browser keeps the
- * address it was written with, so after a replacement it points at a file that is gone (404), and the
- * space shows no room. Reading maps the old address to the current one; the saved graph is untouched.
+ * Bundled files that were replaced by a different file name. A copy saved in the browser keeps the
+ * address it was written with, so after a replacement it points at a file that is gone (404) and no
+ * room appears. Reading maps the old address to the current one; the saved copy is untouched.
  */
 const MOVED_BUNDLED_SPLATS: Readonly<Record<string, string>> = {
   '/generated/synthetic-room/splat.ply': '/generated/synthetic-room/splat.spz',
