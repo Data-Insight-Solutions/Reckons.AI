@@ -8,7 +8,7 @@
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
-  copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
+  closeSync, copyFileSync, existsSync, openSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
   renameSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -154,9 +154,13 @@ export class GenerationRunner {
         continue;
       }
       atomic(statusPath, { request, state: 'running' });
+      // The worker's output stays in its private job folder: with stdio ignored, a crash such as a
+      // missing package left only "exited without a checked result" and nothing to act on.
+      const log = openSync(join(directory, 'worker.log'), 'w', 0o600);
       const child = spawn(process.execPath, ['--import', 'tsx', import.meta.filename, `--worker=${directory}`], {
-        detached: true, stdio: 'ignore',
+        detached: true, stdio: ['ignore', log, log],
       });
+      closeSync(log);
       const running: Running = { process: child, request, directory };
       this.running = running;
       child.once('error', () => this.finish(running));
@@ -170,7 +174,11 @@ export class GenerationRunner {
     let current: GenerationJob | null = null;
     try { current = parseJob(json(path), running.request); } catch { /* missing/broken worker receipt */ }
     if (!current || current.state === 'running') {
-      atomic(path, { request: running.request, state: 'failed', error: 'Generation process exited without a checked result.' });
+      const reason = lastErrorLine(join(running.directory, 'worker.log'));
+      atomic(path, {
+        request: running.request, state: 'failed',
+        error: `Generation process exited without a checked result${reason ? `: ${reason}` : '.'} (log: worker.log in this job's folder)`,
+      });
     }
     this.running = undefined;
   }
@@ -194,6 +202,15 @@ export class GenerationRunner {
     rmSync(join(this.root, 'capabilities.json'), { force: true });
     rmSync(join(this.root, 'runner.lock'), { recursive: true, force: true });
   }
+}
+
+/** The most useful single line of a worker log: the last line naming an error, else the last line. */
+export function lastErrorLine(path: string): string {
+  let text = '';
+  try { text = readFileSync(path, 'utf8').slice(-20_000); } catch { return ''; }
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const line = [...lines].reverse().find(l => /error|cannot|not found|failed|traceback/i.test(l) && !/^at /.test(l)) ?? lines.at(-1) ?? '';
+  return line.slice(0, 300);
 }
 
 async function main() {

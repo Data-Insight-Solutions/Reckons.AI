@@ -193,6 +193,7 @@ ci:check-script-tier-f74-3-deterministic-zero-tokens rdf:type ktype:CiCheck ;
     kpred:guards kb:change-provenance-commit-trailers ;
     kpred:guards kb:code-graph-edges ;
     kpred:guards kb:release-review-spaces ;
+    kpred:guards kb:term-ratchet-prose-only ;
     kpred:guards kb:terminology-maintenance ;
     kpred:guards kb:terminology-ontology ;
     kpred:guards kb:test-workflow-docs ;

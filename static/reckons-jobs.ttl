@@ -570,7 +570,7 @@ job:tenet-align rdf:type          ktype:OfflineJob ;
 job:term-ratchet rdf:type          ktype:OfflineJob ;
     rdfs:label          "term-ratchet" ;
     skos:prefLabel      "term-ratchet" ;
-    skos:definition     "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded." ;
+    skos:definition     "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses in prose (comments, strings, markup text, docs; not code identifiers) may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded." ;
     kpred:job-tier      "script" ;
     kpred:command       "npx tsx scripts/offline/term-usage.ts --check" ;
     kpred:job-enabled   "true" ;
