@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GenerationRunner, prepareParent } from '../generation-runner';
+import { GenerationRunner, lockOwnerAlive, prepareParent } from '../generation-runner';
 import type { GenerationJob, GenerationRequest } from '../../../src/lib/generation/protocol';
 
 vi.mock('../gen-assets.js', () => ({
@@ -101,6 +101,30 @@ describe('private generation queue', () => {
       expect(JSON.parse(readFileSync(join(runner.jobs, parent.id, 'status.json'), 'utf8')).error).toContain('metadata');
       expect(JSON.parse(readFileSync(join(runner.jobs, 'f67cf353-5af2-404b-b93d-41d10ffb6f15', 'status.json'), 'utf8')).error).toContain('missing model');
     } finally { runner.close(); }
+  });
+});
+
+describe('runner lock', () => {
+  it('reclaims a lock left by a runner that died', () => {
+    const workspace = temp();
+    const lock = join(workspace, '.reckons-generation', 'runner.lock');
+    mkdirSync(lock, { recursive: true, mode: 0o700 });
+    writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: 2 ** 22 + 7 }));
+    const runner = new GenerationRunner(workspace);
+    try {
+      expect(JSON.parse(readFileSync(join(lock, 'owner.json'), 'utf8'))).toEqual({ pid: process.pid });
+    } finally { runner.close(); }
+  });
+  it('counts a lock owner as alive only while its pid is still a generation runner', () => {
+    const live = () => true;
+    const gone = () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); };
+    expect(lockOwnerAlive(4242, () => false)).toBe(false);
+    expect(lockOwnerAlive(4242, live, () => 'node tsx scripts/content/generation-runner.ts --workspace=x')).toBe(true);
+    expect(lockOwnerAlive(4242, live, () => 'code eslint-server')).toBe(false);
+    expect(lockOwnerAlive(4242, live, gone, () => true)).toBe(false);
+    expect(lockOwnerAlive(4242, live, gone, () => false)).toBe(true);
+    expect(lockOwnerAlive(process.pid)).toBe(true);
+    expect(lockOwnerAlive(undefined)).toBe(false);
   });
 });
 

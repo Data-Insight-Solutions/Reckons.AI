@@ -107,8 +107,19 @@ export class GenerationRunner {
     if (!validJobId(identity)) throw new Error('Invalid generation workspace identity');
     this.workspaceId = identity;
     // Atomic directory creation prevents two runners from taking the same queue/GPU.
-    mkdirSync(join(this.root, 'runner.lock'), { mode: 0o700 });
-    writeFileSync(join(this.root, 'runner.lock', 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
+    const lock = join(this.root, 'runner.lock');
+    try { mkdirSync(lock, { mode: 0o700 }); }
+    catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
+      // A runner that died without its exit handler (kill -9, a crash) left its lock behind. Found
+      // 2026-10-22: gen:serve then refused to start until the folder was deleted by hand.
+      let pid: unknown;
+      try { pid = (JSON.parse(readFileSync(join(lock, 'owner.json'), 'utf8')) as { pid?: unknown }).pid; } catch { /* no owner recorded */ }
+      if (lockOwnerAlive(pid)) throw new Error(`Another generation runner (pid ${pid}) is using this workspace. Stop it first.`);
+      rmSync(lock, { recursive: true, force: true });
+      mkdirSync(lock, { mode: 0o700 });
+    }
+    writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
   }
 
   tick(): void {
@@ -204,6 +215,24 @@ export class GenerationRunner {
   }
 }
 
+/**
+ * Whether the pid recorded in a runner lock is still a generation runner. Linux reuses pids, so a live
+ * pid counts only if its command line still names the runner (the session-queue workerPidAlive rule).
+ * Without /proc (macOS) liveness alone decides. EPERM means alive but not ours to signal.
+ */
+export function lockOwnerAlive(
+  pid: unknown,
+  alive: (pid: number) => boolean = (p) => { try { process.kill(p, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === 'EPERM'; } },
+  readCmdline: (pid: number) => string = (p) => readFileSync(`/proc/${p}/cmdline`, 'utf8'),
+  hasProc: () => boolean = () => existsSync('/proc/self'),
+): boolean {
+  if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) return false;
+  if (pid === process.pid) return true;
+  if (!alive(pid)) return false;
+  try { return readCmdline(pid).includes('generation-runner'); }
+  catch (e) { return (e as NodeJS.ErrnoException).code !== 'ENOENT' || !hasProc(); }
+}
+
 /** The most useful single line of a worker log: the last line naming an error, else the last line. */
 export function lastErrorLine(path: string): string {
   let text = '';
@@ -227,6 +256,7 @@ async function main() {
   const stop = () => { clearInterval(timer); runner.close(); };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+  process.once('SIGHUP', stop); // the terminal was closed
   process.once('exit', () => runner.close());
   runner.tick();
 }
