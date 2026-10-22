@@ -13,7 +13,7 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.6" ;
-    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 14 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 13 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: planned." ;
+    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: planned." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
     p:has rev:wf-readme-path, rev:gap .
@@ -76,11 +76,11 @@ rev:wf-readme-path-05-reckoning rdf:type ktype:Concept ;
 
 rev:gap rdf:type ktype:Concept ;
     rdfs:label "No visual test yet" ;
-    rdfs:comment "13 part(s) of v0.2.6 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
+    rdfs:comment "14 part(s) of v0.2.6 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
     hnav:order "2"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
     hnav:prev rev:wf-readme-path ;
-    p:has rev:gap-f107-10, rev:gap-f223, rev:gap-f122-1, rev:gap-f33-2, rev:gap-f74-10, rev:gap-currents-client-delivery-gap-resolved-in-the-app, rev:gap-f65, rev:gap-f74-9, rev:gap-f254-1, rev:gap-urn-kbase-concept-model-cache, rev:gap-f203-6, rev:gap-f203-7, rev:gap-f248 .
+    p:has rev:gap-f107-10, rev:gap-f223, rev:gap-f122-1, rev:gap-f33-2, rev:gap-f74-10, rev:gap-currents-client-delivery-gap-resolved-in-the-app, rev:gap-f65, rev:gap-f74-9, rev:gap-f254-1, rev:gap-urn-kbase-concept-model-cache, rev:gap-f203-6, rev:gap-f203-7, rev:gap-f248, rev:gap-term-ratchet-counts-prose-only-not-code-identifiers .
 
 rev:gap-f107-10 rdf:type ktype:Concept ;
     rdfs:label "F107.10 One self-contained space: its folder, its schema, and the order of one large Turtle file" ;
@@ -133,4 +133,8 @@ rev:gap-f203-7 rdf:type ktype:Concept ;
 rev:gap-f248 rdf:type ktype:Concept ;
     rdfs:label "F248 Getting started shows where facts came from and a person reviewing them" ;
     rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/draft-sample-sources.test.ts, scripts/starter/__tests__/build-everyday.test.ts, tests/e2e/starter-provenance.test.ts)." .
+
+rev:gap-term-ratchet-counts-prose-only-not-code-identifiers rdf:type ktype:Concept ;
+    rdfs:label "Term ratchet counts prose only, not code identifiers" ;
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/__tests__/term-usage.test.ts)." .
 

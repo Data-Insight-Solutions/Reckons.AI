@@ -9993,11 +9993,14 @@ kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (k
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
     rdfs:label "Term ratchet counts prose only, not code identifiers" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:description "The ambiguity ratchet (F203.6) should count the ambiguous words in prose (comments, user-facing strings, docs) and skip code identifiers such as the Statement type and statement.excerpt, which cannot be renamed without a rewrite. Today every new feature about statements or sources fails the ratchet on identifiers alone and the baseline is raised by hand." ;
     kpred:decided "MATT, 2026-10-13: the ratchet counts prose only. Evidence: six baseline raises on 2026-10-13, all caused by domain identifiers rather than by ambiguous prose (F122.1.4 in #456 raised statement by 25, source by 28 and node by 1 after its prose was trimmed)." ;
-    kpred:part-of kb:release-0-2-7 .
-kb:release-0-2-7 kpred:has-part kb:term-ratchet-prose-only .
+    kpred:part-of kb:release-0-2-6 ;
+    kpred:has-file "scripts/offline/term-usage.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/term-usage.test.ts" ;
+    kpred:progress "2026-10-21: built and moved from v0.2.7 to v0.2.6, because it blocked five open PRs (F223.1 #462 among them) on identifiers alone. proseMask marks comments, string literals and template text as prose; Svelte markup text is prose, while tags and {expressions} are code; docs are all prose. Baselines moved to the prose measure, and every one went down (statement 5306 to 974). Weakness: regex literals are not recognized, so a quote inside one can mark the rest of that line as prose; that errs toward counting." .
+kb:release-0-2-6 kpred:has-part kb:term-ratchet-prose-only .
 
 kb:ui-term-audit rdf:type ktype:Feature ;
     rdfs:label "UI terms audit — engineering words and the wrong sense of a word, found on screen by rule" ;
