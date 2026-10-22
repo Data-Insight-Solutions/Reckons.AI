@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 45 parts below, 2 of which are not built yet.</p>
+<p class="derived">It has 48 parts below, 3 of which are not built yet.</p>
 
 ## In this section
 
@@ -45,13 +45,14 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="../features/graph3-d"><span class="card-title">3D / 2D Knowledge Graph</span><span class="card-text">Interactive force-directed graph (a map where linked facts pull toward each other and unrelated ones drift apart) in WebGL (3D) or Canvas (2D fallback).</span></a>
 <a class="card" href="../learn/reckoning"><span class="card-title">A reckoning — asking your graph what to do</span><span class="card-text">A reckoning is what this product is named after, and it is the thing you do once you have a graph worth asking.</span></a>
 <a class="card" href="../features/compare"><span class="card-title">Compare — finding out where two people actually disagree</span><span class="card-text">Put two graphs side by side and see what is new, what agrees, and what conflicts.</span></a>
-<a class="card" href="#content-safety-features"><span class="card-title">Content Safety</span><span class="card-text">Ethics preamble injected into ALL LLM system prompts.</span></a>
+<a class="card" href="../features/content-safety-features"><span class="card-title">Content Safety</span><span class="card-text">An ethics preamble is added to the prompts where someone other than you may read the result: always when sharing, and for conversation with a remote model.</span></a>
 <a class="card" href="../features/context-compression-features"><span class="card-title">Context Compression</span><span class="card-text">Condense your context.</span></a>
 <a class="card" href="#cross-kb-alignment"><span class="card-title">Cross-Graph Alignment</span><span class="card-text">Align entities across knowledge graphs.</span></a>
 <a class="card" href="../features/currents"><span class="card-title">Currents</span><span class="card-status">scaffolded</span><span class="card-text">Currents brings recurring external content into a space through your optional n8n Currents Monitor.</span></a>
 <a class="card" href="../architecture/currents-meta-triples"><span class="card-title">Currents Settings as Meta Triples</span><span class="card-text">Per-graph currents configuration (allowed entity types, per-current source/cadence/label) lives IN the graph as ordinary statements under the urn:reckons:meta/currents/ namespace, the same pattern used by nav:order for hierarchy.</span></a>
 <a class="card" href="#disambiguation"><span class="card-title">Disambiguation</span><span class="card-text">Automatic detection of duplicate or similar entities using text embeddings and cosine similarity.</span></a>
 <a class="card" href="#entity-types"><span class="card-title">Entity Type System</span><span class="card-text">Categorize entities (Person, Place, Concept, Tool, Document, Organization, Event) with custom colors and 3D shapes.</span></a>
+<a class="card" href="../features/starter-reviewed"><span class="card-title">Getting started arrives already reviewed</span><span class="card-text">The Getting started space is a small made-up story: two friends, Alex and Jordan, planning a camping weekend.</span></a>
 <a class="card" href="#history-mode"><span class="card-title">History Mode</span><span class="card-text">Time-travel through your graph at /history.</span></a>
 <a class="card" href="#human-in-the-loop"><span class="card-title">Human-in-the-Loop</span><span class="card-text">Nothing enters your confirmed knowledge graph without your explicit review.</span></a>
 <a class="card" href="../features/ingest"><span class="card-title">Ingest</span><span class="card-text">Add knowledge from text, URLs, documents, calendars, iCal feeds, Indico events, or Turtle files.</span></a>
@@ -63,6 +64,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="#open-source"><span class="card-title">Open Source (MIT)</span><span class="card-text">Reckons.AI is MIT-licensed.</span></a>
 <a class="card" href="../features/passage-grounding"><span class="card-title">Passage Grounding</span><span class="card-text">Verbatim source excerpts attached to extracted triples.</span></a>
 <a class="card" href="#predicate-manager"><span class="card-title">Predicate Manager</span><span class="card-text">View all predicates in your graph with usage counts.</span></a>
+<a class="card" href="../features/proposals"><span class="card-title">Proposals: decisions that cite their evidence</span><span class="card-status">planned</span><span class="card-text">A proposal is how Reckons.AI will put a decision in front of you: two to four options, each listing the facts it rests on, and through those facts the passages they came from, so you can follow any option back to its evidence before you choose.</span></a>
 <a class="card" href="../features/published-docs"><span class="card-title">Published Graph Site</span><span class="card-status">in-progress</span><span class="card-text">Any graph can publish itself as a browsable website.</span></a>
 <a class="card" href="../features/review-system"><span class="card-title">Review — where your graph gets smaller and truer</span><span class="card-text">The step where you decide what is true.</span></a>
 <a class="card" href="../architecture/schema-constrained-extraction"><span class="card-title">Schema-Constrained Local Extraction</span><span class="card-text">Small local models (via Ollama) are unreliable at freeform triple extraction, so the local extraction path constrains the model to a fixed JSON schema (subject/predicate/object/type fields) with a compact prompt rather than the richer freeform prompt used for cloud backends.</span></a>
@@ -71,8 +73,9 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="#style-conventions"><span class="card-title">Style Conventions</span><span class="card-text">Brand: dark theme, accent #7dd3fc (sky-300).</span></a>
 <a class="card" href="../architecture/tailwind-containment"><span class="card-title">Tailwind-Without-Preflight Containment</span><span class="card-text">shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled.</span></a>
 <a class="card" href="../integrations-tech/architecture-integrations-tech"><span class="card-title">Technology Stack</span><span class="card-text">Static SvelteKit 2 app with Svelte 5 runes.</span></a>
+<a class="card" href="../features/reckoning-simulator"><span class="card-title">The reckoning simulator, first part</span><span class="card-text">A reckoning will be able to try a proposal in a physical scene before you choose it.</span></a>
 <a class="card" href="../architecture/ttl-first-docs"><span class="card-title">TTL-First Documentation</span><span class="card-text">Reckons.AI uses its own TTL knowledge graphs as the primary documentation format.</span></a>
-<a class="card" href="#ttl-export"><span class="card-title">Turtle Export</span><span class="card-text">Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).</span></a>
+<a class="card" href="../features/ttl-export"><span class="card-title">Turtle Export</span><span class="card-text">Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).</span></a>
 <a class="card" href="#why-it-matters"><span class="card-title">Why Reckons.AI Matters</span><span class="card-text">In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge.</span></a>
 
 </div>
@@ -92,10 +95,6 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="../features/shelly"><span class="card-title">Shelly (AI Assistant)</span><span class="card-text">The turtle-shaped AI assistant.</span></a>
 
 </div>
-
-<h3 id="content-safety-features">Content Safety</h3>
-
-Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely.
 
 <h3 id="cross-kb-alignment">Cross-Graph Alignment</h3>
 
@@ -142,10 +141,6 @@ Sources accumulate trust scores based on your review decisions. Trusted sources 
 <h3 id="style-conventions">Style Conventions</h3>
 
 Brand: dark theme, accent #7dd3fc (sky-300). Fonts: Bespoke Stencil Bold (display), Supreme Regular (body/mono), self-hosted (no Google Fonts). CSS variables: --accent, --accent-soft, --data, --surface, --surface-2, --surface-3, --line, --muted, --font-mono, --font-display, --rad, --rad-sm, --rad-lg. Z-index scale: node-labels=10, panels=300, Shelly=350, SearchBar=390, NavBar=400, MergeReview=500. bits-ui components always use :global(.class) for CSS targeting.
-
-<h3 id="ttl-export">Turtle Export</h3>
-
-Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts). Roundtrip-safe. Clean export for interop or full export with all metadata.
 
 <h3 id="why-it-matters">Why Reckons.AI Matters</h3>
 

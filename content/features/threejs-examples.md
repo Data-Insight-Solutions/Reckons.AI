@@ -1,7 +1,7 @@
 ---
 title: "Three.js examples on nodes"
 slug: "threejs-examples"
-order: 1040
+order: 1048
 section: "Features"
 parent: "story-system"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Interactive asset generation story"
 slug: "generated-asset-story"
-order: 1006
+order: 1007
 section: "Testing"
 parent: "test-suite"
 template: doc

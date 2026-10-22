@@ -29,9 +29,13 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.
 
-<p class="derived">It has 2 parts below.</p>
+<p class="derived">It has 3 parts below.</p>
 
 ## In this section
+
+**[A review space for each release](../testing/release-review-spaces)**
+
+Each release gets a space of its own for the person who approves it.
 
 **[Add a source, review it, see it in a space, ask for a reckoning](../testing/workflow-readme-path)**
 

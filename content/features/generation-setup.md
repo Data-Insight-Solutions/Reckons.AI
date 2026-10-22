@@ -1,7 +1,7 @@
 ---
 title: "Generation tools and setup"
 slug: "generation-setup"
-order: 1012
+order: 1015
 section: "Features"
 parent: "story-system"
 template: doc
@@ -35,7 +35,7 @@ The Generated assets story works in two layers. Viewing existing assets is inclu
 4. In desktop Chrome or Edge, open Generated assets, choose **Create an asset with Shelly**, and connect that same folder. This file-queue adapter does not connect directly to a remote SSH server or work in browsers without folder access.
 5. Enter an image prompt. The runner checks the output before Shelly adds it for review. After the image arrives, choose a video and describe its motion, or choose a Gaussian splat. A splat invents unseen geometry; it is not a measured scan.
 
-The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. After an unclean process kill, a runner lock may remain: verify that the previous runner and its job processes have stopped before removing that workspace's `.reckons-generation/runner.lock` directory.
+The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C or by closing its terminal. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. If a runner was killed without stopping cleanly, the next one to start takes over its lock once it finds that runner is gone; it refuses while another runner is still running on the same workspace.
 
 ### Tools and integration guides
 
@@ -47,4 +47,10 @@ The connected runner reports which stages have their tool and model files instal
 
 A local language model does not automatically supply image/video/splat generation. Those are distinct tools with separate model files. The universal integration/plugin SDK and in-app agent management are planned; this guide does not imply that either is available today.
 
-<p class="derived">This is built and working.</p>
+<p class="derived">This is built and working. It has one part below.</p>
+
+## In this section
+
+**[Turn a phone scan of a room into a splat, on your own machine](../features/room-scan)**
+
+With the generation tools installed (see Generation tools and setup), npm run scan:room -- &lt;folder or video&gt; turns a phone recording of a room into a splat: it pulls frames from the video, works out where the camera was for each one, and trains the splat.

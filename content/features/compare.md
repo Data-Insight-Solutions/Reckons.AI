@@ -1,7 +1,7 @@
 ---
 title: "Compare — finding out where two people actually disagree"
 slug: "compare"
-order: 1002
+order: 1005
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

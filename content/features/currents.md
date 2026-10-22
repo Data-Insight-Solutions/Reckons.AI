@@ -1,7 +1,7 @@
 ---
 title: "Currents"
 slug: "currents"
-order: 1007
+order: 1010
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -22,6 +22,12 @@ Currents brings recurring external content into a space through your optional n8
 <p class="derived">This exists in outline, with gaps. It has one part below, 1 of which is not built yet.</p>
 
 <p class="in-sets">Part of Take it in.</p>
+
+## Why it is this way
+
+**Honest Note**
+
+WITHOUT A CONNECTED SERVER NOTHING ARRIVES. A current saved without n8n connected delivers nothing, and the currents section on the Spaces page says so. Delivery was not tested against a live n8n server before v0.2.6.
 
 ## In this section
 

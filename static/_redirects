@@ -28,7 +28,6 @@
 /docs/architecture/ttl-gap-context-loading  /docs/architecture/ttl-vs-markdown-gaps  301
 /docs/architecture/ttl-gap-discovery  /docs/architecture/ttl-vs-markdown-gaps  301
 /docs/architecture/ttl-gap-procedural  /docs/architecture/ttl-vs-markdown-gaps  301
-/docs/features/content-safety-features  /docs/guide/what-is-reckons-ai  301
 /docs/features/cross-kb-alignment  /docs/guide/what-is-reckons-ai  301
 /docs/features/diff-summary  /docs/features/compare  301
 /docs/features/disambiguation  /docs/guide/what-is-reckons-ai  301
@@ -42,7 +41,6 @@
 /docs/features/release-notes  /docs/features/published-docs  301
 /docs/features/source-monitoring  /docs/features/source-refresh  301
 /docs/features/trust-system  /docs/guide/what-is-reckons-ai  301
-/docs/features/ttl-export  /docs/guide/what-is-reckons-ai  301
 /docs/features/turtle-persona  /docs/features/shelly  301
 /docs/features/whisper-stt-features  /docs/features/shelly  301
 /docs/guide/architecture-guide  /docs/guide/what-is-reckons-ai  301

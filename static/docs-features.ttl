@@ -209,7 +209,7 @@ feat:KokoroTTS
 feat:ContentSafety
     rdf:type            ktype:Concept ;
     rdfs:label          "Content Safety" ;
-    skos:definition     "Ethics preamble injected into ALL LLM system prompts. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely." ;
+    skos:definition     "An ethics preamble is added to the prompts where someone other than you may read the result: always when sharing, and for conversation with a remote model. Private local use and prompts whose every written statement is already checked by the classifier go without it. Content classifier with two levels: blocked (filtered out on ingest) and mature (flagged on export with advisory). Discourse, disagreement, and academic content pass freely." ;
     skos:broader        guide:WhatIsReckonsAI .
 
 feat:PassageGrounding
@@ -354,7 +354,9 @@ feat:Currents
     skos:definition     "Currents brings recurring external content into a space through your optional n8n Currents Monitor. Configure streams and an entity-type gate on the space management page, then explicitly connect Currents in Integrations. While the app is open, it sends saved current definitions and the space ID to your instance and checks for arrivals every five minutes. New document metadata enters the review queue as pending facts; repeated delivery preserves your decisions. Removing or disabling a current stops its remote schedule on the next successful sync. Disconnecting the browser or changing instances leaves existing server schedules running. The monitor workflow must be installed and active, allow this app through CORS, and be permitted by the build connection policy. A custom server needs a self-hosted build configured for its origin. Automatic ranking, direct RSS fallback and full-text extraction are not connected to this delivery path yet." ;
     skos:broader        guide:WhatIsReckonsAI ;
     skos:related        feat:PodView ;
-    kpred:relates-to    kb:currents .
+    kpred:honest-note   "WITHOUT A CONNECTED SERVER NOTHING ARRIVES. A current saved without n8n connected delivers nothing, and the currents section on the Spaces page says so. Delivery was not tested against a live n8n server before v0.2.6." ;
+    kpred:relates-to    kb:currents ;
+    kpred:relates-to    kb:currents-client-wiring .
 
 feat:PodView
     rdf:type            ktype:Concept ;
@@ -656,10 +658,114 @@ feat:NodeSources
     kpred:relates-to    kb:statement-node-source-links ;
     kpred:relates-to    kb:source-atoms .
 
+## =============================================================================
+## The evidence chain: a fact points at the words it came from (v0.2.6)
+## =============================================================================
+
+feat:OpenInSource
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:statement-to-passage-jump ;
+    rdfs:label          "Open a fact's source at the exact words" ;
+    skos:definition     "When Reckons.AI reads a source and proposes a fact, the fact records exactly which stretch of text it came from: the passage, where the quote starts and ends, and a fingerprint of the source's text at that moment. Open a fact's Evidence and press Open in source: the source opens, scrolls to the passage, and the quoted words are marked. If the quote cannot be found in the text that was kept, there is no button, and the Evidence section says why. If the source's text has changed since the fact was taken from it, the evidence is marked stale, either because the source changed or because the passage moved. A stale link is never quietly pointed at different words." ;
+    kpred:honest-note   "TEXT ONLY. A fact can point at a passage of text, not at a page of a PDF, a box on a page or a region of an image. Those kinds of anchor are planned and not built." ;
+    skos:broader        feat:PassageGrounding ;
+    kpred:relates-to    kb:statement-to-passage-jump ;
+    kpred:relates-to    kb:anchor-contract ;
+    kpred:relates-to    kb:anchor-staleness .
+
+feat:SpaceFilePassages
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:chunk-space-folder ;
+    rdfs:label          "A space file that carries its evidence" ;
+    skos:definition     "A space's file now holds the passages its facts came from, in their own section after the facts. Each fact's link to its words is written too, in the W3C Web Annotation form, so other tools can read it. Copy that one file to another computer or another person, import it, and Open in source still lands on the same words. Saving, sync, Google Drive backups, auto-save and export all write the passages; an import checks each passage against its fingerprint and never overwrites one that is already there. Files from before this change still import as they did." ;
+    kpred:honest-note   "ORIGINALS STAY BESIDE THE FILE. The passages travel inside the space's file; the original documents they were cut from are still kept next to it, not inside the space's folder. Moving them is planned." ;
+    skos:broader        feat:TTLExport ;
+    kpred:relates-to    kb:chunk-importer-parse ;
+    kpred:relates-to    kb:chunk-section-export ;
+    kpred:relates-to    kb:chunk-space-folder ;
+    kpred:relates-to    kb:anchor-roundtrip .
+
+feat:Proposals
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:graph-proposals ;
+    rdfs:label          "Proposals: decisions that cite their evidence" ;
+    skos:definition     "A proposal is how Reckons.AI will put a decision in front of you: two to four options, each listing the facts it rests on, and through those facts the passages they came from, so you can follow any option back to its evidence before you choose. The shape of a proposal is now defined and checked: what a valid one must contain, the reasons an invalid one is refused, and the stages it moves through from suggested to decided." ;
+    kpred:honest-note   "A DEFINITION ONLY. Nothing in the app makes, stores or shows a proposal yet. Building the options with their citations, and the screen to review them, are planned." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    kpred:relates-to    kb:proposal-shape .
+
+feat:StarterReviewed
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:starter-provenance ;
+    rdfs:label          "Getting started arrives already reviewed" ;
+    skos:definition     "The Getting started space is a small made-up story: two friends, Alex and Jordan, planning a camping weekend. It comes with seven short sample sources (a text thread, a voice memo, notes on each campground, a forecast and route notes), each opening with a line that says it is a sample. Its 48 facts each show the passage they came from, who accepted them and when, including two corrections and two rejections, so the review history you see is a real one. Three facts are left for you: the Review tab opens with them waiting for your decision." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    kpred:relates-to    kb:starter-provenance .
+
+## =============================================================================
+## Spaces you can stand inside (v0.2.6)
+## =============================================================================
+
+feat:Splats
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:splat-node-view ;
+    rdfs:label          "3D captures on a node" ;
+    skos:definition     "A node can carry a Gaussian splat: a 3D object or scene drawn as many small, soft points of color. In the 3D graph the splat is drawn at the node, and the nodes, lines and labels behind it are hidden, so it reads as a solid thing. Open it in the viewer to turn it and look from any side. Pictures, clips, 3D models and splats are built-in types (Image, Video, 3D model, Gaussian splat), alongside Prompt and License. How an asset was made, and under which license, shows in its details rather than as extra nodes, while the link to what it was made from stays a visible line." ;
+    kpred:honest-note   "3D ONLY. The 2D view does not draw splats. Hiding what sits behind a splat was measured in software rendering, not on a real graphics card. Image, Video and License share a shape with other types and are told apart by color and icon." ;
+    skos:broader        feat:Graph3D ;
+    kpred:relates-to    kb:splat-node-view ;
+    kpred:relates-to    kb:splat-occlusion ;
+    kpred:relates-to    kb:media-entity-types .
+
+feat:SpaceBackground
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:splat-space-background ;
+    rdfs:label          "A background for a space" ;
+    skos:definition     "A space can have a background behind its 3D graph. Choose Set as background on a node that carries a splat, or import a capture from your device (.ply, .spz or .sog files; it warns above 50 MB and refuses above 300 MB, and the file is stored on your device, never copied into the space's text). Then open View settings, the panel at the top left of the graph: choose whether the background sits behind the graph or all around you, turn it, change its size, position and opacity, or level its floor. Place in space puts a node's splat where you want it inside the background, at the size you want, without the large preview covering the graph. A scene from threejs.org can be a background too: it never loads until you press Load, runs in a sealed frame, and can be stopped from View settings or from the bar on the graph. A space has one background at a time." ;
+    kpred:honest-note   "A Three.js scene that crashes the browser's graphics driver can still take the page down; the sealed frame keeps it away from your data, not from the driver." ;
+    skos:broader        feat:Graph3D ;
+    kpred:relates-to    kb:splat-space-background ;
+    kpred:relates-to    kb:splat-background-settings ;
+    kpred:relates-to    kb:splat-file-import ;
+    kpred:relates-to    kb:splat-placement ;
+    kpred:relates-to    kb:background-in-view ;
+    kpred:relates-to    kb:threejs-example-background .
+
+feat:YourRoom
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:room-scene-space ;
+    rdfs:label          "The Your room example space" ;
+    skos:definition     "Your room is an example space that walks through four steps: scan a room, import the capture, generate an object, and place it in the room. It opens from About, under example data. Its room is a reconstruction of a computer-made scene, with a carved turtle placed inside it." ;
+    kpred:honest-note   "A GUIDED EXAMPLE, NOT A FINISHED FEATURE. The room is not a real scan, and the placement steps are not covered by a browser test on phones." ;
+    skos:broader        feat:SpaceBackground ;
+    kpred:relates-to    kb:room-scene-space .
+
+feat:RoomScan
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:room-scan-capture ;
+    rdfs:label          "Turn a phone scan of a room into a splat, on your own machine" ;
+    skos:definition     "With the generation tools installed (see Generation tools and setup), npm run scan:room -- <folder or video> turns a phone recording of a room into a splat: it pulls frames from the video, works out where the camera was for each one, and trains the splat. The result and a receipt stay on your machine, outside the project. npm run scan:quality says how good a recording is (too fast, too shaky, too dark, parts of the room not covered) with one plain tip for each problem. npm run splat:compress makes a splat much smaller in the SPZ or SOG format, checks the copy against the original, and records that the copy is lossy." ;
+    kpred:honest-note   "MEASURED ON ONE MACHINE. A 300-frame phone recording took about 19 minutes on one Linux computer with an NVIDIA RTX 3090. It runs on Linux only, the room's scale is arbitrary, and the quality tips use first-guess thresholds from one private scan." ;
+    skos:broader        feat:GenerationSetup ;
+    kpred:relates-to    kb:room-scan-capture ;
+    kpred:relates-to    kb:scan-quality ;
+    kpred:relates-to    kb:splat-compression .
+
+feat:ReckoningSimulator
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:sim-core ;
+    rdfs:label          "The reckoning simulator, first part" ;
+    skos:definition     "A reckoning will be able to try a proposal in a physical scene before you choose it. The first part reads a scene from the graph, steps it with a physics engine, and checks it against conditions such as 'the ball ends in the cup'. npm run sim:run runs the example in static/starter-sim-ramp-cup.ttl, which fails as written and passes once the ball starts higher on the ramp." ;
+    kpred:honest-note   "COMMAND LINE ONLY. Nothing in the app uses it yet; trying proposals in a scene and replaying them in the 3D view are planned." ;
+    skos:broader        guide:WhatIsReckonsAI ;
+    kpred:relates-to    kb:sim-core .
+
 
 feat:GenerationSetup rdf:type ktype:Concept ;
     rdfs:label "Generation tools and setup" ;
     skos:exactMatch kb:generated-assets-story ;
+    kpred:relates-to kb:generated-assets-story ;
+    kpred:relates-to kb:shelly-generation-jobs ;
     skos:broader feat:StorySystem ;
     skos:definition """The Generated assets story works in two layers. Viewing existing assets is included. Creating new files uses optional tools on your own generation machine.
 
@@ -681,7 +787,7 @@ feat:GenerationSetup rdf:type ktype:Concept ;
 4. In desktop Chrome or Edge, open Generated assets, choose **Create an asset with Shelly**, and connect that same folder. This file-queue adapter does not connect directly to a remote SSH server or work in browsers without folder access.
 5. Enter an image prompt. The runner checks the output before Shelly adds it for review. After the image arrives, choose a video and describe its motion, or choose a Gaussian splat. A splat invents unseen geometry; it is not a measured scan.
 
-The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. After an unclean process kill, a runner lock may remain: verify that the previous runner and its job processes have stopped before removing that workspace's `.reckons-generation/runner.lock` directory.
+The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C or by closing its terminal. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. If a runner was killed without stopping cleanly, the next one to start takes over its lock once it finds that runner is gone; it refuses while another runner is still running on the same workspace.
 
 ### Tools and integration guides
 

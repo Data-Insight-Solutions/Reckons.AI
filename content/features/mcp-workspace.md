@@ -1,7 +1,7 @@
 ---
 title: "MCP Workspace"
 slug: "mcp-workspace"
-order: 1020
+order: 1024
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
