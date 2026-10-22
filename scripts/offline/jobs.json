@@ -484,7 +484,7 @@
       "enabled": true,
       "blocking": true,
       "cmd": "npx tsx scripts/offline/term-usage.ts --check",
-      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
+      "desc": "F203.6 ambiguity ratchet (Matt, 2026-10-07: a new ambiguous use fails CI). For every word static/reckons-terminology.ttl gives two or more meanings, the count of FREE bare uses in prose (comments, strings, markup text, docs; not code identifiers) may fall, never rise; baselines are kpred:term-ratchet on the terminology scheme. A word that becomes ambiguous fails until its baseline is recorded."
     },
     {
       "name": "terminology-sweep",
