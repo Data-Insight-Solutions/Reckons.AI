@@ -19,6 +19,8 @@
   import ThreeExampleEditor from '$lib/components/ThreeExampleEditor.svelte';
   import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE, backgroundThreeExampleFrom, BACKGROUND_THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
   import ThreeExampleBackground from '$lib/components/ThreeExampleBackground.svelte';
+  import BackgroundExampleControls from '$lib/components/BackgroundExampleControls.svelte';
+  import type { ThreeExampleSession } from '$lib/3d/three-example-session.svelte';
   import { setMeta } from '$lib/stores/space-room';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
@@ -1409,6 +1411,8 @@
   const backgroundExample = $derived(backgroundThreeExampleFrom(statements()));
   let backgroundExampleLive = $state(false);
   let backgroundInteract = $state(false);
+  /** The running example background's session, bound up from ThreeExampleBackground so the panel shares it. */
+  let backgroundExampleSession = $state<ThreeExampleSession>();
   /** Set (or clear) the space's background Three.js example; it replaces a background splat. Never starts it. */
   async function setBackgroundExample(url: string | null) {
     if (officialKbActive()) return;
@@ -2326,13 +2330,19 @@
     </div>
   </div>
 
-  <!-- BACKGROUND (F58.9.16) — the space's background scan: surround or backdrop, scale, focal point.
-       Only when the space has one, and only in 3D (the settings are not drawn in 2D). The same
-       component the Graphs tab uses. -->
-  {#if backgroundSplat && !use2D && webglAvailable}
+  <!-- BACKGROUND (F58.9.16) — whatever the space has behind it. A splat: surround or backdrop, scale,
+       focal point (3D only; the settings are not drawn in 2D), the same component the Graphs tab uses.
+       A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the on-graph bar. -->
+  {#if (backgroundSplat && !use2D && webglAvailable) || backgroundExample}
   <div class="overlay-group" data-testid="graph-background-settings">
     <span class="group-label mono">background</span>
-    <BackgroundSettingsControls />
+    {#if backgroundSplat && !use2D && webglAvailable}<BackgroundSettingsControls />{/if}
+    {#if backgroundExample && backgroundExampleSession}
+      <div class="bg-example-row mono" role="group" aria-label="Background in view settings">
+        <BackgroundExampleControls session={backgroundExampleSession} url={backgroundExample} bind:interact={backgroundInteract}
+          onclear={() => setBackgroundExample(null)} />
+      </div>
+    {/if}
   </div>
   {/if}
 
@@ -2424,7 +2434,7 @@
   >
   {#if backgroundExample && perspective === 'statements' && !showingLanding}
     {#key backgroundExample}
-      <ThreeExampleBackground url={backgroundExample} bind:live={backgroundExampleLive} bind:interact={backgroundInteract} />
+      <ThreeExampleBackground url={backgroundExample} bind:live={backgroundExampleLive} bind:interact={backgroundInteract} bind:session={backgroundExampleSession} />
     {/key}
   {/if}
   {#if showingSourcesEmpty}
@@ -2454,10 +2464,10 @@
 <!-- Floating filter UI overlay — hidden whenever the landing is up (see showingLanding).
      Desktop: always-open SnapPanel. Compact: bottom sheet behind the FAB below. -->
 {#if perspective === 'statements' && isCompact() && !showingLanding && !filterSheetOpen}
-  <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="Filters & layout">☰ filters</button>
+  <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="View settings">☰ view settings</button>
 {/if}
 {#if perspective === 'statements' && !showingLanding}
-<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="Filters & layout" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -3539,6 +3549,7 @@
      the stage's own backdrop but behind the graph. While it runs the backdrop is clear. */
   .graph { isolation: isolate; }
   .graph.bg-example-live { background: transparent; }
+  .bg-example-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .72rem; }
   /* Interact with background: the graph layer lets input through; the example's bar stays clickable. */
   .graph.bg-example-interact > :global(:not(.three-bg-layer):not(.three-bg-bar)) { pointer-events: none; }
   .graph-landing {

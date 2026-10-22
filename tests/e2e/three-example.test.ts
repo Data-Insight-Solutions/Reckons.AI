@@ -160,7 +160,7 @@ async function closeViewer(page: Page) {
 async function setBackground(page: Page) {
   await closeViewer(page);
   await page.getByRole('button',{name:'Set as background',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Clear background',exact:true})).toBeVisible();
+  await expect(page.locator('.three-example-editor').getByRole('button',{name:'Clear background',exact:true})).toBeVisible();
 }
 // Close the node panel (a bottom sheet on phones) and the search dropdown so the graph and its bar are reachable.
 async function toGraph(page: Page) {
@@ -190,6 +190,24 @@ test('a background example never loads by itself, sits behind a clickable graph,
   await expect(iframe).toHaveCount(0);
   await expect(bar(page)).toContainText('Background: webgl_reckons_fixture');
   await expect(bar(page).getByRole('button',{name:'Load',exact:true})).toBeVisible();
+});
+
+test('the View settings panel drives the same background example as the bar', async ({page}) => {
+  await stub(page); await attach(page); await setBackground(page); await toGraph(page);
+  const fab = page.getByRole('button',{name:'View settings',exact:true});
+  if (await fab.isVisible()) await fab.click();
+  const panel = page.getByTestId('graph-background-settings').getByRole('group',{name:'Background in view settings'});
+  await expect(panel).toContainText('webgl_reckons_fixture');
+  await panel.getByRole('button',{name:'Load',exact:true}).click();
+  // One session: the bar reports what the panel started, and stopping from the bar updates the panel.
+  await expect(bar(page)).toContainText('Background running');
+  await expect(panel).toContainText('Background running');
+  await expect(page.locator('iframe[title="Three.js example background"]')).toHaveCount(1);
+  await bar(page).getByRole('button',{name:'Stop',exact:true}).click();
+  await expect(panel.getByRole('button',{name:'Load',exact:true})).toBeVisible();
+  await panel.getByRole('button',{name:'Clear background',exact:true}).click();
+  await expect(bar(page)).toHaveCount(0);
+  await expect(page.getByTestId('graph-background-settings')).toHaveCount(0);
 });
 
 test('Interact with background hands input to the example and back', async ({page}) => {
@@ -233,6 +251,6 @@ test('Clear background in the node editor removes the bar', async ({page}) => {
   await stub(page); await attach(page); await setBackground(page);
   await expect(bar(page)).toBeVisible();
   // Clear from the node editor, then confirm the bar goes.
-  await page.getByRole('button',{name:'Clear background',exact:true}).click();
+  await page.locator('.three-example-editor').getByRole('button',{name:'Clear background',exact:true}).click();
   await expect(bar(page)).toHaveCount(0);
 });
