@@ -569,7 +569,7 @@
     id: DetailId; label: string; floor: Altitude | null; hubsOnly?: boolean; title: string;
   }[] = [
     { id: 'all', label: 'all', floor: null,
-      title: 'Everything, including logs — timestamps, provenance, "this happened" facts — and the space\'s own node' },
+      title: 'Everything, including logs — timestamps, provenance, "this happened" facts — and its own identity-and-settings record' },
     { id: 'detailed', label: 'detailed', floor: 'record',
       title: 'Above logs. Records and up: file links, provenance, types — the default' },
     { id: 'evidence', label: 'evidence', floor: 'evidence',

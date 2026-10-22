@@ -424,7 +424,7 @@ describe('the floor hides type and label statements too', () => {
   });
 });
 
-describe("the space's own node is drawn only at 'all' (Matt, 2026-10-21)", () => {
+describe("the container's own record is drawn only at 'all' (Matt, 2026-10-21)", () => {
   const space = (o: Statement['o']): Statement => ({ ...st('x', 'about', 'y'), s: iri('urn:reckons:kb'), o });
   it('keeps urn:reckons:kb and urn:reckons:space off the canvas unless spaceMetadata is on', () => {
     const facts = [
@@ -434,10 +434,10 @@ describe("the space's own node is drawn only at 'all' (Matt, 2026-10-21)", () =>
     ];
     const hidden = buildGraphView(facts);
     expect(hidden.edges.map((e) => e.o.value)).toEqual([`${KB}jellyfish`]);
-    // Hidden from the picture, not from the record: the facts stay readable in the node panel.
+    // Hidden from the picture, not from the record: the facts stay readable in the marker panel.
     expect([...hidden.attributes.values()].flat()).toHaveLength(2);
     expect(buildGraphView(facts, { spaceMetadata: true }).edges).toHaveLength(3);
-    // Listed as hidden, so the label and type paths that mint nodes cannot bring it back (F144).
+    // Listed as hidden, so the label and type paths that mint markers cannot bring it back (F144).
     expect([...hidden.hidden.statementIds].sort()).toEqual([facts[1].id, facts[2].id].sort());
     expect(buildGraphView(facts, { spaceMetadata: true }).hidden.statementIds.size).toBe(0);
   });

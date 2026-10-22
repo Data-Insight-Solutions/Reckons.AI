@@ -64,18 +64,18 @@ export interface GraphViewOptions {
    */
   minAltitude?: Altitude;
   /**
-   * Draw the space's OWN node (`urn:reckons:kb`, `urn:reckons:space`): its identity and settings,
-   * metadata about the container rather than content inside it. Matt, 2026-10-21: "The URN node
-   * is annoying, should be hidden by default. We need to have URN at 'all' I think, thats space
-   * metadata level." Off unless asked; the graph page turns it on at the `all` rung only.
+   * Draw the container's OWN record (`urn:reckons:kb`, `urn:reckons:space`): its identity and settings,
+   * metadata about the container rather than content inside it. Matt, 2026-10-21: the URN marker
+   * should be hidden by default and shown at the `all` rung, the container-metadata level.
+   * Off unless asked; the drawing page turns it on at the `all` rung only.
    */
   spaceMetadata?: boolean;
 }
 
-/** The IRIs a space uses for itself. Facts about them describe the space, not its content. */
+/** The IRIs a container uses for itself. Facts about them describe the container, not its content. */
 export const SPACE_SELF_IRIS: ReadonlySet<string> = new Set(['urn:reckons:kb', 'urn:reckons:space']);
 
-/** A fact whose subject or object is the space itself. */
+/** A fact whose subject or object is the container itself. */
 export function isSpaceMetadata(st: Statement): boolean {
   return SPACE_SELF_IRIS.has(st.s.value) || (st.o.kind === 'iri' && SPACE_SELF_IRIS.has(st.o.value));
 }
@@ -182,7 +182,7 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   const floor = minAltitude ? ALTITUDE_RANK[minAltitude] : Number.NEGATIVE_INFINITY;
   const altitudeOfDrawn = (st: Statement): Altitude => lifted?.get(st.id) ?? altitudeOf(st);
   const aboveFloor = (st: Statement) => !lifted || ALTITUDE_RANK[altitudeOfDrawn(st)] >= floor;
-  // The space's own node is not content: off the canvas unless asked for, like a fact below the
+  // The container's own record is not content: off the canvas unless asked for, like a fact below the
   // floor, and it falls through to `attributes` the same way.
   const drawableFact = (st: Statement) => aboveFloor(st) && (spaceMetadata || !isSpaceMetadata(st));
 
@@ -221,8 +221,8 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
     };
     let count = 0;
     const statementIds = new Set<string>();
-    // The space's own facts are counted with what the floor removed, so the label and type paths
-    // that mint nodes of their own (F144's known issue) cannot bring the space's node back.
+    // The container's own facts are counted with what the floor removed, so the label and type paths
+    // that mint markers of their own (F144's known issue) cannot bring the container's record back.
     for (const st of filtered) {
       if (drawableFact(st)) continue;
       byAltitude[altitudeOfDrawn(st)]++;
