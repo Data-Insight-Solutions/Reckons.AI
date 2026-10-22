@@ -42,11 +42,23 @@ export function isSplatUrl(v: string): boolean {
 const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'superseded' && s.status !== 'pending-removal';
 
 /** Entity IRI → splat URL, from p:splat literals. */
+/**
+ * Bundled files that were replaced by a different file name. A graph saved in the browser keeps the
+ * address it was written with, so after a replacement it points at a file that is gone (404), and the
+ * space shows no room. Reading maps the old address to the current one; the saved graph is untouched.
+ */
+const MOVED_BUNDLED_SPLATS: Readonly<Record<string, string>> = {
+  '/generated/synthetic-room/splat.ply': '/generated/synthetic-room/splat.spz',
+};
+export function currentSplatUrl(url: string): string {
+  return MOVED_BUNDLED_SPLATS[url] ?? url;
+}
+
 export function splatMapFrom(statements: readonly Statement[]): Map<string, string> {
   const m = new Map<string, string>();
   for (const s of statements) {
     if (s.p.value === SPLAT_PREDICATE && s.s.kind === 'iri' && s.o.kind === 'literal' && live(s) && isSplatUrl(s.o.value)) {
-      if (!m.has(s.s.value)) m.set(s.s.value, s.o.value);
+      if (!m.has(s.s.value)) m.set(s.s.value, currentSplatUrl(s.o.value));
     }
   }
   return m;
@@ -60,7 +72,7 @@ export function backgroundSplatFrom(statements: readonly Statement[]): string | 
     if (!isSplatUrl(s.o.value)) continue;
     if (!best || (s.updatedAt ?? 0) >= (best.updatedAt ?? 0)) best = s;
   }
-  return best?.o.value ?? null;
+  return best ? currentSplatUrl(best.o.value) : null;
 }
 
 /**
@@ -74,7 +86,7 @@ export type SplatOrientation = 'triposplat' | 'none';
 export function splatOriginOf(statements: readonly Statement[], url: string): SplatOrigin | null {
   const owners = new Set<string>();
   for (const s of statements) {
-    if (s.p.value === SPLAT_PREDICATE && s.o.kind === 'literal' && s.o.value === url && s.s.kind === 'iri' && live(s)) owners.add(s.s.value);
+    if (s.p.value === SPLAT_PREDICATE && s.o.kind === 'literal' && currentSplatUrl(s.o.value) === url && s.s.kind === 'iri' && live(s)) owners.add(s.s.value);
   }
   for (const s of statements) {
     if (s.p.value === SPLAT_ORIGIN_PREDICATE && owners.has(s.s.value) && s.o.kind === 'literal' && live(s)
