@@ -1,0 +1,203 @@
+{
+  "slug": "ornate-music-box",
+  "label": "Ornate carved music box",
+  "role": "node",
+  "generated": true,
+  "showcase": true,
+  "stages": {
+    "image": {
+      "stage": "image",
+      "tool": {
+        "name": "stable-diffusion.cpp",
+        "license": "MIT",
+        "version": "commit 1d0a58a (Vulkan build)",
+        "repo": "https://github.com/leejet/stable-diffusion.cpp"
+      },
+      "models": [
+        {
+          "role": "diffusion",
+          "file": "z_image_turbo-Q8_0.gguf",
+          "sha256": "df1c5baa86d1398c979495a6072dbcee79444fdb884a2445582ba0769c44e9a1",
+          "bytes": 6577440704,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/leejet/Z-Image-Turbo-GGUF"
+        },
+        {
+          "role": "text encoder",
+          "file": "Qwen3-4B-Instruct-2507-Q8_0.gguf",
+          "sha256": "391c1e410fd9f4cf2de2b510273b56a84c19ce18f4fa3bfb3774031dac4ef068",
+          "bytes": 4280405600,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF"
+        },
+        {
+          "role": "vae",
+          "file": "ae.safetensors",
+          "sha256": "afc8e28272cd15db3919bacdb6918ce9c1ed22e96cb12c4d5ed0fba823529e38",
+          "bytes": 335304388,
+          "license": "Apache-2.0",
+          "source": "https://huggingface.co/Comfy-Org/z_image_turbo"
+        }
+      ],
+      "input": {
+        "prompt": "An ornate hand-carved wooden music box with intricate floral filigree relief on every face, brass hinges and a small brass crank, a lid inlaid with a mother-of-pearl rose, three-quarter view from the front and slightly above, the whole object visible with its depth clear, studio product photo on a plain light grey background, soft even lighting, extremely detailed"
+      },
+      "settings": {
+        "width": 1024,
+        "height": 1024,
+        "steps": 8,
+        "cfgScale": 1,
+        "sampler": "euler",
+        "seed": 11,
+        "peakVramMiB": 13258
+      },
+      "ranAt": "2026-10-21T04:27:08.111Z",
+      "durationS": 19.5,
+      "output": {
+        "file": "image.webp",
+        "sha256": "8eff2d2110d9fc4f45637f8371b652f409b850bd906e20f292b482c9f6c87e5c",
+        "bytes": 152010
+      },
+      "check": {
+        "pass": true,
+        "problems": [],
+        "notes": [],
+        "measured": {
+          "width": 1024,
+          "height": 1024,
+          "maxChannelStdev": 75.67
+        }
+      }
+    },
+    "splat": {
+      "stage": "splat",
+      "tool": {
+        "name": "TripoSplat",
+        "license": "MIT",
+        "version": "commit d8db9e0",
+        "repo": "https://github.com/VAST-AI-Research/TripoSplat"
+      },
+      "models": [
+        {
+          "role": "diffusion_models",
+          "file": "triposplat_fp16.safetensors",
+          "sha256": "c870b97ac1d6bc9177608a5ec625e19ef9f3c5019aa68f64b0fb7803abcd6d20",
+          "bytes": 741106994,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "triposplat_vae_decoder_fp16.safetensors",
+          "sha256": "ed0d0c3d43b599e326845d0ec70f3cf77be9a55e2d97627ac3b34d2830763cc8",
+          "bytes": 576148442,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "triposplat_vae_encoder_fp16.safetensors",
+          "sha256": "602625a8027b9ed48c6bb817f773b70877038f05349c71be1117c1fca7e2ded7",
+          "bytes": 682078640,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "clip_vision",
+          "file": "dino_v3_vit_h.safetensors",
+          "sha256": "a29ef35101a16966972a0d50732a6f3a608ff7cfffb2afa9bbe9007cb842cc53",
+          "bytes": 1681247696,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "vae",
+          "file": "flux2-vae.safetensors",
+          "sha256": "d64f3a68e1cc4f9f4e29b6e0da38a0204fe9a49f2d4053f0ec1fa1ca02f9c4b5",
+          "bytes": 336213556,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        },
+        {
+          "role": "background_removal",
+          "file": "birefnet.safetensors",
+          "sha256": "9ab37426bf4de0567af6b5d21b16151357149139362e6e8992021b8ce356a154",
+          "bytes": 444473596,
+          "license": "MIT",
+          "source": "https://huggingface.co/VAST-AI/TripoSplat"
+        }
+      ],
+      "input": {
+        "image": "image.webp",
+        "imageSha256": "8eff2d2110d9fc4f45637f8371b652f409b850bd906e20f292b482c9f6c87e5c"
+      },
+      "settings": {
+        "gaussians": 262144,
+        "steps": 20,
+        "guidance": 3,
+        "shift": 3,
+        "canvas": 1024,
+        "seed": 11,
+        "peakGiB": 4.59,
+        "peakVramMiB": 7000,
+        "peakRssGiB": 5.33,
+        "opacityRepaired": 28955
+      },
+      "ranAt": "2026-10-21T04:27:08.111Z",
+      "durationS": 36.7,
+      "output": {
+        "file": "splat.ply",
+        "sha256": "ad9645eb152641399dfda5dfc5f575e65485b13424fbe0ad6edad0989fb573ae",
+        "bytes": 17826208
+      },
+      "check": {
+        "pass": true,
+        "problems": [],
+        "notes": [],
+        "measured": {
+          "count": 262144,
+          "bytesPerGaussian": 68,
+          "extent": 0.9494,
+          "rawExtent": 0.9986,
+          "strayFraction": 0.0034,
+          "visibleFraction": 0.978
+        }
+      },
+      "compressed": {
+        "format": "spz",
+        "lossy": true,
+        "file": "splat.spz",
+        "sha256": "0af72ebff0552b4b798a4c573e46f8eeeeaa9d88ba3866d41d5abeab03498e94",
+        "bytes": 3520509,
+        "ratio": 5.06,
+        "source": {
+          "file": "max-count.ply",
+          "sha256": "ad9645eb152641399dfda5dfc5f575e65485b13424fbe0ad6edad0989fb573ae",
+          "bytes": 17826208,
+          "gaussians": 262144,
+          "extent": 0.9986
+        },
+        "gaussians": 262144,
+        "extent": 0.9985,
+        "tool": {
+          "name": "splat-transform",
+          "license": "MIT",
+          "version": "3.8.0"
+        },
+        "check": {
+          "pass": true,
+          "problems": [],
+          "measured": {
+            "count": 262144,
+            "bytesPerGaussian": 56,
+            "extent": 0.9493,
+            "rawExtent": 0.9985,
+            "strayFraction": 0.0034,
+            "visibleFraction": 0.978
+          }
+        },
+        "durationS": 2.1
+      }
+    }
+  }
+}

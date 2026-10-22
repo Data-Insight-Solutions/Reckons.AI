@@ -28,7 +28,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import sharp from 'sharp';
@@ -122,7 +122,15 @@ export interface StageReceipt {
   /** Splat stage only (F58.9.11): a LOSSY compressed copy beside the PLY, with its own decode check. */
   compressed?: CompressedReceipt;
 }
-export interface Receipt { slug: string; label: string; role: Brief['role']; generated: true; stages: Partial<Record<Stage, StageReceipt>> }
+export interface Receipt {
+  slug: string; label: string; role: Brief['role']; generated: true; stages: Partial<Record<Stage, StageReceipt>>;
+  /**
+   * A SHOWCASE (kb:showcase-splat): only the image and the compressed splat are committed, with no
+   * video, and the uncompressed PLY (tens of MB) stays out of the repository. The receipt still records
+   * the PLY's hash and size. Check mode verifies the compressed file instead of the PLY.
+   */
+  showcase?: true;
+}
 
 // ── Hashing (weights are GBs; cache by path + size + mtime) ───────────────────
 
@@ -202,9 +210,12 @@ async function stageVideo(b: Brief, dir: string): Promise<StageReceipt> {
 
 /** Image → PLY with TripoSplat. `o.ckpts` / `o.src` point at an alternative weights directory or checkout. */
 export function generateSplat(image: string, seed: number, gaussians: number, out: string,
-  o: { ckpts?: string; src?: string; env?: Record<string, string> } = {}): { steps: number; peakGiB: number; torch: string; opacityRepaired: number } {
+  o: { ckpts?: string; src?: string; env?: Record<string, string>; steps?: number; guidance?: number; shift?: number; canvas?: number } = {}):
+  { steps: number; peakGiB: number; torch: string; opacityRepaired: number; loadS: number; generateS: number; peakRssGiB: number; guidance: number; shift: number; canvas: number } {
   const log = gpuRun(PY, ['-I', join(ROOT, 'scripts/content/triposplat_run.py'), '--src', o.src ?? TRIPO_SRC, '--ckpts', o.ckpts ?? join(M, 'triposplat'),
-    '--image', image, '--out', out, '--gaussians', String(gaussians), '--seed', String(seed)], o.env);
+    '--image', image, '--out', out, '--gaussians', String(gaussians), '--seed', String(seed),
+    ...(o.steps ? ['--steps', String(o.steps)] : []), ...(o.guidance ? ['--guidance', String(o.guidance)] : []),
+    ...(o.shift ? ['--shift', String(o.shift)] : []), ...(o.canvas ? ['--canvas', String(o.canvas)] : [])], o.env);
   return JSON.parse(log.trim().split('\n').pop()!);
 }
 
@@ -262,6 +273,43 @@ async function finish(stage: Stage, _b: Brief, _dir: string, out: string, t: num
   };
 }
 
+/**
+ * Publish a SHOWCASE (kb:showcase-splat): the chosen image and splat from a sweep (showcase-sweep.ts),
+ * as the image, the compressed splat and one receipt. The caller measured the runs; this records them.
+ * The uncompressed PLY is read for its hash and size and is NOT copied into the repository.
+ */
+export async function writeShowcase(b: Brief, o: {
+  image: string; ply: string; imageRun: { seconds: number; peakVramMiB: number | null; size: number };
+  splatRun: { seconds: number; peakVramMiB: number | null; steps: number; guidance: number; shift: number; canvas: number; peakGiB: number; peakRssGiB: number; opacityRepaired: number };
+}): Promise<Receipt> {
+  const dir = join(OUT_ROOT, b.slug);
+  mkdirSync(dir, { recursive: true });
+  const t = new Date().toISOString();
+  const sdTool = { name: 'stable-diffusion.cpp', license: 'MIT', version: sdVersion(), repo: 'https://github.com/leejet/stable-diffusion.cpp' };
+  copyFileSync(o.image, join(dir, OUTPUTS.image)); // the bytes the splat was made from, not a re-encode
+  const imgBytes = readFileSync(join(dir, OUTPUTS.image));
+  const imgCheck = await checkImage(join(dir, OUTPUTS.image), { width: o.imageRun.size, height: o.imageRun.size });
+  const image: StageReceipt = {
+    stage: 'image', tool: sdTool, models: await modelEntries('image'), input: { prompt: b.imagePrompt },
+    settings: { width: o.imageRun.size, height: o.imageRun.size, steps: 8, cfgScale: 1, sampler: 'euler', seed: b.seed, peakVramMiB: o.imageRun.peakVramMiB ?? 0 },
+    ranAt: t, durationS: Math.round(o.imageRun.seconds * 10) / 10, output: { file: OUTPUTS.image, sha256: sha256Bytes(imgBytes), bytes: imgBytes.length }, check: imgCheck,
+  };
+  const ply = readFileSync(o.ply);
+  const spz = compressSplat(o.ply, { out: join(dir, 'splat.spz') });
+  const commit = execFileSync('git', ['-C', TRIPO_SRC, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim();
+  const r = o.splatRun;
+  const splat: StageReceipt = {
+    stage: 'splat', tool: { name: 'TripoSplat', license: 'MIT', version: `commit ${commit}`, repo: 'https://github.com/VAST-AI-Research/TripoSplat' },
+    models: await modelEntries('splat'), input: { image: OUTPUTS.image, imageSha256: image.output.sha256 },
+    settings: { gaussians: b.gaussians, steps: r.steps, guidance: r.guidance, shift: r.shift, canvas: r.canvas, seed: b.seed, peakGiB: r.peakGiB, peakVramMiB: r.peakVramMiB ?? 0, peakRssGiB: r.peakRssGiB, opacityRepaired: r.opacityRepaired },
+    ranAt: t, durationS: Math.round(r.seconds * 10) / 10, output: { file: OUTPUTS.splat, sha256: sha256Bytes(ply), bytes: ply.length },
+    check: checkSplat(o.ply, { count: b.gaussians }), compressed: spz,
+  };
+  const receipt: Receipt = { slug: b.slug, label: b.label, role: b.role, generated: true, showcase: true, stages: { image, splat } };
+  writeFileSync(join(dir, 'receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
+  return receipt;
+}
+
 // ── Check mode (CI) ──────────────────────────────────────────────────────────
 
 /** Re-run every check and confirm each committed file is the one its receipt describes. */
@@ -297,6 +345,14 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
     const receipt = parsed as Receipt;
     for (const stage of Object.keys(OUTPUTS) as Stage[]) {
       const r = receipt.stages[stage];
+      if (receipt.showcase && stage === 'video') continue;
+      if (receipt.showcase && stage === 'splat' && r?.compressed) {
+        const problems = verifyCompressed(join(root, slug), r.compressed);
+        if (!r.check.pass) problems.push(...r.check.problems);
+        if (problems.length) { ok = false; lines.push(`✗ ${slug}/splat (showcase): ${problems.join('; ')}`); }
+        else lines.push(`✓ ${slug}/splat (showcase): ${r.compressed.file} ${r.compressed.gaussians} Gaussians, ${(r.compressed.bytes / 1e6).toFixed(2)} MB (${r.compressed.ratio}x of the ${(r.output.bytes / 1e6).toFixed(1)} MB PLY, lossy, decode-checked; the PLY is not committed)`);
+        continue;
+      }
       if (!r) { ok = false; lines.push(`✗ ${slug}/${stage}: no receipt for this stage`); continue; }
       const file = join(root, slug, r.output.file);
       if (!existsSync(file)) { ok = false; lines.push(`✗ ${slug}/${stage}: ${r.output.file} missing`); continue; }
@@ -392,7 +448,7 @@ export function exampleTtl(receipts: Receipt[]): string {
       const lines = [
         `${id(stage)} rdf:type ktype:${KIND[stage]} ;`,
         `    rdfs:label ${lit(`${noun}: ${r.label.toLowerCase()}`)} ;`,
-        `    ${media} ${lit(`/generated/${r.slug}/${st.output.file}`)} ;`,
+        `    ${media} ${lit(`/generated/${r.slug}/${r.showcase && st.compressed ? st.compressed.file : st.output.file}`)} ;`,
         `    p:made-from ${stage === 'image' ? id('prompt') : id('image')} ;`,
         `    p:generated-with ${lit(MODEL_NAMES[stage])} ;`,
         `    schema:license ${[...new Set([st.tool.license, ...st.models.map((m) => m.license)])].sort().map(licId).join(', ')} ;`,

@@ -23,12 +23,18 @@ ap.add_argument('--out', required=True)
 ap.add_argument('--gaussians', type=int, default=32768)
 ap.add_argument('--seed', type=int, default=42)
 ap.add_argument('--steps', type=int, default=20)
+ap.add_argument('--guidance', type=float, default=3.0)
+ap.add_argument('--shift', type=float, default=3.0)
+ap.add_argument('--canvas', type=int, default=1024)  # TripoSplat's preprocessing square (upstream constant _CANVAS_SIZE)
 ap.add_argument('--prepared')
 a = ap.parse_args()
 
 sys.path.insert(0, a.src)
 import torch  # noqa: E402
+import triposplat  # noqa: E402
 from triposplat import TripoSplatPipeline  # noqa: E402
+
+triposplat._CANVAS_SIZE = a.canvas
 
 
 # TripoSplat (commit d8db9e0) writes opacity as log(x / (1 - x)) of an opacity that has ALREADY been
@@ -65,7 +71,8 @@ pipe = TripoSplatPipeline(
     device='cuda',
 )
 t1 = time.time()
-gaussian, prepared = pipe.run(a.image, num_gaussians=a.gaussians, seed=a.seed, steps=a.steps)
+gaussian, prepared = pipe.run(a.image, num_gaussians=a.gaussians, seed=a.seed, steps=a.steps,
+                            guidance_scale=a.guidance, shift=a.shift)
 gaussian.save_ply(a.out)
 repaired = repair_opacity(a.out)
 if a.prepared:
@@ -77,4 +84,7 @@ print(json.dumps({
     'peakGiB': round(torch.cuda.max_memory_allocated() / 2**30, 2),
     'torch': torch.__version__,
     'opacityRepaired': repaired,
+    'guidance': a.guidance, 'shift': a.shift, 'canvas': a.canvas,
+    # Process peak resident memory (Linux reports KiB): the system-RAM half of the requirements table.
+    'peakRssGiB': round(__import__('resource').getrusage(__import__('resource').RUSAGE_SELF).ru_maxrss / 2**20, 2),
 }))
