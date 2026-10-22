@@ -26,7 +26,7 @@ import { CONFIGS } from './showcase-sweep.js';
 import { compressSplat } from './splat-compress.js';
 import { renderScene, serveAssets } from './bench-review-render.js';
 import {
-  DEFAULT_PROMPT, IMAGE_BRANCHES, SEEDS, SPACE_ID, THREE_PATH, assertNoLeaks, buildSpace, codePrompt, ensureImportMap, extractHtml,
+  DEFAULT_PROMPT, IMAGE_BRANCHES, bySeed, SEEDS, SPACE_ID, THREE_PATH, assertNoLeaks, buildSpace, codePrompt, ensureImportMap, extractHtml,
   imageSettings, judgeScene, latest, plyPreview, repairPrompt, scrub, type Attempt, type Identity, type Row, type SplatConfig,
 } from './bench-review-lib.js';
 
@@ -69,7 +69,7 @@ async function imageStage() {
 // ── A. splats, all from the incumbent image ──────────────────────────────────
 
 async function splatStage() {
-  const src = latest(rows(), prompt).images.get(IMAGE_BRANCHES[0].id)?.sort((a, b) => a.seed - b.seed)[0];
+  const src = latest(rows(), prompt).images.get(IMAGE_BRANCHES[0].id)?.sort(bySeed)[0];
   if (!src) throw new Error('run --pipelines=image first: the splat branches use the incumbent image branch');
   await awaitFree(0);
   const image = join(assets, src.file);
@@ -86,7 +86,7 @@ async function splatStage() {
     const check = checkSplat(ply, { count: c.gaussians });
     let spzBytes: number | undefined;
     if (check.pass) { const r = compressSplat(ply); spzBytes = r.bytes; }
-    const p = plyPreview(new Uint8Array(readFileSync(ply)), 512, arg('flip') === '1');
+    const p = plyPreview(new Uint8Array(readFileSync(ply)), 512, true, 'yz');
     const previewFile = `splat-${c.id}.webp`;
     await sharp(Buffer.from(p.rgba), { raw: { width: p.width, height: p.height, channels: 4 } }).webp({ quality: 85 }).toFile(join(assets, previewFile));
     record({ kind: 'splat', prompt, config: c, image: src.file, seconds, loadS: run.loadS, generateS: run.generateS, peakVramMiB: own, peakRssGiB: run.peakRssGiB,

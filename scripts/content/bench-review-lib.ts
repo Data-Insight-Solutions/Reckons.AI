@@ -14,6 +14,8 @@
 export const DEFAULT_PROMPT = 'an ornate wooden music box with a brass key, on a plain table';
 export const SPACE_ID = 'bench-generation';
 export const SEEDS = [42, 7];
+/** Seeds in the order SEEDS lists them (the first is the one pictured on a branch). */
+export const bySeed = (a: { seed: number }, b: { seed: number }) => SEEDS.indexOf(a.seed) - SEEDS.indexOf(b.seed);
 
 // ── Settings and what differs ────────────────────────────────────────────────
 
@@ -114,7 +116,7 @@ export function ensureImportMap(html: string, base = THREE_PATH): string {
  * A flat front preview of a Gaussian splat PLY: each Gaussian a small coloured square, drawn back to front.
  * It shows density and coverage so branches can be told apart at a glance; it is NOT a splat renderer.
  */
-export function plyPreview(ply: Uint8Array, size = 512, flipDepth = false): { width: number; height: number; rgba: Uint8Array } {
+export function plyPreview(ply: Uint8Array, size = 512, flipDepth = false, view: 'xy' | 'xz' | 'yz' = 'xy', dot = 3): { width: number; height: number; rgba: Uint8Array } {
   const marker = new TextEncoder().encode('end_header\n');
   let end = -1;
   for (let i = 0; i < Math.min(ply.length - marker.length, 65536) && end < 0; i++) {
@@ -129,7 +131,8 @@ export function plyPreview(ply: Uint8Array, size = 512, flipDepth = false): { wi
   for (const m of header.matchAll(/property (\w+) (\w+)/g)) { if (m[1] !== 'float' && m[1] !== 'float32') throw new Error(`preview needs float properties, got ${m[1]} ${m[2]}`); props.push(m[2]); }
   const stride = props.length * 4;
   const at = (n: string) => props.indexOf(n);
-  const [ix, iy, iz, r0, g0, b0, io] = ['x', 'y', 'z', 'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity'].map(at);
+  const [ax, ay, az] = view === 'xy' ? ['x', 'y', 'z'] : view === 'xz' ? ['x', 'z', 'y'] : ['z', 'y', 'x'];
+  const [ix, iy, iz, r0, g0, b0, io] = [ax, ay, az, 'f_dc_0', 'f_dc_1', 'f_dc_2', 'opacity'].map(at);
   if ([ix, iy, iz, r0, g0, b0, io].some((i) => i < 0)) throw new Error('PLY lacks x/y/z/f_dc/opacity');
   const dv = new DataView(ply.buffer, ply.byteOffset + end, count * stride);
   const f = (i: number, p: number) => dv.getFloat32(i * stride + p * 4, true);
@@ -146,9 +149,9 @@ export function plyPreview(ply: Uint8Array, size = 512, flipDepth = false): { wi
   for (const i of order) {
     const a = 1 / (1 + Math.exp(-f(i, io)));
     if (!(a > 0.25)) continue;
-    const px = Math.round((f(i, ix) - cx) / span * size + size / 2), py = Math.round(-(f(i, iy) - cy) / span * size + size / 2);
+    const px = Math.round((f(i, ix) - cx) / span * size + size / 2 - dot / 2), py = Math.round(-(f(i, iy) - cy) / span * size + size / 2 - dot / 2);
     const col = [c(f(i, r0)), c(f(i, g0)), c(f(i, b0))];
-    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+    for (let dy = 0; dy < dot; dy++) for (let dx = 0; dx < dot; dx++) {
       const X = px + dx, Y = py + dy;
       if (X < 0 || Y < 0 || X >= size || Y >= size) continue;
       const o = (Y * size + X) * 4; rgba[o] = col[0]; rgba[o + 1] = col[1]; rgba[o + 2] = col[2];
@@ -267,7 +270,7 @@ export function buildSpace(prompt: string, rows: Row[], o: EmitOptions): string 
   const present = IMAGE_BRANCHES.filter((b) => (images.get(b.id) ?? []).length);
   const imgBranchIds = present.map((b) => `bgn:image-${slug(b.id)}`);
   for (const [bi, b] of present.entries()) {
-    const list = [...(images.get(b.id) ?? [])].sort((x, y) => x.seed - y.seed);
+    const list = [...(images.get(b.id) ?? [])].sort(bySeed);
     const id = imgBranchIds[bi];
     const sec = list.reduce((n, r) => n + r.seconds, 0) / list.length;
     const vram = Math.max(...list.map((r) => r.peakVramMiB ?? 0)) || null;
@@ -283,7 +286,7 @@ export function buildSpace(prompt: string, rows: Row[], o: EmitOptions): string 
       lines: [`p:photo ${lit(A(r.file)!)}`, ...seqNav(seedIds, i)] }));
   }
   // The splat input is the baseline branch's first seed, so the splat branches differ only in splat settings.
-  const splatSource = [...(images.get(baseImg.id) ?? [])].sort((x, y) => x.seed - y.seed)[0];
+  const splatSource = [...(images.get(baseImg.id) ?? [])].sort(bySeed)[0];
 
   // Pipeline A: splat
   const splatBranchIds: string[] = [];
