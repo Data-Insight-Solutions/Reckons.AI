@@ -9767,7 +9767,7 @@ kb:taxonomy-rename kpred:progress "2026-10-07, BATCH 2B: 42 top-level kb names r
 kb:release-0-2-6 rdf:type ktype:Release ;
     rdfs:label "v0.2.6" ;
     kpred:version "0.2.6" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
     kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
     kpred:has-part kb:space-file-layout ;
@@ -10205,6 +10205,9 @@ kb:proposal-options-ui rdf:type ktype:Phase ;
 
 kb:release-0-2-6 kpred:principle "SPINE OF THE RELEASE, Matt 2026-10-13: 'I want to combine the now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the applications human led element. Real world data and sources lead to real world decisions.' The three headline items are one chain (kb:evidence-chain): passages become nodes in the space file (F107.10), statements anchor to passage spans (F122.1), decisions cite statements and through them passages (F223). Anything else in 0.2.6 is judged by whether it serves that chain; at the 2026-10-18 cut, later links move to 0.2.7 before earlier ones, because each link rests on the one before." ;
     kpred:relates-to kb:evidence-chain .
+
+kb:release-0-2-6 kpred:progress "2026-10-22, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.6; release notes at content/releases/v0-2-6.md. Two goals ship together: the evidence chain (the release goal) and spaces you can stand inside (F58.9, F166.1 and Three.js backgrounds, built on dev in the same sprint and carried by the same promotion, listed as carried and not as headline work). Headline status: F107.10 and F122.1 in-progress with every 0.2.6 phase functional; F223 has F223.1 (the shape) functional and F223.2-.4 not started. Status becomes production when main carries it." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, awaiting Matt's review before staging and his second review before main. The docs gate (release-notes --check-docs, run on PRs into main) reported 35 features at scaffolded or beyond with no docs entity on 2026-10-22; the staging-to-main PR fails it until those are documented." .
 
 # 2026-10-13 — Matt answers the evidence-chain design questions (Claude Code chat, after the plan in #452).
 kb:document-evidence-anchors kpred:decided "MATT, 2026-10-13, FOR 0.2.6: anchors are TEXT SPANS ONLY (character spans in the retained text); page numbers, PDF boxes and the full DocumentIR come later with local PDF extraction, honoring 'never synthesize precision'. The anchor lives as OPTIONAL FIELDS ON THE STATEMENT for 0.2.6; the shared EvidenceAnchor node decided in principle is derived from those fields later, losing nothing." .
