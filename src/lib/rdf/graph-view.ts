@@ -63,6 +63,21 @@ export interface GraphViewOptions {
    * record is one click away rather than gone.
    */
   minAltitude?: Altitude;
+  /**
+   * Draw the space's OWN node (`urn:reckons:kb`, `urn:reckons:space`): its identity and settings,
+   * metadata about the container rather than content inside it. Matt, 2026-10-21: "The URN node
+   * is annoying, should be hidden by default. We need to have URN at 'all' I think, thats space
+   * metadata level." Off unless asked; the graph page turns it on at the `all` rung only.
+   */
+  spaceMetadata?: boolean;
+}
+
+/** The IRIs a space uses for itself. Facts about them describe the space, not its content. */
+export const SPACE_SELF_IRIS: ReadonlySet<string> = new Set(['urn:reckons:kb', 'urn:reckons:space']);
+
+/** A fact whose subject or object is the space itself. */
+export function isSpaceMetadata(st: Statement): boolean {
+  return SPACE_SELF_IRIS.has(st.s.value) || (st.o.kind === 'iri' && SPACE_SELF_IRIS.has(st.o.value));
 }
 
 /** What an altitude floor took off the canvas. Never let something be invisibly hidden. */
@@ -148,7 +163,7 @@ export function isNodeTerm(term: Term, categories: Set<string>): boolean {
  * relates nothing to nothing is not part of that picture, however important it is to read.
  */
 export function buildGraphView(statements: Statement[], opts: GraphViewOptions = {}): GraphView {
-  const { categoryNodes = true, predicates, since, until, minAltitude } = opts;
+  const { categoryNodes = true, predicates, since, until, minAltitude, spaceMetadata = false } = opts;
 
   const inWindow = (st: Statement) =>
     (since === undefined || st.createdAt >= since) && (until === undefined || st.createdAt <= until);
@@ -167,8 +182,11 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   const floor = minAltitude ? ALTITUDE_RANK[minAltitude] : Number.NEGATIVE_INFINITY;
   const altitudeOfDrawn = (st: Statement): Altitude => lifted?.get(st.id) ?? altitudeOf(st);
   const aboveFloor = (st: Statement) => !lifted || ALTITUDE_RANK[altitudeOfDrawn(st)] >= floor;
+  // The space's own node is not content: off the canvas unless asked for, like a fact below the
+  // floor, and it falls through to `attributes` the same way.
+  const drawableFact = (st: Statement) => aboveFloor(st) && (spaceMetadata || !isSpaceMetadata(st));
 
-  const drawable = lifted ? filtered.filter(aboveFloor) : filtered;
+  const drawable = filtered.filter(drawableFact);
 
   // Categories come from the DRAWABLE set: a literal shared only among hidden facts is not a
   // category anybody can see, and minting a node for it would leave an orphan on the canvas
@@ -183,7 +201,7 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   // record — which is the same distinction the review tree draws when it collapses logs into a
   // drawer instead of dropping them.
   for (const st of filtered) {
-    if (aboveFloor(st) && isNodeTerm(st.o, categories)) {
+    if (drawableFact(st) && isNodeTerm(st.o, categories)) {
       edges.push(st);
     } else {
       const key = termKey(st.s);
@@ -196,15 +214,17 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   return { edges, attributes, categories, hidden: summarizeHidden() };
 
   function summarizeHidden(): HiddenByAltitude {
-    if (!lifted) return NO_ALTITUDE_HIDDEN;
+    if (!lifted && spaceMetadata) return NO_ALTITUDE_HIDDEN;
 
     const byAltitude: Record<Altitude, number> = {
       decision: 0, judgment: 0, evidence: 0, record: 0, log: 0,
     };
     let count = 0;
     const statementIds = new Set<string>();
+    // The space's own facts are counted with what the floor removed, so the label and type paths
+    // that mint nodes of their own (F144's known issue) cannot bring the space's node back.
     for (const st of filtered) {
-      if (aboveFloor(st)) continue;
+      if (drawableFact(st)) continue;
       byAltitude[altitudeOfDrawn(st)]++;
       statementIds.add(st.id);
       count++;
