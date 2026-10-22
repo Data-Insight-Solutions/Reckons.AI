@@ -2468,7 +2468,12 @@
   <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="View settings">☰ view settings</button>
 {/if}
 {#if perspective === 'statements' && !showingLanding}
-<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+<!-- The desktop panel shows only a header snippet, never `title` (that is the phone sheet's), so the
+     panel had no visible name on desktop (Matt's 0.2.6 dev review). Phones keep the sheet's title row. -->
+{#snippet viewSettingsHeader()}
+  <div class="vs-header mono">view settings</div>
+{/snippet}
+<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -3469,6 +3474,7 @@
     border: 1px solid var(--line); border-radius: var(--rad);
   }
   .perspective-switch.banner-offset { top: 2.7rem; }
+  .vs-header { padding: 0.55rem 0.9rem 0.2rem; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; cursor: grab; }
   .sources-empty { margin: 8rem auto; text-align: center; }
   .perspective-switch button { font-size: 0.8rem; min-height: 36px; padding: 0.4rem 0.7rem; }
   .perspective-switch button[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
