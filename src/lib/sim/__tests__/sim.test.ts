@@ -12,7 +12,7 @@ const P = `@prefix kb: <urn:kbase:concept/> . @prefix m: <urn:kbase:meta/> .\n`;
 const sceneOf = (body: string) => sceneFromStatements(statementsFromTtl(P + body));
 const FLOOR = `kb:floor m:sim-shape "box 20 1 20" ; m:sim-static "true" ; m:placed-at "0 -0.5 0" .\n`;
 const EXAMPLE = 'static/starter-sim-ramp-cup.ttl';
-const withBall = (at: string) => readFileSync(EXAMPLE, 'utf8').replace(/(^kb:ball\n[\s\S]*?placed-at ")[^"]*"/m, `$1${at}"`);
+const withBall = (at: string) => readFileSync(EXAMPLE, 'utf8').replace(/(^kb:ball\n[\s\S]*?placed-at \x22)[^\x22]*\x22/m, `$1${at}\x22`);
 
 describe('scene reader', () => {
   it('reads bodies with documented defaults and the shared placement predicates', () => {
@@ -45,7 +45,7 @@ describe('scene reader', () => {
     expect(s.bodies).toEqual([]);
     expect(s.refusals.map((r) => r.reason)).toEqual([expect.stringMatching(/object internal/), expect.stringMatching(/object internal/)]);
   });
-  it('lists conditions from the target node', () => {
+  it('lists conditions from the target item', () => {
     const c = conditionsFromStatements(statementsFromTtl(P + `kb:t m:sim-condition "atRest(all)" .`));
     expect(c).toEqual([{ subject: 'urn:kbase:concept/t', text: 'atRest(all)' }]);
   });
@@ -116,7 +116,7 @@ describe('conditions, each true and false on tiny scenes', () => {
   });
 });
 
-describe('example space and CLI', () => {
+describe('example scene file and CLI', () => {
   const cli = (file: string) => spawnSync('npx', ['tsx', 'scripts/sim/run.ts', `--file=${file}`], { encoding: 'utf8' });
   it('as given the example FAILS, and moving the ball up the ramp makes it PASS', async () => {
     const conds = (t: string) => conditionsFromStatements(statementsFromTtl(t)).map((c) => c.text);

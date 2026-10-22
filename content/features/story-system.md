@@ -34,7 +34,7 @@ The Generated assets story works in two layers.
 
 **[Physical scene simulator (early, command line only)](../features/physical-scene-simulator)** — **in-progress**
 
-A space can describe a small physical scene, and a command checks whether a goal comes true in it.
+A collection of facts can describe a small physical scene, and a command checks whether a goal comes true in it.
 
 **[Three.js examples on nodes](../features/threejs-examples)** — **in-progress**
 

@@ -77,7 +77,7 @@ export async function simulate(scene: Scene, opts: SimOptions): Promise<SimResul
     handles.push({ id: b.id, body: rb, collider: world.createCollider(desc, rb) });
   }
 
-  // Body ids come from the graph, so they are never used as computed keys on a plain object
+  // Body ids come from the scene file, so they are never used as computed keys on a plain object
   // (an id of "__proto__" would write the prototype). Maps inside, Object.fromEntries at the edge.
   const snapshot = (): Record<string, Pose> => Object.fromEntries(handles.map((h) => {
     const t = h.body.translation(), r = h.body.rotation(), v = h.body.linvel();

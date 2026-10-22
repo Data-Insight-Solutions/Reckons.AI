@@ -1,5 +1,5 @@
-// F260.1 — the scene reader. Pure: statements in, a Scene (or refusals with reasons) out.
-// A node is a rigid body when it has a `sim-shape`. Pose reuses the existing placement predicates
+// F260.1 — the scene reader. Pure: facts in, a Scene (or refusals with reasons) out.
+// An item is a rigid body when it has a `sim-shape`. Pose reuses the existing placement predicates
 // (placed-at, placed-yaw from 3d/splat.ts); nothing here invents a pose predicate.
 import type { Statement } from '../rdf/types';
 import { PLACED_AT_PREDICATE, PLACED_YAW_PREDICATE } from '../3d/splat';
@@ -27,7 +27,7 @@ export type Shape =
   | { kind: 'capsule'; r: number; halfHeight: number };
 
 export interface Body {
-  /** Local name of the node IRI (after the last / or #). Unique within a scene. */
+  /** Local name of the item's IRI (after the last / or #). Unique within a scene. */
   id: string;
   iri: string;
   shape: Shape;
@@ -164,7 +164,7 @@ export function sceneFromStatements(statements: readonly Statement[]): Scene {
   return { bodies, refusals };
 }
 
-/** Condition texts on a target node, in statement order. */
+/** Condition texts on a target item, in fact order. */
 export function conditionsFromStatements(statements: readonly Statement[]): { subject: string; text: string }[] {
   return statements
     .filter((s) => s.p.value === SIM_CONDITION && s.o.kind === 'literal' && s.s.kind === 'iri' && live(s))

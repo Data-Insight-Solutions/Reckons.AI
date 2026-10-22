@@ -1,4 +1,4 @@
-// F260.1 — Turtle to Statement[] for headless use (CLI, tests). Not imported by the app bundle.
+// F260.1 — Turtle to a list of facts for headless use (CLI, tests). Not imported by the app bundle.
 import { Parser } from 'n3';
 import type { Statement } from '../rdf/types';
 

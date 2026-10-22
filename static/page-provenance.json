@@ -581,10 +581,10 @@
       "path": "features/physical-scene-simulator",
       "entity": "urn:reckons:feature/SimCore",
       "graph": "docs-features.ttl",
-      "factHash": "534018416955c29c",
+      "factHash": "81cf4041f76dca8e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "bef1c0908ce4ddfc"
+      "pageHash": "ef2b8aa175af2115"
     },
     {
       "path": "features/pod-view",
@@ -656,7 +656,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "0d9624133cfd0435"
+      "pageHash": "888749b51bd1a31b"
     },
     {
       "path": "features/text-chunking",
