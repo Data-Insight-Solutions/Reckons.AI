@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { backgroundSplatFrom, splatMapFrom, splatOriginOf, currentSplatUrl, BACKGROUND_SPLAT_PREDICATE, SPLAT_PREDICATE, SPLAT_ORIGIN_PREDICATE } from '../splat';
+import { backgroundSplatFrom, splatMapFrom, splatOriginOf, currentSplatUrl, BACKGROUND_SPLAT_PREDICATE, SPLAT_PREDICATE, SPLAT_ORIGIN_PREDICATE, SPACE_SUBJECT } from '../splat';
 
 const OLD = '/generated/synthetic-room/splat.ply';
 const NEW = '/generated/synthetic-room/splat.spz';
@@ -16,7 +16,7 @@ const st = (s: string, p: string, o: string): Row => ({ id: s + p, s: { kind: 'i
 describe('a saved copy that names a replaced bundled splat', () => {
   it('reads the old room address as the current file', () => {
     expect(currentSplatUrl(OLD)).toBe(NEW);
-    expect(backgroundSplatFrom([st('urn:reckons:' + 'sp' + 'ace', BACKGROUND_SPLAT_PREDICATE, OLD)])).toBe(NEW);
+    expect(backgroundSplatFrom([st(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, OLD)])).toBe(NEW);
     expect(splatMapFrom([st('urn:x:room', SPLAT_PREDICATE, OLD)]).get('urn:x:room')).toBe(NEW);
   });
   it('still finds the origin of an item whose saved address is the old one', () => {
