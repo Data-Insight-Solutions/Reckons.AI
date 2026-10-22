@@ -1,10 +1,10 @@
 #!/usr/bin/env npx tsx
 /**
- * Review-space bench (F183.3): one prompt, three local generation pipelines, every branch detailed,
- * the result a private space a person reviews by eye. See bench-review-lib.ts for the design.
+ * Review-graph bench (F183.3): one prompt, three local generation pipelines, every branch detailed,
+ * the result a private graph a person reviews by eye. See bench-review-lib.ts for the design.
  *
  *   npm run bench:review -- --pipelines=image,splat,three --gpu=1 [--prompt="..."] [--models=a,b]
- *   npm run bench:review -- --emit                 rebuild the space from results.jsonl only
+ *   npm run bench:review -- --emit                 rebuild the graph from results.jsonl only
  *   npm run bench:review -- --emit --publish       ALSO write a public starter copy (15 MB budget). Matt's choice, never automatic.
  *
  * Order matters: image first (pipeline A reuses its baseline image), then splat, then three.
@@ -214,7 +214,7 @@ function publish() {
     console.error(`REFUSING TO PUBLISH: ${(total / 1e6).toFixed(2)} MB is over the ${BUDGET_BYTES / 1e6} MB budget. Largest: ${big}.`); process.exit(4);
   }
   const ttl = buildSpace(prompt, r, { assetBase: '/generated/bench', splatExt: 'spz', identity, toolNote: toolNote(), title: 'Reckons.AI — Local generation bench (public starter)' });
-  assertNoLeaks(ttl, identity, 'the public space');
+  assertNoLeaks(ttl, identity, 'the public graph');
   new Parser().parse(ttl);
   const copies: [string, string][] = [];
   for (const [f] of sizes) {
@@ -224,7 +224,7 @@ function publish() {
   }
   mkdirSync(join(outAssets, 'three'), { recursive: true });
   for (const [f, text] of copies) { if (f.endsWith('.html')) writeFileSync(join(outAssets, f), text); else copyFileSync(join(assets, f), join(outAssets, f)); }
-  const receipt = JSON.stringify({ prompt, note: 'Measured on one machine with two RTX 3090 cards; see the space for each branch.', rows: r.filter((x) => x.prompt === prompt).map((x) => JSON.parse(scrub(JSON.stringify(x), identity))) }, null, 2) + '\n';
+  const receipt = JSON.stringify({ prompt, note: 'Measured on one machine with two RTX 3090 cards; see the graph for each branch.', rows: r.filter((x) => x.prompt === prompt).map((x) => JSON.parse(scrub(JSON.stringify(x), identity))) }, null, 2) + '\n';
   assertNoLeaks(receipt, identity, 'receipt.json');
   writeFileSync(join(outAssets, 'receipt.json'), receipt);
   writeFileSync(join(ROOT, 'static/starter-generation-bench.ttl'), ttl);

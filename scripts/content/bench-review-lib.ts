@@ -1,5 +1,5 @@
 /**
- * Review-space bench, deterministic parts (F183.3). Everything here is a pure function of its
+ * Review-graph bench, deterministic parts (F183.3). Everything here is a pure function of its
  * inputs: the settings diffs, the scene checks, the splat preview, the leak scrub and the Turtle
  * emitter. The same recorded results give the same bytes, so a test can pin them.
  *
@@ -164,7 +164,7 @@ export function plyPreview(ply: Uint8Array, size = 512, flipDepth = false, view:
 
 export interface Identity { home: string; user: string; host: string }
 
-/** Remove local paths, ports, user and host names from any text that reaches a space or receipt. */
+/** Remove local paths, ports, user and host names from any text that reaches a graph or receipt. */
 export function scrub(text: string, id: Identity): string {
   let t = text;
   if (id.home) t = t.split(id.home).join('~');
