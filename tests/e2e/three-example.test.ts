@@ -151,6 +151,29 @@ test('the isolated document keeps its network policy after replacement', async (
   expect(leaked).toBe(false);
 });
 
+// Regression: real examples (e.g. skinning_ik) load their model textures as blob: URLs through fetch.
+// With connect-src lacking blob: the model never drew and the example showed as an empty white scene.
+test('an example can read its own blob: and data: resources but still not the network', async ({page}) => {
+  await stub(page, scene + `
+    const blob = URL.createObjectURL(new Blob(['x']));
+    fetch(blob).then(() => document.body.dataset.blob='allowed', () => document.body.dataset.blob='blocked');
+    fetch('data:text/plain,x').then(() => document.body.dataset.data='allowed', () => document.body.dataset.data='blocked');
+  `);
+  await attach(page);
+  await page.getByRole('button',{name:'Load example',exact:true}).click();
+  await expect(page.getByText('Example running',{exact:true})).toBeVisible();
+  const body = page.frameLocator('iframe[title="Interactive Three.js example"]').locator('body');
+  await expect(body).toHaveAttribute('data-blob','allowed');
+  await expect(body).toHaveAttribute('data-data','allowed');
+  const frame = page.locator('.three-example-viewer iframe');
+  // Nothing may dim or cover the frame either.
+  const veil = await frame.evaluate(el => { const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    let o = 1; for (let e: Element | null = el; e; e = e.parentElement) o *= Number(getComputedStyle(e).opacity);
+    return { top: top === el, opacity: o }; });
+  expect(veil).toEqual({ top: true, opacity: 1 });
+});
+
 // ---- Graph background (kb:threejs-example-background) ----
 async function closeViewer(page: Page) {
   const fullscreenClose = page.locator('.asset-fs-close');
