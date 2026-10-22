@@ -102,4 +102,7 @@ async function publish() {
   console.log(`published ${r.slug}: splat ${(r.stages.splat!.compressed!.bytes / 1e6).toFixed(2)} MB spz`);
 }
 
+// Only when run as a command: bench-review.ts imports CONFIGS from here.
+if (import.meta.url === `file://${process.argv[1]}`) {
 if (process.argv[2] === 'image') await image(); else if (process.argv[2] === 'publish') await publish(); else if (process.argv[2] === 'splat') splat(); else if (process.argv[2] === 'standard') standardStages(); else { console.error('usage: image|splat'); process.exit(2); }
+}

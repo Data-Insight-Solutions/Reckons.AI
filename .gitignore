@@ -193,3 +193,6 @@ reckons-workspace/*.jsonl.*
 /share/
 /sites/
 static/generated/**/.image.png
+
+# F183.3 review space: the dev-server link to the private bench output (splats are megabytes)
+static/bench-generation
