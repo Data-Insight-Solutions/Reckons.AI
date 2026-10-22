@@ -4011,6 +4011,21 @@ kb:splat-placement rdf:type ktype:Phase ;
     kpred:tested-by "src/lib/3d/__tests__/splat-placement.test.ts", "tests/e2e/your-room.test.ts" ;
     kpred:progress "2026-10-14: kmeta:placed-at (room units), placed-scale and placed-yaw on a node; a placed node is pinned relative to the room every frame and its splat drawn there, still, at that size; asset-viewer buttons Place in room, move, raise, turn, scale and Unplace (no gizmo), and a readout of the numbers. Place in room puts it half way from the camera toward the graph, on the floor when Level the floor found one. Pure helpers unit-tested; the placed carved turtle in the Your room space loads in the e2e (data-splats 2/0)." ;
     kpred:remaining "Works in a surround room only (a backdrop resizes every frame); it says so rather than doing nothing. The buttons, the pinning against a moving layout and Place in room's choice of spot were not exercised by a browser test (only that a placed splat loads); the Place in room default is arithmetic on the camera and has not been judged by eye. Not in 2D. Moves are along the room's axes, not the camera's. No drag, no gizmo, no collision with the room's own furniture." .
+kb:splat-placement kpred:progress "2026-10-15 (F58.9.16): the controls moved out of the large asset preview, which covered the graph so the splat could not be seen moving. Place in space (the asset viewer) enters placement mode: the preview collapses and a compact floating bar (move, raise, turn, scale, Done, Unplace) sits over the graph; Escape or Done leaves. Works in a backdrop too: it switches to surround and says so. Covered by the Your room e2e (kb:background-in-view)." .
+
+kb:background-in-view rdf:type ktype:Phase ;
+    rdfs:label "F58.9.16 — background settings in the graph view, placement without the large preview, a more spread-out graph" ;
+    kpred:feature-id "F58.9.16" ;
+    kpred:has-status "scaffolded" ;
+    kpred:part-of kb:gen-video-to-splat ;
+    kpred:depends-on kb:splat-background-settings, kb:splat-placement ;
+    kpred:description "Three requests from testing a scanned studio as a space background. (1) A Background section in the graph view's Filters & layout panel, shown only when the space has a background: surround or backdrop, scale (log-scaled slider plus number), yaw, opacity, up axis, Level the floor, and Set focal point (click a point in the 3D view to make it the room's centre). (2) Placement mode: Place in space collapses the large asset preview and shows a compact floating bar over the graph (move, raise, turn, scale, done, unplace) so the person sees the splat move inside the background. (3) Free and focus layouts spread out further." ;
+    kpred:decided "MATT, 2026-10-15, after testing his scanned studio as a space background: \"We need a background settings in the filters panel, scale, surround, set focal point, etc. We need the graph to be a bit more spread out still, on free and focus layouts at least. I was not able to see a way to set surround, and scale will need manual adjustment. I see the place in room (should be space) and I cannot place it in the space, because the large preview of the splat is showing over the graph view. I see the placement controls, but we need to hide the large preview and allow for the scaling and placement within the space background.\"" ;
+    kpred:has-file "src/lib/components/BackgroundSettingsControls.svelte", "src/lib/components/PlacementBar.svelte", "src/lib/components/SplatPlacementControls.svelte", "src/lib/components/SpaceBackgroundPanel.svelte", "src/lib/stores/placement-mode.svelte.ts", "src/lib/stores/space-room.ts", "src/lib/3d/room-focus.ts", "src/lib/3d/room-view.ts", "src/lib/3d/layout-metrics.ts", "src/lib/3d/KnowledgeGraph.svelte" ;
+    kpred:tested-by "src/lib/3d/__tests__/room-focus.test.ts", "tests/e2e/your-room.test.ts", "tests/e2e/layout-spread.test.ts" ;
+    kpred:constraint "Reuse the existing setters and readers (space-room.ts, splat.ts); the /kb panel and the graph panel share one component. Not a new navigation tab." ;
+    kpred:progress "2026-10-15: (1) BACKGROUND SECTION in the graph view's Filters & layout panel (shown only in 3D, only when the space has a background), the same BackgroundSettingsControls component the Graphs tab now uses: backdrop or surround, scale as a log-scaled slider (0.001 to 1000) plus a number, up axis, yaw, opacity, offset, Level the floor and remove levelling, Set focal point. SET FOCAL POINT is a DEPTH PICK, not a mesh raycast (a splat has none): the camera ray is turned into the room's frame and the nearest surface of the sampled Gaussian centres under a 1.7 degree cone wins (at least 3 candidates within 15 percent of its depth, so a lone floater does not); with nothing under the click it falls back to the floor plane, within 1.5 room radii, and says so. It is stored as kmeta:background-focal on urn:reckons:space and applied as an offset: room centre = graph centre + offset - yaw(focal * scale), surround only. (2) PLACEMENT MODE: Place in space puts the splat on the floor, collapses the large preview (hidden at once, not waiting for its fade) and shows a compact floating bar (move, raise, turn, scale, Done, Unplace); Escape or Done leaves. Placing in a BACKDROP switches to surround first and says so, rather than refusing: a backdrop is re-fitted to the graph every frame so a placement in it would swim. User-facing 'room' in the placement UI is now 'space'. (3) SPREAD: see kb:layout-math. Proven by unit tests (room-focus.test.ts: slider round trip, focal offset lands the focal point on the graph centre at any yaw, ray picking, plane limit, spread metrics) and one e2e on the Your room example (set surround and scale in the panel, set a focal point by clicking, place the turtle with the bar, the large preview is hidden, Escape leaves) under headless SwiftShader." ;
+    kpred:remaining "UNVERIFIED ON A REAL SCAN: the focal pick was exercised on the synthetic room only, under SwiftShader; whether a 1.7 degree cone and the 3-in-15-percent surface rule feel right on a 400,000-Gaussian studio scan is untested, and the sampled centres are a subsample. The focal point applies in surround only; in a backdrop the pick switches to surround. Changing scale after setting a focal point keeps the same room point at the graph centre, but placed splats move with the room (they are stored in room units). Placing keeps a node pinned; Unplace is the only way back, there is no undo for a move. Moves are along the space's axes, not the camera's. The bar was checked at 1280x800 only; no phone layout was seen. The Background section is not in 2D. No visual regression coverage." .
 
 kb:room-scene-space rdf:type ktype:Phase ;
     rdfs:label "F58.9.10 — a guided Your room space: scan, import, generate, place" ;
@@ -5948,7 +5963,7 @@ kb:reviewable-graph-patches rdf:type ktype:Feature ;
 kb:document-evidence-anchors rdf:type ktype:Feature ;
     rdfs:label "Document evidence anchors — page, block, span and geometry provenance" ;
     kpred:feature-id "F122.1" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:priority "high" ;
     kpred:part-of kb:source-reference-copy ;
     kpred:depends-on kb:passage-grounding ;
@@ -8931,7 +8946,7 @@ kb:jobs-graph-as-source rdf:type ktype:Feature ;
 kb:published-space-directory rdf:type ktype:Feature ;
     rdfs:label "Published-space directory — a registry of publishers, or nothing" ;
     kpred:feature-id "F217" ;
-    kpred:has-status "speculative" ;
+    kpred:has-status "planned" ;
     kpred:priority "low" ;
     kpred:description "Matt (2026-09-23): a central place to publish a space as flat files without standing up a domain — ideally a static hosted directory with a storage bucket — so publishing does not require owning a website. NOT DESIGNED, explicitly roadmap rather than work, and recorded mainly so its constraints are written down before anyone builds toward it." ;
     kpred:constraint "THE SAFETY STANDARDS MUST BE WELL TESTED BEFORE THE CAPABILITY EXISTS, which is Matt's condition and inverts the usual order. Publishing gates today are kb:publish-safety-gate, and kb:honest-status already records the 2026-07-12 incident where SAFETY.md claimed publishing was gated while F66 was merely planned. A directory is the case where that gap stops being embarrassing and becomes someone else's problem: we would be carrying content on our own infrastructure." ;
@@ -8939,6 +8954,114 @@ kb:published-space-directory rdf:type ktype:Feature ;
     kpred:decided "NOT LAUNCHING IS A LIVE OPTION AND IS NAMED AS ONE. 'Potentially we never even launch that directory.' A feature whose failure mode is hosting illegal material does not get built because it was on a list; it gets built only if the controls are real first, and shelving it costs this product nothing it cannot get another way." ;
     kpred:open-question "REGISTRY OR HOST — these are different businesses and the choice is the whole feature. Matt's alternative: 'users self hosting their own published spaces, and reviewing and publishing others that request them to. Then the central repository search is a registry of PUBLISHERS and what they published.' A registry stores POINTERS and its worst case is a dead link; a host stores CONTENT and its worst case is carrying something criminal. The registry version also fits the local-first stance and the integration-boundaries rule, where a central service is never a hard dependency of the core app." ;
     kpred:relates-to kb:graph-publishing, kb:publisher-subscriptions, kb:reference-graph-catalogue, kb:publish-safety-gate .
+
+kb:published-space-directory kpred:decided "MATT, 2026-10-21, after registering reckons.space at Cloudflare: 'reckons.space will be the root for the space registry. We need provenance of who is sharing, we regulate and restrict content on our registry, not on user's computers and through other file sharing systems.' This answers the REGISTRY OR HOST question with REGISTRY, names its root, makes sharer provenance a requirement, and draws the regulation boundary at what the registry lists. It is the F66 rule (gate only what we carry, kb:adult-content-policy) applied to a directory. Status moved from speculative to planned on this decision." ;
+    kpred:proposed "AGENT, 2026-10-21, NOT DECIDED: the registry LISTS and does not STORE. An entry is a publisher, a signed manifest and a pointer to where the publisher hosts the space, pinned by content hash. What was reviewed is the hash; if the bytes at the pointer change, the hash no longer matches, the app refuses to open it as listed, and the entry is suspended until it is reviewed again. A pointer's worst case is a dead or suspended link; a stored copy's worst case is us carrying something criminal. Whether reckons.space ever stores copies (for availability) stays open for Matt." ;
+    kpred:constraint "THE REGULATION BOUNDARY. The app never scans, blocks or reports what a person keeps on their own computer or shares through any other channel (email, a USB stick, their own website, another file-sharing service). The registry decides only what IT lists. Refusing a listing does not delete, hide or flag the space anywhere else." ;
+    kpred:constraint "A SIGNATURE PROVES A KEY, NOT A PERSON. Provenance of who is sharing has two halves: the manifest is signed by the publisher's key (checkable by anyone, offline), and the key is bound to a real-world identity by a proof the registry verifies (a DNS TXT or .well-known file on a domain they control, or a code-hosting account). Until the second half exists, a listing must say 'signed by key …' and never 'published by <name>'." ;
+    kpred:has-phase kb:signed-share-manifest, kb:registry-listing-policy, kb:registry-root, kb:registry-in-app, kb:registry-backend, kb:space-store, kb:refinement-marketplace, kb:generation-for-hire .
+
+kb:signed-share-manifest rdf:type ktype:Phase ;
+    rdfs:label "Signed share manifest — who shared this space, when, and exactly which bytes" ;
+    kpred:feature-id "F217.1" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:description "Every published PUBLICATION (kb:space-publication: one or more spaces released together) carries one manifest: the publisher's public key, the time, a content hash of every file in the package, and a signature over all of it (Ed25519 through WebCrypto, in the browser, no server). On import the app verifies the signature and the hashes and shows the result where the import is reviewed: signed and intact, signed but altered, or unsigned. Useful on its own before any registry exists: a person can tell whether a space a friend sent is the one the friend made." ;
+    kpred:constraint "Local-first: keys are generated and kept on the device, exportable for backup, never sent anywhere. An unsigned package still imports; the manifest adds evidence, it does not gate private sharing." ;
+    kpred:remaining "Nothing built (2026-10-21). Design questions: key backup and loss (a lost key cannot sign an update to an old listing), key rotation, and whether the manifest is a graph (triples about the package, kpred:content-hash) or a JSON sidecar." ;
+    kpred:relates-to kb:publish-safety-gate .
+
+kb:registry-listing-policy rdf:type ktype:Phase ;
+    rdfs:label "Registry listing policy — what reckons.space refuses, how it takes down, tested before anything is listed" ;
+    kpred:feature-id "F217.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:signed-share-manifest ;
+    kpred:description "The controls the registry needs before it lists anything, built and tested first (Matt's condition on F217): a written listing policy; a review step before a listing goes live; report, suspend and takedown with a reason recorded; refusal of a publisher key; an audit log of every listing decision; and a synthetic test suite that drives each control. Runs the existing deterministic content checks (classifyStatement, the publish safety gate) over a submitted package, and records that automatic checks are a first pass, not the review." ;
+    kpred:constraint "The policy names what the registry will not list and what it does when it learns of a listing it should not carry, including the legal reporting duties for illegal content. That part needs legal review (COUNSEL-BRIEF.md) before launch and must not be claimed as done until it has had one." ;
+    kpred:remaining "Nothing built or written (2026-10-21)." .
+
+kb:registry-root rdf:type ktype:Phase ;
+    rdfs:label "reckons.space — the registry root: a static index of publishers and the spaces they list" ;
+    kpred:feature-id "F217.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-listing-policy ;
+    kpred:description "reckons.space serves the reviewed index as static files: publishers (key, verified identity proof), their listed publications and the spaces in each (pointer, content hash, manifest, listing date, status) and suspensions. Static hosting on the Cloudflare account that holds the domain; no accounts, and no app state on the server. This is the FIRST slice only: Matt (2026-10-21) expects an actual backend later (kb:registry-backend). Submissions arrive as a signed request and wait in the review queue from F217.2." ;
+    kpred:constraint "A registry is still a central service, so per AGENTS.md integration boundaries it is never a hard dependency: the app works fully with reckons.space unreachable, and a person can point the app at a different registry root." ;
+    kpred:remaining "Domain registered 2026-10-21 (Cloudflare); nothing is served there." .
+
+kb:registry-in-app rdf:type ktype:Phase ;
+    rdfs:label "Registry in the app — browse listed spaces, open one verified, request a listing" ;
+    kpred:feature-id "F217.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-root ;
+    kpred:description "Listed spaces appear as ghost spaces in the Spaces view (F218) until opened. Opening one fetches from the publisher's pointer, verifies hash and signature against the listing, and imports with every fact pending review, like any other import. A request to list a space signs its manifest and submits it; the app shows its review state and never claims a listing is live before the registry says so." ;
+    kpred:relates-to kb:meta-graph-view .
+
+kb:release-0-3-0 rdf:type ktype:Release ;
+    rdfs:label "v0.3.0" ;
+    kpred:version "0.3.0" ;
+    kpred:has-status "planned" ;
+    kpred:description "PROPOSED BY AN AGENT 2026-10-21, NOT DECIDED: the sharing release. reckons.space as the space registry root, with provenance of every sharer and controls tested before the first listing. Signed manifests (F217.1) can land earlier, since they need no server." ;
+    kpred:has-part kb:signed-share-manifest ;
+    kpred:has-part kb:registry-listing-policy ;
+    kpred:has-part kb:registry-root ;
+    kpred:has-part kb:registry-in-app .
+
+# ── F217 future: backend, store, marketplace (Matt, 2026-10-21 — future enhancements, not current work) ──
+
+kb:published-space-directory kpred:decided "MATT, 2026-10-21, THE LONGER SHAPE (future enhancements, not current work): 'I think we will need a backend for the registry likely PayloadCMS and Stripe is an integration option for website publishing, and used for the registry to allow for users to sell spaces. ... This space registry is not only a list of free publicly shared spaces, but also a community, a store, a marketplace, and an actual backend server. These are future enhancements, not current work.' The static index (F217.3) stays the first slice; the backend, store and marketplace are speculative phases F217.5-F217.8." ;
+    kpred:open-question "THE BACKEND CHANGES TWO EARLIER RULES, AND BOTH NEED MATT'S WORDING. (1) AGENTS.md integration boundaries say Reckons.AI has NO general backend. A registry backend can respect that if it is a separate service the app reaches opt-in and never needs (F217.3's constraint), but the rule's text should say so before the backend is built. (2) kb:adult-content-policy (Option C) recorded 'no product accounts, graph-content backend, identity record or age-verification surface FOR THIS PATH'. A store with seller accounts and payments creates exactly those for the registry path, so the content policy for what the registry carries has to be written for accounts, not around their absence." .
+
+kb:space-publication rdf:type ktype:Concept ;
+    rdfs:label "Publication — one or more spaces released together by one publisher" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:description "The unit a person publishes, lists, sells or delivers is a PUBLICATION, not a space. A publication holds one or more spaces. In TriG each space is its own named graph, and one signed manifest attributes all of them to the publisher, with a time, a policy and a content hash per space and per asset. Matt, 2026-10-21: 'More likely the user will publish one or more spaces, and we need that concept formalized for the TriG provenance across multiple spaces.'" ;
+    kpred:principle "TWO PROFILES, ONE SHAPE. A published GAME is likely many small spaces with heavy asset downloads (models, splats, audio): the manifest lists assets by hash, the graph stays small, and the cost is bandwidth and storage. A research or subject-matter-expert publication is likely one large, complex graph with few binaries: the cost is graph size, import time and review. The manifest records which profile a publication is, so the registry and the app can plan for it (lazy asset download for the first, chunked import for the second)." ;
+    kpred:refines kb:trig-published-side ;
+    kpred:constraint "TERM COLLISION TO RESOLVE: kb:trig-published-side says 'a named graph is a PUBLICATION'. Under this concept a named graph is one SPACE within a publication, and the publication is the set. The TriG entity and static/reckons-terminology.ttl should carry the same meaning before any UI says 'publication'." ;
+    kpred:has-status "planned" .
+
+kb:registry-backend rdf:type ktype:Phase ;
+    rdfs:label "Registry backend — accounts, submissions and moderation on a server (likely PayloadCMS)" ;
+    kpred:feature-id "F217.5" ;
+    kpred:has-status "speculative" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-root ;
+    kpred:description "A server behind reckons.space for what a static index cannot do: publisher accounts, submissions, the review and takedown queue of F217.2, community features, and the store's records. Matt named PayloadCMS as the likely backend (2026-10-21). The app still opens, edits and shares spaces with this server unreachable." ;
+    kpred:remaining "Not designed. PayloadCMS was named, not evaluated: its licence, hosting needs and fit with the listing policy have not been checked." .
+
+kb:space-store rdf:type ktype:Phase ;
+    rdfs:label "Space store — publishers sell publications through the registry (Stripe)" ;
+    kpred:feature-id "F217.6" ;
+    kpred:has-status "speculative" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-backend ;
+    kpred:description "A publisher can set a price on a publication and buyers pay through Stripe. Stripe is also an integration option for website publishing (F27 kb:graph-publishing), so a person's own published site can sell too, without the registry." ;
+    kpred:constraint "Card data never touches Reckons.AI: Stripe-hosted checkout only. Paying sellers means seller onboarding, refunds, disputes and tax, which the platform account has to carry. A paid listing is still a listing: the F217.2 policy and review apply in full, and payment is never a reason to list faster." .
+
+kb:refinement-marketplace rdf:type ktype:Phase ;
+    rdfs:label "Refinement marketplace — a person defines a space, experts are hired to refine it, the deliverable is a space" ;
+    kpred:feature-id "F217.7" ;
+    kpred:has-status "speculative" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-backend ;
+    kpred:description "Matt, 2026-10-21: 'Potentially someone wants to build an application, but needs expert software engineering guidance. There could be a process of initial definition by a user, and then seeking refinement and improvement from other experts. Similar to upwork or other freelance sites, services can be accomplished through space deliverables.' The request is a space with a target state (F223 proposals); an expert's work arrives as proposals the requester reviews, so acceptance is per fact and the provenance of every refinement names who made it." ;
+    kpred:relates-to kb:supervised-compute-sharing ;
+    kpred:relates-to kb:graph-proposals .
+
+kb:generation-for-hire rdf:type ktype:Phase ;
+    rdfs:label "Generation for hire — a host with the GPU and integrations generates assets for people who lack them" ;
+    kpred:feature-id "F217.8" ;
+    kpred:has-status "speculative" ;
+    kpred:part-of kb:published-space-directory ;
+    kpred:depends-on kb:registry-backend ;
+    kpred:description "Matt, 2026-10-21: 'I with a large GPU, all the necessary plugins and integrations configured, could generate assets for people that don't have the hardware or subscriptions.' A request (prompt, reference images, the space it is for) goes to a host, which runs its generation tasks (F166) and returns the assets and their facts as a delivered publication, with provenance naming the host, model and settings. F239 supervised compute sharing is the file-based form of the same idea; this phase adds the listing and the payment." ;
+    kpred:relates-to kb:supervised-compute-sharing ;
+    kpred:relates-to kb:generation-coupling ;
+    kpred:constraint "A generated asset carries its model's licence and the host's terms. Hosting generation for others makes the host responsible for what it generates: the content checks run on the host's side, before delivery." .
 
 # -- F218: The Spaces view — a meta-graph of the whole ecosystem --------------
 kb:meta-graph-view rdf:type ktype:Feature ;
@@ -9096,6 +9219,10 @@ kb:layout-math rdf:type ktype:Feature ;
     kpred:open-question "DO THE TWO RENDERERS SHARE THE GEOMETRY, OR ONLY THE RULES? 2D sizes nodes in SCREEN space and 3D in WORLD space — the 2026-09-24 revert proved that copying a world-space guard into 2D couples the layout to the camera. So a shared module must either take a space as a parameter or expose two calibrated entry points; pretending one function fits both is how that bug was introduced." ;
     kpred:honest-note "PLANNED. The extraction begun on 2026-09-24 was done to fix bugs, not as this feature: five functions moved and ten tests written, while the anchor builders, the force constants and the 2D geometry are all still inline." .
 
+
+kb:layout-math kpred:decided "MATT, 2026-10-15: \"We need the graph to be a bit more spread out still, on free and focus layouts at least.\" Roadmapped as part of F58.9.16 (kb:background-in-view): the free and focus parameters are measured by mean nearest-neighbour distance and overlap count before and after, not by eye." .
+
+kb:layout-math kpred:progress "2026-10-15 (F58.9.16): free and focus spread out, MEASURED. KnowledgeGraph now writes data-spread (mean nearest-neighbour distance, overlapping pairs) to the canvas when a layout settles; tests/e2e/layout-spread.test.ts opens the Quick-Start and Generated assets examples and reads it, mean of 6 fresh loads each. BEFORE (free): nn 2.48 and 2.68, overlapping pairs 0.17 and 0.17 per load; (focus): nn 3.40 and 3.75, overlap 0. AFTER (free): nn 3.05 and 3.25, overlap 0 and 0; (focus): nn 4.06 and 3.61, overlap 0. So free is about +23 and +21 percent; focus is +19 percent on Quick-Start and NOT distinguishable from noise (-4 percent, run to run about plus or minus 0.2) on Generated assets (an intermediate setting gave 4.00 there). WHAT MOVED IT: REPEL 1.6 to 2.8 and BASE_REST 3.4 to 5.0 on free, REPEL 2.0 and BASE_REST 2.9 on focus, ring minimum 9 to 12 and ring gap 2.2 to 4.2, and the cube new nodes start in (8 to 14 units). The 2026-09-18 note that REPEL and BASE_REST alone move the spread by less than noise held for a first attempt too: the layout cools in about 130 frames and never reaches equilibrium, so where nodes START matters as much. Label overlap hiding and the GLB and splat radii (radiusOf, resolveOverlaps) are untouched: rest lengths still never go below the radii the nodes need." .
 
 # =============================================================================
 ## F99.1: Approving a voiced task from the phone — and why the phone gets only
@@ -9261,7 +9388,7 @@ kb:meta-graph-view kpred:decided "MATT, 2026-10-06, SETS LIVE IN THE TTLS: 'Sets
 kb:space-file-layout rdf:type ktype:Feature ;
     rdfs:label "One self-contained space: its folder, its schema, and the order of one large Turtle file" ;
     kpred:feature-id "F107.10" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:part-of kb:stabilization-trust-boundaries ;
     kpred:relates-to kb:canonical-graph-package ;
     kpred:relates-to kb:workspace-index ;
@@ -10185,6 +10312,55 @@ kb:game-genre-templates rdf:type ktype:Phase ;
     kpred:principle "TEMPLATES BEFORE GENERATED CODE. A template with parameters is checkable by rule (script tier); free-form generated game code is not, and fails in ways a reviewer cannot see from a screenshot. Generated code, if ever, extends a template behind review." ;
     kpred:remaining "Everything. Do not start before the browser-only asset tutorial exists and phase 1 of F143 (one real canon) has been tried." .
 
+## =============================================================================
+## F260: A simulator, so a reckoning can be RUN instead of argued (Matt, 2026-10-20)
+## =============================================================================
+## "Build a simulator, and then we reckon it. reckoning text and reckoning 3d spatial problems also."
+## Matt chose the 3D physical scene: the graph is the scene, and a spatial reckoning's proposals are
+## simulated and checked against the target.
+
+kb:reckoning-simulator rdf:type ktype:Feature ;
+    rdfs:label "Reckoning simulator — a 3D physical scene that runs each proposal against the target" ;
+    kpred:feature-id "F260" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:reckoning-composition ;
+    kpred:relates-to kb:game-genre-templates ;
+    kpred:decided "Matt, 2026-10-20: build a simulator and reckon it; reckon text problems and 3D spatial problems. Asked what to simulate, he chose a 3D physical scene (over a process simulator or one engine for both)." ;
+    kpred:description "A space can be a physical scene: nodes are rigid bodies (shape, mass, friction, restitution, static or dynamic, start pose from the existing placement settings). A spatial reckoning takes that scene as the SITUATION, a TARGET written as text plus checkable conditions (A inside region R, A rests on B, nothing falls below the floor, A reaches height h), and returns PROPOSALS as structured scene edits (move, add, remove, change a property, apply an impulse). Each proposal is simulated for a fixed time and scored against the conditions; the reckoning shows which proposals actually reached the target, with the final poses and a replay, and accepted edits arrive as pending facts for review." ;
+    kpred:principle "A PROPOSAL THAT CLAIMS TO WORK IS NOT EVIDENCE THAT IT WORKS (the mission's thesis applied to reckoning). Today a reckoning's proposals are argued from the graph; a simulated proposal is checked. The verifier is deterministic code (script tier): the language model proposes, the simulator and the condition checks decide." ;
+    kpred:principle "ONE SCENE, TWO RUNTIMES. The same simulation module runs in a browser Web Worker (replay in the 3D graph) and headless in Node (MCP kb_reckoning, CI determinism tests), on Rapier (WASM, Apache-2.0) with a fixed timestep." ;
+    kpred:constraint "Determinism is claimed only as far as it is tested: same build, same inputs, same steps give the same poses (checked in CI). A proposal edit is schema-validated before it is simulated; nothing from a model executes as code. Simulation is bounded in steps and bodies. Text reckoning keeps working unchanged; spatial reckoning is an addition, not a replacement." ;
+    kpred:open-question "How are body shapes taken from rich assets — the GLB's bounding box, a convex hull, or a splat's extent — and is a visibly wrong collision shape acceptable in phase 1?" ;
+    kpred:has-phase kb:sim-core ;
+    kpred:has-phase kb:sim-spatial-reckoning ;
+    kpred:has-phase kb:sim-replay .
+
+kb:sim-core rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — scene from graph, Rapier step, condition checks (headless and worker)" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 1 ;
+    kpred:has-status "planned" ;
+    kpred:description "Pure scene-from-statements reader (body meta predicates on nodes, reusing the placement predicates for pose); a Rapier world built from it; a fixed-step runner returning final poses and a sampled trajectory; a small condition vocabulary evaluated deterministically. One purpose-built example space (e.g. a ramp, a ball and a cup) to prove it. Unit tests: determinism across two runs, each condition true and false." ;
+    kpred:remaining "Everything." .
+
+kb:sim-spatial-reckoning rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — spatial reckoning: proposals as scene edits, simulated and scored" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "The reckoning page and kb_reckoning accept a physical scene as the situation and conditions as the target; the model returns edits in a validated schema; each is simulated and scored; the result lists pass or fail per proposal with the evidence (which condition, final poses). Measured: how often a proposal the model presents as working fails in simulation." ;
+    kpred:remaining "Everything." .
+
+kb:sim-replay rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — replay in the 3D graph view" ;
+    kpred:part-of kb:reckoning-simulator ;
+    hnav:order 3 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:sim-core ;
+    kpred:description "Play a simulated run in the 3D graph view from its trajectory, with a scrubber; compare two proposals side by side. The graph's own force layout is paused for nodes that are bodies in the scene." ;
+    kpred:remaining "Everything." .
+
 ## Getting started "Create" chapter, zoom-to-leap and a showcase splat (Matt, 2026-10-20)
 ## "We need to do a good story mode version of this image gen, then 3d splat gen, for the getting
 ## started space. ... make leaps/jumps from space to space work by zooming into a node closely, and set
@@ -10258,3 +10434,10 @@ kb:doorway-leap rdf:type ktype:Phase ;
     kpred:principle "OUR OWN RENDERER, NOT A SANDBOXED EXAMPLE. The doorway is code in the graph renderer because walking through needs the graph's camera; a threejs.org example runs in an isolated frame with its own camera and cannot share it (kb:threejs-example-nodes). Ideas can be borrowed from the examples; their code is not executed here." ;
     kpred:constraint "The inside view renders only while the door is near and on screen, and loads its preview lazily; frame time is measured with and without it. Crossing is detected as the camera's path crossing the opening between two frames, never by distance alone, so orbiting past the door does not leap. Automatic camera moves never cross." ;
     kpred:remaining "Everything." .
+
+# ── v0.2.6 close-out, 2026-10-21 (agent) ──────────────────────────────────────
+kb:document-evidence-anchors kpred:progress "2026-10-21: planned → in-progress. All four phases (F122.1.1-.4) are functional. The feature's DONE WHEN is not yet met in two of its five parts: no test uses a rotated multi-page fixture (grep of src/**/*.test.ts for 'rotat' finds only 3D tests), and no test asserts that graph publication excludes the original document bytes. It stays below functional until those two are tested." .
+
+kb:space-file-layout kpred:progress "2026-10-21: planned → in-progress. The 0.2.6 slice Matt decided on 2026-10-13 (FOLD CHUNKS ONLY) is functional: F107.10.1-.3. Moving retained originals into the space folder is the decided 0.2.7 follow-up, so the whole feature is not functional yet." .
+
+kb:release-0-2-6 kpred:proposed "AGENT, 2026-10-21, NOT DECIDED — CLOSE-OUT. The release ends 2026-10-22, three days past its 2026-10-18 cut. Of the three headline parts, F107.10 and F122.1 are in-progress with every phase functional (see their progress notes), and F223 is planned: F223.1 is PR #462, and F223.2-.4 have not started. Proposal: F223.1 lands in 0.2.6 if Matt approves #462, and F223.2-.4 move to 0.2.7 with the same reason as the 2026-10-13 cut (moved because not started, not dropped). A dev → staging promotion carries all of dev, about 272 commits on 2026-10-21. That includes work outside the 0.2.6 scope that went to dev anyway: F58.9 splats and room scans, F166.1 generated assets, and Three.js examples as nodes and backgrounds. The promotion notes should list those as carried, not as 0.2.6 headline work." .
