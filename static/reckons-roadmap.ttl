@@ -9991,11 +9991,14 @@ kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (k
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
     rdfs:label "Term ratchet counts prose only, not code identifiers" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:description "The ambiguity ratchet (F203.6) should count the ambiguous words in prose (comments, user-facing strings, docs) and skip code identifiers such as the Statement type and statement.excerpt, which cannot be renamed without a rewrite. Today every new feature about statements or sources fails the ratchet on identifiers alone and the baseline is raised by hand." ;
     kpred:decided "MATT, 2026-10-13: the ratchet counts prose only. Evidence: six baseline raises on 2026-10-13, all caused by domain identifiers rather than by ambiguous prose (F122.1.4 in #456 raised statement by 25, source by 28 and node by 1 after its prose was trimmed)." ;
-    kpred:part-of kb:release-0-2-7 .
-kb:release-0-2-7 kpred:has-part kb:term-ratchet-prose-only .
+    kpred:part-of kb:release-0-2-6 ;
+    kpred:has-file "scripts/offline/term-usage.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/term-usage.test.ts" ;
+    kpred:progress "2026-10-21: built and moved from v0.2.7 to v0.2.6, because it blocked five open PRs (F223.1 #462 among them) on identifiers alone. proseMask marks comments, string literals and template text as prose; Svelte markup text is prose, while tags and {expressions} are code; docs are all prose. Baselines moved to the prose measure, and every one went down (statement 5306 to 974). Weakness: regex literals are not recognized, so a quote inside one can mark the rest of that line as prose; that errs toward counting." .
+kb:release-0-2-6 kpred:has-part kb:term-ratchet-prose-only .
 
 kb:ui-term-audit rdf:type ktype:Feature ;
     rdfs:label "UI terms audit — engineering words and the wrong sense of a word, found on screen by rule" ;
@@ -10441,3 +10444,28 @@ kb:document-evidence-anchors kpred:progress "2026-10-21: planned → in-progress
 kb:space-file-layout kpred:progress "2026-10-21: planned → in-progress. The 0.2.6 slice Matt decided on 2026-10-13 (FOLD CHUNKS ONLY) is functional: F107.10.1-.3. Moving retained originals into the space folder is the decided 0.2.7 follow-up, so the whole feature is not functional yet." .
 
 kb:release-0-2-6 kpred:proposed "AGENT, 2026-10-21, NOT DECIDED — CLOSE-OUT. The release ends 2026-10-22, three days past its 2026-10-18 cut. Of the three headline parts, F107.10 and F122.1 are in-progress with every phase functional (see their progress notes), and F223 is planned: F223.1 is PR #462, and F223.2-.4 have not started. Proposal: F223.1 lands in 0.2.6 if Matt approves #462, and F223.2-.4 move to 0.2.7 with the same reason as the 2026-10-13 cut (moved because not started, not dropped). A dev → staging promotion carries all of dev, about 272 commits on 2026-10-21. That includes work outside the 0.2.6 scope that went to dev anyway: F58.9 splats and room scans, F166.1 generated assets, and Three.js examples as nodes and backgrounds. The promotion notes should list those as carried, not as 0.2.6 headline work." .
+
+# ── Automated dev review, and a generated room (Matt, 2026-10-21) ─────────────
+
+kb:dev-review-orchestrator rdf:type ktype:Feature ;
+    rdfs:label "Automated dev review — every PR into dev checked, reviewed and merged by orchestrated agents" ;
+    kpred:feature-id "F33.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:release-pipeline ;
+    kpred:decided "MATT, 2026-10-21: 'I don't want to approve every merge to dev... I want to approve before features are staged, and then after reviewing staging for the version that all gets promoted to main (the most important review).' And: 'For mis-alignment, or terminology ratchet, you should fix the issues. We need to maintain a claude orchestrated review for dev, all automated.' So dev has no human gate: agents check, fix and merge. Matt's two reviews are the staging promotion and staging to main." ;
+    kpred:description "One script runs the dev gate for each open PR into dev: confirm base dev, wait for CI, run the script tier, and for a PR that changes UI files (src/**/*.svelte, src/lib/3d, routes) run visual:local against a preview of the branch, with the local vision model answering the narrow visual questions it is good at. Failures are routed instead of reported: a ratchet, alignment or regenerated-file failure goes to an agent that fixes it on the branch, and a design question goes into the staging review notes for Matt. A green PR merges with no human step." ;
+    kpred:principle "TIERS, ENFORCED BY THE SCRIPT RATHER THAN REMEMBERED. On 2026-10-21 a whole session ran no local-model job and no visual:local run on its own UI change, though AGENTS.md says to; the same happened on 2026-07-18. A rule an agent must remember is skipped under load. The orchestrator makes the cheap tiers the default path: scripts first, local models for visual and many-item judgments, and Sonnet only for fixes and reviews that need reading code." ;
+    kpred:constraint "The auto-mode classifier blocks some dev-level actions (a subagent merging, or editing ratchet baselines) as 'merge without review' or 'CI bypass'. The orchestrator must work inside it. Where it cannot, the fix is a permission rule Matt adds once, not a per-PR approval." ;
+    kpred:open-question "Where does it run? Session-driven (like the queue worker: only while a Claude Code session is active, on the subscription) or CI-hosted (a GitHub Action calling Claude needs a metered API key, the separate rail in funding-and-inference-cost). Recommend session-driven first: it already has the heartbeat, the GPU gate and the local models." ;
+    kpred:remaining "Nothing in the repository yet (2026-10-21). A scratch merge-when-green script (base dev, CLEAN state, retry on UNKNOWN) has merged 9 PRs today at zero tokens; it is the first piece to check in." ;
+    kpred:relates-to kb:work-tiering, kb:local-panel .
+
+kb:prompt-generated-room rdf:type ktype:Phase ;
+    rdfs:label "Generated room — a space background made from a text prompt" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:space-photorama ;
+    kpred:decided "MATT, 2026-10-21: 'Synthetic room splat is not loading. I think we need a prompt generated room. Similar to the object generation I've seen through image to splat.'" ;
+    kpred:description "A person types a room ('a cosy study with bookshelves and a window at dusk') and gets a background that surrounds the graph. Cheapest path first: text to an equirectangular 360-degree panorama with a local image model, shown as a sphere around the graph. Three.js draws that natively, so it needs no splat at all, and it is the Phase 1 panorama this feature already plans. Second path, to evaluate: panorama or multi-view images to a splat, so the room has depth when the camera moves." ;
+    kpred:constraint "TripoSplat makes OBJECTS from one image; a room seen from the inside is not an object, so the object path does not stretch to it (the 2026-10-14 handoff predicted this). Which open models can make a seamless 360-degree panorama locally, and under which licence, has not been checked; the trial starts by checking that." ;
+    kpred:honest-note "On Matt's question, 'I don't think three.js is generat-able open source currently': a Three.js scene is JavaScript, so a local code model can WRITE one (a procedural room of boxes, lights and materials, the way Slow Roads builds scenery from parameters), but no open model is known here that turns a prompt into a finished Three.js scene file. Generated images and splats are the established open path; a code-written procedural room is a cheaper experiment worth one trial." ;
+    kpred:relates-to kb:generation-coupling, kb:room-scene-space .
