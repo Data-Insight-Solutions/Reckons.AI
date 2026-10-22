@@ -1,5 +1,5 @@
 {
-  "built": 171,
+  "built": 172,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -431,7 +431,7 @@
       "factHash": "55f776935b6b145b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "216448dcb203bfea"
+      "pageHash": "8466277ceb82529f"
     },
     {
       "path": "features/agent-setup",
@@ -566,7 +566,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "a7b41ed9516044ab"
+      "pageHash": "4737c5beb63f7f40"
     },
     {
       "path": "features/passage-grounding",
@@ -578,13 +578,22 @@
       "pageHash": "ad4d23baf113b499"
     },
     {
+      "path": "features/physical-scene-simulator",
+      "entity": "urn:reckons:feature/SimCore",
+      "graph": "docs-features.ttl",
+      "factHash": "81cf4041f76dca8e",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "ef2b8aa175af2115"
+    },
+    {
       "path": "features/pod-view",
       "entity": "urn:reckons:feature/PodView",
       "graph": "docs-features.ttl",
       "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "5f38a0734fe17592"
+      "pageHash": "97c0b73067f7a36c"
     },
     {
       "path": "features/prefer-local",
@@ -593,7 +602,7 @@
       "factHash": "cd3c8fce000a8bae",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "8230a8f42ec71c7f"
+      "pageHash": "e99dcbc76588c2e8"
     },
     {
       "path": "features/published-docs",
@@ -602,7 +611,7 @@
       "factHash": "59ce634b4e121abf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "75ad8e36f214281c"
+      "pageHash": "a2fcd6cec8380d27"
     },
     {
       "path": "features/review-system",
@@ -611,7 +620,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "b0bfa6c04aced89b"
+      "pageHash": "df3c91acdd002e7d"
     },
     {
       "path": "features/review-workbench",
@@ -620,7 +629,7 @@
       "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1026dbda742577b9"
+      "pageHash": "d446d9a47a9ccda2"
     },
     {
       "path": "features/shelly",
@@ -629,7 +638,7 @@
       "factHash": "9ce7701798b1640b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "99a79d9c7a709575"
+      "pageHash": "347b9f5f923f0861"
     },
     {
       "path": "features/source-refresh",
@@ -638,7 +647,7 @@
       "factHash": "7c2f9667eaeaf25a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1543f0a3e1727628"
+      "pageHash": "f78d90c6014894c4"
     },
     {
       "path": "features/story-system",
@@ -647,7 +656,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "4e3b946ffdf2fc8f"
+      "pageHash": "888749b51bd1a31b"
     },
     {
       "path": "features/text-chunking",
@@ -656,7 +665,7 @@
       "factHash": "cbb1c67122d6a9f6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "2c14c0f15583d816"
+      "pageHash": "24c5684ec1546163"
     },
     {
       "path": "features/threejs-examples",
@@ -665,7 +674,7 @@
       "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "6df151f23c3049a0"
+      "pageHash": "d3e14754b5e7dbda"
     },
     {
       "path": "guide/getting-started",
@@ -908,7 +917,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "c6cafb2bbe80691b"
+      "pageHash": "f10d258dcf9b4ac3"
     },
     {
       "path": "project/where-it-is-going",

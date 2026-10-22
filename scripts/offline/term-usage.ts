@@ -233,9 +233,39 @@ export function insideTag(line: string, at: number): boolean {
  *
  * A character scanner, not a parser: `//` and block comments, quoted strings (which end at the line
  * end if unclosed) and template literals (which may span lines; their `${...}` parts are code).
- * Regex literals are not recognized, so a quote inside one can mark the rest of that line as
- * prose. That errs toward counting, which is the safe side for a gate.
+ * Two kinds of literal are CODE, not prose: a module specifier (`from '../statement-evidence'`,
+ * `import('…')`, `require('…')`), which names a file and cannot be reworded without renaming it;
+ * and a regex literal, recognized by what precedes the `/` (an operator, an opening bracket, a
+ * comma, `return`, or the line start). Before regexes were recognized, a backtick or quote inside
+ * one opened a string that never closed, and a whole test file after it counted as prose
+ * (sim.test.ts, 2026-10-21). A `/` the scanner cannot place is treated as division.
  */
+const REGEX_AFTER = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|in|of|delete|void|throw|new|yield|await))\s*$/;
+const SPECIFIER_AFTER = /(?:\bfrom|\bimport|\bimport\s*\(|\brequire\s*\()\s*$/;
+
+/** Index of the `/` closing a regex literal that opens at `start`, or -1 if none on the line. */
+function regexEnd(line: string, start: number): number {
+  let inClass = false;
+  for (let j = start + 1; j < line.length; j++) {
+    const c = line[j];
+    if (c === '\\') { j++; continue; }
+    if (c === '[') inClass = true;
+    else if (c === ']') inClass = false;
+    else if (c === '/' && !inClass) return j;
+  }
+  return -1;
+}
+
+/** Index of the quote closing a string that opens at `start`, or the line end. */
+function stringEnd(line: string, start: number): number {
+  const q = line[start];
+  for (let j = start + 1; j < line.length; j++) {
+    if (line[j] === '\\') { j++; continue; }
+    if (line[j] === q) return j;
+  }
+  return line.length - 1;
+}
+
 export type ProseState = { inBlockComment: boolean; inTemplate: boolean };
 export const freshProseState = (): ProseState => ({ inBlockComment: false, inTemplate: false });
 
@@ -271,6 +301,11 @@ export function proseMask(line: string, state: ProseState): boolean[] {
     }
     if (c === '/' && next === '/') { for (let j = i; j < line.length; j++) mask[j] = true; break; }
     if (c === '/' && next === '*') { mask[i] = mask[i + 1] = true; i++; state.inBlockComment = true; continue; }
+    if (c === '/' && REGEX_AFTER.test(line.slice(0, i))) {
+      const end = regexEnd(line, i);
+      if (end > i) { i = end; continue; } // a regex literal is code
+    }
+    if ((c === '"' || c === "'") && SPECIFIER_AFTER.test(line.slice(0, i))) { i = stringEnd(line, i); continue; } // a module path is code
     if (c === '"' || c === "'") { quote = c; mask[i] = true; continue; }
     if (c === '`') { state.inTemplate = true; mask[i] = true; continue; }
   }

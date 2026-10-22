@@ -259,6 +259,20 @@ describe('the ratchet counts prose only (kb:term-ratchet-prose-only, Matt 2026-1
     expect(proseOf('const t = `quoted ${statement.excerpt} text`;')).toBe('`quoted  text`');
   });
 
+  it('a module path is code, not prose', () => {
+    expect(proseOf(`import { checkAnchor } from '../ingest/statement-evidence'; // the statement`)).toBe('// the statement');
+    expect(proseOf(`const m = await import('./source-chunks');`)).toBe('');
+    expect(proseOf(`export * from "./statement";`)).toBe('');
+  });
+
+  it('a regex literal is code, and a quote or backtick inside it opens nothing', () => {
+    const st = freshProseState();
+    expect([...'const re = /(^kb:ball[^"]*")`/m;'].filter((_, i) => proseMask('const re = /(^kb:ball[^"]*")`/m;', st)[i]).join('')).toBe('');
+    expect(st.inTemplate).toBe(false);
+    // Division is not a regex: the string after it is still prose.
+    expect(proseOf(`const half = total / 2; const t = 'a statement';`)).toBe(`'a statement'`);
+  });
+
   it('carries block comments and template literals across lines', () => {
     const st = freshProseState();
     proseMask('/** A statement', st);

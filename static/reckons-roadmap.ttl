@@ -10326,7 +10326,7 @@ kb:game-genre-templates rdf:type ktype:Phase ;
 kb:reckoning-simulator rdf:type ktype:Feature ;
     rdfs:label "Reckoning simulator — a 3D physical scene that runs each proposal against the target" ;
     kpred:feature-id "F260" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:relates-to kb:reckoning-composition ;
     kpred:relates-to kb:game-genre-templates ;
     kpred:decided "Matt, 2026-10-20: build a simulator and reckon it; reckon text problems and 3D spatial problems. Asked what to simulate, he chose a 3D physical scene (over a process simulator or one engine for both)." ;
@@ -10343,9 +10343,13 @@ kb:sim-core rdf:type ktype:Phase ;
     rdfs:label "Phase 1 — scene from graph, Rapier step, condition checks (headless and worker)" ;
     kpred:part-of kb:reckoning-simulator ;
     hnav:order 1 ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
+    kpred:has-file "src/lib/sim/scene.ts", "src/lib/sim/world.ts", "src/lib/sim/conditions.ts", "src/lib/sim/ttl.ts", "src/lib/sim/sim.worker.ts", "scripts/sim/run.ts", "static/starter-sim-ramp-cup.ttl" ;
+    kpred:tested-by "src/lib/sim/__tests__/sim.test.ts" ;
     kpred:description "Pure scene-from-statements reader (body meta predicates on nodes, reusing the placement predicates for pose); a Rapier world built from it; a fixed-step runner returning final poses and a sampled trajectory; a small condition vocabulary evaluated deterministically. One purpose-built example space (e.g. a ramp, a ball and a cup) to prove it. Unit tests: determinism across two runs, each condition true and false." ;
-    kpred:remaining "Everything." .
+    kpred:remaining "Not built: any reckoning integration (phase 2), any replay or UI (phase 3). The worker wrapper has only a smoke test of its message handler in Node, not a test inside a real browser Worker. Poses carry yaw from the existing placement predicates plus an added sim-tilt (degrees about z) because a ramp needs a slope; a body has no other pitch or roll at the start. Regions for inside() are axis-aligned boxes. Rapier is not imported by any app code yet, so its effect on the browser bundle is zero today and must be re-measured when phase 3 loads it." ;
+    kpred:measured "DETERMINISM, tested 2026-10-20 on rapier3d-compat 0.21.0, Node 22: two runs of static/starter-sim-ramp-cup.ttl (600 steps, dt 1/60) gave identical final poses and identical sampled trajectories compared as JSON of the unrounded numbers. Same build and inputs only; not tested across engine versions, browsers or CPUs." ;
+    kpred:measured "EXAMPLE, run 2026-10-20 with npm run sim:run: as given (ball placed-at 0.6 1.25 0) FAIL inside(ball, cup-zone), the ball rests at x=2.116 after rolling back from the cup lip, exit 1; with the ball moved higher up the ramp (placed-at -1.5 1.9 0) PASS, the ball rests at x=5.750 against the cup's back wall, exit 0. aboveFloor(all, -0.1) passes in both." .
 
 kb:sim-spatial-reckoning rdf:type ktype:Phase ;
     rdfs:label "Phase 2 — spatial reckoning: proposals as scene edits, simulated and scored" ;
