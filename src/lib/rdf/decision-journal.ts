@@ -174,7 +174,11 @@ function candidates(v: DecisionVerdict, statements: readonly Statement[]): State
   return statements.filter((st) =>
     st.s.value === v.subject
     && st.p.value === v.predicate
-    && (st.status === 'pending' || st.status === 'pending-removal'));
+    && (st.status === 'pending' || st.status === 'pending-removal')
+    // A reject carrying `objects` speaks only to those objects: independent findings sharing
+    // subject+predicate must not be rejected by a verdict about one of them. A reject with no
+    // `objects` is a legacy whole-decision reject and keeps matching every sibling.
+    && (v.verdict !== 'reject' || !v.objects || v.objects.includes(st.o.value)));
 }
 
 /**

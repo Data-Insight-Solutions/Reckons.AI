@@ -232,7 +232,9 @@ async function main(): Promise<void> {
       console.log(`  ✓ ${name} — ${text.split(/\s+/).length} words`);
       rows.push(JSON.stringify({
         subject, predicate: DESCRIPTION, object: text, objectKind: 'literal',
-        type: 'suggestion', agent: `offline:docs-expand:${MODEL}`, priority: 'low',
+        // The pages it drafts for live in the docs space (static/docs-all.ttl). An unscoped row is
+        // retained by the drain rather than imported, so omitting this silently delivers nothing.
+        type: 'suggestion', kb: 'docs', agent: `offline:docs-expand:${MODEL}`, priority: 'low',
         addedAt: new Date().toISOString(),
         note: `Drafted from the graph because this page carries only ${proseWeight(subject)} words `
           + `of prose (threshold ${MIN_WORDS}). A LOCAL model wrote it; nothing has verified it is `

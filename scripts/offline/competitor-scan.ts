@@ -36,6 +36,7 @@
  */
 import { execFileSync } from 'child_process';
 import { queueFindings } from './pending-queue.ts';
+import { sameLicense } from './license-compare.ts';
 import { readFileSync, existsSync, appendFileSync } from 'fs';
 import { Parser } from 'n3';
 
@@ -216,7 +217,7 @@ for (const k of known) {
   // A LICENSE CHANGE IS THE ONE FINDING THAT CAN BITE. If a repo we copied from relicensed,
   // or one we skipped became permissive, that changes what we are ALLOWED to do — and the
   // graph's kpred:copy-permitted is now lying about it.
-  if (license !== k.license) {
+  if (!sameLicense(license, k.license)) {
     findings.push({
       level: 'error',
       check: 'license-changed',

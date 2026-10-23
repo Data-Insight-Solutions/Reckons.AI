@@ -64,6 +64,7 @@
     colorOverride = null,
     tripleRank = null,
     isLeapNode = false,
+    hideShape = false,
     onclick = () => {},
     onhover = () => {}
   } = $props<{
@@ -85,6 +86,12 @@
     tripleRank?: number | null;
     /** True when this node bridges to another KB. Renders an orbiting ring. */
     isLeapNode?: boolean;
+    /**
+     * The node is drawn by something else (a loaded Gaussian splat, F58.9.2), so its marker shape
+     * is not drawn. The mesh stays, unseen, as the pick target: clicking and hovering the node work
+     * exactly as before.
+     */
+    hideShape?: boolean;
     onclick?: (e: { stopPropagation: () => void; ctrlKey?: boolean }) => void;
     onhover?: (key: string | null) => void;
   }>();
@@ -259,8 +266,10 @@
     roughness={0.20}
     metalness={0.45}
     flatShading={true}
-    transparent={focusHop === null || focusHop <= 3}
-    opacity={focusHop !== null && focusHop > 3 ? 0.35 : 1.0}
+    transparent={hideShape || focusHop === null || focusHop <= 3}
+    opacity={hideShape ? 0 : focusHop !== null && focusHop > 3 ? 0.35 : 1.0}
+    colorWrite={!hideShape}
+    depthWrite={!hideShape}
   />
 </T.Mesh>
 

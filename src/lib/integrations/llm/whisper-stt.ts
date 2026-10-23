@@ -8,6 +8,8 @@
  * The model is loaded lazily on first use and cached in the browser Cache API.
  */
 
+import { revisionFor } from './model-revisions';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let transcriber: any = null;
 let loadedModel = '';
@@ -71,6 +73,7 @@ export async function ensureWhisper(model = DEFAULT_MODEL): Promise<void> {
 
   transcriber = await pipeline('automatic-speech-recognition', model, {
     dtype: 'q8',
+    revision: revisionFor(model),
     progress_callback: (p: { status: string; progress?: number }) => {
       for (const cb of progressCallbacks) cb(p.status, p.progress);
     }

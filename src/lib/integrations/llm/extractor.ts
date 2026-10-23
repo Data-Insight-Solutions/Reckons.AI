@@ -1,6 +1,7 @@
 import type { Statement, Source } from '../../rdf/types';
 import { iri, lit } from '../../rdf/types';
 import { groundStatements } from '../../rdf/grounding';
+import { attachAnchors } from '../../ingest/source-chunks';
 import { v4 as uuid } from 'uuid';
 import { ethicsPreambleFor } from '../../safety/content-policy';
 import { EXTRACTION_TEXT_LIMIT } from '../../ingest/source-chunks';
@@ -281,7 +282,9 @@ export function triplesToStatements(
     } as Statement;
   });
 
-  return sourceText === undefined ? statements : groundStatements(statements, sourceText);
+  if (sourceText === undefined) return statements;
+  // F122.1.1: a verified quote is placed once, here, and the placement is stored on the fact.
+  return attachAnchors(groundStatements(statements, sourceText), source, sourceText);
 }
 
 /**

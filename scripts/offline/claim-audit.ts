@@ -61,6 +61,8 @@ const SURFACES = [
   'COUNSEL-BRIEF.md',
   'src/app.html',
   'src/lib/components/LandingPage.svelte',
+  // About page added 2026-10-14 (MATT: regular audits of all landing pages and documentation).
+  'src/routes/(app)/about/+page.svelte',
 ];
 
 /** A sentence containing any of these is not asserting the feature exists today. */

@@ -1,0 +1,22 @@
+## Generation as F166 tasks (kb:generation-coupling, F58.9.1): a command, an authority boundary and an
+## independent done-when. Run deliberately, on a machine with the tools from gen-setup.sh:
+##
+##   npx tsx scripts/agent/runner.ts --graph scripts/content/generated-assets.tasks.ttl --allow-effects=source-write
+##
+## Kept OUT of reckons-workspace/tasks.ttl on purpose: that queue is drained by routine runs on
+## machines without a graphics card, and these tasks need one.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix task:  <urn:reckons:task/> .
+
+task:generate-example-assets rdf:type ktype:AgentTask ;
+    rdfs:label      "Generate the example pictures, clips and splats locally" ;
+    kpred:goal      "Run every brief in scripts/content/gen-briefs.json through the local image, video and splat tools, writing outputs and receipts under static/generated and the example space TTL." ;
+    kpred:tier      "script" ;
+    kpred:effect    "source-write" ;
+    kpred:command   "npx tsx scripts/content/gen-assets.ts" ;
+    kpred:done-when "npx tsx scripts/content/gen-assets.ts --check" ;
+    kpred:task-state "open" .

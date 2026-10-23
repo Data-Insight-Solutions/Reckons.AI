@@ -19,4 +19,4 @@ One person moves between all five as their work changes: research until there is
 
 **Principle**
 
-The sharing direction is researcher -&gt; LEARNER, and it only works if review happened. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest.
+The sharing direction is researcher -&gt; LEARNER (the person the story is shared with), and it only works if review happened. A story built on unreviewed facts teaches someone a graph nobody checked, with all the authority of a finished artifact and none of the verification. Review is not admin overhead in front of the fun part; it is what makes the sharing honest.

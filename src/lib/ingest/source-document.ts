@@ -101,3 +101,58 @@ export const UNPLACED_REASON: Record<UnplacedReason, string> = {
 
 export const EMPTY_PASSAGE_NOTE =
   'No statement was placed in this passage. This does not mean it was skipped: which passages extraction read is not recorded yet.';
+
+/**
+ * F122.1.4 — "Open in source": where a fact's supporting span sits in the kept text.
+ *
+ * Prefers a stored anchor (a text span; F122.1.1 adds it to the fact later, nothing stores one
+ * yet) and falls back to finding the saved quote in the kept text, the same way the Evidence
+ * section does. A stored span is used only if the kept text at that span is still the quote;
+ * otherwise it is ignored, never trusted. Returns null when the quote cannot be found, and the
+ * caller must say so: opening the document at the top as if it had worked would be pretending.
+ */
+export type StoredSpan = { start: number; end: number };
+
+export type PassageJump = {
+  chunkIndex: number;
+  /** Text of the passage before, inside and after the supporting span (all within that passage). */
+  before: string;
+  highlight: string;
+  after: string;
+  via: 'stored-anchor' | 'quote-match';
+};
+
+export function locatePassageJump(
+  text: string | null | undefined,
+  statement: Pick<Statement, 'excerpt' | 'grounded'>,
+  stored?: StoredSpan | null,
+  opts: ChunkOptions = {},
+): PassageJump | null {
+  const excerpt = statement.excerpt?.trim();
+  if (!text || !excerpt || statement.grounded === false) return null;
+  const chunks = chunkText(text, opts);
+  let start = -1;
+  let end = -1;
+  let via: PassageJump['via'] = 'quote-match';
+  if (stored && stored.start >= 0 && stored.end > stored.start && stored.end <= text.length
+      && text.slice(stored.start, stored.end).trim() === excerpt) {
+    start = stored.start; end = stored.end; via = 'stored-anchor';
+  } else {
+    const anchor = anchorExcerpt(text, excerpt, chunks);
+    if (!anchor) return null;
+    start = anchor.start; end = anchor.end;
+  }
+  const chunk = chunks.find((c) => start >= c.start && start < c.end);
+  if (!chunk) return null;
+  const hlEnd = Math.min(end, chunk.end);
+  return {
+    chunkIndex: chunk.index,
+    before: text.slice(chunk.start, start),
+    highlight: text.slice(start, hlEnd),
+    after: text.slice(hlEnd, chunk.end),
+    via,
+  };
+}
+
+export const JUMP_NOT_FOUND =
+  'The saved quote could not be found in the text that was kept, so no passage is marked. The text may have changed since this was extracted.';

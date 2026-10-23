@@ -85,6 +85,9 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-codebase ,
         graph:reckons-competitive ,
         graph:reckons-generation-tools ,
+        graph:reckons-ci ,
+        graph:review-0-2-6 ,
+        graph:review-0-2-7 ,
         graph:reckons-jobs ,
         graph:reckons-production ,
         graph:reckons-roadmap ,
@@ -96,10 +99,14 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-vocabulary ,
         graph:starter-assets ,
         graph:starter-everyday ,
+        graph:starter-everyday-reviewed ,
+        graph:starter-generated-assets ,
         graph:starter-guide ,
         graph:starter-quickstart ,
+        graph:starter-sim-ramp-cup ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
+        graph:starter-your-room ,
         graph:website ,
         graph:website-status .
 
@@ -190,6 +197,12 @@ graph:reckons-generation-tools a void:Dataset ;
     dcterms:type role:reference ;
     dcterms:source "static/reckons-generation-tools.ttl" .
 
+graph:reckons-ci a void:Dataset ;
+    dcterms:title "CI checks and merge protection" ;
+    dcterms:type role:observed ;
+    dcterms:source "static/reckons-ci.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/ci-graph.ts> .
+
 graph:reckons-jobs a void:Dataset ;
     dcterms:title "Offline jobs" ;
     dcterms:type role:observed ;
@@ -238,15 +251,47 @@ graph:reckons-vocabulary a void:Dataset ;
     dcterms:type role:reference ;
     dcterms:source "static/reckons-vocabulary.ttl" .
 
+graph:review-0-2-6 a void:Dataset ;
+    dcterms:title "Release review: v0.2.6" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/review-0.2.6.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
+
+graph:review-0-2-7 a void:Dataset ;
+    dcterms:title "Release review: v0.2.7" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/review-0.2.7.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
+
 graph:starter-assets a void:Dataset ;
     dcterms:title "Starter: assets" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-assets.ttl" .
 
+graph:starter-sim-ramp-cup a void:Dataset ;
+    dcterms:title "Starter: simulator ramp and cup" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-sim-ramp-cup.ttl" .
+
+graph:starter-generated-assets a void:Dataset ;
+    dcterms:title "Starter: generated assets" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-generated-assets.ttl" .
+
+graph:starter-your-room a void:Dataset ;
+    dcterms:title "Starter: your room" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-your-room.ttl" .
+
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-everyday.ttl" .
+
+graph:starter-everyday-reviewed a void:Dataset ;
+    dcterms:title "Starter: everyday, reviewed (generated, F248)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-everyday-reviewed.ttl" .
 
 graph:starter-guide a void:Dataset ;
     dcterms:title "Starter: guide" ;

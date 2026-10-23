@@ -222,6 +222,106 @@ export function insideTag(line: string, at: number): boolean {
   return before.lastIndexOf('<') > before.lastIndexOf('>');
 }
 
+/**
+ * PROSE OR CODE (kb:term-ratchet-prose-only; Matt, 2026-10-13: "the ratchet counts prose only").
+ *
+ * The ratchet exists to stop new AMBIGUOUS WORDING, and wording lives in comments, string literals,
+ * markup text and docs. An identifier such as the `Statement` type or `statementId` cannot be
+ * qualified without a rename, so counting it made every feature about statements or sources fail
+ * on names alone (six baseline raises on 2026-10-13, none of them prose). The rename-cost report
+ * still counts every segment; only the ratchet reads this mask.
+ *
+ * A character scanner, not a parser: `//` and block comments, quoted strings (which end at the line
+ * end if unclosed) and template literals (which may span lines; their `${...}` parts are code).
+ * Two kinds of literal are CODE, not prose: a module specifier (`from '../statement-evidence'`,
+ * `import('…')`, `require('…')`), which names a file and cannot be reworded without renaming it;
+ * and a regex literal, recognized by what precedes the `/` (an operator, an opening bracket, a
+ * comma, `return`, or the line start). Before regexes were recognized, a backtick or quote inside
+ * one opened a string that never closed, and a whole test file after it counted as prose
+ * (sim.test.ts, 2026-10-21). A `/` the scanner cannot place is treated as division.
+ */
+const REGEX_AFTER = /(?:^|[(,=:[!&|?{};+\-*%<>~^]|\b(?:return|typeof|case|in|of|delete|void|throw|new|yield|await))\s*$/;
+const SPECIFIER_AFTER = /(?:\bfrom|\bimport|\bimport\s*\(|\brequire\s*\()\s*$/;
+
+/** Index of the `/` closing a regex literal that opens at `start`, or -1 if none on the line. */
+function regexEnd(line: string, start: number): number {
+  let inClass = false;
+  for (let j = start + 1; j < line.length; j++) {
+    const c = line[j];
+    if (c === '\\') { j++; continue; }
+    if (c === '[') inClass = true;
+    else if (c === ']') inClass = false;
+    else if (c === '/' && !inClass) return j;
+  }
+  return -1;
+}
+
+/** Index of the quote closing a string that opens at `start`, or the line end. */
+function stringEnd(line: string, start: number): number {
+  const q = line[start];
+  for (let j = start + 1; j < line.length; j++) {
+    if (line[j] === '\\') { j++; continue; }
+    if (line[j] === q) return j;
+  }
+  return line.length - 1;
+}
+
+export type ProseState = { inBlockComment: boolean; inTemplate: boolean };
+export const freshProseState = (): ProseState => ({ inBlockComment: false, inTemplate: false });
+
+/** For a CODE line, which character positions are prose. Updates `state` for the next line. */
+export function proseMask(line: string, state: ProseState): boolean[] {
+  const mask = new Array<boolean>(line.length).fill(false);
+  let quote: '"' | "'" | null = null;
+  let exprDepth = 0; // inside ${...} of a template literal
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i], next = line[i + 1];
+    if (state.inBlockComment) {
+      mask[i] = true;
+      if (c === '*' && next === '/') { mask[i + 1] = true; i++; state.inBlockComment = false; }
+      continue;
+    }
+    if (quote) {
+      mask[i] = true;
+      if (c === '\\') { mask[i + 1] = true; i++; }
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (state.inTemplate && exprDepth === 0) {
+      mask[i] = true;
+      if (c === '\\') { mask[i + 1] = true; i++; }
+      else if (c === '`') state.inTemplate = false;
+      else if (c === '$' && next === '{') { mask[i] = false; exprDepth = 1; i++; }
+      continue;
+    }
+    if (state.inTemplate && exprDepth > 0) {
+      if (c === '{') exprDepth++;
+      else if (c === '}') exprDepth--;
+      continue;
+    }
+    if (c === '/' && next === '/') { for (let j = i; j < line.length; j++) mask[j] = true; break; }
+    if (c === '/' && next === '*') { mask[i] = mask[i + 1] = true; i++; state.inBlockComment = true; continue; }
+    if (c === '/' && REGEX_AFTER.test(line.slice(0, i))) {
+      const end = regexEnd(line, i);
+      if (end > i) { i = end; continue; } // a regex literal is code
+    }
+    if ((c === '"' || c === "'") && SPECIFIER_AFTER.test(line.slice(0, i))) { i = stringEnd(line, i); continue; } // a module path is code
+    if (c === '"' || c === "'") { quote = c; mask[i] = true; continue; }
+    if (c === '`') { state.inTemplate = true; mask[i] = true; continue; }
+  }
+  return mask;
+}
+
+/** Svelte markup text is prose; a tag's inside and a `{expression}` are code. */
+export function insideMarkupExpression(line: string, at: number): boolean {
+  let depth = 0;
+  for (let i = 0; i < at; i++) {
+    if (line[i] === '{') depth++;
+    else if (line[i] === '}' && depth > 0) depth--;
+  }
+  return depth > 0;
+}
+
 function literal(quads: Quad[], subject: string, predicate: string): string | undefined {
   return quads.find((q) => q.subject.value === subject && q.predicate.value === predicate)?.object.value;
 }
@@ -286,6 +386,8 @@ export type TokenUsage = {
   excluded: number;
   files: Set<string>;
   binding: Record<BindingClass, number>;
+  /** Free occurrences in PROSE (comments, strings, markup text, docs): what the ratchet counts. */
+  freeProse: number;
   register: Record<Register, number>;
   byFile: Map<string, number>;
   bindingWhy: Map<string, number>;
@@ -305,6 +407,7 @@ export function emptyUsage(token: string, meanings: Term[] = []): TokenUsage {
     excluded: 0,
     files: new Set(),
     binding: { free: 0, contract: 0, foreign: 0 },
+    freeProse: 0,
     register: { standards: 0, frontend: 0, backend: 0, developer: 0, user: 0 },
     byFile: new Map(),
     bindingWhy: new Map(),
@@ -320,15 +423,15 @@ export function emptyUsage(token: string, meanings: Term[] = []): TokenUsage {
  * any metric it does not measure. A token that BECOMES ambiguous (a second meaning was added) has no
  * baseline yet and fails until one is recorded: deciding the baseline is the point of the gate.
  */
-export type TermRatchet = { token: string; binding: BindingClass; max: number };
+export type TermRatchet = { token: string; binding: BindingClass | 'prose'; max: number };
 
 export function readTermRatchets(ttl: string): TermRatchet[] {
   const out: TermRatchet[] = [];
   for (const m of ttl.matchAll(/kpred:term-ratchet\s+"([^"]+)"/g)) {
     const [token, binding, max] = m[1].split('/');
     const n = Number(max);
-    if (!token || !['free', 'contract', 'foreign'].includes(binding) || !Number.isInteger(n)) continue;
-    out.push({ token, binding: binding as BindingClass, max: n });
+    if (!token || !['free', 'contract', 'foreign', 'prose'].includes(binding) || !Number.isInteger(n)) continue;
+    out.push({ token, binding: binding as TermRatchet['binding'], max: n });
   }
   return out;
 }
@@ -347,7 +450,10 @@ export function checkTermRatchets(usages: TokenUsage[], ratchets: TermRatchet[])
   for (const u of usages) {
     if (u.meanings.length < 2) continue;
     const r = ratchets.find((x) => x.token === u.token);
-    const actual = r ? u.binding[r.binding] : u.binding.free;
+    // `prose` baselines (the measure since 2026-10-21) count free uses in prose only; the older
+    // `free` form, which also counted identifiers, is still read so a stray one fails loudly
+    // against its own number rather than being skipped.
+    const actual = !r || r.binding === 'prose' ? u.freeProse : u.binding[r.binding];
     if (!r) rows.push({ kind: 'unbaselined', token: u.token, actual, meanings: u.meanings.length });
     else if (actual > r.max) rows.push({ kind: 'over', token: u.token, actual, max: r.max });
     else if (actual < r.max) rows.push({ kind: 'under', token: u.token, actual, max: r.max });
@@ -366,14 +472,26 @@ export const ratchetFails = (rows: RatchetRow[]): boolean => rows.some((r) => r.
 /** One file, line by line. Exported so a test can drive it without touching the filesystem. */
 export function scanText(text: string, file: string, tokens: Map<string, TokenUsage>): void {
   const isSvelte = file.endsWith('.svelte');
+  const isDoc = file.endsWith('.md');
   let inScript = false;
   let inStyle = false;
+  const prose = freshProseState();
   for (const raw of text.split('\n')) {
+    // A rendered mermaid diagram is one huge line of SVG markup (class="node", xml:space, ...).
+    // Those are the renderer's words, not ours; counting them made adding a diagram to a docs page
+    // look like 43 new uses of "node" (F34.2). The diagram's own labels are drawn from graph text
+    // that is scanned where it is written.
+    if (raw.startsWith('<figure class="diagram')) continue;
     if (isSvelte) {
       if (/<script\b/.test(raw)) inScript = true;
       if (/<style\b/.test(raw)) inStyle = true;
     }
     const inMarkup = isSvelte && !inScript && !inStyle;
+    const isCode = !isDoc && !inMarkup && !inStyle;
+    // The <script> line itself is markup; its contents are code.
+    const codeMask = isCode && !/<script\b/.test(raw) ? proseMask(raw, prose) : null;
+    const isProseAt = (at: number): boolean =>
+      isDoc || (inMarkup ? !insideTag(raw, at) && !insideMarkupExpression(raw, at) : !!codeMask?.[at]);
     const { binding, why } = bindingOfLine(raw);
     const lineRegister = registerOfLine(raw, file);
     const words = raw.matchAll(/[A-Za-z][A-Za-z0-9_$]*/g);
@@ -391,6 +509,7 @@ export function scanText(text: string, file: string, tokens: Map<string, TokenUs
         usage.occurrences += 1;
         usage.files.add(file);
         usage.binding[binding] += 1;
+        if (binding === 'free' && isProseAt(at)) usage.freeProse += 1;
         usage.register[register] += 1;
         usage.byFile.set(file, (usage.byFile.get(file) ?? 0) + 1);
         if (why) usage.bindingWhy.set(why, (usage.bindingWhy.get(why) ?? 0) + 1);
@@ -444,11 +563,11 @@ function main(): void {
     const rows = checkTermRatchets(usages, readTermRatchets(ttl));
     console.log(C.bold('\nAMBIGUITY RATCHET — a word with several meanings may not gain bare uses'));
     for (const r of rows) {
-      if (r.kind === 'over') console.log(`  ${C.red('✗')} ${r.token}: ${r.actual} free, baseline ${r.max} — ${C.red(`${r.actual - r.max} new`)}. Use a qualified name (see its meanings in static/reckons-terminology.ttl), or raise the baseline in the same commit and say why.`);
-      else if (r.kind === 'unbaselined') console.log(`  ${C.red('✗')} ${r.token}: ${r.meanings} meanings and no baseline. Add kpred:term-ratchet "${r.token}/free/${r.actual}" in static/reckons-terminology.ttl to start the ratchet.`);
+      if (r.kind === 'over') console.log(`  ${C.red('✗')} ${r.token}: ${r.actual} free in prose, baseline ${r.max} — ${C.red(`${r.actual - r.max} new`)}. Use a qualified name (see its meanings in static/reckons-terminology.ttl), or raise the baseline in the same commit and say why.`);
+      else if (r.kind === 'unbaselined') console.log(`  ${C.red('✗')} ${r.token}: ${r.meanings} meanings and no baseline. Add kpred:term-ratchet "${r.token}/prose/${r.actual}" in static/reckons-terminology.ttl to start the ratchet.`);
       else if (r.kind === 'under') console.log(`  ${C.yellow('!')} ${r.token}: ${r.actual} free, baseline ${r.max} ${C.dim('(lower the baseline to lock the cleanup in)')}`);
       else if (r.kind === 'stale') console.log(`  ${C.yellow('!')} ${r.token}: baseline ${r.max} but the token is no longer ambiguous ${C.dim('(remove it)')}`);
-      else console.log(`  ${C.green('✓')} ${r.token}: ${r.actual} free, at baseline`);
+      else console.log(`  ${C.green('✓')} ${r.token}: ${r.actual} free in prose, at baseline`);
     }
     console.log('');
     process.exit(ratchetFails(rows) ? 1 : 0);
@@ -466,6 +585,7 @@ function main(): void {
             excluded: u.excluded,
             files: u.files.size,
             binding: u.binding,
+            freeProse: u.freeProse,
             register: u.register,
             meanings: u.meanings.map((m) => ({ id: m.id, prefLabel: m.prefLabel, binding: m.binding })),
             topFiles: [...u.byFile.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([f, n]) => ({ file: f, n })),

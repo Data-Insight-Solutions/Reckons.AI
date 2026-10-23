@@ -17,6 +17,32 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix code:   <urn:reckons:code/> .
 
+code:generation
+    rdf:type ktype:Concept ;
+    rdfs:label "Local generation story and workspace queue" ;
+    skos:definition "Typed image/video/splat requests, capability discovery, receipt verification and idempotent attachment in the originating space. Shelly uses a built-in interactive story. An optional file-queue runner invokes the existing local generation commands in private job directories." ;
+    kpred:has-file "src/lib/generation/protocol.ts" ;
+    kpred:has-file "src/lib/generation/workspace-client.ts" ;
+    kpred:has-file "src/lib/generation/attach.ts" ;
+    kpred:has-file "src/lib/components/GenerationStory.svelte" ;
+    kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" .
+
+code:sim
+    rdf:type ktype:Concept ;
+    rdfs:label "Physical scene simulator (F260 phase 1)" ;
+    skos:definition "Reads rigid bodies from node meta predicates (sim-shape, sim-mass, sim-static, sim-sensor, sim-friction, sim-restitution, sim-velocity, sim-tilt; pose from placed-at and placed-yaw), steps them with Rapier at a fixed timestep, and checks sim-condition literals (inside, restsOn, aboveFloor, reachesHeight, atRest, within). Rapier loads by dynamic import only; no app code imports this module yet. Headless runner: npm run sim:run." ;
+    kpred:has-file "src/lib/sim/scene.ts" ;
+    kpred:has-file "src/lib/sim/world.ts" ;
+    kpred:has-file "src/lib/sim/conditions.ts" ;
+    kpred:has-file "src/lib/sim/ttl.ts" ;
+    kpred:has-file "src/lib/sim/sim.worker.ts" ;
+    kpred:has-file "scripts/sim/run.ts" ;
+    kpred:has-file "static/starter-sim-ramp-cup.ttl" ;
+    kpred:tested-by "src/lib/sim/__tests__/sim.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0a-b00a-000000000010" .
 
@@ -108,6 +134,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/auto-trust.ts" ;
           kpred:has-file "src/lib/rdf/claims-context.ts" ;
           kpred:has-file "src/lib/rdf/co-hyponyms.ts" ;
+          kpred:has-file "src/lib/rdf/collections-migration.ts" ;
           kpred:has-file "src/lib/rdf/entity-sets.ts" ;
           kpred:has-file "src/lib/rdf/entity-typing.ts" ;
           kpred:has-file "src/lib/rdf/finding-class.ts" ;
@@ -367,6 +394,7 @@ code:threed  rdf:type     ktype:Concept ;
              skos:broader code:repo ;
              kpred:has-file "src/lib/3d/KnowledgeGraph.svelte" ;
              kpred:has-file "src/lib/3d/KnowledgeGraph2D.svelte" ;
+             kpred:has-file "src/lib/3d/__tests__/ply-fixture.ts" ;
              kpred:has-file "src/lib/3d/ar/ARShell.svelte" ;
              kpred:has-file "src/lib/3d/vr/VRShell.svelte" .
 
@@ -392,6 +420,8 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/merge-analysis.ts" ;
           kpred:has-file "src/lib/integrations/llm/re-analyze.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-cache.ts" ;
+          kpred:has-file "src/lib/integrations/llm/model-revisions.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/model-revisions.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/provider-status.svelte.ts" ;
           kpred:has-file "src/lib/integrations/llm/kokoro-tts.ts" ;
           kpred:has-file "src/lib/integrations/llm/whisper-stt.ts" ;
@@ -464,6 +494,9 @@ code:search  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/integrations/search/tavily.ts" .
 
 code:n8n  rdf:type     ktype:Concept ;
+          kpred:has-file "src/lib/integrations/n8n/currents-poll.ts" ;
+          kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-poll.test.ts" ;
+          kpred:tested-by "tests/e2e/currents.test.ts" ;
           rdfs:label   "n8n Integration" ;
           skos:definition "Currents sync against the n8n Currents Monitor workflow: register currents, pull new items (with a direct in-browser RSS/Atom fallback), and process arrivals into pending statements." ;
           skos:broader code:integrations ;
@@ -625,6 +658,8 @@ code:mcp-server  rdf:type     ktype:Concept ;
                  kpred:has-file "mcp-server/src/layers.ts" ;
                  kpred:has-file "mcp-server/src/pending-file.ts" ;
                  kpred:has-file "mcp-server/src/review-links.ts" ;
+                 kpred:has-file "mcp-server/src/review-sources.ts" ;
+                 kpred:has-file "mcp-server/src/__tests__/review-sources.test.ts" ;
                  kpred:has-file "mcp-server/src/validate-args.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/ollama-client.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/local-llm.test.ts" ;
@@ -703,7 +738,15 @@ code:test-visual  rdf:type     ktype:Concept ;
                   rdfs:label   "Visual Tests" ;
                   skos:definition "Screenshot-based visual regression, embed benchmarks, user story playback." ;
                   skos:broader code:tests ;
+                  kpred:has-file "scripts/visual-streams.ts" ;
+                  kpred:has-file "scripts/visual-streams/contract.ts" ;
+                  kpred:has-file "scripts/visual-streams/runner.ts" ;
+                  kpred:has-file "scripts/visual-streams/examples.json" ;
+                  kpred:tested-by "scripts/visual-streams/__tests__/contract.test.ts" ;
+                  kpred:tested-by "tests/e2e/visual-streams.test.ts" ;
                   kpred:has-file "playwright.visual.config.ts" ;
+                  kpred:has-file "playwright.extension.config.ts" ;
+                  kpred:has-file "playwright.workflows.config.ts" ;
                   kpred:has-file "tests/visual/run-embed-bench.ts" ;
                   kpred:has-file "tests/visual/embed-scoring.ts" ;
                   kpred:has-file "tests/visual/hf-model-query.ts" ;
@@ -978,5 +1021,12 @@ code:routes kpred:depends-on-module code:indico .  # 3 imports
 code:local-security-audits rdf:type ktype:Concept ;
     rdfs:label "Private local security audit services" ;
     kpred:description "Read-only Linux host probes and explicit online npm lockfile audits. Shared agent output contains aggregate counts; evidence and local policy remain private. Registered script-tier jobs provide reusable invocations without a daemon or inbound listener." ;
-    kpred:has-file "scripts/offline/host-health.ts", "scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
-    kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .
+    kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
+
+code:three-example-viewer rdf:type ktype:Concept ;
+    rdfs:label "Isolated Three.js example attachments" ;
+    skos:broader code:threed ;
+    kpred:description "Strict official-example URL metadata, an inert node editor, and a user-started sandboxed viewer. A separate static document owns the remote-code CSP and reports graphics activity, failures and heartbeat to the parent. The application's CSP is not widened." ;
+    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/BackgroundExampleControls.svelte", "src/lib/3d/three-example-session.svelte.ts", "static/three-example.html", "static/three-example.js" ;
+    kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .

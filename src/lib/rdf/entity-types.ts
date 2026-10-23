@@ -9,6 +9,8 @@
  * swap geometry without knowing about the type system directly.
  */
 
+import { GENERATION_PROVENANCE_PREDICATES as GEN } from './types';
+
 export type GeometryName =
   | 'sphere'
   | 'cylinder'
@@ -229,9 +231,75 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
     ],
     builtIn: true
   },
+  // ── Media and generation (F58.9.5) ─────────────────────────────────────────
+  // Matt, 2026-10-14: "Prompt should be a standard Entity type, also we should have Image,
+  // Video, and GLB, Splat Etc as entity types, with Generation provenance as part of the
+  // attributes of each." and "License should also be an entity type." How a thing was made is an
+  // ATTRIBUTE (schemaPredicates, hidden from the graph as nodes); what it was made from and under
+  // which license are EDGES to entities.
+  {
+    iri: 'urn:kbase:type/Prompt',
+    label: 'Prompt',
+    geometry: 'tetrahedron',
+    color: '#fbbf24',
+    description: 'The words given to an AI model to make something, such as a picture, a clip or a 3D object',
+    icon2d: '✍️',
+    schemaPredicates: ['urn:kbase:predicate/generated-with'],
+    builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/Image',
+    label: 'Image',
+    geometry: 'box-flat',
+    color: '#f472b6',
+    description: 'A picture, photographed, drawn or made by an AI model. If AI made it, the details say which model, seed and when',
+    icon2d: '🖼️',
+    schemaPredicates: [GEN[0], GEN[1], GEN[2], GEN[3]],
+    builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/Video',
+    label: 'Video',
+    geometry: 'box',
+    color: '#fb7185',
+    description: 'A short film clip, recorded or made by an AI model from a picture and a prompt',
+    icon2d: '🎞️',
+    schemaPredicates: [GEN[0], GEN[1], GEN[2], GEN[3], GEN[4]],
+    builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/Model3D',
+    label: '3D model (GLB)',
+    geometry: 'octahedron',
+    color: '#2dd4bf',
+    description: 'A 3D object you can turn and look at from any side, stored as a GLB file (a single-file 3D format)',
+    icon2d: '🧊',
+    schemaPredicates: [GEN[0], GEN[1], GEN[2], GEN[3]],
+    builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/GaussianSplat',
+    label: 'Gaussian splat',
+    geometry: 'sphere',
+    color: '#a3e635',
+    description: 'A 3D scene drawn as many small soft blobs of color (Gaussians), which you can turn and look at from any side',
+    icon2d: '☁️',
+    schemaPredicates: [GEN[0], GEN[1], GEN[2], GEN[3], GEN[5]],
+    builtIn: true
+  },
+  {
+    iri: 'urn:kbase:type/License',
+    label: 'License',
+    geometry: 'cylinder',
+    color: '#94a3b8',
+    description: 'The terms under which something may be used, copied or shared, such as MIT or Apache-2.0',
+    icon2d: '📜',
+    schemaPredicates: ['urn:kbase:predicate/spdx-id', 'urn:kbase:predicate/license-url'],
+    builtIn: true
+  },
   {
     iri: 'urn:kbase:type/EntitySet',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A user-defined grouping of entities and the relationships among them',
@@ -252,7 +320,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
    */
   {
     iri: 'http://www.w3.org/2004/02/skos/core#Collection',
-    label: 'Set',
+    label: 'Collection',
     geometry: 'torus-knot',
     color: '#a78bfa',
     description: 'A grouping of entities — members overlap rather than partition, and the group carries facts of its own',

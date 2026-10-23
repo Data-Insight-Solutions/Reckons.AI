@@ -9,6 +9,15 @@
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
 @prefix schema:  <https://schema.org/> .
 
+kb:generated-assets-story rdf:type ktype:Feature ;
+    rdfs:label "Interactive generated assets story" ;
+    kpred:has-status "functional" ;
+    kpred:description "F166.1.1 — Shelly collects an image prompt, dispatches a bounded job through an explicitly connected local workspace runner, then offers available video and Gaussian-splat derivations. Receipt and file hashes gate attachment to the originating space. Output facts remain pending review. General free-form chat dispatch and other tool adapters remain unbuilt." ;
+    kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "src/lib/stores/__tests__/story-prompt.test.ts" .
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Reckons.AI Production Status KB
 # ══════════════════════════════════════════════════════════════════════════════
@@ -23,6 +32,7 @@
 kb:reckons-ai  rdf:type          ktype:Application ;
                rdfs:label        "Reckons.AI" ;
                schema:url     "https://reckons.ai" ;
+               kpred:registered-domain "reckons.space — registered 2026-10-21 at Cloudflare, beside the other domains. Matt decided the same day that it is the root of the space registry (F217, kb:published-space-directory). NOTHING IS SERVED THERE YET." ;
                schema:codeRepository    "https://github.com/Data-Insight-Solutions/Reckons.AI" ;
                kpred:built-with  kb:sveltekit ;
                kpred:built-with  kb:typescript ;
@@ -103,6 +113,8 @@ kb:triple-extraction rdf:type    ktype:Feature ;
                     kpred:tested-by    "src/lib/integrations/llm/__tests__/extractor.test.ts" .
 
 kb:visual-testing   rdf:type     ktype:Feature ;
+                  kpred:tested-by    "scripts/visual-streams/__tests__/contract.test.ts" ;
+                  kpred:tested-by    "tests/e2e/visual-streams.test.ts" ;
                   kpred:tested-by    "tests/visual/vision-scoring.test.ts" ;
                   kpred:tested-by    "tests/visual/vision-vlm.test.ts" ;
                     rdfs:label   "Visual Testing" ;
@@ -317,8 +329,9 @@ kb:local-offload    rdf:type     ktype:Feature ;
 
 kb:currents         rdf:type     ktype:Feature ;
                     rdfs:label   "Currents" ;
-                    kpred:has-status   "functional" ;
-                    kpred:description  "F29 — streamed-ingest arrival model with an entity-type gate and per-graph meta-triple settings. Items arrive via the n8n Currents Monitor (workflow qb9uPZ8GScAmuUOX; direct in-browser RSS/Atom fetch as fallback), ranked by embedding affinity to the graph's top-degree entities with near-duplicate collapse and content-policy filtering (src/lib/rdf/current-ranking.ts, src/lib/integrations/n8n/currents-sync.ts). Arrivals drift as translucent 'pod view' nodes (KnowledgeGraph2D and the home view) behind a toggle until accepted or dismissed from the graph-level Currents settings on /kb." ;
+                    kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-poll.test.ts" ;
+                    kpred:has-status   "scaffolded" ;
+                    kpred:description  "F29: optional n8n Currents registration and arrivals polling while the app is open, enabled explicitly in Integrations. Confirmed current definitions and the space ID are sent to the configured instance. Incoming document metadata is proposed through type and content gates; retries preserve reviewed facts. Pod rendering and accept/dismiss already exist. Affinity ranking and direct RSS fetch are separate helpers, not part of the automatic delivery path; full extraction and context blocks remain unconnected." ;
                     kpred:tested-by    "src/lib/rdf/__tests__/currents.test.ts" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/currents-persist.test.ts" ;
                     kpred:tested-by    "src/lib/rdf/__tests__/current-ranking.test.ts" ;
@@ -571,3 +584,9 @@ kb:local-security-audits a ktype:Feature ;
     kpred:has-status "functional" ;
     kpred:description "Local tooling, not a hosted app capability: npm run host:check inspects Linux without privilege escalation; npm run security:dependencies explicitly contacts the npm registry for tracked lockfiles. Reports remain in private state outside Git. A passing check is scoped evidence, not certification that a device or deployment is secure." ;
     kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" .
+
+kb:threejs-example-nodes rdf:type ktype:Feature ;
+    rdfs:label "Three.js example node viewer" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "Official WebGL/WebGPU example links can be attached to a node and explicitly loaded in a sandboxed frame. A separate CSP, graphics checks, error/context-loss reports, render deadline and heartbeat watchdog provide failure containment; browser/GPU-process crashes cannot be guaranteed contained. No remote code is run by merely importing or opening a graph." ;
+    kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .

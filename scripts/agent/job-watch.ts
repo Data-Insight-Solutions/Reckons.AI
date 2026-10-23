@@ -34,6 +34,7 @@ import {
   DEFAULT_MAX_ATTEMPTS, DEFAULT_MAX_PER_HOUR, breakerDecision, failureSignature, openCircuits, readRuns,
   failureStreak, jobIri, runsTtlPath, setCircuitCache, slug, stateDir, updateCurrent, type HistRun,
 } from './job-state.js';
+import { OllamaHttpError, assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 export { stateDir, runsTtlPath };
 
@@ -260,14 +261,16 @@ export async function askModel(base: string, model: string, prompt: string): Pro
         { role: 'system', content: 'You read the output of a finished script and report it as JSON. You quote log lines exactly and never invent.' },
         { role: 'user', content: prompt },
       ],
-      options: { num_ctx: 8192, num_predict: 900, temperature: 0, seed: 1 },
+      options: localOptions({ num_ctx: 8192, num_predict: 900, temperature: 0, seed: 1 }),
     }),
   });
-  let res = await call(true);
-  if (!res.ok) { const b = await res.text(); if (/think/i.test(b)) res = await call(false); else throw new Error(`Ollama ${res.status}: ${b.slice(0, 160)}`); }
-  if (!res.ok) throw new Error(`Ollama ${res.status}`);
-  const text = ((await res.json()) as { message?: { content?: string } }).message?.content ?? '';
-  return JSON.parse(text);
+  return retryTransient(async () => {
+    let res = await call(true);
+    if (!res.ok) { const b = await res.text(); if (/think/i.test(b)) res = await call(false); else throw new OllamaHttpError(res.status, b); }
+    await assertOk(res);
+    const text = ((await res.json()) as { message?: { content?: string } }).message?.content ?? '';
+    return JSON.parse(text);
+  });
 }
 
 let activeChild: ReturnType<typeof spawn> | undefined;

@@ -43,6 +43,8 @@ interface Job {
   tier?: Tier;
   /** Under --ci, a failure here fails the build. Everything else stays advisory. */
   blocking?: boolean;
+  /** false = this job's command no longer writes to the review queue, so its old backlog cannot hold it. */
+  queues?: boolean;
 }
 
 const argv = process.argv.slice(2);
@@ -103,7 +105,7 @@ for (const job of selected) {
   const blocking = job.blocking ?? false;
   // BACK-PRESSURE (F74.9): the same rule as the session worker, per job, so a sweep cannot run a
   // producer the worker is holding. A job named with --only is a person's explicit request: not held.
-  if ((job.tier ?? 'agent') === 'agent' && !only && !argv.includes('--no-backpressure')) {
+  if ((job.tier ?? 'agent') === 'agent' && job.queues !== false && !only && !argv.includes('--no-backpressure')) {
     const open = unreviewed().get(job.name) ?? 0;
     if (open >= HOLD_LIMIT) {
       results.push({ name: job.name, ok: false, ms: 0, blocking, skipped: `held, ${open} unreviewed proposals (limit ${HOLD_LIMIT})` });

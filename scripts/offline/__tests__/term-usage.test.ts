@@ -21,6 +21,8 @@ import {
   isKeywordUse,
   readTerms,
   scanText,
+  proseMask,
+  freshProseState,
   type TokenUsage,
 } from '../term-usage.js';
 
@@ -243,5 +245,70 @@ describe('the export keyword is syntax, the export feature is a term', () => {
     expect(isKeywordUse('export', 'const exported = await exportSpace(id);', 6)).toBe(false);
     expect(isKeywordUse('export', 'settings.export = true;', 9)).toBe(false);
     expect(isKeywordUse('export', "label: 'export this space'", 8)).toBe(false);
+  });
+});
+
+describe('the ratchet counts prose only (kb:term-ratchet-prose-only, Matt 2026-10-13)', () => {
+  const proseOf = (line: string) => {
+    const m = proseMask(line, freshProseState());
+    return [...line].filter((_, i) => m[i]).join('');
+  };
+
+  it('marks comments and strings as prose, identifiers as code', () => {
+    expect(proseOf(`const statementId = 'the statement'; // a statement`)).toBe(`'the statement'// a statement`);
+    expect(proseOf('const t = `quoted ${statement.excerpt} text`;')).toBe('`quoted  text`');
+  });
+
+  it('a module path is code, not prose', () => {
+    expect(proseOf(`import { checkAnchor } from '../ingest/statement-evidence'; // the statement`)).toBe('// the statement');
+    expect(proseOf(`const m = await import('./source-chunks');`)).toBe('');
+    expect(proseOf(`export * from "./statement";`)).toBe('');
+  });
+
+  it('a regex literal is code, and a quote or backtick inside it opens nothing', () => {
+    const st = freshProseState();
+    expect([...'const re = /(^kb:ball[^"]*")`/m;'].filter((_, i) => proseMask('const re = /(^kb:ball[^"]*")`/m;', st)[i]).join('')).toBe('');
+    expect(st.inTemplate).toBe(false);
+    // Division is not a regex: the string after it is still prose.
+    expect(proseOf(`const half = total / 2; const t = 'a statement';`)).toBe(`'a statement'`);
+  });
+
+  it('carries block comments and template literals across lines', () => {
+    const st = freshProseState();
+    proseMask('/** A statement', st);
+    expect(st.inBlockComment).toBe(true);
+    const m = proseMask(' * ends here */ const statement = 1;', st);
+    expect(m.indexOf(false)).toBeGreaterThan(' * ends here */'.length - 1);
+    expect(st.inBlockComment).toBe(false);
+  });
+
+  it('a new identifier does not move the ratchet; new wording does', () => {
+    const tokens = usage('statement');
+    scanText('import type { Statement } from "./types";\nexport interface C { statementId: string }\n', 'src/lib/rdf/p.ts', tokens);
+    const u = tokens.get('statement')!;
+    expect(u.binding.free).toBeGreaterThan(0);
+    expect(u.freeProse).toBe(0);
+    scanText('// resolves a statement to its passage\n', 'src/lib/rdf/p.ts', tokens);
+    expect(u.freeProse).toBe(1);
+  });
+
+  it('svelte markup text is prose, its {expressions} and tags are code; docs are all prose', () => {
+    const tokens = usage('statement');
+    scanText('<p class="statement-row">One statement: {statement.label}</p>\n', 'src/lib/components/X.svelte', tokens);
+    expect(tokens.get('statement')!.freeProse).toBe(1);
+    const doc = usage('statement');
+    scanText('Each statement is reviewed.\n', 'content/docs/x.md', doc);
+    expect(doc.get('statement')!.freeProse).toBe(1);
+  });
+
+  it('a prose baseline is compared with the prose count', () => {
+    const meaning = (id: string) => ({ iri: `urn:kbase:term/${id}`, id, prefLabel: id, binding: 'free' as const, tokens: [] });
+    const u = emptyUsage('source', [meaning('a'), meaning('b')]);
+    u.binding.free = 500;
+    u.freeProse = 40;
+    expect(readTermRatchets('<s> kpred:term-ratchet "source/prose/40" .')).toEqual([{ token: 'source', binding: 'prose', max: 40 }]);
+    expect(ratchetFails(checkTermRatchets([u], [{ token: 'source', binding: 'prose', max: 40 }]))).toBe(false);
+    u.freeProse = 41;
+    expect(ratchetFails(checkTermRatchets([u], [{ token: 'source', binding: 'prose', max: 40 }]))).toBe(true);
   });
 });

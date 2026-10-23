@@ -1,3 +1,394 @@
+## 2026-10-21 — START HERE. 0.2.6 close-out, reckons.space registry, two blocked decisions (Claude Code)
+
+**Release pipeline (Matt, reconfirmed today):** dev takes developments without his approval; Claude merges into dev
+(verify base dev first). Matt's FIRST review is the cohesive version on staging, his SECOND is staging → main.
+dev is about 280 commits ahead of staging; nothing promoted since 0.2.5.1 (2026-10-08). 0.2.6 ends 2026-10-22.
+
+**Merged into dev today:** #495 worker log, #497 F260 plan, #500 F58.9.16 background settings, #503 competitive
+(Morf, Slow Roads, SYNFIELD), #504 + #506 F217 registry plan, #505 0.2.6 close-out statuses.
+
+**Open, each blocked:**
+- #462 F223.1 (0.2.6 headline), #507 F122.1 tests, #498 F260.1 sim core: all fail the TERM RATCHET on code
+  identifiers (Statement, statementId, sourceHash), not prose. Matt decided 2026-10-13 "the ratchet counts prose
+  only" (kb:term-ratchet-prose-only, scheduled 0.2.7). The prose classifier + 29 tests are written, UNCOMMITTED, on
+  `feat/term-ratchet-prose-only` in the main checkout. Moving baselines to prose (all LOWER: statement 5306→974,
+  source 4709→1481, graph 4780→3301) was blocked by the auto-mode classifier as "CI Bypass". Matt's call:
+  approve the migration (recommended), raise baselines per PR, or move F223.1 to 0.2.7.
+- #501 showcase splat: adds a third splat, so 3 e2e assertions need 2/0→3/0 (workflow-generated-assets:116,
+  splat-occlusion:22) and 3/0→4/0 (:168). Classifier blocked the edit as "Security Test Removal". Matt's call.
+- #498 also has "Deploy Gate — Graph Render Smoke" red (not diagnosed) and one medium CodeQL alert
+  (sim.worker.ts missing origin check; recommend dismiss: a dedicated worker only hears its creator).
+- #499 (2026-10-20 night handoff) is superseded by this entry.
+
+**Lost overnight, and why:** the doorway-leap and node drag/pin agents stopped at the session limit (23:44) and
+their /tmp worktrees were wiped by the 08:23 reboot; nothing was pushed. Two drag/pin files were rebuilt from the
+transcript onto `wip/node-controls-recovered` (not wired). Both lanes are 0.2.7, after the promotion. Rule now in
+memory: persistent worktrees under .claude/worktrees/, push after every step, never "safe to leave" with agents
+in flight.
+
+**Found today:** F122.1 page/bbox/region anchors were never built; anchors are text spans only. F122.1 stays
+in-progress; its page and region clauses go to 0.2.7. F223.2-.4 not started: proposed for 0.2.7.
+
+**Matt's decisions recorded today:** reckons.space (bought 2026-10-21, Cloudflare) is the root of the space
+REGISTRY; sharer provenance required; regulate only what the registry lists (F217 planned, F217.1-.4). Longer
+shape, future only: PayloadCMS backend, Stripe store, refinement marketplace, generation for hire (F217.5-.8,
+speculative); a publication is one or more spaces (kb:space-publication). Open: list vs store; AGENTS.md
+"no backend" and Option C "no accounts" need new wording before any backend.
+
+**Next, in order:** (1) Matt's two decisions above; (2) land #462/#507/#498/#501; (3) the 0.2.6 release
+commit like 3e51e11 (package.json 0.2.6, release entity, content/releases/v0-2-6.md, website.ttl entry, groupings:
+evidence chain / Getting started and review honesty / spaces in 3D and generated assets (carried) / collections /
+behind the scenes / plans only); (4) visual:local on /kb; (5) dev → staging PR for Matt's review.
+
+## 2026-10-20 (evening) — Codex's story committed; Three.js "both" decided (Claude Code)
+
+Codex ran out mid-task; its uncommitted work is committed on `feat/generated-assets-story` with a PR to dev.
+Fixed: the Three.js e2e failed on Chromium because the test's X-Frame-Options route makes Chrome's Local
+Network Access block the sandbox's own script on loopback (test-only launch flag, commented). `vite.config.ts`
+now ignores worktrees, workspaces and screenshot folders (the ENOSPC watcher error).
+Matt's decisions recorded in the roadmap: Three.js examples as node appearance AND as background (planned
+phases); core tutorials browser-only, no Tripo or Meshy (`kb:browser-generation-tutorial`, planned); game
+generator as speculative genre templates under F143, with an open question on the "we ship no engine" note.
+Working split from now on: Opus designs and writes initial code; a Sonnet agent runs long tests and basic fixes.
+
+## 2026-10-20 — Interactive generated-assets story (Codex)
+
+Active branch: `feat/generated-assets-story`, based on `dev`. Implements F166.1.1: Shelly asks for an image, waits for a checked local runner receipt, then offers video/splat/another image. Runner: `npm run gen:serve -- --workspace=/private/workspace`; use the same connected folder in the browser. No general backend or free-form chat dispatch. Generated assets remain private; generated facts arrive pending review.
+
+Matt's follow-up: this may become Getting started after refinement. Capability/setup guides now distinguish bundled viewers, local models and external agents. Device/SSH installation guidance warns about granted authority. The existing Getting started entry is not replaced yet.
+
+Also requested: Three.js examples attached to nodes, with loading failure protection. `kb:threejs-example-nodes` records the plan and the browser/GPU isolation limitation. Viewer versus in-graph scene presentation is being clarified; no implementation is claimed here.
+
+Validation as of 2026-10-20: full unit suite 4,200 passed, 14 TODOs. Live synthetic image/video/splat checks succeeded (13.6/55.9/35.4 seconds); initial failures found and fixed an invalid splat count and an incomplete npm install. Final browser/check/build/CI results belong to the PR, not these provisional numbers. Startup script sweep: 50/54 clean, with existing button-crawl, perf-crawl, jobs-graph and naming-ratchet failures. Local /kb visual ran on a disposable copy of browser data; output remains private.
+
+The machine's inotify limit is still reached by old worktrees. Local testing uses a temporary Vite config that ignores `.claude` and workspace folders; no other user's server was stopped. See prior environment notes below.
+
+## 2026-10-15 — START HERE. Background controls in the graph view (Claude Code)
+
+**In flight:** a Sonnet agent is building F58.9.16 on `feat/f58-9-16-background-in-view` (no PR yet when this was
+written):
+- background settings in the graph view's FILTERS panel (surround/backdrop, manual scale, yaw, opacity, up axis, level,
+  SET FOCAL POINT);
+- "Place in room" renamed to "Place in space";
+- placement mode collapses the large asset preview and shows a compact placement bar over the graph;
+- free and focus layouts spread out, measured before and after.
+
+Check its PR (`gh pr list`), verify base dev, then merge when green (the scratch merge-when-green helper is described in
+the 2026-10-14 night entry).
+
+**Add to that lane or the next one:**
+- an unknown `?kb=` falls back to the default graph without telling the person (resolveKbParam), so a not-yet-synced
+  space looks like the wrong graph. Add a "space not found yet" notice.
+- Matt's studio space (`reckons-workspace/kbs/my-studio/`, private) now holds the 450-frame SPZ (1.54M Gaussians,
+  37.7 MB) as background, plus a thinned 18.9 MB version as a second splat node. Level the floor fitted only 18% of
+  points, so it may be tilted.
+
+**Environment:**
+- Port 5291 runs Matt's test server from the worktree `agent-a295e916fb7a98470`, detached at origin/dev. Never stop it
+  without restarting it; to update it, `git checkout --detach origin/dev` there and restart vite.
+- The machine hit the inotify watcher limit (ENOSPC): about 25 leftover agent worktrees. Offer to prune the merged
+  ones (count first, check each for uncommitted work, ask), or Matt raises fs.inotify.max_user_watches with sudo.
+
+**Review queue batch 2026-10-15:** 2 accepted, 3 rejected as stale. Deferred for Matt:
+- whether the zero-byte sync-file data-loss fix (reported 2026-09-04) shipped;
+- the AWS context-ontology-accelerator claim (F21 positioning);
+- the stores module dead-weight flag.
+
+Producers server-health and known-issue re-emit items that are already fixed; they should check current state first.
+
+**Matt's decisions still pending:**
+- F58.9 in 0.2.7 (recommended);
+- SPZ default vs GPU-only SOG;
+- whether the 4.9 MB Your room's softness is acceptable;
+- pruning worktrees.
+
+## 2026-10-14 (night) — earlier. Room scans, splat refine, release review spaces (Claude Code)
+
+**Merged into dev today** (all CI green, base verified): #469 scan:room (F58.9.6), #470 import a scan, background
+settings, placement and the Your room space (F58.9.7-.10), #475 generation-model bench with tasks in the Testing graph
+(F183.1-.2), #476 plan (F58.9.12-.15, F34.5), #477 scan:quality (F58.9.14), #478 review spaces per release (F34.5),
+#479 splat-node occlusion (F58.9.13). #480 SPZ/SOG compression, floater crop and the reconstructed Your room (F58.9.11):
+queued to merge when green (dev was merged into it to clear a package.json conflict).
+
+**Matt's private studio scan** (never commit, never describe its contents): input in `~/.local/share/reckons/scans/input/`,
+runs in `studio-out/` (300 frames, 228k Gaussians) and `studio-450/` (450 frames, 2.8M Gaussians, 661 MB), cropped SPZ
+copies in each `refine/`. A private workspace space is at `reckons-workspace/kbs/my-studio/` (gitignored) and opens with
+`?kb=my-studio` after a workspace sync. Matt viewed the 300-frame splat on 2026-10-14: "not great", a "very bad blob"
+zoomed out (long floater tail: p99 distance 60, max 306). Brush writes f_dc before x,y,z: read PLY properties BY NAME.
+
+**Next lanes (planned in the roadmap, not built):**
+1. F58.9.12 splat refine: focal point, radius, known-distance scale, floater clean-up via splat-transform (already a
+   dependency through #480), new asset and keep the original. Open in SuperSplat only where the device has it. The
+   device-capability "plugin" idea is an open question, not a decision.
+2. F58.9.15 own-space walkthrough: opt-in, never in Getting started (Matt: a room scan is invasive).
+3. TestWorkflows for each release's headline features: Review 0.2.6 has 1 workflow (13 of 14 parts lack one); Review
+   0.2.7 has 0 of 12.
+4. A Gaussian cap for scan:room (450 frames gave 12x the Gaussians).
+
+**Matt's decisions pending:** release placement of F58.9 (recommended: 0.2.7, which also gives Review 0.2.7 a real
+workflow); SPZ default vs GPU-only SOG (26% smaller); whether the 4.9 MB Your room's softness is acceptable.
+
+**Process lessons (measured today):**
+- Force-push is blocked by the auto-mode classifier. Fix conflicts by merging dev INTO the branch (merge commits are
+  exempt from commit-trailers), not by rebasing.
+- Trailers must sit in the last paragraph with Co-Authored-By: no blank line between `Intent:` and `Co-Authored-By:`.
+- Every lane adds npm scripts at the same line of package.json, which caused four conflicts today.
+- Briefs must name the blocking script-tier checks (commit-trailers, codebase-coverage, term-ratchet, graph-catalog):
+  the first room PR failed three of them.
+- An unbounded COLMAP run (3200 px, 24 threads) OOM-killed the machine and VSCode. Run heavy jobs under
+  `systemd-run --user --scope -p MemoryMax=…`. SOG compression on CPU ran over 3 hours; SPZ takes seconds.
+- The merge-when-green helper (scratch script: wait on checks, require base dev and CLEAN, retry UNKNOWN) did the
+  merging at zero tokens; worth promoting to scripts/.
+- A Haiku overseer built scan:quality correctly from a tight brief.
+
+## 2026-10-14 (late) — earlier today. F58.9 follow-ups, Matt's backlog, and a context reset (Claude Code)
+
+**Why this handoff exists:** Matt asked to cut main-thread context ("69% of usage at >150k context; 100% subagent-
+heavy"). The main thread hand-debugged an e2e flake for an hour, which is the mistake in memory agent-orchestration-
+models. NEXT SESSION: Opus plans and decides only; build goes to ONE Sonnet overseer per lane with a tight brief.
+Run the local tier where it fits (local panel for prose, qwen2.5vl for "is the splat visible").
+
+**On dev now:** #463 (F58.9 splat proof of concept), #464 (Matt's five review decisions: crawl jobs back and their
+results gitignored; CodeQL new-alert blocking is NOT live, the admin rule is recorded on kb:release-pipeline; landing
+and docs audits scheduled; n8n note pipeline is the next test workflow). PR #465 (example opens on its graph; splat
+nodes hide their marker; Generated assets on the welcome page): merge when CI is green, after checking its base.
+#462 (F223.1) green, unmerged.
+
+**Known flake, already diagnosed:** tests/e2e/workflow-generated-assets.test.ts `openAsset` picks `.sb-node-row`
+`.first()` for a label, and the search ALSO lists that label as a literal value node (screenshot showed "this node is
+a value, not an entity"). That's about 1 run in 3. Two fixes failed: filtering rows that have `.sb-node-iri`, and
+`hasText: <slug>`; both failed 5/5, so the dropdown's entity rows are not what SearchBar.svelte:255-280 suggests.
+Look at the real dropdown DOM in a headed run before writing a third. Also ask why the label shows up as a literal
+node at all (detailed mode?). Docs screenshots still show marker shapes, so rerun `npm run workflow:shots`.
+
+**Matt's backlog from this session (his words → proposed lane). Plan each in static/reckons-roadmap.ttl first.
+Matt asked for grouping into 0.2.7, 0.2.8 and up to 0.3.0, a roadmap reorganisation, and estimates re-based on
+measured session work (Reckons.AI and his machine, not only Claude Code), as build-in-public evidence that the app
+helps the work:**
+1. Set as space background for IMAGES too, as a flat plane behind the graph (splats stay 3D).
+2. A STORY MODE for the Generated assets space, like the Getting started tour. The visual-test review space also
+   "lacks proper timeline/story setup" (open question on kb:gen-video-to-splat).
+3. A greyed-out REGENERATE button with an (i) explaining how to set up the local generation services.
+4. "Are these generation services proper plugins?" ANSWERED: no. They are host commands (scripts/content/gen-assets.ts),
+   declared as one F166 task; no manifest, no loader, and the app cannot start them. F166 decided "a generation tool is
+   a task with a command, not an integration"; the F61 minimal plugin contract is in 0.2.7. Matt now wants a PLUGIN
+   entity type (wrench icon, "defined within Reckons.AI", more specific than a tool) and a LICENSE entity type
+   (MIT and Apache-2.0 as entities, not literals). Recommend: a Plugin entity is the F61 manifest (command, effects,
+   done-when, license, models), which reconciles F166 with F61. This is a product decision; propose it, don't make it.
+5. HOME OFFICE splat, image first, with more volumetric enclosure for backgrounds, plus a SET OF BACKGROUND SETTINGS
+   (mode backdrop/floor/surround, scale, distance, opacity, spin). TripoSplat makes objects, so try a cutaway-room
+   diorama prompt first; real enclosure probably needs a panorama or reconstruction path (Trial B). Tell Matt when a
+   decent room splat exists, for manual review.
+6. PLACE AND SCALE other splats inside the background (upcoming release).
+7. "OPEN IN" buttons configurable per asset type, with a user default (e.g. Blender for GLB).
+Also open: the CodeQL admin rule (Matt), and perf-crawl failing its budgets on 6/6 routes (non-blocking, worth a look).
+
+## 2026-10-14 — F58.9 splat proof of concept → PR #463 (dev); 0.2.6 chain status (Claude Code)
+
+**0.2.6:** #456 (F122.1.4) merged to dev. #462 (F223.1) green and mergeable but NOT merged (the auto-mode
+classifier blocked the merge; Matt's call). Chain: F107.10.1-.3 and F122.1.1-.4 functional; F223.2, .3, .4 and
+conflicts remain, cut 2026-10-18. Parent statuses F107.10/F122.1 still read "planned" in the burndown: stale.
+
+**F58.9 (Matt asked for it on dev for localhost review):** branch `feat/f58-9-local-splat-poc`, PR #463 → dev.
+Local tools live in `~/.local/share/reckons/gen` (27 GB; `scripts/content/gen-setup.sh`). `npm run gen:assets`
+regenerates; `npm run gen:check` is what CI can run. Review: About → example data → Generated assets (opens as its
+own space); docs at /docs/testing/workflow-generated-assets. Weak spots are listed in the PR and in the roadmap
+`kpred:remaining` of kb:splat-* (2D draws no splats; flaky 1/17 e2e; TripoSplat CUDA-init retry; +inf opacity
+repaired upstream defect). Open for Matt: release placement (proposed 0.2.7), and his note that the visual-test
+review space lacks a timeline/story setup (recorded as an open question on kb:gen-video-to-splat).
+
+## 2026-10-13 — START HERE. 0.2.6 day 6: open PRs landed, local tier measured, e2e workflow docs (Claude Code)
+
+Opus coordinated; Sonnet overseers (own worktrees, 2 at a time) did the work and merged into `dev` (Matt
+authorized overseer merges to dev today; nothing went to staging/main). Matt: "use overseer agents and local
+models. This is a key feature of Reckons.ai and we should continue measuring its benefit."
+
+**Merged into dev (17):** #437 Currents delivery (ported #422's 5-min poll + backoff; #422 closed) · #431 F248
+Getting started · #424 F65→skos:Collection ("set"→"collection" in UI) · #423 commit trailers · #425 branch
+ancestry · #387 UI terms audit · #435 VLM workflow streams · #434 safe deps · #438 review headline honest
+("N waiting for an agent") · #439 CI graph advisory, CodeQL decision, hero hedge · #440 extraction-score demoted,
+script-inventory fixed · #441 + #447 F34.2 test workflow docs (/docs/testing/test-workflows; diagram generated
+from the step triples; 5 boxed WebP shots on Getting started) · #444 local code-review RETIRED · #448 Review no
+longer asks to download a model on entry · #449 back-pressure counts journalled verdicts + 10 doc glosses ·
+#450 per-finding review decisions; a reject touches only the findings it names · #451 Shelly consent asked on use.
+
+**Matt decided today (all recorded as kpred:decided):** keep #437 over #422; Review headline honest; code-review
+paused, then retired (0/49 true); dedupe 300 queue duplicates (done); sample held jobs; CI graph stays advisory;
+CodeQL blocks only on NEW alerts (there were none — the red was not alerts); hero = "Your sources, reviewed by you,
+private by default — growing into an assistant that understands your situation."; extraction-score demoted;
+script-inventory fixed; docs-review/docs-expand stay model-tier ("docs management is above scripts"); 5-min
+Currents poll; no model or Shelly consent prompt until the person reaches for it (#448, #451); crawl data: newest run kept.
+
+**LOCAL-TIER LEDGER (the measurement Matt asked for):**
+- code-review qwen3-coder 0/30 recent + devstral-small-2 0/19 on diffs with known bugs → retired.
+- local panel qwen3.6×3: docs-review 101 items 255 s, 99% unanimous, 8/10 hand-check; docs-expand 75 items
+  110 s, 97% unanimous, 9/10 → 38 uncited-capability drafts rejected, 41 docs-review verdicts recorded.
+  Weakness: the panel answers "not explained" even with no page text (task builder should emit n/a).
+- qwen3.6 gloss drafts: 10 → 5 kept, 3 light edits, 2 rewritten (one invented a meaning).
+- qwen2.5vl /review first-run check: 0/2 true as asked (it read Shelly's floating consent as a blocking modal) —
+  controlled re-run after #451 removed that panel: it STILL reported a blocking modal (it over-flags any floating
+  panel) and never named the real review controls. 0/3 → "is anything blocking" belongs to a DOM-overlap script, not the VLM.
+- Script tier caught every real regression (naming, term, commit-trailer ratchets; competitor-scan "none"/"NONE").
+- Overseers: ~15 Sonnet agents-runs, one 429 session-limit stop (resumed after reset).
+- Mistake to not repeat: no agent tier at session start; Sonnet hand-judged 80 sample rows a panel should have pre-filtered.
+
+**Before opening the app (risk):** 41 per-finding rejects in reckons-workspace/knowledge.decisions.jsonl carry
+`objects`. An app build WITHOUT #450 drains them with the old reject-all-siblings rule and rejects all 101
+docs-review statements (recoverable: rejected statements are kept). Use a dev build at or after #450; reckons.ai
+(main) does not have it. **Restart the reckons MCP server** (`/mcp` reconnect) — the running one predates #450
+and would write a 101-row reject for one finding.
+
+**Rules learned today:** commit-trailers is BLOCKING: a commit with `Co-Authored-By: Claude` needs `Model:` and
+`Intent:` in the same final trailer block (one -m). Worktree agents: first step `git checkout -B <branch> origin/dev`.
+
+**DAY-10 CUT MADE EARLY (Matt, 2026-10-13, after the architect found 0 of 5 headline items started on day 6):**
+0.2.6 keeps F107.10 chunk importer → F122.1 evidence anchors → F223 cited options, one evidence chain. Matt: "combine the
+now separate worlds of statements and sources. The links between the evidence and their findings, are the crux of the
+applications human led element." F218/F92 canvas, F256, F61, F255, F246, group B → 0.2.7. In flight at handoff: Overseer L
+(has-part scope links + `npm run release:burndown`, script tier, runs first at session start) and Overseer M (the chain's
+build plan in the roadmap + design questions for Matt). M's plan merged (#452): 11 steps F107.10.1-.3, F122.1.1-.4, F223.1-.4 (~8.5 days + ~1 for conflicts) as roadmap
+entities with depends-on and a user-visible proof each; kb:evidence-chain is the spine. MATT ANSWERED all 6 design
+questions (recorded as kpred:decided): text spans only; anchor = optional Statement fields (EvidenceAnchor node later);
+fold chunks only, originals move in 0.2.7; F223 covers reckoning AND review conflicts (conflicts built last, first to
+slip); unresolved citations shown flagged, never hidden; mcp-server.sh now defaults OLLAMA_BASE_URL to localhost so
+kb_local_* tools work (restart the MCP server). NEXT: run `release:burndown`, then two lanes. Lane A: F107.10.1 → .2 → .3
+→ F122.1.2 → .3. Lane B: F122.1.4 (no deps, start now) → F223.1 → F223.2 → F122.1.1. Then F223.3, F223.4 (reckoning),
+conflicts last. Keep the serialize.ts / import-ttl.ts steps sequential (collision risk). Riskiest: F107.10.3.
+
+**Open / next:** docs-review held at 60 open real findings (the docs work list; also over the limit:
+history-lessons 125, branch-align 111, stars-scan 85, term-senses 74, script-inventory 55). F34.3 (other user
+stories as workflows), F34.4 (phone capture); step 1 still shows "ingest: mock"; default space named "Default
+Graph". Dependabot: #443 replaces #415 (majors, held); #442 overlaps #434 + transformers 4.3.1 (check the 25 MiB
+wasm limit); #413/#375 need a fresh CI run; #379 red. Unanswered: 3 uncalled storage symbols (finish/retire),
+duplicate mobile-voice-capture stubs, HomeAssistant VM-vs-Docker (personal infra — keep out of the public queue).
+0.2.6 big additions (F107.10, F122.1, F223, F218 canvas mode, F61, F255, group B) still unstarted; the cut is 10-18.
+
+## 2026-10-12 — 0.2.6 Currents delivery through local job review (Codex)
+
+Branch: `feat/v026-currents-arrivals`, based on `origin/dev`. Open the PR against `dev`; Matt merges.
+The README PR #436 has merged with all required checks green. The 0.2.6 release itself remains planned.
+
+Completed the accepted Currents quick win: explicit browser/space opt-in in Integrations; confirmed saved
+current definitions register with n8n; a cancellable poll delivers pending document facts once per minute
+while the app is open. Removed definitions get a remote disable using a durable registration ledger.
+URL-based article identity and transaction-level replay protection preserve reviewed facts across retries
+and tabs. Pending configuration cannot activate a current; a human Save can confirm it. Graph records and
+generated feature/integration docs describe the limits. The broad Currents and Pod phases remain scaffolded;
+the delivery phase is functional. No live n8n instance was changed or tested, and the original monitor's
+portable workflow export is still missing. Custom origins require a configured self-hosted build and server
+CORS. Disconnecting a browser or changing endpoints does not stop old server schedules.
+
+Local jobs: contract panel (qwen3.6, 6 successful votes after 6 grammar failures); test-design jobs
+(qwen3-coder returned no useful cases, qwen3.6 supplied removal/scope cases); code-review on 4 core files
+(4 false positives rejected, 11 observations capped); final UI/settings panel (2 clean votes, 1 rejected
+objection to intentionally confirming proposed configuration on Save). Accepted and rejected proposals are
+recorded in the pending graph queue and roadmap. All edits were reviewed and applied by Codex.
+
+Validation on 2026-10-12: 3,782 unit tests passed across 278 files, 14 todo; type check zero errors/warnings;
+one Chromium app integration test passed opt-in, pending arrivals, dismissal after reload and remote removal;
+local visual harness passed /kb and /settings/integrations with zero app warnings/page errors. Build and
+build verification passed, with three existing WASM size warnings. Documentation alignment passed. The script-tier sweep returned 43/45 clean: all blocking checks passed;
+competitor-scan and naming-ratchet remain advisory findings. Secret scanning passed; graph lint retains
+16 existing warnings.
+Early runs caught a missing settings-persistence field (fixed) and a test endpoint rejected by CSP
+(documented the real hosting restriction and used an allowed, intercepted localhost endpoint). Terminology
+baselines were raised only for measured existing API vocabulary in this feature/tests and generated copy;
+the commit explains the increases. Check the PR's latest CI before merging.
+
+Basis Universal: evaluated, not added. The larger bundled GLB is about 66% embedded JPEG by file size;
+KTX2 could help that asset path, but needs renderer-aware loaders, roughly 571 KiB raw transcoder assets,
+and desktop/mobile measurements. A scoped offline GLB/KTX2 benchmark proposal is in the graph queue;
+it is not a 0.2.6 dependency or a replacement for DOM image previews.
+
+## 2026-10-12 — README review and documentation-space links (Codex)
+
+Branch: `docs/readme-space-guide`, based on `dev`; [PR #436](https://github.com/Data-Insight-Solutions/Reckons.AI/pull/436) targets `dev`. No merge or production deployment authorized.
+The README now leads with the source → review → spaces → reckoning workflow, links key terms to graph-generated
+pages, describes optional integrations and their privacy boundaries, and summarizes four roadmap themes. The
+linked privacy documentation was corrected in its TTL source and regenerated. The plan and completion record
+are `kb:readme-space-guide` in `static/reckons-roadmap.ttl`. Public documentation URLs open pages, not arbitrary
+nodes in the local graph; the latter deep-link capability does not exist.
+
+Validation on 2026-10-12: 57 README links resolved against repository files, generated pages and inline anchors;
+type checking reported zero errors/warnings; graph/documentation alignment passed; production build and
+build verification passed (three existing WASM file-size warnings). Unit tests: 3,764 passed, 14 todo on the
+full rerun. The first full run had one five-second source-corpus timeout; that file passed in isolation before
+the successful full rerun. The changed documentation page passed the local visual harness without page or
+console errors. Local model review covered the README, both TTL sources and this handoff. Two wording suggestions across
+the review runs were rejected: distinguishing app accounts from service accounts is intentional, and the
+new Privacy and Network Boundaries title accurately describes the documented data flows.
+
+Existing findings remain: the session sweep returned 43/45 clean, with competitor-scan and naming-ratchet
+nonzero; graph-lint reports 16 warnings; claim-audit has no README findings but still flags SAFETY.md and
+COUNSEL-BRIEF.md. Other stale documentation inventories and compression claims were proposed to the graph
+review queue. This was a repository-grounded documentation audit, not a deployment/network security audit.
+The first CI script-tier run caught one additional bare use of “graph” in the generated privacy page.
+Changed “selected graph context” to “relevant facts” in the TTL source and regenerated it; the terminology
+ratchet now passes without changing its baseline. Check the latest PR checks before merge.
+
+## 2026-10-09 — START HERE. 0.2.6 day 2: local jobs made stable, terms defined, F248 and F33.2 built (Claude Code)
+
+**Open PRs, all base dev, all green unless noted. Merge order: #429 first** (later local runs need its fix).
+This session could not merge: the auto-mode classifier refused the merge queue, so these wait for Matt or for a
+session allowed to merge into dev.
+- **#429** F74.10 stable local calls: `num_batch` 256 from device config, plus a retry after an Ollama restart. ROOT CAUSE:
+  qwen3.6, split across two 3090s, aborts with a CUDA illegal memory access at the default batch size (512). It
+  crashed 4 of 4 times on job-watch's verdict prompt and answered 4 of 4 at 256. Also: term-senses panels are seeded
+  only for words with 2 or more meanings.
+- **#428** a reused pid no longer holds the queue worker lock (worker.json named pid 32111, by then VS Code's ESLint).
+- **#430** terms: the missing meanings of space, source, statement and graph (6 new concepts, hidden labels, ratchets).
+  Validated with term-senses: unanimous on 29/30 sites for space, 24/30 for source, 17/30 for statement.
+- **#426** (earlier) collection vs set terms. It does not conflict with #430.
+- **#431** F248 Getting started arrives reviewed: 7 sample sources (drafted by local qwen3.6, reviewed), 48 facts
+  with passages, history (2 corrections, 2 rejections), and 3 pending. Review reads "all of them yours to decide",
+  and the tour links there with or without a model. e2e passes at 1280/390 locally (system Chrome).
+- **#432** F33.2 CI as a graph (`static/reckons-ci.ttl`): 8 of 15 checks can stop a merge to main, 7 only advise
+  (safety attestation, dependency audits, CodeQL, release notes, extension build).
+- **#427** F249.1 plan: a feature or plugin is defined as a space (starter sets, refined collection, built by jobs).
+
+**Decisions waiting on Matt (filed in the review queue):**
+1. The review headline says "N settled without you" / "nothing left for you to decide" for facts only a reviewing
+   agent could settle, and on a device with no agent nothing ever will (drift-warning, high).
+2. code-review (qwen3-coder) yield today was 0 of 20 across three diffs (keep, demote, retire, or try another model).
+3. F33.2's check is advisory, not blocking as planned. Flip `blocking` in jobs.json if wanted.
+4. Two wording items: Settings says "statements" to users (user word: fact); CompareScene calls two spaces "sources".
+
+**Running state:** the queue worker needs to run OUTSIDE the sandbox (it needs nvidia-smi, and in-sandbox `kill`
+returns EPERM, so a stale lock looks alive). Back-pressure holds docs-review (217), docs-expand (75) and
+extraction-score (89) until those rows are reviewed. Local Playwright browsers are still 1228: run e2e with
+`launchOptions.executablePath: '/usr/bin/google-chrome'`. Not done: the full 0.2.6 big-additions list (F107.10,
+F223, F122.1, F61 voice plugin, group B performance) is still unstarted on day 2 of 14; the cut is 10-18.
+
+## 2026-10-08 — START HERE. 0.2.5 ships, 0.2.6 planned as a two-week sprint (Claude Code)
+
+**0.2.5:** on staging, verified. Matt chose to fix the spaces map first: **#409** (/kb draws the map
+from one space). Order: Matt merges #409 → promote dev → staging → Matt merges **#390**
+(staging → main, deploys reckons.ai) → then tag `v0.2.5`, publish the GitHub release from
+`content/releases/v0-2-5.md`, set `kb:release-0-2-5` to production (Matt said yes to all three).
+
+**0.2.6 (2026-10-08 → 10-22), scope in `kb:release-0-2-6`:** finish 0.2.5's leftovers + decisions you
+can trust (F223 cited options, ONE review queue, #404 model pins) + first slices of collections/F256,
+voice plugin (F61), F254 provenance, F255 Analyze recipes + groups B–E + dependabot → dev. Big
+additions in week one, refinement in week two; **day ten (10-18) cuts what isn't working to 0.2.7.**
+Parked: F249–F253 and F257 (LangGraph; renumbered from F248, which #393 claimed first).
+
+**Found today, not yet fixed:** two review queues. Offline jobs write
+`reckons-workspace/knowledge.pending.jsonl`, but the MCP review tools (and the local-work-reviewer agent)
+read `mcp-workspace` only. Five producers wrote rows with no `kb`, so the app never imported them (#396
+fixes the producers; 331 rows were backfilled locally). Local Playwright browsers are out of date
+(1228 installed, 1243 needed), so e2e runs only in CI.
+
+**Open PRs, base dev:** #396 pending rows name their space · #404 model pins (0.2.6) · #405 twelve
+decisions + taxonomy rule · #407 layer/benchmark cleanup · #408 F256 collection layout + Collection/Set
+model · #409 spaces map (0.2.5) · roadmap stack #397→#406 (F249–F255 and F257, merge in order) · this PR.
+
+**Queue state:** 1,272 rows after today's chat review (backups in `~/.local/state/reckons/`). Still to
+review in chat: 82 predicate synonym pairs, `screenshot-dir` layer, docs-review folded by term,
+a 5-draft sample of docs-expand.
+
+**Waiting on Matt:** merges above; remove the `# reckons-schedule` crontab line (the worker + heartbeat
+hook replace it; my edit was blocked).
+
 ## 2026-10-07 (early) — later the same session: decisions, benches, local batch (Claude Code)
 
 **Matt decided (all recorded in the roadmap PRs below):** sets live in the space TTLs; ghost spaces

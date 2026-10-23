@@ -12,8 +12,22 @@
   import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
+  import ThreeExampleViewer from '$lib/components/ThreeExampleViewer.svelte';
+  import ThreeExampleEditor from '$lib/components/ThreeExampleEditor.svelte';
+  import { threeExampleMapFrom, THREE_EXAMPLE_PREDICATE, backgroundThreeExampleFrom, BACKGROUND_THREE_EXAMPLE_PREDICATE } from '$lib/3d/three-example';
+  import ThreeExampleBackground from '$lib/components/ThreeExampleBackground.svelte';
+  import BackgroundExampleControls from '$lib/components/BackgroundExampleControls.svelte';
+  import type { ThreeExampleSession } from '$lib/3d/three-example-session.svelte';
+  import { setMeta } from '$lib/stores/space-room';
+  import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
+  import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
+  import BackgroundSettingsControls from '$lib/components/BackgroundSettingsControls.svelte';
+  import PlacementBar from '$lib/components/PlacementBar.svelte';
+  import { placement as placementMode, stopPlacing } from '$lib/stores/placement-mode.svelte';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE } from '$lib/3d/splat';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import LandingPage from '$lib/components/LandingPage.svelte';
@@ -557,7 +571,7 @@
     id: DetailId; label: string; floor: Altitude | null; hubsOnly?: boolean; title: string;
   }[] = [
     { id: 'all', label: 'all', floor: null,
-      title: 'Everything, including logs — timestamps, provenance, "this happened" facts' },
+      title: 'Everything, including logs — timestamps, provenance, "this happened" facts — and its own identity-and-settings record' },
     { id: 'detailed', label: 'detailed', floor: 'record',
       title: 'Above logs. Records and up: file links, provenance, types — the default' },
     { id: 'evidence', label: 'evidence', floor: 'evidence',
@@ -768,6 +782,7 @@
     buildGraphView(visible, {
       categoryNodes: showCategoryNodes,
       minAltitude: perspective === 'sources' ? undefined : detail.floor ?? undefined,
+      spaceMetadata: detailLevel === 'all',
     }),
   );
 
@@ -1268,11 +1283,22 @@
   ]);
   const previewUrlMap = $derived.by(() => {
     const m = new Map<string, string>();
+    // An entity can declare more than one image. Which one wins must not depend on the order
+    // the file listed them in (a reviewed starter sorts by id), so the animated preview
+    // outranks the photo, which outranks the icon image.
+    const rank: Record<string, number> = {
+      'urn:kbase:meta/gifPreview': 3, 'urn:kbase:predicate/photo': 2, 'urn:kbase:predicate/icon2d': 1,
+    };
+    const best: Record<string, number> = {};
     for (const s of statements()) {
       if (!PREVIEW_URL_PREDICATES.has(s.p.value)) continue;
       if (s.s.kind !== 'iri' || s.o.kind !== 'literal') continue;
       const v = s.o.value;
-      if (v.startsWith('/') || v.startsWith('http') || v.startsWith('data:')) m.set(s.s.value, v);
+      if (!(v.startsWith('/') || v.startsWith('http') || v.startsWith('data:'))) continue;
+      const r = rank[s.p.value] ?? 0;
+      if (r < (best[s.s.value] ?? 0)) continue;
+      best[s.s.value] = r;
+      m.set(s.s.value, v);
     }
     return m;
   });
@@ -1374,10 +1400,40 @@
     }
     return m;
   });
-  type NodeAsset = { kind: 'image' | 'video' | 'glb'; url: string };
+  // Gaussian splats (F58.9.2) and the space's background splat (F58.9.3).
+  const splatMap = $derived(splatMapFrom(statements()));
+  const backgroundSplat = $derived(backgroundSplatFrom(statements()));
+  /** Set (or, with null, clear) the space's background splat — a setting, so one replaceable meta triple. */
+  async function setBackgroundSplat(url: string | null) {
+    // One background at a time: a splat replaces an example background.
+    if (url && backgroundExample) await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, '');
+    await setSchemaField(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, url ?? '');
+  }
+  const backgroundExample = $derived(backgroundThreeExampleFrom(statements()));
+  let backgroundExampleLive = $state(false);
+  let backgroundInteract = $state(false);
+  /** The running example background's session, bound up from ThreeExampleBackground so the panel uses it too. */
+  let backgroundExampleSession = $state<ThreeExampleSession>();
+  /** Set (or clear) the space's background Three.js example; it replaces a background splat. Never starts it. */
+  async function setBackgroundExample(url: string | null) {
+    if (officialKbActive()) return;
+    if (url && backgroundSplat) await setMeta(SPACE_SUBJECT, BACKGROUND_SPLAT_PREDICATE, '');
+    await setMeta(SPACE_SUBJECT, BACKGROUND_THREE_EXAMPLE_PREDICATE, url ?? '');
+  }
+  const threeExampleMap = $derived(threeExampleMapFrom(statements()));
+  async function setThreeExample(iri: string, url: string) {
+    if (officialKbActive()) return;
+    // Imported metadata can contain multiple values. Removing the attachment clears them all.
+    for (const s of statements().filter(s => s.s.value === iri && s.p.value === THREE_EXAMPLE_PREDICATE
+      && s.status !== 'rejected' && s.status !== 'superseded')) await setStatus(s.id, 'rejected');
+    await setSchemaField(iri, THREE_EXAMPLE_PREDICATE, url);
+  }
+  type NodeAsset = { kind: 'image' | 'video' | 'glb' | 'splat' | 'three'; url: string };
   function nodeAssetFor(iri: string | null): NodeAsset | null {
     if (!iri) return null;
+    const example = threeExampleMap.get(iri); if (example) return { kind: 'three', url: example };
     const glb = glbModelMap.get(iri); if (glb) return { kind: 'glb', url: glb };
+    const splat = splatMap.get(iri); if (splat) return { kind: 'splat', url: splat };
     const vid = videoMap.get(iri);   if (vid) return { kind: 'video', url: vid };
     const img = previewUrlFor(iri);  if (img) return { kind: 'image', url: img };
     return null;
@@ -1443,8 +1499,11 @@
   // Auto-expand: when on, the selected node's asset opens large automatically as
   // navigation moves node to node (story/explore walkthroughs). Keeps fullscreen
   // if the user went there. Manual mode leaves expansion to a thumbnail click.
+  // Placement mode (F58.9.16): the large preview covered the graph, so the person could not see the
+  // splat move inside the background. Starting placement collapses it and keeps it collapsed.
+  $effect(() => { if (placementMode.iri) collapseAsset(); });
   $effect(() => {
-    if (!autoExpandAssets) return;
+    if (!autoExpandAssets || placementMode.iri) return;
     const a = selected ? nodeAssetFor(iriFromNodeKey(selected)) : null;
     if (a) expandedAssetKey = selected;
     else { expandedAssetKey = null; assetFullscreen = false; }
@@ -1944,8 +2003,8 @@
     untrack(() => pushNotification({
       id: 'add-set-hint',
       type: 'info',
-      title: 'Make a set',
-      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as set" in the panel.',
+      title: 'Make a collection',
+      body: 'Ctrl/Cmd-click two or more nodes, then choose "group as collection" in the panel.',
     }));
   });
 
@@ -1970,7 +2029,7 @@
   }
 
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
-  // is a first-class node (ktype:EntitySet) linked to each member via has-member,
+  // is a first-class node (skos:Collection) linked to each member via skos:member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
   async function createSetFromSelection() {
     const members = multiSelectedList.map(n => n.iri);
@@ -2138,10 +2197,16 @@
 </script>
 
 <svelte:window onkeydown={(e) => {
+  if (e.key === 'Escape' && placementMode.iri) { stopPlacing(); return; }
   if (e.key === 'Escape' && expandedAssetKey) {
     if (assetFullscreen) assetFullscreen = false; else collapseAsset();
   }
 }} />
+
+<!-- Placement mode (F58.9.16): the large preview is collapsed and this compact bar floats over the graph. -->
+{#if placementMode.iri}
+  <PlacementBar iri={placementMode.iri} />
+{/if}
 
 {#snippet graphTools()}
   <!-- FORCE -->
@@ -2266,6 +2331,22 @@
     </div>
   </div>
 
+  <!-- BACKGROUND (F58.9.16) — whatever the space has behind it. A splat: surround or backdrop, scale,
+       focal point (3D only; the settings are not drawn in 2D), the same component the Graphs tab uses.
+       A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the floating bar. -->
+  {#if (backgroundSplat && !use2D && webglAvailable) || backgroundExample}
+  <div class="overlay-group" data-testid="graph-background-settings">
+    <span class="group-label mono">background</span>
+    {#if backgroundSplat && !use2D && webglAvailable}<BackgroundSettingsControls />{/if}
+    {#if backgroundExample && backgroundExampleSession}
+      <div class="bg-example-row mono" role="group" aria-label="Background in view settings">
+        <BackgroundExampleControls session={backgroundExampleSession} url={backgroundExample} bind:interact={backgroundInteract}
+          onclear={() => setBackgroundExample(null)} />
+      </div>
+    {/if}
+  </div>
+  {/if}
+
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
   {#if layout === 'timeline'}
   <div class="overlay-group">
@@ -2349,7 +2430,14 @@
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
     data-graph-settled={showingLanding || graphSettled}
+    class:bg-example-live={backgroundExampleLive && !showingLanding}
+    class:bg-example-interact={backgroundInteract && !showingLanding}
   >
+  {#if backgroundExample && perspective === 'statements' && !showingLanding}
+    {#key backgroundExample}
+      <ThreeExampleBackground url={backgroundExample} bind:live={backgroundExampleLive} bind:interact={backgroundInteract} bind:session={backgroundExampleSession} />
+    {/key}
+  {/if}
   {#if showingSourcesEmpty}
     <div class="sources-empty"><h2>Select sources to explore</h2><p>Choose up to five sources from the source picker.</p></div>
   {:else if showingLanding}
@@ -2377,10 +2465,15 @@
 <!-- Floating filter UI overlay — hidden whenever the landing is up (see showingLanding).
      Desktop: always-open SnapPanel. Compact: bottom sheet behind the FAB below. -->
 {#if perspective === 'statements' && isCompact() && !showingLanding && !filterSheetOpen}
-  <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="Filters & layout">☰ filters</button>
+  <button class="filter-fab mono" onclick={() => (filterSheetOpen = true)} aria-label="View settings">☰ view settings</button>
 {/if}
 {#if perspective === 'statements' && !showingLanding}
-<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="Filters & layout" open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+<!-- The desktop panel shows only a header snippet, never `title` (that is the phone sheet's), so the
+     panel had no visible name on desktop (Matt's 0.2.6 dev review). Phones keep the sheet's title row. -->
+{#snippet viewSettingsHeader()}
+  <div class="vs-header mono">view settings</div>
+{/snippet}
+<AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -2554,7 +2647,7 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
-      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable set">⬡ group as set</button>
+      <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
   </div>
@@ -2586,7 +2679,7 @@
         <button
           type="button"
           class="node-preview-thumb"
-          class:glb-badge={a.kind === 'glb'}
+          class:glb-badge={a.kind === 'glb' || a.kind === 'splat' || a.kind === 'three'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
@@ -2595,6 +2688,10 @@
             <img src={a.url} alt="" loading="lazy" />
           {:else if a.kind === 'video'}
             <video src={a.url} muted loop autoplay playsinline></video>
+          {:else if a.kind === 'three'}
+            ◈ Three.js
+          {:else if a.kind === 'splat'}
+            ✦ Splat
           {:else}
             ◈ 3D
           {/if}
@@ -2680,6 +2777,7 @@
        measured each time rather than hardcoded to the 360/320 defaults. -->
   <div
     class="asset-large"
+    class:placing-hidden={!!placementMode.iri}
     style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
     transition:fade={{ duration: 140 }}
   >
@@ -2692,6 +2790,25 @@
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
+    {:else if expandedAsset.kind === 'splat'}
+      <div class="asset-media asset-glb asset-splat" aria-label="Gaussian splat, generated">
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
+        <!-- Inside the splat's own box, top left: the viewer's top-right controls sit beside the
+             search bar, and a wider button there slid underneath it (the e2e click was
+             intercepted, 2026-10-14). -->
+        <div class="asset-bg-action">
+          {#if backgroundSplat === expandedAsset.url}
+            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
+          {:else}
+            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
+          {/if}
+          {#if expandedAssetKey && iriFromNodeKey(expandedAssetKey)}<SplatPlacementControls iri={iriFromNodeKey(expandedAssetKey)!} />{/if}
+        </div>
+      </div>
     {:else}
       <div
         class="asset-media asset-glb"
@@ -2736,6 +2853,14 @@
     {:else if expandedAsset.kind === 'video'}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video class="asset-fs-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+    {:else if expandedAsset.kind === 'three'}
+      <div class="asset-fs-media asset-glb">
+        {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
+      </div>
+    {:else if expandedAsset.kind === 'splat'}
+      <div class="asset-fs-media asset-glb">
+        {#key expandedAsset.url}<AssetSplatViewer url={expandedAsset.url} orientation={splatOrientationFor(statements(), expandedAsset.url)} />{/key}
+      </div>
     {:else}
       <div class="asset-fs-media asset-glb">
         {#key expandedAsset.url}<AssetGlbViewer url={expandedAsset.url} />{/key}
@@ -2767,7 +2892,7 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if perspective === 'statements' && selected && nodeDetails}
+{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three')}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -3013,6 +3138,11 @@
       {/if}
     {/if}
 
+    <!-- F34.5: pass / fail / note on a step of a release review space (shown only on nodes that carry a review verdict) -->
+    {#if selected?.startsWith('i:')}
+      <ReviewVerdict entityIri={iriFromNodeKey(selected) ?? ''} />
+    {/if}
+
     <!-- Per-entity 3D model -->
     {#if selected?.startsWith('i:')}
       <div class="np-icon3d">
@@ -3061,6 +3191,17 @@
           </div>
         {/if}
       </div>
+    {/if}
+
+    {#if selected?.startsWith('i:') && iriFromNodeKey(selected)}
+      {@const exampleIri = iriFromNodeKey(selected)!}
+      {#key exampleIri}
+        <ThreeExampleEditor value={threeExampleMap.get(exampleIri) ?? ''} disabled={officialKbActive()}
+          isBackground={!!backgroundExample && backgroundExample === threeExampleMap.get(exampleIri)}
+          onbackground={(on) => setBackgroundExample(on ? threeExampleMap.get(exampleIri) ?? null : null)}
+          onchange={(url) => setThreeExample(exampleIri, url)}
+          onopen={() => { expandedAssetKey = selected; assetFullscreen = isCompact(); }} />
+      {/key}
     {/if}
 
     <!-- Per-entity image preview (hover card) -->
@@ -3333,6 +3474,7 @@
     border: 1px solid var(--line); border-radius: var(--rad);
   }
   .perspective-switch.banner-offset { top: 2.7rem; }
+  .vs-header { padding: 0.55rem 0.9rem 0.2rem; font-size: 0.85rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; cursor: grab; }
   .sources-empty { margin: 8rem auto; text-align: center; }
   .perspective-switch button { font-size: 0.8rem; min-height: 36px; padding: 0.4rem 0.7rem; }
   .perspective-switch button[aria-pressed='true'] { color: var(--accent); border-color: var(--accent); }
@@ -3410,6 +3552,13 @@
     margin: 0;
     position: relative;
   }
+  /* A Three.js example background sits at z-index -1 inside this stage; isolating it keeps it above
+     the stage's own backdrop but behind the graph. While it runs the backdrop is clear. */
+  .graph { isolation: isolate; }
+  .graph.bg-example-live { background: transparent; }
+  .bg-example-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-size: .72rem; }
+  /* Interact with background: the graph layer lets input through; the example's bar stays clickable. */
+  .graph.bg-example-interact > :global(:not(.three-bg-layer):not(.three-bg-bar)) { pointer-events: none; }
   .graph-landing {
     overflow: visible; /* landing page scrolls inside its own container */
   }
@@ -4287,12 +4436,14 @@
     will-change: transform;
     transition: transform 35ms linear;
   }
-  /* Always-on preview thumbnail: sits centered above the node label. */
+  /* Always-on preview thumbnail: sits centered above its label. The label is drawn above the
+     anchor point by 5px and grows by up to 1.8x on hover (1.4em above its top edge at most), so the
+     thumbnail's bottom edge clears that by 9px + 1.4em (Matt, 2026-10-14: the label covered it). */
   .node-preview-thumb {
     position: absolute;
     left: 0;
     top: 0;
-    transform: translate(-50%, calc(-100% - 6px));
+    transform: translate(-50%, calc(-100% - 9px - 1.4 * var(--lfs, 11px)));
     object-fit: cover;
     border-radius: 8px;
     border: 1px solid var(--line);
@@ -4321,8 +4472,18 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
     border-color: var(--accent);
   }
+  /* On touch the label's hit wrapper is a centred 45px box (the shared label overlay), so the anchor point is
+     its centre, not its top-left corner. */
+  @media (pointer: coarse) {
+    .node-preview-thumb {
+      left: 50%;
+      top: 50%;
+    }
+  }
 
   /* ── Asset viewer: large (covers most of graph) + fullscreen ── */
+  /* Placement mode hides the large preview at once, without waiting for its fade (the fade needs frames, and a heavy room can starve them). */
+  .asset-large.placing-hidden { display: none; }
   .asset-large {
     position: fixed;
     /* Inset by the measured side-panel gutters so the image centres in the free space between
@@ -4411,6 +4572,24 @@
     gap: 0.5rem;
     pointer-events: auto;
   }
+  .asset-splat { position: relative; }
+  .asset-bg-action {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 1;
+  }
+  .asset-bg-toggle {
+    min-height: 44px;
+    padding: 0 0.9rem;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .asset-bg-toggle:hover { border-color: var(--accent); }
   .asset-controls button {
     /* 44px is the floor in kb:web-uiux-rubric (touch-targets); these were 34. */
     width: 44px;
