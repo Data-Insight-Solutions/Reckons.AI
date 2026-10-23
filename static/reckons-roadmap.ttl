@@ -10512,3 +10512,32 @@ kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BE
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
 
 kb:local-panel kpred:decided "MATT, 2026-10-23: remove the queue-run blocker that needs an active Claude session. Supersedes the 2026-09-30 session-heartbeat rule: the queue worker now starts jobs whenever it is running, and recurring jobs are enqueued on every pass. Stopping the worker, or the PAUSE file, is now the only way to keep the machine idle. The Ollama gate became per job: a job marked as not needing Ollama (generation) runs while Ollama is down." .
+
+# -- 0.2.7 local tool integrations (Matt, 2026-10-23: "1 and 2 should go into 0.2.7") ------------
+
+kb:release-0-2-7 kpred:has-part kb:comfyui-adapter, kb:openai-compatible-endpoint ;
+    kpred:decided "MATT, 2026-10-23: the ComfyUI adapter with workflow templates (F261) and a generic OpenAI-compatible local endpoint (F262) go into 0.2.7. Asked for integrations 'like Ollama (runs best for me out of local options)'." .
+
+kb:comfyui-adapter rdf:type ktype:Feature ;
+    rdfs:label "ComfyUI adapter — generation templates run through the user's own ComfyUI" ;
+    kpred:feature-id "F261" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:shelly-job-queue ;
+    kpred:relates-to kb:generation-coupling, kb:gen-orchestration, kb:ref-comfyui, kb:integration-plugin-sdk ;
+    kpred:description "A JOB TEMPLATE names a stage, the inputs it takes (prompt, seed, source image) and how it runs. Today's stages are the built-in template (stable-diffusion.cpp, TripoSplat). A ComfyUI template is a workflow file plus the input slots to fill and the nodes and models it needs; the queue worker runs it as a fixed command that posts the filled workflow to the person's own ComfyUI over HTTP, waits for the result, fetches the output and writes the same receipt shape. The browser, Shelly and Job nodes do not change: a template is one more way to satisfy a stage the runner advertises. This is the F166 posture verbatim: a separate runtime is one more thing a command talks to, and it stays the user's process." ;
+    kpred:principle "WHY COMFYUI FIRST: it is the local generation runtime people already run, it reports its installed nodes and models (/object_info, /models) the way Ollama reports /api/tags, and its node-graph workflows give image to GLB and other derivations without new code here." ;
+    kpred:constraint "A WORKFLOW IS CODE. ComfyUI custom nodes run arbitrary Python, so templates load only from the worker's local template folder that the person installed. A template carried in a space, an imported graph or a request is never run — the same boundary scripts/agent/runner.ts holds for tasks." ;
+    kpred:constraint "GPL-3.0 AT ARM'S LENGTH: HTTP to a separate ComfyUI process only; never vendored, bundled or linked (kb:ref-comfyui)." ;
+    kpred:constraint "HONEST RECEIPT: the workflow file and the output are hashed here; model identities are recorded as ComfyUI reports them and the receipt says they were not hashed by Reckons." ;
+    kpred:remaining "Everything. Phase 1: template contract + ComfyUI adapter + one text-to-image template, tested against a fake ComfyUI and then a real one. Phase 2: image-to-splat and image-to-GLB templates (GLB needs a new 'mesh' stage in the request protocol). Phase 3: the runner advertises template-backed stages so Shelly offers them." .
+
+kb:openai-compatible-endpoint rdf:type ktype:Feature ;
+    rdfs:label "OpenAI-compatible local endpoint — one provider for LM Studio, llama.cpp, vLLM, LocalAI and friends" ;
+    kpred:feature-id "F262" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:llm-providers, kb:integration-plugin-sdk, kb:local-offload ;
+    kpred:description "A chat provider whose base URL, model and optional key are the person's own. Many local servers speak the OpenAI chat-completions shape (LM Studio, llama.cpp server, vLLM, LocalAI, and Ollama's /v1), so one provider reaches all of them. The fixed-URL openai provider stays as it is." ;
+    kpred:constraint "LOCALITY FROM THE URL, FAIL TOWARD REMOTE: localhost and private-network hosts are local; anything else is remote, so it keeps the ethics preamble and the AI-consent gate treats it like any cloud model." ;
+    kpred:remaining "Phase 1: provider + settings (base URL, model, key) + test-connection, verified against a real local server. Phase 2: speech endpoints (/v1/audio/speech, /v1/audio/transcriptions) for Kokoro-FastAPI and speaches." .
