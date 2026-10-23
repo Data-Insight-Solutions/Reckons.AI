@@ -10541,3 +10541,53 @@ kb:openai-compatible-endpoint rdf:type ktype:Feature ;
     kpred:description "A chat provider whose base URL, model and optional key are the person's own. Many local servers speak the OpenAI chat-completions shape (LM Studio, llama.cpp server, vLLM, LocalAI, and Ollama's /v1), so one provider reaches all of them. The fixed-URL openai provider stays as it is." ;
     kpred:constraint "LOCALITY FROM THE URL, FAIL TOWARD REMOTE: localhost and private-network hosts are local; anything else is remote, so it keeps the ethics preamble and the AI-consent gate treats it like any cloud model." ;
     kpred:remaining "Phase 1: provider + settings (base URL, model, key) + test-connection, verified against a real local server. Phase 2: speech endpoints (/v1/audio/speech, /v1/audio/transcriptions) for Kokoro-FastAPI and speaches." .
+
+# -- 0.2.7 overhaul (Matt, 2026-10-23): taxonomy first, then the words, the examples, the gallery, settings ----------
+
+kb:release-0-2-7 kpred:has-part kb:taxonomy-current, kb:space-wording-sweep, kb:example-spaces-by-requirement, kb:plugin-gallery, kb:settings-cleanup ;
+    kpred:decided "MATT, 2026-10-23: 'Lets also do some major overhaul of example spaces, change kb to spaces in refactor, and seperate space examples between intall requirements. We need a plugin gallery, which isn't quite a feature gallery, but all the plugins and integrations with logos where possible. Cleanup of settings pages also. Lets make sure to use terminology and taxonomy from the taxonomy space after making sure it is updated to use latest entity types, is accurate to curent, etc.' Then: 'THose things in 0.2.7 also.'" .
+
+kb:taxonomy-current rdf:type ktype:Feature ;
+    rdfs:label "The taxonomy space matches the code — every built-in entity type and status has an approved term" ;
+    kpred:feature-id "F263" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:terminology-maintenance, kb:ui-term-audit, kb:controlled-vocabularies, kb:terminology-ontology ;
+    kpred:description "The central taxonomy space is static/reckons-vocabulary.ttl plus static/reckons-terminology.ttl (kb:terminology-ontology, 2026-10-08). Before anything else takes its words from them, a script-tier check compares them with the code: every entry in BUILT_IN_TYPES (src/lib/rdf/entity-types.ts, including Job from F166.1.2 and the F58.9.5 media types) has a term with its user label and definition, every enum the code enforces (statement review statuses, the six feature statuses, job states, plugin capabilities) is a scheme in the vocabulary, and no term names a type the code no longer has. Gaps become pending terms for review, never auto-approved (terminology rule 1)." ;
+    kpred:remaining "Everything: the comparison script (graph-lint style, runs in offline:all and CI), then filling the gaps it reports." .
+
+kb:space-wording-sweep rdf:type ktype:Feature ;
+    rdfs:label "KB becomes space everywhere a person reads it" ;
+    kpred:feature-id "F264" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:taxonomy-current ;
+    kpred:relates-to kb:ui-term-audit, kb:release-0-2-6 ;
+    kpred:description "User-facing copy says space and spaces (kterm:knowledge-base user label, Matt 2026-09-23), found by the F203.7 rule audit rather than by hand. Adopts the /kb to /spaces route move proposed on kb:release-0-2-6, with /kb redirecting forever. The four contract-bound spellings do not move: urn:kbase:, ?kb=, the Dexie database names, and the kb argument on MCP tools." ;
+    kpred:open-question "Code identifiers: the terminology (Matt, 2026-09-17) keeps the DEVELOPER word 'knowledge base', so free kb identifiers become knowledgeBase; on 2026-10-23 Matt said 'change kb to spaces in refactor'. Recommended: knowledgeBase in code, because 'space' in the code already means whitespace in 24 of 40 sampled sites and coordinate space in 2 more. Matt decides." .
+
+kb:example-spaces-by-requirement rdf:type ktype:Feature ;
+    rdfs:label "Example spaces overhaul, grouped by what each needs installed" ;
+    kpred:feature-id "F265" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:taxonomy-current, kb:plugin-gallery ;
+    kpred:relates-to kb:starter-provenance, kb:browser-generation-tutorial ;
+    kpred:description "Every example space declares what it needs, as edges to the plugins and integrations in the gallery: nothing beyond the browser; a local tool on this computer (Ollama, the generation worker, ComfyUI); or an account or key (Claude, n8n). The examples page groups by that requirement, so a person sees first what works right now, and each example says honestly what it shows without the requirement met." ;
+    kpred:remaining "Audit of the current starters (static/starter-*.ttl and the onboarding templates) against what they need; the requirement edges; the grouped page; then the overhaul of each example." .
+
+kb:plugin-gallery rdf:type ktype:Feature ;
+    rdfs:label "Plugin gallery — every plugin and integration, with its logo, what it adds and what it needs" ;
+    kpred:feature-id "F266" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:taxonomy-current ;
+    kpred:relates-to kb:integration-plugin-sdk, kb:settings-unified-integrations, kb:comfyui-adapter, kb:openai-compatible-endpoint ;
+    kpred:description "Not a feature gallery: one card per plugin or integration (LLM providers, Ollama, ComfyUI, the generation worker, n8n, Google Drive, GitHub, Hume voice, Meshy, and the rest under src/lib/integrations), each with its logo where the project publishes one, the capabilities it adds, what it needs installed or an account for, its honest status (built, planned) and a link to set it up. Generated from graph entities, so the gallery, the settings page and the example requirements read one list." ;
+    kpred:constraint "LOGOS ARE OTHER PEOPLE'S MARKS. Use each project's own published logo or a permissively licensed icon set, record the source and licence beside it, and use it only to identify the integration. A missing or unclear logo gets a plain icon, not a guess." ;
+    kpred:open-question "Where it lives. Recommended: inside Settings as the Integrations page (where people already go to connect things, F69.1), linked from the docs, rather than a new top-level navigation tab, which is Matt's call (AGENTS.md rule 2)." .
+
+kb:settings-cleanup rdf:type ktype:Feature ;
+    rdfs:label "Settings pages cleaned up around the plugin list" ;
+    kpred:feature-id "F267" ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:plugin-gallery, kb:taxonomy-current ;
+    kpred:relates-to kb:settings-unified-integrations ;
+    kpred:description "Settings reorganised so each plugin or integration is configured in one place reached from its gallery card (F69.1's categorised integrations), with the words from the taxonomy space. Starts with an inventory of every settings page and field, measured before anything moves." .
