@@ -10591,3 +10591,22 @@ kb:settings-cleanup rdf:type ktype:Feature ;
     kpred:depends-on kb:plugin-gallery, kb:taxonomy-current ;
     kpred:relates-to kb:settings-unified-integrations ;
     kpred:description "Settings reorganised so each plugin or integration is configured in one place reached from its gallery card (F69.1's categorised integrations), with the words from the taxonomy space. Starts with an inventory of every settings page and field, measured before anything moves." .
+
+# -- Generation as a reckoning (Matt, 2026-10-23) ---------------------------------------------------
+
+kb:release-0-2-7 kpred:has-part kb:generation-reckoning .
+
+kb:generation-reckoning rdf:type ktype:Phase ;
+    rdfs:label "F223.5 — making new assets is a reckoning: situation from the graph, new asset nodes as the target, local jobs as the options" ;
+    kpred:feature-id "F223.5" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:graph-proposals ;
+    kpred:depends-on kb:proposal-options-model, kb:shelly-job-queue ;
+    kpred:relates-to kb:reckoning-composition, kb:proposal-options-ui, kb:comfyui-adapter ;
+    kpred:decided "MATT, 2026-10-23: 'I realized when re-reading the five moves, that the generation of new assets should be a reckoning. The situation is current graph statements, the target can be new asset nodes, and the proposal creates the local jobs necessary, user approves to run.'" ;
+    kpred:description "Generation moves from a side path into move 5 (ask it things: reckon), and its results return through move 3 (you settle them). SITUATION: the statements the request rests on, such as the entity being illustrated, an existing image, the space's style facts; each becomes a citation. TARGET: a shape over NEW asset nodes, for example 'some GaussianSplat made-from this image', checked over REVIEWED facts only, so the proposal completes when the person accepts the generated asset in review, not when a job exits 0. PROPOSAL: 2 to 4 options, one recommended, each a job plan from the fixed menu (built-in tools, ComfyUI templates) with its cost in time, citing the facts its prompts were written from. APPROVAL of one option queues its jobs (F166.1.2); each Job node records which proposal and option it serves." ;
+    kpred:principle "APPROVAL IS FOR THE EFFECT, REVIEW IS FOR THE RESULT. Approving an option authorises local jobs to run; it accepts nothing into the space. The assets arrive pending like every other proposed fact, and the target is reached only by the person's review. That keeps step 3 of the five moves the one no automation removes." ;
+    kpred:constraint "THE TARGET NEEDS ONE VARIABLE SUBJECT. F223.1's TargetShape names concrete subjects, but a new asset has no IRI until a job is queued. Extend the small SHACL subset with a single placeholder subject (?asset) bound across the requirements, still evaluated over reviewed facts only; no general SHACL engine." ;
+    kpred:constraint "AN OPTION CARRIES A PLAN, NEVER A COMMAND: the same validated job menu as Shelly's queue_jobs (validateJobPlan), so a reckoning cannot widen what the queue may run." ;
+    kpred:remaining "Everything: the ?asset target extension; options built by the F223.2 builder with a job plan per option; the reckoning UI (F223.4) offering Approve and run; Job nodes linked to their proposal and option; closeIfReached run when a generated asset is reviewed; Shelly's queue_jobs card becomes a reckoning she drafts rather than a bare action. F166.1.2 (PR #527) is the job layer underneath and does not change." .
