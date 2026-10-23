@@ -9803,11 +9803,13 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     rdfs:label "v0.2.7" ;
     kpred:version "0.2.7" ;
     kpred:has-status "planned" ;
-    kpred:description "The reach release: Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
+    kpred:description "THE RECKONING DRIVES THE WORK (Matt, 2026-10-23). Headline: a reckoning's gaps to its target drive deep research and asset generation through the local job queue, results come back for review, and the graph's growth toward the answer can be played back as a timelapse (F268.1-.5, F223.2-.5). Second track: the overhaul — the taxonomy space made current, space wording, example spaces by requirement, the plugin gallery, settings cleanup — and the local integrations ComfyUI and OpenAI-compatible endpoints. The reach work (local host mode, LAN HTTPS, agents in the app) moved to v0.2.8." ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
-    kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:agents-in-app .
+    kpred:headline kb:reckoning-drives-work ;
+    kpred:headline kb:graph-proposals ;
+    kpred:has-part kb:reckoning-drives-work, kb:reckoning-gaps, kb:gap-deep-research, kb:source-licensing, kb:reckoning-loop, kb:reckoning-timelapse ;
+    kpred:has-part kb:proposal-options-model, kb:proposal-citation-resolve, kb:proposal-options-ui ;
+    kpred:decided "MATT, 2026-10-23, SCOPE: the reckoning is the spine of 0.2.7 (F268.1-.5 with F223.2-.5); the overhaul (F263-F267) and the local integrations (F261, F262) are the second track; the reach parts and the other parts not started (F243-F245, F255, F108.4, F246, F256, F34.3, F61, F268.6) move to v0.2.8. Chosen over 'everything in 0.2.7' after the architect counted 19 parts, 16 not started, with no dates, and noted that 0.2.6 slipped its cut with three headline parts." .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
 
@@ -9837,12 +9839,7 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
 
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped." ;
     kpred:has-part kb:meta-graph-view ;
-    kpred:has-part kb:one-graph-canvas ;
-    kpred:has-part kb:set-layout ;
-    kpred:has-part kb:integration-plugin-sdk ;
-    kpred:has-part kb:analyze-job-sets ;
-    kpred:has-part kb:research-watch ;
-    kpred:has-part kb:graph-density-legibility .
+    kpred:has-part kb:one-graph-canvas .
 
 kb:change-provenance-commit-trailers rdf:type ktype:Phase ;
     rdfs:label "F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
@@ -9988,7 +9985,7 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-7 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
@@ -10671,3 +10668,11 @@ kb:trend-to-reckoning rdf:type ktype:Phase ;
     kpred:depends-on kb:reckoning-gaps ;
     kpred:relates-to kb:research-watch ;
     kpred:description "Currents stay a slow feed checker. Two couplings only: a trend across arrivals (an entity or topic recurring above its baseline) can be opened as a reckoning's situation in one action; and each arrival is checked against open reckonings' gaps, so a current that answers a gap says so in review. Worked pairing: a current shows a rising topic, a reckoning targets an explainer and an illustration for it, research closes the gaps from licensed sources, generation makes the image from the reviewed facts, and the timelapse records the whole path." .
+
+kb:release-0-2-8 rdf:type ktype:Release ;
+    rdfs:label "v0.2.8" ;
+    kpred:version "0.2.8" ;
+    kpred:has-status "planned" ;
+    kpred:description "The reach release (moved from v0.2.7, 2026-10-23): Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
+    kpred:decided "MATT, 2026-10-23: these parts moved here from v0.2.7 when the reckoning became 0.2.7's spine. Moved because none had started, not dropped." ;
+    kpred:has-part kb:local-host-mode, kb:lan-https, kb:agents-in-app, kb:set-layout, kb:integration-plugin-sdk, kb:analyze-job-sets, kb:research-watch, kb:graph-density-legibility, kb:trend-to-reckoning .
