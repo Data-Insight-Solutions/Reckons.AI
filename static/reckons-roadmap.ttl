@@ -10676,3 +10676,54 @@ kb:release-0-2-8 rdf:type ktype:Release ;
     kpred:description "The reach release (moved from v0.2.7, 2026-10-23): Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
     kpred:decided "MATT, 2026-10-23: these parts moved here from v0.2.7 when the reckoning became 0.2.7's spine. Moved because none had started, not dropped." ;
     kpred:has-part kb:local-host-mode, kb:lan-https, kb:agents-in-app, kb:set-layout, kb:integration-plugin-sdk, kb:analyze-job-sets, kb:research-watch, kb:graph-density-legibility, kb:trend-to-reckoning .
+
+# -- Review overhaul (Matt, 2026-10-23): review the way this chat thread reviews ------------------------
+
+kb:release-0-2-8 kpred:has-part kb:conversational-review, kb:resolution-ledger, kb:review-agenda, kb:review-chat, kb:review-journal-one, kb:review-measures ;
+    kpred:proposed "AGENT, 2026-10-23, NOT DECIDED: the review overhaul (F269) as the headline of v0.2.8, ahead of the reach parts, because every producer added in 0.2.7 (deep research, generation, currents) feeds the same queue." .
+
+kb:conversational-review rdf:type ktype:Feature ;
+    rdfs:label "Review overhaul — decisions settled in conversation, each response showing exactly which statements it resolved and why" ;
+    kpred:feature-id "F269" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:terminal-review, kb:cascade-aggregation, kb:graph-proposals, kb:entity-sets, kb:ai-task-human-review, kb:reviewable-graph-patches ;
+    kpred:decided "MATT, 2026-10-23: 'I feel my recent usage of Claude Code has improved dramatically, and decisions are extracted well from our conversations and review is mostly through this chat thread. We need similar smooth operation of graph content through Shelly and totally in Reckons.AI web application. There may be some time before that can be realized, as higher reasoning from Opus, and well designed harness in Claude Code will be difficult to compete with. We should consider deeply a review overhaul in 0.2.8. I see some odd summaries like 2.4 statements settled per response. I would want to have much clearer breakdown of what statements are resolved by the response, and why. I think we will rarely need individual massive click count reviews, that is the most detailed review meth and is possible but tiresome and heavy cost.'" ;
+    kpred:description "WHAT WORKS IN THE CLAUDE CODE THREAD, NAMED SO IT CAN BE COPIED. (1) The agent reads ahead and brings DECISIONS, not rows. (2) Each decision comes as 2 to 4 options, one recommended, with the reason and a citation (the earlier decision and its date, the measurement). (3) One short answer settles many things, and the agent says back exactly what it took the answer to mean and what it changed. (4) The person's words are recorded with the decision (kpred:decided 'MATT, date: quote'), so the authority is visible later. (5) Everything is reversible and inspectable. The app gets the same shape: review becomes a conversation with Shelly, one decision per turn; row-by-row clicking stays as the detailed drill-down, not the default." ;
+    kpred:principle "MOVE THE REASONING TO DRAFTING TIME. The in-app model is smaller than Opus and the harness thinner than Claude Code, so the app should not need to reason in the moment. Grouping is computed (sets, cascade bases), and recommendations with reasons and citations are drafted AHEAD of the conversation by the cheapest tier that can do it — scripts, local models, or Claude Code through MCP — and stored in the graph as proposals (the F223 shape). In the conversation the in-app model only presents a drafted decision and reads the answer back for one confirmation." ;
+    kpred:principle "AN AVERAGE IS NOT A BREAKDOWN. '2.4 per question' (cascadeSummary in src/lib/rdf/fact-aggregation.ts) says how much was settled and hides what and why. Every response that settles anything lists each statement it resolved, the verdict, the reason, and the words that authorised it; anything it did not resolve stays listed as open." ;
+    kpred:constraint "THE PERSON SETTLES; SHELLY PROPOSES. A free-text answer is turned into a verdict list that is shown back ('I will record: confirm these 7, reject this 1 because you said ...; still open: 2') and written only after one confirmation. Shelly may never settle a decision she drafted herself (the decision-journal rule), and auto-decide stays behind F235's warning." ;
+    kpred:has-phase kb:resolution-ledger, kb:review-journal-one, kb:review-agenda, kb:review-chat, kb:review-measures .
+
+kb:resolution-ledger rdf:type ktype:Phase ;
+    rdfs:label "F269.1 — every settle action records which statements it resolved, the verdict, the reason and the authority" ;
+    kpred:feature-id "F269.1" ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:part-of kb:conversational-review ;
+    kpred:description "One record per response or batch action: the statements resolved (with their labels), each verdict (confirm, refine, reject, defer), the reason (the grouping basis, the option chosen, or the person's words), who authorised it and when. The Review page shows this breakdown in place of the cascade average; the same record is what undo reverses. Script tier: pure data, no model." .
+
+kb:review-journal-one rdf:type ktype:Phase ;
+    rdfs:label "F269.2 — one review journal for the app, MCP and the CLI" ;
+    kpred:feature-id "F269.2" ; kpred:has-status "planned" ; kpred:order 2 ;
+    kpred:part-of kb:conversational-review ;
+    kpred:depends-on kb:resolution-ledger, kb:terminal-review ;
+    kpred:description "F199's journal (kb_review_decide, reckons review) and the app's review actions write the same ledger entries, so a decision made in Claude Code, the terminal or Shelly reads the same afterwards. This finishes the 0.2.6 aim of ONE review queue for the app, the MCP server and the offline jobs." .
+
+kb:review-agenda rdf:type ktype:Phase ;
+    rdfs:label "F269.3 — a drafted agenda: decisions with options, a recommendation, the reason and citations, prepared before review" ;
+    kpred:feature-id "F269.3" ; kpred:has-status "planned" ; kpred:order 3 ;
+    kpred:part-of kb:conversational-review ;
+    kpred:depends-on kb:proposal-options-model, kb:entity-sets ;
+    kpred:description "The pending queue is grouped into decisions (sets as the one grouping primitive; cascade bases where deterministic) and each decision gets 2 to 4 verdict options with one recommended, a one-line reason and citations to the statements and passages it rests on — the F223 proposal shape, so review decisions and reckoning options share one model (as decided for settleConflict, 2026-10-13). Drafted offline by scripts, local models or Claude Code over MCP, ordered by how many statements each decision settles. A decision with no proposed answer is not put on the agenda as a bare question (the 2026-10-23 backlog sample was 1018 such rows)." .
+
+kb:review-chat rdf:type ktype:Phase ;
+    rdfs:label "F269.4 — Shelly runs review: one decision per turn, options or free text, read back, one confirm" ;
+    kpred:feature-id "F269.4" ; kpred:has-status "planned" ; kpred:order 4 ;
+    kpred:part-of kb:conversational-review ;
+    kpred:depends-on kb:review-agenda, kb:resolution-ledger ;
+    kpred:description "Shelly takes the next agenda decision, presents its options with the recommendation, the reason and citation chips (Open in source), and accepts a click or a sentence. A sentence is turned into a verdict list and read back before anything is written; one confirmation writes it and shows the ledger for that response. 'Show me the rows' opens the detailed review for that decision only." .
+
+kb:review-measures rdf:type ktype:Phase ;
+    rdfs:label "F269.5 — measure review the way it is felt: time per decision, read-back corrections, reversals" ;
+    kpred:feature-id "F269.5" ; kpred:has-status "planned" ; kpred:order 5 ;
+    kpred:part-of kb:conversational-review ;
+    kpred:description "Statements settled per minute of the person's time (not per question), how often a read-back is corrected before confirming (how well the answer was understood), how often a verdict is reversed later (how well it was decided), and the size of the queue against what producers add. Recorded per response from the ledger." .
