@@ -1,3 +1,27 @@
+## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
+
+**State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,
+2 skip, 2 fail; Your room skipped, he tested his studio space). Decisions: F223.2-.4 move to 0.2.7; #501 stays
+out of 0.2.6; the docs pages are written before staging → main. Merged into dev today: #507, #521 release
+notes, #522 review fixes (View settings header on desktop, honest Currents summary, stale gen:serve lock
+reclaimed), #523 dompurify critical advisory, #525 the 35 docs pages (docs gate: 0 undocumented vs main).
+
+**#524 (dev → staging) is Matt's to merge.** Its head IS dev, so ANYTHING merged into dev rides into it: merge
+nothing into dev until #524 is merged (this handoff PR included).
+
+**Open problem on #524:** blocking `branch-ancestry` failed in the pull_request run (says 5 main-only commits:
+e6920d3, 76c8f23, cd3b686, d53d176, 5cf54db) but all 5 ARE on staging and the check passes locally
+(`npx tsx scripts/offline/branch-ancestry.ts --base=staging` on origin/dev: OK). Suspect a stale or shallow
+origin/staging inside the CI sweep, not real ancestry. The failed job was re-run on 2026-10-22 night; if it fails
+again, find which earlier sweep step re-fetches staging, rather than rebuilding dev.
+
+**After #524 merges, in order:** (1) this handoff PR; (2) dependabot into dev: #375, #472, #473 small (rebase,
+merge when green), #413 n3 2.7→2.13 (visual was failing), #518/#519 grouped bumps (failing CI, diagnose),
+#502 vitest 5 (major: Matt decides or close); (3) #486 plan PR (read first); (4) 0.2.7 lanes #501 (Matt approved
+the e2e count change 2/0→3/0, 3/0→4/0) and #513 (conflicts, E2E red); (5) recheck #520 (mcp-server vite 8.3.5,
+opened against main because security updates ignore target-branch) once main has 0.2.6.
+Closed today: #487, #492 (superseded on dev).
+
 ## 2026-10-21 — START HERE. 0.2.6 close-out, reckons.space registry, two blocked decisions (Claude Code)
 
 **Release pipeline (Matt, reconfirmed today):** dev takes developments without his approval; Claude merges into dev
