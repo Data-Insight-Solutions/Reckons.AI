@@ -1,3 +1,43 @@
+## 2026-10-23 — START HERE. 0.2.6 is in production; 0.2.7 is planned around the reckoning (Claude Code)
+
+**Shipped:** Matt merged #528 (staging → main) at 21:41 UTC. reckons.ai serves v0.2.6 (checked in Chromium:
+/, /kb, /docs/releases/v0-2-6, no console errors, badge "alpha · v0.2.6"). Tagged v0.2.6, GitHub release published.
+`kb:release-0-2-6` is `production`. CodeQL #200 (sim.worker.ts origin check) dismissed as a false positive with
+Matt's approval: a dedicated worker nothing instantiates yet.
+
+**Known:** zod GHSA-mrhx-c7xc-m3w5 (high) reached npm audit on release day; main's dependency audit fails on it.
+Fixed on dev by #529 (merged; zod overridden to 4.6.7, hume and @anthropic-ai/sdk both accept it). Ships with 0.2.7
+unless Matt asks for 0.2.6.1.
+
+**Open PRs, in merge order:**
+1. **#527** F166.1.2 (base dev): generation runs through the shared local-job queue, the Claude-session gate is
+   removed (Matt's call), every job is a Job node, Shelly gets a `queue_jobs` plan action, and `gen:serve` is now
+   the queue worker with `--workspace`. Rebased on dev after #529; trailers added. Merge when CI is green.
+   Real GPU runs: image 13 s and splat 32–41 s, through the bridge and through the folded worker.
+2. **`feat/f261-f262-comfyui-openai-compat`** (stacked on #527, no PR yet): ROADMAP ONLY plus one WIP module
+   (`src/lib/integrations/llm/openai-compatible.ts`, not wired). Contains the 0.2.7/0.2.8 plan below. Open the PR
+   after #527 merges.
+
+**Plan recorded today (all in static/reckons-roadmap.ttl):**
+- **0.2.7 spine (Matt chose):** the reckoning drives the work: F268.1 gaps (script), F268.2 deep research on
+  gaps, F268.3 source licensing, F268.4 approve/run/review/re-check loop, F268.5 timelapse of growth toward the
+  target, with F223.2–.5 (F223.5: generating assets IS a reckoning). Second track: F263 taxonomy current with
+  code, F264 KB → space wording, F265 example spaces by install requirement, F266 plugin gallery, F267 settings
+  cleanup, F261 ComfyUI adapter, F262 OpenAI-compatible endpoint.
+- **0.2.8 (new):** reach (F243–F245) and the other unstarted parts moved from 0.2.7; F268.6 currents as slow feed
+  seeding/closing reckonings; F269 review overhaul (conversational review with a per-response resolution ledger,
+  drafted agendas) proposed as its headline, not decided.
+
+**Matt's open decisions:** (1) code identifiers: `knowledgeBase` (terminology's developer word, recommended) or
+`space`; (2) plugin gallery as the Settings → Integrations page (recommended) or a top-level tab; (3) F268.2 search
+backend (self-hosted SearXNG recommended); (4) F269 as 0.2.8 headline; F269.1 ledger pulled into 0.2.7.
+
+**Next build, in order:** F268.1 gaps, then F223.2 options builder; then F262 wiring (14 provider sites; reckons
+provider is the checklist). Bug logged to review: Shelly chat with OpenRouter selected calls api.openai.com.
+
+**Rule learned today:** every agent commit needs `Model:` and `Intent:` trailers or the blocking Script tier fails
+(`npx tsx scripts/offline/commit-trailers.ts`).
+
 ## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
 
 **State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,

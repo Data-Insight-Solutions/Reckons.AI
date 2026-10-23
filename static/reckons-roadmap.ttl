@@ -9767,7 +9767,7 @@ kb:taxonomy-rename kpred:progress "2026-10-07, BATCH 2B: 42 top-level kb names r
 kb:release-0-2-6 rdf:type ktype:Release ;
     rdfs:label "v0.2.6" ;
     kpred:version "0.2.6" ;
-    kpred:has-status "functional" ;
+    kpred:has-status "production" ;
     kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
     kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
     kpred:has-part kb:space-file-layout ;
@@ -10478,3 +10478,5 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+kb:release-0-2-6 kpred:progress "2026-10-23, IN PRODUCTION. Matt merged #528 (staging to main, 352 commits, every check green after the CodeQL alert #200 on src/lib/sim/sim.worker.ts was dismissed as a false positive with his approval) at 21:41 UTC. Checked in Chromium the same evening: /, /kb and /docs/releases/v0-2-6 on reckons.ai return 200 with no page or console errors, and the landing badge reads 'alpha · v0.2.6'. Tagged v0.2.6 on d04a796 and published the GitHub release as latest. KNOWN, SAID OUT LOUD: a high-severity zod advisory (GHSA-mrhx-c7xc-m3w5) reached npm audit on release day; main's dependency audit fails on it. In 0.2.6 zod only parses Hume's own token response. Fixed on dev by #529 (zod overridden to 4.6.7), shipping with 0.2.7 unless Matt wants a 0.2.6.1." .
