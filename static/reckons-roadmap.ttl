@@ -10233,7 +10233,7 @@ kb:shelly-generation-jobs rdf:type ktype:Phase ;
     kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
     kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story. Free-form Shelly chat job actions, remote runner transport and additional derivation adapters remain unbuilt. Starting the runner is an explicit local setup step." ;
     kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch remains unbuilt" ;
-    kpred:has-phase kb:generated-assets-story .
+    kpred:has-phase kb:generated-assets-story, kb:shelly-job-queue .
 
 kb:generated-assets-story rdf:type ktype:Phase ;
     rdfs:label "Interactive Generated assets story — prompt, image, then derivations" ;
@@ -10256,6 +10256,26 @@ kb:generated-assets-story rdf:type ktype:Phase ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:measured "2026-10-20: a synthetic local acceptance run produced an independently checked image in 13.6 s, a dependent video in 55.9 s and a dependent 32768-Gaussian splat in 35.4 s. Earlier attempts exposed and corrected an invalid Gaussian count and a missing installed npm dependency. Artifacts and receipts remain outside the public repository. These checks establish valid files, not artistic quality." .
 
+
+kb:shelly-job-queue rdf:type ktype:Phase ;
+    rdfs:label "Shelly queues local jobs; generation runs through the shared job queue; every job is a Job node" ;
+    kpred:feature-id "F166.1.2" ;
+    kpred:has-status "in-progress" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:generated-assets-story ;
+    kpred:relates-to kb:local-orchestration, kb:local-panel, kb:agent-orchestration ;
+    kpred:decided "Matt, 2026-10-23: Shelly needs to be able to make local jobs, and generation capabilities should be tied into job queues. Each job should be an entity type node on the graph. Remove the queue-run blocker that needs an active Claude session." ;
+    kpred:description "Generation stops being a second, private queue. npm run gen:serve still advertises capabilities to the browser and still accepts only typed requests (stage, prompt, seed, parent job), but it no longer runs them: each request becomes a fixed-argv job in the shared local-job queue (F74.7), so the GPU gate, the circuit breaker and agent:watch apply to generation as they do to every other local job. A derivation is enqueued only after its source image completes. In the app every job is a Job node in the originating space (prompt, stage, seed, state, the job it waits for, and the asset it produced), and Shelly can propose a chain such as three images with a splat for each as ONE approval." ;
+    kpred:constraint "THE BROWSER NEVER WRITES A COMMAND. Shelly picks a declared job template and bounded parameters; the host maps the template to argv. scripts/agent/runner.ts still refuses tasks read from the app or an imported graph, and a Job node in a space is a record, never an executable task." ;
+    kpred:constraint "ONE APPROVAL PER PLAN. A chain Shelly proposes is shown and approved as a unit; approving it must not trigger a confirmation per stage." ;
+    kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:has-file "scripts/agent/session-queue.ts" ;
+    kpred:has-file "scripts/agent/queue-worker.ts" ;
+    kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/session-queue.test.ts" ;
+    kpred:measured "2026-10-23, host bridge: a real chain in a scratch workspace with its own queue state. gen:serve enqueued only the image; the splat entered the shared queue after the image completed. Each ran through its --job supervisor: image 13.4 s (receipt check pass, 38,638 bytes), splat 41.0 s (check pass, 2,228,639 bytes). NOT exercised in that run: agent:queue-worker and job-watch themselves, because a worker started on empty state treats every recurring job as overdue; unit tests cover the gate logic." ;
+    kpred:remaining "Job node vocabulary and a job store shared by the story and free-form chat; Shelly queue_jobs action gated on runner capabilities. The SessionStart heartbeat hook (scripts/agent/session-heartbeat.sh, wired in the untracked .claude/settings.local.json) no longer gates anything and can be removed." .
 
 kb:generated-assets-onboarding rdf:type ktype:Phase ;
     rdfs:label "Asset creation as Getting started — capability and setup guidance" ;
@@ -10478,3 +10498,5 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+kb:local-panel kpred:decided "MATT, 2026-10-23: remove the queue-run blocker that needs an active Claude session. Supersedes the 2026-09-30 session-heartbeat rule: the queue worker now starts jobs whenever it is running, and recurring jobs are enqueued on every pass. Stopping the worker, or the PAUSE file, is now the only way to keep the machine idle. The Ollama gate became per job: a job marked as not needing Ollama (generation) runs while Ollama is down." .

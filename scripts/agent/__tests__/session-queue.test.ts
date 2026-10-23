@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type QueueJob, type StepInput } from '../session-queue';
+import { dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
 import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
 
-const MIN = 60_000;
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
-const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, heartbeatFresh: true, ollamaUp: true, ...over });
+const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, ollamaUp: true, ...over });
 
 describe('worker pid ownership', () => {
   const alive = () => true;
@@ -23,33 +22,21 @@ describe('worker pid ownership', () => {
   });
 });
 
-describe('heartbeat freshness', () => {
-  const now = 1_000_000_000;
-  it('is fresh inside the window, stale past it, never fresh when missing', () => {
-    expect(heartbeatFresh(now - 19 * MIN, now)).toBe(true);
-    expect(heartbeatFresh(now - 21 * MIN, now)).toBe(false);
-    expect(heartbeatFresh(undefined, now)).toBe(false);
-    expect(heartbeatFresh(now - 5 * MIN, now, 3)).toBe(false);
-    expect(heartbeatFresh(now + MIN, now)).toBe(true);
-  });
-});
-
 describe('worker state machine', () => {
   it('starts a job only when everything is green', () => {
     expect(workerStep(base())).toEqual({ state: 'working', startJob: true });
   });
-  it('a STALE heartbeat never starts a new job, whatever else is true', () => {
-    for (const queue of [[job('a')], [job('a'), job('b', { gpu: false })]]) {
-      const s = workerStep(base({ queue, heartbeatFresh: false }));
-      expect(s.startJob).toBe(false);
-      expect(s.state).toBe('paused-idle');
-    }
-    // also with the heartbeat computed from an old mtime, and with the GPU gate wide open
-    const fresh = heartbeatFresh(Date.now() - 3 * 3_600_000, Date.now());
-    expect(workerStep(base({ heartbeatFresh: fresh, gpuBlocked: undefined })).startJob).toBe(false);
-  });
-  it('never starts when Ollama is down, and says so', () => {
+  it('never starts a job that uses Ollama while Ollama is down, and says so', () => {
     expect(workerStep(base({ ollamaUp: false }))).toEqual({ state: 'paused-ollama-down', startJob: false });
+  });
+  it('a job that does not use Ollama runs while Ollama is down (generation, 2026-10-23)', () => {
+    const mixed = [job('review'), job('gen', { ollama: false })];
+    expect(workerStep(base({ queue: mixed, ollamaUp: false }))).toEqual({ state: 'working', startJob: true });
+    expect(pickNext(orderQueue(mixed), undefined, false)?.name).toBe('gen');
+    // both gates closed: an Ollama-free GPU job waits for the GPU, not for Ollama
+    expect(workerStep(base({ queue: [job('gen', { ollama: false })], ollamaUp: false, gpuBlocked: 'hot' })))
+      .toEqual({ state: 'paused-resources', startJob: false, reason: 'hot' });
+    expect(workerStep(base({ queue: mixed, ollamaUp: false, gpuBlocked: 'hot' })).state).toBe('paused-ollama-down');
   });
   it('is empty with nothing queued, and never starts a second job while one runs', () => {
     expect(workerStep(base({ queue: [] })).state).toBe('empty');
@@ -70,7 +57,7 @@ describe('worker state machine', () => {
 
 describe('queue parse / order / dedupe', () => {
   it('round-trips and skips malformed lines', () => {
-    const jobs = [job('a', { priority: 2 }), job('b', { gpu: false })];
+    const jobs = [job('a', { priority: 2 }), job('b', { gpu: false }), job('c', { ollama: false })];
     expect(parseQueue(serializeQueue(jobs))).toEqual(jobs);
     expect(parseQueue('not json\n{"id":1}\n{"id":"x","name":"n","cwd":"/","addedAt":"t","argv":[]}\n')).toEqual([]);
   });
@@ -89,11 +76,12 @@ describe('queue parse / order / dedupe', () => {
 });
 
 describe('what agent:watch shows', () => {
-  const v = (o: object) => queueView({ queued: 12, heartbeatFresh: true, ollamaUp: true, ...o });
+  const v = (o: object) => queueView({ queued: 12, ollamaUp: true, ...o });
   it('ready / paused / empty', () => {
     expect(v({})).toEqual({ kind: 'ready', queued: 12 });
-    expect(v({ heartbeatFresh: false }).kind).toBe('paused-idle');
     expect(v({ ollamaUp: false }).kind).toBe('paused-ollama-down');
+    expect(v({ ollamaUp: false, needOllama: 12 }).kind).toBe('paused-ollama-down');
+    expect(v({ ollamaUp: false, needOllama: 10 }).kind).toBe('ready'); // two queued jobs do not need it
     expect(v({ manualPause: true }).kind).toBe('paused-manual');
     expect(v({ queued: 0 }).kind).toBe('empty');
     expect(v({ worker: { state: 'paused-resources', reason: 'hot' } })).toEqual({ kind: 'paused-resources', queued: 12, reason: 'hot' });
@@ -103,7 +91,7 @@ describe('what agent:watch shows', () => {
     expect(w).toMatchObject({ kind: 'working', job: 'describe', index: 3, total: 12 });
     expect(queueSegment(w)).toBe('working 3/12');
     expect(queueSegment({ kind: 'ready', queued: 12 })).toBe('ready 12');
-    expect(queueSegment({ kind: 'paused-idle', queued: 1 })).toBe('paused');
+    expect(queueSegment({ kind: 'paused-manual', queued: 1 })).toBe('paused');
   });
 });
 
@@ -215,11 +203,11 @@ describe('catch-up schedules', () => {
     expect(backlogHolds([agent('sched:docs-review')], open, 49).has('sched:docs-review')).toBe(true);
   });
   it('the monitor shows what the worker holds, with reasons', () => {
-    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, heartbeatFresh: true, ollamaUp: true, manualPause: false });
+    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, ollamaUp: true, manualPause: false });
     expect(v.held).toEqual(['layer-classify: 435 unreviewed proposals (limit 50)']);
     const lines = renderQueue(v, undefined, (_l, t) => t).join('\n');
     expect(lines).toMatch(/held.*layer-classify: 435 unreviewed/);
-    expect(queueView({ queued: 0, worker: { state: 'empty' }, heartbeatFresh: true, ollamaUp: true, manualPause: false }).held).toBeUndefined();
+    expect(queueView({ queued: 0, worker: { state: 'empty' }, ollamaUp: true, manualPause: false }).held).toBeUndefined();
   });
   it('does not enqueue what is queued or running, nor what is not due; carries the gpu flag', () => {
     const statuses = dueAll([rec('a'), rec('b'), rec('c', true), rec('fresh')], { fresh: now }, now);

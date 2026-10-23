@@ -274,7 +274,6 @@ export function renderQueue(q: QueueView | undefined, due: Due[] | undefined, lv
     switch (q.kind) {
       case 'ready': out.push(`${head}  ${green('READY')} — session active, Ollama up, ${q.queued} job${q.queued === 1 ? '' : 's'} queued, worker not running ${dim(`→ ${START_COMMAND}`)}`); break;
       case 'working': out.push(`${head}  ${yellow('WORKING')} — ${bold(q.job)}${q.attempt ? ` attempt ${q.attempt}/${q.maxAttempts}` : ''} · ${q.index}/${q.total} · ${Math.max(0, q.queued - 1)} remaining`); break;
-      case 'paused-idle': out.push(`${head}  ${dim(`PAUSED — no active session (${q.queued} queued; resumes when a prompt is submitted)`)}`); break;
       case 'paused-ollama-down': out.push(`${head}  ${lvl('bad', `PAUSED — Ollama down (${q.queued} queued)`)}`); break;
       case 'paused-manual': out.push(`${head}  ${lvl('warn', `PAUSED — manually (PAUSE file; npx tsx scripts/agent/queue.ts resume) · ${q.queued} queued`)}`); break;
       case 'paused-resources': out.push(`${head}  ${lvl('warn', `PAUSED — GPU busy/hot/full: ${q.reason ?? 'over a limit'} · ${q.queued} queued`)}`); break;
