@@ -256,6 +256,7 @@
     "uuid": "^14.0.2"
   },
   "overrides": {
+    "zod": "^4.6.6",
     "uuid": "$uuid",
     "cookie": "^0.7.0",
     "sharp": "$sharp",
