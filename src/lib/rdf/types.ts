@@ -472,6 +472,17 @@ export const GENERATION_PROVENANCE_PREDICATES = [
   'urn:kbase:predicate/generated-gaussians',
 ] as const;
 
+/** F166.1.2: what a Job node records about itself. Attributes in the detail panel, never value
+ *  nodes (a bare "queued" or "image" floating in the graph would say nothing). The edges waits-for
+ *  and produced stay visible: they are the chain. */
+export const JOB_ATTRIBUTE_PREDICATES = [
+  'urn:kbase:predicate/job-stage',
+  'urn:kbase:predicate/job-state',
+  'urn:kbase:predicate/job-error',
+  'urn:kbase:predicate/requested-by',
+  'urn:kbase:predicate/queued-at',
+] as const;
+
 /** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
  * the raw data-URI or URL as a junk literal node, so they're metadata here.
@@ -492,6 +503,7 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   // nodes: a bare "42" or "49" in the graph meant nothing (Matt, 2026-10-14: "whats the 49, 42,
   // and 7?"). Entity-to-entity links (made-from, license) stay visible edges and are NOT listed.
   ...GENERATION_PROVENANCE_PREDICATES,
+  ...JOB_ATTRIBUTE_PREDICATES,
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
 ]);

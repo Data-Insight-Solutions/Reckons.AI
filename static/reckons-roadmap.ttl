@@ -10231,8 +10231,8 @@ kb:shelly-generation-jobs rdf:type ktype:Phase ;
     kpred:measured "2026-10-16 code inspection: src/lib/types/turtle-chat.ts and src/lib/integrations/llm/turtle-chat.ts offer graph edits, navigation, filtered queries and scraping, but no asset-job dispatch action. scripts/content/gen-assets.ts already generates real images and splats and validates outputs with receipts. Invented splat-matrix or splat-pixels literals are not a substitute for a generated file." ;
     kpred:constraint "ACCEPTANCE: a synthetic conversation requests another asset beside an existing example; one authorized job creates a real image, then a real Gaussian-splat file, and a new entity in the originating space without overwriting the example. Verify receipt and file hashes, image/splat validity, provenance, generated-content labels and rendered result. Retry/replayed messages must not create duplicate jobs or assets. A failed image prevents the dependent splat stage; cancellation and a space switch cannot attach output to the wrong space." ;
     kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
-    kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story. Free-form Shelly chat job actions, remote runner transport and additional derivation adapters remain unbuilt. Starting the runner is an explicit local setup step." ;
-    kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch remains unbuilt" ;
+    kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story; F166.1.2 adds free-form Shelly chat job plans, Job nodes and generation through the shared local-job queue. Remote runner transport and additional derivation adapters (GLB mesh) remain unbuilt. Starting gen:serve is an explicit local setup step. Not yet seen end to end in ONE run: a real model's queue_jobs plan, drained by agent:queue-worker, attached in the browser." ;
+    kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch (F166.1.2) covered by plan, job-node and prompt unit tests and one browser test on a mock provider" ;
     kpred:has-phase kb:generated-assets-story, kb:shelly-job-queue .
 
 kb:generated-assets-story rdf:type ktype:Phase ;
@@ -10260,7 +10260,7 @@ kb:generated-assets-story rdf:type ktype:Phase ;
 kb:shelly-job-queue rdf:type ktype:Phase ;
     rdfs:label "Shelly queues local jobs; generation runs through the shared job queue; every job is a Job node" ;
     kpred:feature-id "F166.1.2" ;
-    kpred:has-status "in-progress" ;
+    kpred:has-status "functional" ;
     kpred:priority "high" ;
     kpred:part-of kb:shelly-generation-jobs ;
     kpred:depends-on kb:generated-assets-story ;
@@ -10272,10 +10272,20 @@ kb:shelly-job-queue rdf:type ktype:Phase ;
     kpred:has-file "scripts/content/generation-runner.ts" ;
     kpred:has-file "scripts/agent/session-queue.ts" ;
     kpred:has-file "scripts/agent/queue-worker.ts" ;
+    kpred:has-file "src/lib/generation/job-node.ts" ;
+    kpred:has-file "src/lib/generation/job-plan.ts" ;
+    kpred:has-file "src/lib/stores/generation-jobs.svelte.ts" ;
+    kpred:has-file "src/lib/components/JobStatusList.svelte" ;
+    kpred:has-file "src/lib/components/TurtleChatPanel.svelte" ;
+    kpred:has-file "src/lib/integrations/llm/turtle-chat.ts" ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/job-node.test.ts" ;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/turtle-chat-jobs.test.ts" ;
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
     kpred:tested-by "scripts/agent/__tests__/session-queue.test.ts" ;
     kpred:measured "2026-10-23, host bridge: a real chain in a scratch workspace with its own queue state. gen:serve enqueued only the image; the splat entered the shared queue after the image completed. Each ran through its --job supervisor: image 13.4 s (receipt check pass, 38,638 bytes), splat 41.0 s (check pass, 2,228,639 bytes). NOT exercised in that run: agent:queue-worker and job-watch themselves, because a worker started on empty state treats every recurring job as overdue; unit tests cover the gate logic." ;
-    kpred:remaining "Job node vocabulary and a job store shared by the story and free-form chat; Shelly queue_jobs action gated on runner capabilities. The SessionStart heartbeat hook (scripts/agent/session-heartbeat.sh, wired in the untracked .claude/settings.local.json) no longer gates anything and can be removed." .
+    kpred:measured "2026-10-23, app side: browser test 'Shelly queues a chain as ONE approval' (mock provider, synthetic runner in OPFS): one click queued 4 requests (2 images, 2 splats whose parentId names their image), wrote 4 Job nodes with 2 waits-for edges, and after a synthetic completion moved the first job to completed with a produced edge to its attached asset. All 6 story browser tests and 4,287 unit tests passed that day." ;
+    kpred:remaining "NOT YET SEEN: a real model (Claude, Ollama) writing a valid queue_jobs block (only the mock reply is tested; validateJobPlan refuses a malformed plan whole), and one run of agent:queue-worker plus job-watch draining a generation job on the real queue (the bridge and --job supervisor were run for real, the worker was not). Queue position is not shown: the card says Queued or Waiting for image N, not how many jobs are ahead. The SessionStart heartbeat hook (scripts/agent/session-heartbeat.sh, wired in the untracked .claude/settings.local.json) no longer gates anything and can be removed." .
 
 kb:generated-assets-onboarding rdf:type ktype:Phase ;
     rdfs:label "Asset creation as Getting started — capability and setup guidance" ;

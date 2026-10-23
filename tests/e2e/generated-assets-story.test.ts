@@ -216,3 +216,50 @@ test('a reload between creating a job directory and writing its request resumes 
   await finishJob(page, image.id);
   await expect.poll(() => generatedCount(page)).toBe(1);
 });
+
+test('Shelly queues a chain as ONE approval, and every job is a Job node (F166.1.2)', async ({ page }) => {
+  test.setTimeout(60_000);
+  await fixtureWorkspace(page);
+  await page.evaluate(async () => {
+    const reply = 'I can make both on your computer: two different images, then a Gaussian splat from each.\n<kb-actions>\n'
+      + JSON.stringify([{ type: 'queue_jobs', label: '2 images, each with a Gaussian splat', jobs: [
+        { stage: 'image', prompt: 'A synthetic paper crane on a desk' }, { stage: 'splat', from: 0 },
+        { stage: 'image', prompt: 'A synthetic glass marble on sand' }, { stage: 'splat', from: 2 }] }])
+      + '\n</kb-actions>';
+    (globalThis as { __RECKONS_MOCK_REPLY__?: string }).__RECKONS_MOCK_REPLY__ = reply;
+    const bridgePath = '/src/lib/stores/shelly-bridge.svelte.ts';
+    const workspacePath = '/src/lib/stores/workspace.svelte.ts';
+    const bridge = await import(/* @vite-ignore */ bridgePath);
+    bridge.requestShellyChat('Make two different images and a splat for each');
+    const workspace = await import(/* @vite-ignore */ workspacePath);
+    workspace.__linkHandleForTest(await navigator.storage.getDirectory());
+  });
+  const queue = page.getByRole('button', { name: 'queue 4', exact: true });
+  await expect(queue).toBeEnabled({ timeout: 15_000 });
+  await expect(page.getByText('2. Gaussian splat from image 1')).toBeVisible();
+  await queue.click();
+  await expect.poll(async () => (await jobRequests(page)).length).toBe(4);
+  const requests = await jobRequests(page);
+  const images = requests.filter(r => r.stage === 'image');
+  const splats = requests.filter(r => r.stage === 'splat');
+  expect(images).toHaveLength(2);
+  expect(splats.map(s => s.parentId).sort()).toEqual(images.map(i => i.id).sort());
+  const jobNodes = () => page.evaluate(async () => {
+    const dbPath = '/src/lib/storage/db.ts';
+    const { db } = await import(/* @vite-ignore */ dbPath);
+    const rows = await db.statements.toArray() as { s: { value: string }; p: { value: string }; o: { value: string } }[];
+    const jobs = rows.filter(r => r.p.value.endsWith('#type') && r.o.value === 'urn:kbase:type/Job').map(r => r.s.value);
+    const of = (s: string, p: string) => rows.find(r => r.s.value === s && r.p.value.endsWith(p))?.o.value;
+    return jobs.map(s => ({ s, state: of(s, 'job-state'), waitsFor: of(s, 'waits-for'), produced: of(s, 'produced') }));
+  });
+  await expect.poll(async () => (await jobNodes()).length).toBe(4);
+  expect((await jobNodes()).filter(j => j.waitsFor)).toHaveLength(2);
+  const first = images.find(i => i.prompt.includes('crane'))!;
+  await finishJob(page, first.id);
+  await expect.poll(() => generatedCount(page), { timeout: 15_000 }).toBe(1);
+  await expect.poll(async () => (await jobNodes()).find(j => j.s.endsWith(first.id))).toMatchObject({
+    state: 'completed', produced: `urn:kbase:concept/generated-${first.id}`,
+  });
+  await expect(page.getByText('Ready, added to this space for review')).toBeVisible();
+  await expect(page.getByText('Waiting for image 3')).toBeVisible();
+});
