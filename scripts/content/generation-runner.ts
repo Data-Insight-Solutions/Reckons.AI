@@ -1,13 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
  * Optional, per-user file-queue adapter. No HTTP listener and no general shell execution.
- * npm run gen:serve -- --workspace=/path/to/private-workspace
- * The browser must connect the same folder. gen:serve feeds checked requests into the shared local
- * job queue (scripts/agent/session-queue.ts) and starts a queue worker when none runs; each job runs
- * as `--job=<folder>`, which supervises the generation in its own process group so cancellation
- * reaches the tool.
+ * npm run gen:serve -- --workspace=/path/to/private-workspace   (= agent:queue-worker with a workspace)
+ * The browser must connect the same folder. The queue worker ticks GenerationRunner, which feeds
+ * checked requests into the shared local-job queue (scripts/agent/session-queue.ts); each job runs as
+ * `--job=<folder>`, which supervises the generation in its own process group so cancellation reaches
+ * the tool.
  */
-import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   closeSync, copyFileSync, existsSync, openSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
@@ -19,7 +19,7 @@ import {
   validJobId, validateReceipt, type GenerationJob, type GenerationRequest,
 } from '../../src/lib/generation/protocol.js';
 import { generationAvailability, generateStage } from './gen-assets.js';
-import { addJobs, mutateQueue, newJob, readQueue, readWorker } from '../agent/session-queue.js';
+import { addJobs, mutateQueue, newJob, readQueue } from '../agent/session-queue.js';
 
 function json(path: string): unknown {
   const bytes = readFileSync(path);
@@ -91,18 +91,17 @@ const ENQUEUED = 'enqueued.json';
 
 /**
  * The bridge between the browser's private file queue and the shared local-job queue (F166.1.2).
- * It no longer runs generation itself: each checked request becomes one fixed-argv job in the queue
- * that agent:queue-worker drains, so the GPU gate, the circuit breaker and agent:watch cover
- * generation as they cover every other local job. Only typed request fields cross from the
- * browser; the argv is built here and names a job folder, never a prompt or a tool.
+ * It does not run generation: each checked request becomes one fixed-argv job in the queue, so the
+ * GPU gate, the circuit breaker and agent:watch cover generation as they cover every other local
+ * job. It lives inside agent:queue-worker (one command, not two). Only typed request fields cross
+ * from the browser; the argv is built here and names a job folder, never a prompt or a tool.
  */
 export class GenerationRunner {
   readonly root: string;
   readonly jobs: string;
   readonly workspaceId: string;
   private stopping = false;
-  private worker?: ChildProcess;
-  constructor(workspace: string, private readonly options: { startWorker?: boolean } = {}) {
+  constructor(workspace: string) {
     const folder = realpathSync(workspace);
     this.root = join(folder, GENERATION_DIR);
     // A private workspace may be git-ignored inside a checkout; public source folders are refused.
@@ -121,7 +120,7 @@ export class GenerationRunner {
     const identity = json(identityPath);
     if (!validJobId(identity)) throw new Error('Invalid generation workspace identity');
     this.workspaceId = identity;
-    // Atomic directory creation prevents two runners from taking the same queue/GPU.
+    // Atomic directory creation prevents two queue workers from feeding one workspace twice.
     const lock = join(this.root, 'runner.lock');
     try { mkdirSync(lock, { mode: 0o700 }); }
     catch (e) {
@@ -130,15 +129,16 @@ export class GenerationRunner {
       // 2026-10-22: gen:serve then refused to start until the folder was deleted by hand.
       let pid: unknown;
       try { pid = (JSON.parse(readFileSync(join(lock, 'owner.json'), 'utf8')) as { pid?: unknown }).pid; } catch { /* no owner recorded */ }
-      if (lockOwnerAlive(pid)) throw new Error(`Another generation runner (pid ${pid}) is using this workspace. Stop it first.`);
+      if (lockOwnerAlive(pid)) throw new Error(`Another queue worker (pid ${pid}) is already serving this workspace. Stop it first.`);
       rmSync(lock, { recursive: true, force: true });
       mkdirSync(lock, { mode: 0o700 });
     }
     writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
   }
 
-  tick(): void {
-    if (this.stopping) return;
+  /** One pass. Returns true when it added a job, so the worker can start it without waiting a poll. */
+  tick(): boolean {
+    if (this.stopping) return false;
     atomic(join(this.root, 'capabilities.json'), {
       version: 1, workspaceId: this.workspaceId, heartbeat: Date.now(),
       stages: GENERATION_STAGES.map(stage => ({ stage, ...generationAvailability(stage) })),
@@ -202,7 +202,7 @@ export class GenerationRunner {
       atomic(join(directory, ENQUEUED), { name, at: new Date().toISOString() });
       added = true;
     }
-    if (added) this.ensureWorker();
+    return added;
   }
   private parentState(id: string): GenerationJob['state'] | 'missing' {
     try {
@@ -224,17 +224,6 @@ export class GenerationRunner {
     });
     atomic(statusPath, { request, state: 'cancelled' });
   }
-  /** Start the shared worker when generation is waiting and none is running. It exits once the
-   *  queue is empty, so nothing stays resident after the last job. */
-  private ensureWorker() {
-    if (this.options.startWorker === false || readWorker() || (this.worker && this.worker.exitCode === null)) return;
-    const log = openSync(join(this.root, 'queue-worker.log'), 'a', 0o600);
-    this.worker = spawn(process.execPath, ['--import', 'tsx', join(repoRoot, 'scripts/agent/queue-worker.ts')], {
-      cwd: repoRoot, detached: true, stdio: ['ignore', log, log],
-    });
-    closeSync(log);
-    this.worker.unref();
-  }
   close() {
     if (this.stopping) return;
     this.stopping = true;
@@ -245,8 +234,9 @@ export class GenerationRunner {
 }
 
 /**
- * Whether the pid recorded in a runner lock is still a generation runner. Linux reuses pids, so a live
- * pid counts only if its command line still names the runner (the session-queue workerPidAlive rule).
+ * Whether the pid recorded in a runner lock is still serving generation: the queue worker since
+ * F166.1.2, or an older standalone generation runner. Linux reuses pids, so a live pid counts only if
+ * its command line still names one of them (the session-queue workerPidAlive rule).
  * Without /proc (macOS) liveness alone decides. EPERM means alive but not ours to signal.
  */
 export function lockOwnerAlive(
@@ -258,7 +248,7 @@ export function lockOwnerAlive(
   if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) return false;
   if (pid === process.pid) return true;
   if (!alive(pid)) return false;
-  try { return readCmdline(pid).includes('generation-runner'); }
+  try { const cmd = readCmdline(pid); return cmd.includes('queue-worker') || cmd.includes('generation-runner'); }
   catch (e) { return (e as NodeJS.ErrnoException).code !== 'ENOENT' || !hasProc(); }
 }
 
@@ -325,19 +315,7 @@ async function main() {
   if (workerDir) { await worker(resolve(workerDir)); return; }
   const jobDir = arg('job');
   if (jobDir) { process.exitCode = await runQueuedJob(resolve(jobDir)); return; }
-  const workspace = arg('workspace');
-  if (!workspace) throw new Error('Usage: npm run gen:serve -- --workspace=/path/to/private-workspace');
-  const runner = new GenerationRunner(workspace);
-  const timer = setInterval(() => {
-    try { runner.tick(); } catch (e) { console.error(String(e)); }
-  }, 2000);
-  console.log('Local generation bridge ready. Connect this workspace folder in Reckons.AI; jobs run through agent:queue-worker.');
-  const stop = () => { clearInterval(timer); runner.close(); };
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
-  process.once('SIGHUP', stop); // the terminal was closed
-  process.once('exit', () => runner.close());
-  runner.tick();
+  throw new Error('Usage: generation-runner.ts --job=<folder> | --worker=<folder>. To serve a workspace: npm run gen:serve -- --workspace=<folder>');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {

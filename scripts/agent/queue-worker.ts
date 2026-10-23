@@ -16,8 +16,17 @@
  * held (heldSchedules) until the breaker is reset; any failed or refused schedule rests 30 min.
  * Each pass it also enqueues recurring jobs that are overdue (session-schedule.ts), once each.
  *
- * Usage: npm run agent:queue-worker [-- --poll-seconds=60] [--stay]
- * Exits when the queue is empty unless --stay.
+ * LOCAL GENERATION (F166.1.2). With --workspace=<folder> (or RECKONS_GEN_WORKSPACE) it also serves
+ * that folder to the browser: every 2 s it advertises which generation stages this machine can run
+ * and turns each checked request into a queued job (scripts/content/generation-runner.ts). That used
+ * to be a second long-running command (gen:serve); `npm run gen:serve` is now this worker with a
+ * workspace. Serving a workspace implies --stay, since the browser can ask at any time.
+ *
+ * --no-recurring drains only what is queued (generation, hand-added jobs) and never enqueues recurring
+ * schedules.
+ *
+ * Usage: npm run agent:queue-worker [-- --poll-seconds=60] [--stay] [--workspace=<folder>] [--no-recurring]
+ * Exits when the queue is empty unless --stay or a workspace is served.
  *
  * WEAKNESS, said out loud: job-watch's local-model verdict needs OLLAMA_BASE_URL, which this sets to
  * http://localhost:11434 when unset. A job queued with ollama:false runs with it cleared, so its run
@@ -33,6 +42,7 @@ import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 import { loadDeviceConfig } from './device-config.js';
+import { GenerationRunner } from '../content/generation-runner.js';
 import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -41,7 +51,9 @@ async function ollamaUp(): Promise<boolean> {
   try { return (await fetch(`${OLLAMA}/api/version`, { signal: AbortSignal.timeout(2000) })).ok; } catch { return false; }
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** A poll the generation bridge can cut short, so a job the browser just asked for starts now. */
+let wakeNow: (() => void) | undefined;
+const sleep = (ms: number) => new Promise<void>((r) => { const t = setTimeout(r, ms); wakeNow = () => { clearTimeout(t); r(); }; });
 
 function runJob(job: QueueJob): Promise<number> {
   const jobWatch = path.join(path.dirname(fileURLToPath(import.meta.url)), 'job-watch.ts');
@@ -75,30 +87,48 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const num = (k: string, d: number) => { const v = Number(args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]); return Number.isFinite(v) && v > 0 ? v : d; };
   const pollMs = num('poll-seconds', 60) * 1000;
-  const stay = args.includes('--stay');
+  const workspace = args.find((a) => a.startsWith('--workspace='))?.slice('--workspace='.length) || process.env.RECKONS_GEN_WORKSPACE;
+  const stay = args.includes('--stay') || !!workspace;
+  const recurring = !args.includes('--no-recurring');
   const root = mainCheckoutRoot();
   const other = readWorker();
   if (other?.pid && other.pid !== process.pid) { console.error(`queue-worker: another worker is already running (pid ${other.pid}); only one runs so only one GPU job does`); process.exit(1); }
+  // Ticks on its own timer: the browser rejects a capability heartbeat older than 30 s, and the main
+  // loop can be busy for minutes running a job.
+  const generation = workspace ? new GenerationRunner(path.resolve(workspace)) : undefined;
+  const genTimer = generation ? setInterval(() => {
+    try { if (generation.tick()) wakeNow?.(); } catch (e) { console.error(`queue-worker: generation: ${String(e)}`); }
+  }, 2000) : undefined;
+  if (generation) { generation.tick(); console.log(`queue-worker: serving local generation for ${path.resolve(workspace!)} — connect that folder in Reckons.AI`); }
   let finished = 0;
   let stop = false;
-  const bye = () => { stop = true; try { writeWorker({ state: 'empty' }); } catch { /* best effort */ } process.exit(0); };
+  const bye = () => {
+    stop = true;
+    if (genTimer) clearInterval(genTimer);
+    generation?.close();
+    try { writeWorker({ state: 'empty' }); } catch { /* best effort */ }
+    process.exit(0);
+  };
   process.on('SIGINT', bye);
   process.on('SIGTERM', bye);
+  process.on('SIGHUP', bye); // the terminal was closed
   let lastState: WorkerState | undefined;
   let lastHeld = '';
 
   while (!stop) {
     const up = await ollamaUp();
-    const { jobs, successes } = loadRecurring(root);
-    const done = readDone();
-    const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
-    // Back-pressure first, then breaker and backoff holds (their reasons win for the same job).
-    const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...heldSchedules(done, readCircuitCache(), Date.now())]);
-    heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
-    const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
-    if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
-    const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
-    if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
+    if (recurring) {
+      const { jobs, successes } = loadRecurring(root);
+      const done = readDone();
+      const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
+      // Back-pressure first, then breaker and backoff holds (their reasons win for the same job).
+      const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...heldSchedules(done, readCircuitCache(), Date.now())]);
+      heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
+      const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
+      if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
+      const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
+      if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
+    }
     const queue = orderQueue(readQueue());
     // Only ask nvidia-smi when a GPU job could actually start (not paused, and Ollama up if it needs it).
     const gate = !isPaused() && queue.some((j) => isGpuJob(j) && (up || !needsOllama(j))) ? await readGpuVerdict() : { ok: true as const };

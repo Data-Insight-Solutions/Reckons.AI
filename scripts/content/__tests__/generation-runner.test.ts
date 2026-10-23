@@ -70,7 +70,7 @@ describe('private generation queue', () => {
     const workspace = temp();
     const runner = new GenerationRunner(workspace);
     try {
-      expect(() => new GenerationRunner(workspace)).toThrow();
+      expect(() => new GenerationRunner(workspace)).toThrow('already serving');
       const dir = join(runner.jobs, parent.id);
       mkdirSync(dir);
       writeFileSync(join(dir, 'request.json'), JSON.stringify(parent));
@@ -81,6 +81,13 @@ describe('private generation queue', () => {
       runner.tick();
       expect(JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8'))).toEqual(result);
     } finally { runner.close(); }
+  });
+  it('never takes a lock held by a live queue worker', () => {
+    const workspace = temp();
+    const lock = join(workspace, '.reckons-generation', 'runner.lock');
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }));
+    expect(() => new GenerationRunner(workspace)).toThrow('already serving');
   });
   it('honors cancellation before dispatch and refuses replay of interrupted jobs', () => {
     const runner = new GenerationRunner(temp());
@@ -129,6 +136,7 @@ describe('runner lock', () => {
     const gone = () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); };
     expect(lockOwnerAlive(4242, () => false)).toBe(false);
     expect(lockOwnerAlive(4242, live, () => 'node tsx scripts/content/generation-runner.ts --workspace=x')).toBe(true);
+    expect(lockOwnerAlive(4242, live, () => 'node tsx scripts/agent/queue-worker.ts --workspace=x')).toBe(true);
     expect(lockOwnerAlive(4242, live, () => 'code eslint-server')).toBe(false);
     expect(lockOwnerAlive(4242, live, gone, () => true)).toBe(false);
     expect(lockOwnerAlive(4242, live, gone, () => false)).toBe(true);
@@ -138,7 +146,7 @@ describe('runner lock', () => {
 });
 
 describe('generation through the shared local-job queue (F166.1.2)', () => {
-  const runner = () => new GenerationRunner(temp(), { startWorker: false });
+  const runner = () => new GenerationRunner(temp());
   const submit = (r: GenerationRunner, req: GenerationRequest) => {
     const dir = join(r.jobs, req.id);
     mkdirSync(dir);
