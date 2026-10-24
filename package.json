@@ -176,6 +176,7 @@
     "idea": "npx tsx scripts/agent/idea.ts",
     "interview": "npx tsx scripts/agent/interview.ts",
     "desk": "bash scripts/agent/desk.sh",
+    "local:claude": "bash scripts/agent/local-claude.sh",
     "backlog": "npx tsx scripts/agent/backlog.ts",
     "prune": "npx tsx scripts/agent/prune-queue.ts",
     "offline:context": "npx tsx scripts/offline/context-composition.ts",
