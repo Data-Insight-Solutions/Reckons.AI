@@ -1,170 +1,54 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { getCurrentKbId } from '$lib/storage/kb-registry';
-  import { workspaceHandle, workspaceState, pickWorkspace, reconnectWorkspace, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { supportsWorkspace } from '$lib/stores/workspace.svelte';
   import { applyShellyViewAdjust } from '$lib/stores/shelly-bridge.svelte';
-  import { officialKbActive } from '$lib/stores/official-kb.svelte';
-  import { attachGeneration } from '$lib/generation/attach';
-  import { WorkspaceGenerationClient } from '$lib/generation/workspace-client';
   import {
-    generationEntity, parseRequest, STAGE_LABELS,
-    type GenerationCapabilities, type GenerationJob, type GenerationRequest, type GenerationStage,
-  } from '$lib/generation/protocol';
+    cancelJob, clearJobsError, connectJobs, generationJobs as gen, retryJob, submitJobs, useGenerationJobs,
+  } from '$lib/stores/generation-jobs.svelte';
+  import { generationEntity, STAGE_LABELS, type GenerationRequest, type GenerationStage } from '$lib/generation/protocol';
 
   let { onexit }: { onexit: () => void } = $props();
-  const spaceId = getCurrentKbId();
-  const storageKey = `reckons:generation-story:${spaceId}`;
+  // Jobs, polling and attaching live in the shared store (F166.1.2); this keeps only the compose box.
+  const storageKey = `reckons:generation-story-ui:${getCurrentKbId()}`;
   let prompt = $state('');
   let stage = $state<GenerationStage>('image');
-  let requests = $state<GenerationRequest[]>([]);
-  let jobs = $state<GenerationJob[]>([]);
-  let previews = $state<Record<string, string>>({});
-  let attached = $state<string[]>([]);
-  let capabilities = $state<GenerationCapabilities | null>(null);
-  let connectionError = $state('');
-  let error = $state('');
-  let busy = $state(false);
-  let connecting = $state(false);
-  let client: WorkspaceGenerationClient | null = null;
-  let folder: FileSystemDirectoryHandle | null = null;
-  let generationWorkspaceId: string | null = null;
-  let alive = true;
-  let polling = false;
-  const cancelling = new Set<string>();
-  let list: HTMLDivElement;
-  const active = $derived(requests.find(r => !jobs.some(j => j.request.id === r.id
-    && (j.state === 'failed' || j.state === 'cancelled' || (j.state === 'completed' && attached.includes(r.id))))));
-  const imageJob = $derived([...jobs].reverse().find(j => j.request.stage === 'image'
-    && j.state === 'completed' && attached.includes(j.request.id)));
   let composing = $state(true);
-  const available = (kind: GenerationStage) => !!capabilities?.stages.find(c => c.stage === kind)?.available;
-  const reason = (kind: GenerationStage) => capabilities?.stages.find(c => c.stage === kind)?.reason ?? 'Connect the local runner first.';
+  let list: HTMLDivElement;
+  const requests = $derived(gen.requests.filter(r => gen.originOf(r.id) === 'story'));
+  const active = $derived(requests.find(r => !gen.isFinished(r.id)));
+  const imageRequest = $derived([...requests].reverse().find(r => r.stage === 'image' && gen.attached.includes(r.id)));
+  const capabilities = $derived(gen.capabilities);
+  const connectionError = $derived(gen.connectionError);
+  const busy = $derived(gen.busy);
+  const connecting = $derived(gen.connecting);
+  const error = $derived(gen.error);
+  const available = (kind: GenerationStage) => gen.available(kind);
+  const reason = (kind: GenerationStage) => gen.reason(kind);
 
   function save() {
-    // Save the ID before dispatch. A reload or uncertain write retries the same job.
-    localStorage.setItem(storageKey, JSON.stringify({ prompt, stage, requests, composing, generationWorkspaceId }));
+    try { localStorage.setItem(storageKey, JSON.stringify({ prompt, stage, composing })); } catch { /* per-viewer convenience only */ }
   }
-  function showError(e: unknown) { return e instanceof Error ? e.message : String(e); }
   async function scroll() {
     await tick();
     // On phones the sheet owns the scroll container; on desktop the conversation owns it.
     list?.lastElementChild?.scrollIntoView({ block: 'end' });
   }
-  async function connect(choose = false) {
-    if (connecting) return;
-    connecting = true;
-    connectionError = '';
-    try {
-      if (choose) {
-        const connected = workspaceState() === 'disconnected' ? await reconnectWorkspace() : await pickWorkspace();
-        if (!connected) return;
-      }
-      folder = workspaceHandle();
-      if (!folder || workspaceState() !== 'connected') throw new Error('Connect your workspace folder to run generation locally.');
-      client = new WorkspaceGenerationClient(folder);
-      const caps = await client.capabilities();
-      if (generationWorkspaceId && caps.workspaceId !== generationWorkspaceId && requests.length > 0) {
-        client = null;
-        throw new Error('Connect the original generation workspace to resume this story.');
-      }
-      generationWorkspaceId = caps.workspaceId;
-      capabilities = caps;
-      save();
-      await poll();
-    } catch (e) { capabilities = null; connectionError = showError(e); }
-    finally { connecting = false; }
-  }
-
-  async function poll() {
-    if (polling || busy || !client || !alive) return;
-    polling = true;
-    try {
-      const currentFolder = workspaceHandle();
-      if (getCurrentKbId() !== spaceId || !currentFolder || !folder
-        || !(await folder.isSameEntry(currentFolder))) {
-        throw new Error('The space or workspace changed. Reopen this story in the original space to continue.');
-      }
-      // Results remain readable after the runner stops. A stale heartbeat disables new submissions.
-      let caps: GenerationCapabilities | null = null;
-      try {
-        caps = await client.capabilities();
-        capabilities = caps;
-        connectionError = '';
-      }
-      catch (e) { capabilities = null; connectionError = showError(e); }
-      if (caps && caps.workspaceId !== generationWorkspaceId) {
-        capabilities = null;
-        throw new Error('The generation workspace identity changed. Reconnect the original workspace.');
-      }
-      for (const request of requests) {
-        if (attached.includes(request.id) || jobs.some(j => j.request.id === request.id && ['failed', 'cancelled'].includes(j.state))) continue;
-        let job: GenerationJob;
-        try { job = await client.status(request); }
-        catch (e) {
-          if (!(e instanceof DOMException) || e.name !== 'NotFoundError') throw e;
-          // A saved request whose submit was interrupted can be resumed with the same ID.
-          await client.submit(request);
-          job = { request, state: 'queued' };
-        }
-        if (!alive) return;
-        jobs = [...jobs.filter(j => j.request.id !== request.id), job];
-        if (job.state === 'completed') {
-          const file = await client.result(job);
-          // Cancellation can race reading a large output. Check again before attaching.
-          if (!alive || (await client.status(request)).state !== 'completed' || cancelling.has(request.id)) continue;
-          busy = true;
-          const entity = await attachGeneration(job, file);
-          if (!alive) return;
-          attached = [...attached, request.id];
-          if (request.stage !== 'splat') previews[request.id] = URL.createObjectURL(file);
-          save();
-          // Selecting automatically opens a competing details sheet on phones. Highlight the
-          // result while keeping Shelly's next question reachable; Show in space selects it.
-          applyShellyViewAdjust({ spotlight: [entity] });
-          await scroll();
-        }
-      }
-    } catch (e) { error = showError(e); }
-    finally { polling = false; busy = false; }
-  }
+  const connect = (choose = false) => connectJobs(choose);
 
   async function submit(kind = stage, retry?: GenerationRequest) {
-    if (busy || active || !client) return;
-    busy = true;
-    error = '';
+    if (busy || active) return;
     try {
-      if (officialKbActive()) throw new Error('Open an editable copy of this space before generating assets.');
-      const currentFolder = workspaceHandle();
-      if (getCurrentKbId() !== spaceId || !folder || !currentFolder || !(await folder.isSameEntry(currentFolder))) {
-        throw new Error('Return to the originating space and workspace before submitting.');
-      }
-      const text = retry?.prompt ?? (kind === 'splat' ? imageJob?.request.prompt : prompt.trim());
-      const request = parseRequest({
-        version: 1, id: crypto.randomUUID(), spaceId, stage: kind, prompt: text,
-        seed: retry?.seed ?? Math.floor(Math.random() * 2147483648),
-        ...(kind !== 'image' ? { parentId: retry?.parentId ?? imageJob?.request.id } : {}),
-      });
-      requests = [...requests, request];
+      if (retry) await retryJob(retry, 'story');
+      else if (kind === 'image' || !imageRequest) await submitJobs([{ stage: 'image', prompt: prompt.trim() }], 'story');
+      // A video takes its own motion prompt; a splat is made from the picture alone.
+      else await submitJobs([{ stage: kind, prompt: kind === 'video' ? prompt.trim() : imageRequest.prompt, parentId: imageRequest.id }], 'story');
       composing = false;
       save();
-      await client.submit(request);
-      jobs = [...jobs, { request, state: 'queued' }];
       await scroll();
-    } catch (e) { error = showError(e); }
-    finally { busy = false; }
+    } catch { /* the store reports the error */ }
   }
-
-  async function cancel(request: GenerationRequest) {
-    if (!client || busy) return;
-    busy = true;
-    cancelling.add(request.id);
-    try {
-      await client.cancel(request);
-      jobs = [...jobs.filter(j => j.request.id !== request.id), { request, state: 'cancelled' }];
-      error = '';
-    } catch (e) { error = showError(e); }
-    finally { busy = false; cancelling.delete(request.id); }
-  }
+  const cancel = (request: GenerationRequest) => cancelJob(request);
   function compose(kind: GenerationStage) {
     stage = kind;
     prompt = '';
@@ -173,24 +57,18 @@
     void scroll();
   }
 
+  $effect(() => { if (gen.attached.length) void scroll(); });
+
   onMount(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
       if (saved) {
-        requests = saved.requests.map(parseRequest).filter((r: GenerationRequest) => r.spaceId === spaceId);
         prompt = typeof saved.prompt === 'string' ? saved.prompt : '';
         stage = saved.stage === 'video' ? 'video' : 'image';
         composing = saved.composing !== false;
-        generationWorkspaceId = typeof saved.generationWorkspaceId === 'string' ? saved.generationWorkspaceId : null;
       }
-    } catch { error = 'The saved story could not be restored. You can start a new image.'; }
-    void connect();
-    const timer = setInterval(() => void poll(), 2000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-      Object.values(previews).forEach(url => URL.revokeObjectURL(url));
-    };
+    } catch { /* start with an empty compose box */ }
+    return useGenerationJobs();
   });
 </script>
 
@@ -229,12 +107,12 @@
     {/if}
 
     {#each requests as request (request.id)}
-      {@const job = jobs.find(j => j.request.id === request.id)}
+      {@const job = gen.jobOf(request.id)}
       <div class="turn">
         <p class="user-message">{request.stage === 'image' ? request.prompt : `${STAGE_LABELS[request.stage]}: ${request.prompt}`}</p>
         <div class="result">
           <p class="status" role="status">
-            {#if attached.includes(request.id)}
+            {#if gen.attached.includes(request.id)}
               Your {STAGE_LABELS[request.stage].toLowerCase()} is ready. I’ve added it to this space for review.
             {:else if job?.state === 'failed'}
               Generation failed: {job.error || 'The runner did not produce a checked result.'}
@@ -248,14 +126,14 @@
               {capabilities ? 'Queued for the local runner.' : 'Waiting for the local runner. Your request is saved.'}
             {/if}
           </p>
-          {#if previews[request.id] && request.stage === 'image'}
-            <img class="preview" src={previews[request.id]} alt={`Generated: ${request.prompt}`} onload={() => void scroll()} />
-          {:else if previews[request.id] && request.stage === 'video'}
+          {#if gen.previews[request.id] && request.stage === 'image'}
+            <img class="preview" src={gen.previews[request.id]} alt={`Generated: ${request.prompt}`} onload={() => void scroll()} />
+          {:else if gen.previews[request.id] && request.stage === 'video'}
             <!-- Generated silent clips have no speech or separate caption track. -->
             <!-- svelte-ignore a11y_media_has_caption -->
-            <video class="preview" src={previews[request.id]} controls aria-label="Generated video" onloadedmetadata={() => void scroll()}></video>
+            <video class="preview" src={gen.previews[request.id]} controls aria-label="Generated video" onloadedmetadata={() => void scroll()}></video>
           {/if}
-          {#if attached.includes(request.id)}
+          {#if gen.attached.includes(request.id)}
             <span class="generated-label">Generated · {STAGE_LABELS[request.stage]}</span>
             <button onclick={() => applyShellyViewAdjust({ selectEntity: generationEntity(request.id), layout: 'focus' })}>Show in space</button>
           {:else if job?.state === 'failed' || job?.state === 'cancelled'}
@@ -267,7 +145,7 @@
       </div>
     {/each}
 
-    {#if imageJob && !active && !composing}
+    {#if imageRequest && !active && !composing}
       <div class="shelly-message">
         <img src="/svg/head1.svg" alt="Shelly" width="28" height="28" />
         <div>
@@ -285,18 +163,18 @@
         </div>
       </div>
     {/if}
-    {#if error}<p class="error" role="alert">{error}</p><button onclick={() => { error = ''; void poll(); }}>Check again</button>{/if}
+    {#if error}<p class="error" role="alert">{error}</p><button onclick={clearJobsError}>Check again</button>{/if}
   </div>
 
   <div class="composer">
-    {#if (composing || (!imageJob && !active)) && !active}
+    {#if (composing || (!imageRequest && !active)) && !active}
       <form onsubmit={(event) => { event.preventDefault(); void submit(); }}>
         <label for="generation-prompt">{stage === 'video' ? 'How should the scene move?' : 'What image would you like?'}</label>
         <textarea id="generation-prompt" bind:value={prompt} oninput={() => queueMicrotask(save)} maxlength="2000" rows="3"
           placeholder={stage === 'video' ? 'Describe the movement or camera motion…' : 'A tiny lighthouse on a floating island, painted in watercolor…'} disabled={busy}></textarea>
         <div class="choices">
           <button class="primary" type="submit" disabled={busy || !prompt.trim() || !available(stage)}>Generate {stage}</button>
-          {#if imageJob}<button type="button" onclick={() => { composing = false; save(); }}>Back to choices</button>{/if}
+          {#if imageRequest}<button type="button" onclick={() => { composing = false; save(); }}>Back to choices</button>{/if}
         </div>
         {#if capabilities && !available(stage)}<p class="hint">{reason(stage)}</p>{/if}
       </form>

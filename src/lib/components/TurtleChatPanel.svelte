@@ -30,6 +30,9 @@
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
   import GenerationStory from './GenerationStory.svelte';
+  import JobStatusList from './JobStatusList.svelte';
+  import { generationJobs, submitJobs, useGenerationJobs } from '$lib/stores/generation-jobs.svelte';
+  import { describePlan, validateJobPlan } from '$lib/generation/job-plan';
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
@@ -274,7 +277,10 @@
     }
     reviewSteps.sort((a, b) => a.order - b.order);
 
-    return reviewSteps.length ? { ...core, reviewSteps } : core;
+    // F166.1.2: what the person's own runner can make, so Shelly offers only that.
+    const caps = generationJobs.capabilities;
+    const withJobs = caps ? { ...core, localJobs: { stages: caps.stages } } : core;
+    return reviewSteps.length ? { ...withJobs, reviewSteps } : withJobs;
   }
 
   // ── KB query (for query_kb action) ────────────────────────────────────────
@@ -464,6 +470,8 @@
       exploreStarted = true;
       sendExploreMessage(null);
     }
+    // Reads the connected runner's capabilities for Shelly's context; jobs keep polling after close.
+    return useGenerationJobs();
   });
 
   async function sendExploreMessage(userText: string | null) {
@@ -977,6 +985,8 @@
   // ── Action acceptance ──────────────────────────────────────────────────────
 
   let dismissedActions = $state<Set<string>>(new Set());
+  /** Approved queue_jobs cards, by action key → the request IDs they queued (shown live). */
+  let queuedJobs = $state<Record<string, string[]>>({});
 
   function actionKey(msgIdx: number, actionIdx: number) {
     return `${msgIdx}-${actionIdx}`;
@@ -1011,6 +1021,15 @@
         } catch (e) {
           errorMsg = e instanceof Error ? e.message : String(e);
         }
+        return;
+      }
+
+      // queue_jobs: one approval for the whole plan; each job becomes a Job entity in this knowledge base
+      if (action.type === 'queue_jobs') {
+        const plan = validateJobPlan(action.jobs, generationJobs.capabilities);
+        if (!plan.ok) { errorMsg = plan.error; return; }
+        const created = await submitJobs(plan.items, 'shelly');
+        queuedJobs = { ...queuedJobs, [key]: created.map(r => r.id) };
         return;
       }
 
@@ -1467,13 +1486,27 @@
                         <span class="action-badge badge-scrape">scrape URL</span>
                         <span class="action-desc">{action.label}</span>
                         <span class="action-hint">{action.url}</span>
+                      {:else if action.type === 'queue_jobs'}
+                        {@const plan = validateJobPlan(action.jobs, generationJobs.capabilities)}
+                        <span class="action-badge badge-query">local jobs</span>
+                        <span class="action-desc">{action.label}</span>
+                        {#if queuedJobs[key]}
+                          <JobStatusList ids={queuedJobs[key]} />
+                        {:else if plan.ok}
+                          <span class="action-hint">{#each describePlan(plan.items) as line}{line}<br />{/each}runs on your computer, one job at a time; each result is added here for review</span>
+                        {:else}
+                          <span class="action-hint">{plan.error}</span>
+                        {/if}
                       {/if}
-                      <div class="action-btns">
-                        <button class="primary sm" onclick={() => acceptAction(action, key)}>
-                          {action.type === 'query_kb' ? 'run' : action.type === 'scrape_url' ? 'scrape' : 'accept'}
-                        </button>
-                        <button class="sm" onclick={() => dismissAction(key)}>dismiss</button>
-                      </div>
+                      {#if !(action.type === 'queue_jobs' && queuedJobs[key])}
+                        <div class="action-btns">
+                          <button class="primary sm" onclick={() => acceptAction(action, key)}
+                            disabled={action.type === 'queue_jobs' && (generationJobs.busy || !validateJobPlan(action.jobs, generationJobs.capabilities).ok)}>
+                            {action.type === 'query_kb' ? 'run' : action.type === 'scrape_url' ? 'scrape' : action.type === 'queue_jobs' ? `queue ${action.jobs?.length ?? 0}` : 'accept'}
+                          </button>
+                          <button class="sm" onclick={() => dismissAction(key)}>dismiss</button>
+                        </div>
+                      {/if}
                     </div>
                   {/if}
                 {/each}

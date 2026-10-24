@@ -1,7 +1,7 @@
 /**
  * npm run agent:queue — the local-job queue a session worker drains (F74.7).
  *
- *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate)
+ *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] [--no-ollama] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate; --no-ollama = runs while Ollama is down)
  *   queue.ts list                                                     queued jobs, then recurring jobs and when each is due
  *   queue.ts pause | resume                                           create / remove the PAUSE file; while it exists the worker starts nothing
  *   queue.ts drop <id>                                                remove a queued job (recorded as dropped)
@@ -91,10 +91,10 @@ function main(): void {
     const cwd = flag('cwd');
     const priority = flag('priority') !== undefined ? Number(flag('priority')) : undefined;
     if (!name || !cwd || argv.length === 0 || (priority !== undefined && !Number.isFinite(priority))) {
-      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] -- <argv…>');
+      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] [--no-ollama] -- <argv…>');
       process.exit(2);
     }
-    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined)]);
+    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined, flags.includes('--no-ollama') ? false : undefined)]);
     console.log(r.add.length ? `queued ${name} (${r.add[0].id})` : `already queued: ${name} in ${cwd}`);
   } else if (cmd === 'list') {
     const q = orderQueue(readQueue());

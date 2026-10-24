@@ -1,3 +1,5 @@
+import type { JobPlanStep } from '$lib/generation/job-plan';
+
 export interface TurtleChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -18,7 +20,9 @@ export type KBAction =
   // express the view is not an API.
   | { type: 'adjust_view'; selectEntity?: string; layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map'; filters?: GraphFilter[]; label: string }
   | { type: 'query_kb'; filter: 'no-type' | 'no-source' | 'pending' | 'islands'; label: string }
-  | { type: 'scrape_url'; url: string; label: string };
+  | { type: 'scrape_url'; url: string; label: string }
+  // F166.1.2: a plan of local jobs from a fixed menu, approved once as a unit. Never a command.
+  | { type: 'queue_jobs'; label: string; jobs: JobPlanStep[] };
 
 export interface TurtleChatRequest {
   apiKey: string;
@@ -40,6 +44,12 @@ export interface KBContext {
    * walk the steps in order, put each screenshot front-and-centre, read the
    * assertion + verdict, and ask the reviewer to confirm or flag. (F34)
    */
+  /**
+   * What the connected local generation runner can do (F166.1.2). Absent = no runner connected.
+   * Shelly offers only these stages, and says what is missing instead of claiming that she cannot
+   * make pictures in principle.
+   */
+  localJobs?: { stages: Array<{ stage: string; available: boolean; reason?: string }> };
   reviewSteps?: Array<{
     iri: string;
     order: number;
