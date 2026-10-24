@@ -11,6 +11,10 @@
 #   npm run local:claude -- --model=qwen3-coder   a different base model
 #   npm run local:claude -- -p "…"                one headless task
 #
+# n8n is deliberately NOT given to the deputy: its MCP config and API key live in the user settings of
+# Matt's own sessions (~/.claude/settings.json env), which this separate config folder does not load.
+# /doctor here warns about missing N8N_* variables; that is expected.
+#
 # WHAT MAKES IT A DEPUTY, NOT A SECOND OPUS — enforced by the environment, not by asking nicely:
 #   - Its own CLAUDE_CONFIG_DIR holds no Anthropic login, and every model name (opus/sonnet/haiku,
 #     subagents included) maps to the local alias, so it cannot spend subscription or API quota.
@@ -119,10 +123,22 @@ export ANTHROPIC_MODEL="$ALIAS"
 export ANTHROPIC_DEFAULT_OPUS_MODEL="$ALIAS" ANTHROPIC_DEFAULT_SONNET_MODEL="$ALIAS" ANTHROPIC_DEFAULT_HAIKU_MODEL="$ALIAS"
 export CLAUDE_CODE_SUBAGENT_MODEL="$ALIAS"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+# Claude Code does not know the alias, assumes a 200k window and would compact past the point where
+# Ollama truncates. Compact at 3/4 of the real window, leaving room for the reply.
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW=$((CTX * 3 / 4))
 export GH_CONFIG_DIR="$CFG/gh-none" GIT_TERMINAL_PROMPT=0 DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent
 export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= GIT_CONFIG_KEY_1=credential.https://github.com.helper GIT_CONFIG_VALUE_1=
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN
 export OLLAMA_BASE_URL="$OLLAMA"
 
+# Which claude: the Nix build on PATH here was 2.1.72 with no ripgrep, so the deputy's Grep tool did not
+# work (/doctor: "Search: Not working (rg)"). The VS Code extension's native binary bundles ripgrep and
+# tracks releases, so prefer the newest one; RECKONS_DEPUTY_CLAUDE overrides.
+CLAUDE_BIN="${RECKONS_DEPUTY_CLAUDE:-}"
+if [ -z "$CLAUDE_BIN" ]; then
+  CLAUDE_BIN="$(ls -d "$HOME"/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/claude 2>/dev/null | sort -V | tail -1)"
+  [ -x "$CLAUDE_BIN" ] || CLAUDE_BIN=claude
+fi
+
 echo "local-claude: $ALIAS via $OLLAMA — no Anthropic quota, no push/merge. Config: $CFG"
-exec claude --model "$ALIAS" --append-system-prompt "$ROLE" ${PASS[@]+"${PASS[@]}"}
+exec "$CLAUDE_BIN" --model "$ALIAS" --append-system-prompt "$ROLE" ${PASS[@]+"${PASS[@]}"}
