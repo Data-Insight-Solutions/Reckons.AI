@@ -10560,7 +10560,7 @@ kb:space-wording-sweep rdf:type ktype:Feature ;
     kpred:depends-on kb:taxonomy-current ;
     kpred:relates-to kb:ui-term-audit, kb:release-0-2-6 ;
     kpred:description "User-facing copy says space and spaces (kterm:knowledge-base user label, Matt 2026-09-23), found by the F203.7 rule audit rather than by hand. Adopts the /kb to /spaces route move proposed on kb:release-0-2-6, with /kb redirecting forever. The four contract-bound spellings do not move: urn:kbase:, ?kb=, the Dexie database names, and the kb argument on MCP tools." ;
-    kpred:open-question "Code identifiers: the terminology (Matt, 2026-09-17) keeps the DEVELOPER word 'knowledge base', so free kb identifiers become knowledgeBase; on 2026-10-23 Matt said 'change kb to spaces in refactor'. Recommended: knowledgeBase in code, because 'space' in the code already means whitespace in 24 of 40 sampled sites and coordinate space in 2 more. Matt decides." .
+    kpred:decided "MATT, 2026-10-23: code identifiers use knowledgeBase (the terminology's developer word), not space; the screen says space and spaces. Chosen over 'space' in code because space already means whitespace in 24 of 40 sampled code sites, and over leaving identifiers untouched." .
 
 kb:example-spaces-by-requirement rdf:type ktype:Feature ;
     rdfs:label "Example spaces overhaul, grouped by what each needs installed" ;
@@ -10579,7 +10579,7 @@ kb:plugin-gallery rdf:type ktype:Feature ;
     kpred:relates-to kb:integration-plugin-sdk, kb:settings-unified-integrations, kb:comfyui-adapter, kb:openai-compatible-endpoint ;
     kpred:description "Not a feature gallery: one card per plugin or integration (LLM providers, Ollama, ComfyUI, the generation worker, n8n, Google Drive, GitHub, Hume voice, Meshy, and the rest under src/lib/integrations), each with its logo where the project publishes one, the capabilities it adds, what it needs installed or an account for, its honest status (built, planned) and a link to set it up. Generated from graph entities, so the gallery, the settings page and the example requirements read one list." ;
     kpred:constraint "LOGOS ARE OTHER PEOPLE'S MARKS. Use each project's own published logo or a permissively licensed icon set, record the source and licence beside it, and use it only to identify the integration. A missing or unclear logo gets a plain icon, not a guess." ;
-    kpred:open-question "Where it lives. Recommended: inside Settings as the Integrations page (where people already go to connect things, F69.1), linked from the docs, rather than a new top-level navigation tab, which is Matt's call (AGENTS.md rule 2)." .
+    kpred:decided "MATT, 2026-10-23: the plugin gallery lives in Settings as the Integrations page (where people already go to connect things, F69.1), each card linking to its configuration; no new top-level navigation tab." .
 
 kb:settings-cleanup rdf:type ktype:Feature ;
     rdfs:label "Settings pages cleaned up around the plugin list" ;
@@ -10636,7 +10636,7 @@ kb:gap-deep-research rdf:type ktype:Phase ;
     kpred:depends-on kb:reckoning-gaps, kb:shelly-job-queue ;
     kpred:description "A research job template in the shared queue: for each gap, search, choose sources, ingest each through the existing pipeline (extraction, diff against the space, evidence anchors to the passage), and re-check whether the gap is closed; stop at a declared budget of sources and time. Output is pending statements only, each anchored to its passage, plus a run record of what was searched and why each source was kept or dropped." ;
     kpred:constraint "BOUNDED AND HONEST: a fixed source and time budget per run; a gap the run could not close is reported as still open with what was tried, never papered over. The job writes proposals, never confirmed facts." ;
-    kpred:open-question "Search backend. Recommended local-first: a self-hosted SearXNG as an optional integration, with the existing Jina Reader / Firecrawl fetch path; a paid search API only as an opt-in plugin. Matt decides." .
+    kpred:decided "MATT, 2026-10-23: the search backend is a self-hosted SearXNG, an optional per-user integration like Ollama, with the existing Jina Reader / Firecrawl fetch path; a paid search API can come later as a plugin." .
 
 kb:source-licensing rdf:type ktype:Phase ;
     rdfs:label "F268.3 — every source records its licence, and generation respects it" ;
@@ -10727,3 +10727,6 @@ kb:review-measures rdf:type ktype:Phase ;
     kpred:feature-id "F269.5" ; kpred:has-status "planned" ; kpred:order 5 ;
     kpred:part-of kb:conversational-review ;
     kpred:description "Statements settled per minute of the person's time (not per question), how often a read-back is corrected before confirming (how well the answer was understood), how often a verdict is reversed later (how well it was decided), and the size of the queue against what producers add. Recorded per response from the ledger." .
+
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-23: no fixed date for 0.2.7; it ships when the spine (the reckoning drives the work) works end to end. Chosen over a two-week sprint (Oct 26 to Nov 6) and a three-week one." ;
+    kpred:constraint "WITHOUT A DATE, SCOPE CREEP HAS NO CUT TO STOP IT. 0.2.6 held its date and moved scope; 0.2.7 holds its scope instead, so the check moves to the work itself: each session the architect reports the spine's parts against done (npm run release:burndown -- --release=0.2.7), and a part added to 0.2.7 must say which spine part it serves or go to 0.2.8." .
