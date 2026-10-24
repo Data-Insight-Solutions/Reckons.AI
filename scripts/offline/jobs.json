@@ -521,6 +521,14 @@
       "enabled": false,
       "cmd": "npm run bench:gen -- --stage=image",
       "desc": "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts."
+    },
+    {
+      "name": "taxonomy-current",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/taxonomy-current.ts --check",
+      "desc": "F263. Compares the central taxonomy with the code: every built-in entity type needs a term or vocabulary class, no term may name a type the code dropped, and the review-status, feature-status and action-status values the code enforces must match their vocabulary schemes. Advisory: a missing term is a proposal for Matt to accept, so this reports and never blocks."
     }
   ]
 }

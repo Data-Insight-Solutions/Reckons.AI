@@ -10478,3 +10478,14 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+kb:taxonomy-current rdf:type ktype:Feature ;
+    rdfs:label "Taxonomy current — the central terminology and vocabulary are checked against the code" ;
+    kpred:feature-id "F263" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:description "A script compares every built-in entity type in the code with the terminology and vocabulary graphs and reports types that have no term, terms that name a type the code dropped, and any disagreement between the value sets the code enforces (review status, feature status, schema action status) and their vocabulary schemes. A local model then drafts a term for each missing type from the code's own description, as a pending proposal only; a term stays a proposal until Matt accepts it." ;
+    kpred:has-file "scripts/offline/taxonomy-current.ts" ;
+    kpred:has-file "scripts/offline/draft-terms.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/taxonomy-current.test.ts" ;
+    kpred:honest-note "Not functional until the script has run in offline:all on dev and Matt has decided what to do with the drafted terms. Generation job states are not checked because no such enum exists in the code (2026-10-23). Whether a type counts as having a term is decided by a label match or a link to its type IRI, so a term that describes a type under a very different name is reported as a gap." .
