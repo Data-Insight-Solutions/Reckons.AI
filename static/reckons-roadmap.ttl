@@ -10478,3 +10478,65 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+kb:reckoning-drives-work rdf:type ktype:Feature ;
+    rdfs:label "Reckoning overhaul — gaps to the target drive deep research and generation, and the graph's growth toward the answer is shown" ;
+    kpred:feature-id "F268" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:depends-on kb:proposal-shape, kb:reckoning-composition ;
+    kpred:relates-to kb:research-watch, kb:review-research-offload, kb:graph-proposals, kb:currents ;
+    kpred:decided "MATT, 2026-10-23: 'Lets think about workflows pairing features, like currents to get current trends, and then asset generation from the properly licensed and aggregated research. A big yes to this: \"Research that starts from the gaps\". I want a timelapse video showing a graph grow in the direction needed to Reckon a solution. We need currents to be a slow feed checker, but we need deep research and asset generation in a Reckoning step overhaul.'" ;
+    kpred:description "ONE LOOP. Situation (cited statements, F214) and target (a shape, F223.1) define the GAPS: the target's requirements that no reviewed fact holds yet (targetReached().missing already computes them) plus the space's open questions that bear on them. The proposal's 2 to 4 options are plans that close gaps: deep research on named gaps, asset generation from reviewed facts (F223.5), or both, each with its time cost. Approving runs the plan through the local job queue; results arrive pending; the person reviews; the target is re-checked; the loop repeats until the target is reached or the person stops. The graph grows IN THE DIRECTION OF THE TARGET, and that growth is recorded and can be played back." ;
+    kpred:principle "TWO SPEEDS, TWO FEATURES. Currents are the SLOW, BROAD, CHEAP feed: scheduled checks that deliver arrivals pending review and show trends across them; they never run deep research or generation themselves. The reckoning is the FAST, NARROW, DELIBERATE step: research and generation aimed at named gaps, run only on approval. A current can SEED a reckoning (a trend becomes a situation) and can CLOSE a gap (an arrival is re-checked against open targets), and that is the whole coupling." ;
+    kpred:principle "RESEARCH STARTS FROM WHAT IS MISSING. A research agent elsewhere starts from a prompt and returns a report; this one starts from the gaps between the reviewed facts and the target and returns cited, reviewable statements. That is the product's thesis applied to research: the most useful node is a well-formed absence." ;
+    kpred:has-phase kb:reckoning-gaps, kb:gap-deep-research, kb:source-licensing, kb:reckoning-loop, kb:reckoning-timelapse, kb:trend-to-reckoning .
+
+kb:reckoning-gaps rdf:type ktype:Phase ;
+    rdfs:label "F268.1 — the gaps between situation and target, computed, not guessed" ;
+    kpred:feature-id "F268.1" ; kpred:has-status "functional" ; kpred:order 1 ;
+    kpred:has-file "src/lib/rdf/reckoning-gaps.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/reckoning-gaps.test.ts" ;
+    kpred:remaining "NOT WIRED INTO THE UI: computeGaps() is a pure function nothing calls yet. A requirement subject that is a placeholder (?asset, F223.5) is reported as a gap but never bound to anything. Feeding the gaps to research jobs is F268.2." ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:description "Script tier: the target shape's unmet requirements over reviewed facts, plus open questions (partial facts) whose subject is in the situation, as a ranked gap list. Each gap is a question with its subject and predicate known and its object open (F32), so research and review speak the same form." .
+
+kb:gap-deep-research rdf:type ktype:Phase ;
+    rdfs:label "F268.2 — deep research on named gaps: a bounded local job that returns cited, pending statements" ;
+    kpred:feature-id "F268.2" ; kpred:has-status "planned" ; kpred:order 2 ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:depends-on kb:reckoning-gaps ;
+    kpred:description "A research job template in the shared queue: for each gap, search, choose sources, ingest each through the existing pipeline (extraction, diff against the space, evidence anchors to the passage), and re-check whether the gap is closed; stop at a declared budget of sources and time. Output is pending statements only, each anchored to its passage, plus a run record of what was searched and why each source was kept or dropped." ;
+    kpred:constraint "BOUNDED AND HONEST: a fixed source and time budget per run; a gap the run could not close is reported as still open with what was tried, never papered over. The job writes proposals, never confirmed facts." ;
+    kpred:open-question "Search backend. Recommended local-first: a self-hosted SearXNG as an optional integration, with the existing Jina Reader / Firecrawl fetch path; a paid search API only as an opt-in plugin. Matt decides." .
+
+kb:source-licensing rdf:type ktype:Phase ;
+    rdfs:label "F268.3 — every source records its licence, and generation respects it" ;
+    kpred:feature-id "F268.3" ; kpred:has-status "planned" ; kpred:order 3 ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:description "A source carries the licence it declares (schema:license from page metadata, Creative Commons markup, a known publisher's terms) or 'unknown'. Facts are not copyrightable but their expression is, so generation prompts are written from reviewed statements, never by quoting passages; an image or video used as a generation INPUT must carry a licence that permits it, and a generated asset lists the licences of everything it was made from." ;
+    kpred:constraint "A READING, NOT LEGAL ADVICE. Reckons records what a source declares; it cannot verify that the declaration is true or that a use is lawful. 'unknown' is shown as unknown and blocks use as a generation input until the person decides; it is never treated as permission." .
+
+kb:reckoning-loop rdf:type ktype:Phase ;
+    rdfs:label "F268.4 — approve, run, review, re-check: the reckoning stays open until its target is reached" ;
+    kpred:feature-id "F268.4" ; kpred:has-status "planned" ; kpred:order 4 ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:depends-on kb:gap-deep-research, kb:proposal-options-ui ;
+    kpred:description "The reckoning screen becomes the place the loop runs: options as cards (F223.4), Approve and run, live job state (Job nodes serving this proposal), the review of what came back, and the target re-check (closeIfReached) after each review. Distance to target (unmet requirements) is shown at every step." .
+
+kb:reckoning-timelapse rdf:type ktype:Phase ;
+    rdfs:label "F268.5 — a timelapse of the graph growing toward the answer" ;
+    kpred:feature-id "F268.5" ; kpred:has-status "planned" ; kpred:order 5 ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:depends-on kb:reckoning-loop ;
+    kpred:relates-to <urn:reckons:feature/HistoryMode> ;
+    kpred:description "Matt, 2026-10-23: 'a timelapse video showing a graph grow in the direction needed to Reckon a solution'. History Mode already replays the changelog; this renders a reckoning's span of it as a video: nodes arriving as research and generation land, accepted ones settling, rejected ones fading, the target's requirements lighting up as they are met, and the distance-to-target counter falling. Exported from the browser (MediaRecorder on the canvas) so it needs no server; a headless render job can produce the same file for docs and field reports." ;
+    kpred:constraint "THE VIDEO SHOWS WHAT HAPPENED: it is played from the changelog, not staged. Rejected proposals appear and fade rather than being cut, because the review is the point." .
+
+kb:trend-to-reckoning rdf:type ktype:Phase ;
+    rdfs:label "F268.6 — currents seed and close reckonings: trends in, gaps closed" ;
+    kpred:feature-id "F268.6" ; kpred:has-status "planned" ; kpred:order 6 ;
+    kpred:part-of kb:reckoning-drives-work ;
+    kpred:depends-on kb:reckoning-gaps ;
+    kpred:relates-to kb:research-watch ;
+    kpred:description "Currents stay a slow feed checker. Two couplings only: a trend across arrivals (an entity or topic recurring above its baseline) can be opened as a reckoning's situation in one action; and each arrival is checked against open reckonings' gaps, so a current that answers a gap says so in review. Worked pairing: a current shows a rising topic, a reckoning targets an explainer and an illustration for it, research closes the gaps from licensed sources, generation makes the image from the reviewed facts, and the timelapse records the whole path." .
