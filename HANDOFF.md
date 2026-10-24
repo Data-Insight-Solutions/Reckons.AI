@@ -1,3 +1,33 @@
+## 2026-10-23 (late) — START HERE, keep this session SHORT (Claude Code)
+
+Budget: weekly usage 92% with 3 days left (Matt's /usage paste). No new subagents unless Matt asks; script tier and
+local models first; end at a handoff before the context grows large.
+
+**Open PRs, in merge order** (each needs green CI; verify base dev before merging):
+1. **#532** this handoff + `kb:release-0-2-6` production. Was red only on release-review-space (regenerated since);
+   recheck.
+2. **#527** F166.1.2 job queue. Ratchet fixes pushed (3e70a2d). Remaining red was unit-test timeouts under machine
+   load (pass alone). Re-run CI, merge when green.
+3. **Plan branch `feat/f261-f262-comfyui-openai-compat`** (no PR yet): rebase onto dev after #527, open the PR,
+   merge when green. Holds F261-F269, Matt's 10-23 decisions (knowledgeBase in code, gallery in Settings →
+   Integrations, SearXNG, 0.2.7 has no fixed date) and the WIP F262 module.
+4. **#533** F268.1 `computeGaps()` and **#534** F263 taxonomy-current: each appended its own copy of roadmap entities
+   that the plan branch also adds. After step 3, rebase both and drop the duplicate TTL blocks (#533 also restores
+   links to kb:generation-reckoning and kb:shelly-job-queue). #534's 11 drafted terms sit in that agent worktree's
+   queue; re-run `scripts/offline/draft-terms.ts` in the main checkout after merge so they reach the review UI.
+5. **#486** (Matt's 10-16 plan: F258 forecasting, F259 enclosure monitoring): rebase, drop its duplicate
+   kb:shelly-generation-jobs, then record Matt's 10-23 asks below.
+
+**To record (Matt, 10-23, not yet in any TTL):**
+- ACCESSORIES ARE PLUGINS WITH A BODY: "Similar to my Pebble Index 01 ring, its an accessory to the system, a plugin
+  with physical presence." Gallery (F266) gets an Accessories section; the plugin contract (F61) gets capture /
+  sense / display / act capabilities, and each accessory declares its route, its behavior with Reckons closed, and its
+  authority. Ring, glasses, CoreS3 watcher.
+- F259 for 0.2.8 (likely): his M5Stack CoreS3 watches the mealworm/beetle farm first, then the outdoor fish tank, then
+  the chickens; alerts and heaters on low temperature. Protection stays on Home Assistant plus the heater's own
+  thermostat. Open: ESPHome (recommended) vs Stack-chan firmware.
+- Still open: F269 as 0.2.8 headline; F269.1 ledger into 0.2.7; zod as 0.2.6.1 or with 0.2.7; unknown-licence policy.
+
 ## 2026-10-23 — START HERE. 0.2.6 is in production; 0.2.7 is planned around the reckoning (Claude Code)
 
 **Shipped:** Matt merged #528 (staging → main) at 21:41 UTC. reckons.ai serves v0.2.6 (checked in Chromium:
