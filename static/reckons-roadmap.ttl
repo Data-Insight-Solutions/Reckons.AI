@@ -2367,7 +2367,9 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-definition-of-done ;
                kpred:has-phase    kb:loop-job-grouping ;
                kpred:has-phase    kb:loop-safety ;
-               kpred:has-phase    kb:loop-opus-review .
+               kpred:has-phase    kb:loop-opus-review ;
+               kpred:has-phase    kb:loop-local-deputy ;
+               kpred:has-phase    kb:loop-overnight-relay .
 
 kb:autonomous-loop kpred:has-file "scripts/agent/merge-queue.ts" ;
     kpred:tested-by "scripts/agent/__tests__/merge-queue.test.ts" ;
@@ -2443,6 +2445,33 @@ kb:loop-opus-review rdf:type ktype:Phase ;
     kpred:decided "MATT, 2026-09-30, THE MEDIUM: 'The agents ideally operate through git and Reckons.AI statements, all flat file git based, for software dev use cases like this.' So for software work every agent, local or Opus, coordinates only through the repository: tasks, findings, verdicts and approvals are statements in flat files (TTL and JSONL) committed to git, and work is commits on branches. No database, no service, no chat transcript is the record; git history is the audit trail, and a branch plus its statements is the whole hand-off." ;
     kpred:principle "THE MERGE IS THE GATE, SO ONLY THE REVIEWER HOLDS IT. A local agent's branch reaches dev only after the reviewer subagent has read its diff and approved it, and then through scripts/agent/merge-queue.ts (base must be dev, CI green on a branch containing dev, merge pinned to the reviewed commit). Approval names the commit it reviewed, so a push after review voids it." ;
     kpred:remaining "Pre-triage of the existing queue by the local panel, so the reviewer's batches are the residue rather than the raw rows; a runner task type that gives a local coding model a worktree on a fresh agent/* branch and nothing else; the reviewer reading a branch diff and recording an approval pinned to its head commit; merge-queue.ts refusing an agent/* branch without that approval. Until then, merges stay with Matt (the auto-mode classifier refused an unattended merge on 2026-09-30)." .
+
+
+kb:loop-local-deputy rdf:type ktype:Phase ;
+    rdfs:label "Phase 7 — the local deputy: Claude Code driven by a local model when Anthropic usage runs out" ;
+    kpred:part-of kb:autonomous-loop ;
+    hnav:order 7 ;
+    kpred:has-status "scaffolded" ;
+    kpred:decided "MATT, 2026-10-23: 'one key thing lacking now is a main agent I talk with, to help it decide things. Like I chat with Opus, I want a more intelligent local model to use claude code harness, to do what Opus does when I have usage credits left (not hit limit yet).'" ;
+    kpred:description "npm run local:claude starts the real Claude Code harness against a model on this machine, because Ollama serves an Anthropic-compatible /v1/messages. Same AGENTS.md, hooks, tools and reckons MCP; its own config folder with no Anthropic login, and every model name (subagents included) mapped to the local alias, so it cannot spend quota. Matt talks to it as he talks to Opus; what it decides is recorded with kb_add_note (agent local-deputy:<model>) and on an agent/local-* branch, and the next Opus session reviews it. It is a deputy: it proposes, it never merges." ;
+    kpred:has-file "scripts/agent/local-claude.sh" ;
+    kpred:test-coverage "none" ;
+    kpred:proof "2026-10-23, by hand, two 3090s. qwen3.6-128k: counted scripts/agent/*.ts right (39) in 3 turns, 2.5 min cold; answered kb_get_entity autonomous-loop through the reckons MCP (F89) and its git push was denied, 22 s warm, modelUsage naming only the local alias. qwen3-coder-128k ran the tool but ignored 'not subdirectories' (63). One task each: an anecdote, not a benchmark." ;
+    kpred:constraint "CONTEXT IS THE TRAP. Claude Code's system prompt plus AGENTS.md is about 35k tokens before the first message, and Ollama's 32k server window silently truncated it to 16,386 (logged 'truncating input prompt'); the model lost its tool definitions and answered without calling one. The launcher therefore creates a <model>-128k alias (same weights) and the window must stay well above the prompt." ;
+    kpred:constraint "NOT A SANDBOX. Credentials are withheld by environment (empty GH_CONFIG_DIR, git credential helpers reset, keyring D-Bus unreachable) plus deny rules, and that blocks ordinary pushes, PRs and merges. An empty GH_CONFIG_DIR alone did NOT: gh auth git-credential still read the token from the keyring. It runs as Matt's Unix user, so a model trying to escape could read ~/.git-credentials; a real boundary is a separate user or container." ;
+    kpred:remaining "A deputy benchmark (the same five orchestration tasks Opus does daily: triage a batch, plan a feature against the roadmap, write a small change with a test, review a diff, write a handoff) scored per local model before trusting it with more; memory written by the deputy is set aside each launch and nothing reads it back yet; with gh unauthenticated it cannot read PR or CI state." .
+
+kb:loop-overnight-relay rdf:type ktype:Phase ;
+    rdfs:label "Phase 8 — the overnight relay: local work runs past the usage limit, Opus overseers review it next session" ;
+    kpred:part-of kb:autonomous-loop ;
+    hnav:order 8 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:loop-local-deputy ;
+    kpred:depends-on kb:loop-opus-review ;
+    kpred:decided "MATT, 2026-10-23: 'I hit daily limit, but not going to bed for a few hours, a large series of jobs run, with some larger local coding models performing some useful work. Then I get on Claude Code tomorrow, and then Opus assigns overseers to approve, or improve work and schedule more jobs.'" ;
+    kpred:description "Three legs. EVENING: the queue worker keeps draining with no Claude session (the gate is removed in F166.1.2, #527), and the deputy is the conversation. CODING JOBS: a queued task runs local-claude.sh headless in a fresh worktree on an agent/local-<topic> branch with a task statement and an acceptance command; it commits locally and never pushes, so the branch is the proposal. MORNING: one script lists what happened since the last Opus session (finished and failed jobs, agent/local-* branches ahead of dev, deputy decisions in the review queue, set-aside deputy memory); Opus dispatches one reviewer subagent per branch, each approval pinned to the reviewed head commit, pushes and opens PRs for the approved ones, and queues the next jobs." ;
+    kpred:constraint "OVERSEERS CANNOT RUN PAST THE LIMIT. A Claude subagent, a background agent and a scheduled cloud routine all draw on the same plan usage as the main session, so none of them can approve work while the limit holds. During the gap the only overseers are local: the acceptance command, the script tier, and the local panel's pre-triage. Claude overseers run the next session, in the background, so the main thread keeps only their verdicts." ;
+    kpred:remaining "The coding task type in the runner (worktree + branch + acceptance command + local-claude.sh -p); the morning summary script; the branch reviewer recording an approval pinned to a head commit, and merge-queue refusing an agent/local-* branch without one (the last two are already kb:loop-opus-review's remaining)." .
 
 # -- F88: Co-orchestration — Shelly and Claude Code, either side of the user -----
 #
