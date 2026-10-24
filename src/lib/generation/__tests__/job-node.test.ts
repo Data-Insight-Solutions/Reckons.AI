@@ -11,8 +11,8 @@ const splat: GenerationRequest = { ...image, id: '6c6da8a8-1574-46bb-97fd-453db3
 const at = Date.parse('2026-10-23T12:00:00Z');
 const value = (rows: ReturnType<typeof jobStatements>, p: string) => rows.find(r => r.p.value.endsWith(p))?.o.value;
 
-describe('Job nodes (F166.1.2)', () => {
-  it('records a queued job as a typed, confirmed node with stable row ids', () => {
+describe('Job entities (F166.1.2)', () => {
+  it('records a queued job as a typed, confirmed entity with stable row ids', () => {
     const rows = jobStatements(image, 'shelly', at);
     expect(rows.every(r => r.s.value === jobEntity(image.id) && r.status === 'confirmed')).toBe(true);
     expect(value(rows, '#type')).toBe(JOB_TYPE);

@@ -1,13 +1,13 @@
 /**
- * Local generation jobs for the current space (F166.1.2), shared by the Generated assets story and
+ * Local generation jobs for the open knowledge base (F166.1.2), shared by the Generated assets story and
  * Shelly's free-form chat. Moved out of GenerationStory.svelte so a job outlives the panel that
  * queued it: polling continues while any job is unfinished, and stops once nothing is.
  *
  * The browser only ever writes typed requests into the connected workspace folder; the host bridge
  * (scripts/content/generation-runner.ts) turns them into jobs in the shared local-job queue. Every
- * request is mirrored as a Job node in its originating space (generation/job-node.ts), and its
- * checked output is attached there. Results never attach to a different space: a request is only
- * polled while its own space is open, and attach.ts asserts the space again before writing.
+ * request is mirrored as a Job entity in the knowledge base it came from (generation/job-node.ts),
+ * and its checked output is attached there. Results never attach to a different knowledge base: a
+ * request is only polled while its own knowledge base is open, and attach.ts asserts that again.
  */
 import { getCurrentKbId } from '$lib/storage/kb-registry';
 import { db } from '$lib/storage/db';
@@ -24,9 +24,9 @@ import {
 } from '$lib/generation/protocol';
 
 type Saved = { requests: GenerationRequest[]; origins: Record<string, JobOrigin>; queuedAt: Record<string, number>; generationWorkspaceId: string | null };
-const storageKey = (space: string) => `reckons:generation-jobs:${space}`;
+const storageKey = (knowledgeBaseId: string) => `reckons:generation-jobs:${knowledgeBaseId}`;
 /** Before F166.1.2 the story kept its requests under its own key. Read once, so a reload keeps them. */
-const legacyKey = (space: string) => `reckons:generation-story:${space}`;
+const legacyKey = (knowledgeBaseId: string) => `reckons:generation-story:${knowledgeBaseId}`;
 
 let spaceId = '';
 let requests = $state<GenerationRequest[]>([]);
@@ -59,24 +59,24 @@ function save() {
   try { localStorage.setItem(storageKey(spaceId), JSON.stringify(saved)); } catch { /* storage full or blocked: jobs still run */ }
 }
 
-function load(space: string) {
+function load(knowledgeBaseId: string) {
   Object.values(previews).forEach(url => URL.revokeObjectURL(url));
-  spaceId = space;
+  spaceId = knowledgeBaseId;
   requests = []; jobs = []; attached = []; previews = {}; origins = {}; queuedAt = {}; recorded = {};
   capabilities = null; client = null; generationWorkspaceId = null; error = '';
   try {
-    const raw = localStorage.getItem(storageKey(space));
-    const legacy = raw ? null : localStorage.getItem(legacyKey(space));
+    const raw = localStorage.getItem(storageKey(knowledgeBaseId));
+    const legacy = raw ? null : localStorage.getItem(legacyKey(knowledgeBaseId));
     const saved = JSON.parse(raw ?? legacy ?? 'null') as Partial<Saved> | null;
     if (!saved) return;
-    requests = (saved.requests ?? []).map(parseRequest).filter(r => r.spaceId === space);
+    requests = (saved.requests ?? []).map(parseRequest).filter(r => r.spaceId === knowledgeBaseId);
     origins = Object.fromEntries(requests.map(r => [r.id, saved.origins?.[r.id] === 'shelly' ? 'shelly' : 'story']));
     queuedAt = Object.fromEntries(requests.map(r => [r.id, Number(saved.queuedAt?.[r.id]) || Date.now()]));
     generationWorkspaceId = typeof saved.generationWorkspaceId === 'string' ? saved.generationWorkspaceId : null;
   } catch { error = 'Saved generation jobs could not be restored. You can queue new ones.'; }
 }
 
-/** Follow the open space. Switching away leaves the old space's jobs running on the host. */
+/** Follow the open knowledge base. Switching away leaves the old one's jobs running on the host. */
 function followSpace(): boolean {
   const current = getCurrentKbId();
   if (current === spaceId) return false;
@@ -90,7 +90,7 @@ function inOwnSpace(request: GenerationRequest) {
   return getCurrentKbId() === request.spaceId && db.name === request.spaceId;
 }
 
-/** Write or advance the Job node. Stable row ids make every call safe to repeat. */
+/** Write or advance the Job entity. Stable row ids make every call safe to repeat. */
 async function record(request: GenerationRequest, job?: GenerationJob) {
   const state = job?.state ?? 'queued';
   if (recorded[request.id] === state || officialKbActive() || !inOwnSpace(request)) return;
@@ -174,7 +174,7 @@ export async function pollJobs() {
         attached = [...attached, request.id];
         if (request.stage !== 'splat') previews = { ...previews, [request.id]: URL.createObjectURL(file) };
         // Selecting automatically opens a competing details sheet on phones. Highlight the
-        // result while keeping the conversation reachable; Show in space selects it.
+        // result while keeping the conversation reachable; the Show button selects it.
         applyShellyViewAdjust({ spotlight: [entity] });
       } finally { busy = false; }
     }

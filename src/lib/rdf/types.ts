@@ -472,8 +472,8 @@ export const GENERATION_PROVENANCE_PREDICATES = [
   'urn:kbase:predicate/generated-gaussians',
 ] as const;
 
-/** F166.1.2: what a Job node records about itself. Attributes in the detail panel, never value
- *  nodes (a bare "queued" or "image" floating in the graph would say nothing). The edges waits-for
+/** F166.1.2: what a Job entity records about itself. Attributes in the detail panel, never value
+ *  vertices (a bare "queued" or "image" floating on the canvas would say nothing). The edges waits-for
  *  and produced stay visible: they are the chain. */
 export const JOB_ATTRIBUTE_PREDICATES = [
   'urn:kbase:predicate/job-stage',

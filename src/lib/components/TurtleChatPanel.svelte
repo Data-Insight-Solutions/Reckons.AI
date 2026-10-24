@@ -1024,7 +1024,7 @@
         return;
       }
 
-      // queue_jobs: one approval for the whole plan; each job becomes a Job node in this space
+      // queue_jobs: one approval for the whole plan; each job becomes a Job entity in this knowledge base
       if (action.type === 'queue_jobs') {
         const plan = validateJobPlan(action.jobs, generationJobs.capabilities);
         if (!plan.ok) { errorMsg = plan.error; return; }

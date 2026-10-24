@@ -217,7 +217,7 @@ test('a reload between creating a job directory and writing its request resumes 
   await expect.poll(() => generatedCount(page)).toBe(1);
 });
 
-test('Shelly queues a chain as ONE approval, and every job is a Job node (F166.1.2)', async ({ page }) => {
+test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166.1.2)', async ({ page }) => {
   test.setTimeout(60_000);
   await fixtureWorkspace(page);
   await page.evaluate(async () => {
