@@ -5,7 +5,7 @@
  * rests on, and every fact in the knowledge base, it returns the gaps, each shaped like a partial
  * fact (F32): subject and predicate known, object open. Research and review then speak one form.
  *
- * Two sources of gaps:
+ * Two kinds of gap:
  *   1. every requirement `targetReached()` reports missing (REVIEWED facts only, so a pending
  *      fact never closes a gap);
  *   2. open questions (partial facts, still unanswered) whose subject is in the situation or is
