@@ -10489,3 +10489,5 @@ kb:taxonomy-current rdf:type ktype:Feature ;
     kpred:has-file "scripts/offline/draft-terms.ts" ;
     kpred:tested-by "scripts/offline/__tests__/taxonomy-current.test.ts" ;
     kpred:honest-note "Not functional until the script has run in offline:all on dev and Matt has decided what to do with the drafted terms. Generation job states are not checked because no such enum exists in the code (2026-10-23). Whether a type counts as having a term is decided by a label match or a link to its type IRI, so a term that describes a type under a very different name is reported as a gap." .
+
+kb:taxonomy-current kpred:measured "2026-10-23, FIRST RUN: 18 built-in entity types, 15 have no term (type-no-term 15), 0 terms name a dropped type, and 0 disagreements in the review-status, feature-status and schema action-status value sets. Local model qwen3.8 drafted terms for the 15: 11 queued as pending proposals, 4 rejected by the validator (Person, Place, Organization, Concept: the code's one-line description left a definition under 6 words). Nothing was written to a TTL." .
