@@ -13,7 +13,7 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.6" ;
-    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: functional." ;
+    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: production." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
     p:has rev:wf-readme-path, rev:gap .
