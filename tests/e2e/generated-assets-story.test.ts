@@ -260,6 +260,6 @@ test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166
   await expect.poll(async () => (await jobNodes()).find(j => j.s.endsWith(first.id))).toMatchObject({
     state: 'completed', produced: `urn:kbase:concept/generated-${first.id}`,
   });
-  await expect(page.getByText('Ready, added to this space for review')).toBeVisible();
+  await expect(page.getByText('Ready, added to this knowledge base for review')).toBeVisible();
   await expect(page.getByText('Waiting for image 3')).toBeVisible();
 });

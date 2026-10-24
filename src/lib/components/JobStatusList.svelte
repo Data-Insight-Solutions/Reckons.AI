@@ -11,7 +11,7 @@
 
   function status(request: GenerationRequest): string {
     const job = gen.jobOf(request.id);
-    if (gen.attached.includes(request.id)) return 'Ready, added to this space for review';
+    if (gen.attached.includes(request.id)) return 'Ready, added to this knowledge base for review';
     if (job?.state === 'failed') return `Failed: ${job.error || 'no checked result'}`;
     if (job?.state === 'cancelled') return 'Cancelled';
     if (job?.state === 'completed') return 'Checking and adding…';

@@ -5,7 +5,7 @@
  *
  * The browser only ever writes typed requests into the connected workspace folder; the host bridge
  * (scripts/content/generation-runner.ts) turns them into jobs in the shared local-job queue. Every
- * request is mirrored as a Job entity in the knowledge base it came from (generation/job-node.ts),
+ * request is mirrored as a Job entity in the knowledge base it came from (the Job entity module in src/lib/generation),
  * and its checked output is attached there. Results never attach to a different knowledge base: a
  * request is only polled while its own knowledge base is open, and attach.ts asserts that again.
  */
@@ -82,7 +82,7 @@ function followSpace(): boolean {
   if (current === spaceId) return false;
   const leftBehind = !!spaceId && requests.some(r => !finished(r.id));
   load(current);
-  if (leftBehind) error = 'The space or workspace changed. Return to the original space to receive its results; its jobs keep running on your computer.';
+  if (leftBehind) error = 'The knowledge base or workspace changed. Return to the original knowledge base to receive its results; its jobs keep running on your computer.';
   return true;
 }
 
@@ -202,10 +202,10 @@ export async function submitJobs(items: (JobPlanItem & { parentId?: string; seed
   if (busy) throw new Error('Another job is being added. Try again in a moment.');
   followSpace();
   if (!client || !capabilities) throw new Error('No local generation runner is connected.');
-  if (officialKbActive()) throw new Error('Open an editable copy of this space before generating assets.');
+  if (officialKbActive()) throw new Error('Open an editable copy of this knowledge base before generating assets.');
   const currentFolder = workspaceHandle();
   if (getCurrentKbId() !== spaceId || !folder || !currentFolder || !(await folder.isSameEntry(currentFolder))) {
-    throw new Error('Return to the originating space and workspace before submitting.');
+    throw new Error('Return to the originating knowledge base and workspace before submitting.');
   }
   busy = true;
   error = '';

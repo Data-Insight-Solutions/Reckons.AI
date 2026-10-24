@@ -287,7 +287,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
     schemaPredicates: [GEN[0], GEN[1], GEN[2], GEN[3], GEN[5]],
     builtIn: true
   },
-  // F166.1.2 (Matt, 2026-10-23: "each job should be a entity type node on the graph"). A record of
+  // F166.1.2 (Matt's decision of 2026-10-23, quoted in the roadmap entity kb:shelly-job-queue). A record of
   // a local job someone approved: what it was asked to make, its state, what it waited for and what
   // it produced. It is not an AgentTask and carries no command, so nothing executes from it.
   {

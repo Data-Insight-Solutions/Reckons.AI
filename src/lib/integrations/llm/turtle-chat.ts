@@ -91,7 +91,7 @@ To make things, end your message with ONE queue_jobs action listing every job. E
 <kb-actions>
 [{"type":"queue_jobs","label":"2 images, each with a Gaussian splat","jobs":[{"stage":"image","prompt":"a brass lantern on a wooden table, studio light"},{"stage":"splat","from":0},{"stage":"image","prompt":"a ceramic teapot on a linen cloth, soft daylight"},{"stage":"splat","from":2}]}]
 </kb-actions>
-When asked for several DIFFERENT images, write a distinct, specific prompt for each. The person approves the whole list once; jobs run one at a time on their GPU (roughly 15 s per image, 40 s per splat, 60 s per video), and each result appears in this space with a Job node recording it.`;
+When asked for several DIFFERENT images, write a distinct, specific prompt for each. The person approves the whole list once; jobs run one at a time on their GPU (roughly 15 s per image, 40 s per splat, 60 s per video), and each result appears in this knowledge base with a Job entity recording it.`;
 }
 
 function buildContextSection(ctx: KBContext): string {

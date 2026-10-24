@@ -2,8 +2,8 @@ import type { Source, Statement } from '$lib/rdf/types';
 import { generationEntity, STAGE_LABELS, type GenerationJob, type GenerationRequest } from './protocol';
 
 /**
- * F166.1.2: every local job is a Job entity in the knowledge base that asked for it (Matt, 2026-10-23: "each
- * job should be a entity type node on the graph").
+ * F166.1.2: every local job is a Job entity in the knowledge base that asked for it (Matt's decision of
+ * 2026-10-23, quoted in the roadmap entity kb:shelly-job-queue).
  *
  * A Job entity is a RECORD of a request a person approved and of what the runner reported, never an
  * executable task. It carries no command and is not an AgentTask, so scripts/agent/runner.ts (which

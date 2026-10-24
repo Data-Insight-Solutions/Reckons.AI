@@ -6,7 +6,7 @@ import { isMetaPredicate } from '$lib/rdf/types';
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 import type { GenerationCapabilities, GenerationRequest } from '../protocol';
 
-const image: GenerationRequest = { version: 1, id: 'd67cf353-5af2-404b-b93d-41d10ffb6f15', spaceId: 'synthetic-space', stage: 'image', prompt: 'A synthetic brass lantern', seed: 7 };
+const image: GenerationRequest = { version: 1, id: 'd67cf353-5af2-404b-b93d-41d10ffb6f15', spaceId: 'synthetic-kb', stage: 'image', prompt: 'A synthetic brass lantern', seed: 7 };
 const splat: GenerationRequest = { ...image, id: '6c6da8a8-1574-46bb-97fd-453db308379d', stage: 'splat', parentId: image.id };
 const at = Date.parse('2026-10-23T12:00:00Z');
 const value = (rows: ReturnType<typeof jobStatements>, p: string) => rows.find(r => r.p.value.endsWith(p))?.o.value;
