@@ -7,7 +7,7 @@
 # same AGENTS.md, same hooks, same reckons MCP, same tools. Interactive by default; any extra
 # arguments go to `claude` (so `-- -p "…"` runs headless).
 #
-#   npm run local:claude                          talk to the deputy (qwen3.6, 128k context)
+#   npm run local:claude                          talk to the deputy (qwen3.6, 160k context)
 #   npm run local:claude -- --model=qwen3-coder   a different base model
 #   npm run local:claude -- -p "…"                one headless task
 #
@@ -30,7 +30,8 @@
 # CONTEXT IS THE TRAP. Claude Code's system prompt plus AGENTS.md is ~35k tokens before the first
 # message, and Ollama's default window silently TRUNCATED it (measured 2026-10-23: 34,944 cut to
 # 16,386, the model lost its tool definitions and answered from nothing). So this creates a
-# <model>-128k alias (same weights, no download) and refuses to start if Ollama is down.
+# <model>-<n>k alias (same weights, no download; 160k by default, qwen3.6 supports 256k and uses
+# 26 GB of the two cards at 128k) and refuses to start if Ollama is down.
 #
 # Measured 2026-10-23 on two 3090s, one task ("count .ts files directly in scripts/agent"):
 # qwen3.6-128k right (39) in 3 turns, 2.5 min cold; qwen3-coder-128k ran the tool but ignored
@@ -45,7 +46,7 @@ cd "$ROOT"
 
 OLLAMA="${OLLAMA_BASE_URL:-http://localhost:11434}"; OLLAMA="${OLLAMA%/}"
 MODEL="${RECKONS_DEPUTY_MODEL:-qwen3.6}"
-CTX="${RECKONS_DEPUTY_CTX:-131072}"
+CTX="${RECKONS_DEPUTY_CTX:-163840}"
 PASS=()
 for a in "$@"; do
   case "$a" in
@@ -124,8 +125,13 @@ export ANTHROPIC_DEFAULT_OPUS_MODEL="$ALIAS" ANTHROPIC_DEFAULT_SONNET_MODEL="$AL
 export CLAUDE_CODE_SUBAGENT_MODEL="$ALIAS"
 export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 # Claude Code does not know the alias, assumes a 200k window and would compact past the point where
-# Ollama truncates. Compact at 3/4 of the real window, leaving room for the reply.
+# Ollama truncates. Compact at 3/4 of the real window, leaving room for the reply. Claude Code will not
+# compact below 100k (it said so for 98,304 at the old 128k default), so a smaller window is refused.
 export CLAUDE_CODE_AUTO_COMPACT_WINDOW=$((CTX * 3 / 4))
+if [ "$CLAUDE_CODE_AUTO_COMPACT_WINDOW" -lt 100000 ]; then
+  echo "local-claude: --ctx=$CTX is too small: Claude Code compacts no earlier than 100k tokens, so Ollama would truncate first. Use --ctx=139264 or more." >&2
+  exit 1
+fi
 export GH_CONFIG_DIR="$CFG/gh-none" GIT_TERMINAL_PROMPT=0 DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent
 export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= GIT_CONFIG_KEY_1=credential.https://github.com.helper GIT_CONFIG_VALUE_1=
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN
