@@ -143,6 +143,10 @@ test('Your room: set surround and scale from the filters panel, place the turtle
   // The Background section is in the graph view's View settings panel, with the same controls as the Graphs tab.
   const panel = page.getByTestId('graph-background-settings');
   await expect(panel).toBeVisible();
+  await expect(panel.getByTestId('bg-scale')).toBeHidden();
+  // Native disclosure works with the keyboard and preserves settings when closed.
+  await panel.locator('summary').focus();
+  await page.keyboard.press('Enter');
   await panel.getByTestId('bg-mode-backdrop').click();
   await expect(panel.getByTestId('bg-mode-backdrop')).toHaveClass(/active/);
   await panel.getByTestId('bg-mode-surround').click();
@@ -150,6 +154,10 @@ test('Your room: set surround and scale from the filters panel, place the turtle
   const scale = panel.getByTestId('bg-scale');
   await scale.fill('12');
   await scale.press('Tab');
+  await expect(scale).toHaveValue('12');
+  await panel.locator('summary').click();
+  await expect(scale).toBeHidden();
+  await panel.locator('summary').click();
   await expect(scale).toHaveValue('12');
   // Set focal point: click a point in the 3D view; the room's centre moves to it and the point is stored.
   await panel.getByTestId('set-focal-point').click();
