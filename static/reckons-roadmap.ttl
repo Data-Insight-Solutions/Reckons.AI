@@ -10478,3 +10478,28 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+# Matt's Triple Check / research scope, 2026-10-25–26. Rebuilt in a persistent worktree.
+kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statement evidence" ;
+    kpred:feature-id "F100.1" ; kpred:has-status "in-progress" ;
+    kpred:relates-to kb:source-validation, kb:graph-legibility ;
+    kpred:description "Opt-in per-space always-on checking while the app is open. Check unique pending and retained assertions against selected web search, scraping and cited model integrations, and all registered local spaces including same-space document corpora. Keep dated evidence, reactive conflict badges and optional wording suggestions in Review. Repetition is not independent validation; different values may coexist. Users may ignore suggestions. Never settle or rewrite claims automatically." ;
+    kpred:constraint "Off by default. Web use sends statements to the explicitly selected optional providers; bound metered requests durably and show unavailable/partial evidence. Local space comparison uses no cloud model. Product taxonomy distinguishes space (container, including visual content) from its RDF graph. No new top-level navigation." ;
+    kpred:remaining "Live-provider accuracy/cost calibration and evidence export/sync are not yet delivered." .
+kb:triple-check-enterprise a ktype:Feature ; rdfs:label "Triple Check — approved shared evidence and SME discovery" ;
+    kpred:feature-id "F100.2" ; kpred:has-status "planned" ;
+    kpred:depends-on kb:enterprise-3ps, kb:question-router ; kpred:relates-to kb:triple-check ;
+    kpred:description "Engineers publish audience-scoped evidence projections so sales can check deck claims and find authorized SME metadata without full engineering-space access. Authorization must precede retrieval at a trusted serving boundary; never ask a model to redact a whole private graph. Revocation, audience-specific caches, expiry and disclosure tests are prerequisites. No enterprise RBAC or shared-projection service is implemented in local Triple Check." .
+kb:purpose-aware-analysis a ktype:Feature ; rdfs:label "Analyze — apply purpose-based organization" ;
+    kpred:feature-id "F100.3" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Explicit Analyze action automatically applies organizational links based on the user's changed purpose, with recovery snapshot and stale-output rejection. Preserve original assertions and review decisions." .
+kb:statement-comparison-benchmark a ktype:Feature ; rdfs:label "Aggregated statement chunks and cross-corpus research benchmark" ;
+    kpred:feature-id "F100.4" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Compare raw document chunks with provenance-preserving chunks assembled from deduplicated statements under equal retrieval budgets. Synthetic corpora include duplicated assertions, contradictions, legitimate multiple values and changed scope. Oracle triples measure retrieval, not extraction accuracy. Every bundled example gets validation workflow access; paid checks remain opt-in." .
+kb:starred-repository-research a ktype:Feature ; rdfs:label "Private incremental GitHub-star research space" ;
+    kpred:feature-id "F100.5" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Capture every starred repository for the authenticated GitHub user outside Git. Dated API metadata is publisher-source observation; README claims are not independent proof. Connect repositories by shared topics/languages. Produce a bounded handful of cited comparison hypotheses with advantages and limitations for review. Preserve review decisions across incremental refreshes and surface changed observations." .
+kb:repository-comparison-views a ktype:Feature ; rdfs:label "Focused space views and repository comparisons" ;
+    kpred:feature-id "F100.6" ; kpred:has-status "in-progress" ;
+    kpred:relates-to kb:starred-repository-research, kb:graph-legibility ;
+    kpred:description "Compare selected similar repositories with Reckons.AI using dated source metrics and cited qualitative hypotheses. Save per-space selections of entities, predicates and statements and open them on the canvas. Large spaces show a bounded disclosed subset with expansion controls. Display projections do not change claims or review statuses. Shared topics/languages indicate overlap, not quality or compatibility." .
