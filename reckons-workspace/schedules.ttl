@@ -81,6 +81,16 @@ sched:integration-health rdf:type ktype:Schedule ;
 # a tier is treated as a GPU job. kpred:network "true" = it talks to the internet. This table is the
 # one place to adjust cadences.
 
+sched:visual-tests rdf:type      ktype:Schedule ;
+    rdfs:label      "Visual tests — statement readability and layout gates" ;
+    kpred:every     "2h" ;
+    kpred:first-pass "true" ;
+    kpred:command   "npm run offline:all -- --only=space-visual-gate,visual-diff" ;
+    kpred:tier      "agent" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Run space-visual-gate and visual-diff on the running dev server (port 5174). Agent tier: needs Ollama + qwen2.5vl:7b. Runs immediately when the session first becomes active, then every 2 hours while active. Results appear in agent:watch under VISUAL TESTS." .
+
 sched:offline-script-tier rdf:type ktype:Schedule ;
     rdfs:label      "Script-tier offline checks" ;
     kpred:every     "1d" ;

@@ -108,6 +108,23 @@ The PR body should note: (a) the catalog fix needed (`starter-research.ttl` must
 - List entry: `graph:starter-research ,` (after starter-sim-ramp-cup)
 - Dataset entry with role:starter, source `static/starter-research.ttl`
 
+### 9. Space statement visual gate (NEW — VLM-powered local testing)
+
+Created `scripts/offline/space-visual-gate.ts` — takes Playwright screenshots of real Reckons spaces at `/kb`, `/review`, `/ingest`, `/` in both desktop and mobile viewports, then runs qwen2.5vl:7b gate checks on each screenshot for:
+- Statement visibility and readability (not just "is there content")
+- Layout coherence (no broken panels, overlapping labels)
+- Status indicators present on items
+- Mobile readability without horizontal scroll
+
+**Results from first run:** 23/35 gates passed, 12 failures (all legitimate: empty graph state has no visible nodes, Shelly CTA missing from root page, ingest form has no statement preview).
+
+Screenshots saved to `tests/visual/screenshots/space-gate/`. Findings queued in pending.jsonl for review. Runs as a scheduled job (`space-visual-gate`) in jobs.json at 0 cost (local VLM, ~60s wall time).
+
+**To run manually:**
+```bash
+OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174
+```
+
 ### 8. What's worth deferring to Opus (in priority)
 
 1. **Ollama v3.8 tool-type compatibility** — blocks all local-agent workflows. Most urgent fix.

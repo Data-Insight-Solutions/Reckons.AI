@@ -494,6 +494,14 @@
       "desc": "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU."
     },
     {
+      "name": "space-visual-gate",
+      "tier": "agent",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174",
+      "desc": "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review."
+    },
+    {
       "name": "rename-pr",
       "tier": "script",
       "enabled": false,
