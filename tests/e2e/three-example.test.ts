@@ -219,6 +219,7 @@ test('the View settings panel drives the same background example as the bar', as
   await stub(page); await attach(page); await setBackground(page); await toGraph(page);
   const fab = page.getByRole('button',{name:'View settings',exact:true});
   if (await fab.isVisible()) await fab.click();
+  await page.getByTestId('graph-background-settings').locator('summary').click();
   const panel = page.getByTestId('graph-background-settings').getByRole('group',{name:'Background in view settings'});
   await expect(panel).toContainText('webgl_reckons_fixture');
   await panel.getByRole('button',{name:'Load',exact:true}).click();

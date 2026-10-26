@@ -2335,8 +2335,9 @@
        focal point (3D only; the settings are not drawn in 2D), the same component the Graphs tab uses.
        A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the floating bar. -->
   {#if (backgroundSplat && !use2D && webglAvailable) || backgroundExample}
-  <div class="overlay-group" data-testid="graph-background-settings">
-    <span class="group-label mono">background</span>
+  <details class="background-disclosure" data-testid="graph-background-settings">
+    <summary class="mono">Background</summary>
+    <div class="overlay-group background-controls">
     {#if backgroundSplat && !use2D && webglAvailable}<BackgroundSettingsControls />{/if}
     {#if backgroundExample && backgroundExampleSession}
       <div class="bg-example-row mono" role="group" aria-label="Background in view settings">
@@ -2344,7 +2345,8 @@
           onclear={() => setBackgroundExample(null)} />
       </div>
     {/if}
-  </div>
+    </div>
+  </details>
   {/if}
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
@@ -3598,6 +3600,20 @@
     flex-direction: column;
     gap: 0.35rem;
   }
+
+  .background-disclosure summary {
+    padding: 0.45rem 0.2rem;
+    font-size: 0.65rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .background-disclosure summary:hover { color: var(--ink); }
+  .background-disclosure summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--rad-sm);
+  }
+  .background-controls { padding-top: 0.35rem; }
 
   /* Collapsible graph-package / sync section — keeps the panel short by default */
   .pkg-disclosure {
