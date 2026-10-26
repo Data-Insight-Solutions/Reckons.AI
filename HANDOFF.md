@@ -1,4 +1,4 @@
-## 2026-10-26 — START HERE. Review findings + stale KB/graph state (Local Deputy / qwen3.6-160k)
+## 2026-10-26 — START HERE. Review findings + stale KB/graph state (Local Deputy / qwen3.8-160k)
 
 **Branch:** `feat/local-main-agent`, clean working tree, 5 commits behind `origin/dev`.
 
@@ -8,6 +8,38 @@ test suite health and KB status. **All findings below are proposals for Opus to 
 ### 0.2.6 status (supersedes the old staging PR)
 PR #524 merged into staging on 2026-10-22. 0.2.6 is released (`abee016`). The handoff entry below this
 line (lines 1–23 of the original file, now removed) is **stale** — Matt already reviewed dev and #524 already merged. It stays in history for the branch-ancestry CI problem record but can be trimmed by Opus when convenient.
+
+### 0.3 — Deputy to qwen3.8 + Opus routing rule (2026-10-26)
+
+**Deputy model switched from qwen3.6 to qwen3.8.** Created `qwen3.8-160k` alias (`num_ctx 163840`).
+Orchestrator benchmark: qwen3.8 scored **34/36 (94%)** vs qwen3.6-160k at 33/36 (92%), with 3x the
+inference time but far fewer tokens generated (12,579 vs 21,762). Accuracy wins for an orchestrator.
+
+**Rule #5 added to AGENTS.md / CLAUDE.md:** When subscription is exhausted or credits are metered, all
+maintenance/long-tail work routes to the local deputy and Opus triages its output rather than redoing it.
+This formalizes the boundary between cloud and local tiers.
+
+### 0.4 — Held schedules + back-pressure (this evening)
+
+Four schedules are stuck in back-pressure because their own producers have ≥50 unreviewed proposals each:
+| Schedule | Pending entries | What it does |
+|---|---|---|
+| docs-review | 64 | Review docs for accuracy/staleness |
+| docs-expand | 63 | Expand documentation entities |
+| distill-decisions | 58 | Distill roadmap decisions |
+| layer-classify | 81 | Layer classification / terminology |
+
+The hold mechanism works as designed but the queue is full of stale proposals. **Recommendation for Opus:** triage even a few entries to release the holds and let them run again, or raise `holdUnreviewed` threshold in device.ttl for these specific schedules. Matt may want to address this with Opus 5.5 tomorrow.
+
+### 0.5 — Review surface planned for Opus (next session)
+
+Matt's direction: work on the **review surface** with Claude Opus 5.5 due to UI/UX complexity. The existing review queue in the app hasn't proven more advantageous than Claude Code chat repos from himself. This is genuinely complex state management — grouping, accepting/rejecting/refining batches of pending decisions, inline editing proposals, grouping by source schedule, filtering, search. That's Opus-tier work.
+
+The local orchestrator (now qwen3.8) will handle the bulk of maintenance/benchmarking/testing — long tasks that don't cost cloud tokens, and being wrong is cheap because output is a proposal waiting for human triage. `kb_pending` / `knowledge.pending.jsonl` is where local agent output waits for review.
+
+### 0.6 — Model inventory
+
+Models available (per Ollama `/api/tags`): qwen3.8, qwen3.8-160k, qwen3.6-160k, qwen3:32b, mistral-small3.2:24b. nuextract is kept per routing ledger. lfm2.5:latest (5.2GB) and llama3.2:3b (2GB) could potentially be removed if unused — Matt declined automated removal yesterday, do it manually if needed.
 
 ### 1. Test suite health (verified today, 2026-10-26)
 

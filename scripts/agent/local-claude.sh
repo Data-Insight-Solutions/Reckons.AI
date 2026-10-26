@@ -7,7 +7,7 @@
 # same AGENTS.md, same hooks, same reckons MCP, same tools. Interactive by default; any extra
 # arguments go to `claude` (so `-- -p "…"` runs headless).
 #
-#   npm run local:claude                          talk to the deputy (qwen3.6, 160k context)
+#   npm run local:claude                          talk to the deputy (qwen3.8, 160k context)
 #   npm run local:claude -- --model=qwen3-coder   a different base model
 #   npm run local:claude -- -p "…"                one headless task
 #
@@ -45,7 +45,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 OLLAMA="${OLLAMA_BASE_URL:-http://localhost:11434}"; OLLAMA="${OLLAMA%/}"
-MODEL="${RECKONS_DEPUTY_MODEL:-qwen3.6}"
+MODEL="${RECKONS_DEPUTY_MODEL:-qwen3.8}"
 CTX="${RECKONS_DEPUTY_CTX:-163840}"
 PASS=()
 for a in "$@"; do
