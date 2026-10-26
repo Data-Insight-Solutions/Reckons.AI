@@ -1,5 +1,5 @@
 {
-  "built": 187,
+  "built": 188,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -602,7 +602,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "dab6f0fb3488cbbf"
+      "pageHash": "421800fcd6536213"
     },
     {
       "path": "features/open-in-source",
@@ -701,7 +701,7 @@
       "factHash": "33d530c7b9161261",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "69102344289abf6e"
+      "pageHash": "18f898063343358f"
     },
     {
       "path": "features/shelly",
@@ -785,13 +785,22 @@
       "pageHash": "acf59ec1dcbccd24"
     },
     {
+      "path": "features/triple-check",
+      "entity": "urn:reckons:feature/TripleCheck",
+      "graph": "docs-features.ttl",
+      "factHash": "c54bed0d36277310",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "ee33017dedd80a28"
+    },
+    {
       "path": "features/ttl-export",
       "entity": "urn:reckons:feature/TTLExport",
       "graph": "docs-features.ttl",
       "factHash": "6c90aecf25a1fd5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "d539e81275d93140"
+      "pageHash": "f904fbe615f262c8"
     },
     {
       "path": "features/your-room",
@@ -827,7 +836,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "56339ca71aac197c"
+      "pageHash": "97821e9e8ee7f0b0"
     },
     {
       "path": "guide/who-makes-this",

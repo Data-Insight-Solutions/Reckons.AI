@@ -714,6 +714,8 @@
     setTimeout(() => { wsImportMsg = ''; }, 10000);
   }
 </script>
+<p style="padding:1rem"><a href="/settings/triple-check">Triple Check — continuous statement validation and evidence settings →</a></p>
+
 
 <header class="head">
   <p class="kicker mono">settings</p>

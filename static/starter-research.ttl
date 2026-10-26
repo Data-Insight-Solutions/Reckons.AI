@@ -1,0 +1,168 @@
+# generated 2026-10-26T15:08:51.768Z
+# 8 statements — full annotated export
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+# ---- confirmed graph ----
+<urn:example:research/aster-v1>
+    <urn:example:predicate/throughput> "100 units per second" ;
+    <urn:example:predicate/supported-language> "TypeScript" ;
+    <urn:example:predicate/throughput> "80 units per second" ;
+    <urn:example:predicate/supported-language> "Python" ;
+    <urn:example:predicate/throughput> "100 units per second" ;
+    <urn:example:predicate/license> "MIT" ;
+    <urn:example:predicate/license> "Apache-2.0" .
+
+<urn:example:research/aster-v2>
+    <urn:example:predicate/throughput> "150 units per second" .
+
+# ---- sources ----
+src:lab-a
+    rdf:type meta:Source ;
+    dc:title "Engineering test A (engineering, synthetic)" ;
+    meta:sourceUri "note://synthetic-research/lab-a" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:lab-b
+    rdf:type meta:Source ;
+    dc:title "Independent test B (independent-lab, synthetic)" ;
+    meta:sourceUri "note://synthetic-research/lab-b" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:briefing
+    rdf:type meta:Source ;
+    dc:title "Marketing briefing (marketing, synthetic)" ;
+    meta:sourceUri "note://synthetic-research/briefing" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:legal
+    rdf:type meta:Source ;
+    dc:title "Release license record (engineering, synthetic)" ;
+    meta:sourceUri "note://synthetic-research/legal" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+# ---- statement metadata (all statuses) ----
+<urn:kbase:stmt/research-lab-a-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/throughput> ;
+    rdf:object "100 units per second" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"lab-a\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 throughput: 100 units per second." ;
+    prov:wasDerivedFrom <urn:example:source/lab-a> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-lab-a-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/supported-language> ;
+    rdf:object "TypeScript" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"lab-a\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 supported-language: TypeScript." ;
+    prov:wasDerivedFrom <urn:example:source/lab-a> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-lab-b-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/throughput> ;
+    rdf:object "80 units per second" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"lab-b\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 throughput: 80 units per second." ;
+    prov:wasDerivedFrom <urn:example:source/lab-b> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-lab-b-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/supported-language> ;
+    rdf:object "Python" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"lab-b\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 supported-language: Python." ;
+    prov:wasDerivedFrom <urn:example:source/lab-b> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-briefing-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/throughput> ;
+    rdf:object "100 units per second" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"briefing\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 throughput: 100 units per second." ;
+    prov:wasDerivedFrom <urn:example:source/briefing> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-briefing-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/license> ;
+    rdf:object "MIT" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"briefing\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 license: MIT." ;
+    prov:wasDerivedFrom <urn:example:source/briefing> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-legal-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v1> ;
+    rdf:predicate <urn:example:predicate/license> ;
+    rdf:object "Apache-2.0" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"legal\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v1 license: Apache-2.0." ;
+    prov:wasDerivedFrom <urn:example:source/legal> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/research-legal-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:research/aster-v2> ;
+    rdf:predicate <urn:example:predicate/throughput> ;
+    rdf:object "150 units per second" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"legal\",\"updatedAt\":1}}" ;
+    meta:gloss "Synthetic research example; deliberate disagreement, not a real product finding." ;
+    meta:excerpt "aster-v2 throughput: 150 units per second." ;
+    prov:wasDerivedFrom <urn:example:source/legal> ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .

@@ -39,12 +39,14 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
+    { id: 'research-validation', icon: '✓', title: 'Research validation', body: 'Synthetic engineering, marketing and independent research corpora with deliberate disagreements. Configure Triple Check from Settings to review them.', file: '/starter-research.ttl', space: 'Research validation', entities: 2, triples: 8 },
     {
       id: 'quickstart',
       icon: '🚀',
       title: 'Quick-Start Example',
       body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to facts.',
       file: '/starter-quickstart.ttl',
+      space: 'Quick-Start Example',
       entities: 15,
       triples: 90
     },
@@ -242,6 +244,8 @@
     { icon: '🤝', title: 'Collaboration',        body: 'Export your .ttl, share it. Recipients see a full semantic diff: what you added, what conflicts with their own graph.' },
   ];
 </script>
+<p style="padding:1rem"><a href="/settings/triple-check">Research validation workflow for all examples →</a></p>
+
 
 <div class="page">
 

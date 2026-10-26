@@ -1,4 +1,5 @@
 <script lang="ts">
+  import TripleCheckEvidence from '$lib/components/TripleCheckEvidence.svelte';
   import { replaceState } from '$app/navigation';
   import { Popover } from 'bits-ui';
   import KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
@@ -1418,6 +1419,8 @@
     get highlighted() { return previewHighlighted; },
   };
 </script>
+<TripleCheckEvidence />
+
 
 <div class="review-layout" class:dragging={isDragging}>
   <!-- ── LEFT: Graph area ──────────────────────────────────────────────── -->

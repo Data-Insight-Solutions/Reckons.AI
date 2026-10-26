@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { projectSpaceView } from '$lib/rdf/space-view';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
@@ -778,8 +779,13 @@
   // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
   // of `visible` is the mistake documented above: it empties the topology, and an empty
   // `visible` draws the marketing landing page over the user's own graph.
+  const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === $page.url.searchParams.get('view')));
+  const canvasProjection = $derived(projectSpaceView(visible, {
+    view: activeSpaceView, limit: settings().canvasEntityLimit ?? 80,
+    focus: selected?.startsWith('i:') ? selected.slice(2) : undefined,
+  }));
   const graphView = $derived(
-    buildGraphView(visible, {
+    buildGraphView(perspective === 'sources' ? visible : canvasProjection.statements, {
       categoryNodes: showCategoryNodes,
       minAltitude: perspective === 'sources' ? undefined : detail.floor ?? undefined,
       spaceMetadata: detailLevel === 'all',
@@ -2474,6 +2480,17 @@
   <div class="vs-header mono">view settings</div>
 {/snippet}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+  <div class="focused-view-controls">
+    <label>Space view<select aria-label="Space view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
+      <option value="">Explore this space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
+    </select></label>
+    <label>Entities on canvas<select aria-label="Entities on canvas" value={settings().canvasEntityLimit ?? 80} onchange={e => updateSettings({ canvasEntityLimit: Number(e.currentTarget.value) })}>
+      <option value={25}>Up to 25</option><option value={80}>Up to 80</option><option value={200}>Up to 200</option><option value={0}>All in this view</option>
+    </select></label>
+    <p data-testid="space-view-count">{canvasProjection.entities.size} of {canvasProjection.candidateEntities} matching entities; {canvasProjection.hiddenStatements} statements outside the canvas selection. All remain in this space.</p>
+    <a href="/compare/repositories">Compare repositories and save views →</a>
+  </div>
+
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -3463,6 +3480,11 @@
 {/if}
 
 <style>
+  .focused-view-controls { display: grid; gap: 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.65rem; margin-bottom: 0.65rem; font-size: 0.75rem; }
+  .focused-view-controls label { display: flex; justify-content: space-between; gap: 0.5rem; }
+  .focused-view-controls select { min-width: 0; max-width: 65%; background: var(--surface); color: var(--ink); }
+  .focused-view-controls p { color: var(--muted); margin: 0; }
+
   .source-set-preview { pointer-events: auto; display: flex; gap: 0.55rem; align-items: center; transform: translate(-50%, -110%); padding: 0.55rem 0.75rem; min-width: 130px; max-width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); text-align: left; box-shadow: 0 3px 12px #0004; }
   .source-set-preview strong { display: block; font-size: 0.8rem; white-space: normal; }
   .source-set-preview small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
