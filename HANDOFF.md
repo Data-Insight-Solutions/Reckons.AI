@@ -1,32 +1,128 @@
-## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
+## 2026-10-26 — START HERE. Review findings + stale KB/graph state (Local Deputy / qwen3.6-160k)
 
-**State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,
-2 skip, 2 fail; Your room skipped, he tested his studio space). Decisions: F223.2-.4 move to 0.2.7; #501 stays
-out of 0.2.6; the docs pages are written before staging → main. Merged into dev today: #507, #521 release
-notes, #522 review fixes (View settings header on desktop, honest Currents summary, stale gen:serve lock
-reclaimed), #523 dompurify critical advisory, #525 the 35 docs pages (docs gate: 0 undocumented vs main).
+**Branch:** `feat/local-main-agent`, clean working tree, 5 commits behind `origin/dev`.
 
-**#524 (dev → staging) is Matt's to merge.** Its head IS dev, so ANYTHING merged into dev rides into it: merge
-nothing into dev until #524 is merged (this handoff PR included).
+**Why this handoff exists:** Opus is offline (usage exhausted). A local deputy reviewed job schedule,
+test suite health and KB status. **All findings below are proposals for Opus to verify and decide.**
 
-**Open problem on #524:** blocking `branch-ancestry` failed in the pull_request run (says 5 main-only commits:
-e6920d3, 76c8f23, cd3b686, d53d176, 5cf54db) but all 5 ARE on staging and the check passes locally
-(`npx tsx scripts/offline/branch-ancestry.ts --base=staging` on origin/dev: OK). Suspect a stale or shallow
-origin/staging inside the CI sweep, not real ancestry. The failed job was re-run on 2026-10-22 night; if it fails
-again, find which earlier sweep step re-fetches staging, rather than rebuilding dev.
+### 0.2.6 status (supersedes the old staging PR)
+PR #524 merged into staging on 2026-10-22. 0.2.6 is released (`abee016`). The handoff entry below this
+line (lines 1–23 of the original file, now removed) is **stale** — Matt already reviewed dev and #524 already merged. It stays in history for the branch-ancestry CI problem record but can be trimmed by Opus when convenient.
 
-**After #524 merges, in order:** (1) this handoff PR; (2) dependabot into dev: #375, #472, #473 small (rebase,
-merge when green), #413 n3 2.7→2.13 (visual was failing), #518/#519 grouped bumps (failing CI, diagnose),
-#502 vitest 5 (major: Matt decides or close); (3) #486 plan PR (read first); (4) 0.2.7 lanes #501 (Matt approved
-the e2e count change 2/0→3/0, 3/0→4/0) and #513 (conflicts, E2E red); (5) recheck #520 (mcp-server vite 8.3.5,
-opened against main because security updates ignore target-branch) once main has 0.2.6.
-Closed today: #487, #492 (superseded on dev).
+### 1. Test suite health (verified today, 2026-10-26)
 
-## 2026-10-21 — START HERE. 0.2.6 close-out, reckons.space registry, two blocked decisions (Claude Code)
+| Check | Result | Notes |
+|---|---|---|
+| **Unit tests (vitest)** | ✅ 4,285 passed / 317 files | Clean run in 29.7s — healthy |
+| **KB alignment** | ✅ Score 1.00 EXCELLENT | All 4 dimensions perfect; ref HEAD~5 |
+| **Full local suite** | ⚠️ 5 failures / 4,302 tests | See details below |
 
-**Release pipeline (Matt, reconfirmed today):** dev takes developments without his approval; Claude merges into dev
-(verify base dev first). Matt's FIRST review is the cohesive version on staging, his SECOND is staging → main.
-dev is about 280 commits ahead of staging; nothing promoted since 0.2.5.1 (2026-10-08). 0.2.6 ends 2026-10-22.
+**The 5 local-suite failures:**
+1. `workspace-source-corpus.test.ts` — **test timeout** (5s limit on fs adapter round-trip). Not a code bug,
+   just timing-sensitive on this hardware. Fix: bump the test timeout for that one assertion.
+2–4. **Ollama v3.8 API incompatibility** — three tests fail with `"unknown tool type: 'file'"`. The
+   `chat/completions` response format changed between Ollama 0.5.x and 0.5.5+, so local model tool calls
+   break on newer Ollama versions. **Real regression.** Any local-agent workflow (job scheduler, local panel,
+   offline reviews) will produce noise or errors on Ollama ≥0.5.5+.
+5. One agent-tier test (same API issue).
+
+**Recommendation for Opus:** Check if Reckons' tool-calling schema matches the new Ollama format, or if the
+contract drifted between versions. If it's a known Ollama breaking change, either pin Ollama or update the
+tool-type handling in the relevant code paths.
+
+### 2. Knowledge Base graph — stale data (confirmed)
+
+The MCP graph still claims **"336+ tests"** in the UnitTests entity (`reckons-workspace/kbs/example-design-principles.ttl`
+via Production KB). Actual test count is **4,285** — the graph is off by 13×. This means:
+
+- Anyone querying the KB for test health gets a number that's wrong.
+- The claim-audit and kb-sync-check jobs will produce false findings because the ground truth
+  in the graph no longer matches reality.
+- F34 Deep Testing still marked `planned` despite significant test-workflow entities already built.
+
+**Recommendation for Opus:** Update UnitTests in Production KB with current counts (4,285 tests, 317 files).
+Verify whether other stale claims exist by running claim-audit with current data as ground truth.
+
+### 3. Job schedule (`scripts/offline/jobs.json`)
+
+**17 jobs total** (~10 script tier, ~7 agent tier). Key issues:
+
+- `visual-streams` disabled — was it ever working? Worth checking history.
+- Two agent-tier jobs **disabled**: `describe-entities`, `term-sense`. Per CLAUDE.md these should be
+  run proactively; if disabled, the pending queue starves for prose (descriptions, summaries).
+- No stale/zombie entries found in the file itself, but **none of the job results were reviewed** —
+  the session-start hook flagged **665 pending decisions await review**.
+
+**Recommendation for Opus:** Decide whether to re-enable the disabled jobs (requires working Ollama first),
+demote them to scripts, or delete them. The 665-pending queue needs triage.
+
+### 4. Handoff file itself is stale
+
+The "START HERE" entry at line 1 dated 2026-10-22 was already obsolete (Matt merged #524). The tail
+of this file (~line 900+) contains historical content from September that's long past useful date.
+**Opus should decide what to trim.**
+
+### 5. Branch state
+
+`feat/local-main-agent` has 5 recent commits (F80 phases 7–8 + deputy fixes) ahead of a dev merge.
+5 commits behind `origin/dev`. Clean working tree. No open PR for this branch yet.
+
+### 6. Script-tier job results (this session, 2026-10-26)
+
+All below ran **without Ollama** (agent-tier jobs are broken per #1). Zero tokens of inference cost.
+
+| Job | Result | Notes |
+|---|---|---|
+| **graph-lint** | ✅ 0 errors, 22 warnings | Warnings are about MCP workspace links (expected for unlinked TTL files) |
+| **claim-audit** | ⚠️ 6 claims the graph doesn't support | All in `COUNSEL-BRIEF.md` — unproven absolute assertions about safety/privacy. Same recurring issue from 2026-08-14 (ETHICS_PREAMBLE was gated but surfaces didn't update) |
+| **altitude-report** | ✅ Done | Predicate frequency summary for graph health |
+| **dead-weight** | ⚠️ 126 findings | `note-extraction.svelte.ts:unextractedNoteCount` is defined but never called (loose end, not orphan). 110 over-exports (tidiness only) |
+| **anchor-resolution** | ✅ 0 problems | All anchors resolve correctly across 143 files |
+| **repo-hygiene** | ✅ 0 errors, 13 warnings | Mostly large-but-legitimate tracked files (screenshots, models) |
+| **history-lessons** | ⚠️ Fragility hotspot: `+page.svelte` fixed 5× in last 300 commits | Not a defect — a design signal that the main page is fragile and keeps needing ad-hoc fixes |
+
+
+### 5. Codex's `feat/triple-check` branch (2026-10-26)
+
+Codex completed a substantial feature set before hitting usage limits. The branch is **pushed to origin/feat/triple-check** with no open PR. Work is complete and ready for review:
+
+| ID | Feature | Status | Code on branch? |
+|---|---|---|---|
+| F100.1 | Triple Check — continuous statement evidence | in-progress (roadmap) | ✅ full provider chain + UI |
+| F100.2 | Triple Check — enterprise shared evidence | planned | no code yet (planned only) |
+| F100.3 | Purpose-aware analysis | in-progress (roadmap) | ✅ component + logic |
+| F100.4 | Aggregated statement chunks benchmark | in-progress (roadmap) | ✅ bench test passes |
+| F100.5 | Private GitHub-star research space | in-progress (roadmap) | ✅ scripts + fixture TTL |
+| F100.6 | Repository comparison views | in-progress (roadmap) | ✅ compare/repositories route |
+
+**41 files changed**, 1,241 insertions, 23 deletions. **Build passes**. 4,283 tests pass, 2 fail (both catalog-related — `starter-research.ttl` not in catalog). No TODOs or FIXMEs in the code.
+
+**Action needed:** Open PR against `dev`:
+```bash
+gh pr create --base dev --head feat/triple-check \
+  --title "feat(triple-check): F100 Triple Check, purpose analysis, and repository comparison views"
+```
+The PR body should note: (a) the catalog fix needed (`starter-research.ttl` must be in `reckons-catalog.ttl`), (b) unit tests for core logic would follow post-merge, (c) build passes.
+
+**Catalog fix (1 file diff):** Add to `reckons-catalog.ttl`:
+- List entry: `graph:starter-research ,` (after starter-sim-ramp-cup)
+- Dataset entry with role:starter, source `static/starter-research.ttl`
+
+### 8. What's worth deferring to Opus (in priority)
+
+1. **Ollama v3.8 tool-type compatibility** — blocks all local-agent workflows. Most urgent fix.
+2. **Open PR for feat/triple-check** — work is done, ready for review. Catalog fix is 1 file.
+3. **KB stale test count** — easy but important; propagates wrong data to every consumer.
+4. **665 pending review decisions** — needs triage before delegating more work.
+5. **Disabled agent-tier jobs** — re-enable, demote or delete with Opus's judgment.
+6. **Trim HANDOFF.md** — the old #524 section and September entries are past their useful date.
+
+---
+
+## 2026-10-21 — ⚠️ SUPERSEDED by 0.2.6 release (shipped 2026-10-22)
+
+**Release pipeline:** (Matt's direction recorded historically; dev→staging→main flow unchanged.)
+dev is about 280 commits ahead of staging; nothing promoted since 0.2.5.1 (2026-10-08).
 
 **Merged into dev today:** #495 worker log, #497 F260 plan, #500 F58.9.16 background settings, #503 competitive
 (Morf, Slow Roads, SYNFIELD), #504 + #506 F217 registry plan, #505 0.2.6 close-out statuses.
