@@ -521,6 +521,13 @@
       "enabled": false,
       "cmd": "npm run bench:gen -- --stage=image",
       "desc": "MANUAL, GPU (agent tier only because a local vision model judges image checklists and it must pass the GPU gate; never enabled in the sweep). F183.1: incumbent vs a candidate (--candidate=<owner/repo|dir>) on the same synthetic briefs and seeds, scored by hard checks, a local vision-model checklist (image), motion/flicker/fidelity (video) or silhouette and depth (splat), plus time and peak VRAM. GPU-bound, minutes to tens of minutes, never CI. Pins one GPU and refuses to start while another generation job is running (--wait=SECONDS polls). Queues one upgrade|hold|insufficient-evidence proposal per stage and never edits MODELS in gen-assets.ts."
+    },
+    {
+      "name": "room-benchmark",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npm run bench:room -- --help",
+      "desc": "MANUAL, GPU. Synthetic room reconstruction benchmark: prepare a seeded Blender dataset, then pass --dataset and a new --out directory outside the checkout. Exact camera poses, disjoint evaluation views, versioned RGB PSNR/block8 luminance SSIM, per-view image pairs, runtime and SPZ size. No model judge, network or automatic asset replacement. The registered command prints usage; heavy rendering/training requires explicit arguments and is never part of the sweep. Fidelity is measured before compression, not in the browser."
     }
   ]
 }

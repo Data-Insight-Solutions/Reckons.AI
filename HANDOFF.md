@@ -1,3 +1,28 @@
+## 2026-10-26 — Synthetic room benchmark and background accordion (Codex)
+
+PR #536 targets `dev`, branch `feat/synthetic-room-benchmark`, worktree `.claude/worktrees/synthetic-room-benchmark`.
+Background controls in View settings now start collapsed (native details/summary, splats and Three.js).
+`npm run bench:room` prepares the existing seeded Blender room with exact poses and held-out views, trains
+Brush, scores every evaluation image, and writes a local paired-image report, runtime and SPZ size. See
+`kb:synthetic-room-benchmark` and the generated Testing page for commands, results and limitations.
+
+Three experiments completed on 2026-10-26: 96 images, 84 training / 12 held out, 800x450. SH0/6000 steps:
+15.616 dB, SSIM 0.7019, 0.84 MB. SH3/6000: 15.762 dB, 0.6976, 1.12 MB. SH3/30000: 15.749 dB, 0.6620,
+7.68 MB. **None establishes an improved room. The shipped asset is unchanged.** Known poses bypass COLMAP;
+metrics score the trained PLY before compression, not SPZ/browser pixels. Next quality work should examine
+initialization, coverage and reconstruction settings against this fixed benchmark, then compare the final
+compressed asset in the browser before replacing it.
+
+Validation, 2026-10-26: 4293 unit tests passed, 17 TODOs, with two workers (first highly parallel run timed out
+five tests; no tests or limits changed). All 19 room/Three.js browser tests passed. Type check, production build,
+build guard, graph lint, generated docs/search alignment and codebase coverage passed. Local `/kb` visual
+check used a disposable copy of real data: no app errors/warnings; evidence remains private. Startup sweep
+was interrupted with exit 143 during button-crawl; CI's script-tier check subsequently passed on the initial
+PR commit. PR #536's **dependency audit fails on the unchanged dev lockfile** (including a proposed SvelteKit
+major upgrade); all three dependency projects were audited, one high finding. See the current PR checks for
+final CI status; nothing was merged. Queued graph findings: dependency blocker and scanRoom's shadowed
+registered/pycolmap variables (unfixed, outside this branch).
+
 ## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
 
 **State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,
