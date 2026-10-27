@@ -446,7 +446,9 @@ export async function ingest(
           triples = extractMock(text, title);
         }
       } else {
-        triples = extractMock(text, title);
+        // A corpus note (F183.3) gets its hand-checked facts, so a browser test can build a space and change it.
+        const { corpusFixtureTriples } = await import('../integrations/llm/corpus-fixture');
+        triples = (await corpusFixtureTriples(text)) ?? extractMock(text, title);
       }
       run = finishExtractionAttempt(run, 'succeeded');
       run = finishExtractionStage(run, 'extract');

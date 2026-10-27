@@ -1,5 +1,5 @@
 {
-  "built": 188,
+  "built": 189,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -788,10 +788,10 @@
       "path": "features/triple-check",
       "entity": "urn:reckons:feature/TripleCheck",
       "graph": "docs-features.ttl",
-      "factHash": "c54bed0d36277310",
-      "factCount": 5,
+      "factHash": "be3ef735790510fb",
+      "factCount": 6,
       "floor": "evidence",
-      "pageHash": "ee33017dedd80a28"
+      "pageHash": "159abc572fc5de0d"
     },
     {
       "path": "features/ttl-export",
@@ -836,7 +836,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "97821e9e8ee7f0b0"
+      "pageHash": "9aa168683ebf86e8"
     },
     {
       "path": "guide/who-makes-this",
@@ -1052,7 +1052,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "e3aa4aeb22aeadb9"
+      "pageHash": "abbd94686387efba"
     },
     {
       "path": "project/where-it-is-going",
@@ -1070,7 +1070,7 @@
       "factHash": "8c57311d6bb0d074",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d352db7432169727"
+      "pageHash": "4674cc845e9468ad"
     },
     {
       "path": "testing/graph-review-story",
@@ -1088,7 +1088,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "448263b0ead0a671"
+      "pageHash": "176ec7c685beb325"
     },
     {
       "path": "testing/release-review-spaces",
@@ -1115,7 +1115,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "d54e52f0f940376c"
+      "pageHash": "8555ea144e253314"
     },
     {
       "path": "testing/three-example-nodes",
@@ -1124,7 +1124,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "5b9a420c940af103"
+      "pageHash": "fa7904c5aec33bb5"
     },
     {
       "path": "testing/visual-tests",
@@ -1133,7 +1133,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "06110b2d5a9f8a5d"
+      "pageHash": "6306fb00e420d1ee"
     },
     {
       "path": "testing/vlm-workflow-streams",
@@ -1142,7 +1142,16 @@
       "factHash": "663a738d5de199f8",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "fee0d96fd1702fab"
+      "pageHash": "5e89125ea4a87b4f"
+    },
+    {
+      "path": "testing/workflow-build-change",
+      "entity": "urn:reckons:test/Workflow-BuildChange",
+      "graph": "docs-testing.ttl",
+      "factHash": "cda7009c6ebe907b",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "d5c0d8aa786bed71"
     },
     {
       "path": "testing/workflow-generated-assets",
@@ -1151,7 +1160,7 @@
       "factHash": "962e39450ad27746",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "eacab62c1b2385a6"
+      "pageHash": "5149ad34272204ba"
     },
     {
       "path": "testing/workflow-readme-path",
@@ -1160,7 +1169,7 @@
       "factHash": "b3958864258797fb",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "83420fa8198e48bc"
+      "pageHash": "66aa434f0aef0b23"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",
