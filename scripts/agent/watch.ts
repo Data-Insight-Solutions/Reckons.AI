@@ -329,14 +329,16 @@ function renderVisualTests(now = new Date(), lvl: (lv: Level, text: string) => s
     out.push(`${bold('VISUAL TESTS')} ${dim(`recent runs from ${runsDir.replace(process.cwd(), '.')}`)}`);
     for (const file of files) {
       try {
-        const data = JSON.parse(readFileSync(join(runsDir, file), 'utf8')) as { schema?: string; url?: string; totalChecks?: number; passed?: number; failed?: number; finishedAt?: string };
+        const data = JSON.parse(readFileSync(join(runsDir, file), 'utf8')) as { schema?: string; url?: string; totalChecks?: number; passed?: number; failed?: number; errored?: number; finishedAt?: string };
         if (!data.schema) continue;
         const type = data.schema.includes('space-visual-gate') ? 'space-gate' : 'visual-diff';
         const checks = data.totalChecks ?? 0;
         const pass = data.passed ?? 0;
         const fail = data.failed ?? 0;
         const time = data.finishedAt ? ago(new Date(data.finishedAt), now) : '';
-        if (fail > 0) {
+        if (pass + fail === 0) {
+          out.push(`  ${yellow('?')} ${bold(type)}  no gates evaluated (${data.errored ?? 0} errors) · ${dim(time)}`);
+        } else if (fail > 0) {
           out.push(`  ${red('✗')} ${bold(type)}  ${pass}/${checks} gates passed, ${fail} failures · ${dim(time)}`);
         } else {
           out.push(`  ${green('✓')} ${bold(type)}  all ${checks} gates passed · ${dim(time)}`);

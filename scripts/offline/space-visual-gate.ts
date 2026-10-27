@@ -10,8 +10,7 @@
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts [--base=http://localhost:5174]
  */
 import { chromium, type Page } from '@playwright/test';
-import { readFileSync, existsSync } from 'fs';
-import { mkdirSync, writeFileSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -111,7 +110,7 @@ async function main() {
 
   const browser = await chromium.launch({ headless: true });
   const findings: { subject: string; predicate: string; question: string; kb: string; type: string; priority: string }[] = [];
-  let totalChecks = 0, passed = 0, failed = 0;
+  let totalChecks = 0, passed = 0, failed = 0, errored = 0, skippedPages = 0;
 
   for (const route of ROUTES) {
     for (const vp of VIEWPORTS) {
@@ -122,8 +121,8 @@ async function main() {
         // Phase 1: Screenshot with real data
         const imgB64 = await shot(page, BASE + route);
 
-        // Save screenshot for review
-        const snapDir = 'tests/visual/screenshots/space-gate';
+        // Save screenshot for review — under runs/ (gitignored), so a scheduled run never dirties the tree
+        const snapDir = 'reckons-workspace/runs/space-gate';
         mkdirSync(snapDir, { recursive: true });
         writeFileSync(
           path.join(snapDir, `${route.replace(/\//g, '_')}_${vp.label}.png`),
@@ -154,6 +153,7 @@ async function main() {
             }
           } catch (e) {
             // VLM error — note it but don't let it fail the whole run
+            errored++;
             console.log(`  ⚠ gate check #${i + 1} error: ${(e as Error).message.slice(0, 80)}`);
           }
         }
@@ -161,6 +161,7 @@ async function main() {
         const status = routeFailed ? '⚠ HAS ISSUES' : '✓ all gates passed';
         console.log(`  ${status} (${criteria.length} gates)`);
       } catch (e) {
+        skippedPages++;
         console.log(`  ⏭ skipped (${(e as Error).message.slice(0, 80)})`);
       } finally {
         await page.close();
@@ -178,30 +179,41 @@ async function main() {
   writeFileSync(receipt, JSON.stringify({
     schema: 'reckons.space-visual-gate/v1',
     url: BASE,
-    totalChecks, passed, failed,
+    totalChecks, passed, failed, errored, skippedPages,
     findingsCount: findings.length,
     finishedAt: new Date().toISOString(),
   }, null, 2));
 
-  // Queue findings via pending queue (mimic the existing pattern)
+  // Queue findings via pending queue (mimic the existing pattern). Dedup on page + check, not page
+  // alone: keyed by subject only, the first failing check on a page hid every later one forever.
   const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
-  let queued = 0;
+  const keyOf = (subject: string, question: string) => `${subject}\u0000${question.split('\n')[1] ?? ''}`;
+  const seen = new Set<string>();
   if (existsSync(PENDING)) {
-    const lines = readFileSync(PENDING, 'utf8').split('\n').filter(Boolean);
-    for (const f of findings) {
-      // dedup by subject
-      if (!lines.some(l => l.startsWith(`{"subject":"${f.subject}`))) {
-        writeFileSync(PENDING, JSON.stringify({ ...f, agent: 'offline:space-visual-gate (qwen2.5vl:7b)', addedAt: new Date().toISOString() }) + '\n', { flag: 'a' });
-        queued++;
-      }
+    for (const l of readFileSync(PENDING, 'utf8').split('\n')) {
+      if (!l.includes('urn:sweep:space-gate')) continue;
+      try { const e = JSON.parse(l) as { subject?: string; question?: string }; if (e.subject && e.question) seen.add(keyOf(e.subject, e.question)); } catch { /* skip malformed */ }
     }
+  }
+  let queued = 0;
+  for (const f of findings) {
+    const k = keyOf(f.subject, f.question);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    appendFileSync(PENDING, JSON.stringify({ ...f, agent: 'offline:space-visual-gate (qwen2.5vl:7b)', addedAt: new Date().toISOString() }) + '\n');
+    queued++;
   }
 
   console.log(`\n${'═'.repeat(60)}`);
-  console.log(`Space visual gate done: ${passed}/${totalChecks} gates passed, ${failed} failures → ${queued} new pending findings`);
+  console.log(`Space visual gate done: ${passed}/${totalChecks} gates passed, ${failed} failures, ${errored} VLM errors, ${skippedPages} pages skipped → ${queued} new pending findings`);
   console.log(`Receipt: ${receipt}`);
   if (failed > 0) {
     console.log('⚠ Visual issues detected — review in Reckons.AI (Review tab).');
+  }
+  // Nothing checked is not a pass: no dev server or no VLM must fail loudly, not report "all 0 gates passed".
+  if (passed + failed === 0) {
+    console.error(`✗ no gate was evaluated — is the dev server up at ${BASE} and qwen2.5vl:7b pulled at ${OLLAMA_URL}?`);
+    process.exit(2);
   }
 }
 

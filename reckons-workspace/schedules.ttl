@@ -85,11 +85,11 @@ sched:visual-tests rdf:type      ktype:Schedule ;
     rdfs:label      "Visual tests — statement readability and layout gates" ;
     kpred:every     "2h" ;
     kpred:first-pass "true" ;
-    kpred:command   "npm run offline:all -- --only=space-visual-gate,visual-diff" ;
+    kpred:command   "npm run offline:all -- --only=space-visual-gate" ;
     kpred:tier      "agent" ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "true" ;
-    kpred:description "Run space-visual-gate and visual-diff on the running dev server (port 5174). Agent tier: needs Ollama + qwen2.5vl:7b. Runs immediately when the session first becomes active, then every 2 hours while active. Results appear in agent:watch under VISUAL TESTS." .
+    kpred:description "Run space-visual-gate on the running dev server (port 5174). visual-diff is not here: it compares two deployed sites over the network, not the local server. Agent tier: needs Ollama + qwen2.5vl:7b. Runs immediately when the session first becomes active, then every 2 hours while active. Results appear in agent:watch under VISUAL TESTS." .
 
 sched:offline-script-tier rdf:type ktype:Schedule ;
     rdfs:label      "Script-tier offline checks" ;

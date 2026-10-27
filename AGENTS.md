@@ -13,7 +13,7 @@ If you are an agent and you are reading this, these rules apply to you.
 > those are capability failures. They are all things this file says and that file never said to
 > anyone but Claude. Renaming it was the fix.
 
-## The four rules that are most often missed
+## The five rules that are most often missed
 
 1. **Never push to `main`, and land work through a PR.** Feature branch → push → PR (base `dev`,
    not `main`) → CI green → Matt merges. Work that sits uncommitted in the working tree has
@@ -30,8 +30,8 @@ If you are an agent and you are reading this, these rules apply to you.
    The deputy (qwen3.8-160k via `npm run claude:local`) handles: maintenance, benchmarking, test
    triage, TTL writing, stale-statement detection, batch analysis, and anything that produces a
    *proposal* waiting for human review. Opus **triages** the deputy's pending queue; it does not
-   redo what the deputy already did. The routing ladder (F74.3) is the default path — local model
-   → script → Sonnet/Haiku subagent → Opus. Escalating a maintenance task directly to Opus is the
+   redo what the deputy already did. The routing ladder (F74.3) is the default path — script → local
+   model → Sonnet/Haiku subagent → Opus (a rule a script can check never goes to a model at all). Escalating a maintenance task directly to Opus is the
    failure mode that burns cloud tokens on work the deputy can propose correctly.
 
 ## Project

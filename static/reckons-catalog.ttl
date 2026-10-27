@@ -104,7 +104,6 @@ graph:catalog a dcat:Catalog ;
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-sim-ramp-cup ,
-        graph:starter-research ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
         graph:starter-your-room ,
@@ -283,11 +282,6 @@ graph:starter-your-room a void:Dataset ;
     dcterms:title "Starter: your room" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-your-room.ttl" .
-
-graph:starter-research a void:Dataset ;
-    dcterms:title "Starter: research (F100.5, synthetic)" ;
-    dcterms:type role:starter ;
-    dcterms:source "static/starter-research.ttl" .
 
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;

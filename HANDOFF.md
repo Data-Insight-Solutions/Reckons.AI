@@ -1,6 +1,32 @@
-## 2026-10-26 — START HERE. Review findings + stale KB/graph state (Local Deputy / qwen3.8-160k)
+## 2026-10-27 — Opus review of the deputy's 2026-10-26 entry below (READ THIS FIRST)
 
-**Branch:** `feat/local-main-agent`, clean working tree, 5 commits behind `origin/dev`.
+The entry below was written by the local deputy. Verified against the repo this morning; corrections:
+
+- **Branch state was wrong.** `feat/local-main-agent` is 0 behind `origin/dev`, not 5, and it HAS an open
+  PR (#535), not "no PR yet".
+- **"Ollama v3.8 tool-type regression" (§1, §8 item 1) has no evidence.** The string `unknown tool type`
+  appears nowhere in the code, and Ollama here is 0.40.11, not "0.5.x→0.5.5+". Not a priority until a
+  failing test with real output is produced.
+- **The catalog fix for Codex's branch was committed to THIS branch** (cf4a5af), pointing at
+  `static/starter-research.ttl`, which only exists on `feat/triple-check`. It broke
+  `graph-catalog.test.ts` here (1 failure / 4302). Reverted here; it belongs on `feat/triple-check`.
+- **"336+ tests" stale claim is real but misplaced**: it lives in `static/docs-testing.ttl`, not the
+  Production KB / example-design-principles.
+- **First-pass schedules re-ran on every poll** (63d5f2b): `addJobs` only dedupes against queued jobs,
+  so once a run finished the next 60s poll re-enqueued it, ignoring `every 2h`. Fixed: once per worker start.
+- **space-visual-gate**: it committed 8 screenshots (2.3 MB) into `tests/visual/screenshots/` and rewrote
+  them every run — now written to gitignored `reckons-workspace/runs/space-gate/`. A run with no dev
+  server reported "all 0 gates passed" (false green) — now exits 2 and watch shows `?`. Findings were
+  deduped per page, hiding every check after the first — now per page + check. `visual-diff` was dropped
+  from the 2h schedule: it compares two deployed sites over the network, not the local server.
+- **Orchestrator bench "34/36 vs 33/36" does not discriminate**: scoring is keyword presence, and
+  "syntax/valid" expectations pass unconditionally. The qwen3.8 switch is fine on judgment, but the bench
+  files (`tests/bench/run-orchestrator-bench.ts`, `run-capacity-bench.ts`, `orchestration-tasks.ts`)
+  stay uncommitted until scoring parses TTL (N3) and checks structured output.
+- **AGENTS.md rule #5** listed the ladder as "local model → script → …", reversing F74.3; now script first.
+
+
+**Branch:** `feat/local-main-agent` (see corrections above).
 
 **Why this handoff exists:** Opus is offline (usage exhausted). A local deputy reviewed job schedule,
 test suite health and KB status. **All findings below are proposals for Opus to verify and decide.**
@@ -40,6 +66,13 @@ The local orchestrator (now qwen3.8) will handle the bulk of maintenance/benchma
 ### 0.6 — Model inventory
 
 Models available (per Ollama `/api/tags`): qwen3.8, qwen3.8-160k, qwen3.6-160k, qwen3:32b, mistral-small3.2:24b. nuextract is kept per routing ledger. lfm2.5:latest (5.2GB) and llama3.2:3b (2GB) could potentially be removed if unused — Matt declined automated removal yesterday, do it manually if needed.
+
+### 0.7 — Voice notes + LoRa integrations (Matt to review with Opus tomorrow)
+
+**Pending entries created:** `kb_add_note` on both entities queued as high-priority for Opus review.
+
+1. **Voice capture offline gap** (`urn:kbase:mobilevoicecapture`): Capture works in Bluetooth range, but offline notes are lost silently — no durable queue on the capture device. Needs a persistent ring buffer or local storage between connectivity windows. F243 (HTTP listener) is the candidate gateway feature for bridging mobile→desktop.
+2. **LoRa mesh integration** (`urn:kbase:async-radio-channel`, F80 phase 8): Prototype spec exists but hardware integration unstarted — USB gateway node, ESP32 mesh nodes, answer protocol over radio. Matt to test with Opus when back at the homestead.
 
 ### 1. Test suite health (verified today, 2026-10-26)
 

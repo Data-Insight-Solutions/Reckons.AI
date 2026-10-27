@@ -85,6 +85,9 @@ async function main(): Promise<void> {
   process.on('SIGTERM', bye);
   let lastState: WorkerState | undefined;
   let lastHeld = '';
+  // First-pass schedules enqueue ONCE per worker start (= session activation). Without this set they were
+  // re-added on every poll after each run finished, so a 2h schedule ran back to back.
+  const firstPassDone = new Set<string>();
 
   while (!stop) {
     const fresh = heartbeatFresh(readHeartbeatMtime(), Date.now(), idleMinutes);
@@ -99,7 +102,8 @@ async function main(): Promise<void> {
       const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
       if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
       // FIRST-PASS jobs: run immediately on first session activation regardless of interval.
-      const firstPassJobs = jobs.filter((j) => j.firstPass && !held.has(j.name));
+      const firstPassJobs = jobs.filter((j) => j.firstPass && !held.has(j.name) && !firstPassDone.has(j.name));
+      for (const j of firstPassJobs) firstPassDone.add(j.name);
       const convertedFirst = firstPassJobs.map((j) => newJob(j.name, j.cwd, j.argv, 5, j.gpu));
       const addedFirst = addJobs(convertedFirst).add;
       if (addedFirst.length) console.log(`queue-worker: enqueued first-pass: ${addedFirst.map((a) => a.name).join(', ')}`);
