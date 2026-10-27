@@ -732,15 +732,19 @@
     };
   });
   const scoped = $derived(followReview && activeTab === 'incoming' && reviewScope.ids.size > 0);
-  const previewStatements = $derived.by(() => {
+  /** Everything the preview could draw; the search box looks here, not only at the followed group. */
+  const allPreviewStatements = $derived.by(() => {
     const confirmed = confirmedStatements();
     const pending = incoming;
     // Filter same as main page
-    const all = [...confirmed, ...pending].filter(s => {
+    return [...confirmed, ...pending].filter(s => {
       if (isMetaPredicate(s.p.value)) return false;
       if (GRAPH_EXCLUDED_PREDICATES.has(s.p.value)) return false;
       return true;
     });
+  });
+  const previewStatements = $derived.by(() => {
+    const all = allPreviewStatements;
     if (!scoped) return all;
     // Context reaches one step along entities only: two facts sharing the literal "true" are not related.
     return all.filter((s) => s.status === 'pending'
@@ -893,6 +897,13 @@
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
   function focusNode(key: string) {
     selectionSource = 'panel';
+    // A node found by search may sit outside the followed group: follow ITS group, or, when it has
+    // nothing pending, show the whole graph, rather than flying the camera to a node not drawn.
+    if (scoped && !reviewScope.keys.has(key)) {
+      const hit = shownEntries.find((e) => statementHasKey(e.incoming, key));
+      if (hit && groupMode !== 'flat') activeGroupKey = groupKeyOf(hit.incoming);
+      else followReview = false;
+    }
     selected = key;
     focusedEdge = null;
     focusKey = null;
@@ -974,7 +985,7 @@
     const q = nodeSearchQuery.trim().toLowerCase();
     if (q.length < 1) return [];
     const seen = new Map<string, string>();
-    for (const s of previewStatements) {
+    for (const s of allPreviewStatements) {
       for (const term of [s.s, s.o]) {
         if (term.kind !== 'iri') continue;
         const k = termKey(term);
@@ -2355,10 +2366,13 @@
           {/if}
 
           <div class="bulk-bar">
-            <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing || acceptableAll === 0}
-              title={acceptableAll === 0 ? 'Everything shown disagrees with something or needs an answer, so each needs its own decision.' : 'Accept every shown fact that can go in one decision. Facts that disagree with something are held back.'}>
-              {isProcessing ? 'accepting...' : `accept all ${acceptableAll}`}
-            </button>
+            <!-- Absent, not disabled, at zero: a dead "accept all 0" is one more control to read past. -->
+            {#if acceptableAll > 0}
+              <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing}
+                title="Accept every shown fact that can go in one decision. Facts that disagree with something are held back.">
+                {isProcessing ? 'accepting...' : `accept all ${acceptableAll}`}
+              </button>
+            {/if}
             <div class="group-modes" role="group" aria-label="Group facts">
               {#each GROUP_MODES as m (m.id)}
                 <button class="group-toggle" class:active={groupMode === m.id} aria-pressed={groupMode === m.id}
