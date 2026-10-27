@@ -22,16 +22,16 @@
 <main>
   <SettingsHeader />
   <h2 class="page-title">Triple Check</h2>
-  <p>Check unique statements against the internet and all spaces on this device. Review cited support, possible conflicts and wording suggestions.</p>
+  <p>Checks statements in this space against your other spaces and, if you allow it, the internet. What it finds arrives in <a href="/review?group=source">Review</a> as pending statements from a new source: a source that agrees becomes a second source for the statement, and one that disagrees becomes its own statement beside it.</p>
   <section class="walkthrough">
     <h2>New to Triple Check?</h2>
-    <p>Open a small example space where four documents disagree about a fictional home battery. A guided story walks you through turning checking on and reading each kind of flag. It opens as its own space; nothing here changes.</p>
+    <p>Open a small example space where four documents disagree about a fictional home battery, together with an owners' forum it is checked against. A guided story walks you through turning checking on and reviewing what it adds. Both open as their own spaces; nothing here changes.</p>
     <button onclick={walkthrough}>Open the walkthrough space</button>
     <p class="hint">Triple Check works in any space, including the other examples on the <a href="/about">About</a> page.</p>
   </section>
   <fieldset disabled={saving}>
     <label><input type="checkbox" checked={settings().tripleCheckEnabled === true} onchange={e => save({ tripleCheckEnabled: e.currentTarget.checked })} /> Keep Triple Check on for this space</label>
-    <p>Checks one pending or retained assertion at a time, about once a minute while the app is open. New and changed statements are picked up automatically. Successful checks refresh after seven days; incomplete checks retry after an hour. Suggestions never settle assertions.</p>
+    <p>Checks one pending or retained assertion at a time, about once a minute while the app is open. New and changed statements are picked up automatically. Successful checks refresh after seven days; incomplete checks retry after an hour. Nothing it adds is accepted without you, and a statement you rejected is not proposed again.</p>
     <label><input type="checkbox" checked={settings().tripleCheckWebEnabled !== false} onchange={e => save({ tripleCheckWebEnabled: e.currentTarget.checked })} /> Check the internet</label>
     <p>Web checking sends each checked statement to your selected search service and evidence model. Turn it off for sensitive statements. Search, scraping and model calls may incur charges.</p>
     <label>Web checks per 24 hours<input type="number" min="1" max="100" value={dailyLimit(settings().tripleCheckDailyLimit)} onchange={e => save({ tripleCheckDailyLimit: dailyLimit(e.currentTarget.valueAsNumber) })} /></label>
@@ -47,12 +47,12 @@
     <h2>Reference spaces</h2>
     <p>All registered spaces are compared locally, excluding archives. Mark taxonomy or domain spaces to prioritize their definitions. Repeated assertions retain their source links and are checked once.</p>
     {#each spaces as space}<label><input type="checkbox" checked={settings().tripleCheckReferenceSpaceIds?.includes(space.id) ?? false} onchange={e => reference(space.id, e.currentTarget.checked)} /> {space.name}</label>{/each}
-    <label><input type="checkbox" checked={settings().tripleCheckSpaceAnalysis === true} onchange={e => save({ tripleCheckSpaceAnalysis: e.currentTarget.checked })} /> Compare meaning and suggest corrections with Ollama</label>
-    <p>Optional: sends up to eight matching passages to your configured Ollama endpoint and analysis model. Lexical comparisons work without it. This local feature does not provide enterprise RBAC or shared-space access controls.</p>
+    <label><input type="checkbox" checked={settings().tripleCheckSpaceAnalysis === true} onchange={e => save({ tripleCheckSpaceAnalysis: e.currentTarget.checked })} /> Compare meaning with Ollama</label>
+    <p>Optional: sends up to eight matching passages to your configured Ollama endpoint and analysis model. Two different values it judges compatible are not proposed as a disagreement. Exact comparisons work without it. This local feature does not provide enterprise RBAC or shared-space access controls.</p>
   </fieldset>
   {#if saved}<p role="status">Settings saved</p>{/if}{#if error}<p role="alert">{error}</p>{/if}
   {#if settings().tripleCheckEnabled}<p role="status">{tripleCheckStatus()}</p>{/if}
-  <p><a href="/review#triple-check">Review evidence →</a> · <a href="/compare/repositories">Repository comparison views →</a></p>
+  <p><a href="/review?group=source">Review what it found →</a> · <a href="/compare/repositories">Repository comparison views →</a></p>
 </main>
 <style>
   main { max-width: 850px; margin: 1.5rem auto; padding: 0 1rem 5rem; color: var(--ink); } fieldset { border: 1px solid var(--line); border-radius: var(--rad); padding: 1rem; }

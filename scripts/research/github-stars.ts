@@ -130,7 +130,9 @@ export async function main() {
     const task = insightTask(changed, referenceFacts(['static/reckons-production.ttl', 'static/reckons-codebase.ttl']), 8);
     if (task.items.length) {
       atomicWriteFile(path.join(directory, 'insight-task.json'), JSON.stringify(task, null, 2));
-      const result = await runPanel(task, { votes: 3, concurrency: 1, resultPath: path.join(directory, 'insight-panel.json') });
+      // --models=a,b: the panel's default model can be uninstalled (qwen3.6 was, 2026-10); name the one to use.
+      const models = value('models')?.split(',').map(m => m.trim()).filter(Boolean);
+      const result = await runPanel(task, { ...(models?.length ? { models } : {}), votes: 3, concurrency: 1, resultPath: path.join(directory, 'insight-panel.json') });
       atomicWriteFile(path.join(directory, 'insight-panel.json'), JSON.stringify(result, null, 2));
       const parsed = proposalsFromPanel(result, task, at); proposed = parsed.statements.length; rejected = parsed.rejected;
       queueFindings(parsed.statements.map(s => ({ subject: s.s.value, predicate: s.p.value, object: s.o.value, note: s.gloss, type: 'suggestion', priority: 'low' })), { path: path.join(directory, 'knowledge.pending.jsonl'), agent: 'github-star-local-panel', kb: 'github-stars' });

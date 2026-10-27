@@ -2,7 +2,7 @@ import type { KBaseDB, SettingsRecord } from './db';
 import type { LoadedGraphs } from './multi-graph-store';
 import type { Statement } from '$lib/rdf/types';
 import type { SourceJudgment } from '$lib/rdf/source-validation';
-import { claimFingerprint, claimText, dailyLimit, selectNextClaim, spaceEvidence, type SpaceEvidence, type TripleCheckReport } from '$lib/rdf/triple-check';
+import { claimFingerprint, claimText, dailyLimit, evidenceProposals, selectNextClaim, spaceEvidence, type EvidenceProposal, type SpaceEvidence, type TripleCheckReport } from '$lib/rdf/triple-check';
 import { searchConfigurationError, type WebPassage } from '$lib/integrations/search/triple-check';
 export type CheckDependencies = {
   loadSpaces: () => Promise<LoadedGraphs>; providerError: string | null;
@@ -10,6 +10,8 @@ export type CheckDependencies = {
   scrape?: (source: WebPassage, signal: AbortSignal) => Promise<WebPassage>;
   judge: (claim: Statement, sources: WebPassage[], signal: AbortSignal) => Promise<SourceJudgment[]>;
   judgeSpaces?: (claim: Statement, sources: SpaceEvidence[], signal: AbortSignal) => Promise<SpaceEvidence[]>;
+  /** Write what the check found into Review as pending statements. Returns how many were added. */
+  propose?: (proposals: EvidenceProposal[]) => Promise<number>;
 };
 /** Caller holds a per-space Web Lock. Reserve budget before making any metered request. */
 export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRecord, deps: CheckDependencies, signal: AbortSignal) {
@@ -56,7 +58,13 @@ export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRe
         if (sources.length) report.web = await deps.judge(claim, sources, signal);
       } catch { signal.throwIfAborted(); warnings.push('Web search or analysis failed. This is incomplete evidence, not a finding against the claim.'); incomplete = true; }
     }
-    signal.throwIfAborted(); report.state = 'complete'; report.incomplete = incomplete; await db.tripleChecks.put(report);
+    signal.throwIfAborted();
+    if (deps.propose) {
+      const proposals = evidenceProposals(claim, report, statements, spaceId, Date.now());
+      try { report.proposed = proposals.length ? await deps.propose(proposals) : 0; }
+      catch { signal.throwIfAborted(); warnings.push('What was found could not be added to Review; it will be checked again.'); incomplete = true; }
+    }
+    report.state = 'complete'; report.incomplete = incomplete; await db.tripleChecks.put(report);
     // One report per claim: a superseded check is history nobody reads, and without this the table grew by
     // one row per check forever. Web-attempted rows from the last 24h stay, because the daily limit counts them.
     const stale = reports.filter(r => r.fingerprint === report.fingerprint && r.id !== report.id && !(r.webAttempted && r.checkedAt > now - 86400000));

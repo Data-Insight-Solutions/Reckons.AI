@@ -7,7 +7,7 @@ async function openViewSettings(page: Page) {
   await fab.click();
 }
 for (const width of [1280, 390]) {
-  test(`Triple Check persists settings and shows cited conflicts at ${width}px`, async ({ page }, testInfo) => {
+  test(`Triple Check persists settings and adds what it finds to Review at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90_000); await page.setViewportSize({ width, height: 900 });
     await page.goto('/settings/triple-check');
     const enable = page.getByRole('checkbox', { name: 'Keep Triple Check on for this space' });
@@ -28,14 +28,17 @@ for (const width of [1280, 390]) {
     await enable.check(); await page.getByLabel('Search service').selectOption('firecrawl'); await page.getByLabel('Read evidence from').selectOption('firecrawl'); await page.getByLabel('Evidence model provider').selectOption('ollama');
     await expect(page.getByRole('status').filter({ hasText: 'Settings saved' })).toBeVisible(); await page.reload();
     await expect(enable).toBeChecked(); await expect(page.getByLabel('Search service')).toHaveValue('firecrawl'); await expect(page.getByRole('checkbox', { name: 'Check the internet', exact: true })).not.toBeChecked();
-    await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true }); await page.goto('/review');
-    await expect(page.getByRole('status').filter({ hasText: 'Possible conflict' }).first()).toBeVisible({ timeout: 20000 });
-    await page.locator('#triple-check > summary').click(); await expect(page.locator('#triple-check')).toContainText('Engineering reference'); await expect(page.locator('#triple-check')).toContainText('disabled for this space');
+    await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true }); await page.goto('/review?group=source');
+    // What the check found is an ordinary pending statement from its own source, in the queue — not a panel beside it.
+    const found = page.getByTestId('source-cards').locator('.entity-card').filter({ hasText: 'Engineering reference (another space)' });
+    await expect(found).toBeVisible({ timeout: 30000 }); await expect(found).toContainText('200');
+    // It disagrees with the pending "100", so a group accept holds it back for its own decision.
+    await expect(found).toContainText('held back');
+    await page.screenshot({ path: testInfo.outputPath('review-by-source.png'), fullPage: true });
     await page.evaluate(async () => {
       const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); const { loadAll } = await runtimeImport('/src/lib/stores/kb.svelte.ts');
       await db.statements.update('fixture', { o: { kind: 'literal', value: '300' } }); await loadAll();
     });
-    await expect(page.getByRole('status').filter({ hasText: 'Possible conflict' })).toHaveCount(0);
     await page.goto('/analyze'); await page.getByLabel('Current purposes — one per line').fill('Engineering comparison'); await page.getByRole('button', { name: 'Analyze and apply organization' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Applied 1 purpose' })).toBeVisible();
     const result = await page.evaluate(async () => { const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); return { original: await db.statements.get('fixture'), snapshots: await db.kbSnapshots.count(), members: (await db.statements.toArray()).filter((s: { p: { value: string } }) => s.p.value.endsWith('#member')).length }; });

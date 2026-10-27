@@ -1,7 +1,4 @@
 <script lang="ts">
-  import TripleCheckEvidence from './TripleCheckEvidence.svelte';
-  import { statementTripleCheck } from '$lib/stores/triple-check.svelte';
-  import { claimFingerprint, hasConflict } from '$lib/rdf/triple-check';
   import type { Statement } from '$lib/rdf/types';
   import { isIRI, isLit, termKey } from '$lib/rdf/types';
 
@@ -34,7 +31,6 @@
     if (isLit(t)) return `"${t.value}"`;
     return `_:${t.value}`;
   }
-  const evidence = $derived(statementTripleCheck(claimFingerprint(statement)));
 </script>
 
 {#snippet contents()}
@@ -82,7 +78,6 @@
     {/if}
   </div>
   <div class="meta">
-    {#if evidence && hasConflict(evidence)}<span role="status">⚠ Possible conflict{Date.now() - evidence.checkedAt > 7 * 86400000 ? ' (evidence out of date)' : ''}</span>{/if}
     {#if showGraph}
       <span class="meta-item mono">⊳ {short(statement.g.value)}</span>
     {/if}
@@ -109,8 +104,6 @@
     {@render contents()}
   </div>
 {/if}
-
-<TripleCheckEvidence fingerprint={claimFingerprint(statement)} />
 
 <style>
   .row {

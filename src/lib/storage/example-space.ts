@@ -12,7 +12,14 @@ import { KBaseDB, DEFAULT_SETTINGS } from './db';
 import { createKb, getRegistry, switchToKb } from './kb-registry';
 import { importTurtleFull } from '$lib/rdf/import-ttl';
 
+/** Spaces an example needs beside it. The Triple Check walkthrough is checked against another space,
+ *  so opening it without one would show Triple Check finding nothing. Opened first, without switching. */
+const COMPANIONS: Record<string, [file: string, name: string][]> = {
+  '/starter-triple-check.ttl': [['/starter-triple-check-reference.ttl', "Harbor 10 owners' forum"]],
+};
+
 export async function openExampleSpace(file: string, name: string, opts: { switch?: boolean } = {}): Promise<string> {
+  for (const [companion, companionName] of COMPANIONS[file] ?? []) await openExampleSpace(companion, companionName, { switch: false });
   if (!/^\/(?:starter-[a-z0-9-]+|review-\d[a-z0-9.-]*)\.ttl$/.test(file)) throw new Error('example spaces load only files shipped with the app');
   const res = await fetch(file);
   if (!res.ok) throw new Error(`Could not fetch ${file}: ${res.status}`);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { aggregateStatements, aggregateStatementChunks } from '../statement-chunks';
-import { claimFingerprint, selectNextClaim, parseWebJudgments, evidenceEstimate, spaceEvidence, type TripleCheckReport } from '../triple-check';
+import { claimFingerprint, selectNextClaim, parseWebJudgments, evidenceProposals, spaceEvidence, TRIPLE_CHECK_AGENT, type TripleCheckReport } from '../triple-check';
 import { projectSpaceView } from '../space-view';
 import { purposeOrganization } from '../purpose-organization';
 import { repositoryProfiles, repositoryOverlap } from '../repository-comparison';
@@ -37,10 +37,40 @@ describe('statement-first research validation', () => {
     for (const raw of ['[]', '[{"index":0,"stance":"true","confidence":1}]', '[{"index":2,"stance":"supports","confidence":1}]', '[{"index":0,"stance":"supports","confidence":2}]']) expect(() => parseWebJudgments(raw, sources)).toThrow();
     expect(() => parseWebJudgments('[{"index":0,"stance":"neutral","confidence":1},{"index":0,"stance":"neutral","confidence":1}]', [...sources, ...sources])).toThrow();
   });
-  it('requires distinct strong passages for a qualitative likely-false assessment', () => {
-    const s = { url: 'https://one.test/a', title: 'Source', snippet: 'copied passage', stance: 'contradicts' as const, confidence: 0.9 };
-    expect(evidenceEstimate([s, { ...s, url: 'https://two.test/a' }, { ...s, url: 'https://three.test/a' }])).toContain('Not enough');
-    expect(evidenceEstimate([s, { ...s, url: 'https://two.test/a', snippet: 'second evidence' }, { ...s, url: 'https://three.test/a', snippet: 'third evidence' }])).toContain('Likely false');
+  it('keeps a stated contradicting value only when the passage contains it', () => {
+    const sources = [{ url: 'https://source.test/a', title: 'A', content: 'The warranty is 10 years.' }];
+    expect(parseWebJudgments('[{"index":0,"stance":"contradicts","confidence":0.9,"value":"10 years"}]', sources)[0].statedValue).toBe('10 years');
+    expect(parseWebJudgments('[{"index":0,"stance":"contradicts","confidence":0.9,"value":"12 years"}]', sources)[0].statedValue).toBeUndefined();
+    expect(parseWebJudgments('[{"index":0,"stance":"supports","confidence":0.9,"value":"10 years"}]', sources)[0].statedValue).toBeUndefined();
+  });
+  describe('what a check found becomes pending statements, not a panel', () => {
+    const claim = { ...docs[0].claims[0], status: 'pending' as const };
+    let n = 0; const id = () => `p${n++}`;
+    const base: Omit<TripleCheckReport, 'web' | 'spaces'> = { id: 'r', statementId: claim.id, fingerprint: claimFingerprint(claim), configuration: '', claim: 'the claim', checkedAt: 1, state: 'complete', reviewed: false, webAttempted: true, searchedSpaces: 1, warnings: [] };
+    const web = (stance: 'supports' | 'contradicts' | 'neutral', extra = {}) => ({ url: `https://${stance}.test/page`, title: `${stance} page`, snippet: 'passage', stance, confidence: 0.9, ...extra });
+    it('agreement is the same statement from a new source; disagreement is a separate statement or a question', () => {
+      const report: TripleCheckReport = { ...base, spaces: [], web: [web('supports'), web('contradicts', { statedValue: '42' }), { ...web('contradicts'), url: 'https://silent.test/' }, web('neutral'), { ...web('supports'), url: 'https://weak.test/', confidence: 0.4 }] };
+      const out = evidenceProposals(claim, report, [claim], 'here', 5, id);
+      expect(out).toHaveLength(3);
+      const [agree, other, question] = out.map(p => p.statements[0]);
+      expect(agree).toMatchObject({ s: claim.s, p: claim.p, o: claim.o, status: 'pending', proposedBy: TRIPLE_CHECK_AGENT, sourceId: out[0].source.id });
+      expect(out[0].source).toMatchObject({ uri: 'https://supports.test/page', kind: 'url', trustLevel: 'review' });
+      expect(other.o).toEqual({ kind: 'literal', value: '42' });
+      expect(question).toMatchObject({ needsObject: true, o: { kind: 'literal', value: '?' } });
+      expect(question.question).toContain('the claim');
+    });
+    it('another space contributes; this space, similar-only matches, copies of one source and compatible values do not', () => {
+      const ev = (spaceId: string, relation: 'matches' | 'possible-conflict' | 'similar', extra = {}) => ({ spaceId, spaceName: spaceId, statementId: 'x', entity: claim.s.value, claim: '', relation, provenance: 'different-source' as const, reference: false, object: { kind: 'literal' as const, value: relation === 'matches' ? claim.o.value : '99' }, ...extra });
+      const report: TripleCheckReport = { ...base, web: [], spaces: [ev('here', 'possible-conflict'), ev('other', 'matches'), ev('other', 'possible-conflict'), ev('similar', 'similar'), ev('copy', 'matches', { provenance: 'shared-source' }), ev('compatible', 'possible-conflict', { stance: 'neutral' })] };
+      const out = evidenceProposals(claim, report, [claim], 'here', 5, id);
+      expect(out.map(p => p.source.id)).toEqual(['triple-check-space-other']);
+      expect(out[0].statements.map(s => s.o.value)).toEqual([claim.o.value, '99']);
+    });
+    it('a proposal made before, in any status, is not made again', () => {
+      const report: TripleCheckReport = { ...base, spaces: [], web: [web('supports')] };
+      const [first] = evidenceProposals(claim, report, [claim], 'here', 5, id);
+      expect(evidenceProposals(claim, report, [claim, { ...first.statements[0], status: 'rejected' }], 'here', 6, id)).toEqual([]);
+    });
   });
   it('retrieves both conflict sides under equal budgets without claiming extraction accuracy', () => {
     const result = statementComparisonBenchmark();

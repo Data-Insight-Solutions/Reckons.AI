@@ -4,7 +4,7 @@
   // preflight so global.css base styles are untouched (see tailwind.css header).
   import '$lib/styles/tailwind.css';
   import { settings as tripleCheckSettings } from '$lib/stores/settings.svelte';
-  import { observeTripleChecks, startTripleCheck } from '$lib/stores/triple-check.svelte';
+  import { startTripleCheck } from '$lib/stores/triple-check.svelte';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
 
@@ -44,7 +44,6 @@
   // Client-only readiness prevents an SSR process's module-level store state from exposing route
   // controls before this browser has loaded its own IndexedDB state.
   let clientReady = $state(false);
-  onMount(() => observeTripleChecks());
   $effect(() => {
     if (!clientReady || !settingsLoaded() || officialKbActive() || !tripleCheckSettings().tripleCheckEnabled) return;
     return startTripleCheck();

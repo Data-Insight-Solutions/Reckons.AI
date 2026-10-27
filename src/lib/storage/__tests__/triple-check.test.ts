@@ -42,6 +42,16 @@ describe('durable Triple Check worker', () => {
     deps.scrape = vi.fn(async source => source); await runTripleCheck(db, 'current', config, deps, new AbortController().signal);
     expect(deps.scrape).toHaveBeenCalledTimes(1); expect(deps.judge).toHaveBeenCalledWith(expect.anything(), [expect.objectContaining({ url: 'https://evidence.test/' })], expect.anything());
   });
+  it('hands what it found to Review as pending proposals, and says how many landed', async () => {
+    const { db, deps } = setup(); const propose = vi.fn(async (p: { statements: unknown[] }[]) => p.reduce((n, g) => n + g.statements.length, 0)); deps.propose = propose;
+    const report = await runTripleCheck(db, 'current', config, deps, new AbortController().signal);
+    // The page disputes the claim without stating a value, so it arrives as a question, not an invented value.
+    expect(propose).toHaveBeenCalledWith([expect.objectContaining({ source: expect.objectContaining({ uri: 'https://evidence.test/' }), statements: [expect.objectContaining({ needsObject: true, status: 'pending' })] })]);
+    expect(report?.proposed).toBe(1);
+    deps.propose = vi.fn(async () => { throw new Error('write failed'); });
+    const failed = await runTripleCheck(db, 'current', { ...config, tripleCheckModel: 'changed', tripleCheckDailyLimit: 5 }, deps, new AbortController().signal);
+    expect(failed?.incomplete).toBe(true); expect(failed?.warnings.join(' ')).toContain('could not be added');
+  });
   it('a deliberate configuration warning is complete, not retried hourly', async () => {
     const { db, deps, rows } = setup(); const off = { ...config, tripleCheckWebEnabled: false };
     const report = await runTripleCheck(db, 'current', off, deps, new AbortController().signal);

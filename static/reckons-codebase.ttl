@@ -1037,8 +1037,8 @@ code:storage kpred:has-file "src/lib/storage/triple-check.ts" .
 code:stores kpred:has-file "src/lib/stores/triple-check.svelte.ts" .
 code:llm kpred:has-file "src/lib/integrations/llm/triple-check.ts" .
 code:search kpred:has-file "src/lib/integrations/search/triple-check.ts" .
-code:components kpred:has-file "src/lib/components/TripleCheckEvidence.svelte", "src/lib/components/PurposeAnalysis.svelte" .
+code:components kpred:has-file "src/lib/components/PurposeAnalysis.svelte" .
 code:routes kpred:has-file "src/routes/(app)/settings/triple-check/+page.svelte", "src/routes/(app)/compare/repositories/+page.svelte" .
 code:scripts kpred:has-file "scripts/research/github-stars.ts", "scripts/starter/build-research.ts", "scripts/starter/research-fixture.ts", "scripts/starter/triple-check-walkthrough.ts" .
 code:test-bench kpred:has-file "tests/bench/run-statement-comparison-bench.ts" .
-code:static kpred:has-file "static/starter-triple-check.ttl" .
+code:static kpred:has-file "static/starter-triple-check.ttl", "static/starter-triple-check-reference.ttl" .

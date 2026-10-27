@@ -1,0 +1,75 @@
+# generated 2026-10-27T22:28:50.466Z
+# 4 statements — full annotated export
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+# ---- confirmed graph ----
+<urn:example:battery/harbor-10>
+    <urn:example:predicate/usable-capacity> "9.2 kWh" ;
+    <urn:example:predicate/warranty> "10 years" ;
+    <urn:example:predicate/round-trip-efficiency> "90%" ;
+    <urn:example:predicate/compatible-inverter> <urn:example:battery/model-t-inverter> .
+
+# ---- sources ----
+src:forum
+    rdf:type meta:Source ;
+    dc:title "Harbor 10 owners' forum (synthetic)" ;
+    meta:sourceUri "note://triple-check-walkthrough/forum" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+# ---- statement metadata (all statuses) ----
+<urn:kbase:stmt/walkthrough-forum-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/usable-capacity> ;
+    rdf:object "9.2 kWh" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"forum\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:forum ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-forum-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/warranty> ;
+    rdf:object "10 years" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"forum\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:forum ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-forum-2>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/round-trip-efficiency> ;
+    rdf:object "90%" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"forum\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:forum ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-forum-3>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/compatible-inverter> ;
+    rdf:object <urn:example:battery/model-t-inverter> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"forum\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:forum ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
