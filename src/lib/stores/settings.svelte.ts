@@ -16,6 +16,9 @@ export async function loadSettings() {
 }
 
 export async function updateSettings(patch: Partial<SettingsRecord>) {
-  _settings = { ..._settings, ...patch };
-  await saveSettings(patch);
+  // A patch built from reactive state (a $state array, or an item read back from settings()) carries Svelte
+  // proxies, which IndexedDB cannot clone: the put threw DataCloneError while memory already showed the change.
+  const plain = $state.snapshot(patch) as Partial<SettingsRecord>;
+  _settings = { ..._settings, ...plain };
+  await saveSettings(plain);
 }

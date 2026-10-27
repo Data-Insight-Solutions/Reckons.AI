@@ -5,7 +5,9 @@
   let { fingerprint }: { fingerprint?: string } = $props();
   let error = $state('');
   const rows = $derived.by(() => {
-    const live = new Set(statements().filter(checkable).map(claimFingerprint));
+    // A card passes its own claim's fingerprint, which is live by definition — scanning every statement
+    // per card made the Review list O(cards × statements) on every change.
+    const live = fingerprint ? new Set([fingerprint]) : new Set(statements().filter(checkable).map(claimFingerprint));
     const seen = new Set<string>();
     return tripleCheckReports().filter(r => {
       if ((fingerprint && r.fingerprint !== fingerprint) || !live.has(r.fingerprint) || seen.has(r.fingerprint)) return false;

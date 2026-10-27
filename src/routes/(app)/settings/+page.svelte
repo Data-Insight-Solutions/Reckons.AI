@@ -714,8 +714,6 @@
     setTimeout(() => { wsImportMsg = ''; }, 10000);
   }
 </script>
-<p style="padding:1rem"><a href="/settings/triple-check">Triple Check — continuous statement validation and evidence settings →</a></p>
-
 
 <header class="head">
   <p class="kicker mono">settings</p>
@@ -732,6 +730,7 @@
     <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
     <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
     <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
+    <a href="/settings/triple-check" class="nav-link">triple check</a>
     <a href="/analyze" class="nav-link">analyze history ↗</a>
   </div>
   <nav class="section-toc">

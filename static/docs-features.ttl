@@ -616,6 +616,7 @@ feat:Currents             skos:exactMatch  kb:currents .
 feat:PodView              skos:exactMatch  kb:currents-phase-3 .
 feat:ReviewWorkbench      skos:exactMatch  kb:review-workbench .
 feat:PublishedDocs        skos:exactMatch  kb:graph-publishing .
+feat:TripleCheck          skos:exactMatch  kb:triple-check .
 
 feat:KBLeap               skos:broadMatch  kb:multi-kb .
 feat:KBIdentity           skos:broadMatch  kb:multi-kb .

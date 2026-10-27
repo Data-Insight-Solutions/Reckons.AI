@@ -13,6 +13,10 @@ export type SpaceEvidence = {
 export type TripleCheckReport = {
   id: string; statementId: string; fingerprint: string; configuration: string; claim: string; checkedAt: number;
   state: 'checking' | 'complete'; reviewed: boolean; webAttempted: boolean; web: SourceJudgment[];
+  /** Something transient failed (a read, a search, the daily limit, an interruption): retry after an hour.
+   *  Configuration warnings ("web disabled", "credentials missing") are NOT incomplete — they re-run when
+   *  the configuration key changes, so a deliberate choice does not re-check every claim hourly forever. */
+  incomplete?: boolean;
   spaces: SpaceEvidence[]; searchedSpaces: number; warnings: string[];
 };
 export const checkable = (s: Statement) => ['pending', 'confirmed', 'refined'].includes(s.status) && !s.needsObject && s.s.kind === 'iri' && s.o.kind !== 'bnode';
@@ -22,7 +26,7 @@ export function selectNextClaim(statements: Statement[], reports: TripleCheckRep
   for (const r of reports) if ((latest.get(r.fingerprint)?.checkedAt ?? -1) < r.checkedAt) latest.set(r.fingerprint, r);
   return statements.filter(checkable).filter(s => {
     const r = latest.get(claimFingerprint(s));
-    return !r || r.configuration !== configuration || now - r.checkedAt >= (r.warnings.length || r.state === 'checking' ? 3600000 : 7 * 86400000);
+    return !r || r.configuration !== configuration || now - r.checkedAt >= (r.incomplete || r.state === 'checking' ? 3600000 : 7 * 86400000);
   }).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')
     || (latest.get(claimFingerprint(a))?.checkedAt ?? 0) - (latest.get(claimFingerprint(b))?.checkedAt ?? 0) || a.createdAt - b.createdAt)[0];
 }

@@ -19,7 +19,8 @@ export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRe
   const claim = selectNextClaim(statements, reports, now, configuration); if (!claim) return null;
   signal.throwIfAborted();
   const warnings = [searchConfigurationError(s), s.tripleCheckWebEnabled !== false ? deps.providerError : null].filter((v): v is string => !!v);
-  if (reports.filter(r => r.webAttempted && r.checkedAt > now - 86400000).length >= dailyLimit(s.tripleCheckDailyLimit)) warnings.push('Web not checked: the rolling 24-hour limit has been reached.');
+  let incomplete = false;
+  if (reports.filter(r => r.webAttempted && r.checkedAt > now - 86400000).length >= dailyLimit(s.tripleCheckDailyLimit)) { warnings.push('Web not checked: the rolling 24-hour limit has been reached.'); incomplete = true; }
   const report: TripleCheckReport = { id: crypto.randomUUID(), statementId: claim.id, fingerprint: claimFingerprint(claim), configuration, claim: claimText(claim), checkedAt: now, state: 'checking', reviewed: false, webAttempted: false, web: [], spaces: [], searchedSpaces: 0, warnings };
   await db.tripleChecks.add(report);
   try {
@@ -29,12 +30,13 @@ export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRe
       report.spaces = result.evidence; report.searchedSpaces = loaded.graphs.length;
       if (result.truncated) warnings.push('Showing the 20 closest statement matches; additional matches exist.');
       warnings.push(...loaded.unavailable.map(g => `Space unavailable: ${g.name}.`));
+      if (loaded.unavailable.length) incomplete = true;
       if (loaded.capped) warnings.push('Some spaces were excluded by the read limit.');
       if (s.tripleCheckSpaceAnalysis && deps.judgeSpaces && report.spaces.length) {
         try { report.spaces = await deps.judgeSpaces(claim, report.spaces, signal); }
-        catch { signal.throwIfAborted(); warnings.push('Semantic space comparison failed; lexical candidates are shown.'); }
+        catch { signal.throwIfAborted(); warnings.push('Semantic space comparison failed; lexical candidates are shown.'); incomplete = true; }
       }
-    } catch { signal.throwIfAborted(); warnings.push('Local spaces could not be read.'); }
+    } catch { signal.throwIfAborted(); warnings.push('Local spaces could not be read.'); incomplete = true; }
     signal.throwIfAborted();
     if (!warnings.some(w => w.startsWith('Web not checked:'))) {
       report.webAttempted = true; await db.tripleChecks.update(report.id, { webAttempted: true });
@@ -52,10 +54,15 @@ export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRe
           sources.push(source); if (sources.length === 5) break;
         }
         if (sources.length) report.web = await deps.judge(claim, sources, signal);
-      } catch { signal.throwIfAborted(); warnings.push('Web search or analysis failed. This is incomplete evidence, not a finding against the claim.'); }
+      } catch { signal.throwIfAborted(); warnings.push('Web search or analysis failed. This is incomplete evidence, not a finding against the claim.'); incomplete = true; }
     }
-    signal.throwIfAborted(); report.state = 'complete'; await db.tripleChecks.put(report); return report;
+    signal.throwIfAborted(); report.state = 'complete'; report.incomplete = incomplete; await db.tripleChecks.put(report);
+    // One report per claim: a superseded check is history nobody reads, and without this the table grew by
+    // one row per check forever. Web-attempted rows from the last 24h stay, because the daily limit counts them.
+    const stale = reports.filter(r => r.fingerprint === report.fingerprint && r.id !== report.id && !(r.webAttempted && r.checkedAt > now - 86400000));
+    if (stale.length) await db.tripleChecks.bulkDelete(stale.map(r => r.id));
+    return report;
   } catch (error) {
-    await db.tripleChecks.update(report.id, { state: 'complete', warnings: [...warnings, 'Check interrupted; evidence is incomplete.'] }); throw error;
+    await db.tripleChecks.update(report.id, { state: 'complete', incomplete: true, warnings: [...warnings, 'Check interrupted; evidence is incomplete.'] }); throw error;
   }
 }

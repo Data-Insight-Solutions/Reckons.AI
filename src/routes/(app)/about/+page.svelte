@@ -244,8 +244,6 @@
     { icon: '🤝', title: 'Collaboration',        body: 'Export your .ttl, share it. Recipients see a full semantic diff: what you added, what conflicts with their own graph.' },
   ];
 </script>
-<p style="padding:1rem"><a href="/settings/triple-check">Research validation workflow for all examples →</a></p>
-
 
 <div class="page">
 
@@ -923,6 +921,7 @@
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
       Explore generic example facts designed for learning Reckons.AI.
+      <a href="/settings/triple-check">Check any example with Triple Check →</a>
     </p>
 
     <div class="starter-grid">

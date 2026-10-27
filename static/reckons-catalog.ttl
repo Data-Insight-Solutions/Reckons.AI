@@ -104,6 +104,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-sim-ramp-cup ,
+        graph:starter-research ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
         graph:starter-your-room ,
@@ -272,6 +273,11 @@ graph:starter-sim-ramp-cup a void:Dataset ;
     dcterms:title "Starter: simulator ramp and cup" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-sim-ramp-cup.ttl" .
+
+graph:starter-research a void:Dataset ;
+    dcterms:title "Starter: research validation (F100.5, synthetic)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-research.ttl" .
 
 graph:starter-generated-assets a void:Dataset ;
     dcterms:title "Starter: generated assets" ;

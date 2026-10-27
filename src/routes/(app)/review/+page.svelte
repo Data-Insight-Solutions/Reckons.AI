@@ -1419,8 +1419,6 @@
     get highlighted() { return previewHighlighted; },
   };
 </script>
-<TripleCheckEvidence />
-
 
 <div class="review-layout" class:dragging={isDragging}>
   <!-- ── LEFT: Graph area ──────────────────────────────────────────────── -->
@@ -1781,6 +1779,9 @@
           {/if}
         </p>
       {/if}
+      <!-- Page-level Triple Check evidence (target of /review#triple-check). Inside the panel: placed above
+           the full-bleed layout it rendered underneath it and could not be opened. -->
+      <TripleCheckEvidence />
     </div>
 
     <!-- Tab bar -->
