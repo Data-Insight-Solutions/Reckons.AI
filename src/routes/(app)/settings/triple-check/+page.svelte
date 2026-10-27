@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
   import { openExampleSpace } from '$lib/storage/example-space';
@@ -7,9 +7,7 @@
   import { dailyLimit } from '$lib/rdf/triple-check';
   import type { SettingsRecord } from '$lib/storage/db';
   let error = $state(''), saved = $state(false), saving = $state(false);
-  let examples = $state<{ file: string; triples: number }[]>([]);
   const spaces = getRegistry().filter(s => s.id !== getCurrentKbId() && !s.archiveOf);
-  onMount(() => { fetch('/triple-check-examples.json').then(r => r.json()).then(rows => { examples = rows; }).catch(() => { error = 'Example catalog unavailable.'; }); });
   async function save(patch: Partial<SettingsRecord>) {
     saving = true; saved = false;
     try { await updateSettings(patch); saved = true; error = ''; } catch { error = 'Could not save settings. Please retry.'; } finally { saving = false; }
@@ -18,19 +16,30 @@
     const ids = new Set(settings().tripleCheckReferenceSpaceIds ?? []); if (enabled) ids.add(id); else ids.delete(id);
     return save({ tripleCheckReferenceSpaceIds: [...ids] });
   }
-  async function example(file: string) { try { await openExampleSpace(file, file.slice(1).replace(/\.ttl$/, '').replace(/-/g, ' ')); } catch { error = 'Could not open the example.'; } }
+  async function walkthrough() { try { await openExampleSpace('/starter-triple-check.ttl', 'Triple Check walkthrough'); } catch { error = 'Could not open the walkthrough.'; } }
 </script>
 <svelte:head><title>Triple Check — Reckons.AI</title></svelte:head>
 <main>
-  <a href="/settings">← Settings</a><h1>Triple Check</h1>
+  <SettingsHeader />
+  <h2 class="page-title">Triple Check</h2>
   <p>Check unique statements against the internet and all spaces on this device. Review cited support, possible conflicts and wording suggestions.</p>
+  <section class="walkthrough">
+    <h2>New to Triple Check?</h2>
+    <p>Open a small example space where four documents disagree about a fictional home battery. A guided story walks you through turning checking on and reading each kind of flag. It opens as its own space; nothing here changes.</p>
+    <button onclick={walkthrough}>Open the walkthrough space</button>
+    <p class="hint">Triple Check works in any space, including the other examples on the <a href="/about">About</a> page.</p>
+  </section>
   <fieldset disabled={saving}>
     <label><input type="checkbox" checked={settings().tripleCheckEnabled === true} onchange={e => save({ tripleCheckEnabled: e.currentTarget.checked })} /> Keep Triple Check on for this space</label>
     <p>Checks one pending or retained assertion at a time, about once a minute while the app is open. New and changed statements are picked up automatically. Successful checks refresh after seven days; incomplete checks retry after an hour. Suggestions never settle assertions.</p>
     <label><input type="checkbox" checked={settings().tripleCheckWebEnabled !== false} onchange={e => save({ tripleCheckWebEnabled: e.currentTarget.checked })} /> Check the internet</label>
     <p>Web checking sends each checked statement to your selected search service and evidence model. Turn it off for sensitive statements. Search, scraping and model calls may incur charges.</p>
     <label>Web checks per 24 hours<input type="number" min="1" max="100" value={dailyLimit(settings().tripleCheckDailyLimit)} onchange={e => save({ tripleCheckDailyLimit: dailyLimit(e.currentTarget.valueAsNumber) })} /></label>
-    <label>Search service<select value={settings().tripleCheckSearch ?? 'tavily'} onchange={e => save({ tripleCheckSearch: e.currentTarget.value as SettingsRecord['tripleCheckSearch'] })}><option value="tavily">Tavily</option><option value="firecrawl">Firecrawl</option></select></label>
+    <label>Search service<select value={settings().tripleCheckSearch ?? 'tavily'} onchange={e => save({ tripleCheckSearch: e.currentTarget.value as SettingsRecord['tripleCheckSearch'] })}><option value="tavily">Tavily</option><option value="firecrawl">Firecrawl</option><option value="searxng">SearXNG (self-hosted)</option></select></label>
+    {#if settings().tripleCheckSearch === 'searxng'}
+      <label>SearXNG address<input value={settings().searxngBaseUrl ?? ''} onchange={e => save({ searxngBaseUrl: e.currentTarget.value.trim() || undefined })} placeholder="http://localhost:8888" /></label>
+      <p>Runs on your own machine with no account or key, but it still sends the statement to public search engines. The instance must allow JSON results and this app's address (CORS).</p>
+    {/if}
     <label>Read evidence from<select value={settings().tripleCheckScrape ?? 'snippets'} onchange={e => save({ tripleCheckScrape: e.currentTarget.value as SettingsRecord['tripleCheckScrape'] })}><option value="snippets">Search passages</option><option value="firecrawl">Full pages through Firecrawl</option></select></label>
     <label>Evidence model provider<select value={settings().tripleCheckBackend ?? ''} onchange={e => save({ tripleCheckBackend: (e.currentTarget.value || undefined) as SettingsRecord['tripleCheckBackend'] })}><option value="">Use analysis provider</option>{#each ['ollama', 'claude', 'openai', 'gemini', 'openrouter', 'reckons'] as p}<option value={p}>{p}</option>{/each}</select></label>
     <label>Model override<input value={settings().tripleCheckModel ?? ''} onchange={e => save({ tripleCheckModel: e.currentTarget.value.trim() })} placeholder="Use configured provider model" /></label>
@@ -44,12 +53,13 @@
   {#if saved}<p role="status">Settings saved</p>{/if}{#if error}<p role="alert">{error}</p>{/if}
   {#if settings().tripleCheckEnabled}<p role="status">{tripleCheckStatus()}</p>{/if}
   <p><a href="/review#triple-check">Review evidence →</a> · <a href="/compare/repositories">Repository comparison views →</a></p>
-  <details><summary>Research workflow and bundled examples</summary><ol><li>Extract assertions with their sources.</li><li>Choose integrations and reference spaces.</li><li>Enable checking and inspect conflicting passages, including within the same space.</li><li>Accept, refine, reject or ignore suggestions.</li><li>Use <a href="/analyze">Analyze</a> to organize a changed purpose.</li></ol>
-  {#each examples as e}<p><button onclick={() => example(e.file)}>{e.file.slice(1)} ({e.triples} RDF records)</button></p>{/each}
-  <p>Examples open separately and preserve earlier edits. Checking starts disabled.</p></details>
 </main>
 <style>
   main { max-width: 850px; margin: 1.5rem auto; padding: 0 1rem 5rem; color: var(--ink); } fieldset { border: 1px solid var(--line); border-radius: var(--rad); padding: 1rem; }
   label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 0.8rem 0; } input:not([type='checkbox']), select { max-width: 100%; padding: 0.4rem; background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
-  p, li { line-height: 1.6; } fieldset p { color: var(--muted); font-size: 0.85rem; } a, summary { color: var(--accent); } details { border-top: 1px solid var(--line); padding-top: 1rem; }
+  p { line-height: 1.6; } fieldset p, .hint { color: var(--muted); font-size: 0.85rem; } a { color: var(--accent); }
+  .page-title { font-family: var(--font-mono); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin: 0 0 0.5rem; }
+  .walkthrough { border: 1px solid var(--accent); border-radius: var(--rad); padding: 1rem; margin: 1rem 0; }
+  .walkthrough h2 { font-size: 1rem; margin: 0 0 0.4rem; }
+  .walkthrough button { padding: 0.5rem 0.8rem; background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: var(--rad-sm); cursor: pointer; }
 </style>

@@ -1,10 +1,10 @@
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { Parser } from 'n3';
+// Builds the Triple Check walkthrough space from scripts/starter/triple-check-walkthrough.ts.
+// `--check` fails when static/starter-triple-check.ttl is out of date instead of rewriting it.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { toTurtleFull } from '../../src/lib/rdf/serialize.js';
-import { researchFixture, researchSources } from './research-fixture.js';
-const documents = researchFixture(), check = process.argv.includes('--check');
+import { walkthroughStatements, walkthroughSources } from './triple-check-walkthrough.js';
+const check = process.argv.includes('--check');
 function output(file: string, text: string) { if (check) { if (readFileSync(file, 'utf8') !== text) throw new Error(`${file} needs regeneration`); } else writeFileSync(file, text); }
-output('static/starter-research.ttl', toTurtleFull(documents.flatMap(d => d.claims), researchSources(documents)));
-const examples = readdirSync('static').filter(f => /^starter-.*\.ttl$|^review-\d.*\.ttl$/.test(f)).sort().map(file => ({ file: `/${file}`, triples: new Parser().parse(readFileSync(`static/${file}`, 'utf8')).length, validationSettings: '/settings/triple-check', paidChecksEnabled: false }));
-output('static/triple-check-examples.json', JSON.stringify(examples, null, 2) + '\n');
-console.log(`${examples.length} bundled examples parse; validation workflow available; paid checks disabled.`);
+const statements = walkthroughStatements();
+output('static/starter-triple-check.ttl', toTurtleFull(statements, walkthroughSources()));
+console.log(`starter-triple-check.ttl: ${statements.length} statements (${statements.filter((s) => s.status === 'pending').length} pending).`);

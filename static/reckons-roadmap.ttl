@@ -8760,6 +8760,8 @@ kb:coding-standards rdf:type ktype:Feature ;
     kpred:relates-to kb:controlled-vocabularies, kb:reckons-ai .
 
 # -- F206: Settings organized by user terms, code by developer terms ------------
+kb:settings-user-taxonomy kpred:decided "MATT, 2026-10-27: 'We really need to make a better settings navigation since we have so many configuration options already.' Direction confirmed; the seven-group proposal below is still not approved." ;
+    kpred:done "2026-10-27 (phase 0): one SettingsHeader component for all six settings pages, with the page list in one place. The nav had been copied by hand into five pages, each copy different, and the Triple Check page shipped with none." .
 kb:settings-user-taxonomy rdf:type ktype:Feature ;
     rdfs:label "Settings organized by user terms, code by developer terms" ;
     kpred:feature-id "F206" ;
@@ -10486,6 +10488,16 @@ kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statem
     kpred:description "Opt-in per-space always-on checking while the app is open. Check unique pending and retained assertions against selected web search, scraping and cited model integrations, and all registered local spaces including same-space document corpora. Keep dated evidence, reactive conflict badges and optional wording suggestions in Review. Repetition is not independent validation; different values may coexist. Users may ignore suggestions. Never settle or rewrite claims automatically." ;
     kpred:constraint "Off by default. Web use sends statements to the explicitly selected optional providers; bound metered requests durably and show unavailable/partial evidence. Local space comparison uses no cloud model. Product taxonomy distinguishes space (container, including visual content) from its RDF graph. No new top-level navigation." ;
     kpred:remaining "Live-provider accuracy/cost calibration and evidence export/sync are not yet delivered." .
+kb:triple-check kpred:done "2026-10-27 (Opus review): a guided walkthrough space (static/starter-triple-check.ttl, built by scripts/starter/build-research.ts) replaces the bare research starter and the list of every bundled file. A fictional home battery described by four documents, two accepted and two pending, with a ten-step story: a conflict worth acting on, agreement that is support not proof, two answers that are both right, and no flag that is not confirmation. Story, navigation and presentation statements are no longer checked." .
+kb:triple-check kpred:proposed "2026-10-27 (agent, not decided): F100 is not a part of any release. It touches the evidence chain 0.2.6 was about, so it fits 0.2.7 as a part, or a 0.2.8 of its own; Matt's call." .
+kb:triple-check-local-search a ktype:Feature ; rdfs:label "Triple Check — self-hosted web search (SearXNG)" ;
+    kpred:feature-id "F100.7" ; kpred:has-status "scaffolded" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Matt (2026-10-27): 'Can we do a local web search not just online services?' A third search choice, a self-hosted SearXNG instance: no account and no key. It still sends the statement to public search engines from your machine, so it is private from a search vendor, not offline. A fully offline option (Kiwix ZIM archives such as offline Wikipedia) is the next step and is not built." ;
+    kpred:constraint "The instance must enable JSON output (search.formats) and allow the app's origin (CORS); both are instance settings the app cannot change. The deployed https site calling an http localhost instance is a mixed-content case browsers may block." ;
+    kpred:honest-note "SCAFFOLDED 2026-10-27: the adapter, setting and UI are built and unit-tested against a mocked response (3 tests). It has never been run against a live SearXNG; none runs on the development machine." .
+kb:triple-check-canvas-mark a ktype:Feature ; rdfs:label "Triple Check — mark checked entities on the canvas" ;
+    kpred:feature-id "F100.8" ; kpred:has-status "planned" ; kpred:relates-to kb:triple-check, kb:graph-legibility ;
+    kpred:description "Matt (2026-10-27): 'How does the check appear on a node's statement(s)?' Today only in lists: a 'Possible conflict' label on the statement card (Review and the node's side panel) and a collapsible evidence section under it. The node on the canvas shows nothing. Plan: a small conflict mark on a node whose statements carry a possible conflict, consistent with the review overlay of F92." .
 kb:triple-check-enterprise a ktype:Feature ; rdfs:label "Triple Check — approved shared evidence and SME discovery" ;
     kpred:feature-id "F100.2" ; kpred:has-status "planned" ;
     kpred:depends-on kb:enterprise-3ps, kb:question-router ; kpred:relates-to kb:triple-check ;

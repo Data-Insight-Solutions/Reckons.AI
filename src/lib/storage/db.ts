@@ -23,7 +23,9 @@ export type SettingsRecord = {
   tripleCheckEnabled?: boolean;
   tripleCheckWebEnabled?: boolean;
   tripleCheckDailyLimit?: number;
-  tripleCheckSearch?: 'tavily' | 'firecrawl';
+  tripleCheckSearch?: 'tavily' | 'firecrawl' | 'searxng';
+  /** Self-hosted SearXNG (F100.7), e.g. http://localhost:8888. No key; the instance must allow JSON output and this origin (CORS). */
+  searxngBaseUrl?: string;
   tripleCheckScrape?: 'snippets' | 'firecrawl';
   tripleCheckBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons';
   tripleCheckModel?: string;
@@ -619,6 +621,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       tripleCheckWebEnabled: m.tripleCheckWebEnabled,
       tripleCheckDailyLimit: m.tripleCheckDailyLimit,
       tripleCheckSearch: m.tripleCheckSearch,
+      searxngBaseUrl: m.searxngBaseUrl,
       tripleCheckScrape: m.tripleCheckScrape,
       tripleCheckBackend: m.tripleCheckBackend,
       tripleCheckModel: m.tripleCheckModel,

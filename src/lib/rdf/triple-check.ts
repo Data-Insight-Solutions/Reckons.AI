@@ -1,5 +1,5 @@
 import type { Statement } from './types';
-import { termKey } from './types';
+import { isMetaPredicate, termKey } from './types';
 import type { GraphSource } from './multi-graph-query';
 import type { SourceJudgment } from './source-validation';
 import { aggregateStatements, aggregateStatementChunks, statementClaimKey, claimText } from './statement-chunks';
@@ -19,7 +19,10 @@ export type TripleCheckReport = {
   incomplete?: boolean;
   spaces: SpaceEvidence[]; searchedSpaces: number; warnings: string[];
 };
-export const checkable = (s: Statement) => ['pending', 'confirmed', 'refined'].includes(s.status) && !s.needsObject && s.s.kind === 'iri' && s.o.kind !== 'bnode';
+/** A claim about the world. Story steps, navigation order and presentation metadata are the space's own
+ *  furniture: checking them only filled Review with "evidence" about a walkthrough's step text. */
+export const checkable = (s: Statement) => ['pending', 'confirmed', 'refined'].includes(s.status) && !s.needsObject && s.s.kind === 'iri' && s.o.kind !== 'bnode'
+  && !isMetaPredicate(s.p.value) && !s.p.value.startsWith('urn:reckons:story/');
 export const dailyLimit = (n?: number) => Number.isFinite(n) ? Math.max(1, Math.min(100, Math.floor(n!))) : 20;
 export function selectNextClaim(statements: Statement[], reports: TripleCheckReport[], now: number, configuration: string) {
   const latest = new Map<string, TripleCheckReport>();

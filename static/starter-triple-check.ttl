@@ -1,0 +1,936 @@
+# generated 2026-10-27T20:30:49.430Z
+# 71 statements — full annotated export
+
+@prefix kb: <urn:kbase:concept/> .
+@prefix src: <urn:kbase:source/> .
+@prefix pred: <urn:kbase:predicate/> .
+@prefix meta: <urn:kbase:meta/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dc: <http://purl.org/dc/terms/> .
+
+# ---- confirmed graph ----
+<urn:example:battery/harbor-10>
+    <urn:example:predicate/usable-capacity> "9.5 kWh" ;
+    <urn:example:predicate/warranty> "10 years" ;
+    <urn:example:predicate/cycle-life> "4,000 cycles to 70% capacity" ;
+    <urn:example:predicate/compatible-inverter> <urn:example:battery/harbor-inverter-s> ;
+    <urn:example:predicate/usable-capacity> "9.1 kWh" ;
+    <urn:example:predicate/round-trip-efficiency> "90%" ;
+    rdfs:label "Harbor 10 home battery (fictional)" .
+
+<urn:example:battery/harbor-inverter-s>
+    rdfs:label "Harbor S inverter (fictional)" .
+
+<urn:example:battery/model-t-inverter>
+    rdfs:label "Model T inverter (fictional)" .
+
+<urn:example:tour/triple-check>
+    rdf:type <urn:reckons:story/Story> ;
+    rdfs:label "Triple Check: a guided walkthrough" ;
+    <urn:reckons:story/description> "Turn on Triple Check and learn to read what it finds: a real conflict, agreement that is not proof, two right answers, and silence." ;
+    <urn:reckons:story/autoplay> "false" .
+
+<urn:example:tour/triple-check/step-1>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "1"^^xsd:integer ;
+    <urn:reckons:story/title> "What is in this space" ;
+    <urn:reckons:story/content> "This space collects what four documents say about the Harbor 10, a fictional home battery. You already accepted two of them: the datasheet and an independent bench test. The other two, a sales brochure and an installer's notes, are new and waiting in Review." ;
+    <urn:reckons:story/highlight> <urn:example:battery/harbor-10> .
+
+<urn:example:tour/triple-check/step-2>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "2"^^xsd:integer ;
+    <urn:reckons:story/title> "Turn on Triple Check" ;
+    <urn:reckons:story/content> "Open Settings, then Triple Check, and tick \"Keep Triple Check on for this space\". Untick \"Check the internet\" for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key." .
+
+<urn:example:tour/triple-check/step-3>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "3"^^xsd:integer ;
+    <urn:reckons:story/title> "Give it a few minutes" ;
+    <urn:reckons:story/content> "Triple Check looks at one statement about once a minute while the app is open, starting with the ones waiting for review. There are five new statements here, so allow about five minutes. You can keep working meanwhile." .
+
+<urn:example:tour/triple-check/step-4>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "4"^^xsd:integer ;
+    <urn:reckons:story/title> "Find the flags" ;
+    <urn:reckons:story/content> "Open Review. A statement that disagrees with something you already have is marked \"Possible conflict\". The brochure says the usable capacity is 10 kWh; the datasheet says 9.5 and the bench test measured 9.1. Open \"Triple Check evidence\" under the statement to see who said what." ;
+    <urn:reckons:story/highlight> <urn:example:battery/harbor-10> .
+
+<urn:example:tour/triple-check/step-5>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "5"^^xsd:integer ;
+    <urn:reckons:story/title> "A conflict you should act on" ;
+    <urn:reckons:story/content> "The brochure promises a 15-year warranty; the datasheet says 10 years. A warranty is a written promise, so one of the two documents is wrong or out of date. This is the kind of disagreement worth chasing before you rely on the claim." .
+
+<urn:example:tour/triple-check/step-6>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "6"^^xsd:integer ;
+    <urn:reckons:story/title> "Agreement is support, not proof" ;
+    <urn:reckons:story/content> "The brochure's 90% efficiency matches the bench test. Agreement from a different source is support. But if the brochure simply copied the test result, it is still one measurement said twice. The evidence shows where each claim came from so you can judge." .
+
+<urn:example:tour/triple-check/step-7>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "7"^^xsd:integer ;
+    <urn:reckons:story/title> "Two different answers can both be right" ;
+    <urn:reckons:story/content> "The installer lists the Model T inverter as compatible; the datasheet lists Harbor's own inverter. A battery can work with more than one inverter, so both can be true. Triple Check flags it because the answers differ. Whether they conflict is your call." ;
+    <urn:reckons:story/highlight> <urn:example:battery/model-t-inverter> .
+
+<urn:example:tour/triple-check/step-8>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "8"^^xsd:integer ;
+    <urn:reckons:story/title> "No flag is not a confirmation" ;
+    <urn:reckons:story/content> "The installer's 95 kg weight matches nothing else here, so it has no flag. That means nobody disagreed, not that anybody checked." .
+
+<urn:example:tour/triple-check/step-9>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "9"^^xsd:integer ;
+    <urn:reckons:story/title> "You decide" ;
+    <urn:reckons:story/content> "Accept, refine or reject each new statement as usual. Triple Check never accepts or changes anything for you. You could refine the brochure's capacity to \"10 kWh, as advertised\" to keep the claim together with where it came from." .
+
+<urn:example:tour/triple-check/step-10>
+    rdf:type <urn:reckons:story/Step> ;
+    <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
+    <urn:reckons:story/order> "10"^^xsd:integer ;
+    <urn:reckons:story/title> "Checking the internet too" ;
+    <urn:reckons:story/content> "To compare claims with web pages as well, choose a search service in Settings, Triple Check, and add its key under Integrations. Each web check sends that one statement to the search service and the model you choose, and paid services may charge. Leave it off for anything private." .
+
+# ---- sources ----
+src:datasheet
+    rdf:type meta:Source ;
+    dc:title "Harbor 10 datasheet (manufacturer's, synthetic)" ;
+    meta:sourceUri "note://triple-check-walkthrough/datasheet" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:bench-test
+    rdf:type meta:Source ;
+    dc:title "Independent bench test (synthetic)" ;
+    meta:sourceUri "note://triple-check-walkthrough/bench-test" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:brochure
+    rdf:type meta:Source ;
+    dc:title "Sales brochure (synthetic)" ;
+    meta:sourceUri "note://triple-check-walkthrough/brochure" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:installer
+    rdf:type meta:Source ;
+    dc:title "Installer's notes (synthetic)" ;
+    meta:sourceUri "note://triple-check-walkthrough/installer" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+src:guide
+    rdf:type meta:Source ;
+    dc:title "Walkthrough guide" ;
+    meta:sourceUri "note://triple-check-walkthrough/guide" ;
+    meta:sourceKind "document" ;
+    meta:trustLevel "review" ;
+    meta:sourceMetadata "{\"version\":1,\"fields\":{}}" ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+# ---- statement metadata (all statuses) ----
+<urn:kbase:stmt/walkthrough-datasheet-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/usable-capacity> ;
+    rdf:object "9.5 kWh" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"datasheet\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:datasheet ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-datasheet-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/warranty> ;
+    rdf:object "10 years" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"datasheet\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:datasheet ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-datasheet-2>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/cycle-life> ;
+    rdf:object "4,000 cycles to 70% capacity" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"datasheet\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:datasheet ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-datasheet-3>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/compatible-inverter> ;
+    rdf:object <urn:example:battery/harbor-inverter-s> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"datasheet\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:datasheet ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-bench-test-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/usable-capacity> ;
+    rdf:object "9.1 kWh" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"bench-test\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:bench-test ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-bench-test-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/round-trip-efficiency> ;
+    rdf:object "90%" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"bench-test\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:bench-test ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-brochure-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/usable-capacity> ;
+    rdf:object "10 kWh" ;
+    meta:status "pending" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"brochure\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:brochure ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-brochure-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/warranty> ;
+    rdf:object "15 years" ;
+    meta:status "pending" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"brochure\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:brochure ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-brochure-2>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/round-trip-efficiency> ;
+    rdf:object "90%" ;
+    meta:status "pending" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"brochure\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:brochure ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-installer-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/compatible-inverter> ;
+    rdf:object <urn:example:battery/model-t-inverter> ;
+    meta:status "pending" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"installer\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:installer ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-installer-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate <urn:example:predicate/weight> ;
+    rdf:object "95 kg" ;
+    meta:status "pending" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"installer\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:installer ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-0>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-10> ;
+    rdf:predicate rdfs:label ;
+    rdf:object "Harbor 10 home battery (fictional)" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-1>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/harbor-inverter-s> ;
+    rdf:predicate rdfs:label ;
+    rdf:object "Harbor S inverter (fictional)" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-2>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:battery/model-t-inverter> ;
+    rdf:predicate rdfs:label ;
+    rdf:object "Model T inverter (fictional)" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-3>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Story> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-4>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check> ;
+    rdf:predicate rdfs:label ;
+    rdf:object "Triple Check: a guided walkthrough" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-5>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check> ;
+    rdf:predicate <urn:reckons:story/description> ;
+    rdf:object "Turn on Triple Check and learn to read what it finds: a real conflict, agreement that is not proof, two right answers, and silence." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-6>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check> ;
+    rdf:predicate <urn:reckons:story/autoplay> ;
+    rdf:object "false" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-7>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-8>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-9>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "1"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-10>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "What is in this space" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-11>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "This space collects what four documents say about the Harbor 10, a fictional home battery. You already accepted two of them: the datasheet and an independent bench test. The other two, a sales brochure and an installer's notes, are new and waiting in Review." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-12>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-1> ;
+    rdf:predicate <urn:reckons:story/highlight> ;
+    rdf:object <urn:example:battery/harbor-10> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-13>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-2> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-14>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-2> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-15>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-2> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "2"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-16>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-2> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Turn on Triple Check" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-17>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-2> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "Open Settings, then Triple Check, and tick \"Keep Triple Check on for this space\". Untick \"Check the internet\" for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-18>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-19>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-20>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "3"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-21>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Give it a few minutes" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-22>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "Triple Check looks at one statement about once a minute while the app is open, starting with the ones waiting for review. There are five new statements here, so allow about five minutes. You can keep working meanwhile." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-23>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-24>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-25>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "4"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-26>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Find the flags" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-27>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "Open Review. A statement that disagrees with something you already have is marked \"Possible conflict\". The brochure says the usable capacity is 10 kWh; the datasheet says 9.5 and the bench test measured 9.1. Open \"Triple Check evidence\" under the statement to see who said what." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-28>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-4> ;
+    rdf:predicate <urn:reckons:story/highlight> ;
+    rdf:object <urn:example:battery/harbor-10> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-29>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-30>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-31>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "5"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-32>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "A conflict you should act on" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-33>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "The brochure promises a 15-year warranty; the datasheet says 10 years. A warranty is a written promise, so one of the two documents is wrong or out of date. This is the kind of disagreement worth chasing before you rely on the claim." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-34>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-6> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-35>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-6> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-36>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-6> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "6"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-37>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-6> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Agreement is support, not proof" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-38>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-6> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "The brochure's 90% efficiency matches the bench test. Agreement from a different source is support. But if the brochure simply copied the test result, it is still one measurement said twice. The evidence shows where each claim came from so you can judge." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-39>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-40>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-41>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "7"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-42>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Two different answers can both be right" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-43>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "The installer lists the Model T inverter as compatible; the datasheet lists Harbor's own inverter. A battery can work with more than one inverter, so both can be true. Triple Check flags it because the answers differ. Whether they conflict is your call." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-44>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-7> ;
+    rdf:predicate <urn:reckons:story/highlight> ;
+    rdf:object <urn:example:battery/model-t-inverter> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-45>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-8> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-46>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-8> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-47>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-8> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "8"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-48>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-8> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "No flag is not a confirmation" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-49>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-8> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "The installer's 95 kg weight matches nothing else here, so it has no flag. That means nobody disagreed, not that anybody checked." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-50>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-9> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-51>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-9> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-52>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-9> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "9"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-53>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-9> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "You decide" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-54>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-9> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "Accept, refine or reject each new statement as usual. Triple Check never accepts or changes anything for you. You could refine the brochure's capacity to \"10 kWh, as advertised\" to keep the claim together with where it came from." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-55>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-10> ;
+    rdf:predicate rdf:type ;
+    rdf:object <urn:reckons:story/Step> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-56>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-10> ;
+    rdf:predicate <urn:reckons:story/partOf> ;
+    rdf:object <urn:example:tour/triple-check> ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-57>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-10> ;
+    rdf:predicate <urn:reckons:story/order> ;
+    rdf:object "10"^^xsd:integer ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-58>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-10> ;
+    rdf:predicate <urn:reckons:story/title> ;
+    rdf:object "Checking the internet too" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-59>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-10> ;
+    rdf:predicate <urn:reckons:story/content> ;
+    rdf:object "To compare claims with web pages as well, choose a search service in Settings, Triple Check, and add its key under Integrations. Each web check sends that one statement to the search service and the model you choose, and paid services may charge. Leave it off for anything private." ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .

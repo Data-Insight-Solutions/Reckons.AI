@@ -2487,7 +2487,8 @@
     <label>Entities on canvas<select aria-label="Entities on canvas" value={settings().canvasEntityLimit ?? 80} onchange={e => updateSettings({ canvasEntityLimit: Number(e.currentTarget.value) })}>
       <option value={25}>Up to 25</option><option value={80}>Up to 80</option><option value={200}>Up to 200</option><option value={0}>All in this view</option>
     </select></label>
-    <p data-testid="space-view-count">{canvasProjection.entities.size} of {canvasProjection.candidateEntities} matching entities; {canvasProjection.hiddenStatements} statements outside the canvas selection. All remain in this space.</p>
+    <!-- Counts named things only: a value such as "10 kWh" is drawn as a node but is not one of them. -->
+    <p data-testid="space-view-count">Showing {canvasProjection.entities.size} of {canvasProjection.candidateEntities} things{#if canvasProjection.hiddenStatements > 0}; {canvasProjection.hiddenStatements} statements are hidden from the canvas and still in this space{/if}.</p>
     <a href="/compare/repositories">Compare repositories and save views →</a>
   </div>
 

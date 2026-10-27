@@ -39,7 +39,7 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
-    { id: 'research-validation', icon: '✓', title: 'Research validation', body: 'Synthetic engineering, marketing and independent research corpora with deliberate disagreements. Configure Triple Check from Settings to review them.', file: '/starter-research.ttl', space: 'Research validation', entities: 2, triples: 8 },
+    { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery. A guided story shows how Triple Check flags conflicts and what each flag means.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
     {
       id: 'quickstart',
       icon: '🚀',
