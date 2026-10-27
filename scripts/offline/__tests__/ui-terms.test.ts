@@ -51,6 +51,15 @@ describe('ui-terms config and findings', () => {
     expect(hits('Triples are stored in IndexedDB; see rdf:Statement')).toEqual(['Triples', 'IndexedDB', 'rdf:Statement']);
     expect(hits('indexeddb, tripled, kb_triple, urn:x/triple')).toEqual([]);
   });
+  it('a jargon word inside a declared proper name is the name, not the word', () => {
+    const named = readTermConfig(`@prefix kpred: <urn:kbase:predicate/> .
+      <urn:kbase:vocabulary/terminology> kpred:ui-jargon "triple" ; kpred:ui-proper-name "Triple Check" .`);
+    expect(named.properNames).toEqual(['Triple Check']);
+    const o = (word: string, sentence: string): Occurrence => ({ file: 'src/a.svelte', line: 1, start: 0, end: 0, word, kind: 'jargon', where: 'text', sentence });
+    expect(findings([o('Triple', 'Keep Triple Check on for this space')], named)).toEqual([]);
+    // The bare word is still jargon, even in a sentence that also names the feature.
+    expect(findings([o('triples', 'Triple Check reads triples')], named)).toHaveLength(1);
+  });
   it('turns occurrences into findings, skips technical surfaces, and ratchets templates only', () => {
     const o = (file: string, word: string, sentence: string, kind: Occurrence['kind'], where: Occurrence['where'] = 'text'): Occurrence => ({ file, line: 1, start: 0, end: 0, word, kind, where, sentence });
     const f = findings([

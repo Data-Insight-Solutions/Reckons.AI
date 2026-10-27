@@ -1042,3 +1042,13 @@ code:routes kpred:has-file "src/routes/(app)/settings/triple-check/+page.svelte"
 code:scripts kpred:has-file "scripts/research/github-stars.ts", "scripts/starter/build-research.ts", "scripts/starter/research-fixture.ts", "scripts/starter/triple-check-walkthrough.ts" .
 code:test-bench kpred:has-file "tests/bench/run-statement-comparison-bench.ts" .
 code:static kpred:has-file "static/starter-triple-check.ttl", "static/starter-triple-check-reference.ttl" .
+code:rdf kpred:tested-by "src/lib/rdf/__tests__/research-validation.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check.test.ts" .
+code:search kpred:tested-by "src/lib/integrations/search/__tests__/searxng.test.ts" .
+# Review and settings polish, and the build-and-change workflow (2026-10-27).
+code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
+code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/corpus-fixture.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts" .
+code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
