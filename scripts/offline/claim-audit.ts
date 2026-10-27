@@ -43,6 +43,7 @@ import { execSync } from 'child_process';
 import { Parser } from 'n3';
 import { containsUnnegatedMention } from './lib/audit-rules';
 import { queueFindings } from './pending-queue.js';
+import { unbuiltNeedles } from './lib/claim-needles.js';
 
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';
 const KPRED = 'urn:kbase:predicate/';
@@ -99,18 +100,8 @@ for (const q of quads) {
   if (q.predicate.value === KPRED + 'has-status') statusOf.set(q.subject.value, q.object.value);
 }
 
-/** Features that DO NOT EXIST YET, keyed by a distinctive phrase from their label. */
-const unbuilt: { iri: string; label: string; status: string; needle: string }[] = [];
-for (const [iri, status] of statusOf) {
-  if (!UNBUILT.has(status)) continue;
-  const label = labelOf.get(iri);
-  if (!label) continue;
-  // Use the label's leading clause as the needle — everything before an em-dash/paren.
-  // Short needles produce false positives ("Graph", "Export"), so require some specificity.
-  const needle = label.split(/[—(:·]/)[0].trim();
-  if (needle.length < 12) continue;
-  unbuilt.push({ iri, label, status, needle: needle.toLowerCase() });
-}
+/** Features that DO NOT EXIST YET, keyed by a distinctive phrase from their label (see claim-needles.ts). */
+const unbuilt = unbuiltNeedles(labelOf, statusOf, UNBUILT);
 
 /**
  * What a reader can see. Comments in a .svelte or .html surface never reach the page, and a
