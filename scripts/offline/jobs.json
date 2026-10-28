@@ -341,6 +341,14 @@
       "desc": "F122.1.2: every fact anchor stored in a space file must name a chunk that is in the same file, belongs to the fact's own source and contains the span's start. A citation that cannot be opened is reported, never dropped or guessed. Reads every .ttl that holds an anchor; zero tokens."
     },
     {
+      "name": "model-inventory",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/model-inventory.ts",
+      "desc": "Every local model a script or schedule falls back to, checked against what Ollama has installed, so a removed model is reported at session start rather than by six jobs failing at their first call (2026-10-26: qwen3.6 and qwen3:32b removed, defaults left behind). Exit 2 when Ollama is not answering, which is unknown, not green. Zero tokens."
+    },
+    {
       "name": "set-integrity",
       "tier": "script",
       "enabled": true,
@@ -499,6 +507,14 @@
       "enabled": false,
       "cmd": "npx tsx scripts/offline/terminology-sweep.ts --sample=30",
       "desc": "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU."
+    },
+    {
+      "name": "space-visual-gate",
+      "tier": "agent",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174",
+      "desc": "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review."
     },
     {
       "name": "rename-pr",
