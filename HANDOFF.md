@@ -32,7 +32,18 @@ requeue with modified inputs, escalate only what it cannot settle.
    as a queued job), triaged by the local overseer, summarized by Sonnet.
 6. F265 codebase links derived from code (script tier); F269 device space (Matt to decide placement first;
    start with a spec-measuring script); starred-repo job: compare against roadmap features, not keyword picks.
-7. Then taxonomy and maintenance through the harness, not inline.
+7. F271: MCP sees the caller's worktree graphs and accepts prefixed names (Matt: fix both next session).
+8. About page: move 'Review 0.2.6' / 'Review 0.2.7' out of example data (Matt decided 2026-10-27; the
+   About card list lives in src/routes/(app)/about/+page.svelte on the #537 branch — do it after #537 merges).
+9. Then taxonomy and maintenance through the harness, not inline.
+
+**Decided 2026-10-27 (recorded in the roadmap):** device space appears in Spaces as 'This device' (F269);
+all seven starred-repo suggestions become roadmap work (F270); MCP gaps fixed next session (F271).
+
+**Review is not seamless yet — a finding, not a footnote.** The kb_review_links URLs did not work for Matt
+2026-10-27 (rows sit in the workspace queue; the app needs the folder linked and drained, and the agent filter
+may not match). He fell back to answering in chat. Fix the path from "an agent queued a proposal" to "Matt
+decides it in one click" before adding more producers.
 
 **Matt's review queue:** links per agent from `kb_review_links` (e.g. /review?tab=incoming&agent=...). The app
 must have the workspace folder linked and drained (↻ next to pending changes) to see workspace-queued rows.
