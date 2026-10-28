@@ -1,0 +1,6 @@
+Repository rules (excerpt)
+- Never commit a real credential (API key, token, password). A change that adds one is a stop: do
+  not merge, report it to the owner.
+- reckons-workspace/knowledge.pending*.jsonl hold private captures and must never be committed.
+- Regression tests use synthetic values, never real credentials or copied personal captures.
+- A behavior change needs a test that fails without it.
