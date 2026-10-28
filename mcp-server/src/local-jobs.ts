@@ -86,7 +86,7 @@ export function loadJobDefs(c: JobCtx): JobDef[] {
       if (!o.command || o.enabled === 'false') continue;
       defs.push({ name: `sched:${iri.split('/').pop()}`, source: 'schedule', tier: o.tier ?? 'agent', desc: o.description ?? o.label ?? '', cmd: o.command });
     }
-  } catch { /* no schedules graph */ }
+  } catch { /* no schedules file */ }
   return defs;
 }
 
@@ -175,7 +175,7 @@ export function jobEnqueue(c: JobCtx, args: { name?: string; args?: string[] }):
   const def = typeof args.name === 'string' ? loadJobDefs(c).find((d) => d.name === args.name) : undefined;
   if (!def) {
     const names = loadJobDefs(c).map((d) => d.name);
-    return { ok: false, text: `Unknown job ${JSON.stringify(args.name)}. Only jobs defined in scripts/offline/jobs.json or the schedules graph can be queued, never a command. Defined: ${names.join(', ') || '(none found)'}` };
+    return { ok: false, text: `Unknown job ${JSON.stringify(args.name)}. Only jobs defined in scripts/offline/jobs.json or the schedules file can be queued, never a command. Defined: ${names.join(', ') || '(none found)'}` };
   }
   const extra = args.args ?? [];
   if (!Array.isArray(extra) || extra.some((a) => typeof a !== 'string' || a.includes('\0'))) return { ok: false, text: 'args must be an array of strings' };

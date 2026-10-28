@@ -420,7 +420,7 @@ const TOOLS = [
   },
   {
     name: 'kb_job_list',
-    description: 'List the local jobs that can be queued (scripts/offline/jobs.json and the schedules graph): name, tier, what each does, last run and current state. Check here BEFORE running a long job (e2e suite, benchmark, research, batch analysis) yourself: if a local job exists for it, queue it with kb_job_enqueue instead of spending cloud tokens.',
+    description: 'List the local jobs that can be queued (scripts/offline/jobs.json and the schedules file): name, tier, what each does, last run and current state. Check here BEFORE running a long job (e2e suite, benchmark, research, batch analysis) yourself: if a local job exists for it, queue it with kb_job_enqueue instead of spending cloud tokens.',
     inputSchema: { type: 'object', properties: {} }
   },
   {

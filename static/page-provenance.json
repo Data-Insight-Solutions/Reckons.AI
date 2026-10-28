@@ -581,10 +581,10 @@
       "path": "features/local-jobs-mcp",
       "entity": "urn:reckons:feature/LocalJobsMCP",
       "graph": "docs-features.ttl",
-      "factHash": "6535ea6cfa69ab3a",
-      "factCount": 1,
+      "factHash": "fedf0e4e9d21744c",
+      "factCount": 2,
       "floor": "evidence",
-      "pageHash": "c289cec5902a9812"
+      "pageHash": "c5c1b0ee5f2d3d61"
     },
     {
       "path": "features/mcp-workspace",
@@ -593,7 +593,7 @@
       "factHash": "b0d43d673c1331e6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "386b4bca6199f4c2"
+      "pageHash": "8ea546d4c419f59a"
     },
     {
       "path": "features/multi-kb",
@@ -1052,7 +1052,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "e3aa4aeb22aeadb9"
+      "pageHash": "d6df92e3bf66be4b"
     },
     {
       "path": "project/where-it-is-going",

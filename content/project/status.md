@@ -63,11 +63,12 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Where a node's facts came from](../features/node-sources) · functional
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (7)
+## Partly built (8)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
 - [Currents](../features/currents) · scaffolded
+- [Local jobs through MCP](../features/local-jobs-mcp) · in-progress
 - [Physical scene simulator (early, command line only)](../features/physical-scene-simulator) · in-progress
 - [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress

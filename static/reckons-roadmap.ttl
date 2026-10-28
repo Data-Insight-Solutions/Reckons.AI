@@ -10491,7 +10491,7 @@ kb:local-jobs-default rdf:type ktype:Feature ;
     kpred:has-status "in-progress" ;
     kpred:relates-to kb:local-orchestration ;
     kpred:decided "Matt, 2026-10-27: \"The lesson isn't learnt the last 10 times it was recorded. I think we need the local jobs to be a default, and through MCP and well documented. I want to be able to manually define a job in UI at some point.\"" ;
-    kpred:description "Three tools on the Reckons MCP server let any agent use the existing local job queue (scripts/agent/queue.ts, the worker, scripts/offline/jobs.json and the schedules graph) without shell access to it: kb_job_list names every defined job, kb_job_enqueue queues one by name, kb_job_status reports queued, running, done or failed with a log tail. Enqueue accepts only names defined in jobs.json or the schedules graph, never a command." ;
+    kpred:description "Three tools on the Reckons MCP server let any agent use the existing local job queue (scripts/agent/queue.ts, the worker, scripts/offline/jobs.json and the schedules file) without shell access to it: kb_job_list names every defined job, kb_job_enqueue queues one by name, kb_job_status reports queued, running, done or failed with a log tail. Enqueue accepts only names defined in jobs.json or the schedules file, never a command." ;
     kpred:has-phase kb:local-jobs-mcp ;
     kpred:has-phase kb:local-jobs-hook ;
     kpred:has-phase kb:local-jobs-ui .
@@ -10518,7 +10518,7 @@ kb:local-jobs-ui rdf:type ktype:Phase ;
     kpred:part-of kb:local-jobs-default ;
     hnav:order 3 ;
     kpred:has-status "planned" ;
-    kpred:remaining "NOT BUILT. Matt wants to define a job by hand in the UI at some point; today jobs are edited in jobs.json or the schedules graph." .
+    kpred:remaining "NOT BUILT. Matt wants to define a job by hand in the UI at some point; today jobs are edited in jobs.json or the schedules file." .
 
 ## =============================================================================
 ## F268: A very large local model as overseer (Matt, 2026-10-27)
