@@ -60,9 +60,10 @@ import {
   normalizeFindingKb,
   transactPendingQueue,
 } from './pending-queue.js';
+import { pendingQueuePath } from './lib/main-workspace.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
-const QUEUE = join(ROOT, 'reckons-workspace/knowledge.pending.jsonl');
+const QUEUE = process.argv.find((a) => a.startsWith('--file='))?.slice(7) ?? pendingQueuePath();
 const SUPERSEDE = process.argv.includes('--supersede');
 const WRITE = process.argv.includes('--write') || SUPERSEDE;
 
