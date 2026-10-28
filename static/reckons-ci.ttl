@@ -40,7 +40,6 @@ ci:workflow-dependency-audit rdf:type ktype:CiWorkflow ;
     kpred:runs-on-event "push (dev, staging, main)" ;
     kpred:runs-on-event "schedule" ;
     kpred:runs-on-event "workflow_dispatch" ;
-    kpred:decided "MATT, 2026-10-28: raise the gate from --audit-level=low to moderate. Seven low advisories (@sveltejs/kit, deepmerge) appeared after 2026-10-23 that only a SvelteKit 3 major upgrade fixes, and they blocked every PR. Lows are still reported, not blocking." ;
     kpred:check-count "3" .
 
 ci:workflow-extension rdf:type ktype:CiWorkflow ;
