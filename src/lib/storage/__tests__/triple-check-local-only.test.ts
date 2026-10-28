@@ -96,6 +96,8 @@ describe('Triple Check is local and free: every request, with fetch stubbed', ()
     it('a .local name and a fd00:: literal are private when named', () => {
       const s = (u: string, h: string) => searchConfigurationError(withLocal({ searxngBaseUrl: u, tripleCheckLanHosts: [h] }));
       expect(s('http://box.local:8888', 'box.local')).toBeNull(); expect(s('http://[fd12::1]:8888', '[fd12::1]')).toBeNull();
+      // An IPv6 entry matches with or without brackets, and in any equivalent spelling.
+      expect(s('http://[fd12::1]:8888', 'fd12::1')).toBeNull(); expect(s('http://[fd12::1]:8888', 'fd12:0::1')).toBeNull();
     });
     it('an unnamed private address is refused', async () => {
       const { calls, refused } = await lan({ searxngBaseUrl: 'http://192.168.1.20:8888' });
