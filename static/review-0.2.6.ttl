@@ -112,7 +112,7 @@ rev:gap-f65 rdf:type ktype:Concept ;
 
 rev:gap-f74-9 rdf:type ktype:Concept ;
     rdfs:label "F74.9 Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/proposal-tally.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/offline/lib/__tests__/workspace-space.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/proposal-tally.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/offline/lib/__tests__/workspace-space.test.ts, scripts/offline/__tests__/queue-integrity.test.ts, scripts/offline/__tests__/pending-queue.test.ts)." .
 
 rev:gap-f254-1 rdf:type ktype:Concept ;
     rdfs:label "F254.1 F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
