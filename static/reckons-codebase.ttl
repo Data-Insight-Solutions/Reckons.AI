@@ -1045,6 +1045,8 @@ code:static kpred:has-file "static/starter-triple-check.ttl", "static/starter-tr
 code:rdf kpred:tested-by "src/lib/rdf/__tests__/research-validation.test.ts" .
 code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check.test.ts" .
 code:search kpred:tested-by "src/lib/integrations/search/__tests__/searxng.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check-local-only.test.ts" .
+code:llm kpred:has-file "src/lib/integrations/loopback.ts" .
 # Review and settings polish, and the build-and-change workflow (2026-10-27).
 code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
 code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;

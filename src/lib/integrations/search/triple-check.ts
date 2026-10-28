@@ -1,22 +1,20 @@
 import type { SettingsRecord } from '$lib/storage/db';
-import { tavilySearch } from './tavily';
+import { isLoopbackUrl } from '../loopback';
 export type WebPassage = { url: string; title: string; content: string };
+/** Where a search goes when nothing is set: a SearXNG instance on this machine. */
+export const DEFAULT_SEARXNG = 'http://localhost:8888';
+/** Triple Check searches only through a SearXNG instance on this machine (F100.1, Matt 2026-10-28: no API
+ *  services off this device other than the web GET). Hosted search settings saved earlier are refused. */
 export function searchConfigurationError(s: SettingsRecord): string | null {
   if (s.tripleCheckWebEnabled === false) return 'Web not checked: disabled for this space.';
-  if (s.tripleCheckSearch === 'searxng') { if (!s.searxngBaseUrl) return 'Web not checked: no SearXNG address is set.'; }
-  else if (s.tripleCheckSearch === 'firecrawl' ? !s.firecrawlApiKey : !s.tavilyApiKey) return 'Web not checked: search credentials are missing.';
-  if (s.tripleCheckScrape === 'firecrawl' && !s.firecrawlApiKey) return 'Web not checked: scraping credentials are missing.';
+  if (s.tripleCheckSearch && s.tripleCheckSearch !== 'searxng') return 'Web not checked: only a SearXNG instance on this machine is supported.';
+  if (s.tripleCheckScrape && s.tripleCheckScrape !== 'snippets') return 'Web not checked: only search passages are supported.';
+  if (!isLoopbackUrl(s.searxngBaseUrl ?? DEFAULT_SEARXNG)) return 'Web not checked: the SearXNG address must be on this machine.';
   return null;
 }
-async function firecrawl(s: SettingsRecord, endpoint: string, body: object, signal: AbortSignal) {
-  const res = await fetch(`https://api.firecrawl.dev/v2/${endpoint}`, { method: 'POST', signal,
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${s.firecrawlApiKey}` }, body: JSON.stringify(body) });
-  if (!res.ok) throw new Error('Firecrawl request failed');
-  const data = await res.json(); if (!data.success) throw new Error('Firecrawl incomplete response'); return data.data;
-}
-/** A self-hosted SearXNG instance: no account and no key, but it still queries public search engines from
- *  your machine. It must list `json` under search.formats and allow this app's origin (CORS), or the browser
- *  blocks the response; both are settings on the instance, not here. */
+/** A SearXNG instance on this machine: a plain GET, no account, no key. It still queries public search
+ *  engines from your machine. It must list `json` under search.formats and allow this app's origin (CORS), or
+ *  the browser blocks the response; both are settings on the instance, not here. */
 export async function searxng(base: string, query: string, signal: AbortSignal): Promise<WebPassage[]> {
   const url = new URL('search', base.endsWith('/') ? base : `${base}/`);
   url.searchParams.set('q', query); url.searchParams.set('format', 'json');
@@ -29,15 +27,10 @@ export async function searxng(base: string, query: string, signal: AbortSignal):
 }
 export async function searchTripleCheck(s: SettingsRecord, query: string, signal: AbortSignal): Promise<WebPassage[]> {
   if (searchConfigurationError(s)) throw new Error('Search not configured.');
-  if (s.tripleCheckSearch === 'searxng') return searxng(s.searxngBaseUrl!, query, signal);
-  if (s.tripleCheckSearch !== 'firecrawl') return (await tavilySearch(s.tavilyApiKey!, query, 5, signal)).results;
-  const result = await firecrawl(s, 'search', { query, limit: 5, sources: ['web'] }, signal);
-  if (!Array.isArray(result?.web)) throw new Error('Invalid search response');
-  return result.web.filter((r: Record<string, unknown>) => typeof r.url === 'string' && typeof r.title === 'string').map((r: Record<string, string>) => ({ url: r.url, title: r.title, content: r.markdown ?? r.description ?? '' }));
+  return searxng(s.searxngBaseUrl ?? DEFAULT_SEARXNG, query, signal);
 }
-export async function scrapeTripleCheck(s: SettingsRecord, source: WebPassage, signal: AbortSignal): Promise<WebPassage> {
-  if (s.tripleCheckScrape !== 'firecrawl') return source;
-  const result = await firecrawl(s, 'scrape', { url: source.url, formats: ['markdown'], onlyMainContent: true }, signal);
-  if (typeof result?.markdown !== 'string') throw new Error('Invalid page response');
-  return { ...source, content: result.markdown.slice(0, 12000) };
+/** The search passage is the evidence. Reading whole pages through a hosted scraper is not offered. */
+export async function scrapeTripleCheck(s: SettingsRecord, source: WebPassage, _signal: AbortSignal): Promise<WebPassage> {
+  if (s.tripleCheckScrape && s.tripleCheckScrape !== 'snippets') throw new Error('Only search passages are supported.');
+  return source;
 }

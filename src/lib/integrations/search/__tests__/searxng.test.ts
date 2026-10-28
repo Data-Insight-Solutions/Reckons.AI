@@ -20,9 +20,10 @@ describe('SearXNG search (F100.7)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('<html>', { status: 403 })));
     await expect(searxng('https://example.test/searx', 'q', new AbortController().signal)).rejects.toThrow('403');
   });
-  it('needs an address, not a key', () => {
+  it('defaults to this machine, needs no key, and refuses another host', () => {
     const s = { tripleCheckSearch: 'searxng' } as SettingsRecord;
-    expect(searchConfigurationError(s)).toContain('SearXNG');
+    expect(searchConfigurationError(s)).toBeNull();
     expect(searchConfigurationError({ ...s, searxngBaseUrl: 'http://localhost:8888' })).toBeNull();
+    expect(searchConfigurationError({ ...s, searxngBaseUrl: 'https://search.example.com' })).toContain('this machine');
   });
 });

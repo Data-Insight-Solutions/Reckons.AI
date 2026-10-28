@@ -23,11 +23,11 @@ export type SettingsRecord = {
   tripleCheckEnabled?: boolean;
   tripleCheckWebEnabled?: boolean;
   tripleCheckDailyLimit?: number;
-  tripleCheckSearch?: 'tavily' | 'firecrawl' | 'searxng';
+  tripleCheckSearch?: 'searxng';
   /** Self-hosted SearXNG (F100.7), e.g. http://localhost:8888. No key; the instance must allow JSON output and this origin (CORS). */
   searxngBaseUrl?: string;
-  tripleCheckScrape?: 'snippets' | 'firecrawl';
-  tripleCheckBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'openrouter' | 'reckons';
+  tripleCheckScrape?: 'snippets';
+  tripleCheckBackend?: 'ollama' | 'wasm' | 'chrome-ai';
   tripleCheckModel?: string;
   tripleCheckSpaceAnalysis?: boolean;
   tripleCheckReferenceSpaceIds?: string[];
