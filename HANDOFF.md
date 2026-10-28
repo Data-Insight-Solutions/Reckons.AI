@@ -3,9 +3,54 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-10-28 — PR #535 unblocked; missing local models fixed; review surface needs Matt (Claude Code, Opus)
+## 2026-10-28 (later) — START HERE. Merged #535 and #541; F273 and the overseer comparison in flight (Claude Code, Opus)
 
-**Branch:** `feat/local-main-agent` → PR #535 (base `dev`). Pushed; CI not yet re-read after the last push.
+The session ran long; start a fresh one from here. Matt's decisions from today are in the graph,
+each quoted verbatim under kpred:decided on the entities named below.
+
+**Merged into dev:** #535 (local deputy, missing-model handling, `models:check`, parsed bench, audit
+gate at moderate, `npm-symlink-guard.sh`) and #541 (review links grouped by producer run, with `kb=`;
+/review shows reconnect, loading and unlinked states).
+
+**Open PRs (check `gh pr list --base dev`):**
+- #542 `chore/queue-integrity`: `queue:check`, locked queue appends, term-senses with one subject per
+  site, quarantine file git-ignored. The merge overseer was resolving a conflict in the generated
+  `reckons-jobs.ttl` (regenerate, never hand-edit), then reviewing and merging.
+- #543 `plan/procedure-over-prose`: **F273**. A Sonnet builder is doing phase 0 (a brief generator that
+  refuses without a done-test) and then phase A (tracked git hooks: commit-msg, pre-commit generator
+  check, pre-push blocking tier). The done-tests are on the entity; build to them, do not bend them.
+- #544 → `feat/triple-check` (Codex's #537): Triple Check runs on-device only. Search is a GET to
+  SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal address.
+  Decided on kb:triple-check. Lands with #537.
+- `bench/overseer-compare`: gpt-oss:120b vs Sonnet as overseer on four replayed cases with known
+  answers; gpt-oss runs at its native 131k maximum (160k is past what it was trained on). Results go
+  on kb:loop-local-deputy.
+- this branch: the npm guard skips heredocs and matches commands only (its first version blocked
+  prose that mentioned "npm ci").
+
+**Queue state (2026-10-28):**
+- **Removed:** about 210 trash rows rejected by verdict (code-review, a dead path, the four classes
+  Matt approved), 110 duplicates collapsed, 15 tail-fragment lines quarantined, and 151 term-senses
+  rows superseded by 99 per-site rows.
+- **Unfixed:** the browser drain (`writeToWorkspace`) still takes no host lock; it is the suspected
+  source of the fragments.
+
+**VRAM, measured:** gpt-oss at 131k is 67.1 GB, with 43.8 GB on the GPUs and about 23 GB in a 31 GB
+system RAM, so no other local model fits beside it. qwen3.8-160k uses about 30 GB and leaves about
+18 GB for workers. The recommendation to Matt was qwen3.8 as the always-on deputy and gpt-oss loaded
+per batch for decisions, pending the comparison.
+
+**Rules learned today (all in memory):**
+- Never write npm ci in a brief.
+- Never hand-edit a generated file.
+- Ask Matt directly (AskUserQuestion) until review links work end to end.
+- Delegate long waits; Opus ends its turn instead.
+
+## 2026-10-28 (earlier) — PR #535 unblocked; missing local models fixed (Claude Code, Opus)
+
+The "Waiting on Matt" items below were all answered later the same day; see the entry above.
+
+**Branch:** `feat/local-main-agent` → PR #535, merged 2026-10-28.
 
 ### Done this session (each verified as stated, 2026-10-28)
 
