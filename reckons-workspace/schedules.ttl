@@ -81,6 +81,16 @@ sched:integration-health rdf:type ktype:Schedule ;
 # a tier is treated as a GPU job. kpred:network "true" = it talks to the internet. This table is the
 # one place to adjust cadences.
 
+sched:model-inventory rdf:type ktype:Schedule ;
+    rdfs:label      "Local model inventory" ;
+    kpred:every     "1d" ;
+    kpred:first-pass "true" ;
+    kpred:command   "npm run models:check" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Checks that every model the local jobs fall back to is installed in Ollama, when the session first becomes active and then daily, so a model removed by hand is reported before the jobs that need it fail. Script tier: one call to /api/tags, zero tokens." .
+
 sched:visual-tests rdf:type      ktype:Schedule ;
     rdfs:label      "Visual tests — statement readability and layout gates" ;
     kpred:every     "2h" ;

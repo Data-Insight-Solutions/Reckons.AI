@@ -15,7 +15,7 @@
  * Works for /api/generate (text in `response`) and /api/chat (text in `message.content`).
  */
 import { Agent, fetch } from 'undici';
-import { localOptions, retryTransient } from './local-model.js';
+import { MissingModelError, missingModelIn, localOptions, retryTransient } from './local-model.js';
 
 export const QUEUE_WAIT_MS = 20 * 60_000;
 export const IDLE_MS = 2 * 60_000;
@@ -84,13 +84,20 @@ async function streamOnce(
       body: JSON.stringify({ ...body, stream: true }),
       dispatcher: agentFor(opts.queueWaitMs ?? QUEUE_WAIT_MS, opts.idleMs ?? IDLE_MS),
     });
-    if (!res.ok || !res.body) throw new Error(`Ollama ${res.status} ${res.statusText}${res.ok ? ' (no body)' : `: ${(await res.text()).slice(0, 200)}`}`);
+    if (!res.ok) {
+      const errBody = await res.text();
+      const missing = missingModelIn(res.status, errBody);
+      if (missing) throw new MissingModelError(missing, errBody);
+      throw new Error(`Ollama ${res.status} ${res.statusText}: ${errBody.slice(0, 200)}`);
+    }
+    if (!res.body) throw new Error(`Ollama ${res.status} ${res.statusText} (no body)`);
     const decoder = new TextDecoder();
     const chunks: string[] = [];
     for await (const part of res.body) chunks.push(decoder.decode(part as Uint8Array, { stream: true }));
     chunks.push(decoder.decode());
     return foldNdjson(chunks);
   } catch (e: any) {
+    if (e instanceof MissingModelError) throw e;
     const code = e?.cause?.code ?? e?.code;
     const hint = code === 'UND_ERR_HEADERS_TIMEOUT' ? ` — Ollama did not start answering within ${Math.round((opts.queueWaitMs ?? QUEUE_WAIT_MS) / 60_000)} min (queue or model load)`
       : code === 'UND_ERR_BODY_TIMEOUT' ? ` — Ollama went silent for ${Math.round((opts.idleMs ?? IDLE_MS) / 1000)} s mid-answer` : '';

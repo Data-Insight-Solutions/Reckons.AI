@@ -31,12 +31,13 @@ import { Parser, type Quad } from 'n3';
 import { transactPendingQueue } from './pending-queue.js';
 import { readTextOr } from '../lib/read-file.js';
 import { ollamaStream } from './lib/ollama-stream.js';
+import { DEFAULT_REASONING_MODEL } from './lib/local-model.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
 const DRY = raw.includes('--dry-run');
 const OLLAMA = process.env.OLLAMA_BASE_URL ?? process.env.VITE_OLLAMA_BASE_URL ?? '';
-const MODEL = flag('model') ?? process.env.DOCS_EXPAND_MODEL ?? 'qwen3:32b';
+const MODEL = flag('model') ?? process.env.DOCS_EXPAND_MODEL ?? DEFAULT_REASONING_MODEL;
 const LIMIT = Number(flag('limit') ?? 10);
 const ONLY = flag('entity');
 /** Mirrors PAGE_THRESHOLD_WORDS in docs-pages.ts — below this, an entity is not a page. */

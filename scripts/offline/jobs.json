@@ -334,6 +334,14 @@
       "desc": "F122.1.2: every fact anchor stored in a space file must name a chunk that is in the same file, belongs to the fact's own source and contains the span's start. A citation that cannot be opened is reported, never dropped or guessed. Reads every .ttl that holds an anchor; zero tokens."
     },
     {
+      "name": "model-inventory",
+      "tier": "script",
+      "enabled": true,
+      "blocking": false,
+      "cmd": "npx tsx scripts/offline/model-inventory.ts",
+      "desc": "Every local model a script or schedule falls back to, checked against what Ollama has installed, so a removed model is reported at session start rather than by six jobs failing at their first call (2026-10-26: qwen3.6 and qwen3:32b removed, defaults left behind). Exit 2 when Ollama is not answering, which is unknown, not green. Zero tokens."
+    },
+    {
       "name": "set-integrity",
       "tier": "script",
       "enabled": true,

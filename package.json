@@ -197,6 +197,7 @@
     "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
     "docs:review": "npx tsx scripts/offline/docs-review.ts",
     "host:check": "tsx scripts/offline/host-health.ts",
+    "models:check": "tsx scripts/offline/model-inventory.ts",
     "security:dependencies": "tsx scripts/offline/dependency-health.ts"
   },
   "devDependencies": {
