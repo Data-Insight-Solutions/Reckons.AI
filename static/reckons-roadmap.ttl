@@ -10524,6 +10524,8 @@ kb:local-jobs-ui rdf:type ktype:Phase ;
 ## F268: A very large local model as overseer (Matt, 2026-10-27)
 ## =============================================================================
 
+kb:local-overseer-model kpred:decided "MATT, 2026-10-27: 'I do think a MoE model about 100B would be good to add to local. The idea would be between batches of jobs, the MoE model helps clear up issues, reviews and sets up the retry with modifications if necessary, etc.' So the first candidate class is a ~100B mixture-of-experts model that fits this machine's graphics memory plus RAM (about 79 GB), not the larger disk-streamed class. Its role is BETWEEN batches, not inside them: review what a batch of local jobs produced, settle what it can, and requeue a failed or weak job with changed inputs, escalating only what it cannot settle." .
+kb:local-jobs-default kpred:principle "SLOW IS SMOOTH, SMOOTH IS FAST (Matt, 2026-10-27). 'There has been many instances of rework, catch up on maintenance tasks, missed space updates, etc. that makes the result slower overall, and the process messy.' Work done quickly without planning, without updating the spaces or without asking for input is paid for later in rework; a harness that plans in the graph, queues the long work locally, checks before pushing and asks on product shape is slower per step and faster per result. 'I don't see vibe coding as a worthy skill, unless we can actually build real projects far beyond a flashy demo built in a few hours.'" .
 kb:local-overseer-model rdf:type ktype:Feature ;
     rdfs:label "A very large local model as overseer for the local job agents" ;
     kpred:feature-id "F268" ;
