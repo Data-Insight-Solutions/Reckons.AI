@@ -1,0 +1,4 @@
+{"subject":"urn:example:a","predicate":"urn:example:p","object":"one","type":"observation"}
+{"subject":"urn:example:b","predicate":"urn:example:p","object":"two","type":"observation"}
+ect":"urn:example:c-tail-only","type":"suggestion","agent":"worker-2","priority":"low"}
+{"subject":"urn:example:d","predicate":"urn:example:p","object":"four","type":"observation"}
