@@ -28,7 +28,7 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
+import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, newJob, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
@@ -85,6 +85,9 @@ async function main(): Promise<void> {
   process.on('SIGTERM', bye);
   let lastState: WorkerState | undefined;
   let lastHeld = '';
+  // First-pass schedules enqueue ONCE per worker start (= session activation). Without this set they were
+  // re-added on every poll after each run finished, so a 2h schedule ran back to back.
+  const firstPassDone = new Set<string>();
 
   while (!stop) {
     const fresh = heartbeatFresh(readHeartbeatMtime(), Date.now(), idleMinutes);
@@ -98,6 +101,13 @@ async function main(): Promise<void> {
       heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
       const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
       if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }
+      // FIRST-PASS jobs: run immediately on first session activation regardless of interval.
+      const firstPassJobs = jobs.filter((j) => j.firstPass && !held.has(j.name) && !firstPassDone.has(j.name));
+      for (const j of firstPassJobs) firstPassDone.add(j.name);
+      const convertedFirst = firstPassJobs.map((j) => newJob(j.name, j.cwd, j.argv, 5, j.gpu));
+      const addedFirst = addJobs(convertedFirst).add;
+      if (addedFirst.length) console.log(`queue-worker: enqueued first-pass: ${addedFirst.map((a) => a.name).join(', ')}`);
+      // Then the usual overdue-due jobs (respecting intervals).
       const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
       if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
     }

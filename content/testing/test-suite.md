@@ -6,7 +6,7 @@ section: "Testing"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers."
+excerpt: "Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers."
 generated: "docs-kb"
 related:
   - "what-is-reckons-ai"
@@ -14,7 +14,7 @@ related:
 
 # Test Suite
 
-Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
+Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
 <p class="derived">It has 7 parts below.</p>
 
@@ -42,7 +42,7 @@ Attach a synthetic official-host WebGL example through node details.
 
 ### Unit Tests
 
-336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run.
+4,285 tests in 317 files via Vitest (counted 2026-10-27) with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run.
 
 #### Detail
 
@@ -56,7 +56,7 @@ vitest
 
 **Test Count**
 
-336
+4285
 
 **[Visual Regression Tests](../testing/visual-tests)**
 

@@ -37,7 +37,7 @@ import { Parser, type Quad } from 'n3';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { transactPendingQueue } from './pending-queue.js';
-import { assertOk, localOptions, retryTransient } from './lib/local-model.js';
+import { DEFAULT_REASONING_MODEL, assertOk, localOptions, retryTransient } from './lib/local-model.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const STATIC_DIR = join(ROOT, 'static');
@@ -50,7 +50,7 @@ const LIMIT = Number.parseInt(flag('limit') ?? '40', 10);
 const MIN_USES = Number.parseInt(flag('min-uses') ?? '1', 10);
 // qwen3:32b by default: the 2026-09-09 roster benchmark measured ZERO invented facts across 20
 // runs, and invention is the failure that matters most when the output becomes a trust boundary.
-const MODEL = flag('model') ?? 'qwen3:32b';
+const MODEL = flag('model') ?? DEFAULT_REASONING_MODEL;
 const OLLAMA = process.env.OLLAMA_BASE_URL ?? '';
 
 const KPRED = 'urn:kbase:predicate/';

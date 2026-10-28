@@ -32,7 +32,8 @@
  *   npx tsx scripts/offline/stars-scan.ts --limit 20       cap a run (default 25)
  *   npx tsx scripts/offline/stars-scan.ts --user <login>   default: the authenticated gh user
  */
-import { readFileSync, existsSync, writeFileSync, appendFileSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, readdirSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import { execFileSync } from 'child_process';
 import path from 'path';
 
@@ -163,7 +164,7 @@ function main(): void {
     return;
   }
   if (batch.length > 0) {
-    appendFileSync(PENDING, batch.map((s) => JSON.stringify(toPendingRow(s, 'competitive'))).join('\n') + '\n', 'utf8');
+    appendQueueText(PENDING, batch.map((s) => JSON.stringify(toPendingRow(s, 'competitive'))).join('\n') + '\n', 'utf8');
   }
 
   // ADVANCE THE WATERMARK ONLY OVER WHAT WAS ACTUALLY PROPOSED. Moving it to the newest star in
