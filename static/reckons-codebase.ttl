@@ -758,6 +758,7 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/vision-scoring.test.ts" ;
                   kpred:has-file "tests/visual/vision-local.ts" ;
                   kpred:has-file "tests/visual/vision-analyze.ts" ;
+                  kpred:has-file "scripts/offline/space-visual-gate.ts" ;
                   kpred:has-file "tests/visual/kb-seed.ts" ;
                   kpred:has-file "tests/visual/fixtures/golden-visual.ts" ;
                   kpred:has-file "tests/visual/stories.test.ts" ;

@@ -100,7 +100,7 @@ rev:gap-f33-2 rdf:type ktype:Concept ;
 
 rev:gap-f74-10 rdf:type ktype:Concept ;
     rdfs:label "F74.10 Stable local model calls — one batch size per device, and a retry when the model server restarts" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/local-model.test.ts, scripts/agent/__tests__/queue-standard-batch.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/local-model.test.ts, scripts/offline/__tests__/model-inventory.test.ts, scripts/agent/__tests__/queue-standard-batch.test.ts)." .
 
 rev:gap-currents-client-delivery-gap-resolved-in-the-app rdf:type ktype:Concept ;
     rdfs:label "Currents client delivery gap — resolved in the app" ;

@@ -360,6 +360,15 @@ job:layer-risk rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "true" ;
     kpred:job-blocking  "false" .
 
+job:model-inventory rdf:type          ktype:OfflineJob ;
+    rdfs:label          "model-inventory" ;
+    skos:prefLabel      "model-inventory" ;
+    skos:definition     "Every local model a script or schedule falls back to, checked against what Ollama has installed, so a removed model is reported at session start rather than by six jobs failing at their first call (2026-10-26: qwen3.6 and qwen3:32b removed, defaults left behind). Exit 2 when Ollama is not answering, which is unknown, not green. Zero tokens." ;
+    kpred:job-tier      "script" ;
+    kpred:command       "npx tsx scripts/offline/model-inventory.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:naming-conventions rdf:type          ktype:OfflineJob ;
     rdfs:label          "naming-conventions" ;
     skos:prefLabel      "naming-conventions" ;
@@ -549,6 +558,15 @@ job:space-size rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:space-visual-gate rdf:type          ktype:OfflineJob ;
+    rdfs:label          "space-visual-gate" ;
+    skos:prefLabel      "space-visual-gate" ;
+    skos:definition     "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:status-evidence rdf:type          ktype:OfflineJob ;
     rdfs:label          "status-evidence" ;
     skos:prefLabel      "status-evidence" ;
@@ -660,14 +678,14 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
+    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:space-visual-gate, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:jobs-graph, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 71 of them, 59 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 73 of them, 60 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
