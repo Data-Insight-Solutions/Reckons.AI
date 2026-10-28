@@ -197,17 +197,17 @@ sched:distill-decisions rdf:type ktype:Schedule ;
     kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/distill-decisions.ts --limit=20 --pending" ;
     kpred:tier      "agent" ;
     kpred:harness   "session-worker" ;
-    kpred:enabled   "true" ;
-    kpred:description "Agent tier: proposals only." .
+    kpred:enabled   "false" ;
+    kpred:description "Agent tier: proposals only. DISABLED 2026-10-28: jobs.json says its yield must be re-measured on a bigger sample before it runs unattended, and this schedule ran it unattended anyway (58 proposals open, held by back-pressure). Re-enable after a measured run by hand." .
 
 sched:layer-classify rdf:type ktype:Schedule ;
     rdfs:label      "Classify layers (local model)" ;
     kpred:every     "1w" ;
-    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/layer-classify.ts" ;
+    kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/layer-classify.ts --limit=40" ;
     kpred:tier      "agent" ;
     kpred:harness   "session-worker" ;
-    kpred:enabled   "true" ;
-    kpred:description "Agent tier: proposals only." .
+    kpred:enabled   "false" ;
+    kpred:description "Agent tier: proposals only. DISABLED 2026-10-28: jobs.json calls it a bulk one-off whose re-runs bury the queue, and a reviewed sample (2026-10-27) found its rationales do not match the approved layer definitions, so all 78 open proposals need a person. Ground the prompt in reckons-vocabulary.ttl's layers before running it again, by hand with --limit." .
 
 sched:extraction-score rdf:type ktype:Schedule ;
     rdfs:label      "Score extraction (local model)" ;
