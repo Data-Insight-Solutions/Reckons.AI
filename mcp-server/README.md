@@ -53,6 +53,9 @@ Reckons.AI reads and clears these on the next page load, adding the entries to t
 | `kb_local_summarize` | Summarize an entity subgraph or text via a local Ollama model (opt-in) |
 | `kb_generate_page` | Draft a documentation-page markdown proposal via a local Ollama model (opt-in) |
 | `kb_entity_markdown` | Deterministic (no LLM) rendering of one entity as markdown |
+| `kb_job_list` | List the defined local jobs (tier, purpose, last run, state) — check before running long work inline |
+| `kb_job_enqueue` | Queue one defined local job by name for the local worker (no arbitrary commands) |
+| `kb_job_status` | Status of a queued job: state, exit code, last 40 log lines, full log path |
 
 The local-Ollama tools (`kb_local_*`, `kb_generate_page`) are disabled unless `OLLAMA_BASE_URL`
 is set; when disabled they return enablement instructions instead of failing.

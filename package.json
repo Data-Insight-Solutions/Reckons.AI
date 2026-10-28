@@ -190,7 +190,6 @@
     "docs:edits": "npx tsx scripts/offline/docs-edits.ts",
     "docs:build": "npx tsx scripts/docs-build.ts",
     "release:burndown": "npx tsx scripts/offline/release-burndown.ts",
-    "jobs:graph": "npx tsx scripts/jobs-graph.ts",
     "landing:data": "npx tsx scripts/landing-data.ts",
     "docs:build:check": "npx tsx scripts/docs-build.ts --check",
     "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",

@@ -1,3 +1,61 @@
+## 2026-10-28 — NEXT SESSION: Opus oversees real dev work on the LOCAL AGENT HARNESS (Claude Code)
+
+Matt, 2026-10-27: "I want the local agent framework built out much better, to then work on taxonomy and other
+maintenance much more effectively without Opus needing to do catch up." Principle: slow is smooth, smooth is
+fast (kb:local-jobs-default). Opus decides and reviews; Sonnet overseers and local models do the work.
+
+**Open PRs, merge order:** #538 deps → #537 triple-check/review → #539 MCP job tools + jobs graph as source
+(F216 functional) + F267/F268/F269 plans. #537 and #539 both touch scripts/offline/run-all.ts (--blocking vs the
+graph reader): whichever merges second gets a small rebase (force-push to dev-based branches is pre-approved).
+
+**Large local overseer:** `gpt-oss:120b` (~65 GB, MoE) was pulled 2026-10-27 (log:
+~/.local/state/reckons/jobs/ollama-pull-gpt-oss-120b.log; check `ollama list`). Machine: 2x RTX 3090 48 GB VRAM,
+31 GB RAM. Not yet run or measured. Its role (Matt): BETWEEN batches — review a batch's output, clear issues,
+requeue with modified inputs, escalate only what it cannot settle.
+
+**Agenda, in order (each item: plan entity exists or is added first; Sonnet overseer builds; Opus reviews):**
+1. Smoke-test #539 live: `kb_job_enqueue` a script-tier job with `npm run agent:watch` running; confirm the worker
+   runs it and `kb_job_status` reports it. Add a parity test for the queue line format duplicated in
+   mcp-server/src/local-jobs.ts vs scripts/agent/session-queue.ts.
+2. F267 phase 2: a PreToolUse hook (repo .claude/settings.json, via PR) that stops foreground long commands
+   (full Playwright, extraction-score, github-stars --insights, run-all without --only/--blocking) and names the
+   job to enqueue. This is the enforcement ten memory notes never were.
+3. F268 bench: gpt-oss:120b vs a Sonnet overseer on the SAME batches from the review backlog (683 decisions);
+   measure agreement and wall time; then wire it as the between-batches step in queue-worker.
+4. Panel default model: qwen3.6 is uninstalled. Switch DEFAULT_PANEL (scripts/agent/local-panel.ts) and
+   scripts/agent/defaults/device-defaults.ttl to qwen3.8-160k: the deputy's benchmark found it slower but more
+   accurate than qwen3.6 (Matt, 2026-10-27). Confirm on the panel fixture with --labels (the gate the panel's
+   header asks for), because the graph also records qwen3.8:latest as unstable on 2026-09-08 deferred grounding
+   (median 47%, spread 37-79%). Score gpt-oss:120b on the same fixture while there.
+5. First real overseer job: the extraction benchmark (7 models incl. never-measured nuextract, lfm2.5,
+   command-r; output was in the 2026-10-27 session scratchpad and is lost if the machine restarted — rerun it
+   as a queued job), triaged by the local overseer, summarized by Sonnet.
+6. F265 codebase links derived from code (script tier); F269 device space (Matt to decide placement first;
+   start with a spec-measuring script); starred-repo job: compare against roadmap features, not keyword picks.
+7. F271: MCP sees the caller's worktree graphs and accepts prefixed names (Matt: fix both next session).
+8. About page: move 'Review 0.2.6' / 'Review 0.2.7' out of example data (Matt decided 2026-10-27; the
+   About card list lives in src/routes/(app)/about/+page.svelte on the #537 branch — do it after #537 merges).
+9. F272: open a local .ttl from a link (/?ttl=...), so agent hand-offs need no re-sync or cache reset.
+10. Model cleanup: the extraction bench restarted 2026-10-28 (the 10-27 run never started: its wait loop matched
+    its own pgrep) — results in ~/.local/state/reckons/bench/extraction-2026-10-28.txt, 8 models incl.
+    gpt-oss:120b and the garden notes. MATT DECIDED 2026-10-27: keep the TOP 2 extraction models (strict recall
+    over all six notes, fewest invented facts), remove the other four of mistral-small3.2, nuextract, lfm2.5,
+    command-r, phi4, gemma3 — report the numbers to him first. Already removed (his OK): moondream,
+    granite3.2-vision. Kept by category: qwen3.8-160k (general/panel), gpt-oss:120b (overseer, under test),
+    qwen2.5vl:7b (vision), devstral-small-2 + qwen3-coder (code), nomic-embed-text, llama3.2:3b.
+11. Then taxonomy and maintenance through the harness, not inline.
+
+**Decided 2026-10-27 (recorded in the roadmap):** device space appears in Spaces as 'This device' (F269);
+all seven starred-repo suggestions become roadmap work (F270); MCP gaps fixed next session (F271).
+
+**Review is not seamless yet — a finding, not a footnote.** The kb_review_links URLs did not work for Matt
+2026-10-27 (rows sit in the workspace queue; the app needs the folder linked and drained, and the agent filter
+may not match). He fell back to answering in chat. Fix the path from "an agent queued a proposal" to "Matt
+decides it in one click" before adding more producers.
+
+**Matt's review queue:** links per agent from `kb_review_links` (e.g. /review?tab=incoming&agent=...). The app
+must have the workspace folder linked and drained (↻ next to pending changes) to see workspace-queued rows.
+
 ## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
 
 **State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,

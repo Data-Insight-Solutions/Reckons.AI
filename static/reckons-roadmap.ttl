@@ -4123,7 +4123,7 @@ kb:release-review-spaces rdf:type ktype:Phase ;
     kpred:relates-to kb:release-0-2-6, kb:release-0-2-7 ;
     kpred:decided "MATT, 2026-10-14: 'We really do need a visual testing review graph, maybe make one for each version? So, we should make a 0.2.6 and 0.2.7, etc. release test graph with main workflows developed as visual tests in a space made for manual review.' Earlier the same day: the visual-review space lacks a proper timeline and story setup." ;
     kpred:description "For each release, a generated starter space (static/review-<version>.ttl) whose nodes are that release's headline workflows in story order (hnav), each with its TestWorkflow steps, the screenshot per step from npm run workflow:shots, the assertion it checks and a review verdict the person sets (pass, fail, note). Generated from the release's has-part features and the TestWorkflow entities, never hand-written, and opened from About like the other examples." ;
-    kpred:has-file "scripts/offline/release-review-space.ts", "static/review-0.2.6.ttl", "static/review-0.2.7.ttl", "src/lib/components/ReviewVerdict.svelte", "src/routes/(app)/about/+page.svelte", "scripts/offline/jobs.json" ;
+    kpred:has-file "scripts/offline/release-review-space.ts", "static/review-0.2.6.ttl", "static/review-0.2.7.ttl", "src/lib/components/ReviewVerdict.svelte", "src/routes/(app)/about/+page.svelte", "static/reckons-jobs.ttl" ;
     kpred:tested-by "scripts/__tests__/release-review-space.test.ts", "tests/e2e/release-review.test.ts" ;
     kpred:progress "2026-10-14, BUILT, STATUS planned -> scaffolded. scripts/offline/release-review-space.ts (script tier, no model) reads a release's has-part features (kpred:headline ones first) and joins each to a TestWorkflow when the workflow's kpred:test-file is among the feature's kpred:tested-by (its part-of descendants included). It writes static/review-<version>.ttl: the release as root, one hnav-ordered node per workflow, a node per step with the step text, its p:photo screenshot, what the test checks and a kmeta:review-verdict starting at unreviewed, and ONE node 'No visual test yet' listing every part with no workflow. --check fails a stale file (job release-review-space, blocking, same pattern as md-align). Both spaces open from About under example data as Review 0.2.6 and Review 0.2.7, no new tab. The verdict (pass, fail, clear, and a note) is written as kmeta:review-verdict and kmeta:review-note on the step by ReviewVerdict.svelte in the node panel; no existing review UI recorded a judgement of a screenshot (the Review tab settles proposed claims), so this is a small new surface inside the panel. 8 unit tests on a synthetic roadmap fixture; 2 e2e tests." ;
     kpred:measured "2026-10-14, generated from the roadmap as it stands: v0.2.6 has 1 workflow (the README path, 5 steps, via kb:test-workflow-docs) and 13 of 14 parts marked No visual test yet; v0.2.7 has 0 workflows and 12 of 12 parts marked No visual test yet. The 0.2.7 space is therefore, today, a list of its own gaps. That is the finding, not a defect of the generator." ;
@@ -8935,13 +8935,16 @@ kb:graph-intent-interview rdf:type ktype:Feature ;
 kb:jobs-graph-as-source rdf:type ktype:Feature ;
     rdfs:label "Flip the jobs config so the graph is the source, not the rendering" ;
     kpred:feature-id "F216" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "functional" ;
     kpred:priority "medium" ;
     kpred:description "Matt (2026-09-23), on being shown that reckons-jobs.ttl is generated: why JSON at all, why not direct TTL. There is no remaining good reason, and the repository already says so — static/reckons-jobs.ttl's own header records 'the graph is the config, and jobs.json was the exception nobody had converted', and its jobs-graph entity says the check keeps the two in step 'UNTIL THE GRAPH BECOMES THE SOURCE'. setup-reckons-workspace.sh puts it most plainly: jobs.json holds 'the same facts in a format nothing else in the system can query'." ;
     kpred:principle "IT IS THE DOCTRINE INVERTED IN ONE PLACE, WHICH IS WORSE THAN NOT HAVING THE DOCTRINE. AGENTS.md says the TTL graphs are the canonical plan and code follows them; here the graph is a RENDERING of a JSON file, so the one artifact an agent would consult over MCP is downstream of the one it cannot. Every other closed vocabulary in this project was brought into the graph (F155); this is the exception, and an exception nobody can explain reads as a rule nobody believes." ;
     kpred:remaining "Four consumers read jobs.json today and each would read the graph instead: scripts/offline/run-all.ts (the sweep runner), scripts/offline/dead-weight.ts (checks for artifacts whose producing job is disabled), scripts/jobs-graph.ts (the generator, which disappears), and scripts/setup-reckons-workspace.sh. N3 is already a dependency of the scripts that lint TTL, so nothing new is pulled in." ;
     kpred:open-question "The bash script is the only awkward consumer — parsing Turtle in shell is unpleasant where jq is trivial. The likely answer is that it stops parsing anything and calls a tsx helper for the one list it needs, which is a smaller change than it sounds and removes the last argument for keeping the JSON." ;
-    kpred:honest-note "NOT DONE (2026-09-23). jobs.json is still authored and static/reckons-jobs.ttl is still generated from it by scripts/jobs-graph.ts, with a --check mode wired into the sweep to catch drift between them. That check is the thing that would become unnecessary: two representations of one fact need a reconciler, and one does not. Recorded when repo-hygiene's registration required editing BOTH, which is the cost showing itself." ;
+    kpred:has-file "static/reckons-jobs.ttl", "scripts/lib/jobs-graph-read.ts" ;
+    kpred:tested-by "scripts/__tests__/jobs-graph-read.test.ts" ;
+    kpred:done "2026-10-27: static/reckons-jobs.ttl is the hand-authored source (hnav:order carries run order, kpred:job-queues the one back-pressure exemption). scripts/lib/jobs-graph-read.ts is the one reader, used by scripts/offline/run-all.ts, scripts/offline/dead-weight.ts, scripts/offline/script-inventory.ts and scripts/ci-graph.ts; mcp-server/src/local-jobs.ts reads the same file with its own N3 code because that package cannot import scripts/. scripts/offline/jobs.json, scripts/jobs-graph.ts, the jobs:graph npm script and the jobs-graph check job are deleted. Verified: run-all --list shows the same jobs before and after except the retired jobs-graph check, and all 70 remaining jobs match field for field (name, command, tier, enabled, blocking, queues, description). setup-reckons-workspace.sh never parsed the JSON (only a comment named it), so it needed no helper. Tests: scripts/__tests__/jobs-graph-read.test.ts." ;
+    kpred:honest-note "HISTORY, superseded by kpred:done above. Written 2026-09-23 when it was NOT DONE. jobs.json is still authored and static/reckons-jobs.ttl is still generated from it by scripts/jobs-graph.ts, with a --check mode wired into the sweep to catch drift between them. That check is the thing that would become unnecessary: two representations of one fact need a reconciler, and one does not. Recorded when repo-hygiene's registration required editing BOTH, which is the cost showing itself." ;
     kpred:relates-to kb:controlled-vocabularies, kb:minimal-ontology .
 
 # -- F217: Published-space directory — registry or host, and maybe neither ------
@@ -10478,3 +10481,101 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+## =============================================================================
+## F267: Local jobs are the default path (Matt, 2026-10-27)
+## =============================================================================
+## Agents kept running long jobs (e2e suites, benchmarks, research) inline on expensive cloud
+## models instead of handing them to the local job queue. Make the queue the easiest path.
+
+kb:local-jobs-default rdf:type ktype:Feature ;
+    rdfs:label "Local jobs are the default path — MCP tools to list, queue and check them, and a hook that routes long-running work there" ;
+    kpred:feature-id "F267" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:local-orchestration ;
+    kpred:decided "Matt, 2026-10-27: \"The lesson isn't learnt the last 10 times it was recorded. I think we need the local jobs to be a default, and through MCP and well documented. I want to be able to manually define a job in UI at some point.\"" ;
+    kpred:description "Three tools on the Reckons MCP server let any agent use the existing local job queue (scripts/agent/queue.ts, the worker, scripts/offline/jobs.json and the schedules file) without shell access to it: kb_job_list names every defined job, kb_job_enqueue queues one by name, kb_job_status reports queued, running, done or failed with a log tail. Enqueue accepts only names defined in jobs.json or the schedules file, never a command." ;
+    kpred:has-phase kb:local-jobs-mcp ;
+    kpred:has-phase kb:local-jobs-hook ;
+    kpred:has-phase kb:local-jobs-ui .
+
+kb:local-jobs-mcp rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — MCP tools kb_job_list, kb_job_enqueue, kb_job_status" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 1 ;
+    kpred:has-status "in-progress" ;
+    kpred:has-file "mcp-server/src/local-jobs.ts" ;
+    kpred:tested-by "mcp-server/src/__tests__/local-jobs.test.ts" ;
+    kpred:description "The tools read and write the same queue files the worker drains, under $XDG_STATE_HOME/reckons/jobs/. They work with no worker running: enqueue still records the job, and status then says it is queued with no worker and names npm run agent:watch." ;
+    kpred:remaining "The MCP server is a standalone package and cannot import scripts/agent, so local-jobs.ts re-implements the queue file format and the flock locking; a change to session-queue.ts must be mirrored there until the two share a package. Not yet exercised against a live worker draining a job it enqueued." .
+
+kb:local-jobs-hook rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — a PreToolUse hook that stops a foreground long-running command and names the MCP tool" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:remaining "NOT BUILT. A Claude Code PreToolUse hook on Bash that recognizes long-running commands (e2e suites, benchmarks, research jobs) and refuses the foreground run with a message naming kb_job_enqueue." .
+
+kb:local-jobs-ui rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — define a job in the app UI" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 3 ;
+    kpred:has-status "planned" ;
+    kpred:remaining "NOT BUILT. Matt wants to define a job by hand in the UI at some point; today jobs are edited in jobs.json or the schedules file." .
+
+## =============================================================================
+## F268: A very large local model as overseer (Matt, 2026-10-27)
+## =============================================================================
+
+kb:local-overseer-model kpred:decided "MATT, 2026-10-27: 'I do think a MoE model about 100B would be good to add to local. The idea would be between batches of jobs, the MoE model helps clear up issues, reviews and sets up the retry with modifications if necessary, etc.' So the first candidate class is a ~100B mixture-of-experts model that fits this machine's graphics memory plus RAM (about 79 GB), not the larger disk-streamed class. Its role is BETWEEN batches, not inside them: review what a batch of local jobs produced, settle what it can, and requeue a failed or weak job with changed inputs, escalating only what it cannot settle." .
+kb:local-jobs-default kpred:principle "SLOW IS SMOOTH, SMOOTH IS FAST (Matt, 2026-10-27). 'There has been many instances of rework, catch up on maintenance tasks, missed space updates, etc. that makes the result slower overall, and the process messy.' Work done quickly without planning, without updating the spaces or without asking for input is paid for later in rework; a harness that plans in the graph, queues the long work locally, checks before pushing and asks on product shape is slower per step and faster per result. 'I don't see vibe coding as a worthy skill, unless we can actually build real projects far beyond a flashy demo built in a few hours.'" .
+kb:device-space kpred:decided "MATT, 2026-10-27 (later): 'Maybe Reckons.AI default settings land in the new This Device space?' Proposed shape: the device's defaults (preferred backend, prefer-local, Ollama address, which local model does which task: ingest, analyze, chat, summaries, merges) are statements in the device space, measured choices beside the measured specs. Code defaults stay the last resort for a fresh install; .env only seeds a new device space instead of being where Matt's choices live; a space's own settings and the person's saved choices still win over the device. Same day, his .env was set to Ollama with qwen3.8-160k for chat/analyze/summaries/merges and mistral-small3.2 for ingest until the 2026-10-28 extraction bench names a winner." .
+kb:device-space rdf:type ktype:Feature ;
+    rdfs:label "A private space for each device — its measured specs, its local jobs and schedules, its limits" ;
+    kpred:feature-id "F269" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default, kb:agents-in-app, kb:local-overseer-model ;
+    kpred:decided "MATT, 2026-10-27: 'I think we should have a space dedicated to each device, and within that the local jobs, and other device specific details like its RAM or other specs.' Prompted by the MCP job tools not reading per-device schedules: they read the shared jobs graph and reckons-workspace/schedules.ttl, never the private ~/.config/reckons/device.ttl that device-config.ts merges in last." ;
+    kpred:description "Replace ~/.config/reckons/device.ttl with a private device space (a TTL file outside Git, mode 0600): the Device with specs MEASURED by a script and dated (RAM, GPUs and their memory, free disk, installed local models), the shared jobs it runs and how often, device-only jobs, and its limits (GPU temperature and memory gates, quiet hours). Shared job definitions stay in static/reckons-jobs.ttl. One reader serves the job runtime and the MCP job tools, so their lists include what the device adds." ;
+    kpred:constraint "PRIVATE BY CONSTRUCTION. reckons-workspace/kbs/ is tracked in Git and every pushed branch is public, so a device space never goes there; device inventories stay out of public material (AGENTS.md, F172.1). It is marked device-only: never shared, published or synced." ;
+    kpred:measured "2026-10-27: no device.ttl exists on the development machine, so no device-specific schedule is missing from the MCP list today; the gap is structural." ;
+    kpred:decided "MATT, 2026-10-27, PLACEMENT: the device space appears in Spaces as 'This device', marked device-only (never shared or published), and Settings links to it. This revises his 2026-10-07 decision (kb:agents-in-app) that device config is 'never in a space'. The browser can only open a file outside its storage through local host mode (F243) or a linked folder (desktop Chromium)." ;
+    kpred:remaining "Everything." .
+
+kb:starred-repo-learnings rdf:type ktype:Feature ;
+    rdfs:label "What to learn from the starred repositories (2026-10-27 review)" ;
+    kpred:feature-id "F270" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-overseer-model, kb:local-jobs-default ;
+    kpred:decided "MATT, 2026-10-27: all seven suggestions are worth roadmap work ('All good suggestions'). Each is read from the repository's description only so far; READMEs, code and licenses get checked before anything is borrowed, and a repository with no stated license is compared, never copied." ;
+    kpred:description "Graphicle-AI/graphicle (Apache-2.0): code links derived from code, for F265. project-minigraf/minigraf (Apache-2.0): record WHEN a replaced fact stopped being true, for space modifying (F183.3). monaccode/astromesh (Apache-2.0) and Niko1221/Strata (MIT): routing each role to a model and fan-out, for multi-asset job queueing and the local overseer (F268). obraia/colmap-wasm (BSD-3-Clause): splats from many real photos in the browser, for the example spaces (F263). feder-cr/git-ai (no license stated): commit provenance compared with the Model:/Intent: trailers (F254). NVIDIA/auto-ontology (Apache-2.0): typing the example spaces with current entity types (F263). Tencent/WeKnora (no license stated): documents into a self-maintaining wiki, compared with docs generated from graphs." ;
+    kpred:remaining "Reading each README and license; then a concrete experiment per repository, filed on the feature it serves." .
+
+kb:mcp-worktree-and-curie rdf:type ktype:Feature ;
+    rdfs:label "MCP sees the branch the agent is working on, and accepts prefixed names" ;
+    kpred:feature-id "F271" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:mcp-server ;
+    kpred:decided "MATT, 2026-10-27: fix both next session." ;
+    kpred:measured "2026-10-27: (1) the MCP workspace symlinks the MAIN checkout's static/*.ttl, so graphs edited on a worktree branch were invisible; kb_search found no Triple Check in the Features graph all day because it existed only on the feat/triple-check worktree. (2) kb_get_entity('kb:review-attention') returned Not found while 'review-attention' worked; agents copy prefixed names straight from TTL and AGENTS.md." ;
+    kpred:remaining "Let kb_* tools resolve the graphs of the caller's worktree (an argument or the session's cwd), and expand declared prefixes before an entity lookup; both with tests." .
+
+kb:open-ttl-from-link rdf:type ktype:Feature ;
+    rdfs:label "Open a local .ttl file from a Reckons link" ;
+    kpred:feature-id "F272" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default, kb:device-space ;
+    kpred:decided "MATT, 2026-10-27: 'I think a reckons link should support a local ttl file within query parameters. The workspace sync works well enough, but these ad-hoc links in a dev version needs regular cache reset, and cumbersome to re-sync repeatedly.'" ;
+    kpred:description "A link such as /?ttl=<path> opens that Turtle file as its own space (never merged into the current one), so an agent can hand Matt a link to exactly what it produced. On the dev server the file can be served through Vite's file-system route for paths under allowed folders; under local host mode (F243) the host serves it read-only; elsewhere only an https URL is possible. Reopening the same file refreshes that space rather than making a second, as example spaces already do." ;
+    kpred:constraint "A link must not be a way to import arbitrary content silently: the file opens as a separate space, says where it came from, and a path outside the allowed folders is refused, not guessed at." ;
+    kpred:remaining "Everything; it is also the likely fix for review links that need a cache reset and a re-sync (found 2026-10-27)." .
+
+kb:local-overseer-model rdf:type ktype:Feature ;
+    rdfs:label "A very large local model as overseer for the local job agents" ;
+    kpred:feature-id "F268" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default ;
+    kpred:decided "Matt, 2026-10-27: \"We should consider getting a very large model running locally, I'm seen some extreme cases of low ram usage at the cost of slow speed, but maybe a setup like that could be the Overseer for the local job agents, helping with complicated bits.\"" ;
+    kpred:description "Local job agents emit proposals that today an Opus or Sonnet session triages. A very large local model, run slowly through low-RAM techniques, could oversee those agents on the complicated parts without cloud tokens. Planned only: no model has been evaluated and nothing is wired." ;
+    kpred:measured "2026-10-27 this machine: 2x RTX 3090 (48 GB VRAM), 31 GB RAM, ~123 GB free disk." ;
+    kpred:remaining "Evaluate a ~100-120B-class MoE that fits VRAM plus RAM first, then a larger MoE streamed from NVMe; score both against the Sonnet overseer on the same batches of local-job output (accept/reject agreement, wall time). Candidates seen in Matt's GitHub stars, not yet evaluated: project-maya (runs 300-700B MoE on own GPUs) and Strata (qwen3.8 on consumer hardware)." .

@@ -206,8 +206,7 @@ graph:reckons-ci a void:Dataset ;
 graph:reckons-jobs a void:Dataset ;
     dcterms:title "Offline jobs" ;
     dcterms:type role:observed ;
-    dcterms:source "static/reckons-jobs.ttl" ;
-    prov:wasGeneratedBy <urn:reckons:script/scripts/jobs-graph.ts> .
+    dcterms:source "static/reckons-jobs.ttl" .
 
 graph:reckons-production a void:Dataset ;
     dcterms:title "Production status and test evidence" ;
