@@ -10529,6 +10529,18 @@ kb:local-jobs-ui rdf:type ktype:Phase ;
 
 kb:local-overseer-model kpred:decided "MATT, 2026-10-27: 'I do think a MoE model about 100B would be good to add to local. The idea would be between batches of jobs, the MoE model helps clear up issues, reviews and sets up the retry with modifications if necessary, etc.' So the first candidate class is a ~100B mixture-of-experts model that fits this machine's graphics memory plus RAM (about 79 GB), not the larger disk-streamed class. Its role is BETWEEN batches, not inside them: review what a batch of local jobs produced, settle what it can, and requeue a failed or weak job with changed inputs, escalating only what it cannot settle." .
 kb:local-jobs-default kpred:principle "SLOW IS SMOOTH, SMOOTH IS FAST (Matt, 2026-10-27). 'There has been many instances of rework, catch up on maintenance tasks, missed space updates, etc. that makes the result slower overall, and the process messy.' Work done quickly without planning, without updating the spaces or without asking for input is paid for later in rework; a harness that plans in the graph, queues the long work locally, checks before pushing and asks on product shape is slower per step and faster per result. 'I don't see vibe coding as a worthy skill, unless we can actually build real projects far beyond a flashy demo built in a few hours.'" .
+kb:device-space rdf:type ktype:Feature ;
+    rdfs:label "A private space for each device — its measured specs, its local jobs and schedules, its limits" ;
+    kpred:feature-id "F269" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default, kb:agents-in-app, kb:local-overseer-model ;
+    kpred:decided "MATT, 2026-10-27: 'I think we should have a space dedicated to each device, and within that the local jobs, and other device specific details like its RAM or other specs.' Prompted by the MCP job tools not reading per-device schedules: they read the shared jobs graph and reckons-workspace/schedules.ttl, never the private ~/.config/reckons/device.ttl that device-config.ts merges in last." ;
+    kpred:description "Replace ~/.config/reckons/device.ttl with a private device space (a TTL file outside Git, mode 0600): the Device with specs MEASURED by a script and dated (RAM, GPUs and their memory, free disk, installed local models), the shared jobs it runs and how often, device-only jobs, and its limits (GPU temperature and memory gates, quiet hours). Shared job definitions stay in static/reckons-jobs.ttl. One reader serves the job runtime and the MCP job tools, so their lists include what the device adds." ;
+    kpred:constraint "PRIVATE BY CONSTRUCTION. reckons-workspace/kbs/ is tracked in Git and every pushed branch is public, so a device space never goes there; device inventories stay out of public material (AGENTS.md, F172.1). It is marked device-only: never shared, published or synced." ;
+    kpred:measured "2026-10-27: no device.ttl exists on the development machine, so no device-specific schedule is missing from the MCP list today; the gap is structural." ;
+    kpred:open-question "PLACEMENT, MATT'S CALL. His 2026-10-07 decision (kb:agents-in-app) put device agent settings in Settings and said device config is 'never in a space'. Proposed: the device space appears in Spaces marked 'This device', and Settings links to it. The browser can only open a file outside its storage through local host mode (F243) or a linked folder (desktop Chromium)." ;
+    kpred:remaining "Everything." .
+
 kb:local-overseer-model rdf:type ktype:Feature ;
     rdfs:label "A very large local model as overseer for the local job agents" ;
     kpred:feature-id "F268" ;
