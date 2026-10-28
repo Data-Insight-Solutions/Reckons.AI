@@ -1,5 +1,5 @@
 import type { SettingsRecord } from '$lib/storage/db';
-import { isLoopbackUrl } from '../loopback';
+import { isPermittedLocalUrl } from '../loopback';
 export type WebPassage = { url: string; title: string; content: string };
 /** Where a search goes when nothing is set: a SearXNG instance on this machine. */
 export const DEFAULT_SEARXNG = 'http://localhost:8888';
@@ -9,7 +9,7 @@ export function searchConfigurationError(s: SettingsRecord): string | null {
   if (s.tripleCheckWebEnabled === false) return 'Web not checked: disabled for this space.';
   if (s.tripleCheckSearch && s.tripleCheckSearch !== 'searxng') return 'Web not checked: only a SearXNG instance on this machine is supported.';
   if (s.tripleCheckScrape && s.tripleCheckScrape !== 'snippets') return 'Web not checked: only search passages are supported.';
-  if (!isLoopbackUrl(s.searxngBaseUrl ?? DEFAULT_SEARXNG)) return 'Web not checked: the SearXNG address must be on this machine.';
+  if (!isPermittedLocalUrl(s.searxngBaseUrl ?? DEFAULT_SEARXNG, s.tripleCheckLanHosts)) return 'Web not checked: the SearXNG address must be on this machine, or a private-network address you have listed.';
   return null;
 }
 /** A SearXNG instance on this machine: a plain GET, no account, no key. It still queries public search

@@ -27,6 +27,8 @@ export type SettingsRecord = {
   /** Self-hosted SearXNG (F100.7), e.g. http://localhost:8888. No key; the instance must allow JSON output and this origin (CORS). */
   searxngBaseUrl?: string;
   tripleCheckScrape?: 'snippets';
+  /** Private-network hosts (literal RFC 1918 / fd00:: addresses, *.local) the user names as allowed for SearXNG and Ollama. Empty by default; loopback needs no entry. */
+  tripleCheckLanHosts?: string[];
   tripleCheckBackend?: 'ollama' | 'wasm' | 'chrome-ai';
   tripleCheckModel?: string;
   tripleCheckSpaceAnalysis?: boolean;
@@ -623,6 +625,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       tripleCheckSearch: m.tripleCheckSearch,
       searxngBaseUrl: m.searxngBaseUrl,
       tripleCheckScrape: m.tripleCheckScrape,
+      tripleCheckLanHosts: m.tripleCheckLanHosts,
       tripleCheckBackend: m.tripleCheckBackend,
       tripleCheckModel: m.tripleCheckModel,
       tripleCheckSpaceAnalysis: m.tripleCheckSpaceAnalysis,

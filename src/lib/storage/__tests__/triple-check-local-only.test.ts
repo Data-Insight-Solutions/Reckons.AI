@@ -87,6 +87,32 @@ describe('Triple Check is local and free: every request, with fetch stubbed', ()
     expect(calls.filter(c => !LOOPBACK.has(c.url.hostname))).toEqual([]);
     expect(refused ?? searchConfigurationError(withLocal(settings)) ?? tripleCheckProviderError(withLocal(settings))).not.toBeNull();
   });
+  describe('LAN addresses (Matt 2026-10-28: allow LAN, opt-in)', () => {
+    const lan = (extra: Partial<SettingsRecord>) => run({ tripleCheckEnabled: true, ...extra } as Partial<SettingsRecord>);
+    it('a named private address is allowed, for SearXNG and Ollama', async () => {
+      const { calls, refused } = await lan({ searxngBaseUrl: 'http://192.168.1.20:8888', ollamaBaseUrl: 'http://10.0.0.5:11434', tripleCheckLanHosts: ['192.168.1.20', '10.0.0.5'] });
+      expect(refused).toBeNull(); expect(calls.map(c => c.url.hostname)).toEqual(expect.arrayContaining(['192.168.1.20', '10.0.0.5']));
+    });
+    it('a .local name and a fd00:: literal are private when named', () => {
+      const s = (u: string, h: string) => searchConfigurationError(withLocal({ searxngBaseUrl: u, tripleCheckLanHosts: [h] }));
+      expect(s('http://box.local:8888', 'box.local')).toBeNull(); expect(s('http://[fd12::1]:8888', '[fd12::1]')).toBeNull();
+    });
+    it('an unnamed private address is refused', async () => {
+      const { calls, refused } = await lan({ searxngBaseUrl: 'http://192.168.1.20:8888' });
+      expect(refused).not.toBeNull(); expect(calls).toEqual([]);
+      expect(searchConfigurationError(withLocal({ searxngBaseUrl: 'http://172.20.0.1', tripleCheckLanHosts: ['172.20.0.2'] }))).not.toBeNull();
+    });
+    it('a public address is refused even when named', async () => {
+      for (const h of ['8.8.8.8', '172.32.0.1', '11.0.0.1', 'search.example.com', 'fc00.example.com']) {
+        const { calls, refused } = await lan({ searxngBaseUrl: `http://${h}`, tripleCheckLanHosts: [h] });
+        expect(refused, h).not.toBeNull(); expect(calls, h).toEqual([]);
+      }
+    });
+    it('a name is never trusted: only a literal private address or .local counts, since a name can resolve publicly', () => {
+      expect(tripleCheckProviderError(withLocal({ ollamaBaseUrl: 'http://gpu-box:11434', tripleCheckLanHosts: ['gpu-box'] }))).not.toBeNull();
+      expect(tripleCheckProviderError(withLocal({ ollamaBaseUrl: 'http://gpu-box.local:11434', tripleCheckLanHosts: ['gpu-box.local'] }))).toBeNull();
+    });
+  });
   it('a hosted analysis provider chosen elsewhere in the app is not inherited', async () => {
     const { calls, refused } = await run({ tripleCheckEnabled: true, analyzeBackend: 'claude', preferredBackend: 'claude', claudeApiKey: 'k' } as Partial<SettingsRecord>);
     expect(refused).toBeNull(); expect(calls.some(c => c.url.hostname.includes('anthropic'))).toBe(false);
