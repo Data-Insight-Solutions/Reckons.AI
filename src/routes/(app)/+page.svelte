@@ -467,6 +467,8 @@
     });
   });
 
+  /** Above this many things, slowness is offered the hubs filter as well as 2D. A suggestion, never a cap. */
+  const HUBS_SUGGEST_ENTITIES = 150;
   // Push a notification when 3D performance is poor
   $effect(() => {
     const shouldShow = shouldSuggest2D() && !use2D && webglAvailable;
@@ -485,8 +487,20 @@
           ondismiss: dismissPerfSuggestion,
           action: { label: 'Switch to 2D', onclick: () => { use2D = true; resetPerfMonitor(); dismissNotification('perf-3d'); updateSettings({ prefer2D: true }); } }
         });
+        // A big canvas is slow in either renderer, so offer the filter that draws less, not only the
+        // cheaper renderer. Hubs are the most connected things; the detail control brings the rest back.
+        if (!detail.hubsOnly && canvasProjection.entities.size > HUBS_SUGGEST_ENTITIES) {
+          pushNotification({
+            id: 'perf-hubs',
+            type: 'info',
+            title: `${canvasProjection.entities.size} things on the canvas`,
+            body: 'Show only the most connected ones? The detail control in view settings brings the rest back.',
+            action: { label: 'Show hubs only', onclick: () => { detailLevel = 'hubs'; resetPerfMonitor(); dismissNotification('perf-hubs'); } },
+          });
+        }
       } else {
         dismissNotification('perf-3d');
+        dismissNotification('perf-hubs');
       }
     });
   });
@@ -780,8 +794,11 @@
   // of `visible` is the mistake documented above: it empties the topology, and an empty
   // `visible` draws the marketing landing page over the user's own graph.
   const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === $page.url.searchParams.get('view')));
+  // NO GENERIC CAP (Matt, 2026-10-27: "a generic load limit is not effective"). A saved view narrows
+  // the canvas to what it names; otherwise everything the filters allow is drawn, and when that is
+  // slow the performance notice below offers the hubs filter, which the reader can see and undo.
   const canvasProjection = $derived(projectSpaceView(visible, {
-    view: activeSpaceView, limit: settings().canvasEntityLimit ?? 80,
+    view: activeSpaceView, limit: 0,
     focus: selected?.startsWith('i:') ? selected.slice(2) : undefined,
   }));
   const graphView = $derived(
@@ -2480,17 +2497,18 @@
   <div class="vs-header mono">view settings</div>
 {/snippet}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
-  <div class="focused-view-controls">
-    <label>Space view<select aria-label="Space view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
-      <option value="">Explore this space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
-    </select></label>
-    <label>Entities on canvas<select aria-label="Entities on canvas" value={settings().canvasEntityLimit ?? 80} onchange={e => updateSettings({ canvasEntityLimit: Number(e.currentTarget.value) })}>
-      <option value={25}>Up to 25</option><option value={80}>Up to 80</option><option value={200}>Up to 200</option><option value={0}>All in this view</option>
-    </select></label>
-    <!-- Counts named things only: a value such as "10 kWh" is drawn as a node but is not one of them. -->
-    <p data-testid="space-view-count">Showing {canvasProjection.entities.size} of {canvasProjection.candidateEntities} things{#if canvasProjection.hiddenStatements > 0}; {canvasProjection.hiddenStatements} statements are hidden from the canvas and still in this space{/if}.</p>
-    <a href="/compare/repositories">Compare repositories and save views →</a>
-  </div>
+  <!-- Saved views only: with none saved, a picker with one choice explained nothing (Matt, 2026-10-27). -->
+  {#if (settings().researchViews ?? []).length > 0}
+    <div class="focused-view-controls">
+      <label>Saved view<select aria-label="Saved view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
+        <option value="">Whole space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
+      </select></label>
+      {#if activeSpaceView}
+        <!-- Counts named things only: a value such as "10 kWh" is drawn as a node but is not one of them. -->
+        <p data-testid="space-view-count">Showing {canvasProjection.entities.size} of {canvasProjection.candidateEntities} things{#if canvasProjection.hiddenStatements > 0}; {canvasProjection.hiddenStatements} statements are hidden from the canvas and still in this space{/if}.</p>
+      {/if}
+    </div>
+  {/if}
 
 <div class="overlay-inner">
 

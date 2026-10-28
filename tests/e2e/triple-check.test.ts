@@ -49,7 +49,7 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('heading', { name: 'Repository comparison views' })).toBeVisible();
     await page.evaluate(async () => {
       const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); const { updateSettings } = await runtimeImport('/src/lib/stores/settings.svelte.ts'); const { loadAll } = await runtimeImport('/src/lib/stores/kb.svelte.ts');
-      await db.statements.clear(); await db.sources.clear(); await updateSettings({ tripleCheckEnabled: false, prefer2D: true, canvasEntityLimit: 25 });
+      await db.statements.clear(); await db.sources.clear(); await updateSettings({ tripleCheckEnabled: false, prefer2D: true });
       const rows = [];
       for (let i = 0; i < 100; i++) for (const [p, o] of [['reported-star-count', String(i)], ['reported-license', 'MIT'], ['keywords', 'https://github.com/topics/rdf']]) rows.push({ id: `${i}-${p}`, s: { kind: 'iri', value: i === 0 ? 'https://github.com/Data-Insight-Solutions/Reckons.AI' : `https://github.com/example/repo-${i}` }, p: { kind: 'iri', value: p === 'keywords' ? 'https://schema.org/keywords' : `urn:kbase:predicate/${p}` }, o: { kind: p === 'keywords' ? 'iri' : 'literal', value: o }, g: { kind: 'iri', value: 'urn:source' }, sourceId: 'synthetic', status: 'confirmed', confidence: 1, createdAt: 1, updatedAt: 1 });
       await db.statements.bulkPut(rows); await db.sources.put({ id: 'synthetic', title: 'Synthetic metadata', uri: 'https://example.test/fixture', kind: 'repository', ingestedAt: 1 }); await loadAll();
@@ -60,9 +60,9 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('status').filter({ hasText: 'View saved' })).toBeVisible(); await page.screenshot({ path: testInfo.outputPath('repository-comparison.png'), fullPage: true });
     await page.getByRole('link', { name: 'Open focused canvas' }).click();
     if (width === 390) await openViewSettings(page);
-    await expect(page.getByLabel('Space view')).toHaveValue(/.+/); await expect(page.getByTestId('space-view-count')).toContainText('6 of 6');
+    await expect(page.getByLabel('Saved view')).toHaveValue(/.+/); await expect(page.getByTestId('space-view-count')).toContainText('6 of 6');
     await page.reload(); if (width === 390) await openViewSettings(page);
-    await expect(page.getByLabel('Space view')).toHaveValue(/.+/);
+    await expect(page.getByLabel('Saved view')).toHaveValue(/.+/);
     const count = await page.evaluate(async () => { const runtimeImport = (p: string) => import(/* @vite-ignore */ p); return (await runtimeImport('/src/lib/storage/db.ts')).db.statements.count(); }); expect(count).toBe(300);
   });
 }

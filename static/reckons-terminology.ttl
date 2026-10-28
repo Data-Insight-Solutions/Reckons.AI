@@ -546,7 +546,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     kpred:term-ratchet "graph/prose/3293" ;
     kpred:term-ratchet "statement/prose/1016" ;
     kpred:term-ratchet "source/prose/1521" ;
-    kpred:term-ratchet "space/prose/629" ;
+    kpred:term-ratchet "space/prose/631" ;
     kpred:term-ratchet "node/prose/1258" ;
     kpred:term-ratchet "export/prose/252" ;
     kpred:term-ratchet "share/prose/143" ;
@@ -582,6 +582,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # 2026-10-27). Its settings page tripped the "triple" jargon rule on every heading.
 <urn:kbase:vocabulary/terminology> kpred:ui-proper-name "Triple Check" .
 
+<urn:kbase:vocabulary/terminology> kpred:measured "2026-10-27 (latest) space 629 to 631: the repositories page now tells a reader how to get a starred-repositories space ('The space you are in has no GitHub repositories') and the saved-view picker offers 'Whole space'. Both are the decided user word, on screen. A 'graph' in the same copy that meant the canvas was reworded instead." .
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-27 (later) TRIMMED, THEN RAISED BY THE REMAINDER, F261 one-click story offers. The pre-push check (npm run check:blocking) caught 20 new bare uses before the push; the comments were reworded (space 10 to 4, statement 1 to 0, graph 4 to 3). What remains is the offer buttons' own labels ('Turn on Triple Check for this space', 'Use the 2D graph') and the page address /review?group=source, which the prose scanner counts: source 1517 to 1521, graph 3290 to 3293, set 718 to 719, space 625 to 629." .
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-27 RAISED WITHOUT THE TRIM PASS, PR #537 (Triple Check, review by source, the build-and-change workflow). These features are ABOUT statements, sources and spaces: the Triple Check settings page and walkthrough copy, the checker that turns findings into statements from a new source, Review's group-by-source, and the generated docs pages for both. Raised by the measured residual: statement 962 to 1016, source 1461 to 1517, space 549 to 625, graph 3279 to 3290, node 1254 to 1258, set 716 to 718, share 142 to 143. NOT DONE, said out loud: the trim-then-bump rule (Matt 2026-10-13) asks for a trim pass first, and none was made; term-usage.ts has no per-file prose breakdown to aim one, which is the first thing a trim would need." .
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-22 RAISED BY THE RESIDUAL, v0.2.6 RELEASE NOTES (trim-then-bump, Matt 2026-10-13). content/releases/v0-2-6.md is prose for a first-time reader about a release whose subject is sources, spaces and the graph view, so those are the user words it has to use. Trimmed first ('Set its orientation' to 'Choose', 'One graph says' to 'It says'); the remainder raised exactly: graph 3260 to 3268, source 1429 to 1439, space 475 to 498, node 1234 to 1240, export 245 to 247. No other file changed a count." .

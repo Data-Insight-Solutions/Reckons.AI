@@ -31,9 +31,15 @@
 <svelte:head><title>Repository comparisons — Reckons.AI</title></svelte:head>
 <main>
   <a href="/">← Space</a><h1>Repository comparison views</h1>
-  <p>Compare a small selection using source observations and cited hypotheses. Save the relationships that matter as a focused space view.</p>
+  <p>Pick a few GitHub repositories from the space you are in and compare them side by side: what GitHub reports about each (stars, license, last push), how much their topics and languages overlap, and any reviewed comparisons. You can save the selection as a view that narrows the canvas to just those repositories.</p>
   {#if !loaded()}<p role="status">Loading this space…</p>{:else if !profiles.length}
-    <p>This space has no sourced GitHub repository entities yet. Import your starred-repository space or add repository statements first.</p>
+    <p>The space you are in has no GitHub repositories in it. To compare your starred repositories:</p>
+    <ol>
+      <li>Build the starred-repositories file: <code>npx tsx scripts/research/github-stars.ts --refresh</code>. It is written outside the repository, to <code>~/.local/state/reckons/research/github-stars/github-stars.ttl</code>, because your stars are yours.</li>
+      <li>On <a href="/kb">Spaces</a>, create a new space and switch to it.</li>
+      <li>On <a href="/ingest">Add</a>, import that file as a Turtle file, then come back here.</li>
+    </ol>
+    <p>With about 20,000 statements it is also a good test of how a large space behaves.</p>
     <a href="/ingest">Add a source →</a>
   {:else}
     <div class="controls">
