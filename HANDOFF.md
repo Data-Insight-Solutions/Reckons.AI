@@ -22,8 +22,11 @@ requeue with modified inputs, escalate only what it cannot settle.
    job to enqueue. This is the enforcement ten memory notes never were.
 3. F268 bench: gpt-oss:120b vs a Sonnet overseer on the SAME batches from the review backlog (683 decisions);
    measure agreement and wall time; then wire it as the between-batches step in queue-worker.
-4. Panel default model: qwen3.6 is uninstalled; re-score qwen3.8-160k (and gpt-oss:120b) on the panel fixture
-   with --labels, then update DEFAULT_PANEL and scripts/agent/defaults/device-defaults.ttl.
+4. Panel default model: qwen3.6 is uninstalled. Switch DEFAULT_PANEL (scripts/agent/local-panel.ts) and
+   scripts/agent/defaults/device-defaults.ttl to qwen3.8-160k: the deputy's benchmark found it slower but more
+   accurate than qwen3.6 (Matt, 2026-10-27). Confirm on the panel fixture with --labels (the gate the panel's
+   header asks for), because the graph also records qwen3.8:latest as unstable on 2026-09-08 deferred grounding
+   (median 47%, spread 37-79%). Score gpt-oss:120b on the same fixture while there.
 5. First real overseer job: the extraction benchmark (7 models incl. never-measured nuextract, lfm2.5,
    command-r; output was in the 2026-10-27 session scratchpad and is lost if the machine restarted — rerun it
    as a queued job), triaged by the local overseer, summarized by Sonnet.
