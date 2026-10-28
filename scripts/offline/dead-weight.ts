@@ -9,7 +9,7 @@
  * orphaned or superseded?" rather than "why is this folder big?".
  *
  * The 200MB kbs/button-crawl directory is the worked example: an artifact produced by a
- * job that is DISABLED in jobs.json. The bytes are the symptom; the disabled producer is
+ * job that is DISABLED in reckons-jobs.ttl. The bytes are the symptom; the disabled producer is
  * the finding.
  *
  * SCRIPT TIER (F74.3): deterministic, zero tokens, zero hallucination, zero triage cost
@@ -33,6 +33,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import { loadGraphQuads, ownerOfFile } from './lib/graph-grounding.js';
 import { readTextOr } from '../lib/read-file.js';
+import { readJobs } from '../lib/jobs-graph-read.js';
 
 const KPRED = 'urn:kbase:predicate/';
 const KB = 'urn:kbase:concept/';
@@ -75,7 +76,7 @@ const name = (iri: string) => label.get(iri) ?? short(iri);
 {
   type Job = { name: string; enabled?: boolean; cmd?: string };
   let jobs: Job[] = [];
-  try { jobs = JSON.parse(readFileSync('scripts/offline/jobs.json', 'utf8')).jobs ?? []; } catch { /* no jobs file */ }
+  try { jobs = readJobs(); } catch { /* no jobs file */ }
 
   const dirSize = (dir: string): number => {
     let total = 0;

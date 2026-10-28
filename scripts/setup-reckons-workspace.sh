@@ -48,8 +48,8 @@ ln -sf ../../../static/reckons-standards.ttl   "$KBS/standards/standards.ttl"
 # permits rather than guessing from a model name.
 ln -sf ../../../static/reckons-generation-tools.ttl "$KBS/generation/generation.ttl"
 # The offline jobs, as entities (F87: a task is a triple). Linked so an agent can ask what runs,
-# at which tier, and whether it is enabled — instead of reading scripts/offline/jobs.json, which is
-# the same facts in a format nothing else in the system can query.
+# at which tier, and whether it is enabled — and edit them there: static/reckons-jobs.ttl is the only
+# place jobs are defined (F216).
 mkdir -p "$KBS/jobs"
 ln -sf ../../../static/reckons-jobs.ttl "$KBS/jobs/jobs.ttl"
 # CI as a graph (F33.2): every check, whether a ruleset makes it able to stop a merge, and the

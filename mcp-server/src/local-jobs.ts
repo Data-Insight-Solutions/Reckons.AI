@@ -6,7 +6,9 @@
  *
  * This is NOT a second queue. It reads and writes the files scripts/agent/session-queue.ts owns
  * (queue.jsonl, queue.done.jsonl, worker.json under $XDG_STATE_HOME/reckons/jobs/), and the job
- * definitions in scripts/offline/jobs.json and reckons-workspace/schedules.ttl.
+ * definitions in static/reckons-jobs.ttl (the source, F216) and reckons-workspace/schedules.ttl.
+ * The jobs graph is read here with N3 because this package cannot import scripts/lib/jobs-graph-read.ts;
+ * copying the file in at setup would add a step that can go stale, a second small reader cannot.
  *
  * ENQUEUE IS AN ALLOWLIST. Only a name defined in those two files can be queued, and the command
  * run is the one defined there. An agent can never pass a command string through this tool.
@@ -27,7 +29,7 @@ import { Parser } from 'n3';
 export const START_HINT = 'npm run agent:watch';
 
 export type JobCtx = {
-  /** Main checkout root (holds scripts/offline/jobs.json and reckons-workspace/). */
+  /** Main checkout root (holds static/reckons-jobs.ttl and reckons-workspace/). */
   root: string;
   /** $XDG_STATE_HOME/reckons */
   stateHome: string;
@@ -35,7 +37,7 @@ export type JobCtx = {
   workerAlive?: (pid: number) => boolean;
 };
 
-export type JobDef = { name: string; source: 'jobs.json' | 'schedule'; tier: string; desc: string; cmd: string };
+export type JobDef = { name: string; source: 'jobs graph' | 'schedule'; tier: string; desc: string; cmd: string };
 
 export function defaultCtx(): JobCtx {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -62,16 +64,28 @@ const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').
 
 const KPRED = 'urn:kbase:predicate/';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
+const HNAV_ORDER = 'urn:reckons:nav/order';
+const OFFLINE_JOB = 'urn:kbase:type/OfflineJob';
 
-/** Every runnable job: enabled entries of jobs.json, then enabled schedules (named sched:<id>). */
+/** Every runnable job: enabled entries of the jobs graph, then enabled schedules (named sched:<id>). */
 export function loadJobDefs(c: JobCtx): JobDef[] {
   const defs: JobDef[] = [];
   try {
-    const j = JSON.parse(readFileSync(path.join(c.root, 'scripts', 'offline', 'jobs.json'), 'utf8')) as { jobs?: { name?: string; tier?: string; enabled?: boolean; cmd?: string; desc?: string }[] };
-    for (const e of j.jobs ?? []) {
-      if (typeof e.name === 'string' && typeof e.cmd === 'string' && e.enabled !== false) defs.push({ name: e.name, source: 'jobs.json', tier: e.tier ?? 'agent', desc: e.desc ?? '', cmd: e.cmd });
+    const jobs = new Map<string, Record<string, string>>();
+    for (const q of new Parser().parse(readFileSync(path.join(c.root, 'static', 'reckons-jobs.ttl'), 'utf8'))) {
+      const p = q.predicate.value;
+      const key = p === RDF_TYPE ? 'type' : p === RDFS_LABEL ? 'label' : p === SKOS_DEFINITION ? 'desc' : p === HNAV_ORDER ? 'order' : p.startsWith(KPRED) ? p.slice(KPRED.length) : '';
+      if (!key) continue;
+      const o = jobs.get(q.subject.value) ?? {};
+      o[key] = q.object.value;
+      jobs.set(q.subject.value, o);
     }
-  } catch { /* no jobs.json: nothing from it */ }
+    const rows = [...jobs.values()].filter((o) => o.type === OFFLINE_JOB && o.label && o.command && o['job-enabled'] !== 'false');
+    rows.sort((x, y) => Number(x.order ?? 1e6) - Number(y.order ?? 1e6));
+    for (const o of rows) defs.push({ name: o.label, source: 'jobs graph', tier: o['job-tier'] ?? 'agent', desc: o.desc ?? '', cmd: o.command });
+  } catch { /* no jobs graph: nothing from it */ }
   try {
     const by = new Map<string, Record<string, string>>();
     for (const q of new Parser().parse(readFileSync(path.join(c.root, 'reckons-workspace', 'schedules.ttl'), 'utf8'))) {
@@ -175,7 +189,7 @@ export function jobEnqueue(c: JobCtx, args: { name?: string; args?: string[] }):
   const def = typeof args.name === 'string' ? loadJobDefs(c).find((d) => d.name === args.name) : undefined;
   if (!def) {
     const names = loadJobDefs(c).map((d) => d.name);
-    return { ok: false, text: `Unknown job ${JSON.stringify(args.name)}. Only jobs defined in scripts/offline/jobs.json or the schedules file can be queued, never a command. Defined: ${names.join(', ') || '(none found)'}` };
+    return { ok: false, text: `Unknown job ${JSON.stringify(args.name)}. Only jobs defined in static/reckons-jobs.ttl or the schedules file can be queued, never a command. Defined: ${names.join(', ') || '(none found)'}` };
   }
   const extra = args.args ?? [];
   if (!Array.isArray(extra) || extra.some((a) => typeof a !== 'string' || a.includes('\0'))) return { ok: false, text: 'args must be an array of strings' };

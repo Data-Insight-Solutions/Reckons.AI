@@ -6,7 +6,7 @@
  * say which were live. This is the SCRIPT TIER of F74.8 (kb:script-consolidation): it measures the
  * sprawl; deciding what to merge or delete stays a human call, so findings are PROPOSALS only.
  *
- * "Referenced" means named by a package.json script, a scripts/offline/jobs.json cmd, or a
+ * "Referenced" means named by a package.json script, a static/reckons-jobs.ttl command, or a
  * .github/workflows file (CI-only scripts are not dead), directly or through a referenced file's
  * relative imports (one level). Weakness: a script run by hand from a doc, or via a dynamic path,
  * looks unreferenced here; treat "unreferenced" as "ask", not "delete".
@@ -18,6 +18,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queueFindings, type Finding } from './pending-queue.js';
 import { pendingQueuePath } from './lib/main-workspace.js';
+import { readJobs } from '../lib/jobs-graph-read.js';
 
 const SCRIPT_EXT = /\.(ts|mjs|js|sh)$/;
 
@@ -130,7 +131,7 @@ function main() {
   const pending = process.argv.includes('--pending');
   const infos: ScriptInfo[] = walk('scripts').sort().map((file) => ({ file, source: readFileSync(file, 'utf8') }));
   const pkgScripts: Record<string, string> = JSON.parse(readFileSync('package.json', 'utf8')).scripts ?? {};
-  const jobs: { name: string; cmd: string }[] = JSON.parse(readFileSync('scripts/offline/jobs.json', 'utf8')).jobs ?? [];
+  const jobs: { name: string; cmd: string }[] = readJobs();
   const wfDir = '.github/workflows';
   const workflows = existsSync(wfDir) ? readdirSync(wfDir).map((f) => readFileSync(path.join(wfDir, f), 'utf8')) : [];
 
@@ -143,7 +144,7 @@ function main() {
     }
   };
   for (const [k, v] of Object.entries(pkgScripts)) addRefs(v, `package.json:${k}`, true);
-  for (const j of jobs) addRefs(j.cmd, `jobs.json:${j.name}`, true);
+  for (const j of jobs) addRefs(j.cmd, `reckons-jobs.ttl:${j.name}`, true);
   for (const w of workflows) addRefs(w, 'workflow', false);
 
   const unreferenced = findUnreferenced(infos, roots);

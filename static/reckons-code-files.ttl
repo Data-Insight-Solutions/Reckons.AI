@@ -677,11 +677,6 @@
     rdfs:label "firefox-manifest.ts" ;
     kpred:path "scripts/extension/firefox-manifest.ts" .
 
-<urn:reckons:file/scripts/jobs-graph.ts> rdf:type ktype:SourceFile ;
-    rdfs:label "jobs-graph.ts" ;
-    kpred:path "scripts/jobs-graph.ts" ;
-    dcterms:requires pkg:node .
-
 <urn:reckons:file/scripts/kb-align.ts> rdf:type ktype:SourceFile ;
     rdfs:label "kb-align.ts" ;
     kpred:path "scripts/kb-align.ts" ;

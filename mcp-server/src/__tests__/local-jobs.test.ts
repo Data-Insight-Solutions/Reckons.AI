@@ -11,13 +11,16 @@ const jobsDir = () => path.join(ctx.stateHome, 'jobs');
 beforeEach(() => {
   dir = mkdtempSync(path.join(os.tmpdir(), 'local-jobs-'));
   const root = path.join(dir, 'repo');
-  mkdirSync(path.join(root, 'scripts', 'offline'), { recursive: true });
+  mkdirSync(path.join(root, 'static'), { recursive: true });
   mkdirSync(path.join(root, 'reckons-workspace'), { recursive: true });
-  writeFileSync(path.join(root, 'scripts', 'offline', 'jobs.json'), JSON.stringify({ jobs: [
-    { name: 'alpha', tier: 'script', enabled: true, cmd: 'echo alpha', desc: 'Says alpha.' },
-    { name: 'beta', tier: 'agent', enabled: true, cmd: 'echo beta', desc: 'Says beta.' },
-    { name: 'off', tier: 'script', enabled: false, cmd: 'echo off', desc: 'Disabled.' },
-  ] }));
+  const job = (n: string, tier: string, en: string, order: number, desc: string) => `job:${n} a ktype:OfflineJob ; rdfs:label "${n}" ; skos:definition "${desc}" ; kpred:job-tier "${tier}" ; kpred:command "echo ${n}" ; kpred:job-enabled "${en}" ; hnav:order ${order} .\n`;
+  writeFileSync(path.join(root, 'static', 'reckons-jobs.ttl'), `@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix hnav: <urn:reckons:nav/> .
+@prefix job: <urn:reckons:job/> .
+${job('beta', 'agent', 'true', 2, 'Says beta.')}${job('alpha', 'script', 'true', 1, 'Says alpha.')}${job('off', 'script', 'false', 3, 'Disabled.')}`);
   writeFileSync(path.join(root, 'reckons-workspace', 'schedules.ttl'), `@prefix kpred: <urn:kbase:predicate/> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 <urn:reckons:schedule/nightly> rdfs:label "Nightly" ; kpred:command "echo nightly" ; kpred:tier "script" ; kpred:enabled "true" .
@@ -27,10 +30,10 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 describe('kb_job_list', () => {
-  it('lists jobs.json and schedules, skipping disabled ones', () => {
+  it('lists the jobs graph in hnav:order, then schedules, skipping disabled ones', () => {
     expect(loadJobDefs(ctx).map((d) => d.name)).toEqual(['alpha', 'beta', 'sched:nightly']);
     const text = jobList(ctx);
-    expect(text).toContain('alpha [script, jobs.json] idle');
+    expect(text).toContain('alpha [script, jobs graph] idle');
     expect(text).toContain('sched:nightly [script, schedule]');
     expect(text).not.toContain('off [');
     expect(text).toContain('no worker running');
