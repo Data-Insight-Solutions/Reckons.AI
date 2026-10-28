@@ -7,15 +7,29 @@
 # checkout's — 2026-10-20 and again 2026-10-28, both times from an agent brief that said "npm ci".
 # Matt, 2026-10-28: keep the symlinks, add a guard.
 #
+# Only npm in COMMAND position counts, and heredoc bodies are skipped: the first version blocked a
+# heredoc that merely mentioned "npm ci" in prose (2026-10-28) — a gate that cries wolf gets
+# switched off.
+#
 # Reads the hook JSON on stdin; exit 2 blocks the call and shows stderr to the agent.
 input="$(cat)"
 cmd="$(jq -r '.tool_input.command // empty' <<<"$input")"
 cwd="$(jq -r '.cwd // empty' <<<"$input")"
-grep -qE '(^|[;&|[:space:]])npm([[:space:]]+--?[a-z-]+(=|[[:space:]]+)[^[:space:]]+)*[[:space:]]+(ci|install|i|clean-install)([[:space:]]|$)' <<<"$cmd" || exit 0
+
+# Drop heredoc bodies: from a line containing <<WORD / <<'WORD' / <<"WORD" / <<-WORD up to WORD.
+code="$(awk '
+  skip { if ($0 ~ "^[[:space:]]*" term "[[:space:]]*$") skip = 0; next }
+  { print }
+  match($0, /<<-?[[:space:]]*["'\'']?[A-Za-z_][A-Za-z0-9_]*/) {
+    t = substr($0, RSTART, RLENGTH); sub(/<<-?[[:space:]]*["'\'']?/, "", t); term = t; skip = 1
+  }' <<<"$cmd")"
+
+# npm at the start of a line or after ; & | ( , then optional flags, then ci|install|i|clean-install.
+grep -qE '(^|[;&|(])[[:space:]]*npm([[:space:]]+--?[a-z-]+(=|[[:space:]]+)[^[:space:]]+)*[[:space:]]+(ci|install|i|clean-install)([[:space:]]|$)' <<<"$code" || exit 0
 
 dirs=("$cwd")
-while read -r d; do [ -n "$d" ] && dirs+=("$d"); done < <(grep -oE '(^|[;&|[:space:]])cd[[:space:]]+[^;&|[:space:]]+' <<<"$cmd" | awk '{print $NF}')
-while read -r d; do [ -n "$d" ] && dirs+=("$d"); done < <(grep -oE -- '--prefix(=|[[:space:]]+)[^;&|[:space:]]+' <<<"$cmd" | sed -E 's/--prefix(=|[[:space:]]+)//')
+while read -r d; do [ -n "$d" ] && dirs+=("$d"); done < <(grep -oE '(^|[;&|(])[[:space:]]*cd[[:space:]]+[^;&|[:space:]]+' <<<"$code" | awk '{print $NF}')
+while read -r d; do [ -n "$d" ] && dirs+=("$d"); done < <(grep -oE -- '--prefix(=|[[:space:]]+)[^;&|[:space:]]+' <<<"$code" | sed -E 's/--prefix(=|[[:space:]]+)//')
 
 for d in "${dirs[@]}"; do
   [ -z "$d" ] && continue
