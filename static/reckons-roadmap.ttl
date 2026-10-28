@@ -10478,3 +10478,58 @@ kb:prompt-generated-room rdf:type ktype:Phase ;
 kb:work-tiering kpred:measured "2026-10-21, LOCAL VLM ON 'IS THE ROOM VISIBLE BEHIND THE GRAPH' (fix/room-splat-loading, #515): qwen2.5vl:7b answered yes, a scanned room is visible, and it was WRONG. The background was not loaded: about 4% of sampled pixels were not background, and a small node splat fooled the model. The DOM state (data-splats), the console 404 and a pixel count gave the right answer. With the 2026-10-13 result (0 of 3 on 'is anything blocking'), the vision model's yes/no on presence is not evidence on its own. Use it for descriptions and checklists behind a DOM or pixel check, never as the check." .
 
 kb:graph-depth-ladder kpred:decided "MATT, 2026-10-21: 'The URN node is annoying, should be hidden by default. We need to have URN at all I think, thats space metadata level, then detailed is user content within the space.' Asked which node and whether logs move: the space's OWN node (urn:reckons:kb, urn:reckons:space), and logs stay at all. So the all rung now adds the space's own node, and every lower rung leaves it off the canvas; its facts stay in the node panel and are counted as hidden (buildGraphView spaceMetadata, isSpaceMetadata)." .
+
+## =============================================================================
+## F267: Local jobs are the default path (Matt, 2026-10-27)
+## =============================================================================
+## Agents kept running long jobs (e2e suites, benchmarks, research) inline on expensive cloud
+## models instead of handing them to the local job queue. Make the queue the easiest path.
+
+kb:local-jobs-default rdf:type ktype:Feature ;
+    rdfs:label "Local jobs are the default path — MCP tools to list, queue and check them, and a hook that routes long-running work there" ;
+    kpred:feature-id "F267" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:local-orchestration ;
+    kpred:decided "Matt, 2026-10-27: \"The lesson isn't learnt the last 10 times it was recorded. I think we need the local jobs to be a default, and through MCP and well documented. I want to be able to manually define a job in UI at some point.\"" ;
+    kpred:description "Three tools on the Reckons MCP server let any agent use the existing local job queue (scripts/agent/queue.ts, the worker, scripts/offline/jobs.json and the schedules graph) without shell access to it: kb_job_list names every defined job, kb_job_enqueue queues one by name, kb_job_status reports queued, running, done or failed with a log tail. Enqueue accepts only names defined in jobs.json or the schedules graph, never a command." ;
+    kpred:has-phase kb:local-jobs-mcp ;
+    kpred:has-phase kb:local-jobs-hook ;
+    kpred:has-phase kb:local-jobs-ui .
+
+kb:local-jobs-mcp rdf:type ktype:Phase ;
+    rdfs:label "Phase 1 — MCP tools kb_job_list, kb_job_enqueue, kb_job_status" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 1 ;
+    kpred:has-status "in-progress" ;
+    kpred:has-file "mcp-server/src/local-jobs.ts" ;
+    kpred:tested-by "mcp-server/src/__tests__/local-jobs.test.ts" ;
+    kpred:description "The tools read and write the same queue files the worker drains, under $XDG_STATE_HOME/reckons/jobs/. They work with no worker running: enqueue still records the job, and status then says it is queued with no worker and names npm run agent:watch." ;
+    kpred:remaining "The MCP server is a standalone package and cannot import scripts/agent, so local-jobs.ts re-implements the queue file format and the flock locking; a change to session-queue.ts must be mirrored there until the two share a package. Not yet exercised against a live worker draining a job it enqueued." .
+
+kb:local-jobs-hook rdf:type ktype:Phase ;
+    rdfs:label "Phase 2 — a PreToolUse hook that stops a foreground long-running command and names the MCP tool" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 2 ;
+    kpred:has-status "planned" ;
+    kpred:remaining "NOT BUILT. A Claude Code PreToolUse hook on Bash that recognizes long-running commands (e2e suites, benchmarks, research jobs) and refuses the foreground run with a message naming kb_job_enqueue." .
+
+kb:local-jobs-ui rdf:type ktype:Phase ;
+    rdfs:label "Phase 3 — define a job in the app UI" ;
+    kpred:part-of kb:local-jobs-default ;
+    hnav:order 3 ;
+    kpred:has-status "planned" ;
+    kpred:remaining "NOT BUILT. Matt wants to define a job by hand in the UI at some point; today jobs are edited in jobs.json or the schedules graph." .
+
+## =============================================================================
+## F268: A very large local model as overseer (Matt, 2026-10-27)
+## =============================================================================
+
+kb:local-overseer-model rdf:type ktype:Feature ;
+    rdfs:label "A very large local model as overseer for the local job agents" ;
+    kpred:feature-id "F268" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default ;
+    kpred:decided "Matt, 2026-10-27: \"We should consider getting a very large model running locally, I'm seen some extreme cases of low ram usage at the cost of slow speed, but maybe a setup like that could be the Overseer for the local job agents, helping with complicated bits.\"" ;
+    kpred:description "Local job agents emit proposals that today an Opus or Sonnet session triages. A very large local model, run slowly through low-RAM techniques, could oversee those agents on the complicated parts without cloud tokens. Planned only: no model has been evaluated and nothing is wired." ;
+    kpred:measured "2026-10-27 this machine: 2x RTX 3090 (48 GB VRAM), 31 GB RAM, ~123 GB free disk." ;
+    kpred:remaining "Evaluate a ~100-120B-class MoE that fits VRAM plus RAM first, then a larger MoE streamed from NVMe; score both against the Sonnet overseer on the same batches of local-job output (accept/reject agreement, wall time). Candidates seen in Matt's GitHub stars, not yet evaluated: project-maya (runs 300-700B MoE on own GPUs) and Strata (qwen3.8 on consumer hardware)." .

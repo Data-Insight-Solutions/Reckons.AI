@@ -1,5 +1,5 @@
 {
-  "built": 187,
+  "built": 188,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -458,7 +458,7 @@
       "factHash": "55f776935b6b145b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "099ce2ad46ed77fc"
+      "pageHash": "374530bcd83f7984"
     },
     {
       "path": "features/agent-setup",
@@ -578,13 +578,22 @@
       "pageHash": "aa50368ba2889612"
     },
     {
+      "path": "features/local-jobs-mcp",
+      "entity": "urn:reckons:feature/LocalJobsMCP",
+      "graph": "docs-features.ttl",
+      "factHash": "6535ea6cfa69ab3a",
+      "factCount": 1,
+      "floor": "evidence",
+      "pageHash": "c289cec5902a9812"
+    },
+    {
       "path": "features/mcp-workspace",
       "entity": "urn:reckons:feature/MCPWorkspace",
       "graph": "docs-features.ttl",
       "factHash": "b0d43d673c1331e6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "12f26b260cc5b4b7"
+      "pageHash": "386b4bca6199f4c2"
     },
     {
       "path": "features/multi-kb",
@@ -593,7 +602,7 @@
       "factHash": "c9cf93810fcba2ca",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "bab24f409c3728f4"
+      "pageHash": "bb38013c4735c702"
     },
     {
       "path": "features/node-sources",
@@ -602,7 +611,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "dab6f0fb3488cbbf"
+      "pageHash": "421800fcd6536213"
     },
     {
       "path": "features/open-in-source",
@@ -611,7 +620,7 @@
       "factHash": "52683461601a8e0f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "6064b2f30ea7ddfa"
+      "pageHash": "11ade6a912a7febb"
     },
     {
       "path": "features/passage-grounding",
@@ -620,7 +629,7 @@
       "factHash": "d505068e4efd1090",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "6cb48ca1693fd080"
+      "pageHash": "9333d43d8a246a40"
     },
     {
       "path": "features/physical-scene-simulator",
@@ -629,7 +638,7 @@
       "factHash": "81cf4041f76dca8e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "0011e4a60a0d9dba"
+      "pageHash": "594b043abaa05a43"
     },
     {
       "path": "features/pod-view",
@@ -638,7 +647,7 @@
       "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "77f3231795eaa928"
+      "pageHash": "b8121a57424763df"
     },
     {
       "path": "features/prefer-local",
@@ -647,7 +656,7 @@
       "factHash": "cd3c8fce000a8bae",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "9bc2cb5e2b53ab37"
+      "pageHash": "1e3a6000a1ab610c"
     },
     {
       "path": "features/proposals",
@@ -656,7 +665,7 @@
       "factHash": "f5d268d7ae20bcb4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "402c6183f11b4aed"
+      "pageHash": "525072f963a01d96"
     },
     {
       "path": "features/published-docs",
@@ -665,7 +674,7 @@
       "factHash": "59ce634b4e121abf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1d902327961d812e"
+      "pageHash": "2cc303dd02215abb"
     },
     {
       "path": "features/reckoning-simulator",
@@ -674,7 +683,7 @@
       "factHash": "590d782e12de88d8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "df07c2feecad4fa9"
+      "pageHash": "53d11c397766a626"
     },
     {
       "path": "features/review-system",
@@ -683,7 +692,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "3d4c8f2f32b7de8a"
+      "pageHash": "66b0dbcabddd328a"
     },
     {
       "path": "features/review-workbench",
@@ -692,7 +701,7 @@
       "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b5e5a94b00a90ef6"
+      "pageHash": "ba21d3592402fb3e"
     },
     {
       "path": "features/room-scan",
@@ -701,7 +710,7 @@
       "factHash": "33d530c7b9161261",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "69102344289abf6e"
+      "pageHash": "18f898063343358f"
     },
     {
       "path": "features/shelly",
@@ -710,7 +719,7 @@
       "factHash": "9ce7701798b1640b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "4ff8835f420a2476"
+      "pageHash": "82e60fd3be79c171"
     },
     {
       "path": "features/source-refresh",
@@ -719,7 +728,7 @@
       "factHash": "7c2f9667eaeaf25a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "effbb181ae65e3c2"
+      "pageHash": "b7049966536c9610"
     },
     {
       "path": "features/space-background",
@@ -764,7 +773,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "a89885eecfa94cca"
+      "pageHash": "117f5189b0999927"
     },
     {
       "path": "features/text-chunking",
@@ -773,7 +782,7 @@
       "factHash": "cbb1c67122d6a9f6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "12e4f720d73f0ffc"
+      "pageHash": "b92f5519b4f61f2b"
     },
     {
       "path": "features/threejs-examples",
@@ -782,7 +791,7 @@
       "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "acf59ec1dcbccd24"
+      "pageHash": "ae6578bedecc7036"
     },
     {
       "path": "features/ttl-export",
@@ -791,7 +800,7 @@
       "factHash": "6c90aecf25a1fd5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "d539e81275d93140"
+      "pageHash": "f904fbe615f262c8"
     },
     {
       "path": "features/your-room",
@@ -800,7 +809,7 @@
       "factHash": "6c58358b0db864a8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "852cb980994da19f"
+      "pageHash": "cf1dd2d15cfa36b9"
     },
     {
       "path": "guide/getting-started",
@@ -869,10 +878,10 @@
       "path": "integrations-tech/mcp-server",
       "entity": "urn:reckons:integration/MCPServer",
       "graph": "docs-integrations-tech.ttl",
-      "factHash": "72ac30d4ad86b720",
+      "factHash": "c27a4486c99cb057",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "eb751f7f75339394"
+      "pageHash": "4aff01a6bc1fe506"
     },
     {
       "path": "integrations-tech/n8n-cloud-sync",
