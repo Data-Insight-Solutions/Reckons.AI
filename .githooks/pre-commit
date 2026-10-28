@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# F273 phase A: refuse a commit that stages a stale or hand-edited generated file (or its inputs
+# without regenerating). Runs each fast generator's own --check; slow ones are left to CI.
+ROOT="${RECKONS_ROOT:-$(git rev-parse --show-toplevel)}"
+exec npx --no-install tsx "$ROOT/scripts/githooks/pre-commit-generated.ts"
