@@ -10559,6 +10559,16 @@ kb:mcp-worktree-and-curie rdf:type ktype:Feature ;
     kpred:measured "2026-10-27: (1) the MCP workspace symlinks the MAIN checkout's static/*.ttl, so graphs edited on a worktree branch were invisible; kb_search found no Triple Check in the Features graph all day because it existed only on the feat/triple-check worktree. (2) kb_get_entity('kb:review-attention') returned Not found while 'review-attention' worked; agents copy prefixed names straight from TTL and AGENTS.md." ;
     kpred:remaining "Let kb_* tools resolve the graphs of the caller's worktree (an argument or the session's cwd), and expand declared prefixes before an entity lookup; both with tests." .
 
+kb:open-ttl-from-link rdf:type ktype:Feature ;
+    rdfs:label "Open a local .ttl file from a Reckons link" ;
+    kpred:feature-id "F272" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:local-jobs-default, kb:device-space ;
+    kpred:decided "MATT, 2026-10-27: 'I think a reckons link should support a local ttl file within query parameters. The workspace sync works well enough, but these ad-hoc links in a dev version needs regular cache reset, and cumbersome to re-sync repeatedly.'" ;
+    kpred:description "A link such as /?ttl=<path> opens that Turtle file as its own space (never merged into the current one), so an agent can hand Matt a link to exactly what it produced. On the dev server the file can be served through Vite's file-system route for paths under allowed folders; under local host mode (F243) the host serves it read-only; elsewhere only an https URL is possible. Reopening the same file refreshes that space rather than making a second, as example spaces already do." ;
+    kpred:constraint "A link must not be a way to import arbitrary content silently: the file opens as a separate space, says where it came from, and a path outside the allowed folders is refused, not guessed at." ;
+    kpred:remaining "Everything; it is also the likely fix for review links that need a cache reset and a re-sync (found 2026-10-27)." .
+
 kb:local-overseer-model rdf:type ktype:Feature ;
     rdfs:label "A very large local model as overseer for the local job agents" ;
     kpred:feature-id "F268" ;

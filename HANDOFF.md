@@ -35,7 +35,11 @@ requeue with modified inputs, escalate only what it cannot settle.
 7. F271: MCP sees the caller's worktree graphs and accepts prefixed names (Matt: fix both next session).
 8. About page: move 'Review 0.2.6' / 'Review 0.2.7' out of example data (Matt decided 2026-10-27; the
    About card list lives in src/routes/(app)/about/+page.svelte on the #537 branch — do it after #537 merges).
-9. Then taxonomy and maintenance through the harness, not inline.
+9. F272: open a local .ttl from a link (/?ttl=...), so agent hand-offs need no re-sync or cache reset.
+10. Model cleanup: the extraction bench restarted 2026-10-28 (the 10-27 run never started: its wait loop matched
+    its own pgrep) — results in ~/.local/state/reckons/bench/extraction-2026-10-28.txt, 8 models incl.
+    gpt-oss:120b and the garden notes. Keep the best per category, remove the rest WITH Matt's confirmation.
+11. Then taxonomy and maintenance through the harness, not inline.
 
 **Decided 2026-10-27 (recorded in the roadmap):** device space appears in Spaces as 'This device' (F269);
 all seven starred-repo suggestions become roadmap work (F270); MCP gaps fixed next session (F271).
