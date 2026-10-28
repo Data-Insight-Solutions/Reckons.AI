@@ -441,4 +441,14 @@ describe("the container's own record is drawn only at 'all' (Matt, 2026-10-21)",
     expect([...hidden.hidden.statementIds].sort()).toEqual([facts[1].id, facts[2].id].sort());
     expect(buildGraphView(facts, { spaceMetadata: true }).hidden.statementIds.size).toBe(0);
   });
+  it('treats a guided story as configuration, drawn only at all (Matt, 2026-10-27)', () => {
+    const S = 'urn:reckons:story/';
+    const facts = [
+      st('battery', 'warranty', 'ten-years'),
+      { ...st('x', 'y', 'z'), s: iri(`${S}tour/step-1`), p: iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), o: iri(`${S}Step`) },
+      { ...st('x', 'y', 'z'), s: iri(`${S}tour/step-1`), p: iri(`${S}highlight`), o: iri(`${KB}battery`) },
+    ];
+    expect(buildGraphView(facts).edges.map((e) => e.p.value)).toEqual([`${KB.replace('concept', 'predicate')}warranty`]);
+    expect(buildGraphView(facts, { spaceMetadata: true }).edges).toHaveLength(3);
+  });
 });

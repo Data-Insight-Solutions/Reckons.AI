@@ -40,6 +40,7 @@
   import { termKey, iriFromNodeKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { newAliasValues, primaryLabelAfterMerge, buildAliasStatements } from '$lib/rdf/merge-aliases';
   import { computeDiff } from '$lib/rdf/diff';
+  import { isSpaceMetadata } from '$lib/rdf/graph-view';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
   import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
@@ -740,6 +741,9 @@
     return [...confirmed, ...pending].filter(s => {
       if (isMetaPredicate(s.p.value)) return false;
       if (GRAPH_EXCLUDED_PREDICATES.has(s.p.value)) return false;
+      // Configuration (the container's own record, a story's steps) only at the `all` detail level,
+      // as on the main canvas.
+      if (reviewDetail !== 'all' && isSpaceMetadata(s)) return false;
       return true;
     });
   });

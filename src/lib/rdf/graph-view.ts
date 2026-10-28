@@ -75,9 +75,21 @@ export interface GraphViewOptions {
 /** The IRIs a container uses for itself. Facts about them describe the container, not its content. */
 export const SPACE_SELF_IRIS: ReadonlySet<string> = new Set(['urn:reckons:kb', 'urn:reckons:space']);
 
-/** A fact whose subject or object is the container itself. */
+const STORY_NS = 'urn:reckons:story/';
+const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
+
+/**
+ * Configuration rather than content: the container's own record, and a guided story's structure
+ * (its steps, their order, text and highlights).
+ *
+ * Story structure joined on 2026-10-27, Matt: hidden "unless user selects all, instead of default
+ * detailed". The walkthrough drew "step-1" … "step-12" beside the battery it was about, and five
+ * bundled examples did the same. The story player reads the triples directly; nobody needs them
+ * drawn to follow a story.
+ */
 export function isSpaceMetadata(st: Statement): boolean {
-  return SPACE_SELF_IRIS.has(st.s.value) || (st.o.kind === 'iri' && SPACE_SELF_IRIS.has(st.o.value));
+  if (SPACE_SELF_IRIS.has(st.s.value) || (st.o.kind === 'iri' && SPACE_SELF_IRIS.has(st.o.value))) return true;
+  return st.p.value.startsWith(STORY_NS) || (st.p.value === RDF_TYPE && st.o.kind === 'iri' && st.o.value.startsWith(STORY_NS));
 }
 
 /** What an altitude floor took off the canvas. Never let something be invisibly hidden. */
