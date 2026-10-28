@@ -23,7 +23,7 @@
 {:else if kind === 'reconnect'}
   <section class="rll-card" aria-live="polite">
     <p class="rll-why">
-      This link points at proposals waiting in your workspace folder{filter ? ` (${filter})` : ''}. The
+      This link points at proposals waiting in your workspace folder{filter ? `, filtered to ${filter}` : ''}. The
       browser asks for permission once per session, and that cannot happen without a click.
     </p>
     <button class="rll-primary" type="button" disabled={busy} onclick={onreconnect}>
