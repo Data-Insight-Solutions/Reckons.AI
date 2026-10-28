@@ -30,8 +30,13 @@ each quoted verbatim under kpred:decided on the entities named below.
 **Still open:**
 - #537 (Codex, `feat/triple-check`) with #544 on top of it: Triple Check runs on-device only. Search
   is a GET to SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal
-  address (decided on kb:triple-check). Not run live against SearXNG/Ollama yet, and feat/triple-check
-  had 2 graph-lint errors of its own. Review #544, then #537.
+  address (decided on kb:triple-check). Not run live against SearXNG/Ollama yet.
+  **#544 reviewed (later, 2026-10-28):** two commits added (IPv6 allowlist entries match without
+  brackets; one term-ratchet "source" removed), review comment on the PR. Auto mode refused the merge
+  ("merge without review"), so **Matt merges #544 into feat/triple-check** — the next action.
+  **dev merged into feat/triple-check** (223139a6): clears #537's Dependencies failure (undici/fast-uri);
+  conflicts resolved toward dev's F273 hook; on the merge 4,405 unit tests, svelte-check 0, blocking
+  9/9, graph-lint 0 errors. #537 itself (4.3k lines) is not yet reviewed; wait for its CI first.
 - About 40 old agent worktrees under .claude/worktrees/, most with a symlinked node_modules. Matt
   decides what to prune; the npm guard keeps them from emptying the main checkout.
 
