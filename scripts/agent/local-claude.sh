@@ -58,6 +58,17 @@ done
 case "$MODEL" in *:*) BASE="$MODEL" ;; *) BASE="$MODEL:latest" ;; esac
 ALIAS="${BASE%%:*}-$((CTX / 1024))k"
 
+# Compaction threshold = max(100k, 3/4 of the window): Claude Code will not compact below 100k, and 3/4
+# leaves room for the reply. When 3/4 is under 100k we compact at 100k, which must still leave >= 24k of
+# headroom or Ollama truncates first, so we refuse. This lets gpt-oss:120b (native maximum 131072) run at
+# its trained length instead of being refused under the old 136k floor.
+COMPACT=$((CTX * 3 / 4)); [ "$COMPACT" -lt 100000 ] && COMPACT=100000
+if [ $((CTX - COMPACT)) -lt 24576 ]; then
+  echo "local-claude: --ctx=$CTX is too small: Claude Code compacts no earlier than 100k tokens, leaving under 24k of headroom, so Ollama would truncate first. Use --ctx=124928 or more." >&2
+  exit 1
+fi
+if [ "${RECKONS_DEPUTY_PRINT_WINDOW:-}" = 1 ]; then echo "$COMPACT"; exit 0; fi
+
 if ! curl -sf -m 3 "$OLLAMA/api/version" >/dev/null; then
   echo "local-claude: Ollama is not answering at $OLLAMA — start it (systemctl start ollama); not falling back to a cloud model." >&2
   exit 1
@@ -127,11 +138,7 @@ export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 # Claude Code does not know the alias, assumes a 200k window and would compact past the point where
 # Ollama truncates. Compact at 3/4 of the real window, leaving room for the reply. Claude Code will not
 # compact below 100k (it said so for 98,304 at the old 128k default), so a smaller window is refused.
-export CLAUDE_CODE_AUTO_COMPACT_WINDOW=$((CTX * 3 / 4))
-if [ "$CLAUDE_CODE_AUTO_COMPACT_WINDOW" -lt 100000 ]; then
-  echo "local-claude: --ctx=$CTX is too small: Claude Code compacts no earlier than 100k tokens, so Ollama would truncate first. Use --ctx=139264 or more." >&2
-  exit 1
-fi
+export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$COMPACT"
 export GH_CONFIG_DIR="$CFG/gh-none" GIT_TERMINAL_PROMPT=0 DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent
 export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= GIT_CONFIG_KEY_1=credential.https://github.com.helper GIT_CONFIG_VALUE_1=
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN
