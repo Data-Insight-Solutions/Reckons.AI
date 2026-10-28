@@ -12,6 +12,7 @@
  *   npm run offline:all                    run all enabled jobs (script tier first)
  *   npm run offline:all -- --tier=script   only the free, deterministic jobs (no Ollama)
  *   npm run offline:all -- --only=a,b      run only these (even if disabled)
+ *   npm run offline:all -- --blocking      only the jobs that can fail CI: the pre-push check (npm run check:blocking)
  *   npm run offline:all -- --list          list jobs without running
  *   npm run offline:all -- --ci            exit non-zero if a job marked "blocking" failed
  *   npm run offline:all -- --gpu-wait-min=20   how long an agent job waits for a hot/full/busy GPU
@@ -50,6 +51,8 @@ interface Job {
 const argv = process.argv.slice(2);
 const only = argv.find((a) => a.startsWith('--only='))?.split('=')[1]?.split(',');
 const tier = argv.find((a) => a.startsWith('--tier='))?.split('=')[1] as Tier | undefined;
+// The blocking set, read from jobs.json, so a job newly marked blocking is in the local check too.
+const blockingOnly = argv.includes('--blocking');
 const LIST = argv.includes('--list');
 const CI = argv.includes('--ci');
 const GPU_GATE = !argv.includes('--no-gpu-gate');
@@ -92,7 +95,8 @@ if (LIST) {
 
 const selected = jobs
   .filter((j) => (only ? only.includes(j.name) : j.enabled ?? true))
-  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true));
+  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true))
+  .filter((j) => (blockingOnly ? j.blocking === true : true));
 if (selected.length === 0) {
   console.log('No jobs selected. Edit scripts/offline/jobs.json (set "enabled": true) or pass --only=<name>.');
   process.exit(0);

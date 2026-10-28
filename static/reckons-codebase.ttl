@@ -1052,3 +1052,6 @@ code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
 code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts" .
 code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
     kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
+# Hand-held walkthroughs (F261).
+code:rdf kpred:has-file "src/lib/rdf/story-offers.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts" .

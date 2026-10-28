@@ -58,3 +58,12 @@ describe('afterCutoff', () => {
     expect(afterCutoff([c('nodate')], '2026-10-09T12:00:00Z').map((k) => k.sha)).toEqual(['nodate']);
   });
 });
+
+describe('a trailer written outside the last paragraph', () => {
+  it('is reported as hidden, not missing', () => {
+    const body = 'subject\n\nWhy.\n\nModel: claude-opus-5-5\nIntent: x\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n';
+    const commit: CommitInfo = { sha: 'abc1234', subject: 'subject', parents: 1, trailers: [['Co-Authored-By', 'Claude <noreply@anthropic.com>']], body };
+    expect(checkCommits([commit])).toEqual([{ sha: 'abc1234', subject: 'subject', missing: ['Model', 'Intent'], hidden: true }]);
+    expect(checkCommits([{ ...commit, body: 'subject\n\nCo-Authored-By: Claude\n' }])[0].hidden).toBeUndefined();
+  });
+});

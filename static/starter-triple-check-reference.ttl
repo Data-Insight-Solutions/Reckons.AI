@@ -1,4 +1,4 @@
-# generated 2026-10-27T22:28:50.466Z
+# generated 2026-10-28T00:15:40.661Z
 # 4 statements — full annotated export
 
 @prefix kb: <urn:kbase:concept/> .

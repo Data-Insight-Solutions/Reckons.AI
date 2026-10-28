@@ -1,5 +1,5 @@
-# generated 2026-10-27T22:28:50.462Z
-# 81 statements — full annotated export
+# generated 2026-10-28T00:15:40.653Z
+# 85 statements — full annotated export
 
 @prefix kb: <urn:kbase:concept/> .
 @prefix src: <urn:kbase:source/> .
@@ -54,7 +54,9 @@
     <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
     <urn:reckons:story/order> "3"^^xsd:integer ;
     <urn:reckons:story/title> "Turn on Triple Check" ;
-    <urn:reckons:story/content> "Open Settings, then Triple Check, and tick \"Keep Triple Check on for this space\". Untick \"Check the internet\" for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key." .
+    <urn:reckons:story/content> "Press the two buttons below: one turns Triple Check on for this space, the other keeps it off the internet for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key. The same choices are in Settings, under Triple Check." ;
+    <urn:reckons:story/offerSetting> "tripleCheckEnabled=true" ;
+    <urn:reckons:story/offerSetting> "tripleCheckWebEnabled=false" .
 
 <urn:example:tour/triple-check/step-4>
     rdf:type <urn:reckons:story/Step> ;
@@ -68,8 +70,9 @@
     <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
     <urn:reckons:story/order> "5"^^xsd:integer ;
     <urn:reckons:story/title> "What it found is in Review" ;
-    <urn:reckons:story/content> "Open Review and group by source. A new source appears: \"Harbor 10 owners' forum (another space)\". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you." ;
-    <urn:reckons:story/highlight> <urn:example:battery/harbor-10> .
+    <urn:reckons:story/content> "Open Review, grouped by source, with the button below. A new source appears: \"Harbor 10 owners' forum (another space)\". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you." ;
+    <urn:reckons:story/highlight> <urn:example:battery/harbor-10> ;
+    <urn:reckons:story/openPage> "/review?group=source" .
 
 <urn:example:tour/triple-check/step-6>
     rdf:type <urn:reckons:story/Step> ;
@@ -112,7 +115,8 @@
     <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
     <urn:reckons:story/order> "11"^^xsd:integer ;
     <urn:reckons:story/title> "Accept a whole source at once" ;
-    <urn:reckons:story/content> "In Review, each source has an accept button that states how many statements it will accept. Statements that disagree with something are held back and listed first, so they get a decision of their own. Here that accepts the efficiency and holds the capacity, the warranty and the inverter for you." .
+    <urn:reckons:story/content> "In Review, each source has an accept button that states how many statements it will accept. Statements that disagree with something are held back and listed first, so they get a decision of their own. Here that accepts the efficiency and holds the capacity, the warranty and the inverter for you." ;
+    <urn:reckons:story/openPage> "/review?group=source" .
 
 <urn:example:tour/triple-check/step-12>
     rdf:type <urn:reckons:story/Step> ;
@@ -535,7 +539,7 @@ src:guide
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-3> ;
     rdf:predicate <urn:reckons:story/content> ;
-    rdf:object "Open Settings, then Triple Check, and tick \"Keep Triple Check on for this space\". Untick \"Check the internet\" for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key." ;
+    rdf:object "Press the two buttons below: one turns Triple Check on for this space, the other keeps it off the internet for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key. The same choices are in Settings, under Triple Check." ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
@@ -543,6 +547,28 @@ src:guide
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
 <urn:kbase:stmt/walkthrough-guide-23>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/offerSetting> ;
+    rdf:object "tripleCheckEnabled=true" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-24>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-3> ;
+    rdf:predicate <urn:reckons:story/offerSetting> ;
+    rdf:object "tripleCheckWebEnabled=false" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-25>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-4> ;
     rdf:predicate rdf:type ;
@@ -553,7 +579,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-24>
+<urn:kbase:stmt/walkthrough-guide-26>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-4> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -564,7 +590,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-25>
+<urn:kbase:stmt/walkthrough-guide-27>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-4> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -575,7 +601,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-26>
+<urn:kbase:stmt/walkthrough-guide-28>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-4> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -586,7 +612,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-27>
+<urn:kbase:stmt/walkthrough-guide-29>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-4> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -597,7 +623,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-28>
+<urn:kbase:stmt/walkthrough-guide-30>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate rdf:type ;
@@ -608,7 +634,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-29>
+<urn:kbase:stmt/walkthrough-guide-31>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -619,7 +645,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-30>
+<urn:kbase:stmt/walkthrough-guide-32>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -630,7 +656,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-31>
+<urn:kbase:stmt/walkthrough-guide-33>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -641,18 +667,18 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-32>
+<urn:kbase:stmt/walkthrough-guide-34>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate <urn:reckons:story/content> ;
-    rdf:object "Open Review and group by source. A new source appears: \"Harbor 10 owners' forum (another space)\". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you." ;
+    rdf:object "Open Review, grouped by source, with the button below. A new source appears: \"Harbor 10 owners' forum (another space)\". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you." ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-33>
+<urn:kbase:stmt/walkthrough-guide-35>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-5> ;
     rdf:predicate <urn:reckons:story/highlight> ;
@@ -663,7 +689,18 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-34>
+<urn:kbase:stmt/walkthrough-guide-36>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-5> ;
+    rdf:predicate <urn:reckons:story/openPage> ;
+    rdf:object "/review?group=source" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-37>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-6> ;
     rdf:predicate rdf:type ;
@@ -674,7 +711,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-35>
+<urn:kbase:stmt/walkthrough-guide-38>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-6> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -685,7 +722,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-36>
+<urn:kbase:stmt/walkthrough-guide-39>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-6> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -696,7 +733,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-37>
+<urn:kbase:stmt/walkthrough-guide-40>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-6> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -707,7 +744,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-38>
+<urn:kbase:stmt/walkthrough-guide-41>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-6> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -718,7 +755,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-39>
+<urn:kbase:stmt/walkthrough-guide-42>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-7> ;
     rdf:predicate rdf:type ;
@@ -729,7 +766,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-40>
+<urn:kbase:stmt/walkthrough-guide-43>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-7> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -740,7 +777,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-41>
+<urn:kbase:stmt/walkthrough-guide-44>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-7> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -751,7 +788,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-42>
+<urn:kbase:stmt/walkthrough-guide-45>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-7> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -762,7 +799,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-43>
+<urn:kbase:stmt/walkthrough-guide-46>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-7> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -773,7 +810,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-44>
+<urn:kbase:stmt/walkthrough-guide-47>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-8> ;
     rdf:predicate rdf:type ;
@@ -784,7 +821,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-45>
+<urn:kbase:stmt/walkthrough-guide-48>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-8> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -795,7 +832,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-46>
+<urn:kbase:stmt/walkthrough-guide-49>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-8> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -806,7 +843,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-47>
+<urn:kbase:stmt/walkthrough-guide-50>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-8> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -817,7 +854,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-48>
+<urn:kbase:stmt/walkthrough-guide-51>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-8> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -828,7 +865,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-49>
+<urn:kbase:stmt/walkthrough-guide-52>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate rdf:type ;
@@ -839,7 +876,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-50>
+<urn:kbase:stmt/walkthrough-guide-53>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -850,7 +887,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-51>
+<urn:kbase:stmt/walkthrough-guide-54>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -861,7 +898,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-52>
+<urn:kbase:stmt/walkthrough-guide-55>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -872,7 +909,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-53>
+<urn:kbase:stmt/walkthrough-guide-56>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -883,7 +920,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-54>
+<urn:kbase:stmt/walkthrough-guide-57>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-9> ;
     rdf:predicate <urn:reckons:story/highlight> ;
@@ -894,7 +931,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-55>
+<urn:kbase:stmt/walkthrough-guide-58>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-10> ;
     rdf:predicate rdf:type ;
@@ -905,7 +942,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-56>
+<urn:kbase:stmt/walkthrough-guide-59>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-10> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -916,7 +953,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-57>
+<urn:kbase:stmt/walkthrough-guide-60>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-10> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -927,7 +964,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-58>
+<urn:kbase:stmt/walkthrough-guide-61>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-10> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -938,7 +975,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-59>
+<urn:kbase:stmt/walkthrough-guide-62>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-10> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -949,7 +986,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-60>
+<urn:kbase:stmt/walkthrough-guide-63>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-11> ;
     rdf:predicate rdf:type ;
@@ -960,7 +997,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-61>
+<urn:kbase:stmt/walkthrough-guide-64>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-11> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -971,7 +1008,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-62>
+<urn:kbase:stmt/walkthrough-guide-65>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-11> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -982,7 +1019,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-63>
+<urn:kbase:stmt/walkthrough-guide-66>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-11> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -993,7 +1030,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-64>
+<urn:kbase:stmt/walkthrough-guide-67>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-11> ;
     rdf:predicate <urn:reckons:story/content> ;
@@ -1004,7 +1041,18 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-65>
+<urn:kbase:stmt/walkthrough-guide-68>
+    rdf:type rdf:Statement ;
+    rdf:subject <urn:example:tour/triple-check/step-11> ;
+    rdf:predicate <urn:reckons:story/openPage> ;
+    rdf:object "/review?group=source" ;
+    meta:status "confirmed" ;
+    meta:confidence "1"^^xsd:decimal ;
+    meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"guide\",\"updatedAt\":1}}" ;
+    prov:wasDerivedFrom src:guide ;
+    dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
+
+<urn:kbase:stmt/walkthrough-guide-69>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-12> ;
     rdf:predicate rdf:type ;
@@ -1015,7 +1063,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-66>
+<urn:kbase:stmt/walkthrough-guide-70>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-12> ;
     rdf:predicate <urn:reckons:story/partOf> ;
@@ -1026,7 +1074,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-67>
+<urn:kbase:stmt/walkthrough-guide-71>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-12> ;
     rdf:predicate <urn:reckons:story/order> ;
@@ -1037,7 +1085,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-68>
+<urn:kbase:stmt/walkthrough-guide-72>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-12> ;
     rdf:predicate <urn:reckons:story/title> ;
@@ -1048,7 +1096,7 @@ src:guide
     prov:wasDerivedFrom src:guide ;
     dc:created "1970-01-01T00:00:00.001Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/walkthrough-guide-69>
+<urn:kbase:stmt/walkthrough-guide-73>
     rdf:type rdf:Statement ;
     rdf:subject <urn:example:tour/triple-check/step-12> ;
     rdf:predicate <urn:reckons:story/content> ;

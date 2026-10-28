@@ -20,6 +20,7 @@
  */
 
 import type { Statement } from './types';
+import { parsePageOffer, parseSettingOffer, type StoryOffer } from './story-offers';
 
 const STORY_NS = 'urn:reckons:story/';
 const STORY_TYPE = `${STORY_NS}Story`;
@@ -51,6 +52,8 @@ export interface StoryStep {
    * through and the renderer ignores it, which degrades to today's behaviour instead of throwing.
    */
   layout?: string;
+  /** One-click settings and pages the step offers the reader (story:offerSetting, story:openPage; F261). */
+  offers?: StoryOffer[];
 }
 
 export interface Story {
@@ -63,6 +66,18 @@ export interface Story {
   pace: number;
   /** An explicit built-in interaction; graph prose never becomes executable code. */
   interaction?: 'generate-assets';
+}
+
+/** A step's offers, in authored order; anything off the allowlist is dropped (story-offers.ts). */
+function stepOffers(stmts: Statement[], stepIri: string): StoryOffer[] {
+  const out: StoryOffer[] = [];
+  for (const st of stmts) {
+    if (st.s.kind !== 'iri' || st.s.value !== stepIri || st.o.kind !== 'literal') continue;
+    const offer = st.p.value === `${STORY_NS}offerSetting` ? parseSettingOffer(st.o.value)
+      : st.p.value === `${STORY_NS}openPage` ? parsePageOffer(st.o.value) : null;
+    if (offer) out.push(offer);
+  }
+  return out;
 }
 
 /**
@@ -140,7 +155,8 @@ export function extractStories(stmts: Statement[]): Story[] {
         highlights,
         prompt: getStepLit(`${STORY_NS}prompt`) ?? undefined,
         question: getStepLit(`${STORY_NS}question`) ?? undefined,
-        layout: getStepLit(`${STORY_NS}layout`) ?? undefined
+        layout: getStepLit(`${STORY_NS}layout`) ?? undefined,
+        offers: stepOffers(confirmed, stepIri),
       });
     }
 

@@ -50,17 +50,17 @@ const DOCS: Doc[] = [
   ] },
 ];
 
-const STEPS: { title: string; content: string; highlight?: string }[] = [
+const STEPS: { title: string; content: string; highlight?: string; offers?: string[]; page?: string }[] = [
   { title: 'What is in this space', highlight: `${EX}harbor-10`,
     content: 'This space collects what four documents say about the Harbor 10, a fictional home battery. You already accepted two of them: the datasheet and an independent bench test. The other two, a sales brochure and an installer\'s notes, are new and waiting in Review.' },
   { title: 'A second space came with it',
     content: 'Opening this walkthrough also added a space called "Harbor 10 owners\' forum", with what owners report about the same battery. Review already compares the documents inside this space. Triple Check looks outside it: your other spaces and, if you allow it, the web.' },
-  { title: 'Turn on Triple Check',
-    content: 'Open Settings, then Triple Check, and tick "Keep Triple Check on for this space". Untick "Check the internet" for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key.' },
+  { title: 'Turn on Triple Check', offers: ['tripleCheckEnabled=true', 'tripleCheckWebEnabled=false'],
+    content: 'Press the two buttons below: one turns Triple Check on for this space, the other keeps it off the internet for now. This walkthrough only compares the spaces on this device, so nothing leaves your computer and you need no account or key. The same choices are in Settings, under Triple Check.' },
   { title: 'Give it a few minutes',
     content: 'Triple Check looks at one statement about once a minute while the app is open, starting with the ones waiting for review. Allow about ten minutes for this space. You can keep working meanwhile.' },
-  { title: 'What it found is in Review', highlight: `${EX}harbor-10`,
-    content: 'Open Review and group by source. A new source appears: "Harbor 10 owners\' forum (another space)". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you.' },
+  { title: 'What it found is in Review', highlight: `${EX}harbor-10`, page: '/review?group=source',
+    content: 'Open Review, grouped by source, with the button below. A new source appears: "Harbor 10 owners\' forum (another space)". Its statements are ordinary pending statements, so you review them the way you review anything else. Triple Check never accepts anything for you.' },
   { title: 'Agreement becomes a second source',
     content: 'The forum also reports 90% round-trip efficiency, like the bench test and the brochure. Accepting it adds the forum as one more source for the same statement. Agreement is support, not proof: if the forum copied the bench test, it is still one measurement said twice.' },
   { title: 'Disagreement becomes its own statement',
@@ -71,7 +71,7 @@ const STEPS: { title: string; content: string; highlight?: string }[] = [
     content: 'The forum and the installer both list the Model T inverter as compatible; the datasheet lists Harbor\'s own inverter. A battery can work with more than one inverter, so both can be true. Review shows them side by side because the answers differ. Whether they conflict is your call.' },
   { title: 'No new source is not a confirmation',
     content: 'Nothing outside this space mentions the installer\'s 95 kg weight, so Triple Check adds nothing for it. That means nobody else said anything, not that anybody checked.' },
-  { title: 'Accept a whole source at once',
+  { title: 'Accept a whole source at once', page: '/review?group=source',
     content: 'In Review, each source has an accept button that states how many statements it will accept. Statements that disagree with something are held back and listed first, so they get a decision of their own. Here that accepts the efficiency and holds the capacity, the warranty and the inverter for you.' },
   { title: 'Checking the internet too',
     content: 'With a search service and an evidence model chosen in Settings, a web page becomes a source the same way. A page that disputes a statement without saying what is true instead arrives as a question for you to answer. Each web check sends that one statement to the services you chose, and paid services may charge. Leave it off for anything private.' },
@@ -96,6 +96,9 @@ function storyRows(): Row[] {
     rows.push([s, RDF_TYPE, iri(`${STORY}Step`)], [s, `${STORY}partOf`, iri(tour)], [s, `${STORY}order`, lit(String(i + 1), XSD_INT)],
       [s, `${STORY}title`, lit(step.title)], [s, `${STORY}content`, lit(step.content)]);
     if (step.highlight) rows.push([s, `${STORY}highlight`, iri(step.highlight)]);
+    // One-click offers (F261): a setting the reader can apply, a page they can open.
+    for (const offer of step.offers ?? []) rows.push([s, `${STORY}offerSetting`, lit(offer)]);
+    if (step.page) rows.push([s, `${STORY}openPage`, lit(step.page)]);
   });
   return rows;
 }

@@ -7810,6 +7810,37 @@ kb:gen-model-bench rdf:type ktype:Phase ;
     kpred:honest-note "THE BENCH HAS NOT PRODUCED AN UPGRADE DECISION, AND THE FIRST RUN SHOWED WHY. The image briefs are too easy for the incumbent (0.960 mean, 28 of 30 perfect), so they cannot rank two models that both draw these subjects; the ceiling rule (added after seeing that result, not before) turns that into insufficient-evidence rather than a false upgrade. Harder briefs (counts of four or more, spatial relations, small text) are needed before an image verdict can mean anything. The first attempt also read +0 MiB card-wide VRAM on the pinned GPU, so peak VRAM now comes from the run\u0027s own processes in nvidia-smi. The video and splat paths ran only as unit tests and on the two committed assets: no video or splat generation was benchmarked. Their quality scores are proxies with uncalibrated equal weights, and the splat silhouette takes the best of 24 axis and flip configurations, which flatters every arm a little. The judge is one local 7B model; its answers are saved per item so a person can disagree." ;
     kpred:remaining "Harder image briefs so the bench has headroom, then a re-run; the same for video (4 briefs x 3 seeds x ~53 s per arm) and splat (~34 s per run); a recipe (bench-candidate.json) for any different-architecture candidate before it can run; calibrating the video and splat score weights against a human ranking; the GPU lease (0.2.7) to replace the process check." .
 
+kb:story-offers rdf:type ktype:Feature ;
+    rdfs:label "Hand-held walkthroughs — a story step offers settings and pages in one click, and a link starts the story" ;
+    kpred:feature-id "F261" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:triple-check, kb:multi-graph-stories ;
+    kpred:decided "MATT, 2026-10-27: 'We need to make the walkthroughs a bit more hand held, so settings should be suggested with a single click to set them, from Shelly story. Story mode should be started from a query paramter.'" ;
+    kpred:description "A story step may carry story:offerSetting \"key=value\" and story:openPage \"/path\"; Shelly's story view shows each as a button, and an applied setting shows as done. /?story starts the space's story and /?story=<story IRI> a named one, instead of the one-time notice; the Triple Check walkthrough opens that way from Settings. Code: src/lib/rdf/story-offers.ts, src/lib/rdf/story.ts, src/lib/components/TurtleChatPanel.svelte, src/lib/stores/story-prompt.svelte.ts." ;
+    kpred:constraint "OFFERED, NEVER APPLIED, AND ONLY FROM AN ALLOWLIST. A story is data inside a space that can arrive from anyone, so a step can only offer, the reader's click applies, and only three settings with listed values can be offered: Triple Check on or off, its web half OFF only, and 2D or 3D. Nothing that sends data anywhere, no backend, address, key or model. Pages are paths inside the app with a known first segment. Offer predicates are metadata, not drawn on the canvas." ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts", "src/lib/stores/__tests__/story-prompt.test.ts" ;
+    kpred:remaining "Only the Triple Check walkthrough uses offers; the other example spaces' stories do not yet (see F263). The allowlist grows one reviewed setting at a time." .
+
+kb:check-flags rdf:type ktype:Feature ;
+    rdfs:label "Better flags from the maintenance checks — earlier, saying what is actually wrong, pointing at where" ;
+    kpred:feature-id "F262" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:decided "MATT, 2026-10-27: 'How do we get better flags on the maintenance items and checks?'" ;
+    kpred:measured "2026-10-27, PR #537: four blocking script-tier checks failed in CI about twelve minutes after a push, and every one runs locally. One message was wrong (commit-trailers said 'missing Model: and Intent:' for six commits that carried both, hidden by a blank line), one was a false positive (claim-audit read the built Triple Check as its planned sub-parts), and two ratchets said how much grew but not where (term-ratchet: '+54 statement')." ;
+    kpred:principle "A FLAG IS WORTH WHAT IT LETS YOU DO NEXT. Each blocking failure should say what is wrong, where (file and line), and the one command that fixes it, before the push rather than after; a flag that cries wolf or names only a total gets ignored, and then it protects nothing." ;
+    kpred:done "2026-10-27: npm run check:blocking (run-all.ts --blocking: exactly the jobs marked blocking in jobs.json, 10 jobs, about 10 s); an opt-in pre-push hook (.githooks/pre-push, npm run hooks:install); commit-trailers says 'written, but not in the last paragraph' for a hidden trailer (tested); claim-audit no longer treats a built feature's name as its planned sub-parts (scripts/offline/lib/claim-needles.ts, tested); ui-terms honors a declared kpred:ui-proper-name (tested)." ;
+    kpred:remaining "Per-file attribution for the ratchets (term-usage has no per-file prose breakdown, which is also what a trim pass needs). The same treatment for the deputy's maintenance proposals in the review queue: their type and priority are set by the producing model and not calibrated against what Matt accepts." .
+
+kb:example-space-review rdf:type ktype:Feature ;
+    rdfs:label "Review every example space — current entity types, generated pictures and splats, a hand-held story each" ;
+    kpred:feature-id "F263" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:story-offers, kb:generated-assets-onboarding, kb:media-entity-types, kb:starter-provenance ;
+    kpred:decided "MATT, 2026-10-27: 'We should do some work at reviewing all spaces, especially all example spaces. We should try to use more current entity types, generate some images and splats, and in general make the example spaces more compelling.'" ;
+    kpred:description "Start with a script-tier inventory of every bundled space (statements, typed entities, which built-in types are used against those available, sources and review status, story present and whether it offers anything, assets and their receipts), so 'more compelling' has a before and after. Then per space: retype with current entity types, add generated pictures and splats through the existing receipted pipeline (scripts/content/gen-assets.ts), and give each a story that opens from ?story and offers what it needs in one click." ;
+    kpred:remaining "Everything. The release-review spaces (Review 0.2.6, Review 0.2.7) are working spaces, not examples; whether they stay under example data is still Matt's call." .
+
 kb:build-change-workflow rdf:type ktype:Phase ;
     rdfs:label "F183.3 — build a space, then change it: one fixture for the browser test, the manual test and the extraction bench" ;
     kpred:feature-id "F183.3" ;
@@ -10314,6 +10345,7 @@ kb:threejs-example-background rdf:type ktype:Phase ;
     kpred:constraint "The background example does not share the graph's camera, depth or lighting; nodes do not sit inside the scene, they float in front of it. Running a heavy example and the graph together doubles GPU load; the background must be stoppable from the graph view, not only from node details. Imported graphs never auto-start a background example." ;
     kpred:decided "MATT, 2026-10-21: 'The filter panel should also contain the space\'s background settings. Overall its a view settings panel.' Built: the top-left panel is renamed View settings (mobile button 'view settings'); its background group now shows whenever the space has a splat (3D only, as before) or a Three.js example. For an example it shows the name and status, Load/Stop/Retry, Interact with background and Clear background, driven by the SAME ThreeExampleSession the on-graph bar uses (one session, bound up from ThreeExampleBackground), so the two cannot disagree. The on-graph bar stays: it is reachable when the panel is collapsed or closed on a phone. Images are not offered because an image background does not exist in the app." .
 
+kb:generated-assets-onboarding kpred:decided "MATT, 2026-10-27: 'The asset generation example space should be on landing page, it is one of the most compelling uses. We should work on the multi-asset generation and job queueing, and Shelly tooling to generate multiple assets from chat.' It IS on the landing page already (2026-10-27, on main, staging and dev): the fifth card of 'Learn by exploring', below the fold, with no picture of what it makes. So the change is prominence: first, with a real generated picture or splat. Multi-asset jobs and chat tooling are kb:shelly-generation-jobs (F166.1) remaining work, now asked for." .
 kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20: avoid Tripo and Meshy for the core tutorials. Do as many cutting-edge, browser-only, no-install workflows as possible. The local runner (TripoSplat, stable-diffusion.cpp) stays as an optional advanced path, not the Getting started path." ;
     kpred:has-phase kb:browser-generation-tutorial .
 

@@ -33,9 +33,12 @@ export type CommitInfo = {
   authorDate?: string;
   /** Parsed trailers as [key, value] pairs (git interpret-trailers --parse). */
   trailers: [string, string][];
+  /** The whole message, to tell a MISSING trailer from one written where git does not read it. */
+  body?: string;
 };
 
-export type Violation = { sha: string; subject: string; missing: ('Model' | 'Intent')[] };
+/** `hidden`: the line IS in the message but outside the final paragraph, so git does not parse it as a trailer. */
+export type Violation = { sha: string; subject: string; missing: ('Model' | 'Intent')[]; hidden?: boolean };
 
 const MODEL_NAME = /claude|anthropic|gpt|openai|codex|gemini|llama|mistral|qwen|devstral|copilot|cursor|ollama|deepseek|grok|\bai\b|\bllm\b/i;
 
@@ -55,7 +58,10 @@ export function checkCommits(commits: CommitInfo[]): Violation[] {
     const missing: Violation['missing'] = [];
     if (!get(c, 'Model').some((v) => v.length > 0)) missing.push('Model');
     if (!get(c, 'Intent').some((v) => v.length > 0)) missing.push('Intent');
-    if (missing.length) out.push({ sha: c.sha, subject: c.subject, missing });
+    // 2026-10-27, PR #537: six commits carried both lines and failed as "missing", because a blank
+    // line before Co-Authored-By left them out of the final trailer paragraph. Say which it is.
+    const hidden = missing.length > 0 && missing.every((k) => new RegExp(`^${k}:\\s*\\S`, 'm').test(c.body ?? ''));
+    if (missing.length) out.push({ sha: c.sha, subject: c.subject, missing, ...(hidden ? { hidden } : {}) });
   }
   return out;
 }
@@ -89,7 +95,7 @@ function readRange(rangeArgs: string[]): CommitInfo[] {
     const parents = git('log', '-1', '--format=%P', sha).trim().split(/\s+/).filter(Boolean).length;
     const msg = git('log', '-1', '--format=%B', sha);
     const trailers = parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: msg, encoding: 'utf8' }));
-    return { sha, subject, parents, authorDate, trailers };
+    return { sha, subject, parents, authorDate, trailers, body: msg };
   });
 }
 
@@ -125,7 +131,9 @@ function main() {
     console.log('commit-trailers: OK — every agent commit carries Model: and Intent:');
     return;
   }
-  for (const v of bad) console.log(`  FAIL ${v.sha.slice(0, 7)} ${v.subject} — missing ${v.missing.map((m) => m + ':').join(' and ')}`);
+  for (const v of bad) console.log(v.hidden
+    ? `  FAIL ${v.sha.slice(0, 7)} ${v.subject} — ${v.missing.map((m) => m + ':').join(' and ')} written, but not in the LAST paragraph, so git does not read it as a trailer. Put Model:, Intent: and Co-Authored-By: together with no blank line between them.`
+    : `  FAIL ${v.sha.slice(0, 7)} ${v.subject} — missing ${v.missing.map((m) => m + ':').join(' and ')}`);
   console.log(`commit-trailers: ${bad.length} violation(s). Amend with trailers 'Model: <id>[@<version>]' and 'Intent: <the request>'.`);
   process.exit(1);
 }

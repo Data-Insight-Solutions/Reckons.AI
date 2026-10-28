@@ -16,7 +16,7 @@
     const ids = new Set(settings().tripleCheckReferenceSpaceIds ?? []); if (enabled) ids.add(id); else ids.delete(id);
     return save({ tripleCheckReferenceSpaceIds: [...ids] });
   }
-  async function walkthrough() { try { await openExampleSpace('/starter-triple-check.ttl', 'Triple Check walkthrough'); } catch { error = 'Could not open the walkthrough.'; } }
+  async function walkthrough() { try { await openExampleSpace('/starter-triple-check.ttl', 'Triple Check walkthrough', { story: true }); } catch { error = 'Could not open the walkthrough.'; } }
 </script>
 <svelte:head><title>Triple Check — Reckons.AI</title></svelte:head>
 <main>
