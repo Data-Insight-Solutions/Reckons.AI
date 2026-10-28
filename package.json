@@ -52,6 +52,7 @@
     "visual:streams": "npx tsx scripts/visual-streams.ts",
     "offline:visual-diff": "npx tsx scripts/offline/visual-diff.ts",
     "branch-align": "npx tsx scripts/branch-align.ts",
+    "queue:check": "npx tsx scripts/offline/queue-integrity.ts",
     "offline:all": "npx tsx scripts/offline/run-all.ts",
     "offline:sweep": "bash scripts/offline/alignment-sweep.sh",
     "bench:vlm": "npx tsx tests/visual/run-vlm-gate-bench.ts",

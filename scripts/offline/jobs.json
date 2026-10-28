@@ -18,6 +18,13 @@
       "desc": "Opt-in local VLM scripted and exploratory workflow streams. Requires an explicitly started branch preview on the chosen port and OLLAMA_BASE_URL. Private receipts and review proposals; disabled in sweeps because a preview is not assumed to exist. Configure streams in scripts/visual-streams/examples.json or pass --config."
     },
     {
+      "name": "queue-integrity",
+      "tier": "script",
+      "enabled": true,
+      "cmd": "npx tsx scripts/offline/queue-integrity.ts",
+      "desc": "Checks knowledge.pending.jsonl line by line: tail fragments, truncated heads, non-objects, missing subject/predicate, unknown type. Report-only in the sweep (exit 1 on findings); --quarantine moves bad lines out after a backup and stays manual."
+    },
+    {
       "name": "queue-dedupe",
       "tier": "script",
       "enabled": true,
