@@ -581,10 +581,10 @@
       "path": "features/local-jobs-mcp",
       "entity": "urn:reckons:feature/LocalJobsMCP",
       "graph": "docs-features.ttl",
-      "factHash": "fedf0e4e9d21744c",
+      "factHash": "939a8a1e87f10625",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "c5c1b0ee5f2d3d61"
+      "pageHash": "06c90d0f33ae3b8d"
     },
     {
       "path": "features/mcp-workspace",

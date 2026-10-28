@@ -126,7 +126,7 @@ const name = (iri: string) => label.get(iri) ?? short(iri);
 
       if (allDisabled) {
         add('orphaned-artifact', p,
-          `${mb(size)} produced by ${producerJobs.map((j) => j.name).join(', ')} — a job that is DISABLED in jobs.json. ` +
+          `${mb(size)} produced by ${producerJobs.map((j) => j.name).join(', ')} — a job that is DISABLED in reckons-jobs.ttl. ` +
           `Nothing regenerates this, and nothing consumes it on a schedule.`,
           `Confirm the feature behind ${producerJobs.map((j) => j.name).join(', ')} is retired, then delete the directory. ` +
           `If the feature is only paused, say so on its graph entity so the bulk is explained rather than mysterious.`);
