@@ -26,7 +26,7 @@
  * minute old, refreshes it in a detached process that the status line never waits for.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -261,6 +261,8 @@ export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): st
     }
   }
   if (s.jobs) out.push('', ...renderJobs(s.jobs, now, undefined, th, lvl));
+  const vt = renderVisualTests(now, lvl);
+  if (vt.length) out.push('', ...vt);
   out.push('', dim(LEGEND));
   const art = fitArt(opts.width, opts.frame ?? 0, worst(levels));
   return [...art.map((l, i) => (i < 3 ? bold(l) : l)), ...(art.length ? [''] : []), ...out].join('\n');
@@ -313,6 +315,37 @@ export function renderJobs(
     const mark = f.status === 'passed' ? green('✓') : f.status === 'refused' ? yellow('⊘') : red('✗');
     out.push(`  ${mark} ${bold(f.name ? link(f.name) : '?')} ${f.status} ${dim(ago(f.startedAt, now))} — ${(f.headline ?? '').slice(0, 90)}`);
   }
+  return out;
+}
+
+/** Recent visual-test runs from reckons-workspace/runs/ — space-visual-gate and visual-diff receipts. */
+function renderVisualTests(now = new Date(), lvl: (lv: Level, text: string) => string = byLevel): string[] {
+  const out: string[] = [];
+  try {
+    const runsDir = join(process.cwd(), 'reckons-workspace', 'runs');
+    if (!existsSync(runsDir)) return [];
+    const files = readdirSync(runsDir).filter((f) => f.endsWith('.json')).sort().reverse().slice(0, 3);
+    if (files.length === 0) return [];
+    out.push(`${bold('VISUAL TESTS')} ${dim(`recent runs from ${runsDir.replace(process.cwd(), '.')}`)}`);
+    for (const file of files) {
+      try {
+        const data = JSON.parse(readFileSync(join(runsDir, file), 'utf8')) as { schema?: string; url?: string; totalChecks?: number; passed?: number; failed?: number; errored?: number; finishedAt?: string };
+        if (!data.schema) continue;
+        const type = data.schema.includes('space-visual-gate') ? 'space-gate' : 'visual-diff';
+        const checks = data.totalChecks ?? 0;
+        const pass = data.passed ?? 0;
+        const fail = data.failed ?? 0;
+        const time = data.finishedAt ? ago(new Date(data.finishedAt), now) : '';
+        if (pass + fail === 0) {
+          out.push(`  ${yellow('?')} ${bold(type)}  no gates evaluated (${data.errored ?? 0} errors) · ${dim(time)}`);
+        } else if (fail > 0) {
+          out.push(`  ${red('✗')} ${bold(type)}  ${pass}/${checks} gates passed, ${fail} failures · ${dim(time)}`);
+        } else {
+          out.push(`  ${green('✓')} ${bold(type)}  all ${checks} gates passed · ${dim(time)}`);
+        }
+      } catch { /* skip malformed */ }
+    }
+  } catch { /* unreadable runs dir = no visual tests yet */ }
   return out;
 }
 

@@ -28,7 +28,8 @@
  * sense rules were tuned on /kb and scored 9 right, 1 wrong, 8 undecided on 18 held-out strings.
  */
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { appendQueueText } from './pending-queue.js';
 import { join, resolve } from 'node:path';
 import { Parser } from 'n3';
 import { occurrencesIn, scriptBlocks, scriptOccurrences, WORDS, type Occurrence } from './ui-copy.js';
@@ -175,7 +176,7 @@ function main(): void {
       subject: `urn:reckons:file/${x.file}`, predicate: `${KPRED}ui-term`, object: `${x.file}:${x.line} shows "${x.word}"${x.suggest ? `; the user word is "${x.suggest}"` : ''}. Sentence: ${x.sentence.slice(0, 200)}`,
       type: 'suggestion', priority: 'medium', agent: 'offline:ui-terms', addedAt: new Date().toISOString(),
     }));
-    if (lines.length) appendFileSync(path, lines.join('\n') + '\n');
+    if (lines.length) appendQueueText(path, lines.join('\n') + '\n');
     console.log(`--pending: ${lines.length} proposal(s) → ${path}`);
   }
 

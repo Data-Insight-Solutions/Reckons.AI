@@ -41,7 +41,9 @@ export function parseEvery(v: string | undefined): number | null {
 
 export type Recurring = { name: string; label: string; argv: string[]; cwd: string; every: string; everyMs: number; network?: boolean; tier?: string;
   /** false for tier=script: the GPU gate does not apply. Anything not declared script is treated as GPU. */
-  gpu: boolean };
+  gpu: boolean;
+  /** Run immediately on first session activation, then respect kpred:every. */
+  firstPass: boolean };
 
 /** `sched:<id>` — the queue name of a recurring job, so its history is findable by name. */
 export const scheduleName = (iri: string): string => `sched:${iri.split('/').pop()}`;
@@ -56,7 +58,7 @@ export function toRecurring(compiled: CompiledSchedule[], cwd: string): Recurrin
     if (everyMs === null) continue;
     // The command is a shell string in the graph (as schedule.ts runs it), so the argv is `bash -c <command>`;
     // the graph is LOCAL and named here, never imported.
-    out.push({ name: scheduleName(c.iri), label: c.label, argv: ['/bin/bash', '-c', c.command], cwd, every: c.every, everyMs,
+    out.push({ name: scheduleName(c.iri), label: c.label, argv: ['/bin/bash', '-c', c.command], cwd, every: c.every, everyMs, firstPass: c.firstPass,
       ...(c.network ? { network: true } : {}), ...(c.tier ? { tier: c.tier } : {}), gpu: c.tier !== 'script' });
   }
   return out;

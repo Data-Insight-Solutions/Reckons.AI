@@ -68,7 +68,7 @@ test:TestSuite
     rdf:type            ktype:Concept ;
     rdfs:label          "Test Suite" ;
     hnav:order          110 ;
-    skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
+    skos:definition     "Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
 test:GraphReviewStory
@@ -173,8 +173,8 @@ test:GraphReview-Step6
 test:UnitTests
     rdf:type            ktype:Concept ;
     rdfs:label          "Unit Tests" ;
-    skos:definition     "336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
-    kpred:test-count    "336" ;
+    skos:definition     "4,285 tests in 317 files via Vitest (counted 2026-10-27) with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
+    kpred:test-count    "4285" ;
     kpred:framework     "vitest" ;
     kpred:command       "npx vitest run" ;
     skos:broader        test:TestSuite .

@@ -1,0 +1,4 @@
+Repository rules (excerpt)
+- reckons-workspace/knowledge.pending*.jsonl are the owner's local review queues. They hold private
+  captures and must never be committed to a public branch: every pushed branch is public.
+- A change that adds queue data is a stop: do not merge, report it to the owner.

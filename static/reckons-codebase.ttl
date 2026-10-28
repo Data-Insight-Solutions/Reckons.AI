@@ -51,7 +51,7 @@ code:sim
 ## =============================================================================
 
 code:repo  rdf:type     ktype:Concept ;
-             kpred:coverage-ratchet "unlinked/206" ;
+             kpred:coverage-ratchet "unlinked/203" ;
            rdfs:label   "tripleNotes Repository" ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;
@@ -561,6 +561,9 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/+layout.svelte" ;
              kpred:has-file "src/routes/(app)/+page.svelte" ;
              kpred:has-file "src/routes/(app)/review/+page.svelte" ;
+             kpred:has-file "src/lib/components/review/ReviewLinkLanding.svelte" ;
+             kpred:has-file "src/lib/review/link-landing.ts" ;
+             kpred:has-file "src/lib/review/__tests__/link-landing.test.ts" ;
              kpred:has-file "src/routes/(app)/ingest/+page.svelte" ;
              kpred:has-file "src/routes/(app)/compare/+page.svelte" ;
              kpred:has-file "src/routes/(app)/kb/+page.svelte" ;
@@ -755,6 +758,7 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/vision-scoring.test.ts" ;
                   kpred:has-file "tests/visual/vision-local.ts" ;
                   kpred:has-file "tests/visual/vision-analyze.ts" ;
+                  kpred:has-file "scripts/offline/space-visual-gate.ts" ;
                   kpred:has-file "tests/visual/kb-seed.ts" ;
                   kpred:has-file "tests/visual/fixtures/golden-visual.ts" ;
                   kpred:has-file "tests/visual/stories.test.ts" ;
@@ -1023,6 +1027,13 @@ code:local-security-audits rdf:type ktype:Concept ;
     kpred:description "Read-only Linux host probes and explicit online npm lockfile audits. Shared agent output contains aggregate counts; evidence and local policy remain private. Registered script-tier jobs provide reusable invocations without a daemon or inbound listener." ;
     kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
     kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
+
+# Review-queue integrity (Matt, 2026-10-28: script tier must catch malformation).
+code:review-queue-integrity rdf:type ktype:Concept ;
+    rdfs:label "Review queue integrity check and locked append" ;
+    kpred:description "queue-integrity.ts classifies every line of knowledge.pending.jsonl (ok, tail-fragment, truncated-head, non-object, missing subject or predicate, unknown type) and, on request, moves bad lines to a quarantine file after a backup, under the queue lock. pending-queue.ts appendQueueText is the locked append that ten producers now use instead of a bare appendFileSync. Report-only in the sweep; quarantine is manual." ;
+    kpred:has-file "scripts/offline/queue-integrity.ts", "scripts/offline/pending-queue.ts", "scripts/offline/queue-dedupe.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/queue-integrity.test.ts", "scripts/offline/__tests__/pending-queue.test.ts" .
 
 code:three-example-viewer rdf:type ktype:Concept ;
     rdfs:label "Isolated Three.js example attachments" ;

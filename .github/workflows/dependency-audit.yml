@@ -32,10 +32,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # Gate at MODERATE (Matt, 2026-10-28). It was --audit-level=low until seven low advisories
+      # (@sveltejs/kit, deepmerge) appeared that only a SvelteKit 3 major upgrade fixes, blocking
+      # every PR. Lows are still printed here and in npm run security:dependencies; they do not block.
       - name: Audit locked production and development dependencies
         working-directory: ${{ matrix.project }}
-        run: npm audit --package-lock-only --audit-level=low
+        run: npm audit --package-lock-only --audit-level=moderate
       - name: Audit scheduled integration dependencies
         if: github.event_name == 'schedule' && !cancelled()
         working-directory: integration/${{ matrix.project }}
-        run: npm audit --package-lock-only --audit-level=low
+        run: npm audit --package-lock-only --audit-level=moderate

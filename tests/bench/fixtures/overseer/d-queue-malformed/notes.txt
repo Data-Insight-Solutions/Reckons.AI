@@ -1,0 +1,3 @@
+Writers of this file: queue-worker (appends one JSON line per proposal, one appendFile call each) and a
+prune job that rewrites the whole file. Proposals are drafted by a local model whose output has a
+token limit. The importer skips a line that does not parse and logs it.

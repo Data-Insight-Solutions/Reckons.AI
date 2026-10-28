@@ -29,7 +29,8 @@
  *   npx tsx scripts/offline/docs-edits.ts --pending  queue them for review
  */
 
-import { existsSync, readFileSync, appendFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { appendQueueText } from './pending-queue.js';
 import { Parser } from 'n3';
 import { join, resolve } from 'node:path';
 
@@ -187,7 +188,7 @@ function main(): void {
     agent: 'docs-edits',
     priority: 'medium',
   }));
-  appendFileSync(PENDING, lines.join('\n') + '\n');
+  appendQueueText(PENDING, lines.join('\n') + '\n');
   console.log('');
   console.log(C.green(`  Queued ${lines.length} proposal(s) to reckons-workspace/knowledge.pending.jsonl.`));
 }

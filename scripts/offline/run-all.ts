@@ -12,7 +12,6 @@
  *   npm run offline:all                    run all enabled jobs (script tier first)
  *   npm run offline:all -- --tier=script   only the free, deterministic jobs (no Ollama)
  *   npm run offline:all -- --only=a,b      run only these (even if disabled)
- *   npm run offline:all -- --blocking      only the jobs that can fail CI: the pre-push check (npm run check:blocking)
  *   npm run offline:all -- --list          list jobs without running
  *   npm run offline:all -- --ci            exit non-zero if a job marked "blocking" failed
  *   npm run offline:all -- --gpu-wait-min=20   how long an agent job waits for a hot/full/busy GPU
@@ -51,10 +50,10 @@ interface Job {
 const argv = process.argv.slice(2);
 const only = argv.find((a) => a.startsWith('--only='))?.split('=')[1]?.split(',');
 const tier = argv.find((a) => a.startsWith('--tier='))?.split('=')[1] as Tier | undefined;
-// The blocking set, read from jobs.json, so a job newly marked blocking is in the local check too.
-const blockingOnly = argv.includes('--blocking');
 const LIST = argv.includes('--list');
 const CI = argv.includes('--ci');
+// --blocking: run only the jobs marked blocking (the pre-push hook, F273 phase A).
+const BLOCKING_ONLY = argv.includes('--blocking');
 const GPU_GATE = !argv.includes('--no-gpu-gate');
 const HOLD_LIMIT = (() => {
   try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
@@ -67,7 +66,8 @@ const unreviewed = (): Map<string, number> => (unreviewedCache ??= (() => {
 })());
 const GPU_WAIT_MS = parseWaitMin(argv.find((a) => a.startsWith('--gpu-wait-min='))?.split('=')[1]) * 60_000;
 
-const jobsFile = path.resolve('scripts/offline/jobs.json');
+// RECKONS_JOBS_FILE lets a test (or a hook test) point at a synthetic job list.
+const jobsFile = path.resolve(process.env.RECKONS_JOBS_FILE ?? 'scripts/offline/jobs.json');
 const all: Job[] = JSON.parse(readFileSync(jobsFile, 'utf8')).jobs;
 // Script tier first: it is free and catches the deterministic problems before a local
 // model spends time forming an opinion about them.
@@ -96,7 +96,7 @@ if (LIST) {
 const selected = jobs
   .filter((j) => (only ? only.includes(j.name) : j.enabled ?? true))
   .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true))
-  .filter((j) => (blockingOnly ? j.blocking === true : true));
+  .filter((j) => (BLOCKING_ONLY ? j.blocking === true : true));
 if (selected.length === 0) {
   console.log('No jobs selected. Edit scripts/offline/jobs.json (set "enabled": true) or pass --only=<name>.');
   process.exit(0);

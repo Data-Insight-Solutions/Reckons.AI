@@ -22,6 +22,7 @@
  * AND the Model trailer is invisible to this check.
  */
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 export const CUTOFF = '2026-10-13T17:56:06Z';
 
@@ -99,9 +100,29 @@ function readRange(rangeArgs: string[]): CommitInfo[] {
   });
 }
 
+/**
+ * commit-msg hook mode (F273 phase A): check ONE message before the commit exists, with the same
+ * parser and rule as the CI range check. Comment lines are stripped the way git does.
+ */
+function checkMessageFile(file: string): never {
+  const msg = execFileSync('git', ['stripspace', '--strip-comments'], { input: readFileSync(file, 'utf8'), encoding: 'utf8' });
+  const trailers = parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: msg, encoding: 'utf8' }));
+  const c: CommitInfo = { sha: 'HEAD', subject: msg.split('\n')[0], parents: 1, trailers };
+  const bad = checkCommits([c]);
+  if (!bad.length) process.exit(0);
+  console.error(
+    `commit-trailers: this is an agent commit but it is missing ${bad[0].missing.map((m) => m + ':').join(' and ')}.\n` +
+      "Fix: end the message with ONE block, no blank line inside it: 'Model: <id>', 'Intent: <the request>', then 'Co-Authored-By: ...'. " +
+      'A blank line before Co-Authored-By splits the block and hides Model/Intent (this failed CI on 2026-10-28).',
+  );
+  process.exit(1);
+}
+
 function main() {
   const argv = process.argv.slice(2);
   const arg = (k: string) => argv.find((a) => a.startsWith(`--${k}=`))?.split('=')[1];
+  const messageFile = arg('message-file');
+  if (messageFile) checkMessageFile(messageFile);
   const base = arg('base');
   let rangeArgs: string[];
   let how: string;

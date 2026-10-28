@@ -22,7 +22,7 @@
  * headline and findings are a local model's reading. If Ollama is down the run is reported with
  * script facts only and says so. It never falls back to a cloud model.
  *
- * Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] -- <command…>
+ * Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=<ollama model>] -- <command…>
  * The command is run with argv (no shell), so nothing in it is interpolated.
  */
 import { spawn } from 'node:child_process';
@@ -34,7 +34,7 @@ import {
   DEFAULT_MAX_ATTEMPTS, DEFAULT_MAX_PER_HOUR, breakerDecision, failureSignature, openCircuits, readRuns,
   failureStreak, jobIri, runsTtlPath, setCircuitCache, slug, stateDir, updateCurrent, type HistRun,
 } from './job-state.js';
-import { OllamaHttpError, assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
+import { DEFAULT_REASONING_MODEL, OllamaHttpError, assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 export { stateDir, runsTtlPath };
 
@@ -325,7 +325,7 @@ async function main(): Promise<void> {
     console.error(`job-watch: REFUSED ${name} — ${decision.reason}`);
     process.exit(3);
   }
-  const model = flag('model') ?? 'qwen3.6:latest';
+  const model = flag('model') ?? DEFAULT_REASONING_MODEL;
   const base = (process.env.OLLAMA_BASE_URL ?? '').replace(/\/+$/, '');
 
   mkdirSync(stateDir(), { recursive: true });
