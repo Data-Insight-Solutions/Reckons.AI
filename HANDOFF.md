@@ -3,30 +3,37 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-10-28 (later) — START HERE. Merged #535 and #541; F273 and the overseer comparison in flight (Claude Code, Opus)
+## 2026-10-28 (end of day) — START HERE. Everything for dev is merged (Claude Code, Opus)
 
 The session ran long; start a fresh one from here. Matt's decisions from today are in the graph,
 each quoted verbatim under kpred:decided on the entities named below.
 
-**Merged into dev:** #535 (local deputy, missing-model handling, `models:check`, parsed bench, audit
-gate at moderate, `npm-symlink-guard.sh`) and #541 (review links grouped by producer run, with `kb=`;
-/review shows reconnect, loading and unlinked states).
+**Merged into dev, all with CI green including E2E:**
+- #535: local deputy, missing-model handling, `models:check`, parsed bench, audit gate at moderate,
+  `npm-symlink-guard.sh`.
+- #541: review links grouped by producer run, with `kb=`; /review shows reconnect, loading and
+  unlinked states.
+- #542: `queue:check`, locked queue appends, term-senses with one subject per site, the quarantine
+  file git-ignored.
+- #545: the npm guard matches commands only and skips heredocs.
+- #546 (squash, so a personal path in one bench answer never reached dev): gpt-oss:120b vs Sonnet as
+  overseer. Sonnet 4/4 in 101 s; gpt-oss 2/4 in 2,422 s (one over-stop, one 20-minute timeout).
+  Decision so far: qwen3.8 stays the chat deputy, Sonnet the overseer, and gpt-oss is a by-hand second
+  reader. n=4, one run each. On kb:loop-local-deputy.
+- #543: **F273 phases 0 and A** (kb:procedure-over-prose, in-progress).
+  `npm run brief -- --entity=<kb:slug>` refuses a job without a done-test. Tracked git hooks in
+  .githooks/: commit-msg (trailers), pre-commit (generated files, five generators' --check),
+  pre-push (blocking script tier, about 10 s). `npm prepare` turns them on. The main checkout has
+  them on since 2026-10-28; `--no-verify` skips them. Phases B (procedures as code: land-pr,
+  merge-order) and C (runs recorded in the space) are next.
 
-**Open PRs (check `gh pr list --base dev`):**
-- #542 `chore/queue-integrity`: `queue:check`, locked queue appends, term-senses with one subject per
-  site, quarantine file git-ignored. The merge overseer was resolving a conflict in the generated
-  `reckons-jobs.ttl` (regenerate, never hand-edit), then reviewing and merging.
-- #543 `plan/procedure-over-prose`: **F273**. A Sonnet builder is doing phase 0 (a brief generator that
-  refuses without a done-test) and then phase A (tracked git hooks: commit-msg, pre-commit generator
-  check, pre-push blocking tier). The done-tests are on the entity; build to them, do not bend them.
-- #544 → `feat/triple-check` (Codex's #537): Triple Check runs on-device only. Search is a GET to
-  SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal address.
-  Decided on kb:triple-check. Lands with #537.
-- `bench/overseer-compare`: gpt-oss:120b vs Sonnet as overseer on four replayed cases with known
-  answers; gpt-oss runs at its native 131k maximum (160k is past what it was trained on). Results go
-  on kb:loop-local-deputy.
-- this branch: the npm guard skips heredocs and matches commands only (its first version blocked
-  prose that mentioned "npm ci").
+**Still open:**
+- #537 (Codex, `feat/triple-check`) with #544 on top of it: Triple Check runs on-device only. Search
+  is a GET to SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal
+  address (decided on kb:triple-check). Not run live against SearXNG/Ollama yet, and feat/triple-check
+  had 2 graph-lint errors of its own. Review #544, then #537.
+- About 40 old agent worktrees under .claude/worktrees/, most with a symlinked node_modules. Matt
+  decides what to prune; the npm guard keeps them from emptying the main checkout.
 
 **Queue state (2026-10-28):**
 - **Removed:** about 210 trash rows rejected by verdict (code-review, a dead path, the four classes
