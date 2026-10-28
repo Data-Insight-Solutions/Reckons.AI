@@ -1,3 +1,34 @@
+## 2026-10-27 — START HERE. PR #537 (feat/triple-check → dev) and #538 (deps) are Matt's to merge (Claude Code)
+
+**Merge order:** #538 first (undici 7.30.1 + fast-uri; the dependency audit fails on every branch without it),
+then rebase #537 onto dev. Force-pushing a branch whose PR targets dev is pre-approved (Matt, 2026-10-27).
+
+**#537 now holds (all pushed, 0ba1324a):** Triple Check findings become pending statements from a new source
+(no evidence panel); Review groups by entity/source/flat with accept N / reject all, holds back disagreements,
+follows the group on its canvas, writes its summary automatically; the Triple Check walkthrough + owners' forum
+companion space, opened INTO its story (`/?story`) with one-click setting offers (F261); the build-and-change
+workflow (F183.3: garden notes in the notes corpus, mock backend returns their expected facts, 6-step test with
+screenshots); no generic 80-node canvas cap (slowness offers "Show hubs only"); story structure drawn only at
+detail "all"; `npm run check:blocking` (10 s) + opt-in pre-push hook (`npm run hooks:install`) (F262).
+Validated 2026-10-27: unit 4321 passed, svelte-check 0 errors, check:blocking green, full e2e on the MOCK server
+200 passed / 1 flaky (multi-session, passes alone 3/3). Use `npm run dev:test` env (mock backends) for e2e;
+the plain dev server fails 6 tests for env reasons.
+
+**Matt is reviewing the review queue in the app first**, then will come back with feedback. Queued for him
+2026-10-27: 7 starred-repo suggestions + a Strands note (could-learn-from on roadmap entities) and 3 MCP gaps.
+
+**Planned, not built (roadmap):** F263 review every example space; F264 Review compare/overlay screens (Matt: not
+functional); F265 codebase links built from code (approved); F266 non-critical deps as plugins (voice first);
+F261 remaining: stories visiting sets and opening assets full screen; F100.6 remaining: a one-step "open the
+starred-repositories space" (766 repos, ~20k statements, private file outside Git) and set-based selection for
+large spaces; generated-assets card → first on the landing page with a real picture; starred-repo research job
+compares against keyword-picked references (fix: roadmap features).
+
+**Running / unread:** the extraction benchmark on 7 local models (qwen3.8, nuextract, lfm2.5, command-r,
+mistral-small3.2, phi4, gemma3) writes to the session scratchpad; it may predate the garden notes. Rerun with
+`OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/extraction-score.ts --models=…` and hand the
+triage to a Sonnet overseer, not Opus. The local panel's default model (qwen3.6) is not installed; pass --models.
+
 ## 2026-10-22 — START HERE. 0.2.6 is a PR into staging (#524), waiting for Matt (Claude Code)
 
 **State:** Matt reviewed dev on the review page (https://claude.ai/artifact/4XVdxojMvDNbMJXuAU9xNW; 12 pass,

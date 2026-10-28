@@ -7842,6 +7842,32 @@ kb:example-space-review rdf:type ktype:Feature ;
     kpred:description "Start with a script-tier inventory of every bundled space (statements, typed entities, which built-in types are used against those available, sources and review status, story present and whether it offers anything, assets and their receipts), so 'more compelling' has a before and after. Then per space: retype with current entity types, add generated pictures and splats through the existing receipted pipeline (scripts/content/gen-assets.ts), and give each a story that opens from ?story and offers what it needs in one click." ;
     kpred:remaining "Everything. The release-review spaces (Review 0.2.6, Review 0.2.7) are working spaces, not examples; whether they stay under example data is still Matt's call." .
 
+kb:review-compare-overlay-fix rdf:type ktype:Feature ;
+    rdfs:label "Review's compare and overlay screens — make them work, or remove them" ;
+    kpred:feature-id "F264" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:review-attention, kb:one-graph-canvas ;
+    kpred:decided "MATT, 2026-10-27: 'Review has the compare screen, and overlay screen, neither seemed functional last I checked.'" ;
+    kpred:remaining "Reproduce what fails in each with a synthetic space, then fix or remove; the 2026-10-08 decision (kb:one-graph-canvas) makes them overlays on the one shared canvas, which is the shape a fix should take." .
+
+kb:codebase-links-from-code rdf:type ktype:Feature ;
+    rdfs:label "Codebase graph links built from the code, not written by hand" ;
+    kpred:feature-id "F265" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:check-flags ;
+    kpred:decided "MATT, 2026-10-27: 'Lets consider the code to file links to be built from code, if that seems like a good fix.'" ;
+    kpred:description "Derive kpred:has-file and kpred:tested-by from the tree and the imports (a file belongs to the module its folder and imports say it does; a test belongs to the module it imports), generate the links into the Codebase graph, and let a hand-written link override or annotate a derived one. codebase-coverage then checks the generator ran, not that a person remembered: on PR #537 ten new files failed it." ;
+    kpred:remaining "Everything. Script tier: deterministic, zero tokens." .
+
+kb:optional-dependency-plugins rdf:type ktype:Feature ;
+    rdfs:label "Non-critical dependencies become plugins, installed only when enabled" ;
+    kpred:feature-id "F266" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:integration-plugin-sdk ;
+    kpred:decided "MATT, 2026-10-27: 'we also need to consider removing the non-critical dependencies. The plugins should be able to add dependencies, just if enabled/installed? For example voice features aren't going to be used by everyone, so hume and kokoro may be better off as plugins.'" ;
+    kpred:description "Inventory dependencies by what needs them (core app, a feature most people use, a feature few use, tests only), then move the few-use ones, starting with voice (Hume, Kokoro TTS), behind the plugin boundary so they are fetched and installed only when the plugin is enabled. The core stays smaller and has fewer advisories to answer." ;
+    kpred:remaining "The inventory first; the plugin SDK (F61) decides how a plugin declares and loads its dependencies." .
+
 kb:build-change-workflow rdf:type ktype:Phase ;
     rdfs:label "F183.3 — build a space, then change it: one fixture for the browser test, the manual test and the extraction bench" ;
     kpred:feature-id "F183.3" ;
@@ -10561,6 +10587,7 @@ kb:starred-repository-research a ktype:Feature ; rdfs:label "Private incremental
     kpred:description "Capture every starred repository for the authenticated GitHub user outside Git. Dated API metadata is publisher-source observation; README claims are not independent proof. Connect repositories by shared topics/languages. Produce a bounded handful of cited comparison hypotheses with advantages and limitations for review. Preserve review decisions across incremental refreshes and surface changed observations." .
 kb:repository-comparison-views kpred:decided "MATT, 2026-10-27, on the first cut: 'I don't love the new dropdown UI/UX for the node limit, I think it should be more automatic based on performance, just like the suggestion to go to 2d view. It should go more seamless with other existing filters. We will need hubs out, or set selection or other ways to determine the best nodes to show versus hide. The other filters are there to change the view to what the user wants to see. I believe that a generic load limit is not effective, and do not at all understand the first dropdown with explore this space as the only option.' DONE THE SAME DAY: the default 80-entity cap and its dropdown are gone (every space draws what its filters allow); the saved-view picker appears only when views exist, as 'Saved view' with 'Whole space'; when the canvas is slow and holds more than 150 things, the performance notice also offers 'Show hubs only' (the existing hubs detail rung, visible and undoable). The 'bounded disclosed subset' in the description above is therefore withdrawn as a default." ;
     kpred:remaining "Choosing what to show in a LARGE space through sets and other meaningful filters rather than a count (Matt: 'hubs out, or set selection'), measured on the starred-repositories space (about 20,000 statements). Opening that space in one step: today it is a private file the person imports by hand, which the repositories page now explains." .
+kb:starred-repository-research kpred:measured "2026-10-27, first run on qwen3.8 (8 of 77 changed repositories, 24 votes, all valid JSON, quote and target checks passing): 0 proposals. The harness, not the model, is the limit: references are picked by keyword from the Production and Codebase graphs, so graphiti was compared with 'sample knowledge graphs' and an OCR library with 'workspace', and the model rightly answered 'insufficient'. Fix: compare against roadmap features (what Reckons.AI does and plans). Seven description-level suggestions were queued for review by Opus the same day." .
 kb:starred-repository-research kpred:decided "MATT, 2026-10-27: 'I had requested that we do a space with all starred repositories, and that space could be a good test for a larger space.' The research job writes it (766 repositories, about 20,000 statements, 2026-10-27) to a private file outside Git; nothing yet opens it as a space in one step." .
 kb:repository-comparison-views a ktype:Feature ; rdfs:label "Focused space views and repository comparisons" ;
     kpred:feature-id "F100.6" ; kpred:has-status "in-progress" ;
