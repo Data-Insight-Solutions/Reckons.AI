@@ -51,7 +51,7 @@ code:sim
 ## =============================================================================
 
 code:repo  rdf:type     ktype:Concept ;
-             kpred:coverage-ratchet "unlinked/206" ;
+             kpred:coverage-ratchet "unlinked/203" ;
            rdfs:label   "tripleNotes Repository" ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;

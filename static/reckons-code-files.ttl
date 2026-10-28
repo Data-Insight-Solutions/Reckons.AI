@@ -2098,7 +2098,7 @@
 <urn:reckons:file/scripts/offline/pending-queue.ts> rdf:type ktype:SourceFile ;
     rdfs:label "pending-queue.ts" ;
     kpred:path "scripts/offline/pending-queue.ts" ;
-    skos:broader code:local-security-audits ;
+    skos:broader code:review-queue-integrity ;
     dcterms:requires pkg:node .
 
 <urn:reckons:file/scripts/offline/perf-crawl.ts> rdf:type ktype:SourceFile ;
@@ -2156,7 +2156,7 @@
 <urn:reckons:file/scripts/offline/queue-dedupe.ts> rdf:type ktype:SourceFile ;
     rdfs:label "queue-dedupe.ts" ;
     kpred:path "scripts/offline/queue-dedupe.ts" ;
-    skos:broader code:local-security-audits ;
+    skos:broader code:review-queue-integrity ;
     dcterms:requires pkg:node .
 
 <urn:reckons:file/scripts/offline/queue-dependencies.ts> rdf:type ktype:SourceFile ;
@@ -2169,7 +2169,7 @@
 <urn:reckons:file/scripts/offline/queue-integrity.ts> rdf:type ktype:SourceFile ;
     rdfs:label "queue-integrity.ts" ;
     kpred:path "scripts/offline/queue-integrity.ts" ;
-    skos:broader code:local-security-audits ;
+    skos:broader code:review-queue-integrity ;
     dcterms:requires pkg:node .
 
 <urn:reckons:file/scripts/offline/queue-retarget.ts> rdf:type ktype:SourceFile ;
