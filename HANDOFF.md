@@ -38,7 +38,11 @@ requeue with modified inputs, escalate only what it cannot settle.
 9. F272: open a local .ttl from a link (/?ttl=...), so agent hand-offs need no re-sync or cache reset.
 10. Model cleanup: the extraction bench restarted 2026-10-28 (the 10-27 run never started: its wait loop matched
     its own pgrep) — results in ~/.local/state/reckons/bench/extraction-2026-10-28.txt, 8 models incl.
-    gpt-oss:120b and the garden notes. Keep the best per category, remove the rest WITH Matt's confirmation.
+    gpt-oss:120b and the garden notes. MATT DECIDED 2026-10-27: keep the TOP 2 extraction models (strict recall
+    over all six notes, fewest invented facts), remove the other four of mistral-small3.2, nuextract, lfm2.5,
+    command-r, phi4, gemma3 — report the numbers to him first. Already removed (his OK): moondream,
+    granite3.2-vision. Kept by category: qwen3.8-160k (general/panel), gpt-oss:120b (overseer, under test),
+    qwen2.5vl:7b (vision), devstral-small-2 + qwen3-coder (code), nomic-embed-text, llama3.2:3b.
 11. Then taxonomy and maintenance through the harness, not inline.
 
 **Decided 2026-10-27 (recorded in the roadmap):** device space appears in Spaces as 'This device' (F269);
