@@ -549,6 +549,15 @@ job:space-size rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" .
 
+job:space-visual-gate rdf:type          ktype:OfflineJob ;
+    rdfs:label          "space-visual-gate" ;
+    skos:prefLabel      "space-visual-gate" ;
+    skos:definition     "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review." ;
+    kpred:job-tier      "agent" ;
+    kpred:command       "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" .
+
 job:status-evidence rdf:type          ktype:OfflineJob ;
     rdfs:label          "status-evidence" ;
     skos:prefLabel      "status-evidence" ;
@@ -660,7 +669,7 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
-    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
+    skos:member         job:aggregate-decisions, job:describe-entities, job:distill-decisions, job:docs-expand, job:docs-review, job:extraction-score, job:gen-model-bench, job:layer-classify, job:space-visual-gate, job:terminology-sweep, job:ux-impression, job:visual-diff, job:visual-streams .
 
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
@@ -669,5 +678,5 @@ jobset:script rdf:type      skos:Collection ;
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 71 of them, 59 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 72 of them, 59 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
