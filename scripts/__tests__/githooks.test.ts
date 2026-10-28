@@ -3,7 +3,10 @@
  * temp dir). Nothing here touches the real repo's history or index. The hooks find the repo's
  * tools through RECKONS_ROOT, so a temp repo can use the real scripts.
  */
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
+
+// Each case spawns tsx in a fresh repo; under a parallel full run that exceeds the 5 s default.
+vi.setConfig({ testTimeout: 60_000 });
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
