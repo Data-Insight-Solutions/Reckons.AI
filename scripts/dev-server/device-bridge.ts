@@ -79,7 +79,9 @@ type WatchState = {
   snapshotAt?: string;
   /** Last few stderr lines, for when it dies before its first snapshot. */
   stderr: string[];
-  exit?: { code: number | null; signal: string | null; at: string };
+  /** requested: stopped from the page. tsx relays SIGTERM as exit code 143, so the signal alone cannot tell. */
+  exit?: { code: number | null; signal: string | null; at: string; requested: boolean };
+  stopRequested?: boolean;
 };
 
 function json(res: ServerResponse, status: number, body: unknown): void {
@@ -157,7 +159,7 @@ export function deviceBridge(): Plugin {
     const tsxCli = createRequire(path.join(root, 'package.json')).resolve('tsx/cli');
     const args = [tsxCli, path.join(root, 'scripts/agent/watch.ts'), '--ndjson', ...(worker ? [] : ['--no-worker'])];
     const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1' } });
-    Object.assign(state, { child, worker, startedAt: new Date().toISOString(), snapshot: undefined, snapshotAt: undefined, stderr: [], exit: undefined });
+    Object.assign(state, { child, worker, startedAt: new Date().toISOString(), snapshot: undefined, snapshotAt: undefined, stderr: [], exit: undefined, stopRequested: false });
     let buf = '';
     child.stdout!.setEncoding('utf8');
     child.stdout!.on('data', (chunk: string) => {
@@ -174,11 +176,13 @@ export function deviceBridge(): Plugin {
     });
     child.stderr!.setEncoding('utf8');
     child.stderr!.on('data', (chunk: string) => { state.stderr = [...state.stderr, ...chunk.split('\n').filter(Boolean)].slice(-12); });
-    child.on('exit', (code, signal) => { state.exit = { code, signal, at: new Date().toISOString() }; });
+    child.on('exit', (code, signal) => { state.exit = { code, signal, at: new Date().toISOString(), requested: !!state.stopRequested }; });
   }
 
   function stop(): void {
-    if (running()) state.child!.kill('SIGTERM');
+    if (!running()) return;
+    state.stopRequested = true;
+    state.child!.kill('SIGTERM');
   }
 
   return {

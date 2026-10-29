@@ -62,7 +62,7 @@ export type WatchStatus = {
   startedAt?: string;
   snapshot: WebSnapshot | null;
   snapshotAt?: string;
-  exit?: { code: number | null; signal: string | null; at: string };
+  exit?: { code: number | null; signal: string | null; at: string; requested?: boolean };
   stderr: string[];
   command: string;
 };
@@ -151,6 +151,6 @@ export function dueText(d: Due): string {
 export function watcherProblem(w: WatchStatus): string | undefined {
   if (w.running && w.snapshot) return undefined;
   if (w.running) return 'starting — waiting for the first snapshot (reading the Ollama log takes a few seconds)';
-  if (w.exit && w.exit.signal !== 'SIGTERM') return `stopped by itself (${w.exit.signal ?? `exit ${w.exit.code}`})${w.stderr.length ? ` — ${w.stderr[w.stderr.length - 1]}` : ''}`;
+  if (w.exit && !w.exit.requested && w.exit.signal !== 'SIGTERM') return `stopped by itself (${w.exit.signal ?? `exit ${w.exit.code}`})${w.stderr.length ? ` — ${w.stderr[w.stderr.length - 1]}` : ''}`;
   return undefined;
 }

@@ -104,13 +104,15 @@ describe('dueText', () => {
 describe('watcherProblem', () => {
   const status = (over: Partial<WatchStatus>): WatchStatus => ({ running: false, worker: true, snapshot: null, stderr: [], command: 'npm run agent:watch', ...over });
   it('running with a snapshot is no problem', () => {
-    expect(watcherProblem(status({ running: true, snapshot: {} }))).toBeUndefined();
+    expect(watcherProblem(status({ running: true, snapshot: snapshot() }))).toBeUndefined();
   });
   it('running without one is starting', () => {
     expect(watcherProblem(status({ running: true, snapshot: null }))).toContain('starting');
   });
   it('a SIGTERM stop is not a problem; a crash names its stderr', () => {
     expect(watcherProblem(status({ exit: { code: null, signal: 'SIGTERM', at: NOW.toISOString() } }))).toBeUndefined();
+    // Measured 2026-10-29: tsx relays a requested SIGTERM as exit code 143 with no signal.
+    expect(watcherProblem(status({ exit: { code: 143, signal: null, at: NOW.toISOString(), requested: true } }))).toBeUndefined();
     expect(watcherProblem(status({ exit: { code: 1, signal: null, at: NOW.toISOString() }, stderr: ['boom'] }))).toContain('boom');
   });
 });

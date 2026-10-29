@@ -287,7 +287,7 @@
     <dl class="specs">
       <dt>platform</dt><dd>{browser.platform ?? 'not reported'}</dd>
       <dt>cores</dt><dd>{browser.cores ?? 'not reported'}</dd>
-      <dt>memory</dt><dd>{browser.memoryGb ? `${browser.memoryGb} GB or more (browsers cap this at 8)` : 'not reported'}</dd>
+      <dt>memory</dt><dd>{browser.memoryGb ? `about ${browser.memoryGb} GB (browsers round this down on purpose)` : 'not reported'}</dd>
       <dt>gpu</dt><dd>{browser.gpu ?? 'not reported'} · WebGPU {browser.webgpu ? 'available' : 'not available'}</dd>
       <dt>screen</dt><dd>{browser.screen} @{browser.pixelRatio}x{browser.touch ? ' · touch' : ''}</dd>
       <dt>storage</dt><dd>{#if browser.storage}{bytes(browser.storage.usage)} used of {bytes(browser.storage.quota)}{browser.storage.persisted ? ' · persistent' : ' · may be evicted under pressure'}{:else}not reported{/if}</dd>

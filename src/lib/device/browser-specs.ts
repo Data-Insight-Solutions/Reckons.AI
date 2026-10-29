@@ -2,8 +2,8 @@
  * Settings → This Device: what THIS browser can tell about the machine (F245). Works on a deployed
  * site and a phone, with no dev server: everything here comes from browser APIs.
  *
- * Browsers round or hide these on purpose (fingerprinting defences): deviceMemory is capped at 8 GB
- * and missing outside Chromium, the GPU name may be a generic "ANGLE" string or absent. So each
+ * Browsers round or hide these on purpose (fingerprinting defences): deviceMemory is rounded (and
+ * capped at 8 GB in older Chromium) and missing elsewhere, the GPU name may be a generic "ANGLE" string or absent. So each
  * field may be undefined, and the page shows "not reported" rather than guessing.
  */
 
@@ -11,7 +11,7 @@ export type BrowserSpecs = {
   userAgent: string;
   platform?: string;
   cores?: number;
-  /** GB, Chromium only, capped at 8. */
+  /** GB, Chromium only, rounded down; older versions cap it at 8. */
   memoryGb?: number;
   gpu?: string;
   webgpu: boolean;
