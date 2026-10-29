@@ -9826,7 +9826,7 @@ kb:lan-https rdf:type ktype:Feature ;
 kb:agents-in-app rdf:type ktype:Feature ;
     rdfs:label "Agents in the app — a dashboard, and agent settings per space and per device" ;
     kpred:feature-id "F245" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:depends-on kb:local-host-mode ;
     kpred:relates-to kb:local-panel ;
     kpred:relates-to kb:meta-graph-view ;
@@ -9836,7 +9836,13 @@ kb:agents-in-app rdf:type ktype:Feature ;
     kpred:proposed "TWO LEVELS, INTERSECTED. DEVICE (private, stays in device.ttl, never in a space): which models exist here, GPU limits (the 83 C / 90% VRAM gate), quiet hours, whether this device runs agents at all. SPACE (in the space's own TTL, per the 2026-10-06 self-containment decision, so it travels with the space): which jobs run for it (descriptions, docs review, term senses, extraction scoring), how often, at which tier (script, local, cloud), and whether any may leave the device. The worker runs a job only when both allow it, and says which level refused." ;
     kpred:proposed "WHAT THE DASHBOARD SHOWS: models up or down and loaded; the running job with its progress; the queue; each finished job's outcome and the proposals it added to the review queue; failures by name, never collapsed into a count; and runs that died (the 2026-10-01 ghost run, fixed in PR #352, is the case it must not repeat)." ;
     kpred:decided "MATT, 2026-10-07, PLACEMENT: per-space agents in the Spaces tab beside the map (select a space to see its agents, queue and results), device agents (models, GPU limits, quiet hours) in Settings. NO NEW TOP-LEVEL TAB: it lives where the person already goes. Chosen over a new Agents tab and over Settings only." ;
-    kpred:honest-note "PLANNED, NOTHING BUILT (2026-10-07). The terminal watcher (scripts/agent/watch.ts), the queue and worker (PR #349) and the device TTL exist; nothing in src/ reads any of them." .
+    kpred:decided "MATT, 2026-10-29: 'the agent watch cli needs a bit more attention, it was getting very long and difficult to keep properly scrolled down to the bottom and still see the most important details. We should add an agent watch UI page, and a way to start the agent watch command from the UI.' Then, PLACEMENT: 'Maybe Settings > This Device.' and 'List of installed plugins, device specs, and a variety of things can go on that new settings page.'" ;
+    kpred:decided "MATT, 2026-10-29, WHAT 'INSTALLED' LISTS (no plugin system exists yet, F61): app integrations, local models plus MCP servers, and the browser extension. Not Claude Code's own plugins, whose files are undocumented." ;
+    kpred:honest-note "IN PROGRESS (2026-10-29). Built: Settings → This Device (src/routes/(app)/settings/device/+page.svelte) shows the agent watch with a pinned headline row and can start and stop the watcher, through a dev-server-only Vite plugin (scripts/dev-server/device-bridge.ts). NOT built: per-space agent configuration in the Spaces tab, device settings editing, and any of it on a deployed site or a phone — the bridge exists only while npm run dev runs. The bridge takes no token (loopback Host plus same-origin POST instead), which kb:local-host-mode (F243) will require." ;
+    kpred:tested-by "src/lib/device/__tests__/agent-watch-view.test.ts" ;
+    kpred:tested-by "src/lib/device/__tests__/integrations.test.ts" ;
+    kpred:tested-by "scripts/dev-server/__tests__/device-bridge.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/watch-summary.test.ts" .
 
 kb:meta-graph-view kpred:decided "MATT, 2026-10-07: 'Spaces map needs UX improvement also. We can do a 3D version?' YES, AND IT IS ALREADY THE PLAN'S DIRECTION: on 2026-09-29 Matt decided Spaces moves onto the shared canvas (kb:one-graph-canvas, which owns the 3D renderer) with its own layout, keeping the SVG map as the compact and accessible fallback; that is 0.2.5 build-order item 4. A 3D Spaces view is that canvas mode drawn in 3D, with the polar set layout from src/lib/rdf/space-graph.ts, ghost spaces for ones known only by reference (decided 2026-10-06), and per-space agent state from kb:agents-in-app on selection. CAUTION FROM THE 2026-10-07 BENCH: the canvas stops being usable around 10,000 nodes; a spaces graph is tens of nodes, so the risk is not size but reusing the explorer's force simulation where the deterministic polar layout already works." ;
     kpred:relates-to kb:agents-in-app .
