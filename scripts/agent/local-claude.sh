@@ -171,6 +171,8 @@ export GH_CONFIG_DIR="$CFG/gh-none" GIT_TERMINAL_PROMPT=0 DBUS_SESSION_BUS_ADDRE
 export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= GIT_CONFIG_KEY_1=credential.https://github.com.helper GIT_CONFIG_VALUE_1=
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN
 export OLLAMA_BASE_URL="$OLLAMA"
+# A managed repository's .mcp.json finds this checkout's MCP launcher through RECKONS_HOME (F274.1).
+export RECKONS_HOME="$ROOT"
 
 # Which claude: the Nix build on PATH here was 2.1.72 with no ripgrep, so the deputy's Grep tool did not
 # work (/doctor: "Search: Not working (rg)"). The VS Code extension's native binary bundles ripgrep and
