@@ -1,11 +1,11 @@
 /**
- * Settings → This Device: which of the app's integrations are set up in THIS browser (F245).
+ * Settings → This Device: which of the app's integrations are configured in THIS browser (F245).
  *
  * Matt, 2026-10-29, chose app integrations, local models + MCP servers, and the browser extension as
- * the "installed" list. There is no plugin system yet (F61), so an integration counts as set up when
+ * the "installed" list. There is no plugin system yet (F61), so an integration counts as configured when
  * the setting it cannot work without is filled in. That is all this can say: a key that is present
  * may still be wrong or revoked, so the page says "configured", never "working". Pure, and it never
- * returns a key or URL, only whether one is set; the n8n host is shown because it is not a secret.
+ * returns a key or URL, only whether one is present; the n8n host is shown because it is not a secret.
  */
 import type { SettingsRecord } from '$lib/storage/db';
 
@@ -17,7 +17,7 @@ export type IntegrationView = {
   configured: boolean;
   /** Not secret: what it is for, or (for n8n) the host. */
   detail: string;
-  /** Where to set it up. */
+  /** Where to configure it. */
   href: string;
 };
 

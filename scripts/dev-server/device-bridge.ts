@@ -4,7 +4,7 @@
  * Matt, 2026-10-29: the agent:watch terminal "was getting very long and difficult to keep properly
  * scrolled down to the bottom and still see the most important details. We should add an agent
  * watch UI page, and a way to start the agent watch command from the UI." A page cannot read the
- * Ollama log, run nvidia-smi or start a process; the dev server is a Node process on the same
+ * Ollama log, run nvidia-smi or start a process; the dev server is a local process on the same
  * machine that Matt already runs, so it is the host here. Endpoints, under /__reckons/device/:
  *
  *   GET  agent-watch          the latest snapshot from the watcher child, and whether it runs
@@ -124,7 +124,7 @@ function hostSpecs() {
     memoryBytes: os.totalmem(),
     freeMemoryBytes: os.freemem(),
     uptimeSeconds: os.uptime(),
-    node: process.version,
+    nodeVersion: process.version,
     /** Empty when nvidia-smi is absent: no NVIDIA GPU visible, not "no GPU". */
     gpus: gpus(),
   };

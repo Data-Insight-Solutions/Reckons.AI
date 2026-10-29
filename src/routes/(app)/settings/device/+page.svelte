@@ -16,7 +16,7 @@
 
   const BRIDGE = '/__reckons/device';
 
-  type HostSpecs = { hostname: string; os: string; arch: string; cpu: string; cores: number; memoryBytes: number; freeMemoryBytes: number; uptimeSeconds: number; node: string; gpus: { index: number; name: string; memoryMiB: number; driver?: string }[] };
+  type HostSpecs = { hostname: string; os: string; arch: string; cpu: string; cores: number; memoryBytes: number; freeMemoryBytes: number; uptimeSeconds: number; nodeVersion: string; gpus: { index: number; name: string; memoryMiB: number; driver?: string }[] };
   type Installed = { ollama: { up: boolean; url: string; models: { name: string; sizeBytes: number; family?: string; parameters?: string; quantization?: string }[] }; mcp: { name: string; transport: string; via: string }[] | null; mcpFile: string | null };
 
   /** undefined = not checked yet; false = no bridge here (deployed site, preview build, other host). */
@@ -279,7 +279,7 @@
       <dt>cpu</dt><dd>{host.cpu} · {host.cores} threads</dd>
       <dt>memory</dt><dd>{bytes(host.memoryBytes)} · {bytes(host.freeMemoryBytes)} free</dd>
       <dt>gpu</dt><dd>{#if host.gpus.length}{host.gpus.map((g) => `${g.name} (${(g.memoryMiB / 1024).toFixed(0)} GB)`).join(' · ')}{:else}<span class="muted">no NVIDIA GPU visible (nvidia-smi)</span>{/if}</dd>
-      <dt>up</dt><dd>{duration(host.uptimeSeconds * 1000)} · node {host.node}</dd>
+      <dt>up</dt><dd>{duration(host.uptimeSeconds * 1000)} · runtime {host.nodeVersion}</dd>
     </dl>
   {/if}
   {#if browser}
@@ -328,7 +328,7 @@
   {:else if extension}
     <p><span class="sym ok">✓</span> Reckons.AI extension v{extension}</p>
   {:else}
-    <p class="hint">Not detected. Either it is not installed in this browser, or its app URL (extension options) is set to a different address than this page.</p>
+    <p class="hint">Not detected. Either it is not installed in this browser, or its app URL (extension options) points at a different address than this page.</p>
   {/if}
 
   <p class="sub">app integrations <span class="muted">· in this browser's settings; configured is not the same as working</span></p>
@@ -336,7 +336,7 @@
     {#each configured as i (i.id)}
       <li class:muted={!i.configured}>
         <span class="sym" class:ok={i.configured}>{i.configured ? '✓' : '·'}</span>
-        <a href={i.href}>{i.name}</a> <span class="muted">{i.configured ? i.detail : 'not set up'}</span>
+        <a href={i.href}>{i.name}</a> <span class="muted">{i.configured ? i.detail : 'not configured'}</span>
       </li>
     {/each}
   </ul>

@@ -609,7 +609,7 @@ chrome.runtime.onMessage.addListener((cmd: ContentCommand, _sender: any, sendRes
 });
 
 // Settings → This Device lists the extension as installed (F245). Marked ONLY on the app origin the
-// extension is set to: on every other site the attribute would tell any page this extension is here.
+// extension points at: on every other site the attribute would tell any page this extension is here.
 async function markAppOrigin() {
   try {
     const stored = await chrome.storage.local.get('settings') as Record<string, any>;

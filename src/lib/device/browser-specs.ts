@@ -60,7 +60,7 @@ export async function browserSpecs(): Promise<BrowserSpecs> {
 
 /**
  * The extension's content script marks the page with its version, but only on the app origin it is
- * set to (src/extension/content-script.ts), and only after the page has loaded (document_idle).
+ * configured with (src/extension/content-script.ts), and only after the page has loaded (document_idle).
  * So "not detected" can mean not installed, or installed but pointed at a different app URL.
  */
 export const EXTENSION_ATTR = 'data-reckons-extension';
