@@ -10602,3 +10602,65 @@ kb:procedure-over-prose rdf:type ktype:Feature ;
     kpred:relates-to   kb:context-engine .
 
 kb:terminology-maintenance kpred:progress "2026-10-28, ONE SUBJECT PER SITE (Matt: fix the producer, then re-run). All 151 open term-senses rows shared one subject and predicate (terminology-ontology / open-question) with no object, so the review tools grouped them as one decision and a verdict on any settled all of them. term-senses.ts now queues each finding under urn:kbase:concept/term-site/<word>/<file>-l<line>, derived from word, file and line only, so two sites get two subjects and a re-run of the same site gets the same one (tests in term-senses.test.ts). The 151 old rows were rejected as superseded in knowledge.decisions.jsonl (backed up first). Re-run on the local tier, qwen3-coder + devstral-small-2 + gemma3:27b, 8 words, 30 sites each: 99 non-unanimous findings, 99 distinct subjects. NOT DONE: the 99 rows were written to a worktree copy of the queue (the atomic rewrite replaced a symlink), not yet the main checkout's queue; the other producers that share one subject across findings (docs-review rows share kb:journey-docs) are untouched." .
+
+# ── A site that is not this repo: Data Insight Solutions (Matt, 2026-10-29) ────
+
+kb:downstream-site rdf:type ktype:Feature ;
+    rdfs:label "Downstream site — Reckons.AI managing a website that lives in its own repository (first: Data Insight Solutions)" ;
+    kpred:feature-id   "F274" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:publishing-v2 ;
+    kpred:decided      "MATT, 2026-10-29: 'primarily this repo is building itself, we need a clone of this repository for my Data Insight Solutions website revamp. I need to be able to quickly adopt a merge of changes to Reckons.AI to get new features as I want, but still have a completely different web publishing, and have independant workspace for spaces that are for Data Insight Solutions only. This would be like an end user usecase of Reckons.AI, and be a great testing location outside of this repo itself. If Reckons.AI can be a personal assitant and manage a website for a user, then this will be an actual test of those features.'" ;
+    kpred:decided      "MATT, 2026-10-29, SHAPE: NOT A CLONE OR FORK. A fresh private repository holds only the site's data (workspace spaces, sources, content markdown, assets, Sveltia admin) plus a small site-engine package; the Reckons.AI app (main, or staging for pre-release testing) and its agents manage that folder. 'a small package within the other repository, and not a clone or fork of Reckons.AI repo entirely.' Matt creates the repository himself ('I will create a new repo for this and set it up locally')." ;
+    kpred:decided      "MATT, 2026-10-29, DESIGN: 'Replace the existing website design which was a copy from a different Sveltkit template. I would rather reset to my own web engine I'm making with Reckons.AI. Built with Reckons.AI attribution, etc.' VERSIONS: 'I would only be merging Main versions of Reckons.AI I think, but maybe useful to also be able to merge changes that are in staging, pre-release end user testing.' CONTENT: the existing site's content is re-created in the Reckons.AI-managed Sveltia CMS." ;
+    kpred:decided      "MATT, 2026-10-29, AGENTS: 'I would want to deploy local agents working on the site for me, like for the recreation initially, or for refactors that aren't a simple post, and obviously the page creation has some LLM need also to create the markdown from the .ttl knowledge in the spaces.' Then: 'Yes start on this work.'" ;
+    kpred:description  "THE FOLDER IS THE INTERFACE. Four things meet at the site repository's files: the web app (linked workspace folder), the MCP server (--kb <site>/workspace), the local deputy and queue worker (working inside it, committing to agent/local-* branches), and the host, whose build runs the site-engine package. The package only RENDERS (content to HTML at build time); it is not how the app reaches the site. New app features arrive by running a newer Reckons.AI; new engine features by bumping the package (latest = main, next = staging). Nothing is merged, so nothing conflicts. Every gap this site hits is built in Reckons.AI, generically, because any end user who wants a site would hit it too." ;
+    kpred:principle    "A FORK WOULD HIDE THE TEST. An end user cannot patch the source; a fork invites local patches that make each gap invisible. The site repository carries no Reckons.AI source, so a missing feature shows up as a missing feature." ;
+    kpred:constraint   "PUBLIC PAGES IN THEIR OWN SPACE. buildSiteFiles writes every statement it is given into the published knowledge.ttl (filtered only for blocked content), so publishing from a space that also holds private business notes would publish them. Until knowledge.ttl is limited to the published pages (queued for review on kb:byo-static-host, 2026-10-29), the site space holds only what may be public." ;
+    kpred:constraint   "The site repository is private and outside this one (kb:personal-workspace): Data Insight Solutions content, client notes and the site's spaces never enter this public repository, its fixtures or its tests." ;
+    kpred:open-question "Package registry for the site engine: public npm, GitHub Packages (private to the org), or a git submodule until the package exists?" ;
+    kpred:open-question "Host: Cloudflare Pages (the F76 primary target, already the operator host) or Netlify (where the old site runs)?" ;
+    kpred:open-question "Attribution for other users' sites: on by default with an opt-out, or required? F76's no-lock-in principle argues for an opt-out." ;
+    kpred:relates-to   kb:byo-static-host, kb:graph-publishing, kb:personal-workspace, kb:loop-local-deputy, kb:agents-in-app ;
+    kpred:honest-note  "PLANNED, NOTHING BUILT (2026-10-29). What exists: the app links an outside workspace folder; the MCP server takes --kb <path>; kb_entity_markdown (no model) and kb_generate_page (local model, proposal only) draft pages from a space; queue.ts add --cwd runs a one-off job in another folder; site-import and site-generator are the two halves of a markdown-to-HTML build. Missing: everything in the phases below." .
+
+kb:downstream-site-agents rdf:type ktype:Phase ;
+    rdfs:label "F274.1 — local agents and the MCP server work in another repository" ;
+    kpred:feature-id   "F274.1" ;
+    kpred:has-status   "in-progress" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "(a) local-claude.sh --repo=<dir>: the deputy starts inside the site repository with that repository's AGENTS.md and .mcp.json, keeping every part of its safety envelope (no Anthropic login, no GitHub credential, push and merge denied, agent/local-* branches). (b) The MCP server can be launched for another repository's workspace (scripts/mcp-server.sh today always serves this repository's mcp-workspace). (c) A recurring schedule can name the folder it runs in (today every schedule runs in this repository)." ;
+    kpred:done-test    "A deputy started with --repo=<a scratch git repo> reports that repo as its working directory, reads its AGENTS.md, and git push is still denied; the MCP launcher given --kb <scratch workspace> lists that workspace's spaces; a schedule with kpred:cwd runs in that folder (unit test)." ;
+    kpred:order        1 .
+
+kb:downstream-site-scaffold rdf:type ktype:Phase ;
+    rdfs:label "F274.2 — a fresh site workspace: reckons init" ;
+    kpred:feature-id   "F274.2" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "One command that turns an empty repository into a Reckons.AI site workspace: workspace/kbs/ with an empty public site space and one private space, workspace/sources/, content/, admin/ (Sveltia), .mcp.json pointing the reckons MCP server at ./workspace, an AGENTS.md template for the site, and .gitignore. setup-reckons-workspace.sh is NOT this: it builds this repository's own self-documentation workspace from static/*.ttl." ;
+    kpred:order        2 .
+
+kb:downstream-site-content rdf:type ktype:Phase ;
+    rdfs:label "F274.3 — re-create the existing Data Insight Solutions content as WebPage entities" ;
+    kpred:feature-id   "F274.3" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "Inventory (2026-10-29, the old SvelteKit site): 9 blog posts (frontmatter: title, date, excerpt, coverImage, categories), About and Services as +page.md, Home and Contact as Svelte components, 67 MB of images, a Decap/Sveltia config. Script tier maps the markdown pages (no model); the deputy turns the two Svelte pages into page text as a reviewed branch; the local panel settles bulk judgments (category, keep or drop the template-era post). Run in the site repository, never here." ;
+    kpred:order        3 .
+
+kb:downstream-site-engine rdf:type ktype:Phase ;
+    rdfs:label "F274.4 — engine gaps and the build command (generic, in Reckons.AI)" ;
+    kpred:feature-id   "F274.4" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "Publish from the app into a chosen folder per space; a build command that runs content/*.md through site-import into site-generator on the host (resolves the F76 SOURCE-or-PRE-BUILT question: source, built on the host, because Sveltia edits markdown); blog index, categories, cover images and pagination; a landing layout; a contact form posting to the person's own n8n webhook; 'Built with Reckons.AI' attribution as a link; knowledge.ttl limited to published pages." ;
+    kpred:order        4 .
+
+kb:downstream-site-package rdf:type ktype:Phase ;
+    rdfs:label "F274.5 — the site engine as a package, with latest (main) and next (staging)" ;
+    kpred:feature-id   "F274.5" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "Generator, theme, import, Sveltia config and the build CLI published from this repository on each promotion: staging publishes next, main publishes latest. The site repository depends on it alone, so a version is adopted by bumping one dependency (a bot can open that PR). Pure code with few dependencies (marked, n3), so host builds stay fast; the app's own dependencies never reach the site's build." ;
+    kpred:order        5 .

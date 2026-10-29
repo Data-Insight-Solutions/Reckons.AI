@@ -10,6 +10,11 @@
 #   npm run local:claude                          talk to the deputy (qwen3.8, 160k context)
 #   npm run local:claude -- --model=qwen3-coder   a different base model
 #   npm run local:claude -- -p "…"                one headless task
+#   npm run local:claude -- --repo=../my-site      work in ANOTHER git repository (F274.1): Claude Code
+#                                                 starts there, so it loads that repository's CLAUDE.md,
+#                                                 .mcp.json and project memory. The safety envelope
+#                                                 below is identical: it comes from this launcher's
+#                                                 environment and config folder, not from the repository.
 #
 # n8n is deliberately NOT given to the deputy: its MCP config and API key live in the user settings of
 # Matt's own sessions (~/.claude/settings.json env), which this separate config folder does not load.
@@ -42,19 +47,35 @@
 # with gh unauthenticated it cannot read PR or CI state either.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# A relative --repo means relative to where the person typed it; npm run moves to the package root
+# but keeps that folder in INIT_CWD.
+CALLER="${INIT_CWD:-$PWD}"
 cd "$ROOT"
 
 OLLAMA="${OLLAMA_BASE_URL:-http://localhost:11434}"; OLLAMA="${OLLAMA%/}"
 MODEL="${RECKONS_DEPUTY_MODEL:-qwen3.8}"
 CTX="${RECKONS_DEPUTY_CTX:-163840}"
 PASS=()
+REPO=""
 for a in "$@"; do
   case "$a" in
     --model=*) MODEL="${a#--model=}" ;;
     --ctx=*) CTX="${a#--ctx=}" ;;
+    --repo=*) REPO="${a#--repo=}" ;;
     *) PASS+=("$a") ;;
   esac
 done
+# Where the deputy works: this repository, or with --repo the top of another git repository. A folder
+# that is not a git repository is refused: its work must land on a branch Opus can review.
+WORKDIR="$ROOT"
+if [ -n "$REPO" ]; then
+  case "$REPO" in /*) ;; *) REPO="$CALLER/$REPO" ;; esac
+  if ! WORKDIR="$(git -C "$REPO" rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "local-claude: --repo=$REPO is not inside a git repository; the deputy only works where its changes can be reviewed on a branch." >&2
+    exit 1
+  fi
+fi
+if [ "${RECKONS_DEPUTY_PRINT_REPO:-}" = 1 ]; then echo "$WORKDIR"; exit 0; fi
 case "$MODEL" in *:*) BASE="$MODEL" ;; *) BASE="$MODEL:latest" ;; esac
 ALIAS="${BASE%%:*}-$((CTX / 1024))k"
 
@@ -101,7 +122,7 @@ cat >"$CFG/settings.json" <<'JSON'
 JSON
 
 # Project memory: a fresh copy each launch. Anything the deputy wrote last time is set aside, not lost.
-KEY="${ROOT//\//-}"
+KEY="${WORKDIR//\//-}"
 SRC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$KEY/memory"
 DST="$CFG/projects/$KEY/memory"
 if [ -d "$DST" ] && [ -d "$SRC" ] && ! diff -rq "$SRC" "$DST" >/dev/null 2>&1; then
@@ -111,10 +132,17 @@ if [ -d "$DST" ] && [ -d "$SRC" ] && ! diff -rq "$SRC" "$DST" >/dev/null 2>&1; t
 fi
 if [ -d "$SRC" ]; then rm -rf "$DST"; mkdir -p "$(dirname "$DST")"; cp -r "$SRC" "$DST"; fi
 
+SCOPE="- You are working in $WORKDIR."
+if [ "$WORKDIR" != "$ROOT" ]; then
+  SCOPE="- You are working in $WORKDIR, a repository MANAGED WITH Reckons.AI, not Reckons.AI itself. Follow
+  that repository's own CLAUDE.md/AGENTS.md. Its spaces are private to it: never copy its content into
+  $ROOT, and never edit $ROOT from here."
+fi
 read -r -d '' ROLE <<PROMPT || true
 You are the LOCAL DEPUTY for Reckons.AI: model $ALIAS running on Matt's machine inside the Claude
 Code harness, standing in for Opus while Matt's Anthropic usage is exhausted. Help Matt think and
 decide; do real work; but everything you produce is a PROPOSAL that the next Opus session reviews.
+$SCOPE
 - Code: only on a branch you create, named agent/local-<topic>, in a worktree under .claude/worktrees/.
   Never commit to dev or main. You cannot push, open PRs or merge (no GitHub credential) — do not try
   to work around that; say what is ready instead.
@@ -154,4 +182,5 @@ if [ -z "$CLAUDE_BIN" ]; then
 fi
 
 echo "local-claude: $ALIAS via $OLLAMA — no Anthropic quota, no push/merge. Config: $CFG"
+cd "$WORKDIR"
 exec "$CLAUDE_BIN" --model "$ALIAS" --append-system-prompt "$ROLE" ${PASS[@]+"${PASS[@]}"}
