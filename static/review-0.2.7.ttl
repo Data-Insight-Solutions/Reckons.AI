@@ -27,7 +27,7 @@ rev:gap rdf:type ktype:Concept ;
 
 rev:gap-f245 rdf:type ktype:Concept ;
     rdfs:label "F245 Agents in the app — a dashboard, and agent settings per space and per device" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/device/__tests__/agent-watch-view.test.ts, src/lib/device/__tests__/integrations.test.ts, scripts/dev-server/__tests__/device-bridge.test.ts, scripts/agent/__tests__/watch-summary.test.ts)." .
 
 rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthropic-usage-runs-out rdf:type ktype:Concept ;
     rdfs:label "Phase 7 — the local deputy: Claude Code driven by a local model when Anthropic usage runs out" ;
