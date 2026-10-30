@@ -10741,6 +10741,9 @@ kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for p
     kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
     kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
 
+kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
+    kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
+
 kb:downstream-site-build rdf:type ktype:Phase ;
     rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
     kpred:feature-id   "F274.4.1" ;
