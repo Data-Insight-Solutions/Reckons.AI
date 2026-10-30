@@ -10,6 +10,11 @@
 #   npm run local:claude                          talk to the deputy (qwen3.8, 160k context)
 #   npm run local:claude -- --model=qwen3-coder   a different base model
 #   npm run local:claude -- -p "…"                one headless task
+#   npm run local:claude -- --repo=../my-site      work in ANOTHER git repository (F274.1): Claude Code
+#                                                 starts there, so it loads that repository's CLAUDE.md,
+#                                                 .mcp.json and project memory. The safety envelope
+#                                                 below is identical: it comes from this launcher's
+#                                                 environment and config folder, not from the repository.
 #
 # n8n is deliberately NOT given to the deputy: its MCP config and API key live in the user settings of
 # Matt's own sessions (~/.claude/settings.json env), which this separate config folder does not load.
@@ -43,19 +48,35 @@
 # unauthenticated it cannot read PR or CI state either.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# A relative --repo means relative to where the person typed it; npm run moves to the package root
+# but keeps that folder in INIT_CWD.
+CALLER="${INIT_CWD:-$PWD}"
 cd "$ROOT"
 
 OLLAMA="${OLLAMA_BASE_URL:-http://localhost:11434}"; OLLAMA="${OLLAMA%/}"
 MODEL="${RECKONS_DEPUTY_MODEL:-qwen3.8}"
 CTX="${RECKONS_DEPUTY_CTX:-163840}"
 PASS=()
+REPO=""
 for a in "$@"; do
   case "$a" in
     --model=*) MODEL="${a#--model=}" ;;
     --ctx=*) CTX="${a#--ctx=}" ;;
+    --repo=*) REPO="${a#--repo=}" ;;
     *) PASS+=("$a") ;;
   esac
 done
+# Where the deputy works: this repository, or with --repo the top of another git repository. A folder
+# that is not a git repository is refused: its work must land on a branch Opus can review.
+WORKDIR="$ROOT"
+if [ -n "$REPO" ]; then
+  case "$REPO" in /*) ;; *) REPO="$CALLER/$REPO" ;; esac
+  if ! WORKDIR="$(git -C "$REPO" rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "local-claude: --repo=$REPO is not inside a git repository; the deputy only works where its changes can be reviewed on a branch." >&2
+    exit 1
+  fi
+fi
+if [ "${RECKONS_DEPUTY_PRINT_REPO:-}" = 1 ]; then echo "$WORKDIR"; exit 0; fi
 case "$MODEL" in *:*) BASE="$MODEL" ;; *) BASE="$MODEL:latest" ;; esac
 ALIAS="${BASE%%:*}-$((CTX / 1024))k"
 
@@ -103,13 +124,21 @@ JSON
 
 # Project memory: a fresh copy each launch. What the deputy changed last time is set aside as a patch
 # and named at the next Opus session start (scripts/agent/deputy-memory.sh, kb:deputy-memory-readback).
-KEY="${ROOT//\//-}"
+# Keyed by the folder the deputy works in, so a repository managed with --repo keeps its own memory.
+KEY="${WORKDIR//\//-}"
 bash "$ROOT/scripts/agent/deputy-memory.sh" sync --src="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$KEY/memory" --cfg="$CFG" --key="$KEY"
 
+SCOPE="- You are working in $WORKDIR."
+if [ "$WORKDIR" != "$ROOT" ]; then
+  SCOPE="- You are working in $WORKDIR, a repository MANAGED WITH Reckons.AI, not Reckons.AI itself. Follow
+  that repository's own CLAUDE.md/AGENTS.md. Its spaces are private to it: never copy its content into
+  $ROOT, and never edit $ROOT from here."
+fi
 read -r -d '' ROLE <<PROMPT || true
 You are the LOCAL DEPUTY for Reckons.AI: model $ALIAS running on Matt's machine inside the Claude
 Code harness, standing in for Opus while Matt's Anthropic usage is exhausted. Help Matt think and
 decide; do real work; but everything you produce is a PROPOSAL that the next Opus session reviews.
+$SCOPE
 - Code: only on a branch you create, named agent/local-<topic>, in a worktree under .claude/worktrees/.
   Never commit to dev or main. You cannot push, open PRs or merge (no GitHub credential) — do not try
   to work around that; say what is ready instead.
@@ -138,6 +167,8 @@ export GH_CONFIG_DIR="$CFG/gh-none" GIT_TERMINAL_PROMPT=0 DBUS_SESSION_BUS_ADDRE
 export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= GIT_CONFIG_KEY_1=credential.https://github.com.helper GIT_CONFIG_VALUE_1=
 unset ANTHROPIC_API_KEY GH_TOKEN GITHUB_TOKEN
 export OLLAMA_BASE_URL="$OLLAMA"
+# A managed repository's .mcp.json finds this checkout's MCP launcher through RECKONS_HOME (F274.1).
+export RECKONS_HOME="$ROOT"
 
 # Which claude: the Nix build on PATH here was 2.1.72 with no ripgrep, so the deputy's Grep tool did not
 # work (/doctor: "Search: Not working (rg)"). The VS Code extension's native binary bundles ripgrep and
@@ -149,4 +180,5 @@ if [ -z "$CLAUDE_BIN" ]; then
 fi
 
 echo "local-claude: $ALIAS via $OLLAMA — no Anthropic quota, no push/merge. Config: $CFG"
+cd "$WORKDIR"
 exec "$CLAUDE_BIN" --model "$ALIAS" --append-system-prompt "$ROLE" ${PASS[@]+"${PASS[@]}"}
