@@ -10737,6 +10737,72 @@ kb:downstream-site-engine rdf:type ktype:Phase ;
     kpred:description  "Publish from the app into a chosen folder per space; a build command that runs content/*.md through site-import into site-generator on the host (resolves the F76 SOURCE-or-PRE-BUILT question: source, built on the host, because Sveltia edits markdown); blog index, categories, cover images and pagination; a landing layout; a contact form posting to the person's own n8n webhook; 'Built with Reckons.AI' attribution as a link; knowledge.ttl limited to published pages." ;
     kpred:order        4 .
 
+kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for pages.dev domain viewing, I can cut over DNS once I am happy with everything.' Answers the Host open question: Cloudflare Pages. Project data-insight-solutions (direct upload, no Git link), preview https://data-insight-solutions.pages.dev deployed 2026-10-30 from the reviewed landing mock-up with noindex; DNS for data-insight-solutions.com and data-insight.solutions still points at Netlify until Matt cuts over (the project token cannot edit DNS)." ;
+    kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
+    kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
+
+kb:downstream-site-build rdf:type ktype:Phase ;
+    rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
+    kpred:feature-id   "F274.4.1" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:description  "npm run site:build -- --site=<repo> --out=<dir> reads <repo>/content/**/*.md through site-import into WebPage statements, renders them with generateStaticSite, copies <repo>/assets and <repo>/admin, and writes _headers. A page whose frontmatter status is draft is not built." ;
+    kpred:extends      "src/lib/publish/site-import.ts, src/lib/publish/site-generator.ts, src/lib/publish/site-export.ts" ;
+    kpred:evidence     "2026-10-30: the first pages.dev preview of the Data Insight Solutions site was hand-prepared from a mock-up because no command builds another repository's content/." ;
+    kpred:done-test    "On a synthetic fixture site under src/lib/publish/__tests__/fixtures/ (three pages, one with status draft, an assets/ file and an admin/ folder): the output has index.html, one page per published file and none for the draft, assets/ and admin/ copied, and a second run is byte-identical. npm run check 0 errors." ;
+    kpred:non-goal     "No package (F274.5), no deploy, no theme work; it uses the generator's existing output." ;
+    kpred:order        1 .
+
+kb:downstream-site-blog rdf:type ktype:Phase ;
+    rdfs:label "F274.4.2 — blog: index, posts, categories, cover images and a references note" ;
+    kpred:feature-id   "F274.4.2" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "Pages under content/blog/ become posts: a blog index newest first with date, excerpt and cover image; one page per category; and, when a post's frontmatter sets references-note, the note Matt asked for (references gathered with Reckons.AI Triple Check and reviewed by the author) under the post." ;
+    kpred:extends      "kb:downstream-site-build; src/lib/publish/markdown-site-import.ts (F274.3, the old posts' frontmatter: title, date, excerpt, coverImage, categories)" ;
+    kpred:evidence     "2026-10-30: Matt, 'we need sveltia and the blog setup and working'; the generator has no blog index or categories." ;
+    kpred:done-test    "Fixture with three posts (one draft, two categories): the blog index lists the two published posts newest first with excerpt and cover; each category page lists only its posts; the draft appears nowhere; a post with references-note renders the note. Unit tests pass." ;
+    kpred:non-goal     "No comments, search or pagination until a site has more than 20 posts; the old posts are not republished until Matt reviews them (F274.3)." ;
+    kpred:order        2 .
+
+kb:downstream-site-landing-layout rdf:type ktype:Phase ;
+    rdfs:label "F274.4.3 — the landing layout: the approved mock-up as a generic template" ;
+    kpred:feature-id   "F274.4.3" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "template: landing renders the design Matt approved on 2026-10-30 (soft drifting color wash, translucent panels, asymmetric card grid, reveal on scroll, light and dark, phone menu, contact form posting to the site's own n8n webhook) from page sections and site theme values, so any Reckons.AI site can use it. Brand colors, fonts and the webhook come from site configuration, never hard-coded." ;
+    kpred:extends      "kb:downstream-site-build; kb:downstream-site-landing (F274.6)" ;
+    kpred:evidence     "2026-10-30: Matt approved the mock-up ('That deployed SPA is looking pretty good'); it exists only as one hand-written HTML file in a private folder." ;
+    kpred:done-test    "A fixture landing page with the same sections renders with no script errors and no horizontal scroll at 390 and 1440 px, and npm run visual:local's model judges it the same layout as the approved preview; brand values change when the fixture's theme changes." ;
+    kpred:non-goal     "No page builder UI; sections are markdown and frontmatter." ;
+    kpred:order        3 .
+
+kb:downstream-site-sveltia rdf:type ktype:Phase ;
+    rdfs:label "F274.4.4 — Sveltia CMS for a site repository" ;
+    kpred:feature-id   "F274.4.4" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:description  "Generate admin/index.html and admin/config.yml for a site repository: GitHub backend on that repository, collections for pages and blog posts whose fields match what site-import reads, media in assets/. Sign-in reuses the existing reckons-sveltia-cms-auth Worker (admin.reckons.ai); the site's domains are added to its SVELTIA_ALLOWED_DOMAINS." ;
+    kpred:extends      "static/admin/config.yml, scripts/sveltia-auth-secrets.sh (the Reckons.AI site's own Sveltia setup)" ;
+    kpred:evidence     "2026-10-30: Matt, 'we need sveltia ... setup and working'." ;
+    kpred:done-test    "The generated config.yml parses; every collection field maps to a frontmatter key site-import reads (unit test); a post saved through the collection's fields round-trips through site:build unchanged." ;
+    kpred:non-goal     "No second OAuth app or Worker." ;
+    kpred:order        4 .
+
+kb:downstream-site-deploy rdf:type ktype:Phase ;
+    rdfs:label "F274.4.5 — deploy: build on push and publish to Cloudflare Pages" ;
+    kpred:feature-id   "F274.4.5" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "A workflow in the site repository: on push (Sveltia commits included) it checks out Reckons.AI at a pinned commit, runs site:build, and deploys with wrangler pages deploy (branch previews for pull requests, production for main). The pinned commit is bumped by pull request until the package (F274.5) replaces it." ;
+    kpred:evidence     "2026-10-30: Sveltia edits commit to GitHub, so a build that only runs on Matt's machine would leave them unpublished." ;
+    kpred:done-test    "On a pull request in the site repository the workflow is green and its preview URL serves the built index; the repository secret holds the Cloudflare token and no workflow log prints it." ;
+    kpred:non-goal     "No DNS change: cutover is Matt's, in the dashboard." ;
+    kpred:order        5 .
+
 kb:downstream-site-package rdf:type ktype:Phase ;
     rdfs:label "F274.5 — the site engine as a package, with latest (main) and next (staging)" ;
     kpred:feature-id   "F274.5" ;
