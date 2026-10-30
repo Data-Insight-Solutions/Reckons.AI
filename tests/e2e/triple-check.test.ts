@@ -25,9 +25,12 @@ for (const width of [1280, 390]) {
       await foreign.statements.put({ ...current, id: 'engineering', status: 'confirmed', sourceId: 'engineering-source', o: { kind: 'literal', value: '200' } }); foreign.close();
       await updateSettings({ tripleCheckWebEnabled: false, prefer2D: true }); await loadAll();
     });
-    await enable.check(); await page.getByLabel('Search service').selectOption('firecrawl'); await page.getByLabel('Read evidence from').selectOption('firecrawl'); await page.getByLabel('Evidence model provider').selectOption('ollama');
+    // #544 removed the hosted search/scrape options: Triple Check now offers a SearXNG address (loopback
+    // by default) and a local evidence model, and "Check the internet" stays off here so the check is the
+    // fully local space comparison — no search GET, no model call, nothing that could leave the machine.
+    await enable.check(); await page.getByLabel('SearXNG address').fill('http://localhost:8888'); await page.getByLabel('Evidence model').selectOption('ollama');
     await expect(page.getByRole('status').filter({ hasText: 'Settings saved' })).toBeVisible(); await page.reload();
-    await expect(enable).toBeChecked(); await expect(page.getByLabel('Search service')).toHaveValue('firecrawl'); await expect(page.getByRole('checkbox', { name: 'Check the internet', exact: true })).not.toBeChecked();
+    await expect(enable).toBeChecked(); await expect(page.getByLabel('SearXNG address')).toHaveValue('http://localhost:8888'); await expect(page.getByLabel('Evidence model')).toHaveValue('ollama'); await expect(page.getByRole('checkbox', { name: 'Check the internet', exact: true })).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true }); await page.goto('/review?group=source');
     // What the check found is an ordinary pending statement from its own source, in the queue — not a panel beside it.
     const found = page.getByTestId('source-cards').locator('.entity-card').filter({ hasText: 'Engineering reference (another space)' });
