@@ -10655,6 +10655,7 @@ kb:downstream-site-content rdf:type ktype:Phase ;
     kpred:has-status   "planned" ;
     kpred:part-of      kb:downstream-site ;
     kpred:description  "BLOG TEXT REVIEW (Matt, 2026-10-29): the posts were last edited by AI, so every claim in them goes through Triple Check (F100, on-device: SearXNG search + a local model, PR #537 with #544, unmerged on 2026-10-29) before republishing; no SearXNG instance was running on this machine that day. Inventory (2026-10-29, the old SvelteKit site): 9 blog posts (frontmatter: title, date, excerpt, coverImage, categories), About and Services as +page.md, Home and Contact as Svelte components, 67 MB of images, a Decap/Sveltia config. Script tier maps the markdown pages (no model); the deputy turns the two Svelte pages into page text as a reviewed branch; the local panel settles bulk judgments (category, keep or drop the template-era post). Run in the site repository, never here." ;
+    kpred:tested-by    "src/lib/publish/__tests__/markdown-site-import.test.ts" ;
     kpred:order        3 .
 
 kb:downstream-site-engine rdf:type ktype:Phase ;

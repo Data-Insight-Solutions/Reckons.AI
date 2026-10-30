@@ -375,6 +375,8 @@ code:publish  rdf:type     ktype:Concept ;
               skos:broader code:repo ;
               kpred:has-file "src/lib/publish/site-export.ts" ;
               kpred:has-file "src/lib/publish/site-import.ts" ;
+              kpred:has-file "src/lib/publish/markdown-site-import.ts" ;
+              kpred:has-file "scripts/import-markdown-site.ts" ;
               kpred:has-file "src/lib/publish/__tests__/post-reckoning.test.ts" ;
               kpred:has-file "src/lib/publish/__tests__/website-alignment.test.ts" ;
               kpred:has-file "src/lib/publish/md-escape.ts" ;
