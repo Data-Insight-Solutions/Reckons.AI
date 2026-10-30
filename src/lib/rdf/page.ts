@@ -30,6 +30,10 @@ export const PAGE_DATE     = `${PAGE_NS}date`;
  *  `"docs-kb"`. Unset for hand-authored pages (releases, manually edited content). CI
  *  and the generator use this to know which files are safe to prune/regenerate. */
 export const PAGE_GENERATED = `${PAGE_NS}generated`;
+/** Blog-post topic: one fact per category, a plain literal (e.g. `"Technology"`). */
+export const PAGE_CATEGORY = `${PAGE_NS}category`;
+/** A site-relative path or URL literal for the post's cover image. */
+export const PAGE_COVER = `${PAGE_NS}cover-image`;
 
 export const WEBPAGE_TYPE = 'urn:kbase:type/WebPage';
 
