@@ -17,7 +17,7 @@ export type CheckDependencies = {
 export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRecord, deps: CheckDependencies, signal: AbortSignal) {
   if (!s.tripleCheckEnabled || signal.aborted) return null;
   const now = Date.now(), [statements, reports] = await Promise.all([db.statements.toArray(), db.tripleChecks.toArray()]);
-  const configuration = JSON.stringify([s.tripleCheckWebEnabled !== false, s.tripleCheckSearch, s.tripleCheckScrape, s.tripleCheckBackend ?? s.analyzeBackend ?? s.preferredBackend, s.tripleCheckModel, s.tripleCheckSpaceAnalysis, s.tripleCheckReferenceSpaceIds, searchConfigurationError(s), deps.providerError]);
+  const configuration = JSON.stringify([s.tripleCheckWebEnabled !== false, s.tripleCheckSearch, s.tripleCheckScrape, s.tripleCheckBackend ?? 'ollama', s.tripleCheckModel, s.tripleCheckSpaceAnalysis, s.tripleCheckReferenceSpaceIds, searchConfigurationError(s), deps.providerError]);
   const claim = selectNextClaim(statements, reports, now, configuration); if (!claim) return null;
   signal.throwIfAborted();
   const warnings = [searchConfigurationError(s), s.tripleCheckWebEnabled !== false ? deps.providerError : null].filter((v): v is string => !!v);
