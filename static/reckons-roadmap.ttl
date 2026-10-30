@@ -9901,9 +9901,22 @@ kb:release-0-2-7 rdf:type ktype:Release ;
     kpred:has-status "planned" ;
     kpred:description "The reach release: Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
+    kpred:decided "MATT, 2026-10-30, THE CUT: 'Lets make a clear cut for agents updates for 0.2.7, maybe we already have a lot of 0.2.8 overflow, doesn't matter too much if there are some minor versions that are not cohesive on one feature/topic.' So 0.2.7 is the agents release. Local host mode (F243) and LAN HTTPS (F244) had not started and move to v0.2.8 with everything that arrived from 0.2.6 on 2026-10-13; the agents dashboard (F245) stays." ;
+    kpred:has-part kb:agents-in-app ;
+    kpred:has-part kb:loop-local-deputy ;
+    kpred:has-part kb:loop-job-grouping ;
+    kpred:has-part kb:procedure-over-prose .
+
+kb:release-0-2-7 kpred:progress "2026-10-30, AT THE CUT: dev was 44 commits past staging and every merge in them is agent work: #535 the local deputy, #541 review links grouped by producer run, #542 queue integrity, #545 the npm guard fix, #546 the overseer bench, #543 F273 phase 0 and A, plus #529 (a zod advisory) and #526 (a handoff). OPEN AND IN SCOPE, not yet merged: #550 agent watch page (F245), #549 question presettle, #548 overseer rates, #539 MCP local job tools (F267, CI failing at the cut), #551 F274.1 agents in another repository. F267 and F274.1 join has-part when their entities reach dev; naming them here first would leave a dangling link. NOT IN SCOPE: Triple Check (F100, #537) goes to 0.2.8 unless Matt says otherwise." .
+
+kb:release-0-2-8 rdf:type ktype:Release ;
+    rdfs:label "v0.2.8" ;
+    kpred:version "0.2.8" ;
+    kpred:has-status "planned" ;
+    kpred:description "The overflow release, by decision not cohesive on one theme (Matt, 2026-10-30): reach (local host mode, LAN HTTPS) and the canvas and analysis work that moved out of 0.2.6 on 2026-10-13 and out of 0.2.7 on 2026-10-30. Moved because none had started, not because they were dropped." ;
+    kpred:decided "MATT, 2026-10-30: received from v0.2.7 at the agents cut (see kb:release-0-2-7)." ;
     kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:agents-in-app .
+    kpred:has-part kb:lan-https .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
 
@@ -9931,8 +9944,9 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
     kpred:has-part kb:terminology-maintenance ;
     kpred:has-part kb:ui-term-audit .
 
-kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped." ;
-    kpred:has-part kb:meta-graph-view ;
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped. MOVED AGAIN to v0.2.8 at the agents cut, 2026-10-30." .
+
+kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:one-graph-canvas ;
     kpred:has-part kb:set-layout ;
     kpred:has-part kb:integration-plugin-sdk ;
@@ -10084,8 +10098,8 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-7 kpred:has-part kb:test-workflow-stories .
-kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped." .
+kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped. Moved on to v0.2.8 at the agents cut, 2026-10-30." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
     rdfs:label "Term ratchet counts prose only, not code identifiers" ;

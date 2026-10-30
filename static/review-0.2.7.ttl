@@ -13,59 +13,31 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.7" ;
-    rdfs:comment "The visual tests of v0.2.7, in the order a person would review them. 0 of this release's 11 parts have a TestWorkflow (0 steps, each a screenshot and what the test checks); 11 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: planned." ;
+    rdfs:comment "The visual tests of v0.2.7, in the order a person would review them. 0 of this release's 4 parts have a TestWorkflow (0 steps, each a screenshot and what the test checks); 4 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: planned." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
     p:has rev:gap .
 
 rev:gap rdf:type ktype:Concept ;
     rdfs:label "No visual test yet" ;
-    rdfs:comment "11 part(s) of v0.2.7 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
+    rdfs:comment "4 part(s) of v0.2.7 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
-    p:has rev:gap-f243, rev:gap-f244, rev:gap-f245, rev:gap-f218, rev:gap-f92, rev:gap-f256, rev:gap-f61, rev:gap-f255, rev:gap-f246, rev:gap-f108-4, rev:gap-f34-3 .
-
-rev:gap-f243 rdf:type ktype:Concept ;
-    rdfs:label "F243 Local host mode — outbound event webhooks, and REST endpoints for polling" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f244 rdf:type ktype:Concept ;
-    rdfs:label "F244 HTTPS on the local network — so a phone gets the whole app from the desktop" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
+    p:has rev:gap-f245, rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthropic-usage-runs-out, rev:gap-phase-4-group-the-queue-so-it-can-be-judged-in-one-pass, rev:gap-f273 .
 
 rev:gap-f245 rdf:type ktype:Concept ;
     rdfs:label "F245 Agents in the app — a dashboard, and agent settings per space and per device" ;
     rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
 
-rev:gap-f218 rdf:type ktype:Concept ;
-    rdfs:label "F218 Spaces view — the meta-graph, one level above the explorer" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/space-graph.test.ts, tests/e2e/spaces-map.test.ts)." .
+rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthropic-usage-runs-out rdf:type ktype:Concept ;
+    rdfs:label "Phase 7 — the local deputy: Claude Code driven by a local model when Anthropic usage runs out" ;
+    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists tests/bench/__tests__/orchestration-scoring.test.ts, tests/bench/__tests__/overseer-tasks.test.ts, scripts/agent/__tests__/local-claude-window.test.ts)." .
 
-rev:gap-f92 rdf:type ktype:Concept ;
-    rdfs:label "F92 One graph canvas — review as overlays, adaptive LOD" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f256 rdf:type ktype:Concept ;
-    rdfs:label "F256 Collection layout — nodes grouped strongly by the collections they belong to, overlaps drawn as overlaps" ;
+rev:gap-phase-4-group-the-queue-so-it-can-be-judged-in-one-pass rdf:type ktype:Concept ;
+    rdfs:label "Phase 4 — group the queue so it can be judged in one pass" ;
     rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
 
-rev:gap-f61 rdf:type ktype:Concept ;
-    rdfs:label "F61 Integration Plugin SDK" ;
-    rdfs:comment "Status in the roadmap: speculative. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f255 rdf:type ktype:Concept ;
-    rdfs:label "F255 Analyze as orchestrated job sets — one definition in the graph, run in the browser or by the desktop worker" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f246 rdf:type ktype:Concept ;
-    rdfs:label "F246 Research watch — a conservative assistant that notes key advances, gives highlights, then lets you dig in by chat" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f108-4 rdf:type ktype:Concept ;
-    rdfs:label "F108.4 Populated-graph legibility and density-aware rendering" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
-
-rev:gap-f34-3 rdf:type ktype:Concept ;
-    rdfs:label "F34.3 Test workflows for the other user stories" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists none)." .
+rev:gap-f273 rdf:type ktype:Concept ;
+    rdfs:label "F273 Procedure over prose — define the job, then let the harness run the process, so speed cannot skip a step" ;
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/lib/__tests__/job-brief.test.ts, scripts/__tests__/brief-entity.test.ts, scripts/__tests__/githooks.test.ts)." .
 
