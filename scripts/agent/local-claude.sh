@@ -43,8 +43,9 @@
 # "not subdirectories" (63). One task is an anecdote, not a benchmark.
 #
 # WEAKNESS, said out loud: project memory is a COPY taken at launch, so the deputy sees today's
-# memory but what it writes there is moved aside on the next launch (printed), never merged; and
-# with gh unauthenticated it cannot read PR or CI state either.
+# memory but what it writes there is set aside as a patch on the next launch, never merged by
+# itself; a reviewing Opus session applies it (the session-start hook names it). With gh
+# unauthenticated it cannot read PR or CI state either.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # A relative --repo means relative to where the person typed it; npm run moves to the package root
@@ -121,16 +122,11 @@ cat >"$CFG/settings.json" <<'JSON'
 }
 JSON
 
-# Project memory: a fresh copy each launch. Anything the deputy wrote last time is set aside, not lost.
+# Project memory: a fresh copy each launch. What the deputy changed last time is set aside as a patch
+# and named at the next Opus session start (scripts/agent/deputy-memory.sh, kb:deputy-memory-readback).
+# Keyed by the folder the deputy works in, so a repository managed with --repo keeps its own memory.
 KEY="${WORKDIR//\//-}"
-SRC="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$KEY/memory"
-DST="$CFG/projects/$KEY/memory"
-if [ -d "$DST" ] && [ -d "$SRC" ] && ! diff -rq "$SRC" "$DST" >/dev/null 2>&1; then
-  KEPT="$CFG/memory-written/$(date -u +%Y%m%dT%H%M%SZ)"
-  mkdir -p "$(dirname "$KEPT")"; mv "$DST" "$KEPT"
-  echo "local-claude: the last deputy session changed its memory copy; kept at $KEPT for review (not merged)."
-fi
-if [ -d "$SRC" ]; then rm -rf "$DST"; mkdir -p "$(dirname "$DST")"; cp -r "$SRC" "$DST"; fi
+bash "$ROOT/scripts/agent/deputy-memory.sh" sync --src="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects/$KEY/memory" --cfg="$CFG" --key="$KEY"
 
 SCOPE="- You are working in $WORKDIR."
 if [ "$WORKDIR" != "$ROOT" ]; then

@@ -89,8 +89,8 @@
       body: 'The main workflows of v0.2.7 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note. Opens as its own space.',
       file: '/review-0.2.7.ttl',
       space: 'Review 0.2.7',
-      entities: 14,
-      triples: 59
+      entities: 7,
+      triples: 31
     },
   ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 

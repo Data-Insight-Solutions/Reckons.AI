@@ -1,0 +1,22 @@
+diff --git a/src/lib/integrations/llm/route.ts b/src/lib/integrations/llm/route.ts
+--- a/src/lib/integrations/llm/route.ts
++++ b/src/lib/integrations/llm/route.ts
+@@ -8,4 +8,5 @@ export function evidenceProvider(s: Settings): string {
+-  return s.evidenceBackend ?? s.analyzeBackend;
++  // A hosted provider chosen for analysis is not inherited here.
++  return s.evidenceBackend ?? 'ollama';
+ }
+diff --git a/src/lib/integrations/llm/__tests__/route.test.ts b/src/lib/integrations/llm/__tests__/route.test.ts
+--- a/src/lib/integrations/llm/__tests__/route.test.ts
++++ b/src/lib/integrations/llm/__tests__/route.test.ts
+@@ -1,0 +1,12 @@
++import { it, expect, vi } from 'vitest';
++import { evidenceProvider, judge } from '../route';
++it('does not inherit a hosted analysis provider', async () => {
++  const calls: string[] = [];
++  vi.stubGlobal('fetch', vi.fn(async (url: string) => { calls.push(new URL(url).hostname); return new Response('[]'); }));
++  const s = { analyzeBackend: 'claude', claudeApiKey: 'k', authorization: 'Bearer test' };
++  expect(evidenceProvider(s)).toBe('ollama');
++  await judge('a claim', s);
++  expect(calls.every((h) => h === 'localhost')).toBe(true);
++});
