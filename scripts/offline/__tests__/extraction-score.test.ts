@@ -212,12 +212,14 @@ describe('connection — the metric the first sweep was missing', () => {
 describe('the shipped ground truth', () => {
   const specs = loadSpecs('tests/fixtures/notes-corpus');
 
-  it('loads, and covers the four committed corpus files', () => {
+  it('loads, and covers the six committed corpus files', () => {
     // Pinned deliberately: a fixture that stops being scored should break a test, not go quiet.
     // 04-article-large.md is absent on purpose — it is a fetch-on-demand placeholder, not content,
     // because committing Wikipedia text would carry CC BY-SA attribution into every derived artifact.
     expect(Object.keys(specs).sort()).toEqual([
       '01-note-single.txt', '02-notes-batch.txt', '03-doc-medium.md', '05-list-structured.md',
+      // F183.3: a note that builds a small space, and one that changes it.
+      '06-garden-build.txt', '07-garden-change.txt',
     ]);
   });
 

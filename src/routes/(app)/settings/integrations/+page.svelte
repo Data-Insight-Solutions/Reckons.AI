@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
@@ -399,18 +400,9 @@
   }
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
-  <div class="settings-nav">
-    <a href="/settings" class="nav-link">backends</a>
-    <a href="/settings/publishing" class="nav-link">publishing</a>
-    <a href="/settings/integrations" class="nav-link active">integrations</a>
-    <a href="/settings/turtle" class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class="nav-link">entity types</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
-  </div>
-  <nav class="section-toc">
+<SettingsHeader>
+  {#snippet toc()}
+    <nav class="section-toc">
     <a href="#s-mobile">mobile</a>
     <a href="#s-preference">preference</a>
     <a href="#s-models">models</a>
@@ -418,7 +410,8 @@
     <a href="#s-indico">indico</a>
     <a href="#s-planned">roadmap</a>
   </nav>
-</header>
+  {/snippet}
+</SettingsHeader>
 
 <!-- Mobile access -->
 <section id="s-mobile" class="card">
@@ -843,28 +836,7 @@
 </footer>
 
 <style>
-  .head { margin-bottom: 2rem; }
-  .kicker { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 0.25rem; font-family: var(--font-mono); }
-  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0 0 1rem; }
 
-  .settings-nav {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 0.5rem;
-  }
-  .nav-link {
-    font-size: 0.82rem;
-    font-family: var(--font-mono);
-    color: var(--muted);
-    text-decoration: none;
-    padding: 0.3rem 0.7rem;
-    border-radius: var(--rad-sm);
-    transition: color 0.15s, background 0.15s;
-  }
-  .nav-link:hover { color: var(--ink); background: var(--surface-2); }
-  .nav-link.active { color: var(--accent); background: var(--accent-soft); }
 
   .section-toc {
     display: flex;

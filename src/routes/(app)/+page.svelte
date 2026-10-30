@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { projectSpaceView } from '$lib/rdf/space-view';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
@@ -466,6 +467,8 @@
     });
   });
 
+  /** Above this many things, slowness is offered the hubs filter as well as 2D. A suggestion, never a cap. */
+  const HUBS_SUGGEST_ENTITIES = 150;
   // Push a notification when 3D performance is poor
   $effect(() => {
     const shouldShow = shouldSuggest2D() && !use2D && webglAvailable;
@@ -484,8 +487,20 @@
           ondismiss: dismissPerfSuggestion,
           action: { label: 'Switch to 2D', onclick: () => { use2D = true; resetPerfMonitor(); dismissNotification('perf-3d'); updateSettings({ prefer2D: true }); } }
         });
+        // A big canvas is slow in either renderer, so offer the filter that draws less, not only the
+        // cheaper renderer. Hubs are the most connected things; the detail control brings the rest back.
+        if (!detail.hubsOnly && canvasProjection.entities.size > HUBS_SUGGEST_ENTITIES) {
+          pushNotification({
+            id: 'perf-hubs',
+            type: 'info',
+            title: `${canvasProjection.entities.size} things on the canvas`,
+            body: 'Show only the most connected ones? The detail control in view settings brings the rest back.',
+            action: { label: 'Show hubs only', onclick: () => { detailLevel = 'hubs'; resetPerfMonitor(); dismissNotification('perf-hubs'); } },
+          });
+        }
       } else {
         dismissNotification('perf-3d');
+        dismissNotification('perf-hubs');
       }
     });
   });
@@ -778,8 +793,16 @@
   // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
   // of `visible` is the mistake documented above: it empties the topology, and an empty
   // `visible` draws the marketing landing page over the user's own graph.
+  const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === $page.url.searchParams.get('view')));
+  // NO GENERIC CAP (Matt, 2026-10-27: "a generic load limit is not effective"). A saved view narrows
+  // the canvas to what it names; otherwise everything the filters allow is drawn, and when that is
+  // slow the performance notice below offers the hubs filter, which the reader can see and undo.
+  const canvasProjection = $derived(projectSpaceView(visible, {
+    view: activeSpaceView, limit: 0,
+    focus: selected?.startsWith('i:') ? selected.slice(2) : undefined,
+  }));
   const graphView = $derived(
-    buildGraphView(visible, {
+    buildGraphView(perspective === 'sources' ? visible : canvasProjection.statements, {
       categoryNodes: showCategoryNodes,
       minAltitude: perspective === 'sources' ? undefined : detail.floor ?? undefined,
       spaceMetadata: detailLevel === 'all',
@@ -2474,6 +2497,19 @@
   <div class="vs-header mono">view settings</div>
 {/snippet}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+  <!-- Saved views only: with none saved, a picker with one choice explained nothing (Matt, 2026-10-27). -->
+  {#if (settings().researchViews ?? []).length > 0}
+    <div class="focused-view-controls">
+      <label>Saved view<select aria-label="Saved view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
+        <option value="">Whole space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
+      </select></label>
+      {#if activeSpaceView}
+        <!-- Counts named things only: a value such as "10 kWh" is drawn as a node but is not one of them. -->
+        <p data-testid="space-view-count">Showing {canvasProjection.entities.size} of {canvasProjection.candidateEntities} things{#if canvasProjection.hiddenStatements > 0}; {canvasProjection.hiddenStatements} statements are hidden from the canvas and still in this space{/if}.</p>
+      {/if}
+    </div>
+  {/if}
+
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -3463,6 +3499,11 @@
 {/if}
 
 <style>
+  .focused-view-controls { display: grid; gap: 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.65rem; margin-bottom: 0.65rem; font-size: 0.75rem; }
+  .focused-view-controls label { display: flex; justify-content: space-between; gap: 0.5rem; }
+  .focused-view-controls select { min-width: 0; max-width: 65%; background: var(--surface); color: var(--ink); }
+  .focused-view-controls p { color: var(--muted); margin: 0; }
+
   .source-set-preview { pointer-events: auto; display: flex; gap: 0.55rem; align-items: center; transform: translate(-50%, -110%); padding: 0.55rem 0.75rem; min-width: 130px; max-width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); text-align: left; box-shadow: 0 3px 12px #0004; }
   .source-set-preview strong { display: block; font-size: 0.8rem; white-space: normal; }
   .source-set-preview small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }

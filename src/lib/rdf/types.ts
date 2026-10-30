@@ -513,6 +513,13 @@ export const TYPE_PRESENTATION_PREDICATES = new Set([
   'urn:kbase:predicate/meshy-status',
 ]);
 
+/**
+ * What a story step OFFERS the reader (F261): a setting to apply or a page to open. Player config,
+ * like the presentation predicates above; drawn, they would put "tripleCheckEnabled=true" on the canvas.
+ * Whether story STRUCTURE (steps, order, text) should be drawn is a separate, open question.
+ */
+export const STORY_OFFER_PREDICATES = new Set(['urn:reckons:story/offerSetting', 'urn:reckons:story/openPage']);
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
@@ -521,6 +528,7 @@ export function isMetaPredicate(predicateIri: string): boolean {
   if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
   // Entity-type presentation config (geometry name, hex colour, …) is not a fact about anything.
   if (TYPE_PRESENTATION_PREDICATES.has(predicateIri)) return true;
+  if (STORY_OFFER_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders

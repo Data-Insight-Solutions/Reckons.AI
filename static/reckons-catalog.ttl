@@ -104,6 +104,8 @@ graph:catalog a dcat:Catalog ;
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-sim-ramp-cup ,
+        graph:starter-triple-check ,
+        graph:starter-triple-check-reference ,
         graph:starter-turtles ,
         graph:starter-visual-review ,
         graph:starter-your-room ,
@@ -272,6 +274,16 @@ graph:starter-sim-ramp-cup a void:Dataset ;
     dcterms:title "Starter: simulator ramp and cup" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-sim-ramp-cup.ttl" .
+
+graph:starter-triple-check a void:Dataset ;
+    dcterms:title "Starter: Triple Check walkthrough (F100.1, synthetic)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-triple-check.ttl" .
+
+graph:starter-triple-check-reference a void:Dataset ;
+    dcterms:title "Starter: Harbor 10 owners' forum, the space the Triple Check walkthrough is checked against (F100.1, synthetic)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-triple-check-reference.ttl" .
 
 graph:starter-generated-assets a void:Dataset ;
     dcterms:title "Starter: generated assets" ;

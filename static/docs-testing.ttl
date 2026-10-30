@@ -722,6 +722,111 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.""" ;
     skos:broader        test:TestSuite .
 
+test:Workflow-BuildChange
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Build a space from a note, then change it with another" ;
+    skos:definition     """Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change. The second half is where a space goes wrong quietly: a new value that replaces an old one has to be noticed and decided, not accepted in a batch. A browser test runs these steps, and you can run the same steps by hand with your own model (F183.3).""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Both notes are invented: a community garden on an Elm Street, its beds, its coordinator and its tool shed. They are part of the notes corpus the extraction benchmark scores models on (`tests/fixtures/notes-corpus/06-garden-build.txt` and `07-garden-change.txt`).
+
+**What is scripted.** The browser test uses no language model. Its stand-in reader returns the facts a careful reader would take from each note, written down beside the notes as the benchmark's expected answers. So the pictures show the review working on the right facts. Whether a real model reads the notes that well is what the benchmark measures, and what you see when you run the steps by hand with your own model.""" ;
+    kpred:workflow-id   "build-change" ;
+    kpred:test-file     "tests/e2e/workflow-build-change.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-BuildChange-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Add the first note" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "add-first-note" ;
+    kpred:short-label   "Add the first note" ;
+    kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, under the note's title and text" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/build-change/01-add-first-note.webp" ;
+    kpred:page-name     "the Add tab" ;
+    skos:definition     "Open the Add tab, title the note \"Garden notes\" and paste: \"The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed.\" Then press Extract facts. Every fact it reads arrives waiting for your decision." ;
+    kpred:assertion     "Reading the note leaves the Add tab and puts its facts in Review, each waiting." .
+
+test:Workflow-BuildChange-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Accept the note's facts in one go" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "accept-source" ;
+    kpred:short-label   "Accept by source" ;
+    kpred:box-label     "Accept 4" ;
+    kpred:box-target    "the note's card in Review grouped by source, and its accept button with the count it will accept" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/02-accept-source.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "Open Review and choose by source. The note is one card. Nothing in it disagrees with anything yet, so its accept button offers all of it; press it once. A real model may read the note differently: refine or reject what it got wrong." ;
+    kpred:assertion     "Grouped by source, the note's card offers to accept 4, and one press leaves nothing waiting." .
+
+test:Workflow-BuildChange-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Add a note that changes things" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "add-change-note" ;
+    kpred:short-label   "Add the change" ;
+    kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, with the change note filled in" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/build-change/03-add-change-note.webp" ;
+    kpred:page-name     "the Add tab" ;
+    skos:definition     "Back on the Add tab, title it \"Garden meeting\" and paste: \"Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen.\" Press Extract facts." ;
+    kpred:assertion     "Reading the change note leaves the Add tab and puts its facts in Review." .
+
+test:Workflow-BuildChange-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See what disagrees with the space" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "see-held-back" ;
+    kpred:short-label   "See the disagreements" ;
+    kpred:box-label     "Held back" ;
+    kpred:box-target    "the change note's card, with its facts held back and the reason above each" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/04-see-held-back.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "In Review, by source, the meeting note's card says how many facts are held back. Each new value sits next to the one it would replace, with the reason it is held: it disagrees with a fact you have. Accepting the card in one go would skip them; they need a decision each. The graph beside the list shows only this note's facts and what they touch." ;
+    kpred:assertion     "The meeting note's card shows all three facts held back as disagreeing with a fact you have, and offers no group accept." .
+
+test:Workflow-BuildChange-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Keep the new values" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "keep-new" ;
+    kpred:short-label   "Keep the new values" ;
+    kpred:box-label     "Keep new" ;
+    kpred:box-target    "the keep new button on a held-back fact" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/05-keep-new.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "Press keep new on each one: Sunday, Marco Ruiz and 16 raised beds. The old values are kept on record as replaced, not deleted. If a real model wrote the number added instead of the new total, or the old day again, this is where you catch it." ;
+    kpred:assertion     "Pressing keep new on each disagreement settles it until nothing is waiting." .
+
+test:Workflow-BuildChange-Step6
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the space after the change" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "6"^^xsd:integer ;
+    kpred:step-id       "see-changed-space" ;
+    kpred:short-label   "See the changed space" ;
+    kpred:box-label     "The garden's facts" ;
+    kpred:box-target    "the garden's facts in its panel, under the note each came from" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/build-change/06-see-changed-space.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Open the graph and select the garden. Its facts are listed under the note each came from: 16 raised beds and Marco Ruiz as coordinator from the meeting, the rain barrel from the first note. The replaced values are kept on record but are no longer part of the space." ;
+    kpred:assertion     "The space holds the new values and keeps the old ones as replaced; the garden's panel lists 16 raised beds under the meeting note and no 12." .
+
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Add a source, review it, see it in a space, ask for a reckoning" ;

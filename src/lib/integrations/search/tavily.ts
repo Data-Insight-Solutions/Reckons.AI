@@ -26,9 +26,11 @@ export async function tavilySearch(
   apiKey: string,
   query: string,
   maxResults = 5,
+  signal?: AbortSignal,
 ): Promise<TavilyResponse> {
   const res = await fetch('https://api.tavily.com/search', {
     method: 'POST',
+    signal,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       api_key: apiKey,
