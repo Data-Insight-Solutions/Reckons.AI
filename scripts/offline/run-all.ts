@@ -52,6 +52,8 @@ const only = argv.find((a) => a.startsWith('--only='))?.split('=')[1]?.split(','
 const tier = argv.find((a) => a.startsWith('--tier='))?.split('=')[1] as Tier | undefined;
 const LIST = argv.includes('--list');
 const CI = argv.includes('--ci');
+// --blocking: run only the jobs marked blocking (the pre-push hook, F273 phase A).
+const BLOCKING_ONLY = argv.includes('--blocking');
 const GPU_GATE = !argv.includes('--no-gpu-gate');
 const HOLD_LIMIT = (() => {
   try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
@@ -64,7 +66,8 @@ const unreviewed = (): Map<string, number> => (unreviewedCache ??= (() => {
 })());
 const GPU_WAIT_MS = parseWaitMin(argv.find((a) => a.startsWith('--gpu-wait-min='))?.split('=')[1]) * 60_000;
 
-const jobsFile = path.resolve('scripts/offline/jobs.json');
+// RECKONS_JOBS_FILE lets a test (or a hook test) point at a synthetic job list.
+const jobsFile = path.resolve(process.env.RECKONS_JOBS_FILE ?? 'scripts/offline/jobs.json');
 const all: Job[] = JSON.parse(readFileSync(jobsFile, 'utf8')).jobs;
 // Script tier first: it is free and catches the deterministic problems before a local
 // model spends time forming an opinion about them.
@@ -92,7 +95,8 @@ if (LIST) {
 
 const selected = jobs
   .filter((j) => (only ? only.includes(j.name) : j.enabled ?? true))
-  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true));
+  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true))
+  .filter((j) => (BLOCKING_ONLY ? j.blocking === true : true));
 if (selected.length === 0) {
   console.log('No jobs selected. Edit scripts/offline/jobs.json (set "enabled": true) or pass --only=<name>.');
   process.exit(0);

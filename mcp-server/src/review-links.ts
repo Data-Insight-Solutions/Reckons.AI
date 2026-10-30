@@ -32,10 +32,22 @@ export interface PendingRow {
   priority?: string;
   agent?: string;
   addedAt?: string;
+  /** Graph the proposal belongs to; the app applies a verdict only to the graph that is open. */
+  kb?: string;
+  /** Explicit producer-run id, when a job writes one. Preferred over the day heuristic. */
+  run?: string;
+  runId?: string;
+  /** The decision id of the open question this row answers (kb:question-presettle); the row joins
+   *  that decision as a claim instead of becoming a decision of its own. */
+  answers?: string;
 }
 
 export interface ReviewGroup {
   agent: string;
+  /** Graph this group's rows belong to, '' when its rows do not name one. */
+  kb: string;
+  /** Producer run: an explicit run id, else the UTC day the rows were added, else ''. */
+  run: string;
   count: number;
   /** Rows marked high priority — the ones whose acceptance changes something structural. */
   high: number;
@@ -69,32 +81,59 @@ export function readPendingRows(file: string): PendingRow[] {
  */
 export function reviewGroups(rows: PendingRow[], base: string): ReviewGroup[] {
   const root = base.replace(/\/+$/, '');
-  const byAgent = new Map<string, PendingRow[]>();
+  /*
+   * A PRODUCER RUN is the unit a person can judge: one job, one graph, one sitting of output.
+   * Rows carry no run id today (checked 2026-10-28), so a run is the same agent within the same
+   * UTC day; a job that writes `run`/`runId` gets exactly that instead.
+   */
+  const byRun = new Map<string, PendingRow[]>();
   for (const r of rows) {
-    const agent = (r.agent ?? '').trim() || '(unattributed)';
-    byAgent.set(agent, [...(byAgent.get(agent) ?? []), r]);
+    const agent = (r.agent ?? '').trim() || UNATTRIBUTED;
+    const kb = (r.kb ?? '').trim();
+    const key = JSON.stringify([agent, kb, runOf(r)]);
+    byRun.set(key, [...(byRun.get(key) ?? []), r]);
   }
 
   const groups: ReviewGroup[] = [];
-  for (const [agent, list] of byAgent) {
+  for (const [key, list] of byRun) {
+    const [agent, kb, run] = JSON.parse(key) as [string, string, string];
     const high = list.filter((r) => (r.priority ?? '').toLowerCase() === 'high').length;
     const latest = list.reduce((acc, r) => (r.addedAt && r.addedAt > acc ? r.addedAt : acc), '');
     const sample = (list.find((r) => r.note)?.note ?? '').replace(/\s+/g, ' ').slice(0, 110);
     /*
-     * An unattributed group cannot be linked to — the review page filters on the agent that
-     * proposed a row, and there is nothing to filter by. Link to the tab instead, and let the
-     * count say how many rows are unreachable that way rather than pretending otherwise.
+     * The link must name the GRAPH as well as the agent: the app applies a verdict only to the
+     * graph that is open, so a link without `kb=` lands on whichever graph the browser last had.
+     * An unattributed group cannot be filtered by agent, so it links to the tab (plus kb) and the
+     * count says how many rows are unreachable by filter rather than pretending otherwise.
      */
-    const url = agent === '(unattributed)'
-      ? `${root}/review?tab=incoming`
-      : `${root}/review?tab=incoming&agent=${encodeURIComponent(agent)}`;
-    groups.push({ agent, count: list.length, high, latest, url, sample });
+    let query = 'tab=incoming';
+    if (kb) query += `&kb=${encodeURIComponent(kb)}`;
+    if (agent !== UNATTRIBUTED) query += `&agent=${encodeURIComponent(agent)}`;
+    groups.push({ agent, kb, run, count: list.length, high, latest, url: `${root}/review?${query}`, sample });
   }
 
   return groups.sort((a, b) => {
     const ap = a.high > 0 ? 1 : 0, bp = b.high > 0 ? 1 : 0;
-    return bp - ap || b.high - a.high || b.count - a.count || a.agent.localeCompare(b.agent);
+    return bp - ap || b.high - a.high || b.count - a.count || a.agent.localeCompare(b.agent)
+      || a.kb.localeCompare(b.kb) || b.run.localeCompare(a.run);
   });
+}
+
+const UNATTRIBUTED = '(unattributed)';
+
+function runOf(r: PendingRow): string {
+  const explicit = (r.run ?? r.runId ?? '').trim();
+  if (explicit) return explicit;
+  return r.addedAt ? r.addedAt.slice(0, 10) : '';
+}
+
+/**
+ * The app address a link should point at: the explicit argument, else RECKONS_APP_URL, else the
+ * dev server. Each browser origin keeps its own workspace folder, so this choice decides whether
+ * the link lands somewhere the folder is already linked.
+ */
+export function resolveBase(param: string | undefined, env: NodeJS.ProcessEnv = process.env): string {
+  return (param?.trim() || env.RECKONS_APP_URL?.trim() || 'http://localhost:5173');
 }
 
 /** Render the groups for a tool response — highest consequence first. */
@@ -107,12 +146,18 @@ export function renderReviewLinks(groups: ReviewGroup[], total: number): string 
   ];
   for (const g of groups) {
     const flag = g.high > 0 ? `  ${g.high} HIGH` : '';
-    lines.push(`${g.agent} — ${g.count} row(s)${flag}${g.latest ? `  last ${g.latest.slice(0, 10)}` : ''}`);
+    const where = g.kb ? ` [${g.kb}]` : '';
+    lines.push(`${g.agent}${where} — ${g.count} row(s)${flag}${g.run ? `  run ${g.run}` : ''}`);
     lines.push(`  ${g.url}`);
     if (g.sample) lines.push(`  e.g. ${g.sample}${g.sample.length >= 110 ? '…' : ''}`);
     lines.push('');
   }
-  lines.push('A link opens the queue filtered to that agent, and the filter is visible in the app');
-  lines.push('so a short queue never reads as an empty one. Accepting is still a human act.');
+  const loose = groups.filter((g) => g.agent === UNATTRIBUTED).reduce((n, g) => n + g.count, 0);
+  if (loose > 0) lines.push(`${loose} row(s) name no agent, so no link can filter to them; the tab link shows them with everything else.`);
+  const noKb = groups.filter((g) => !g.kb).reduce((n, g) => n + g.count, 0);
+  if (noKb > 0) lines.push(`${noKb} row(s) name no graph, so their links open whichever graph the browser has loaded.`);
+  lines.push('A link opens that graph filtered to that agent, and the filter is visible in the app');
+  lines.push('so a short queue never reads as an empty one. Each browser address keeps its own');
+  lines.push('workspace folder: a link at an address with none linked asks to link one. Accepting is still a human act.');
   return lines.join('\n');
 }

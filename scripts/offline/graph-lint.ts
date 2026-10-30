@@ -22,7 +22,8 @@
  *   npm run offline:lint -- --pending    also queue findings for review in Reckons.AI
  *   npm run offline:lint -- --json       machine-readable (CI)
  */
-import { readFileSync, existsSync, appendFileSync, readdirSync, realpathSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, realpathSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import { execSync } from 'child_process';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
@@ -694,7 +695,7 @@ if (PENDING_OUT && findings.length) {
   for (const f of findings) {
     const question = `[graph-lint/${f.check}] ${short(f.subject)} — ${f.msg}`;
     if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
-    appendFileSync(PENDING, JSON.stringify({
+    appendQueueText(PENDING, JSON.stringify({
       subject: f.subject,
       predicate: `urn:sweep:pred/graph-lint`,
       question,

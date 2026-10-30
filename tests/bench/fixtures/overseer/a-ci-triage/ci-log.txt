@@ -1,0 +1,12 @@
+Run npm test
+ FAIL  scripts/__tests__/ci-graph.test.ts > the committed CI graph is what the generator writes
+AssertionError: expected static/reckons-ci.ttl to equal the generator output byte for byte
+- Expected (generator output)
++ Received (committed file)
+@@ -40,6 +40,7 @@
+     kpred:runs-on-event "workflow_dispatch" ;
++    kpred:decided "raise the gate from low to moderate because low advisories blocked every PR" ;
+     kpred:check-count "3" .
+ Test Files  1 failed | 211 passed (212)
+Error: Process completed with exit code 1.
+Job: "Type check + Unit tests + Build" failed on commit 91ab3c2

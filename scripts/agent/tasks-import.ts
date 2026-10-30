@@ -28,7 +28,8 @@
  *   npx tsx scripts/agent/tasks-import.ts --dry-run    show what would be queued, move nothing
  *   npx tsx scripts/agent/tasks-import.ts --in <dir>   default reckons-workspace/tasks-inbox
  */
-import { readFileSync, existsSync, appendFileSync, mkdirSync, readdirSync, renameSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, readdirSync, renameSync } from 'fs';
+import { appendQueueText } from '../offline/pending-queue.js';
 import path from 'path';
 import { taskFromMarkdown, type ParsedTaskDocument } from '../../src/lib/rdf/task-markdown.js';
 
@@ -160,7 +161,7 @@ function main(): void {
     }
 
     mkdirSync(WORKSPACE, { recursive: true });
-    appendFileSync(PENDING, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');  // WRITE FIRST
+    appendQueueText(PENDING, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');  // WRITE FIRST
     mkdirSync(DONE_DIR, { recursive: true });
     renameSync(full, path.join(DONE_DIR, file));                                            // then move
     console.log(`  + ${file}  →  ${rows.length} row(s) into ${kb}`);

@@ -15,6 +15,29 @@
 
 set -eo pipefail
 
+# Another repository's workspace (F274.1): `--kb <path>` serves THAT workspace instead of this
+# repository's mcp-workspace, read relative to the folder the caller started in (Claude Code starts an
+# MCP server in the project that configured it). Its review queue then defaults to that same workspace,
+# so a managed site's proposals land in its own knowledge.pending.jsonl, never in this public repo's.
+CALLER="$PWD"
+KB=""
+REST=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kb) KB="${2:-}"; shift 2 || shift ;;
+    --kb=*) KB="${1#--kb=}"; shift ;;
+    *) REST+=("$1"); shift ;;
+  esac
+done
+if [ -n "$KB" ]; then
+  case "$KB" in /*) ;; *) KB="$CALLER/$KB" ;; esac
+  if [ ! -e "$KB" ]; then
+    echo "reckons-mcp: --kb $KB does not exist; not falling back to this repository's graphs." >&2
+    exit 1
+  fi
+  [ -d "$KB" ] && export RECKONS_QUEUE_WORKSPACE="${RECKONS_QUEUE_WORKSPACE:-$KB}"
+fi
+
 cd "$(dirname "$0")/.."
 
 if ! command -v node >/dev/null 2>&1; then
@@ -49,8 +72,8 @@ fi
 # to use the local tier can (Matt, 2026-10-13). If Ollama is not running, the tools say so.
 export OLLAMA_BASE_URL="${OLLAMA_BASE_URL:-http://localhost:11434}"
 
-if [ -z "${RECKONS_QUEUE_WORKSPACE:-}" ] && [ -d reckons-workspace ]; then
+if [ -z "$KB" ] && [ -z "${RECKONS_QUEUE_WORKSPACE:-}" ] && [ -d reckons-workspace ]; then
   export RECKONS_QUEUE_WORKSPACE="$PWD/reckons-workspace"
 fi
 
-exec node mcp-server/dist/index.js --kb mcp-workspace "$@"
+exec node mcp-server/dist/index.js --kb "${KB:-mcp-workspace}" ${REST[@]+"${REST[@]}"}

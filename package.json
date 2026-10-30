@@ -1,6 +1,6 @@
 {
   "name": "Reckons.AI",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "private": true,
   "description": "A local-first personal knowledge graph that turns documents, web pages, and notes into a reviewable graph of facts, stored as a standard Turtle (.ttl) file on your device.",
   "homepage": "https://reckons.ai",
@@ -52,6 +52,7 @@
     "visual:streams": "npx tsx scripts/visual-streams.ts",
     "offline:visual-diff": "npx tsx scripts/offline/visual-diff.ts",
     "branch-align": "npx tsx scripts/branch-align.ts",
+    "queue:check": "npx tsx scripts/offline/queue-integrity.ts",
     "offline:all": "npx tsx scripts/offline/run-all.ts",
     "offline:sweep": "bash scripts/offline/alignment-sweep.sh",
     "bench:vlm": "npx tsx tests/visual/run-vlm-gate-bench.ts",
@@ -163,6 +164,7 @@
     "agent:queue-worker": "npx tsx scripts/agent/queue-worker.ts",
     "agent:device": "npx tsx scripts/agent/device-config.ts",
     "agent:panel": "npx tsx scripts/agent/local-panel.ts",
+    "prepare": "git config core.hooksPath .githooks || true",
     "brief": "npx tsx scripts/brief.ts",
     "schedule": "npx tsx scripts/agent/schedule.ts --graph reckons-workspace/schedules.ttl",
     "orchestrate": "npx tsx scripts/agent/orchestrate.ts",
@@ -176,6 +178,7 @@
     "idea": "npx tsx scripts/agent/idea.ts",
     "interview": "npx tsx scripts/agent/interview.ts",
     "desk": "bash scripts/agent/desk.sh",
+    "local:claude": "bash scripts/agent/local-claude.sh",
     "backlog": "npx tsx scripts/agent/backlog.ts",
     "prune": "npx tsx scripts/agent/prune-queue.ts",
     "offline:context": "npx tsx scripts/offline/context-composition.ts",
@@ -196,6 +199,7 @@
     "docs:staleness": "npx tsx scripts/offline/docs-staleness.ts",
     "docs:review": "npx tsx scripts/offline/docs-review.ts",
     "host:check": "tsx scripts/offline/host-health.ts",
+    "models:check": "tsx scripts/offline/model-inventory.ts",
     "security:dependencies": "tsx scripts/offline/dependency-health.ts"
   },
   "devDependencies": {
@@ -256,13 +260,14 @@
     "uuid": "^14.0.2"
   },
   "overrides": {
+    "zod": "^4.6.6",
     "uuid": "$uuid",
     "cookie": "^0.7.0",
     "sharp": "$sharp",
     "adm-zip": "0.6.1",
     "fast-uri": "^3.1.8",
     "postcss": "^8.5.23",
-    "undici": "^7.29.1",
+    "undici": "^7.30.1",
     "browserslist": "^4.28.7",
     "brace-expansion@2": "^2.1.7",
     "brace-expansion@5": "^5.0.12",

@@ -15,6 +15,15 @@
  */
 import { loadDeviceConfig } from '../../agent/device-config.js';
 
+/**
+ * The general local reasoning model, for every job that does not name its own. ONE place, because
+ * five scripts hardcoded qwen3.6:latest or qwen3:32b, both removed from this machine by hand on
+ * 2026-10-26 when the deputy moved to qwen3.8, and each then failed at its first call with an unknown
+ * model while the deputy's handoff blamed an Ollama API change. RECKONS_LOCAL_MODEL overrides it
+ * per host. qwen3.8 is NOT yet re-measured on the panel or docs tasks that qwen3.6 was scored on.
+ */
+export const DEFAULT_REASONING_MODEL = process.env.RECKONS_LOCAL_MODEL || 'qwen3.8:latest';
+
 export const DEFAULT_NUM_BATCH = 256;
 export const RETRY_WAIT_MS = 15_000;
 export const RETRY_ATTEMPTS = 2;
@@ -39,9 +48,30 @@ export class OllamaHttpError extends Error {
   constructor(readonly status: number, body: string) { super(`Ollama ${status}: ${body.slice(0, 200)}`); }
 }
 
+/**
+ * A local model that is not installed. Ollama answers `404 {"error":"model 'x' not found"}`; said
+ * raw, that read as an API change and sent a handoff chasing a regression that did not exist
+ * (2026-10-26). Never transient, so never retried: waiting does not pull a model.
+ */
+export class MissingModelError extends OllamaHttpError {
+  constructor(readonly model: string, body: string) {
+    super(404, body);
+    this.message = `local model "${model}" is not installed in Ollama — pull it (ollama pull ${model}), pass --model=<an installed model>, or set RECKONS_LOCAL_MODEL. \`npm run models:check\` lists every default the scripts expect against what is installed.`;
+  }
+}
+
+/** The model named by Ollama's not-found answer, or null. Pure. */
+export function missingModelIn(status: number, body: string): string | null {
+  if (status !== 404) return null;
+  return body.match(/model ['"]([^'"]+)['"] not found/)?.[1] ?? null;
+}
+
 /** Throw an OllamaHttpError for a non-OK response, keeping the body (it names the crash). */
 export async function assertOk(res: { ok: boolean; status: number; text(): Promise<string> }): Promise<void> {
-  if (!res.ok) throw new OllamaHttpError(res.status, await res.text().catch(() => ''));
+  if (res.ok) return;
+  const body = await res.text().catch(() => '');
+  const missing = missingModelIn(res.status, body);
+  throw missing ? new MissingModelError(missing, body) : new OllamaHttpError(res.status, body);
 }
 
 /** Would a restarted model server explain this failure? Pure. */

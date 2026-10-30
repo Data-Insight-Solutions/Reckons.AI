@@ -21,6 +21,8 @@
  * that is on with both installed an interval can fire once from each. Both are idempotent drains
  * (notes-pull is at-least-once by design) but it is wasted work; entities marked
  * kpred:harness "session-worker" are skipped by schedule.ts to avoid exactly that.
+ *
+ * A schedule may name the folder it runs in with kpred:cwd (F274.1); `~/` there means the home folder.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -41,10 +43,23 @@ export function parseEvery(v: string | undefined): number | null {
 
 export type Recurring = { name: string; label: string; argv: string[]; cwd: string; every: string; everyMs: number; network?: boolean; tier?: string;
   /** false for tier=script: the GPU gate does not apply. Anything not declared script is treated as GPU. */
-  gpu: boolean };
+  gpu: boolean;
+  /** Run immediately on first session activation, then respect kpred:every. */
+  firstPass: boolean };
 
 /** `sched:<id>` — the queue name of a recurring job, so its history is findable by name. */
 export const scheduleName = (iri: string): string => `sched:${iri.split('/').pop()}`;
+
+/**
+ * Resolve a schedule's kpred:cwd (F274.1): absent or empty → the fallback; `~/…` → under the home
+ * folder; an absolute path → as given; a relative path → under the fallback. Pure.
+ */
+export function scheduleCwd(own: string | undefined, fallback: string, home: string): string {
+  if (!own) return fallback;
+  if (own.startsWith('~/')) return path.join(home, own.slice(2));
+  if (path.isAbsolute(own)) return own;
+  return path.resolve(fallback, own);
+}
 
 type Quad = { subject: { value: string }; predicate: { value: string }; object: { value: string } };
 
@@ -56,7 +71,7 @@ export function toRecurring(compiled: CompiledSchedule[], cwd: string): Recurrin
     if (everyMs === null) continue;
     // The command is a shell string in the graph (as schedule.ts runs it), so the argv is `bash -c <command>`;
     // the graph is LOCAL and named here, never imported.
-    out.push({ name: scheduleName(c.iri), label: c.label, argv: ['/bin/bash', '-c', c.command], cwd, every: c.every, everyMs,
+    out.push({ name: scheduleName(c.iri), label: c.label, argv: ['/bin/bash', '-c', c.command], cwd: scheduleCwd(c.cwd, cwd, os.homedir()), every: c.every, everyMs, firstPass: c.firstPass,
       ...(c.network ? { network: true } : {}), ...(c.tier ? { tier: c.tier } : {}), gpu: c.tier !== 'script' });
   }
   return out;

@@ -20,13 +20,17 @@
  *   npm run agent:watch -- --detail     more answers per run, with full reasons
  *   npm run agent:watch -- --statusline one short line, for a status bar
  *   npm run agent:watch -- --no-worker  watch only; do not start the session queue worker
+ *   npm run agent:watch -- --json       one snapshot as JSON (requests summarized), then exit
+ *   npm run agent:watch -- --ndjson     a JSON snapshot per line every 2 s, for Settings → This Device
+ *                                       (scripts/dev-server/device-bridge.ts); starts the worker like
+ *                                       the live window unless --no-worker
  *
  * The status line must return at once, and reading the day's Ollama log costs ~2 s (measured
  * 2026-09-30), so --statusline reads a CACHED last-request time and, when the cache is over a
  * minute old, refreshes it in a detached process that the status line never waits for.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -217,18 +221,12 @@ export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): st
   if (s.requests === null) out.push(`  ${dim('server log not readable here (journalctl -u ollama) — callers other than the panel are not visible')}`);
   else if (s.requests.length === 0) out.push(`  ${yellow('none today — no local model has been asked anything')}`);
   else {
-    const hourAgo = now.getTime() - 3_600_000;
-    const lastHour = s.requests.filter((r) => r.at.getTime() >= hourAgo);
+    const sum = summarizeRequests(s.requests, now)!;
     const last = s.requests[s.requests.length - 1];
-    const busy = s.requests.reduce((t, r) => t + r.seconds, 0);
-    const p50 = median(s.requests.map((r) => r.seconds));
-    out.push(`  today ${s.requests.length} · last hour ${lastHour.length} · ${secs(busy * 1000)} of model time · latency p50 ${lvl(classify(p50, th.latencySec), `${(p50 ?? 0).toFixed(1)}s`)}`);
-    const idleMs = now.getTime() - last.at.getTime();
+    out.push(`  today ${sum.today} · last hour ${sum.lastHour} · ${secs(sum.busySeconds * 1000)} of model time · latency p50 ${lvl(classify(sum.p50Seconds, th.latencySec), `${(sum.p50Seconds ?? 0).toFixed(1)}s`)}`);
     const lastLine = `last ${ago(last.at, now)}: ${last.method} ${last.path} ${lvl(classify(last.seconds, th.latencySec), `${last.seconds.toFixed(1)}s`)}${last.status === 200 ? '' : red(` ${last.status}`)}`;
-    out.push(`  ${idleMs > 30 * 60_000 ? yellow(`idle — ${lastLine}`) : lastLine}`);
-    const byPath = new Map<string, number>();
-    for (const r of s.requests) byPath.set(r.path, (byPath.get(r.path) ?? 0) + 1);
-    out.push(`  ${dim([...byPath.entries()].sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p} ×${n}`).join(' · '))}`);
+    out.push(`  ${sum.idle ? yellow(`idle — ${lastLine}`) : lastLine}`);
+    out.push(`  ${dim(sum.byPath.map(([p, n]) => `${p} ×${n}`).join(' · '))}`);
   }
 
   out.push('');
@@ -261,6 +259,8 @@ export function render(s: Snapshot, now = new Date(), opts: RenderOpts = {}): st
     }
   }
   if (s.jobs) out.push('', ...renderJobs(s.jobs, now, undefined, th, lvl));
+  const vt = renderVisualTests(now, lvl);
+  if (vt.length) out.push('', ...vt);
   out.push('', dim(LEGEND));
   const art = fitArt(opts.width, opts.frame ?? 0, worst(levels));
   return [...art.map((l, i) => (i < 3 ? bold(l) : l)), ...(art.length ? [''] : []), ...out].join('\n');
@@ -316,6 +316,78 @@ export function renderJobs(
   return out;
 }
 
+/** Recent visual-test runs from reckons-workspace/runs/ — space-visual-gate and visual-diff receipts. */
+function renderVisualTests(now = new Date(), lvl: (lv: Level, text: string) => string = byLevel): string[] {
+  const out: string[] = [];
+  try {
+    const runsDir = join(process.cwd(), 'reckons-workspace', 'runs');
+    if (!existsSync(runsDir)) return [];
+    const files = readdirSync(runsDir).filter((f) => f.endsWith('.json')).sort().reverse().slice(0, 3);
+    if (files.length === 0) return [];
+    out.push(`${bold('VISUAL TESTS')} ${dim(`recent runs from ${runsDir.replace(process.cwd(), '.')}`)}`);
+    for (const file of files) {
+      try {
+        const data = JSON.parse(readFileSync(join(runsDir, file), 'utf8')) as { schema?: string; url?: string; totalChecks?: number; passed?: number; failed?: number; errored?: number; finishedAt?: string };
+        if (!data.schema) continue;
+        const type = data.schema.includes('space-visual-gate') ? 'space-gate' : 'visual-diff';
+        const checks = data.totalChecks ?? 0;
+        const pass = data.passed ?? 0;
+        const fail = data.failed ?? 0;
+        const time = data.finishedAt ? ago(new Date(data.finishedAt), now) : '';
+        if (pass + fail === 0) {
+          out.push(`  ${yellow('?')} ${bold(type)}  no gates evaluated (${data.errored ?? 0} errors) · ${dim(time)}`);
+        } else if (fail > 0) {
+          out.push(`  ${red('✗')} ${bold(type)}  ${pass}/${checks} gates passed, ${fail} failures · ${dim(time)}`);
+        } else {
+          out.push(`  ${green('✓')} ${bold(type)}  all ${checks} gates passed · ${dim(time)}`);
+        }
+      } catch { /* skip malformed */ }
+    }
+  } catch { /* unreadable runs dir = no visual tests yet */ }
+  return out;
+}
+
+export type RequestSummary = {
+  today: number;
+  lastHour: number;
+  busySeconds: number;
+  p50Seconds?: number;
+  last?: { at: string; method: string; path: string; status: number; seconds: number };
+  /** No request for 30 minutes. */
+  idle: boolean;
+  /** Request count per path, most first. */
+  byPath: [string, number][];
+};
+
+/** The REQUESTS numbers, shared by the terminal and the JSON modes. null stays null: unknown, not empty. */
+export function summarizeRequests(reqs: OllamaRequest[] | null, now = new Date()): RequestSummary | null {
+  if (reqs === null) return null;
+  const hourAgo = now.getTime() - 3_600_000;
+  const last = reqs[reqs.length - 1];
+  const byPath = new Map<string, number>();
+  for (const r of reqs) byPath.set(r.path, (byPath.get(r.path) ?? 0) + 1);
+  return {
+    today: reqs.length,
+    lastHour: reqs.filter((r) => r.at.getTime() >= hourAgo).length,
+    busySeconds: reqs.reduce((t, r) => t + r.seconds, 0),
+    p50Seconds: median(reqs.map((r) => r.seconds)),
+    last: last ? { at: last.at.toISOString(), method: last.method, path: last.path, status: last.status, seconds: last.seconds } : undefined,
+    idle: last ? now.getTime() - last.at.getTime() > 30 * 60_000 : false,
+    byPath: [...byPath.entries()].sort((a, b) => b[1] - a[1]),
+  };
+}
+
+/**
+ * The snapshot as the page reads it: every request line of the day would be thousands of rows, so
+ * they are replaced by their summary; the thresholds travel with it so the page colours by the
+ * same bands as the terminal.
+ */
+export type WebSnapshot = Omit<Snapshot, 'requests'> & { at: string; ollamaUrl: string; requests: RequestSummary | null; thresholds: Thresholds };
+
+export function webSnapshot(s: Snapshot, now = new Date(), thresholds: Thresholds = loadThresholds()): WebSnapshot {
+  return { ...s, at: now.toISOString(), ollamaUrl: OLLAMA, requests: summarizeRequests(s.requests, now), thresholds };
+}
+
 /** One line for a status bar. Never more than ~60 characters, never an error. */
 export function statusline(s: Snapshot, now = new Date()): string {
   const j = s.jobs;
@@ -353,6 +425,19 @@ async function main(): Promise<void> {
   }
   const detail = argv.includes('--detail');
   const thresholds = loadThresholds();
+  if (argv.includes('--json')) {
+    console.log(JSON.stringify(webSnapshot(await snapshot(), new Date(), thresholds)));
+    return;
+  }
+  if (argv.includes('--ndjson')) {
+    // One line per snapshot; a reader keeps the last complete line. Stops when the reader goes away.
+    process.stdout.on('error', () => process.exit(0));
+    const emit = async () => process.stdout.write(`${JSON.stringify(webSnapshot(await snapshot(), new Date(), thresholds))}\n`);
+    if (!argv.includes('--no-worker')) startWorker();
+    await emit();
+    setInterval(() => void emit(), 2000);
+    return;
+  }
   // Art only on a TTY. The swim cycle advances only when colour/animation is allowed (not NO_COLOR).
   const width = process.stdout.isTTY ? process.stdout.columns : undefined;
   if (argv.includes('--once') || !process.stdout.isTTY) {
