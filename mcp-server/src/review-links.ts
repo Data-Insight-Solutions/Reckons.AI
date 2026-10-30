@@ -37,6 +37,9 @@ export interface PendingRow {
   /** Explicit producer-run id, when a job writes one. Preferred over the day heuristic. */
   run?: string;
   runId?: string;
+  /** The decision id of the open question this row answers (kb:question-presettle); the row joins
+   *  that decision as a claim instead of becoming a decision of its own. */
+  answers?: string;
 }
 
 export interface ReviewGroup {

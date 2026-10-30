@@ -94,6 +94,43 @@ describe('grouping rows into decisions', () => {
   });
 });
 
+describe('an answer attached to an open question (kb:question-presettle)', () => {
+  const question: PendingRow = { subject: 'urn:x:site', predicate: 'urn:p:open-question', type: 'question', kb: 'roadmap', agent: 'term-senses node' } as PendingRow;
+  const qid = decisionId('roadmap', 'urn:x:site', 'urn:p:open-question');
+  const answer = (answers: string, object = 'graph-vertex'): PendingRow =>
+    ({ subject: 'urn:x:site', predicate: 'urn:p:open-question', object, type: 'suggestion', kb: 'roadmap', agent: 'presettle:script', answers }) as PendingRow;
+
+  it('joins the question it names as a claim, and the decision count does not rise', () => {
+    const ds = groupDecisions([question, answer(qid)]);
+    expect(ds).toHaveLength(1);
+    expect(ds[0].id).toBe(qid);
+    expect(ds[0].open).toBe(true);
+    expect(ds[0].claims.map((c) => c.object)).toEqual(['graph-vertex']);
+    expect(ds[0].claims[0].proposers).toEqual(['presettle:script']);
+    expect(ds[0].rowIds).toHaveLength(2); // accepting the claim covers the question row too
+  });
+
+  it('two answers to one question compete in that one decision', () => {
+    const ds = groupDecisions([question, answer(qid), answer(qid, 'rendered-node')]);
+    expect(ds).toHaveLength(1);
+    expect(ds[0].claims).toHaveLength(2);
+  });
+
+  it('accepting the answer supersedes the question\'s placeholder, so the question does not stay open', () => {
+    const [d] = groupDecisions([question, answer(qid)]);
+    const v = buildVerdict({ decision: d, verdict: 'accept', actor, now: '2026-10-28T00:00:00Z' });
+    expect(v.object).toBe('graph-vertex');
+    expect(v.supersedes).toContain('?');
+    expect(v.rows).toHaveLength(2);
+  });
+
+  it('an answers id that names no open question is grouped as before', () => {
+    const plain = groupDecisions([question, { ...answer('deadbeef') }]);
+    expect(plain).toHaveLength(2);
+    expect(plain.find((d) => d.claims.length)?.id).not.toBe(qid);
+  });
+});
+
 describe('ranking', () => {
   it('puts a contested decision above an uncontested high-priority one', () => {
     const decisions = groupDecisions([
