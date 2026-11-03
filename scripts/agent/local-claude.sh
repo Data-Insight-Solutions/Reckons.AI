@@ -47,6 +47,14 @@
 # itself; a reviewing Opus session applies it (the session-start hook names it). With gh
 # unauthenticated it cannot read PR or CI state either.
 set -euo pipefail
+# Secret-shaped variables never reach the deputy. Measured 2026-11-03: five VITE_* provider keys exported for
+# the app reached a deputy's `npm run build`, and only vite-secret-guard (F107.5) kept them out of the bundle.
+# A deputy needs none of them (its one token, ANTHROPIC_AUTH_TOKEN, is set further down), and anything it
+# can read it can echo into a log or a commit. Done first, so no early exit below can skip it.
+for v in $(compgen -e); do
+  case "$v" in *KEY*|*TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*) unset "$v" ;; esac
+done
+if [ "${RECKONS_DEPUTY_PRINT_ENV:-}" = 1 ]; then compgen -e; exit 0; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # A relative --repo means relative to where the person typed it; npm run moves to the package root
 # but keeps that folder in INIT_CWD.
