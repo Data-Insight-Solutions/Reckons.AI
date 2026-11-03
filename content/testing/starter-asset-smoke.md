@@ -26,3 +26,7 @@ This checks the bundled synthetic starter assets and their viewers. It does not 
 **Command**
 
 npm run test:e2e:smoke
+
+**Tested By**
+
+tests/e2e/graph-render.test.ts
