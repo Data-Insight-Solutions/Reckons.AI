@@ -530,6 +530,7 @@ code:mobile-utils  rdf:type     ktype:Concept ;
                    skos:definition "Mobile browser auth helpers and touch adaptations." ;
                    skos:broader code:repo ;
                    kpred:has-file "src/lib/utils/mobile-auth.ts" ;
+                   kpred:has-file "src/lib/utils/safe-href.ts" ;
                    kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" .
 
 code:extension-bridge  rdf:type     ktype:Concept ;

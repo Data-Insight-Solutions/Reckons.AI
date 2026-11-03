@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isSafeWebHref } from '../safe-href';
 
-describe('isSafeWebHref (graph values are attacker-influenced)', () => {
+describe('isSafeWebHref (stored values are attacker-influenced)', () => {
   it('allows http and https links, case-insensitively', () => {
     expect(isSafeWebHref('https://example.org/data-insight-solutions/reckons.ai')).toBe(true);
     expect(isSafeWebHref('http://example.org')).toBe(true);
