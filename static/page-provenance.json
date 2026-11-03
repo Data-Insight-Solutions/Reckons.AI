@@ -269,7 +269,7 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "b655871ca00a73de"
+      "pageHash": "8ab169719c9ac156"
     },
     {
       "path": "coding-workflow/commit-trailers",
@@ -293,10 +293,10 @@
       "path": "coding-workflow/deputy-memory-readback",
       "entity": "urn:reckons:docs/coding-workflow/DeputyMemoryReadback",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "093e555ddd880de2",
+      "factHash": "6f36ae25139e3f79",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "c493add24b6fc0bb"
+      "pageHash": "562ef477da83b3ef"
     },
     {
       "path": "coding-workflow/git-analysis-coding-workflow",
@@ -320,10 +320,10 @@
       "path": "coding-workflow/local-deputy",
       "entity": "urn:reckons:docs/coding-workflow/LocalDeputy",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "29b27cb40f007b6f",
+      "factHash": "e68fd981ab4eb31c",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d317540df32a24ab"
+      "pageHash": "ae98d07df387a569"
     },
     {
       "path": "coding-workflow/local-panel",
@@ -338,19 +338,19 @@
       "path": "coding-workflow/other-repo-agents",
       "entity": "urn:reckons:docs/coding-workflow/OtherRepoAgents",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "f9aadf9042e1a73f",
+      "factHash": "10ffe539d3ce0d5a",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "20747fd6c68e2dba"
+      "pageHash": "7063f390b7adff1e"
     },
     {
       "path": "coding-workflow/overseer-bench-rates",
       "entity": "urn:reckons:docs/coding-workflow/OverseerBenchRates",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "5d6055f3175bff79",
+      "factHash": "569558255f31221d",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "169772faff59c7df"
+      "pageHash": "7a861c456e253462"
     },
     {
       "path": "coding-workflow/personal-context",
@@ -707,10 +707,10 @@
       "path": "features/question-presettle",
       "entity": "urn:reckons:feature/QuestionPresettle",
       "graph": "docs-features.ttl",
-      "factHash": "1d2bef621f140dd6",
+      "factHash": "4d516eeec2b131ac",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "18dcb3b9bf513e00"
+      "pageHash": "4f0d1f852bcef14e"
     },
     {
       "path": "features/reckoning-simulator",
@@ -728,7 +728,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "89f06fff5deb8507"
+      "pageHash": "89248ab73a7b3386"
     },
     {
       "path": "features/review-workbench",
@@ -1139,10 +1139,10 @@
       "path": "testing/starter-asset-smoke",
       "entity": "urn:reckons:test/StarterAssetSmoke",
       "graph": "docs-testing.ttl",
-      "factHash": "df3e670150daa03d",
+      "factHash": "88d6ec7a008531ca",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "b14a57a3c2b92ffd"
+      "pageHash": "4c1b1979ec0defd6"
     },
     {
       "path": "testing/test-suite",

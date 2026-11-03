@@ -52,7 +52,7 @@ Review System
 
 **[Open questions answered from what you already decided](../features/question-presettle)**
 
-An open question in the review queue — one with no proposed answer — can only be rejected or set aside, so it waits.
+An open question in the review queue — one with no proposed answer — can only be rejected or put off, so it waits.
 
 **[Review Workbench](../features/review-workbench)**
 
