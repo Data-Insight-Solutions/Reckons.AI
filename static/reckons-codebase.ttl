@@ -383,6 +383,8 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/post-reckoning.ts" ;
               kpred:has-file "src/lib/publish/publish-gate.ts" ;
               kpred:has-file "src/lib/publish/website-alignment.ts" ;
+              kpred:has-file "src/lib/publish/site-build.ts" ;
+              kpred:has-file "scripts/site-build.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 

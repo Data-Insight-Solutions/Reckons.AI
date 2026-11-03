@@ -4,7 +4,7 @@
  *
  *   npm run site:build -- --site=path/to/site-repo --out=dist [--title="My Site"]
  *
- * content/*.md goes through site-import into WebPage statements and is rendered by the
+ * content/*.md goes through site-import into WebPage triples and is rendered by the
  * existing static generator; assets/ and admin/ are copied byte-for-byte; _headers is
  * written with the project's Cloudflare Pages hardening; the result is swapped into
  * --out atomically (a fresh directory, or a previous site:build output of the same shape).

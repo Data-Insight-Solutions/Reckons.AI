@@ -85,7 +85,7 @@ describe('site:build (F274.4.1)', () => {
     expect(result.files).toContain('styles.css');
     expect(result.files).toContain('graph.json');
 
-    // The draft page must appear in NO output file — not the body, not the nav, not graph.json.
+    // The draft page must appear in NO output file — not the body, not the nav, not the JSON page index.
     for (const rel of result.files) {
       expect(readFileSync(join(out, rel), 'utf8'), 'draft leaked into ' + rel).not.toContain('DRAFT-SECRET-MARKER');
     }
