@@ -1,5 +1,5 @@
 {
-  "built": 187,
+  "built": 193,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -269,16 +269,16 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "89a427a66b1dee6b"
+      "pageHash": "8ab169719c9ac156"
     },
     {
       "path": "coding-workflow/commit-trailers",
       "entity": "urn:reckons:docs/coding-workflow/CommitTrailers",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "45f039396df1d537",
+      "factHash": "7bcc7e8759d15fc4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "80496d9a6072be55"
+      "pageHash": "8fd0af57a5f11ab5"
     },
     {
       "path": "coding-workflow/context-compression-coding-workflow",
@@ -288,6 +288,15 @@
       "factCount": 3,
       "floor": "evidence",
       "pageHash": "a38f3106de20ccca"
+    },
+    {
+      "path": "coding-workflow/deputy-memory-readback",
+      "entity": "urn:reckons:docs/coding-workflow/DeputyMemoryReadback",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "6f36ae25139e3f79",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "562ef477da83b3ef"
     },
     {
       "path": "coding-workflow/git-analysis-coding-workflow",
@@ -308,6 +317,15 @@
       "pageHash": "98ef94c7ae85a4e4"
     },
     {
+      "path": "coding-workflow/local-deputy",
+      "entity": "urn:reckons:docs/coding-workflow/LocalDeputy",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "e68fd981ab4eb31c",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "ae98d07df387a569"
+    },
+    {
       "path": "coding-workflow/local-panel",
       "entity": "urn:reckons:docs/coding-workflow/LocalPanel",
       "graph": "docs-coding-workflow.ttl",
@@ -315,6 +333,24 @@
       "factCount": 7,
       "floor": "evidence",
       "pageHash": "1269f57c1793fff5"
+    },
+    {
+      "path": "coding-workflow/other-repo-agents",
+      "entity": "urn:reckons:docs/coding-workflow/OtherRepoAgents",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "10ffe539d3ce0d5a",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "7063f390b7adff1e"
+    },
+    {
+      "path": "coding-workflow/overseer-bench-rates",
+      "entity": "urn:reckons:docs/coding-workflow/OverseerBenchRates",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "569558255f31221d",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "7a861c456e253462"
     },
     {
       "path": "coding-workflow/personal-context",
@@ -458,7 +494,7 @@
       "factHash": "55f776935b6b145b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "099ce2ad46ed77fc"
+      "pageHash": "374530bcd83f7984"
     },
     {
       "path": "features/agent-setup",
@@ -602,7 +638,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "dab6f0fb3488cbbf"
+      "pageHash": "421800fcd6536213"
     },
     {
       "path": "features/open-in-source",
@@ -620,7 +656,7 @@
       "factHash": "d505068e4efd1090",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "6cb48ca1693fd080"
+      "pageHash": "9333d43d8a246a40"
     },
     {
       "path": "features/physical-scene-simulator",
@@ -629,7 +665,7 @@
       "factHash": "81cf4041f76dca8e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "0011e4a60a0d9dba"
+      "pageHash": "594b043abaa05a43"
     },
     {
       "path": "features/pod-view",
@@ -638,7 +674,7 @@
       "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "77f3231795eaa928"
+      "pageHash": "b8121a57424763df"
     },
     {
       "path": "features/prefer-local",
@@ -647,7 +683,7 @@
       "factHash": "cd3c8fce000a8bae",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "9bc2cb5e2b53ab37"
+      "pageHash": "1e3a6000a1ab610c"
     },
     {
       "path": "features/proposals",
@@ -656,7 +692,7 @@
       "factHash": "f5d268d7ae20bcb4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "402c6183f11b4aed"
+      "pageHash": "525072f963a01d96"
     },
     {
       "path": "features/published-docs",
@@ -665,7 +701,16 @@
       "factHash": "59ce634b4e121abf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1d902327961d812e"
+      "pageHash": "2cc303dd02215abb"
+    },
+    {
+      "path": "features/question-presettle",
+      "entity": "urn:reckons:feature/QuestionPresettle",
+      "graph": "docs-features.ttl",
+      "factHash": "4d516eeec2b131ac",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "4f0d1f852bcef14e"
     },
     {
       "path": "features/reckoning-simulator",
@@ -674,7 +719,7 @@
       "factHash": "590d782e12de88d8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "df07c2feecad4fa9"
+      "pageHash": "53d11c397766a626"
     },
     {
       "path": "features/review-system",
@@ -683,7 +728,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "3d4c8f2f32b7de8a"
+      "pageHash": "89248ab73a7b3386"
     },
     {
       "path": "features/review-workbench",
@@ -692,7 +737,7 @@
       "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b5e5a94b00a90ef6"
+      "pageHash": "ba21d3592402fb3e"
     },
     {
       "path": "features/room-scan",
@@ -701,7 +746,7 @@
       "factHash": "33d530c7b9161261",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "69102344289abf6e"
+      "pageHash": "18f898063343358f"
     },
     {
       "path": "features/shelly",
@@ -710,7 +755,7 @@
       "factHash": "9ce7701798b1640b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "4ff8835f420a2476"
+      "pageHash": "82e60fd3be79c171"
     },
     {
       "path": "features/source-refresh",
@@ -719,7 +764,7 @@
       "factHash": "7c2f9667eaeaf25a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "effbb181ae65e3c2"
+      "pageHash": "b7049966536c9610"
     },
     {
       "path": "features/space-background",
@@ -764,7 +809,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "a89885eecfa94cca"
+      "pageHash": "117f5189b0999927"
     },
     {
       "path": "features/text-chunking",
@@ -773,7 +818,7 @@
       "factHash": "cbb1c67122d6a9f6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "12e4f720d73f0ffc"
+      "pageHash": "b92f5519b4f61f2b"
     },
     {
       "path": "features/threejs-examples",
@@ -782,7 +827,7 @@
       "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "acf59ec1dcbccd24"
+      "pageHash": "ae6578bedecc7036"
     },
     {
       "path": "features/ttl-export",
@@ -791,7 +836,7 @@
       "factHash": "6c90aecf25a1fd5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "d539e81275d93140"
+      "pageHash": "f904fbe615f262c8"
     },
     {
       "path": "features/your-room",
@@ -800,7 +845,7 @@
       "factHash": "6c58358b0db864a8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "852cb980994da19f"
+      "pageHash": "cf1dd2d15cfa36b9"
     },
     {
       "path": "guide/getting-started",
@@ -1043,7 +1088,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "e3aa4aeb22aeadb9"
+      "pageHash": "bd600bdb13d37d02"
     },
     {
       "path": "project/where-it-is-going",
@@ -1091,13 +1136,22 @@
       "pageHash": "de6377e9ef1ed7da"
     },
     {
+      "path": "testing/starter-asset-smoke",
+      "entity": "urn:reckons:test/StarterAssetSmoke",
+      "graph": "docs-testing.ttl",
+      "factHash": "88d6ec7a008531ca",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "4c1b1979ec0defd6"
+    },
+    {
       "path": "testing/test-suite",
       "entity": "urn:reckons:test/TestSuite",
       "graph": "docs-testing.ttl",
       "factHash": "b43fc161af718225",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "b9414be8e0013e51"
+      "pageHash": "94e7dc34ab70e10e"
     },
     {
       "path": "testing/test-workflows",
@@ -1115,7 +1169,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "5b9a420c940af103"
+      "pageHash": "1d7f9072d7037d56"
     },
     {
       "path": "testing/visual-tests",
@@ -1124,7 +1178,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "06110b2d5a9f8a5d"
+      "pageHash": "54f163c0625e8091"
     },
     {
       "path": "testing/vlm-workflow-streams",

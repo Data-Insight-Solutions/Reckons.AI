@@ -3,7 +3,33 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-10-28 (end of day) — START HERE. Everything for dev is merged (Claude Code, Opus)
+## 2026-11-01 — v0.2.7 closeout and demo research (Codex, reviewed by Claude Code 2026-11-03)
+
+Branch: `fix/v027-release-closeout`, based on `origin/dev` aa4bd10b. The existing
+local deputy commit 210d7d9d supplied five docs entities; reviewed and reused here.
+
+Live GitHub checked 2026-11-01: v0.2.6 reached main through #528 on 2026-10-23.
+Main and staging still declare 0.2.6. #556 is the open dev-to-staging 0.2.7
+promotion. Its two observed failures are addressed on this branch: GitHub squash
+provenance is retained inside the message and now validated section by section;
+the starter asset smoke test searches and centers each entity before clicking.
+The commit-msg hook stays strict. No release was promoted or merged.
+
+Local verification on 2026-11-01: 33 trailer/hook tests, svelte-check zero errors
+and warnings, production build, and three repeated asset smoke runs without
+retries passed. Generated documentation and graph checks are run before commit;
+CI status must be checked on the PR, not inferred from this paragraph.
+
+Research used Reckons MCP plus qwen3.8 panels: 26 recent stars (78 votes), then
+11 primary READMEs (33 votes). Exact-quote validation rejected four of 33 quotes;
+unanimous opinions also misclassified optional tools, so do not trust consensus
+for this task. Reviewed proposals are pending on demo-videos, local-panel and
+competitive:ref-hyperframes. Next demo proposal: real synthetic-space capture,
+cached Hume narration and seekable captions/title motion; OpenDesign/HyperFrames
+for production, Construct for semantic 3D presentation, StableGen for one optional
+asset-quality trial. No renderer or new service was installed.
+
+## 2026-10-28 (end of day) — Everything for dev is merged (Claude Code, Opus)
 
 The session ran long; start a fresh one from here. Matt's decisions from today are in the graph,
 each quoted verbatim under kpred:decided on the entities named below.
