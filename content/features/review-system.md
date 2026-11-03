@@ -1,7 +1,7 @@
 ---
 title: "Review — where your graph gets smaller and truer"
 slug: "review-system"
-order: 1037
+order: 1038
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -20,7 +20,7 @@ related:
 
 The step where you decide what is true. A model proposes triples; you confirm, refine or reject each one, and nothing enters your graph without that. It is the slowest part of the product and the only reason the rest of it is worth anything.
 
-<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
 
 <p class="in-sets">Part of You settle it.</p>
 
@@ -49,6 +49,10 @@ IT IS GENUINELY SLOW AT THE START, and this page will not pretend otherwise. A g
 Review System
 
 ## In this section
+
+**[Open questions answered from what you already decided](../features/question-presettle)**
+
+An open question in the review queue — one with no proposed answer — can only be rejected or set aside, so it waits.
 
 **[Review Workbench](../features/review-workbench)**
 

@@ -1,7 +1,7 @@
 ---
 title: "The Your room example space"
 slug: "your-room"
-order: 1047
+order: 1048
 section: "Features"
 parent: "space-background"
 template: doc

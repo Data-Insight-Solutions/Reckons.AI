@@ -33,7 +33,8 @@ cw:CodingWorkflow rdf:type     ktype:Concept ;
     skos:definition     "Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have." ;
     kpred:principle     "The graph is the plan. A feature must exist in the roadmap graph before it is built, and its status must reflect reality — not what we wish were true." ;
     kpred:principle     "Agents propose; humans dispose. Every automated finding lands as a PENDING fact for review, never as a silent edit to source or to the graph." ;
-    kpred:principle     "Route work to the cheapest tier that can do it correctly. Most of what an AI coding assistant is asked to do is not judgment — it is a rule, and a rule should be a script." .
+    kpred:principle     "Route work to the cheapest tier that can do it correctly. Most of what an AI coding assistant is asked to do is not judgment — it is a rule, and a rule should be a script." ;
+    kpred:relates-to    kb:release-0-2-7-docs .
 
 ## ── SHIPPING ────────────────────────────────────────────────────────────────
 
@@ -305,9 +306,9 @@ cw:CommitTrailers rdf:type     ktype:Concept ;
     kpred:part-of       cw:CodingWorkflow ;
     hnav:order          115 ;
     kpred:has-status    "functional" ;
-    skos:definition     "A commit written by an AI agent ends with two lines: Model, naming the exact model that wrote it, and Intent, saying in one sentence what the person asked for. A blocking check in CI refuses an agent commit without them. A second check refuses a pull request into dev that carries commits found only on main. Models the app downloads are pinned to an exact version for the same reason: a change should be able to name what made it." ;
+    skos:definition     "A commit written by an AI agent ends with two lines: Model, naming the exact model that wrote it, and Intent, saying in one sentence what the person asked for. A blocking check in CI refuses an agent commit without them. GitHub squash messages can retain these fields in the original messages before the final co-author block: the history check accepts that format only when every original section has a complete trailer block and the final model co-authors occur in those sections. Ordinary commits and the commit-msg hook still require one final block. A second check refuses a pull request into dev that carries commits found only on main. Models the app downloads are pinned to an exact version for the same reason: a change should be able to name what made it." ;
     kpred:honest-note   "COMMITS ONLY, SO FAR. Facts written inside the app do not yet record the model and its exact version; that is the next part of this work." ;
-    kpred:relates-to    kb:change-provenance-commit-trailers .
+    kpred:relates-to    kb:change-provenance-commit-trailers, kb:squash-trailer-provenance .
 
 cw:ReadmeIntroduction rdf:type ktype:Concept ;
     rdfs:label          "A README that says what leaves your device" ;
@@ -316,3 +317,43 @@ cw:ReadmeIntroduction rdf:type ktype:Concept ;
     kpred:has-status    "functional" ;
     skos:definition     "The README introduces Reckons.AI through what a person does with it: sources, review, connected spaces and reckonings. Its key words link to these docs pages. It lists each integration and says plainly which ones send data off your device, rather than claiming that nothing ever leaves it. Feature inventories, provider rankings and counts that went stale were removed." ;
     kpred:relates-to    kb:readme-space-guide .
+
+## =============================================================================
+## The local deputy (v0.2.7): a main agent that runs on this machine
+## =============================================================================
+
+cw:LocalDeputy rdf:type            ktype:Concept ;
+    rdfs:label          "The local deputy — the same assistant, on your own machine" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          117 ;
+    kpred:has-status    "scaffolded" ;
+    skos:definition     "When the subscription to the cloud model runs out of usage, work does not have to stop. A command starts the same coding assistant — same instructions, same tools, same access to this repository's knowledge graph — against a model running on this machine instead of in the cloud: the local model server (Ollama) speaks the same interface the assistant expects, while the model, credentials and permissions differ from the cloud session. A separate settings folder holds no cloud login, and every model name the assistant would otherwise use, including the sub-sessions it can spawn, is mapped to the local model, so normal launcher requests are directed to Ollama. This is configuration and permission enforcement, not a sandbox. You talk to it the way you talk to the cloud model, and what it decides is written down as proposals — a note in the review queue and a branch of work — for the next cloud session to review. It is a deputy: it proposes, it never merges." ;
+    kpred:honest-note   "SCAFFOLDED, AND NOT A SANDBOX. What stops it pushing, opening pull requests or merging is withheld credentials and deny rules, not an isolated environment: it runs as the same user, and a determined model could read that user's files. A real boundary — a separate user or a container — is not built. A guard also refuses a local model whose context window is too small to hold the assistant's instructions, because a silently truncated instruction set is worse than none." ;
+    kpred:relates-to    kb:loop-local-deputy .
+
+cw:DeputyMemoryReadback rdf:type ktype:Concept ;
+    rdfs:label          "What the deputy remembers, set aside for review" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          118 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "Each deputy launch starts from a copy of the main session's project memory, so it works with the same remembered facts. What the deputy writes there is neither lost nor applied: at the next launch its own changes are set aside as one patch in a folder of their own, and the next session that starts is told a patch is waiting, by name. Applying it is a deliberate act of a reviewing session — a deputy's memory writes are proposals, never merged on their own. They are kept out of the review queue on purpose: memory files are not facts in the graph, and the queue already has a limit it is over." ;
+    kpred:honest-note   "TESTED IN TEMPORARY FOLDERS, NOT YET BY A REAL DEPUTY SESSION AS OF 2026-10-28. Five tests cover the copy, the set-aside, and the notice that a patch is waiting." ;
+    kpred:relates-to    kb:deputy-memory-readback .
+
+cw:OverseerBenchRates rdf:type    ktype:Concept ;
+    rdfs:label          "How often each overseer stops, measured" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          119 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "An overseer is the agent that decides, over other agents' work, whether to proceed or to stop. A bench replays a fixed set of scenarios — a CI failure to triage, a diff to review, a malformed queue — many times on each model, and scores the exact answer. Two of the six scenarios look alarming but the right call is to proceed, so that stopping when unsure is measured instead of rewarded. In the runs recorded on 2026-10-28 and 2026-10-29 (UTC), the deputy model qwen3.8 scored 26 of 30 across five runs per scenario, and Sonnet scored 30 of 30; its stops all fell on one scenario about a security-gate change, scored as over-caution under the rule fixed before the run. The bench measures; which model is trusted with what is the owner's decision." ;
+    kpred:honest-note   "SMALL SAMPLES, EXACT-MATCH SCORING. Five runs per scenario is a rate, not a verdict, and the score says whether the answer was the expected one, not how good the reasoning was. As of those measurements, gpt-oss had not been repeated because available memory was insufficient." ;
+    kpred:relates-to    kb:deputy-overseer-rates .
+
+cw:OtherRepoAgents rdf:type    ktype:Concept ;
+    rdfs:label          "The same deputies, working in another repository" ;
+    kpred:part-of       cw:CodingWorkflow ;
+    hnav:order          120 ;
+    kpred:has-status    "functional" ;
+    skos:definition     "The deputy is not locked to this repository. It can be started inside a different repository — one with its own instruction file and its own tool connections — and it works there under the same rules: no configured cloud login, denied push and merge commands, and an agent branch. These are permission limits, not a sandbox: the deputy still runs as the same operating-system user. The tool that answers questions about a repository's graph can be pointed at a different repository's set of knowledge, and it answers only from there. And a recurring scheduled job can name the folder it should work in. One deliberate gap stays human: a new repository's tool connections are loaded only after a person, once, has run the deputy there and accepted the trust prompt. That step is not an oversight — skipping it is exactly what the safety review refused to allow." ;
+    kpred:honest-note   "FUNCTIONAL, WITH ONE HUMAN STEP. The live check ran against a second real repository: the deputy reported that folder as its working directory, quoted that repository's instruction file, and its push was still refused. What was verified was the refusal and the keeping-apart of the two repositories' review queues, not the quality of the work done inside the other repository." ;
+    kpred:relates-to    kb:downstream-site-agents .

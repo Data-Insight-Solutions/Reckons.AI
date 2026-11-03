@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-<p class="derived">It has 20 parts below, 6 of which are not built yet.</p>
+<p class="derived">It has 24 parts below, 7 of which are not built yet.</p>
 
 ## Why it is this way
 
@@ -48,5 +48,9 @@ Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the
 <a class="card" href="../coding-workflow/ci-graph"><span class="card-title">Which checks can stop a merge</span><span class="card-text">The CI workflow files are the rules GitHub runs; static/reckons-ci.ttl is a graph generated from them by scripts/ci-graph.ts.</span></a>
 <a class="card" href="../coding-workflow/commit-trailers"><span class="card-title">Which model made a change, and why</span><span class="card-text">A commit written by an AI agent ends with two lines: Model, naming the exact model that wrote it, and Intent, saying in one sentence what the person asked for.</span></a>
 <a class="card" href="../coding-workflow/readme-introduction"><span class="card-title">A README that says what leaves your device</span><span class="card-text">The README introduces Reckons.AI through what a person does with it: sources, review, connected spaces and reckonings.</span></a>
+<a class="card" href="../coding-workflow/local-deputy"><span class="card-title">The local deputy — the same assistant, on your own machine</span><span class="card-status">scaffolded</span><span class="card-text">When the subscription to the cloud model runs out of usage, work does not have to stop.</span></a>
+<a class="card" href="../coding-workflow/deputy-memory-readback"><span class="card-title">What the deputy remembers, set aside for review</span><span class="card-text">Each deputy launch starts from a copy of the main session's project memory, so it works with the same remembered facts.</span></a>
+<a class="card" href="../coding-workflow/overseer-bench-rates"><span class="card-title">How often each overseer stops, measured</span><span class="card-text">An overseer is the agent that decides, over other agents' work, whether to proceed or to stop.</span></a>
+<a class="card" href="../coding-workflow/other-repo-agents"><span class="card-title">The same deputies, working in another repository</span><span class="card-text">The deputy is not locked to this repository.</span></a>
 
 </div>
