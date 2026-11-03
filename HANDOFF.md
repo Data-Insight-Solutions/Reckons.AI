@@ -3,6 +3,30 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-03 — Term ratchet: the last free 'graph' (local deputy qwen3.8-160k)
+
+Branch `fix/v027-release-closeout`, commit b0c9a31f on top of 13a2eb55. The
+pre-push ratchet had exactly one free 'graph' over the 3279 prose baseline:
+the rendered kpred:tested-by path tests/e2e/graph-render.test.ts on
+content/testing/starter-asset-smoke.md, generated from test:StarterAssetSmoke
+in static/docs-testing.ttl. The path is a filename and cannot be reworded,
+and the brief forbade changing tested-by paths and raising baselines, so the
+redundant triple was dropped from the docs entity; the link to that file
+already lives on kb:starter-asset-smoke-focus (roadmap) and kb:knowledge-graph
+(production), and the page keeps its kpred:command line. No prose rewording,
+no bare 'space', baseline unchanged. content/, docs-search-index.json and
+page-provenance.json were regenerated with npm run docs:build, never hand-edited.
+
+Checks in the worktree 2026-11-03: term-usage --check green (graph 3279 at
+baseline, all eight tokens at/under); docs:build:check "docs are current";
+graph-lint 0 errors (12 pre-existing advisories); run-all --blocking --ci
+9/9 clean; svelte-check 0 errors 0 warnings. Not verified: CI on the branch —
+nothing has been pushed and no PR is open (the deputy has no GitHub
+credential and must not try to work around it). No decisions were Matt's this
+session. A status-update for the review queue was appended to
+reckons-workspace/knowledge.pending.jsonl because the reckons MCP server
+failed to connect this session, so kb_add_note was unavailable.
+
 ## 2026-11-01 — v0.2.7 closeout and demo research (Codex, reviewed by Claude Code 2026-11-03)
 
 Branch: `fix/v027-release-closeout`, based on `origin/dev` aa4bd10b. The existing
