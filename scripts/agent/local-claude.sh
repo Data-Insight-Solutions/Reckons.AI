@@ -125,7 +125,8 @@ cat >"$CFG/settings.json" <<'JSON'
   "includeCoAuthoredBy": false,
   "permissions": {
     "deny": ["Bash(git push:*)", "Bash(gh pr merge:*)", "Bash(gh pr create:*)", "Bash(gh auth:*)", "Bash(git checkout dev:*)", "Bash(git checkout main:*)", "Bash(git switch dev:*)", "Bash(git switch main:*)",
-             "Read(~/.git-credentials)", "Read(~/.config/gh/**)", "Read(~/.local/share/keyrings/**)", "Bash(cat ~/.git-credentials:*)"]
+             "Read(~/.git-credentials)", "Read(~/.config/gh/**)", "Read(~/.local/share/keyrings/**)", "Bash(cat ~/.git-credentials:*)",
+             "Read(**/.env)", "Read(**/.env.*)", "Bash(cat .env:*)", "Bash(cat .env.*:*)"]
   }
 }
 JSON
