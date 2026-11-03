@@ -1,8 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { afterCutoff, checkCommits, parseTrailers, CUTOFF, type CommitInfo } from '../commit-trailers.ts';
+import { execFileSync } from 'node:child_process';
+import { afterCutoff, checkCommits, parseTrailers, squashTrailers, CUTOFF, type CommitInfo } from '../commit-trailers.ts';
 
 const c = (trailers: [string, string][], parents = 1): CommitInfo => ({ sha: 'abc1234def', subject: 's', parents, trailers });
 const CO: [string, string] = ['Co-Authored-By', 'Claude Sonnet 5.5 <noreply@anthropic.com>'];
+
+describe('GitHub squash provenance', () => {
+  const parse = (message: string) => parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: message, encoding: 'utf8' }));
+  const block = 'Model: test-model\nIntent: test request\nCo-Authored-By: Codex <codex@example.com>';
+  const message = (sections: string[]) => `feat: synthetic change (#123)\n\n${sections.map((s, i) => `* change ${i}\n\n${s}`).join('\n\n')}\n\n---------\n\nCo-Authored-By: Codex <codex@example.com>\n`;
+
+  it('recovers every original intent from a structured squash with complete blocks', () => {
+    const got = squashTrailers(message([block, block.replace('test request', 'follow-up request')]), parse);
+    expect(got?.filter(([key]) => key === 'Intent').map(([, value]) => value)).toEqual(['test request', 'follow-up request']);
+    expect(checkCommits([c(got!)])).toEqual([]);
+  });
+
+  it.each([
+    'Model: test-model\nCo-Authored-By: Codex <codex@example.com>',
+    'Model: test-model\nIntent: \nCo-Authored-By: Codex <codex@example.com>',
+    'Model: test-model\nIntent: test request\n\nCo-Authored-By: Codex <codex@example.com>',
+    'An undocumented constituent change',
+  ])('refuses the whole squash when one section lacks a complete block: %s', (bad) => {
+    expect(squashTrailers(message([block, bad]), parse)).toBeNull();
+  });
+
+  it('does not treat provenance in ordinary body text as trailers', () => {
+    expect(squashTrailers(`feat: ordinary\n\n${block}\n\nMore explanation\n\nCo-Authored-By: Codex <codex@example.com>`, parse)).toBeNull();
+    expect(squashTrailers(message([block]).replace(' (#123)', ''), parse)).toBeNull();
+    expect(squashTrailers(message([block]).replace('\n---------\n', '\n'), parse)).toBeNull();
+  });
+
+  it('refuses a squash naming a final model author absent from its original blocks', () => {
+    const msg = message([block]).replace(/Co-Authored-By: Codex <codex@example.com>\n$/, 'Co-Authored-By: Claude <claude@example.com>\n');
+    expect(squashTrailers(msg, parse)).toBeNull();
+  });
+});
 
 describe('checkCommits', () => {
   it('passes an agent commit with both trailers', () => {
