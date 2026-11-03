@@ -18,7 +18,9 @@ export function searchConfigurationError(s: SettingsRecord): string | null {
 export async function searxng(base: string, query: string, signal: AbortSignal): Promise<WebPassage[]> {
   const url = new URL('search', base.endsWith('/') ? base : `${base}/`);
   url.searchParams.set('q', query); url.searchParams.set('format', 'json');
-  const res = await fetch(url, { signal });
+  // `redirect: 'error'`: the query may go only to the host the allowlist checked. The default
+  // mode would follow a 3xx and hand it to whatever host the instance points at.
+  const res = await fetch(url, { signal, redirect: 'error' });
   if (!res.ok) throw new Error(`SearXNG request failed (${res.status})`);
   const data = await res.json();
   if (!Array.isArray(data?.results)) throw new Error('Invalid SearXNG response');

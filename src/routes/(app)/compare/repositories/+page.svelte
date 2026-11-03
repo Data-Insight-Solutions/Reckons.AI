@@ -3,6 +3,7 @@
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { repositoryProfiles, repositoryOverlap, repositoryMetric } from '$lib/rdf/repository-comparison';
   import { termLabel } from '$lib/rdf/statement-chunks';
+  import { isSafeWebHref } from '$lib/utils/safe-href';
   import StatementCard from '$lib/components/StatementCard.svelte';
   let baseline = $state(''), selected = $state<string[] | null>(null), search = $state(''), viewName = $state('Repository shortlist');
   let viewId = $state(''), error = $state(''), busy = $state(false), facets = $state(['languages', 'topics', 'insights']);
@@ -53,11 +54,11 @@
       </div></details>
     </div>
     <p>Similarity is Jaccard overlap of publisher-applied topics and observed languages: shared values ÷ all distinct values. It measures overlap, not quality, speed or compatibility. Missing data stays unknown.</p>
-    <div class="table-scroll"><table aria-label="Quantitative repository comparison"><thead><tr><th>Source observation</th>{#each picks as repo}<th><a href={repo.id} target="_blank" rel="noopener noreferrer">{repo.name}</a></th>{/each}</tr></thead>
+    <div class="table-scroll"><table aria-label="Quantitative repository comparison"><thead><tr><th>Source observation</th>{#each picks as repo}<th>{#if isSafeWebHref(repo.id)}<a href={repo.id} target="_blank" rel="noopener noreferrer">{repo.name}</a>{:else}{repo.name}{/if}</th>{/each}</tr></thead>
       <tbody>
         <tr><th>Topic / language overlap with baseline</th>{#each picks as repo}<td>{base && repositoryOverlap(base, repo).score !== null ? `${Math.round(repositoryOverlap(base, repo).score! * 100)}%` : 'Unknown'}</td>{/each}</tr>
         {#each [['reported-star-count', 'GitHub stars (popularity)'], ['reported-license', 'License reported by GitHub'], ['reported-archived', 'Archived'], ['reported-last-push', 'Last pushed']] as [predicate, label]}
-          <tr><th>{label}</th>{#each picks as repo}<td>{#each repositoryMetric(repo, predicate) as claim}<div>{claim.o.value}<br /><small>{#if sources().find(s => s.id === claim.sourceId)?.uri}<a href={sources().find(s => s.id === claim.sourceId)!.uri} target="_blank" rel="noopener noreferrer">Source</a> · {/if}{new Date(sources().find(s => s.id === claim.sourceId)?.ingestedAt ?? claim.updatedAt).toLocaleDateString()}</small></div>{:else}Unknown{/each}</td>{/each}</tr>
+          <tr><th>{label}</th>{#each picks as repo}<td>{#each repositoryMetric(repo, predicate) as claim}<div>{claim.o.value}<br /><small>{#if isSafeWebHref(sources().find(s => s.id === claim.sourceId)?.uri)}<a href={sources().find(s => s.id === claim.sourceId)!.uri} target="_blank" rel="noopener noreferrer">Source</a> · {/if}{new Date(sources().find(s => s.id === claim.sourceId)?.ingestedAt ?? claim.updatedAt).toLocaleDateString()}</small></div>{:else}Unknown{/each}</td>{/each}</tr>
         {/each}
         <tr><th>Languages</th>{#each picks as repo}<td>{[...repo.languages].map(termLabel).join(', ') || 'Unknown'}</td>{/each}</tr>
         <tr><th>Topics</th>{#each picks as repo}<td>{[...repo.topics].map(termLabel).join(', ') || 'Unknown'}</td>{/each}</tr>
