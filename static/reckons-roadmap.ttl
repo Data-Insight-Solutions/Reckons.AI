@@ -10015,9 +10015,9 @@ kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:research-watch ;
     kpred:has-part kb:graph-density-legibility .
 
-# 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, in a local-deputy chat). The orchestration
+# 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
 # release: what makes the local deputy and its queue trustworthy enough to run offline.
-# Matt asked for a roadmap entity first, plan-only, no code.
+# Plan only; written by the local deputy, reviewed by Claude Code. F267 joins when #539 lands.
 kb:release-0-2-9 rdf:type ktype:Release ;
     rdfs:label "v0.2.9" ;
     kpred:version "0.2.9" ;
