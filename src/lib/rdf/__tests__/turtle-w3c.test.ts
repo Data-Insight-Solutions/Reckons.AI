@@ -502,6 +502,16 @@ describe('importTurtleFull — annotated file with unrecorded plain triples', ()
     expect(result.shellyPersona?.name).toBe('Shelly');
   });
 
+  it('treats sync-layer asset references (urn:kbase:asset/*) as metadata, not claims', async () => {
+    // The folder/drive sync appends these beside the statements; e2e sync-preservation caught
+    // them round-tripping as pending facts.
+    const ttl = toTurtleFull([mkStmt()], [mkSource()])
+      + '\n<urn:example:thing> <urn:kbase:asset/icon> "assets/icons/thing.png" .\n';
+    const result = await importTurtleFull(ttl);
+    expect(result.statements).toHaveLength(1);
+    expect(result.unrecordedImported).toBe(0);
+  });
+
   it('keeps importing every triple of a plain (record-free) file, as before', async () => {
     const ttl = `
       @prefix ex: <http://example.org/> .

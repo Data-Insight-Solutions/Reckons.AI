@@ -474,9 +474,12 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     if (!isPlainFile) {
       // The file's machine metadata is consumed elsewhere and is never a claim: the KB identity
       // lines (kbStableId / contentAdvisory — re-read from the raw text by the sync path) and the
-      // shelly: persona block (read by the loop above).
+      // shelly: persona block (read by the loop above), and the asset references the sync layer
+      // writes beside the statements (urn:kbase:asset/*, re-read by parseAssetRefs in kb-assets.ts).
       candidates = candidates.filter(({ s, p }) =>
-        !(s.termType === 'NamedNode' && s.value === 'urn:reckons:kb') && !p.value.startsWith(SHELLY));
+        !(s.termType === 'NamedNode' && s.value === 'urn:reckons:kb')
+        && !p.value.startsWith(SHELLY)
+        && !p.value.startsWith('urn:kbase:asset/'));
     }
     const toImport: Array<{ st: Term; pt: Term; ot: Term }> = [];
     for (const { s, p, o } of candidates) {
