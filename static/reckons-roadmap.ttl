@@ -11052,3 +11052,19 @@ kb:hub-default-assets-attach rdf:type ktype:Phase ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:hub-default-assets-chain ;
     kpred:done-test    "the hub shows the generated image as its hover preview and the splat in the 3D view after a person keeps them; the asset records survive the app's own export and re-import" .
+
+# 2026-11-04 — F279 OLLAMA RUNS WHAT IS INSTALLED, AND SAYS SO (Matt, in chat with Claude Code).
+kb:ollama-installed-model rdf:type ktype:Feature ;
+    rdfs:label "Ollama runs an installed model, and says so when it is not the one you chose" ;
+    kpred:feature-id   "F279" ;
+    kpred:has-status   "functional" ;
+    kpred:relates-to   kb:backend-ollama ;
+    kpred:description  "The Ollama model for each task is resolved against the server's installed tags (/api/tags): a bare name becomes the tag that is installed (llama3.2 becomes llama3.2:3b), and when nothing is chosen the best installed model is picked by this machine's extraction benches (#568, 2026-11-04). When a chosen model is not installed, the best installed one runs in its place and an important warning names both models, the task, the 'ollama pull' fix and a link to the Ollama settings, once per chosen and used pair per page load." ;
+    kpred:decided      "MATT, 2026-11-03 (task brief): when the user has not chosen a model, or the chosen name is not installed, pick the best installed model; a chosen model that is installed is never overridden." ;
+    kpred:decided      "MATT, 2026-11-04: 'make it a notification, need some ntoice.' (asked whether a replaced model should fail loudly instead)" ;
+    kpred:principle    "NEVER A SILENT SWAP. A different model writes different facts, so running one the person did not choose is always announced." ;
+    kpred:honest-note  "The notice depends on the installed list the prefer-local probe caches; before the first successful probe nothing is substituted and nothing is announced, and a missing model then fails on Ollama's own 404 as before. The Settings field still shows the bare llama3.2 placeholder." ;
+    kpred:has-file     "src/lib/integrations/llm/model-for-task.ts" ;
+    kpred:has-file     "src/lib/stores/ollama-model-notice.ts" ;
+    kpred:tested-by    "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
+    kpred:tested-by    "src/lib/stores/__tests__/ollama-model-notice.test.ts" .

@@ -446,6 +446,8 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/device-select.ts" ;
           kpred:has-file "src/lib/integrations/llm/extract-critic.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-for-task.ts" ;
+          kpred:has-file "src/lib/stores/ollama-model-notice.ts" ;
+          kpred:has-file "src/lib/stores/__tests__/ollama-model-notice.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/voice-catalog.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
