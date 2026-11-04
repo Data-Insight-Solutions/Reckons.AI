@@ -88,6 +88,18 @@ async function isEmbedCached(model: string): Promise<boolean> {
   }
 }
 
+/**
+ * True when the embedding model is already loaded or already cached on this device, so using it
+ * costs no download and needs no consent. Passive features (the Review page's similarity hints)
+ * ask this FIRST and quietly do without when it is false: opening a page must never raise a
+ * "Download model?" dialog; only something the person clicked that needs a model may.
+ */
+export async function isEmbedderReady(): Promise<boolean> {
+  const model = resolveModel();
+  if (extractor && loadedModel === model) return true;
+  return isEmbedCached(model);
+}
+
 /** How long to wait for an embedding model load before giving up (ms). Mirrors wasm.ts. */
 const EMBED_INIT_TIMEOUT_MS = 90_000;
 

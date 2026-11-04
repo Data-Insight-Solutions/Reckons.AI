@@ -39,7 +39,7 @@ New facts connected to the right existing entities — or standing as new ones, 
 
 **Honest Note**
 
-Connection is partly automatic and partly not yet surfaced. Since 2026-09-04 extraction runs UNGROUNDED and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have No review surface yet, so today you will meet both spellings as two separate rows and merge them by hand.
+Connection is partly automatic and partly not yet surfaced. Since 2026-09-04 extraction runs UNGROUNDED (without first being shown the names you have already saved) and reconciles afterwards: names that are the same word with different grammar (is-used-by / used-by) are connected automatically, and probable mis-hearings (lumen path / Lumenpath) are held back as proposals for you. The proposals are computed but have No review surface yet, so today you will meet both spellings as two separate rows and merge them by hand.
 
 ## Steps
 
@@ -59,7 +59,7 @@ After extraction you are shown what CHANGES, not everything found: new facts, fa
 
 **[Decide what is the same thing](../user-paths/add-3)**
 
-Two names that mean one thing get merged; a shared name-head with different tails (node attribute name / value / type) means they are SIBLINGS and must not be merged.
+Two names that mean one thing get merged; a shared name-head with different tails (node attribute name / value / type) means they are SIBLINGS (related but different things) and must not be merged.
 
 ## Related
 

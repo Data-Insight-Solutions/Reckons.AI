@@ -1,9 +1,11 @@
 import { db } from '../storage/db';
+import { migrateEntitySetsToCollections } from '../rdf/collections-migration';
 import { liveQuery } from 'dexie';
 import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/types';
 import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
+import { priorOrganizationStatus } from '../rdf/purpose-organization';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
@@ -91,8 +93,25 @@ export async function loadAll() {
     db.statements.toArray()
   ]);
   _sources = srcs;
-  _statements = sts;
+  _statements = await migrateLegacyEntitySets(sts);
   _loaded = true;
+}
+
+/**
+ * F65 entity sets become skos:Collection (0.2.6). Runs on every load; migrated data has no legacy
+ * terms so it is a no-op scan. If the write-back fails the legacy rows stay in storage and are still
+ * READ (entity-sets.ts / sets.ts accept both), so a failure costs nothing but a retry next load.
+ */
+async function migrateLegacyEntitySets(sts: Statement[]): Promise<Statement[]> {
+  const { statements, changed } = migrateEntitySetsToCollections(sts);
+  if (changed.length === 0) return sts;
+  try {
+    await db.statements.bulkPut(changed);
+    return statements;
+  } catch (e) {
+    console.warn('[collections] entity-set -> collection migration not persisted:', e);
+    return sts;
+  }
 }
 
 /** Compare storage snapshots by id and content, independent of cursor/local insertion order. */
@@ -463,6 +482,17 @@ export async function addStatements(
   const plan = await prepareStatementsForWrite(sts, sourceId, opts);
   if (plan.statements.length === 0 && plan.blocked.length === 0) return;
   await db.transaction('rw', db.statements, db.changelog, async () => {
+    if (opts?.origin === 'current') {
+      // A retry must not turn a confirmed/rejected arrival back into pending. Check inside the
+      // write transaction: another tab may have reviewed it since our reactive snapshot loaded.
+      const existing = await db.statements.bulkGet(plan.statements.map((st) => st.id));
+      const seen = new Set<string>();
+      plan.statements = plan.statements.filter((st, i) => {
+        if (existing[i] || seen.has(st.id)) return false;
+        seen.add(st.id);
+        return true;
+      });
+    }
     if (plan.statements.length > 0) await db.statements.bulkPut(plan.statements);
     await writeStatementChangeLog(plan, sourceId);
   });
@@ -519,6 +549,29 @@ export async function persistSourceBatch(
     scheduleDrivePush();
   }
   return committedPlan.statements;
+}
+
+/** Atomically replace only the organization produced by purpose-based Analyze. */
+export async function persistPurposeOrganization(source: Source, changes: Statement[], initial: Statement[]) {
+  if (isReadOnly() || !source.uri.startsWith('analysis://purpose/')) throw new Error('Cannot apply purpose organization here.');
+  const plan = await prepareStatementsForWrite(changes, source.id);
+  if (plan.blocked.length || plan.statements.length !== changes.length) throw new Error('Organization did not pass statement admission; nothing changed.');
+  await db.transaction('rw', db.sources, db.statements, db.changelog, async () => {
+    if (isReadOnly()) throw new Error('The active space changed; nothing was applied.');
+    const current = await db.statements.bulkGet(initial.map(s => s.id));
+    if (current.some((s, i) => !s || JSON.stringify(s) !== JSON.stringify(initial[i]))) throw new Error('Statements changed while Analyze was running. Please retry.');
+    const priorSources = new Set((await db.sources.toArray()).filter(s => s.uri.startsWith('analysis://purpose/')).map(s => s.id));
+    const previous = (await db.statements.toArray()).filter(s => priorSources.has(s.sourceId) && priorOrganizationStatus(s.status) !== null);
+    await db.sources.put(source);
+    await db.statements.bulkPut(plan.statements);
+    await writeStatementChangeLog(plan, source.id);
+    for (const statement of previous) {
+      const next = priorOrganizationStatus(statement.status)!;
+      await db.statements.put({ ...statement, status: next, updatedAt: Date.now() });
+      await logChange({ action: next === 'superseded' ? 'supersede' : 'propose-removal', statementId: statement.id, sourceId: statement.sourceId, before: JSON.stringify({ status: statement.status }), after: JSON.stringify({ status: next }) });
+    }
+  });
+  await loadAll(); scheduleAutoSave(); scheduleWorkspaceTtlExport(); scheduleDrivePush();
 }
 
 /**

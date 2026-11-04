@@ -16,6 +16,7 @@
 
 import type { Statement } from './types';
 import { iri, lit, isIRI } from './types';
+import { v5 as uuidv5 } from 'uuid';
 
 export const CURRENTS_META_PREFIX = 'urn:reckons:meta/currents/';
 /** Subject holding graph-wide currents settings */
@@ -70,7 +71,8 @@ export interface CurrentsSettings {
 const KINDS = new Set<CurrentKind>(['rss', 'url', 'topic', 'tasks']);
 
 function isActive(s: Statement): boolean {
-  return s.status !== 'rejected' && s.status !== 'superseded';
+  // Proposed settings are data for review, not permission to schedule remote fetches.
+  return s.status === 'confirmed' || s.status === 'refined';
 }
 
 /** Normalize a type reference: bare local names become full ktype IRIs. */
@@ -225,14 +227,10 @@ export interface ArrivalInput {
   extracted: Statement[];
 }
 
-function articleIri(title: string): string {
-  const s = title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `urn:kbase:concept/${s || 'article'}`;
+export function currentArticleIri(url: string): string {
+  // Headlines are neither unique nor stable: two documents can share a title, and a publisher
+  // can correct one. The URL identifies the arrival across retries, feeds and title changes.
+  return `urn:kbase:concept/arrival-${uuidv5(url, uuidv5.URL)}`;
 }
 
 /**
@@ -242,7 +240,7 @@ function articleIri(title: string): string {
  */
 export function buildArrivalStatements(input: ArrivalInput): Statement[] {
   const now = Date.now();
-  const article = articleIri(input.title);
+  const article = currentArticleIri(input.url);
   const g = iri(`urn:kbase:source/${input.sourceId}`);
   const make = (s: string, p: string, o: Statement['o'], excerpt?: string): Statement => ({
     id: `arrival|${s}|${p}|${o.value}`,

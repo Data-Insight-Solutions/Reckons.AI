@@ -90,6 +90,17 @@ export async function waitForApp(page: Page): Promise<void> {
  * actionability checks on elements, not during `waitForURL`).
  * We use a recursive setTimeout approach that won't stack up.
  */
+const consentDismissals = new WeakMap<Page, number>();
+
+/**
+ * How many times the auto-dismisser had to click "Not now" on this page. Tests that claim a page
+ * must NOT raise a model prompt (e.g. Review, which works without a model) assert this is 0 —
+ * otherwise the dismisser would quietly hide exactly the regression they guard.
+ */
+export function modelPromptsDismissed(page: Page): number {
+  return consentDismissals.get(page) ?? 0;
+}
+
 function startConsentDismisser(page: Page): void {
   let stopped = false;
   page.on('close', () => { stopped = true; });
@@ -100,7 +111,10 @@ function startConsentDismisser(page: Page): void {
     try {
       const btn = page.getByRole('button', { name: /not now/i });
       const visible = await btn.isVisible().catch(() => false);
-      if (visible) await btn.click().catch(() => {});
+      if (visible) {
+        if (await page.locator('.consent-dialog').isVisible().catch(() => false)) consentDismissals.set(page, (consentDismissals.get(page) ?? 0) + 1);
+        await btn.click().catch(() => {});
+      }
     } catch { /* page navigated or closed */ }
     if (!stopped) setTimeout(tick, 400);
   };

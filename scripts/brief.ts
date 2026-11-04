@@ -23,9 +23,27 @@ import { Parser } from 'n3';
 import { inspectPendingJsonl } from '../src/lib/rdf/pending-entry.js';
 import { formatFirstPullRequest } from './lib/brief-data.js';
 import { readTextOr } from './lib/read-file.js';
+import { buildJobBrief } from './lib/job-brief.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', R = '\x1b[31m', X = '\x1b[0m';
 const JSON_OUT = process.argv.includes('--json');
+
+// F273 phase 0: `--entity=<iri>` builds a JOB brief from a roadmap entity's job spec (or refuses).
+const entityArg = process.argv.find((a) => a.startsWith('--entity='))?.slice('--entity='.length);
+if (entityArg) {
+  const ttlPath = process.argv.find((a) => a.startsWith('--ttl='))?.slice('--ttl='.length) ?? 'static/reckons-roadmap.ttl';
+  const r = buildJobBrief(readFileSync(ttlPath, 'utf8'), entityArg);
+  if (!r.ok) {
+    console.error(
+      r.error
+        ? `brief: ${r.error}`
+        : `brief: ${entityArg} has no job spec: missing ${r.missing.join(', ')}. Add them to the roadmap entity (define done before code), then re-run.`,
+    );
+    process.exit(1);
+  }
+  console.log(r.brief);
+  process.exit(0);
+}
 
 const sh = (cmd: string): string => {
   try {

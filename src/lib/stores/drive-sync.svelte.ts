@@ -140,7 +140,8 @@ async function serializeKnowledgeBase(kbId: string): Promise<{ ttl: string; asse
     registerStableId(kbId, stableId, statements.length);
     const assets = (await collectAssets(kbDb)) as CollectedAsset[];
     // LOSSLESS export (F107.4): all statuses + provenance, so a re-pull cannot drop review state.
-    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + (await assetTriples(kbDb, assets as never));
+    const { passagesForSave } = await import('./source-corpus');
+    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId, chunks: await passagesForSave(sources) }) + (await assetTriples(kbDb, assets as never));
     return { ttl, assets };
   } finally {
     if (kbDb !== db) kbDb.close();
@@ -188,7 +189,8 @@ export async function driveSyncPush(): Promise<number> {
           const af = await ensureAssetsFolder();
           if (af) {
             const existingAssets = new Map((await listFolderFiles(af)).map((f) => [f.name, f.id]));
-            for (const a of ser.assets) {
+            // Imported splat files (F58.9.7) are tens of MB and Drive pull does not restore them: not uploaded.
+            for (const a of ser.assets.filter((x) => x.category !== 'splats')) {
               const driveName = `${stem}__${a.category}__${a.filename}`;
               await uploadBinaryToFolder(driveName, a.data, extToMime(a.filename), af, existingAssets.get(driveName));
             }

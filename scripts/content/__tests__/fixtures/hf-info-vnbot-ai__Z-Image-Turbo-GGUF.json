@@ -1,0 +1,67 @@
+{
+ "_id": "6ac0a4fb17c08e6d36c15f5d",
+ "id": "vnbot-ai/Z-Image-Turbo-GGUF",
+ "private": false,
+ "pipeline_tag": "text-to-image",
+ "library_name": "ggml",
+ "tags": [
+  "ggml",
+  "gguf",
+  "quantized",
+  "text-to-image",
+  "en",
+  "base_model:Tongyi-MAI/Z-Image-Turbo",
+  "base_model:quantized:Tongyi-MAI/Z-Image-Turbo",
+  "license:apache-2.0",
+  "region:us"
+ ],
+ "downloads": 76,
+ "likes": 0,
+ "modelId": "vnbot-ai/Z-Image-Turbo-GGUF",
+ "author": "vnbot-ai",
+ "sha": "26a792a18e5faa5175a1c9ce051ef38b25960ff3",
+ "lastModified": "2026-10-03T06:48:04.000Z",
+ "gated": false,
+ "disabled": false,
+ "model-index": null,
+ "config": {},
+ "cardData": {
+  "license": "apache-2.0",
+  "base_model": "Tongyi-MAI/Z-Image-Turbo"
+ },
+ "gguf": {
+  "total": 6154908736,
+  "architecture": "lumina2",
+  "totalFileSize": 5017613376
+ },
+ "siblings": [
+  {
+   "rfilename": ".gitattributes",
+   "blobId": "4b27db7b91926c7fa7ef9bd186186a5f3e403390",
+   "size": 3392
+  },
+  {
+   "rfilename": "assets/Z-Image-Gallery.pdf",
+   "blobId": "89f8a821673e81f57b858fdcda78e198bcc50e47",
+   "size": 15767436,
+   "lfs": {
+    "sha256": "6f9895b3246d2547bac74bbe0be975da500eaae93f2cad4248ad3281786b1ac6",
+    "size": 15767436,
+    "pointerSize": 133
+   }
+  },
+  {
+   "rfilename": "z-image-turbo-Q4_K_M.gguf",
+   "blobId": "2e38235304d9e84bd4348115f23320aa93fdadcb",
+   "size": 5017613376,
+   "lfs": {
+    "sha256": "e6494f87de6abaf6a561924f50317a5f271fc34bb4222aabbd801197df8f7daa",
+    "size": 5017613376,
+    "pointerSize": 135
+   }
+  }
+ ],
+ "spaces": [],
+ "createdAt": "2026-10-03T06:47:23.000Z",
+ "usedStorage": 5075242103
+}

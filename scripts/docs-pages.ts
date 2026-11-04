@@ -55,6 +55,7 @@ import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 import { docsTitle } from './lib/docs-title.js';
+import { loadWorkflows, workflowDiagram, SHOT_WIDTH, SHOT_HEIGHT, type Workflow } from './lib/test-workflow.js';
 import { altitudeOf, ALTITUDE_RANK } from '../src/lib/rdf/fact-altitude.js';
 import { readSets, readNotations, setOverlaps, type EntitySet } from '../src/lib/rdf/sets.js';
 
@@ -135,6 +136,10 @@ const EXCLUDED_IRI_PREDICATES = new Set<string>([RDF_TYPE, SKOS_BROADER, NAV_NEX
  */
 const RENDER_ONLY_STRUCTURAL = new Set<string>([
   PART_OF, STEP_ORDER, RENDER_INLINE, CHILDREN_LABEL,
+  // F34.2 test workflows: read by scripts/lib/test-workflow.ts and rendered as step sections, so
+  // printing them again as "Details" bullets would show the plumbing beside the finished page.
+  `${KPRED}workflow-id`, `${KPRED}test-file`, `${KPRED}step-id`, `${KPRED}short-label`,
+  `${KPRED}box-label`, `${KPRED}box-target`, `${KPRED}page-name`, `${KPRED}shots-note`, `${KPRED}screenshot`,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
   // Where the page LIVES is routing too. Without these, the first page to use the override
@@ -603,6 +608,8 @@ const STATUS_BANNER: Record<string, string> = {
  */
 const DIAGRAMS = loadCache();
 const SCENES = loadSceneCache();
+/** Test workflows (F34.2) by entity IRI, read from the Testing graph in main(). */
+const WORKFLOWS = new Map<string, Workflow>();
 /** stable id -> the page a leap should land on. Filled in main(), read by the renderers. */
 const LEAP_TARGETS = new Map<string, { section: string; slug: string; title: string }>();
 /** Sets declared anywhere in the corpus, and which sets each entity belongs to. F187.5. */
@@ -1144,6 +1151,54 @@ function renderChildren(children: ChildRef[], heading: string, renderAs: string 
   return lines;
 }
 
+
+/**
+ * A test workflow's body: the flow diagram, then one section per step (F34.2).
+ *
+ * BOTH come from the same ordered TestStep list that the e2e test reads, so the picture and the
+ * sections cannot disagree with each other or with what the test runs. A step with no captured
+ * screenshot says so in the page; it never shows a stand-in picture, because a reader would take it
+ * for the real app (kb:honest-status).
+ */
+function renderWorkflow(w: Workflow, heading: string): string[] {
+  const source = workflowDiagram(w);
+  const key = diagramKey(source);
+  const svg = DIAGRAMS[key];
+  if (!svg) {
+    throw new Error(
+      `No cached diagram for test workflow <${w.iri}> (key ${key}).\n` +
+      `The diagram is computed from the workflow's steps, so adding or renaming a step changes it.\n` +
+      `Fix: npm run docs:diagrams`,
+    );
+  }
+  const lines: string[] = [
+    diagramFigure(svg, 'The steps of this workflow, drawn from the same list the test runs.')
+      .replace('<figure class="diagram"', '<figure class="diagram diagram-stack"'), '',
+  ];
+  // How the screenshots were made, read from the graph, after the diagram so the picture of the
+  // route comes before the caveats about it.
+  if (w.shotsNote) lines.push(w.shotsNote, '');
+  lines.push(`## ${escapeMdText(heading)}`, '');
+  for (const s of w.steps) {
+    lines.push(`### ${s.order}. ${escapeMdText(s.title)}`, '');
+    lines.push(escapeMdText(s.text), '');
+    lines.push(`Where: ${escapeMdText(s.pageName)} (\`${s.page}\`).`, '');
+    if (s.screenshot) {
+      const alt = `Screenshot of step ${s.order}, ${s.title}. A pink box labelled "${s.boxLabel}" marks ${s.boxTarget}.`;
+      lines.push(
+        `<figure class="workflow-shot"><img src="${s.screenshot}" width="${SHOT_WIDTH}" height="${SHOT_HEIGHT}" `
+        + `alt="${alt.replace(/"/g, '&quot;')}" loading="lazy" decoding="async" />`
+        + `<figcaption>The pink box marks ${escapeMdText(s.boxTarget)}.</figcaption></figure>`, '');
+    } else {
+      lines.push(
+        '<figure class="workflow-shot workflow-shot-missing"><p>Screenshot not yet captured for this step.</p></figure>', '');
+    }
+    lines.push(`**What the test checks.** ${escapeMdText(s.assertion)}`, '');
+  }
+  lines.push(`This workflow is run by \`${w.testFile}\`, which reads the steps above from the same list.`, '');
+  return lines;
+}
+
 function renderBody(
   e: Entity,
   refs: Map<string, PageRef>,
@@ -1160,6 +1215,8 @@ function renderBody(
 
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));
+  const workflow = WORKFLOWS.get(e.iri);
+  if (workflow) lines.push(...renderWorkflow(workflow, childHeading));
   lines.push(...renderSceneFor(e));
   lines.push(...renderDerived(e, children));
   lines.push(...renderSetMembership(e, refs));
@@ -1178,7 +1235,8 @@ function renderBody(
     lines.push(...renderStatusSummary(STATUS_ROWS, refs, (iri) => TITLE_OF.get(iri) ?? refs.get(iri)?.title ?? iri));
   }
 
-  lines.push(...renderChildren(children, childHeading, e.renderAs));
+  // A workflow's steps are rendered above, as numbered sections with their screenshots.
+  if (!workflow) lines.push(...renderChildren(children, childHeading, e.renderAs));
 
   const iriKeys = [...e.iriProps.keys()]
     .filter((k) => !RENDER_ONLY_STRUCTURAL.has(k))
@@ -1232,6 +1290,8 @@ function pruneEmptyDirs(dir: string): void {
 function main(): void {
   const fileQuads = new Map<string, Quad[]>();
   for (const { file } of SOURCES) fileQuads.set(file, parseTtl(join(STATIC_DIR, file)));
+
+  for (const w of loadWorkflows(fileQuads.get('docs-testing.ttl') ?? [])) WORKFLOWS.set(w.iri, w);
 
   const home = resolveHomeFiles(fileQuads);
   const sectionOf = new Map(SOURCES.map((s) => [s.file, s.section]));

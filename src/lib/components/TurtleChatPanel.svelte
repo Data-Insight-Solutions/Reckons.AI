@@ -12,6 +12,7 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { offerApplied } from '$lib/rdf/story-offers';
   import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
@@ -29,6 +30,7 @@
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
+  import GenerationStory from './GenerationStory.svelte';
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
@@ -93,7 +95,7 @@
     if (exploreMode && !exploreModeHandled) {
       exploreModeHandled = true;
       tab = 'explore';
-      if (!exploreStarted) {
+      if (!exploreStarted && !modelNeedsConsent()) {
         exploreStarted = true;
         sendExploreMessage(null);
       }
@@ -215,7 +217,7 @@
   // Auto-scroll on new messages
   $effect(() => {
     if (messages.length && msgListRef) {
-      setTimeout(() => msgListRef!.scrollTo({ top: msgListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => msgListRef?.scrollTo({ top: msgListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
@@ -347,6 +349,7 @@
   async function sendMessage() {
     const text = input.trim();
     if (!text || loading) return;
+    if (askConsentFirst()) return; // keeps the typed text; sends after the person answers
 
     const { provider, apiKey, model } = resolveChatProvider();
     const s = settings();
@@ -388,6 +391,28 @@
    */
   const aiConsent = $derived(settings().aiUsageConsent);
 
+  /*
+   * LAZY CONSENT (MATT, 2026-10-13, same principle as the model download): the consent ask appears
+   * only when the PERSON reaches for something that needs a model, never because Shelly happened
+   * to be open (the Getting started tour opens her). The gate itself is unchanged: turtleChat
+   * still refuses every model call without consent. `consentWanted` flips on a person's own
+   * request; the tour's automatic first message does not count and is simply held back.
+   */
+  let consentWanted = $state(false);
+
+  /** True when a model call right now would be refused for lack of consent. */
+  function modelNeedsConsent(): boolean {
+    const p: string = resolveChatProvider().provider; // widened: the gate below also names mock and manual
+    return p !== 'mock' && p !== 'manual' && aiConsent !== 'granted';
+  }
+
+  /** The person asked for a model-backed answer: surface the ask (once) instead of an error. */
+  function askConsentFirst(): boolean {
+    if (!modelNeedsConsent()) return false;
+    consentWanted = true;
+    return true;
+  }
+
   async function grantAiConsent(granted: boolean) {
     await updateSettings({ aiUsageConsent: granted ? 'granted' : 'declined' });
     if (!granted) return;
@@ -422,19 +447,21 @@
   let exploreMessages = $state<ExploreMsg[]>([]);
   let exploreInput = $state('');
   let exploreLoading = $state(false);
+  /** Facts waiting for the person (F248): the tour's last stop links to them in Review. */
+  const tourPendingCount = $derived(statements().filter((s) => s.status === 'pending').length);
   let exploreErrorMsg = $state('');
   let exploreListRef = $state<HTMLDivElement | undefined>(undefined);
   let exploreStarted = $state(false);
 
   $effect(() => {
     if (exploreMessages.length && exploreListRef) {
-      setTimeout(() => exploreListRef!.scrollTo({ top: exploreListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => exploreListRef?.scrollTo({ top: exploreListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
   // Auto-start tour on mount if in explore mode; also triggered by tab click below
   onMount(() => {
-    if (tab === 'explore' && !exploreStarted) {
+    if (tab === 'explore' && !exploreStarted && !modelNeedsConsent()) {
       exploreStarted = true;
       sendExploreMessage(null);
     }
@@ -442,6 +469,7 @@
 
   async function sendExploreMessage(userText: string | null) {
     if (exploreLoading) return;
+    if (askConsentFirst()) return;
     exploreLoading = true;
     exploreErrorMsg = '';
 
@@ -494,6 +522,7 @@
   function sendExploreInput() {
     const msg = exploreInput.trim();
     if (!msg || exploreLoading) return;
+    if (askConsentFirst()) return; // keeps the typed text
     exploreInput = '';
     sendExploreMessage(msg);
   }
@@ -547,7 +576,7 @@
 
   $effect(() => {
     if (storyMessages.length && storyListRef) {
-      setTimeout(() => storyListRef!.scrollTo({ top: storyListRef!.scrollHeight, behavior: 'smooth' }), 30);
+      setTimeout(() => storyListRef?.scrollTo({ top: storyListRef?.scrollHeight, behavior: 'smooth' }), 30);
     }
   });
 
@@ -561,7 +590,7 @@
       if (found) {
         openStory(found);
         // Auto-play if requested (e.g. from "Getting started" button)
-        if (storyAutoPlayRequested()) {
+        if (storyAutoPlayRequested() && !found.interaction) {
           clearStoryAutoPlay();
           setTimeout(() => toggleAutoPlay(), 100);
         }
@@ -579,7 +608,7 @@
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
     // Play step 0 — voice plays only if user has explicitly enabled it
-    playStoryStep(story, 0);
+    if (!story.interaction) playStoryStep(story, 0);
     tab = 'explore';
   }
 
@@ -1197,7 +1226,7 @@
       stopAutoPlay();
     }
     tab = v as Tab;
-    if (v === 'explore' && !exploreStarted) {
+    if (v === 'explore' && !exploreStarted && !askConsentFirst()) {
       exploreStarted = true;
       sendExploreMessage(null);
     }
@@ -1233,7 +1262,7 @@
     the model is shown. Naming WHERE it runs matters more than the word "AI": "runs on this device"
     and "sends to openai" are different promises, and only one of them needs thinking about.
   -->
-  {#if aiConsent === undefined}
+  {#if aiConsent === undefined && consentWanted}
     <div class="ai-consent" role="group" aria-label="Allow Shelly to use a model">
       <p class="ai-consent-q">Shelly answers by sending the relevant parts of your graph to a language model.</p>
       <p class="ai-consent-where mono">{isWasmProvider ? 'runs on this device — nothing leaves it' : `sends to ${chatProvider}`}</p>
@@ -1242,7 +1271,7 @@
         <button onclick={() => grantAiConsent(false)}>Not now</button>
       </div>
     </div>
-  {:else if aiConsent === 'declined'}
+  {:else if aiConsent === 'declined' && consentWanted}
     <div class="ai-consent">
       <p class="ai-consent-q">Shelly's model is off, so answers are unavailable. Everything that needs no model still works.</p>
       <div class="ai-consent-actions">
@@ -1551,7 +1580,9 @@
 
   <!-- ── Explore tab (stories + LLM tour) ── -->
   <Tabs.Content value="explore" class="tcp-tab-content">
-    {#if currentStory}
+    {#if currentStory?.interaction === 'generate-assets'}
+      <GenerationStory onexit={() => { stopAutoPlay(); stopStory(); currentStory = null; }} />
+    {:else if currentStory}
       <!-- Story playback -->
       <div class="chat">
         <div class="msg-list" bind:this={storyListRef}>
@@ -1559,7 +1590,26 @@
             {#if msg.role === 'shelly'}
               <div class="msg assistant" class:step-msg={msg.isStep}>
                 <img src="/svg/head1.svg" alt="" class="msg-icon" />
-                <div class="msg-body">{@html renderMarkdown(msg.content)}</div>
+                <div class="msg-body">
+                  {@html renderMarkdown(msg.content)}
+                  <!-- F261: what the step offers, one click each. Offered, never applied: the reader's
+                       click is the consent, and story-offers.ts limits what may be offered at all. -->
+                  {#if msg.isStep && msg.stepIdx !== undefined && currentStory?.steps[msg.stepIdx]?.offers?.length}
+                    <div class="step-offers">
+                      {#each currentStory.steps[msg.stepIdx].offers ?? [] as offer (offer.label)}
+                        {#if offer.kind === 'setting'}
+                          {@const done = offerApplied(offer, settings())}
+                          <button class="step-offer" class:done disabled={done}
+                            onclick={() => updateSettings({ [offer.key]: offer.value })}>
+                            {done ? '✓ ' : ''}{offer.label}
+                          </button>
+                        {:else}
+                          <button class="step-offer" onclick={() => goto(offer.path)}>{offer.label} →</button>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
             {:else}
               <div class="msg user">
@@ -1768,6 +1818,13 @@
           <button class="next-stop" onclick={() => sendExploreMessage('Continue to the next stop.')} disabled={exploreLoading}>
             next stop →
           </button>
+          <!-- F248: the tour ends with the person's first real decision. Not left to the model:
+               a first visit usually has no model, and the tour would never get there. -->
+          {#if tourPendingCount > 0}
+            <a class="tour-review" href="/review">
+              {tourPendingCount} {tourPendingCount === 1 ? 'fact waits' : 'facts wait'} for your decision in Review →
+            </a>
+          {/if}
         </div>
       </div>
     {/if}
@@ -2334,6 +2391,21 @@
   }
   .next-stop:not(:disabled):hover { background: var(--accent-soft); }
   .next-stop:disabled { opacity: 0.35; cursor: not-allowed; }
+  .tour-review {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin: 0 0.75rem 0.6rem;
+    border-radius: var(--rad-sm);
+    background: var(--accent);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+  }
+  .tour-review:hover { filter: brightness(1.08); }
 
   /* ── Story tab ── */
   /* ── Explore story chips ── */
@@ -2378,6 +2450,13 @@
     color: var(--muted);
   }
 
+  .step-offers { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+  .step-offer {
+    padding: 0.4rem 0.7rem; border-radius: var(--rad-sm); cursor: pointer; font-size: 0.8rem;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+  }
+  .step-offer:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .step-offer.done { background: transparent; color: var(--muted); border-color: var(--line); cursor: default; }
   .step-msg .msg-body {
     border-left: 2px solid var(--data);
     padding-left: 0.5rem;

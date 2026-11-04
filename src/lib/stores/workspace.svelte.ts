@@ -120,6 +120,17 @@ let pulling = false;
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
 export function workspaceName(): string | null { return name; }
 export function workspaceState(): 'none' | 'disconnected' | 'connected' { return state; }
+/**
+ * True from the moment a linked folder becomes connected until its first pull AND its queue drain
+ * have both finished. A page that counts proposals before this is false is counting a queue that
+ * has not been read yet, and "0 proposals" would be a lie (review links landing, 2026-10-28).
+ * Remains false when auto-sync is off, because nothing is then loading on its own.
+ */
+let _initialLoading = $state(false);
+/** False until loadWorkspace has looked for a stored handle; before that 'none' means "not asked yet". */
+let _checked = $state(false);
+export function workspaceChecked(): boolean { return _checked; }
+export function workspaceInitialLoading(): boolean { return _initialLoading; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
 export function syncedKbCount(): number { return _syncedKnowledgeBaseCount; }
 export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
@@ -178,6 +189,10 @@ function readAutoSyncPref(): boolean {
 
 /** Called on app startup — loads the stored handle and checks current permission. */
 export async function loadWorkspace(): Promise<void> {
+  try { await loadWorkspaceInner(); } finally { _checked = true; }
+}
+
+async function loadWorkspaceInner(): Promise<void> {
   // App-level, with a one-time adoption of any handle an older version left in this graph's
   // own database. See app-db.ts: the handle describes the browser, not the graph.
   const row = await getWorkspaceRow(legacyWorkspaceStores());
@@ -212,10 +227,11 @@ function onWorkspaceConnected(): void {
   // next reload or a manual refresh — so a note dictated into a ring arrived on disk, and then
   // appeared to have vanished. Connecting a folder is exactly when the user expects what is in
   // it to show up.
+  _initialLoading = true;
   void pullFromWorkspace()
     .then(() => drainAndImportPending())
     .catch(() => { /* both paths report their own failures; never break connection on this */ })
-    .finally(() => startWorkspacePolling());
+    .finally(() => { _initialLoading = false; startWorkspacePolling(); });
 }
 
 /** Ask the user to pick a directory. Returns true on success. */
@@ -593,7 +609,8 @@ export async function syncNotesGraphToWorkspace(id: string): Promise<boolean> {
     });
     registerStableId(id, stableId, statements.length);
     const assets = await collectAssets(graph);
-    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + await assetTriples(graph, assets);
+    const { passagesForSave } = await import('./source-corpus');
+    const ttl = toTurtleFull(statements, sources, { kbStableId: stableId, chunks: await passagesForSave(sources) }) + await assetTriples(graph, assets);
     return await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
   } finally { graph.close(); }
 }
@@ -763,7 +780,7 @@ export async function readKnowledgeBaseFromFolder(folderName: string): Promise<{
     const assets = new Map<string, Uint8Array>();
     try {
       const assetsDir = await kbDir.getDirectoryHandle('assets');
-      for (const category of ['icons', 'previews', 'models'] as const) {
+      for (const category of ['icons', 'previews', 'models', 'splats'] as const) {
         try {
           const catDir = await assetsDir.getDirectoryHandle(category);
           for await (const entry of (catDir as any).values()) {
@@ -834,7 +851,8 @@ export async function syncAllKbs(): Promise<number> {
       // per-KB folder file round-trips without dropping review state on a later re-pull.
       const assets = await collectAssets(kbDb);
       const assetTtl = await assetTriples(kbDb, assets);
-      const ttl = toTurtleFull(statements, sources, { kbStableId: stableId }) + assetTtl;
+      const { passagesForSave } = await import('./source-corpus');
+      const ttl = toTurtleFull(statements, sources, { kbStableId: stableId, chunks: await passagesForSave(sources) }) + assetTtl;
 
       await writeKnowledgeBaseToFolder(entry, ttl, stableId, assets);
       synced++;
@@ -901,7 +919,8 @@ async function _triggerWorkspaceTtlExport(): Promise<void> {
     if (entry) {
       const assets = await collectAssets(db);
       const assetTtl = await assetTriples(db, assets);
-      const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId });
+      const { passagesForSave } = await import('./source-corpus');
+      const fullTtl = toTurtleFull(statements, sources, { kbStableId: settings?.kbStableId, chunks: await passagesForSave(sources) });
       await writeKnowledgeBaseToFolder(entry, fullTtl + assetTtl, settings?.kbStableId, assets);
       _lastSyncTime = Date.now();
     }

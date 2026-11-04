@@ -82,11 +82,23 @@ vi.mock('../official-kb.svelte', () => ({
 }));
 vi.mock('../../storage/backup', () => ({ scheduleAutoSave: vi.fn() }));
 
-const { persistIngestBatch, persistSourceBatch, setStatuses } = await import('../kb.svelte');
+const { persistIngestBatch, persistSourceBatch, setStatuses, addStatements } = await import('../kb.svelte');
 
 const source: Source = {
   id: 'source-atomic', title: 'Atomic ingest', uri: 'note://atomic', kind: 'note', ingestedAt: 1,
 };
+
+describe('Currents retry at the durable write boundary', () => {
+  it.each(['confirmed', 'rejected', 'refined', 'superseded'] as const)(
+    'preserves a %s fact even when the reactive store did not observe the other tab', async (status) => {
+      const saved = { ...statement, status };
+      rows.statements.set(saved.id, saved);
+      await addStatements([{ ...statement, status: 'pending' }], source.id, { origin: 'current' });
+      expect(rows.statements.get(saved.id)).toEqual(saved);
+      expect(rows.changelog.size).toBe(0);
+    },
+  );
+});
 const statement: Statement = {
   id: 'statement-atomic',
   s: { kind: 'iri', value: 'urn:subject' },

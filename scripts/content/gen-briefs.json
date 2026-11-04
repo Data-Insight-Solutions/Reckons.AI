@@ -1,0 +1,23 @@
+{
+  "$comment": "Synthetic briefs for the local generation pipeline (F58.9.1). Every prompt here is made up for the example space; nothing comes from anyone's notes. role 'background' marks the splat offered as a space background.",
+  "briefs": [
+    {
+      "slug": "carved-turtle",
+      "label": "Carved wooden sea turtle",
+      "imagePrompt": "A hand-carved wooden sea turtle figurine with a high domed shell painted with teal patterns, standing on its four flippers, three-quarter view from the front and slightly above, the whole figurine visible with its depth clear, studio product photo on a plain light grey background, soft even lighting",
+      "videoPrompt": "the wooden sea turtle figurine swims forward, its flippers paddling up and down, the camera slowly circles around it, soft studio light",
+      "seed": 42,
+      "gaussians": 32768,
+      "role": "node"
+    },
+    {
+      "slug": "lighthouse-island",
+      "label": "Lighthouse island diorama",
+      "imagePrompt": "A miniature diorama of a small rocky island with a white and red lighthouse, a few pine trees and a wooden jetty, centered, whole island visible, isometric view, plain dark blue background, soft light",
+      "videoPrompt": "the lighthouse beam sweeps around, waves lap at the rocks of the small island, the camera slowly orbits the diorama",
+      "seed": 7,
+      "gaussians": 65536,
+      "role": "background"
+    }
+  ]
+}

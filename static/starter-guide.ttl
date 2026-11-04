@@ -50,7 +50,7 @@
 guide:ReckonsAI
     rdf:type            ktype:Organization ;
     rdfs:label          "Reckons.AI" ;
-    skos:definition     "A personal knowledge graph that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority." ;
+    skos:definition     "A personal knowledge graph (a collection of facts you have checked, each linking one thing to another) that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority." ;
     kmeta:glbModel      "/glb/Meshy_AI_Turtle_1.glb" ;
     kpred:icon2d        "/svg/ReckonsAI-Logo.svg" ;
     skos:related        guide:WhatIsReckonsAI ;
@@ -174,7 +174,7 @@ leap:UseCases
 leap:Features
     rdf:type            ktype:KnowledgeBase ;
     rdfs:label          "LEAP: Features" ;
-    skos:definition     "detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings, Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
+    skos:definition     "detailed coverage of every feature: Ingest, Review, Trust, Graph, Shelly, Reckonings (a worked-out answer: what is true now, what you want, and a proposal to close the gap), Compare, Multi-Graph, graph Leap, Content Safety, Predicate Manager, Whisper STT, Kokoro TTS, and more." ;
     skos:broader        guide:WhatIsReckonsAI ;
     hnav:order          "4"^^xsd:integer ;
     hnav:layer          "1"^^xsd:integer ;

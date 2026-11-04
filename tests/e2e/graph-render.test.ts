@@ -218,7 +218,11 @@ test('Getting started + Preview all demonstrates GIF, video, and GLB assets', as
   // asset viewer's top-right controls. Clear it as a user would before opening
   // the large viewers below.
   const dismissNotification = page.getByRole('button', { name: 'dismiss', exact: true });
-  if (await dismissNotification.isVisible()) await dismissNotification.click();
+  // More than one can be showing (the reviewed starter also announces its pending facts), so
+  // clear them one at a time instead of assuming a single notification.
+  for (let i = 0; i < 5 && (await dismissNotification.count()) > 0; i++) {
+    await dismissNotification.first().click();
+  }
 
   const previews = page.locator('.overlay-group', { hasText: /previews/i });
   await previews.locator('button.chip').first().click();
@@ -250,15 +254,29 @@ test('Getting started + Preview all demonstrates GIF, video, and GLB assets', as
     { message: 'the WebM should load metadata and dimensions' },
   ).toMatchObject({ ready: true, duration: 4, width: 640 });
 
+  // The force layout can place a preview underneath the snapped controls. Find
+  // and center each entity through the same search flow used by the generated
+  // assets workflow, then click normally so obstruction still fails the test.
+  const focusAsset = async (slug: string) => {
+    await page.keyboard.press('Escape');
+    await page.getByPlaceholder('search nodes or facts…').fill(slug);
+    await page.locator('.sb-node-row')
+      .filter({ has: page.locator('.sb-node-iri') })
+      .filter({ hasText: slug }).first().click();
+  };
+
   // Exercise the kind-specific large viewers, not merely three asset URLs in the Turtle file.
+  await focusAsset('ev-campfire');
   await gifThumb.click();
   await expect(page.locator('.asset-large img')).toHaveAttribute('src', '/gif/starter/campfire.gif');
   await page.locator('.asset-large .asset-controls button[title="Close"]').click();
 
+  await focusAsset('ev-sunrise-shoot');
   await videoThumb.click();
   await expect(page.locator('.asset-large video.asset-media')).toHaveAttribute('src', '/video/starter/sunrise-shoot.webm');
   await page.locator('.asset-large .asset-controls button[title="Close"]').click();
 
+  await focusAsset('ev-pitch-camp');
   await glbThumb.click();
   const glbCanvas = page.locator('.asset-large .asset-glb canvas');
   await expect(glbCanvas).toBeVisible({ timeout: 15_000 });

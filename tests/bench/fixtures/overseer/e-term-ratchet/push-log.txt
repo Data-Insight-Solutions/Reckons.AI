@@ -1,0 +1,10 @@
+$ git push origin feat/example-search
+▶ term-ratchet — ambiguity ratchet. For every word the terminology graph gives two or more meanings,
+  the count of FREE bare uses in prose (comments, strings, markup text) may fall, never rise.
+  ✓ statement: 1016 free in prose, at baseline
+  ✗ source: 1522 free in prose, baseline 1521 — 1 new. Use a qualified name (see its meanings in
+    static/reckons-terminology.ttl), or raise the baseline in the same commit and say why.
+  ✓ graph: 3293 free in prose, at baseline
+BLOCKING: term-ratchet failed. This is not advisory — the build stops here.
+pre-push: a blocking check failed. Fix it, or push with --no-verify.
+error: failed to push some refs to 'origin'

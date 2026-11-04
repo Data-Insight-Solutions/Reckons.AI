@@ -1,0 +1,58 @@
+## ---------------------------------------------------------------------------
+## Reckons.AI — Simulator example: a ball, a ramp and a cup (F260.1, kb:sim-core)
+## ---------------------------------------------------------------------------
+## A physical scene. Every node with a sim-shape is a rigid body; its start pose is
+## its placed-at (and placed-yaw) setting, in metres with +y up and the floor top at y=0.
+## The target node lists conditions that a simulated run is checked against.
+##
+## Run it headless:  npm run sim:run -- --file=static/starter-sim-ramp-cup.ttl
+## As given, the ball starts too low on the ramp to clear the cup's lip, so the run FAILS.
+## Edit the ball's placed-at to "-1.5 1.9 0" (higher up the ramp) and the same run PASSES.
+## (Phase 1 only runs the scene; the reckoning and the replay are later phases.)
+## ---------------------------------------------------------------------------
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix kb:    <urn:kbase:concept/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix kmeta: <urn:kbase:meta/> .
+
+kb:sim-ramp-cup
+    rdf:type     ktype:Concept ;
+    rdfs:label   "Ramp and cup" ;
+    rdfs:comment "Get the ball into the cup. Conditions are checked against a simulated run." ;
+    p:has kb:floor ; p:has kb:ramp ; p:has kb:ball ; p:has kb:cup-lip ; p:has kb:cup-back ; p:has kb:cup-zone ;
+    kmeta:sim-condition "inside(ball, cup-zone)" ;
+    kmeta:sim-condition "aboveFloor(all, -0.1)" .
+
+kb:floor
+    rdfs:label "Floor" ;
+    kmeta:sim-shape "box 24 1 6" ; kmeta:sim-static "true" ;
+    kmeta:placed-at "3 -0.5 0" .
+
+kb:ramp
+    rdfs:label "Ramp" ;
+    kmeta:sim-shape "box 4 0.2 2" ; kmeta:sim-static "true" ; kmeta:sim-tilt "-15" ;
+    kmeta:placed-at "0 1 0" .
+
+kb:ball
+    rdfs:label "Ball" ;
+    kmeta:sim-shape "sphere 0.25" ; kmeta:sim-mass "1" ; kmeta:sim-friction "0.5" ; kmeta:sim-restitution "0" ;
+    kmeta:placed-at "0.6 1.25 0" .
+
+kb:cup-lip
+    rdfs:label "Cup lip" ;
+    kmeta:sim-shape "box 0.2 0.15 2" ; kmeta:sim-static "true" ;
+    kmeta:placed-at "4.5 0.075 0" .
+
+kb:cup-back
+    rdfs:label "Cup back wall" ;
+    kmeta:sim-shape "box 0.2 1 2" ; kmeta:sim-static "true" ;
+    kmeta:placed-at "6.1 0.5 0" .
+
+kb:cup-zone
+    rdfs:label "Cup zone" ;
+    rdfs:comment "A region, not an obstacle: the ball must finish inside it." ;
+    kmeta:sim-shape "box 1.3 0.8 1.8" ; kmeta:sim-sensor "true" ;
+    kmeta:placed-at "5.35 0.4 0" .

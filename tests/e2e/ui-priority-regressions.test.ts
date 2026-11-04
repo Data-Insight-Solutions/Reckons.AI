@@ -117,7 +117,7 @@ test('manual Facts inputs retain readable dark-theme styling', async ({ page }, 
 });
 
 test('starter and ingest failures are visible, announced, and retryable', async ({ page }, testInfo) => {
-  await page.route('**/starter-everyday.ttl', async (route) => {
+  await page.route('**/starter-everyday-reviewed.ttl', async (route) => {
     await route.fulfill({ status: 503, body: 'fixture unavailable' });
   });
   await page.goto('/');

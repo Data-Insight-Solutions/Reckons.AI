@@ -216,8 +216,12 @@ export function kbFileSlug(name = getCurrentKbName()): string {
 /**
  * Switch the active KB for this tab and reload.
  * Also updates localStorage as the global default for new tabs.
+ *
+ * `to` loads that path instead of reloading the current one. Opening an example space from the
+ * About page reloaded About itself, so the switch looked like nothing had happened (Matt,
+ * 2026-10-14: "open as a space on the generation space isn't working").
  */
-export function switchToKb(id: string): void {
+export function switchToKb(id: string, opts: { to?: string } = {}): void {
   if (typeof window === 'undefined') return;
   // Set per-tab session
   if (id === DEFAULT_ID) {
@@ -227,7 +231,8 @@ export function switchToKb(id: string): void {
     sessionStorage.setItem(SESSION_KEY, id);
     localStorage.setItem(CURRENT_KEY, id);
   }
-  window.location.reload();
+  if (opts.to) window.location.assign(opts.to);
+  else window.location.reload();
 }
 
 /**

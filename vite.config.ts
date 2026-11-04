@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import fs from 'node:fs';
 import path from 'path';
+import { deviceBridge } from './scripts/dev-server/device-bridge';
 
 /**
  * THE VERSION HAS ONE SOURCE, AND IT IS package.json.
@@ -76,6 +77,8 @@ export default defineConfig({
     // src/lib/styles/tailwind.css imports theme + utilities layers WITHOUT
     // preflight, so the hand-rolled Liquid theme in global.css is untouched.
     tailwindcss(),
+    // Settings → This Device: agent watch, host specs, installed models. Dev server only.
+    deviceBridge(),
     sveltekit(),
     SvelteKitPWA({
       strategies: 'generateSW',
@@ -155,6 +158,14 @@ export default defineConfig({
     }
   },
   worker: { format: 'es' },
+  // Agent worktrees, private workspaces and test output are never imported by the app, but
+  // watching them exhausts the inotify limit (ENOSPC) and stops dev reloads altogether.
+  server: {
+    watch: {
+      ignored: ['**/.claude/**', '**/reckons-workspace/**', '**/mcp-workspace/**',
+        '**/tests/visual/screenshots/**', '**/test-results/**', '**/playwright-report/**'],
+    },
+  },
   optimizeDeps: { exclude: ['@huggingface/transformers', 'onnxruntime-web'] },
   ssr: { noExternal: ['bits-ui', 'svelte-toolbelt', 'runed'] }
 });

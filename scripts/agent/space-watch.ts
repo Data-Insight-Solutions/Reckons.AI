@@ -28,7 +28,7 @@ import { join, basename, dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Parser } from 'n3';
 import { TEMPLATES } from './task-templates.js';
-import { assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
+import { DEFAULT_REASONING_MODEL, assertOk, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 export type ModelFn = (prompt: string) => Promise<string>;
 export interface Provenance { host: string; model: string; at: string; kind: 'plan' | 'answer' | 'notice' }
@@ -289,7 +289,7 @@ async function main(): Promise<void> {
   const arg = (n: string) => process.argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
   const dir = arg('space');
   if (!dir) { console.error('usage: space-watch.ts --space=<dir> [--once] [--interval=60] [--host=<name>] [--model=<ollama model>]'); process.exit(2); }
-  const model = arg('model') ?? 'qwen3.6:latest';
+  const model = arg('model') ?? DEFAULT_REASONING_MODEL;
   const interval = Math.max(5, Number(arg('interval') ?? 60));
   const o: WatchOptions = { dir, host: arg('host') ?? hostname(), model, call: ollamaCall(model), log: (m) => console.log(m) };
   for (;;) {

@@ -13,7 +13,7 @@ If you are an agent and you are reading this, these rules apply to you.
 > those are capability failures. They are all things this file says and that file never said to
 > anyone but Claude. Renaming it was the fix.
 
-## The four rules that are most often missed
+## The five rules that are most often missed
 
 1. **Never push to `main`, and land work through a PR.** Feature branch → push → PR (base `dev`,
    not `main`) → CI green → Matt merges. Work that sits uncommitted in the working tree has
@@ -26,6 +26,13 @@ If you are an agent and you are reading this, these rules apply to you.
    build it, and its status must be updated in the same branch as the code.
 4. **Say what is not true.** Report failures as loudly as successes, and date any claim that can
    go stale ("3042 tests passed" is true for about a day). See "Honest status" below.
+5. **Route maintenance to the local deputy when subscription is exhausted or credits are metered.**
+   The deputy (qwen3.8-160k via `npm run claude:local`) handles: maintenance, benchmarking, test
+   triage, TTL writing, stale-statement detection, batch analysis, and anything that produces a
+   *proposal* waiting for human review. Opus **triages** the deputy's pending queue; it does not
+   redo what the deputy already did. The routing ladder (F74.3) is the default path — script → local
+   model → Sonnet/Haiku subagent → Opus (a rule a script can check never goes to a model at all). Escalating a maintenance task directly to Opus is the
+   failure mode that burns cloud tokens on work the deputy can propose correctly.
 
 ## Project
 
@@ -175,7 +182,6 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 |---|---|---|
 | **Start of any work session** | `npm run offline:all -- --tier=script` | script — 11 checks, ~60s, zero tokens |
 | **MCP graphs missing/empty, or fresh clone** | `bash scripts/setup-reckons-workspace.sh` | script — rebuilds both workspaces, fails loudly on dangling links |
-| **Before opening a PR / after writing code** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/code-review.ts --base=origin/dev --worktree` | agent — local first-pass review |
 | **Entities missing `kpred:description`** | `OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/describe-entities.ts --limit=10` | agent — drafts prose |
 | **You are about to judge many items one by one** (which meaning, which class, keep or split) | build a task file (items + one question + a JSON schema), then `npx tsx scripts/agent/local-panel.ts --task=task.json` — only non-unanimous items come back to you. `scripts/offline/term-senses.ts --word=node` is a worked example. Watch it (and every other local call) with `npm run agent:watch` | agent — local panel |
 | **Any UI change, before calling it done** | `npm run visual:local -- --serve=http://localhost:<branch port> --paths=/kb` | script — the page on a COPY of your real browser data; private output, copy deleted |
@@ -183,12 +189,7 @@ it.** Ollama is opt-in per-command via `OLLAMA_BASE_URL=http://localhost:11434` 
 | **Checking a TTL parses / graph invariants** | `npx tsx scripts/offline/graph-lint.ts` | script |
 | **"Is this claim true?" in README/SAFETY.md** | `npx tsx scripts/offline/claim-audit.ts --pending` | script |
 
-**`--worktree` is not optional, and leaving it off fails silently.** Without it the reviewer diffs
-`mergeBase...HEAD` — the *committed* range only — so on a branch whose work is still in the working
-tree it prints a tidy report having reviewed none of it. Observed 2026-09-17: the documented command
-reviewed 25 committed files and skipped both new uncommitted ones without a word. An intent-to-add
-file (which rule 1 of graph-lint effectively requires for new files) is the worst case: it is
-tracked, so it gets no untracked-file diff, and uncommitted, so it gets no range diff either.
+**Local code review was retired 2026-10-13** after 0 true findings in 49 (qwen3-coder and devstral-small-2, which missed both real bugs in its trial); PR review is done by Sonnet/Opus. `scripts/offline/code-review.ts` remains for hand re-runs only.
 
 Agent-tier jobs emit **proposals only**, into `reckons-workspace/knowledge.pending.jsonl` — they
 never edit source or TTL. **Triaging that queue is Opus's job, and it is real work**: a local review

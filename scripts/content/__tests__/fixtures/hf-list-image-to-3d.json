@@ -1,0 +1,190 @@
+[
+ {
+  "_id": "674dafddd3f8b0106ee6f2db",
+  "id": "microsoft/TRELLIS-image-large",
+  "cardData": {
+   "license": "mit"
+  },
+  "gated": false,
+  "lastModified": "2024-12-06T16:39:24.000Z",
+  "likes": 704,
+  "sha": "25e0d31ffbebe4b5a97464dd851910efc3002d96",
+  "downloads": 2291934,
+  "tags": [
+   "trellis",
+   "image-to-3d",
+   "en",
+   "arxiv:2412.01506",
+   "license:mit",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2024-12-02T13:02:21.000Z"
+ },
+ {
+  "_id": "692cfca4d928fefe289300f2",
+  "id": "microsoft/TRELLIS.2-4B",
+  "cardData": {
+   "license": "mit"
+  },
+  "gated": false,
+  "lastModified": "2025-12-27T13:21:56.000Z",
+  "likes": 1338,
+  "sha": "af44b45f2e35a493886929c6d786e563ec68364d",
+  "downloads": 2154301,
+  "tags": [
+   "trellis2",
+   "image-to-3d",
+   "en",
+   "arxiv:2512.14692",
+   "license:mit",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2025-12-01T02:25:40.000Z"
+ },
+ {
+  "_id": "67d0b23ddad86bc152fda202",
+  "id": "facebook/VGGT-1B",
+  "cardData": {
+   "license": "cc-by-nc-4.0"
+  },
+  "gated": false,
+  "lastModified": "2025-03-17T12:18:15.000Z",
+  "likes": 146,
+  "sha": "860abec7937da0a4c03c41d3c269c366e82abdf9",
+  "downloads": 526047,
+  "tags": [
+   "safetensors",
+   "model_hub_mixin",
+   "pytorch_model_hub_mixin",
+   "image-to-3d",
+   "en",
+   "arxiv:2503.11651",
+   "license:cc-by-nc-4.0",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2025-03-11T21:59:25.000Z"
+ },
+ {
+  "_id": "65e0801cbfa5aa61ab04294a",
+  "id": "stabilityai/TripoSR",
+  "cardData": {
+   "license": "mit"
+  },
+  "gated": false,
+  "lastModified": "2024-08-09T08:52:03.000Z",
+  "likes": 674,
+  "sha": "5b521936b01fbe1890f6f9baed0254ab6351c04a",
+  "downloads": 259621,
+  "tags": [
+   "3d",
+   "image-to-3d",
+   "dataset:allenai/objaverse",
+   "arxiv:2311.04400",
+   "arxiv:2403.02151",
+   "license:mit",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2024-02-29T13:01:16.000Z"
+ },
+ {
+  "_id": "694fbcdd4f715c34ac281ef2",
+  "id": "yyfz233/Pi3X",
+  "cardData": {
+   "license": "cc-by-nc-4.0"
+  },
+  "gated": false,
+  "lastModified": "2026-03-11T02:16:49.000Z",
+  "likes": 20,
+  "sha": "bb1deea4d7423de5b30691739cb451a3f57dc1d5",
+  "downloads": 248575,
+  "tags": [
+   "safetensors",
+   "model_hub_mixin",
+   "pytorch_model_hub_mixin",
+   "image-to-3d",
+   "arxiv:2507.13347",
+   "license:cc-by-nc-4.0",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2025-12-27T11:02:53.000Z"
+ },
+ {
+  "_id": "6a4135e79e351e09ad36b588",
+  "id": "ilintar/trellis2-gguf",
+  "cardData": {
+   "license": "other"
+  },
+  "gated": false,
+  "lastModified": "2026-07-27T13:10:24.000Z",
+  "likes": 15,
+  "sha": "a57397bd3d351599d9729fc144b3f87c3f87d65b",
+  "downloads": 136671,
+  "gguf": {
+   "total": 220674162,
+   "architecture": "birefnet-swinl",
+   "totalFileSize": 882749024
+  },
+  "tags": [
+   "trellis",
+   "gguf",
+   "ggml",
+   "image-to-3d",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2026-06-28T14:55:35.000Z"
+ },
+ {
+  "_id": "678df3695dec6df8ec20e664",
+  "id": "tencent/Hunyuan3D-2",
+  "cardData": {
+   "license": "other"
+  },
+  "gated": false,
+  "lastModified": "2025-10-17T10:09:17.000Z",
+  "likes": 1844,
+  "sha": "9cd649ba6913f7a852e3286bad86bfa9a2d83dcf",
+  "downloads": 134012,
+  "tags": [
+   "hunyuan3d-2",
+   "diffusers",
+   "safetensors",
+   "image-to-3d",
+   "text-to-3d",
+   "en",
+   "zh",
+   "arxiv:2501.12202",
+   "arxiv:2411.02293",
+   "license:other",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2025-01-20T06:55:37.000Z"
+ },
+ {
+  "_id": "677b8e6015ed5fab581dc7cf",
+  "id": "siyan824/reloc3r-512",
+  "cardData": {},
+  "gated": false,
+  "lastModified": "2025-06-18T10:10:24.000Z",
+  "likes": 7,
+  "sha": "55014aae1798ec830df51d7d2cd47c41f4388187",
+  "downloads": 92104,
+  "tags": [
+   "pytorch",
+   "safetensors",
+   "camera pose estimation",
+   "image-to-3d",
+   "arxiv:2412.08376",
+   "region:us"
+  ],
+  "pipeline_tag": "image-to-3d",
+  "createdAt": "2025-01-06T08:03:44.000Z"
+ }
+]

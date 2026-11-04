@@ -87,14 +87,21 @@ export function buildReviewPlan(
   return { deduped, folded, routed, attention, entityCards, mergeSuggestions };
 }
 
-/** One honest headline for the whole plan: what was spared, what needs you. */
+/**
+ * One honest headline for the whole plan: what was spared, what needs you.
+ *
+ * Matt, 2026-10-13: this used to say "settled without you" and "nothing left for you to decide".
+ * Nothing in the app knows whether a reviewing agent is configured on this device, and the machine
+ * and agent rows are only routed, not settled, so the claim was not ours to make. The wording is
+ * "waiting for an agent" until a real signal exists.
+ */
 export function reviewPlanSummary(plan: ReviewPlan): string {
   const machineOrAgent = plan.routed.machine.length + plan.routed.agent.length;
   const yours = plan.routed.user.length;
   const parts: string[] = [];
   if (plan.folded) parts.push(`${plan.folded} duplicate${plan.folded === 1 ? '' : 's'} folded`);
-  if (machineOrAgent) parts.push(`${machineOrAgent} settled without you`);
-  if (yours === 0) return `${parts.join(', ') || 'Nothing pending'} — nothing left for you to decide.`;
+  if (machineOrAgent) parts.push(`${machineOrAgent} waiting for an agent`);
+  if (yours === 0) return `${parts.join(', ') || 'Nothing pending'} — nothing waiting on you.`;
   const spotlight = plan.attention.spotlight.length;
   const held = plan.attention.heldBack > 0 ? ` (+${plan.attention.heldBack} waiting)` : '';
   parts.push(`${plan.entityCards.length} entit${plan.entityCards.length === 1 ? 'y' : 'ies'} yours, ${spotlight} in the spotlight${held}`);

@@ -82,14 +82,14 @@ describe('buildReviewPlan — the four stages compose', () => {
       st(B, HASFILE, 'src/z.ts', { id: 'm1' }),
     ];
     const s = reviewPlanSummary(buildReviewPlan(pending));
-    expect(s).toMatch(/settled without you/);
+    expect(s).toMatch(/waiting for an agent/);
     expect(s).toMatch(/1 entity yours/);
   });
 
   it('an all-machine queue leaves nothing for the human', () => {
     const plan = buildReviewPlan([st(A, HASFILE, 'src/a.ts', { id: 'm1' })]);
     expect(plan.routed.user).toHaveLength(0);
-    expect(reviewPlanSummary(plan)).toMatch(/nothing left for you/i);
+    expect(reviewPlanSummary(plan)).toMatch(/nothing waiting on you/i);
   });
 
   it('empty in, empty out', () => {

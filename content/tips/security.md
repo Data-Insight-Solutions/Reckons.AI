@@ -60,17 +60,17 @@ There is no server to hack. Your data lives in your browser's IndexedDB. The app
 
 </details>
 
-<details class="accordion"><summary>No Telemetry Constraint</summary>
-
-NO PERSONAL TELEMETRY.
-
-[Read more](../tips/no-telemetry)
-
-</details>
-
 <details class="accordion"><summary>Offline Capable</summary>
 
 After first load, the app works without internet. Use Ollama or the WASM model and zero inference traffic leaves your machine. Your graph is fully usable offline.
+
+</details>
+
+<details class="accordion"><summary>Privacy and Network Boundaries</summary>
+
+Local storage does not mean zero network activity.
+
+[Read more](../tips/no-telemetry)
 
 </details>
 

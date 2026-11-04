@@ -1,7 +1,7 @@
 ---
 title: "Review — where your graph gets smaller and truer"
 slug: "review-system"
-order: 1028
+order: 1038
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -20,7 +20,7 @@ related:
 
 The step where you decide what is true. A model proposes triples; you confirm, refine or reject each one, and nothing enters your graph without that. It is the slowest part of the product and the only reason the rest of it is worth anything.
 
-<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
 
 <p class="in-sets">Part of You settle it.</p>
 
@@ -50,9 +50,13 @@ Review System
 
 ## In this section
 
+**[Open questions answered from what you already decided](../features/question-presettle)**
+
+An open question in the review queue — one with no proposed answer — can only be rejected or put off, so it waits.
+
 **[Review Workbench](../features/review-workbench)**
 
-The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph: browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted.
+The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph (a small live map beside the review list): browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted.
 
 ## Related
 

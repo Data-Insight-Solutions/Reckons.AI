@@ -1,6 +1,7 @@
 import { Parser } from 'n3';
 import { describe, expect, it } from 'vitest';
-import { openByProducer, producerKey, tallyGraph, tallyPending, type Tally } from '../proposal-tally';
+import { openByProducer, producerKey, settledRows, tallyGraph, tallyPending, type Tally } from '../proposal-tally';
+import { rowId } from '../../../../mcp-server/src/review-session';
 
 describe('proposal tally', () => {
   it('counts queued lines as open, skipping malformed ones', () => {
@@ -30,5 +31,22 @@ describe('proposal tally', () => {
     const m = openByProducer(new Map([['offline:docs-expand:qwen3:32b', t(40)], ['offline:docs-expand (gemma3:27b)', t(27)], ['stars-scan', t(81)]]));
     expect(m.get('docs-expand')).toBe(67);
     expect(m.get('stars-scan')).toBe(81);
+  });
+
+  it('counts a row with a journalled verdict as reviewed, not open (back-pressure)', () => {
+    const rows = [1, 2, 3, 4].map((i) => ({ agent: 'offline:extraction-score', subject: `urn:s${i}`, predicate: 'urn:p', object: `o${i}`, kb: 'roadmap' }));
+    const ids = rows.map((r) => rowId(r));
+    const journal = [
+      { verdict: 'reject', rows: [ids[0], ids[1]] },
+      { verdict: 'accept', rows: [ids[2]] },
+      { verdict: 'defer', rows: [ids[3]] },
+    ].map((v) => JSON.stringify(v)).join('\n') + '\nnot json\n';
+    const r = tallyPending(rows.map((x) => JSON.stringify(x)).join('\n'), new Map(), settledRows(journal));
+    expect(r.tallies.get('offline:extraction-score')).toEqual({ proposed: 4, accepted: 1, rejected: 2, open: 1 });
+    expect(openByProducer(r.tallies).get('extraction-score')).toBe(1);
+  });
+  it('an accept naming several rows covers none of them (the grouping bug)', () => {
+    const settled = settledRows(JSON.stringify({ verdict: 'accept', rows: ['aaaaaaaa', 'bbbbbbbb'] }));
+    expect(settled.size).toBe(0);
   });
 });

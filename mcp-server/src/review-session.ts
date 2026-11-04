@@ -268,9 +268,11 @@ function normalizeBlocks(value: unknown): string[] {
 }
 
 /** A decision's identity: the question being asked, independent of how many claims answer it. */
-export function decisionId(kb: string, subject: string, predicate: string): string {
+export function decisionId(kb: string, subject: string, predicate: string, object?: string): string {
   return createHash('sha256')
-    .update(`${normalizeKb(kb)}|${subject.trim()}|${predicate.trim()}`)
+    // `object` is only passed for MULTI-VALUED predicates (one decision per finding); omitting it
+    // keeps the original id for functional predicates and open questions.
+    .update(`${normalizeKb(kb)}|${subject.trim()}|${predicate.trim()}${object === undefined ? '' : `|${object.trim()}`}`)
     .digest('hex').slice(0, 8);
 }
 
@@ -293,6 +295,22 @@ function claimId(decision: string, object: string): string {
  * however the parts are spelled.
  */
 export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, Arity>): Decision[] {
+  /*
+   * An ANSWER names the open question it answers by decision id (kb:question-presettle), and joins
+   * that decision as a claim. Without this, an answer on a multi-valued predicate would be grouped
+   * per object into a decision of its own, and every answered question would become two decisions.
+   * An id that names no open question is ignored and the row is grouped as any other.
+   */
+  const openQuestionKey = new Map<string, string>();
+  for (const row of rows) {
+    const subject = String(row.subject ?? '').trim();
+    const predicate = String(row.predicate ?? '').trim();
+    const object = String(row.object ?? '').trim();
+    if (!subject || !predicate || (object !== '' && object !== '?')) continue;
+    const kb = normalizeKb((row as { kb?: unknown }).kb);
+    openQuestionKey.set(decisionId(kb, subject, predicate), JSON.stringify([kb, subject, predicate]));
+  }
+
   const byQuestion = new Map<string, PendingRow[]>();
   for (const row of rows) {
     const subject = String(row.subject ?? '').trim();
@@ -300,14 +318,23 @@ export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, A
     // A row with no subject or predicate names no fact and cannot be a decision about anything.
     if (!subject || !predicate) continue;
     const kb = normalizeKb((row as { kb?: unknown }).kb);
-    const key = JSON.stringify([kb, subject, predicate]);
+    /*
+     * MULTI-VALUED predicates get one decision PER OBJECT: independent findings that merely share
+     * subject+predicate (101 docs-review `unexplained-term` rows on one page) are not alternatives,
+     * and grouping them let one accept close the rest. Only a measured-FUNCTIONAL predicate groups
+     * values, because there they genuinely compete. Open questions (no object) stay grouped.
+     */
+    const object = String(row.object ?? '').trim();
+    const perFinding = arity?.get(localName(predicate)) !== 'functional' && object !== '' && object !== '?';
+    const answered = row.answers ? openQuestionKey.get(String(row.answers).trim()) : undefined;
+    const key = answered ?? JSON.stringify(perFinding ? [kb, subject, predicate, object] : [kb, subject, predicate]);
     byQuestion.set(key, [...(byQuestion.get(key) ?? []), row]);
   }
 
   const decisions: Decision[] = [];
   for (const [key, group] of byQuestion) {
-    const [kb, subject, predicate] = JSON.parse(key) as [string, string, string];
-    const id = decisionId(kb, subject, predicate);
+    const [kb, subject, predicate, keyObject] = JSON.parse(key) as [string, string, string, string | undefined];
+    const id = decisionId(kb, subject, predicate, keyObject);
 
     const byObject = new Map<string, PendingRow[]>();
     let open = false;
@@ -693,7 +720,12 @@ export function buildVerdict(input: DecideInput): Verdict {
       decision: d.id, verdict: 'accept', claim: chosen.id,
       rows: d.rowIds, subject: d.subject, predicate: d.predicate,
       object: chosen.object, kb: d.kb,
-      supersedes: d.kind === 'choice' ? d.claims.filter((c) => c.id !== chosen.id).map((c) => c.object) : [],
+      // An answered question is closed by its answer: the app holds the question as the placeholder `?`
+      // (F32), which would otherwise stay pending beside the accepted fact (kb:question-presettle).
+      supersedes: [
+        ...(d.kind === 'choice' ? d.claims.filter((c) => c.id !== chosen.id).map((c) => c.object) : []),
+        ...(d.open ? ['?'] : []),
+      ],
       note, actor,
       at: input.now ?? new Date().toISOString(),
     };
@@ -702,6 +734,9 @@ export function buildVerdict(input: DecideInput): Verdict {
   return {
     decision: d.id, verdict,
     rows: d.rowIds, subject: d.subject, predicate: d.predicate, kb: d.kb,
+    // A reject names the objects it speaks to, so applying it cannot spill onto siblings that
+    // merely share subject+predicate.
+    ...(verdict === 'reject' ? { objects: d.claims.map((c) => c.object) } : {}),
     note, actor, at: input.now ?? new Date().toISOString(),
   };
 }

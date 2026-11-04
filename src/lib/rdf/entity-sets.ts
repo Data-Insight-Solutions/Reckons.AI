@@ -103,7 +103,7 @@ export function setMemberCount(iri: string, statements: Statement[]): number {
 /** A friendly default set name from member labels (labelFor resolves a node's label). */
 export function defaultSetName(memberIris: string[], labelFor: (iri: string) => string): string {
   const labels = memberIris.map(labelFor).filter(Boolean);
-  if (labels.length === 0) return 'New set';
-  if (labels.length <= 2) return `${labels.join(' & ')} set`;
-  return `${labels.slice(0, 2).join(', ')} +${labels.length - 2} set`;
+  if (labels.length === 0) return 'New collection';
+  if (labels.length <= 2) return `${labels.join(' & ')} collection`;
+  return `${labels.slice(0, 2).join(', ')} +${labels.length - 2} collection`;
 }
