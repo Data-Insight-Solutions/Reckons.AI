@@ -9,7 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { ollamaModelFor } from '../integrations/llm/model-for-task';
 import { settings } from './settings.svelte';
 import { addSource, addStatements, confirmedStatements, onAfterAddSource } from './kb.svelte';
-import { typeMap } from './entity-types.svelte';
+import { allTypes, typeMap } from './entity-types.svelte';
 import { reAnalyze, type EntitySummary, type AnalysisType } from '$lib/integrations/llm/re-analyze';
 import { RDF_TYPE } from '$lib/rdf/entity-types';
 import type { Statement, Source } from '$lib/rdf/types';
@@ -173,7 +173,12 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
     }
 
     const customPrompt = analysisType !== 'align' ? s.analyzePrompts?.[analysisType] : undefined;
-    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription, analyzeGuidance: s.analyzeGuidance, webContext, customPrompt });
+    // Offer this knowledge base's custom entity types to the type-correction prompt.
+    // With none defined this is an empty list and the prompt is unchanged.
+    const customTypes = analysisType === 'entity-types'
+      ? allTypes().filter(t => !t.builtIn).map(t => ({ iri: t.iri, label: t.label, description: t.description }))
+      : undefined;
+    const result = await reAnalyze({ provider, apiKey, model, ollamaBaseUrl: s.ollamaBaseUrl, reckonsBaseUrl: s.reckonsBaseUrl, entities, analysisType, kbTitle: s.kbTitle, kbDescription: s.kbDescription, analyzeGuidance: s.analyzeGuidance, webContext, customTypes, customPrompt });
     const total =
       result.typeSuggestions.length +
       result.relationSuggestions.length +
