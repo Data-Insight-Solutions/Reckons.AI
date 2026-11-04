@@ -1,0 +1,4 @@
+# Synthetic Sveltia config for the site:build fixture — not a real deployment.
+name: "Fixture Site"
+owner: "fixture"
+repo: "fixture-site"

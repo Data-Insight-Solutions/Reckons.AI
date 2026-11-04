@@ -35,7 +35,8 @@
  *   npx tsx scripts/offline/graph-cleanup.ts <graph.ttl>
  *   npx tsx scripts/offline/graph-cleanup.ts <graph.ttl> --pending    queue findings for review
  */
-import { readFileSync, existsSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import path from 'path';
 import { Parser, type Quad } from 'n3';
 import { looksLikeProposition } from '../../src/lib/rdf/triple-shape.js';
@@ -241,7 +242,7 @@ function main(): void {
       // with them is how the two real findings get skipped.
       const rows = findings.filter((f) => f.kind !== 'orphaned').map((f) => toPendingRow(f, kb));
       if (rows.length > 0) {
-        appendFileSync(PENDING, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
+        appendQueueText(PENDING, rows.map((r) => JSON.stringify(r)).join('\n') + '\n', 'utf8');
         queued += rows.length;
       }
     }

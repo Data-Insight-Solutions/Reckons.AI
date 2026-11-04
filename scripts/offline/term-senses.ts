@@ -142,6 +142,31 @@ export function senseTable(result: PanelResult): Map<string, Map<string, number>
   return table;
 }
 
+/**
+ * ONE SUBJECT PER SITE. The review tools group open questions by (kb, subject, predicate), so rows
+ * sharing a subject are ONE decision and a verdict on any settles all of them (151 rows were
+ * queued under `terminology-ontology` that way, 2026-10-28; kb:job-backpressure records the defect).
+ * The subject is derived from word + file + line only: deterministic, so a re-run of the same site
+ * produces the same finding (and the queue's dedupe skips it), while two sites never collide.
+ */
+export function siteSubject(word: string, item: string): string {
+  const slug = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const m = item.match(/^(.*):(\d+)$/);
+  const file = m ? m[1] : item;
+  const line = m ? m[2] : '0';
+  return `urn:kbase:concept/term-site/${slug(singular(word.toLowerCase()))}/${slug(file)}-l${line}`;
+}
+
+export function siteFinding(word: string, accept: Accept, v: PanelResult['verdicts'][number]): Finding {
+  return {
+    subject: siteSubject(word, v.item),
+    predicate: 'urn:kbase:predicate/open-question',
+    type: 'question',
+    priority: 'low',
+    question: `Which meaning of "${word}" is used at ${v.item}? The local panel was not unanimous (${v.status}): ${v.votes.map((x) => `${x.model}=${x.answer ? String(x.answer.sense) : 'error'}`).join(', ')}.`,
+  };
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const flag = (n: string) => argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
@@ -193,13 +218,7 @@ async function main(): Promise<void> {
   if (argv.includes('--pending')) {
     const findings: Finding[] = result.verdicts
       .filter((v) => needsReview(v, accept))
-      .map((v) => ({
-        subject: 'urn:kbase:concept/terminology-ontology',
-        predicate: 'urn:kbase:predicate/open-question',
-        type: 'question',
-        priority: 'low',
-        question: `Which meaning of "${word}" is used at ${v.item}? The local panel was not unanimous (${v.status}): ${v.votes.map((x) => `${x.model}=${x.answer ? String(x.answer.sense) : 'error'}`).join(', ')}.`,
-      }));
+      .map((v) => siteFinding(word, accept, v));
     const r = queueFindings(findings, { agent: `term-senses ${word}` });
     console.log(`pending: ${r.queued} queued, ${r.skipped} already there, ${r.superseded} superseded`);
   }

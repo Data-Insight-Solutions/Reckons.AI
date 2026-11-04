@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { page } from '$app/stores';
   import { settings } from '$lib/stores/settings.svelte';
   import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
@@ -18,18 +19,7 @@
   }
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
-  <div class="settings-nav">
-    <a href="/settings" class="nav-link">backends</a>
-    <a href="/settings/publishing" class="nav-link active">publishing</a>
-    <a href="/settings/integrations" class="nav-link">integrations</a>
-    <a href="/settings/turtle" class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class="nav-link">entity types</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
-  </div>
-</header>
+<SettingsHeader />
 
 <section class="settings-section">
   <h2 class="section-title">Semantic Web &amp; LLM Search</h2>
@@ -57,16 +47,6 @@
 </section>
 
 <style>
-  .head { margin-bottom: 1.25rem; }
-  .kicker { color: var(--accent); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.2em; margin: 0 0 0.5rem; }
-  .settings-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.75rem; }
-  .nav-link {
-    padding: 0.35rem 0.75rem; border-radius: var(--rad-sm); font-family: var(--font-mono);
-    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
-    border: 1px solid transparent; transition: all 0.15s; text-decoration: none;
-  }
-  .nav-link:hover { color: var(--ink-2); border-color: var(--muted-2); }
-  .nav-link.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
   .settings-section { max-width: 760px; }
   .section-title { font-size: 1.15rem; margin: 0 0 0.3rem; }

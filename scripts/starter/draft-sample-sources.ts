@@ -23,6 +23,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ollamaStream } from '../offline/lib/ollama-stream.js';
+import { DEFAULT_REASONING_MODEL } from '../offline/lib/local-model.js';
 
 export type PlanFact = { fact: string; say: string; by?: string; must: string[]; status?: string; at?: string; reviewer?: string; why?: string; supersedes?: string };
 export type PlanSource = { id: string; kind: string; title: string; written: string; reviewer: string; style: string; facts: PlanFact[] };
@@ -106,7 +107,7 @@ async function main(): Promise<void> {
   const flag = (n: string) => argv.find((a) => a.startsWith(`--${n}=`))?.slice(n.length + 3);
   const base = process.env.OLLAMA_BASE_URL;
   if (!base) { console.error('OLLAMA_BASE_URL is not set; this job needs a local model (check: curl -s localhost:11434/api/tags)'); process.exit(2); }
-  const model = flag('model') ?? 'qwen3.6:latest';
+  const model = flag('model') ?? DEFAULT_REASONING_MODEL;
   const attempts = Number(flag('attempts') ?? 3);
   const out = flag('out') ?? path.join(process.env.XDG_STATE_HOME ?? path.join(os.homedir(), '.local', 'state'), 'reckons', 'starter-drafts', new Date().toISOString().slice(0, 10));
   mkdirSync(out, { recursive: true });

@@ -4,7 +4,28 @@ import { spawn, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { queueFindings, findingIdentity, RECOMPUTABLE_AGENTS } from '../pending-queue';
+import { queueFindings, findingIdentity, RECOMPUTABLE_AGENTS, appendQueueText } from '../pending-queue';
+
+describe('appendQueueText', () => {
+  it('appends under the lock and repairs a missing trailing newline', () => {
+    const d = mkdtempSync(join(tmpdir(), 'append-text-'));
+    const q = join(d, 'knowledge.pending.jsonl');
+    writeFileSync(q, '{"subject":"a","predicate":"p"}');
+    appendQueueText(q, '{"subject":"b","predicate":"p"}\n', 'utf8');
+    appendQueueText(q, '{"subject":"c","predicate":"p"}');
+    const rows = readFileSync(q, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).subject);
+    expect(rows).toEqual(['a', 'b', 'c']);
+    expect(readFileSync(q, 'utf8').endsWith('\n')).toBe(true);
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('creates nothing for empty text', () => {
+    const d = mkdtempSync(join(tmpdir(), 'append-text-'));
+    const q = join(d, 'knowledge.pending.jsonl');
+    appendQueueText(q, '');
+    expect(existsSync(q)).toBe(false);
+    rmSync(d, { recursive: true, force: true });
+  });
+});
 
 let dir: string;
 let QUEUE: string;
