@@ -1727,10 +1727,18 @@
       </div>
     </div>
   {:else}
+    <!-- Found in Matt's 0.2.6 dev review: this said "feeding arrivals" with no n8n connected, so an
+         RSS current silently delivered nothing. Arrivals need the connection the layout polls with. -->
+    {@const n = currentsDraft.currents.length}
+    {@const connected = settings().n8nCurrentsEnabled === true && !!settings().n8nBaseUrl?.trim()}
     <p class="section-hint">
-      {currentsDraft.currents.length > 0
-        ? `${currentsDraft.currents.length} current${currentsDraft.currents.length !== 1 ? 's' : ''} configured, feeding arrivals into the pod view.`
-        : 'define recurring streams (rss / url / topic) that bring new arrivals into this space.'}
+      {#if n === 0}
+        define recurring streams (rss / url / topic) that bring new arrivals into this space.
+      {:else if connected}
+        {n} current{n !== 1 ? 's' : ''} configured, delivered through your n8n server while this app is open.
+      {:else}
+        {n} current{n !== 1 ? 's' : ''} configured, but nothing will arrive yet: currents run on your own n8n server. <a href="/settings/integrations#s-n8n">connect it in integrations</a>.
+      {/if}
     </p>
   {/if}
 </section>

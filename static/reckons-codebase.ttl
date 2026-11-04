@@ -30,6 +30,19 @@ code:generation
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:tested-by "tests/e2e/generated-assets-story.test.ts" .
 
+code:sim
+    rdf:type ktype:Concept ;
+    rdfs:label "Physical scene simulator (F260 phase 1)" ;
+    skos:definition "Reads rigid bodies from node meta predicates (sim-shape, sim-mass, sim-static, sim-sensor, sim-friction, sim-restitution, sim-velocity, sim-tilt; pose from placed-at and placed-yaw), steps them with Rapier at a fixed timestep, and checks sim-condition literals (inside, restsOn, aboveFloor, reachesHeight, atRest, within). Rapier loads by dynamic import only; no app code imports this module yet. Headless runner: npm run sim:run." ;
+    kpred:has-file "src/lib/sim/scene.ts" ;
+    kpred:has-file "src/lib/sim/world.ts" ;
+    kpred:has-file "src/lib/sim/conditions.ts" ;
+    kpred:has-file "src/lib/sim/ttl.ts" ;
+    kpred:has-file "src/lib/sim/sim.worker.ts" ;
+    kpred:has-file "scripts/sim/run.ts" ;
+    kpred:has-file "static/starter-sim-ramp-cup.ttl" ;
+    kpred:tested-by "src/lib/sim/__tests__/sim.test.ts" .
+
 ## KB Identity
 <urn:reckons:kb> <urn:reckons:meta/kbStableId> "a1b2c3d4-e5f6-4a0a-b00a-000000000010" .
 
@@ -38,7 +51,7 @@ code:generation
 ## =============================================================================
 
 code:repo  rdf:type     ktype:Concept ;
-             kpred:coverage-ratchet "unlinked/206" ;
+             kpred:coverage-ratchet "unlinked/203" ;
            rdfs:label   "tripleNotes Repository" ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;
@@ -240,6 +253,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/__tests__/app-db.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/graph-sets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/kb-duplicate-choice.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/kb-assets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/multi-graph-store.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/settings-persistence.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/space-leaps.test.ts" ;
@@ -362,12 +376,16 @@ code:publish  rdf:type     ktype:Concept ;
               skos:broader code:repo ;
               kpred:has-file "src/lib/publish/site-export.ts" ;
               kpred:has-file "src/lib/publish/site-import.ts" ;
+              kpred:has-file "src/lib/publish/markdown-site-import.ts" ;
+              kpred:has-file "scripts/import-markdown-site.ts" ;
               kpred:has-file "src/lib/publish/__tests__/post-reckoning.test.ts" ;
               kpred:has-file "src/lib/publish/__tests__/website-alignment.test.ts" ;
               kpred:has-file "src/lib/publish/md-escape.ts" ;
               kpred:has-file "src/lib/publish/post-reckoning.ts" ;
               kpred:has-file "src/lib/publish/publish-gate.ts" ;
               kpred:has-file "src/lib/publish/website-alignment.ts" ;
+              kpred:has-file "src/lib/publish/site-build.ts" ;
+              kpred:has-file "scripts/site-build.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 
@@ -406,6 +424,7 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/turtle-chat.ts" ;
           kpred:has-file "src/lib/integrations/llm/merge-analysis.ts" ;
           kpred:has-file "src/lib/integrations/llm/re-analyze.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/re-analyze-entity-types.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-cache.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-revisions.ts" ;
           kpred:has-file "src/lib/integrations/llm/__tests__/model-revisions.test.ts" ;
@@ -427,6 +446,8 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/device-select.ts" ;
           kpred:has-file "src/lib/integrations/llm/extract-critic.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-for-task.ts" ;
+          kpred:has-file "src/lib/stores/ollama-model-notice.ts" ;
+          kpred:has-file "src/lib/stores/__tests__/ollama-model-notice.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/voice-catalog.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
@@ -517,7 +538,9 @@ code:mobile-utils  rdf:type     ktype:Concept ;
                    skos:definition "Mobile browser auth helpers and touch adaptations." ;
                    skos:broader code:repo ;
                    kpred:has-file "src/lib/utils/mobile-auth.ts" ;
-                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" .
+                   kpred:has-file "src/lib/utils/safe-href.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/safe-href.test.ts" .
 
 code:extension-bridge  rdf:type     ktype:Concept ;
                        rdfs:label   "Extension Bridge" ;
@@ -548,6 +571,9 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/+layout.svelte" ;
              kpred:has-file "src/routes/(app)/+page.svelte" ;
              kpred:has-file "src/routes/(app)/review/+page.svelte" ;
+             kpred:has-file "src/lib/components/review/ReviewLinkLanding.svelte" ;
+             kpred:has-file "src/lib/review/link-landing.ts" ;
+             kpred:has-file "src/lib/review/__tests__/link-landing.test.ts" ;
              kpred:has-file "src/routes/(app)/ingest/+page.svelte" ;
              kpred:has-file "src/routes/(app)/compare/+page.svelte" ;
              kpred:has-file "src/routes/(app)/kb/+page.svelte" ;
@@ -555,6 +581,11 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/settings/entity-types/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/integrations/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/turtle/+page.svelte" ;
+             kpred:has-file "src/routes/(app)/settings/device/+page.svelte" ;
+             kpred:has-file "src/lib/device/agent-watch-view.ts" ;
+             kpred:has-file "src/lib/device/browser-specs.ts" ;
+             kpred:has-file "src/lib/device/integrations.ts" ;
+             kpred:has-file "scripts/dev-server/device-bridge.ts" ;
              kpred:has-file "src/routes/(app)/about/+page.svelte" ;
              kpred:has-file "src/routes/(app)/about/case-study-0/+page.svelte" ;
              kpred:has-file "src/routes/(app)/analyze/+page.svelte" ;
@@ -742,6 +773,7 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/vision-scoring.test.ts" ;
                   kpred:has-file "tests/visual/vision-local.ts" ;
                   kpred:has-file "tests/visual/vision-analyze.ts" ;
+                  kpred:has-file "scripts/offline/space-visual-gate.ts" ;
                   kpred:has-file "tests/visual/kb-seed.ts" ;
                   kpred:has-file "tests/visual/fixtures/golden-visual.ts" ;
                   kpred:has-file "tests/visual/stories.test.ts" ;
@@ -863,7 +895,9 @@ code:scripts  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/visual-evidence-report.ts" ;
               kpred:has-file "scripts/visual-baseline-update.ts" ;
               kpred:has-file "scripts/__tests__/visual-evidence-contract.test.ts" ;
-              kpred:has-file "scripts/sveltia-auth-secrets.sh" .
+              kpred:has-file "scripts/sveltia-auth-secrets.sh" ;
+              kpred:has-file "scripts/offline/lib/import-graph.ts" ;
+              kpred:has-file "scripts/offline/__tests__/import-graph.test.ts" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
                  rdfs:label   "Sample Knowledge Graphs" ;
@@ -1011,9 +1045,50 @@ code:local-security-audits rdf:type ktype:Concept ;
     kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
     kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
 
+# Review-queue integrity (Matt, 2026-10-28: script tier must catch malformation).
+code:review-queue-integrity rdf:type ktype:Concept ;
+    rdfs:label "Review queue integrity check and locked append" ;
+    kpred:description "queue-integrity.ts classifies every line of knowledge.pending.jsonl (ok, tail-fragment, truncated-head, non-object, missing subject or predicate, unknown type) and, on request, moves bad lines to a quarantine file after a backup, under the queue lock. pending-queue.ts appendQueueText is the locked append that ten producers now use instead of a bare appendFileSync. Report-only in the sweep; quarantine is manual." ;
+    kpred:has-file "scripts/offline/queue-integrity.ts", "scripts/offline/pending-queue.ts", "scripts/offline/queue-dedupe.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/queue-integrity.test.ts", "scripts/offline/__tests__/pending-queue.test.ts" .
+
 code:three-example-viewer rdf:type ktype:Concept ;
     rdfs:label "Isolated Three.js example attachments" ;
     skos:broader code:threed ;
     kpred:description "Strict official-example URL metadata, an inert node editor, and a user-started sandboxed viewer. A separate static document owns the remote-code CSP and reports graphics activity, failures and heartbeat to the parent. The application's CSP is not widened." ;
-    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "src/lib/components/ThreeExampleBackground.svelte", "src/lib/3d/three-example-session.svelte.ts", "static/three-example.html", "static/three-example.js" ;
+    kpred:has-file "src/lib/3d/three-example.ts", "src/lib/components/ThreeExampleEditor.svelte", "src/lib/components/ThreeExampleViewer.svelte", "src/lib/components/ThreeExampleBackground.svelte", "src/lib/components/BackgroundExampleControls.svelte", "src/lib/3d/three-example-session.svelte.ts", "static/three-example.html", "static/three-example.js" ;
     kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .
+
+# Job-plan space (Matt, 2026-11-03: "visualize the job plan for when we are claude token-less").
+code:job-plan-space rdf:type ktype:Concept ;
+    rdfs:label "Local job queue as a Reckons.AI space" ;
+    kpred:description "queue-to-space.ts reads the local job queue (queue.jsonl, current.json, and the last 48 h of queue.done.jsonl) and writes the annotated job-plan space the app renders as a graph — one node per job (urn:kbase:concept/job-<id>) with status, priority, cwd, branch, head, log, started, finished, outcome-reason and job-after edges; the Job entity type (icon box, colour #5b2a86) is declared in the same file. Pure core plus thin IO: buildSpaceText is deterministic — statement ids are the sha1 of the fact, so two runs over the same queue are byte-identical apart from the generated-at line. Script tier, zero tokens." ;
+    kpred:has-file "scripts/agent/queue-to-space.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" .
+
+# Triple Check and focused research views (2026-10-26).
+code:rdf kpred:has-file "src/lib/rdf/triple-check.ts", "src/lib/rdf/statement-chunks.ts", "src/lib/rdf/space-view.ts", "src/lib/rdf/repository-comparison.ts", "src/lib/rdf/purpose-organization.ts" .
+code:storage kpred:has-file "src/lib/storage/triple-check.ts" .
+code:stores kpred:has-file "src/lib/stores/triple-check.svelte.ts" .
+code:llm kpred:has-file "src/lib/integrations/llm/triple-check.ts" .
+code:search kpred:has-file "src/lib/integrations/search/triple-check.ts" .
+code:components kpred:has-file "src/lib/components/PurposeAnalysis.svelte" .
+code:routes kpred:has-file "src/routes/(app)/settings/triple-check/+page.svelte", "src/routes/(app)/compare/repositories/+page.svelte" .
+code:scripts kpred:has-file "scripts/research/github-stars.ts", "scripts/starter/build-research.ts", "scripts/starter/research-fixture.ts", "scripts/starter/triple-check-walkthrough.ts" .
+code:test-bench kpred:has-file "tests/bench/run-statement-comparison-bench.ts" .
+code:static kpred:has-file "static/starter-triple-check.ttl", "static/starter-triple-check-reference.ttl" .
+code:rdf kpred:tested-by "src/lib/rdf/__tests__/research-validation.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check.test.ts" .
+code:search kpred:tested-by "src/lib/integrations/search/__tests__/searxng.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check-local-only.test.ts" .
+code:llm kpred:has-file "src/lib/integrations/loopback.ts" .
+# Review and settings polish, and the build-and-change workflow (2026-10-27).
+code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
+code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/corpus-fixture.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts" .
+code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
+# Hand-held walkthroughs (F261).
+code:rdf kpred:has-file "src/lib/rdf/story-offers.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts" .

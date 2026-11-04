@@ -60,10 +60,22 @@ describe('provenance across several sources', () => {
     expect(index.sources.length).toBeGreaterThan(0);
     const known = new Set(sources.map((s) => s.id));
     for (const ps of index.sources) {
+      if (ps.id === 'imported') {
+        // This fixture also carries the four entity labels and types as plain, UNRECORDED triples.
+        // Before the 2026-11-03 import fix they were silently dropped (and the app's next save
+        // deleted them from disk); now they arrive as pending review work under the synthetic
+        // 'imported' bucket — the same bucket a record-free file's triples have always used. That
+        // id is KNOWN, not invented provenance: it is the ONLY id this fixture may lack a record
+        // for, and it may never assert knowledge, so everything under it stays pending.
+        expect(ps.source).toBeUndefined();
+        expect(ps.statements.length).toBeGreaterThan(0);
+        expect(ps.statements.every((st) => st.status === 'pending')).toBe(true);
+        continue;
+      }
       // `source` is optional on ProvenanceSource — a statement can name a source id the graph
-      // has no record for. The point of this assertion is that that NEVER happens here, so an
-      // undefined one must fail rather than be skipped by an optional chain.
-      expect(ps.source, 'every provenance node must carry its source record').toBeDefined();
+      // has no record for. The point of this assertion is that that NEVER happens here except in
+      // the 'imported' case above, so an undefined one must fail rather than be skipped.
+      expect(ps.source, `provenance node ${ps.id} must carry its source record`).toBeDefined();
       expect(known.has(ps.source!.id)).toBe(true);
     }
   });

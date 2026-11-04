@@ -7,7 +7,7 @@
  * decision that mattered.
  */
 import { describe, expect, it } from 'vitest';
-import { readPendingRows, renderReviewLinks, reviewGroups, type PendingRow } from '../review-links.js';
+import { readPendingRows, renderReviewLinks, resolveBase, reviewGroups, type PendingRow } from '../review-links.js';
 
 const BASE = 'http://localhost:5173';
 const row = (over: Partial<PendingRow> = {}): PendingRow =>
@@ -98,5 +98,54 @@ describe('renderReviewLinks', () => {
     expect(out).toContain('1 HIGH');
     expect(out).toContain('this removes a human');
     expect(out).toContain('/review?tab=incoming&agent=');
+  });
+});
+
+describe('producer runs and graph-aware links (2026-10-28)', () => {
+  const day1 = '2026-10-27T19:47:40.894Z', day2 = '2026-10-28T01:00:00.000Z';
+
+  it('splits one agent into separate groups per graph', () => {
+    const g = reviewGroups([row({ agent: 'a', kb: 'roadmap' }), row({ agent: 'a', kb: 'codebase' })], BASE);
+    expect(g.map((x) => x.kb).sort()).toEqual(['codebase', 'roadmap']);
+  });
+
+  it('splits one agent and graph into runs by UTC day when rows carry no run id', () => {
+    const g = reviewGroups([
+      row({ agent: 'a', kb: 'roadmap', addedAt: day1 }),
+      row({ agent: 'a', kb: 'roadmap', addedAt: day1 }),
+      row({ agent: 'a', kb: 'roadmap', addedAt: day2 }),
+    ], BASE);
+    expect(g.map((x) => [x.run, x.count]).sort()).toEqual([['2026-10-27', 2], ['2026-10-28', 1]]);
+  });
+
+  it('prefers an explicit run id over the day heuristic', () => {
+    const g = reviewGroups([
+      row({ agent: 'a', run: 'r1', addedAt: day1 }),
+      row({ agent: 'a', runId: 'r1', addedAt: day2 }),
+    ], BASE);
+    expect(g).toHaveLength(1);
+    expect(g[0].run).toBe('r1');
+  });
+
+  it('puts kb and agent in the link', () => {
+    const [g] = reviewGroups([row({ agent: 'button-crawl', kb: 'roadmap' })], BASE);
+    const u = new URL(g.url);
+    expect(u.pathname).toBe('/review');
+    expect(u.searchParams.get('kb')).toBe('roadmap');
+    expect(u.searchParams.get('agent')).toBe('button-crawl');
+  });
+
+  it('says how many rows cannot be linked to an agent or a graph', () => {
+    const out = renderReviewLinks(reviewGroups([row({ agent: undefined }), row({ agent: 'a' })], BASE), 2);
+    expect(out).toContain('1 row(s) name no agent');
+    expect(out).toContain('2 row(s) name no graph');
+  });
+});
+
+describe('resolveBase', () => {
+  it('takes the parameter, then RECKONS_APP_URL, then the dev server', () => {
+    expect(resolveBase('https://x.test', { RECKONS_APP_URL: 'https://e.test' })).toBe('https://x.test');
+    expect(resolveBase(undefined, { RECKONS_APP_URL: 'https://e.test' })).toBe('https://e.test');
+    expect(resolveBase(undefined, {})).toBe('http://localhost:5173');
   });
 });

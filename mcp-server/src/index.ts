@@ -63,7 +63,7 @@ POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
 import type { PageTemplate } from './page-markdown.js';
 import { loadLayerMap, renderLayered } from './layers.js';
-import { readPendingRows, renderReviewLinks, reviewGroups } from './review-links.js';
+import { readPendingRows, renderReviewLinks, resolveBase, reviewGroups } from './review-links.js';
 import {
   buildVerdict, filterDecisions, groupDecisions, predicateArity, recordVerdicts, renderDecision,
   renderQueue, renderVerdict, ReviewRefusal, rowId, settledIds, type Arity, type Decision,
@@ -896,7 +896,7 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
  * for why grouping by agent and ordering by consequence is the whole of it.
  */
 function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
-  const base = params.base ?? 'http://localhost:5173';
+  const base = resolveBase(params.base);
   const files = pendingQueueFiles();
   const rows = files.flatMap((f) => readPendingRows(f));
   const groups = reviewGroups(rows, base)

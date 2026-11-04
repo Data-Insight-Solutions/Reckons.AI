@@ -122,6 +122,7 @@
 <header class="head">
   <p class="kicker mono">compare</p>
   <h1>incoming vs. graph</h1>
+  <a href="/compare/repositories">Repository comparison views →</a>
   {#if source}
     <p class="src-label mono">{source.title}</p>
   {/if}

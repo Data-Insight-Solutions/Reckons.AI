@@ -1,7 +1,7 @@
 ---
 title: "Agent setup and installation permissions"
 slug: "agent-setup"
-order: 1001
+order: 1004
 section: "Features"
 parent: "story-system"
 template: doc
