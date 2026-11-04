@@ -22,7 +22,7 @@ describe('what a story step may offer (F261)', () => {
     const on = parseSettingOffer('tripleCheckEnabled=true')!, webOff = parseSettingOffer('tripleCheckWebEnabled=false')!;
     expect(offerApplied(on, {})).toBe(false);
     expect(offerApplied(on, { tripleCheckEnabled: true })).toBe(true);
-    expect(offerApplied(webOff, {})).toBe(false); // unset means the web half is ON
+    expect(offerApplied(webOff, {})).toBe(true); // unset means the web half is OFF (opt-in, Matt 2026-11-04)
     expect(offerApplied(webOff, { tripleCheckWebEnabled: false })).toBe(true);
   });
   it('a step carries its offers; anything off the list is dropped; offers are not drawn', () => {

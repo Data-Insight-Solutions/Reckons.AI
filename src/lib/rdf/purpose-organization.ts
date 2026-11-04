@@ -1,11 +1,12 @@
 import type { Statement } from './types';
 export type PurposeGroup = { purpose: string; statementIds: string[] };
-/** Produces organization only. Member assertions and their review states remain untouched. */
+/** Produces organization only, as PENDING proposals for Review (Matt, 2026-11-04: a model's grouping is a
+ *  proposal, never confirmed by the Apply click alone). Member assertions and their review states remain untouched. */
 export function purposeOrganization(purposes: string[], groups: PurposeGroup[], statements: Statement[], sourceId: string, at: number): Statement[] {
   const allowed = new Set(purposes), known = new Map(statements.map(s => [s.id, s])), seen = new Set<string>(), used = new Set<string>();
   const output: Statement[] = [];
   function emit(subject: string, predicate: string, object: Statement['o']) {
-    output.push({ id: `${sourceId}:${output.length}`, s: { kind: 'iri', value: subject }, p: { kind: 'iri', value: predicate }, o: object, g: { kind: 'iri', value: `urn:kbase:source/${sourceId}` }, sourceId, status: 'confirmed', confidence: 1, createdAt: at, updatedAt: at, verifiableBy: 'user', gloss: 'Purpose organization applied by the user; member claims are not validated by this action.' });
+    output.push({ id: `${sourceId}:${output.length}`, s: { kind: 'iri', value: subject }, p: { kind: 'iri', value: predicate }, o: object, g: { kind: 'iri', value: `urn:kbase:source/${sourceId}` }, sourceId, status: 'pending', confidence: 1, createdAt: at, updatedAt: at, verifiableBy: 'user', gloss: 'Purpose organization proposed by Analyze; accept or reject it in Review. Member claims are not validated by this action.' });
   }
   for (const [index, group] of groups.entries()) {
     if (!allowed.has(group.purpose) || used.has(group.purpose) || !group.statementIds.length) throw new Error('Unknown, repeated or empty purpose.');
@@ -19,4 +20,15 @@ export function purposeOrganization(purposes: string[], groups: PurposeGroup[], 
   }
   if (seen.size !== known.size) throw new Error('Not every statement was assigned; nothing changed.');
   return output;
+}
+
+/**
+ * What happens to an EARLIER grouping when a new one is proposed. The new one is pending, so a grouping
+ * the person already accepted is not dropped behind their back: it goes to Review as a proposed removal.
+ * One nobody reviewed is simply replaced. Settled-away rows are left alone (null).
+ */
+export function priorOrganizationStatus(status: Statement['status']): 'superseded' | 'pending-removal' | null {
+  if (status === 'pending') return 'superseded';
+  if (status === 'confirmed' || status === 'refined') return 'pending-removal';
+  return null;
 }

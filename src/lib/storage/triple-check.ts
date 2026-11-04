@@ -17,10 +17,10 @@ export type CheckDependencies = {
 export async function runTripleCheck(db: KBaseDB, spaceId: string, s: SettingsRecord, deps: CheckDependencies, signal: AbortSignal) {
   if (!s.tripleCheckEnabled || signal.aborted) return null;
   const now = Date.now(), [statements, reports] = await Promise.all([db.statements.toArray(), db.tripleChecks.toArray()]);
-  const configuration = JSON.stringify([s.tripleCheckWebEnabled !== false, s.tripleCheckSearch, s.tripleCheckScrape, s.tripleCheckBackend ?? 'ollama', s.tripleCheckModel, s.tripleCheckSpaceAnalysis, s.tripleCheckReferenceSpaceIds, searchConfigurationError(s), deps.providerError]);
+  const configuration = JSON.stringify([s.tripleCheckWebEnabled === true, s.tripleCheckSearch, s.tripleCheckScrape, s.tripleCheckBackend ?? 'ollama', s.tripleCheckModel, s.tripleCheckSpaceAnalysis, s.tripleCheckReferenceSpaceIds, searchConfigurationError(s), deps.providerError]);
   const claim = selectNextClaim(statements, reports, now, configuration); if (!claim) return null;
   signal.throwIfAborted();
-  const warnings = [searchConfigurationError(s), s.tripleCheckWebEnabled !== false ? deps.providerError : null].filter((v): v is string => !!v);
+  const warnings = [searchConfigurationError(s), s.tripleCheckWebEnabled === true ? deps.providerError : null].filter((v): v is string => !!v);
   let incomplete = false;
   if (reports.filter(r => r.webAttempted && r.checkedAt > now - 86400000).length >= dailyLimit(s.tripleCheckDailyLimit)) { warnings.push('Web not checked: the rolling 24-hour limit has been reached.'); incomplete = true; }
   const report: TripleCheckReport = { id: crypto.randomUUID(), statementId: claim.id, fingerprint: claimFingerprint(claim), configuration, claim: claimText(claim), checkedAt: now, state: 'checking', reviewed: false, webAttempted: false, web: [], spaces: [], searchedSpaces: 0, warnings };

@@ -5,6 +5,7 @@ import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/type
 import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
+import { priorOrganizationStatus } from '../rdf/purpose-organization';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
@@ -560,13 +561,14 @@ export async function persistPurposeOrganization(source: Source, changes: Statem
     const current = await db.statements.bulkGet(initial.map(s => s.id));
     if (current.some((s, i) => !s || JSON.stringify(s) !== JSON.stringify(initial[i]))) throw new Error('Statements changed while Analyze was running. Please retry.');
     const priorSources = new Set((await db.sources.toArray()).filter(s => s.uri.startsWith('analysis://purpose/')).map(s => s.id));
-    const previous = (await db.statements.toArray()).filter(s => priorSources.has(s.sourceId) && s.status !== 'superseded');
+    const previous = (await db.statements.toArray()).filter(s => priorSources.has(s.sourceId) && priorOrganizationStatus(s.status) !== null);
     await db.sources.put(source);
     await db.statements.bulkPut(plan.statements);
     await writeStatementChangeLog(plan, source.id);
     for (const statement of previous) {
-      await db.statements.put({ ...statement, status: 'superseded', updatedAt: Date.now() });
-      await logChange({ action: 'supersede', statementId: statement.id, sourceId: statement.sourceId, before: JSON.stringify({ status: statement.status }), after: JSON.stringify({ status: 'superseded' }) });
+      const next = priorOrganizationStatus(statement.status)!;
+      await db.statements.put({ ...statement, status: next, updatedAt: Date.now() });
+      await logChange({ action: next === 'superseded' ? 'supersede' : 'propose-removal', statementId: statement.id, sourceId: statement.sourceId, before: JSON.stringify({ status: statement.status }), after: JSON.stringify({ status: next }) });
     }
   });
   await loadAll(); scheduleAutoSave(); scheduleWorkspaceTtlExport(); scheduleDrivePush();

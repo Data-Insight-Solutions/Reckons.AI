@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { aggregateStatements, aggregateStatementChunks } from '../statement-chunks';
 import { claimFingerprint, selectNextClaim, parseWebJudgments, evidenceProposals, spaceEvidence, TRIPLE_CHECK_AGENT, type TripleCheckReport } from '../triple-check';
 import { projectSpaceView } from '../space-view';
-import { purposeOrganization } from '../purpose-organization';
+import { purposeOrganization, priorOrganizationStatus } from '../purpose-organization';
 import { repositoryProfiles, repositoryOverlap } from '../repository-comparison';
 import { researchFixture } from '../../../../scripts/starter/research-fixture';
 import { statementComparisonBenchmark } from '../../../../tests/bench/run-statement-comparison-bench';
@@ -89,7 +89,15 @@ describe('statement-first research validation', () => {
     const initial = docs[0].claims.map(s => ({ ...s, status: 'pending' as const })), copy = structuredClone(initial);
     const result = purposeOrganization(['Research'], [{ purpose: 'Research', statementIds: initial.map(s => s.id) }], initial, 'action', 2);
     expect(initial).toEqual(copy); expect(result.filter(s => s.p.value.endsWith('#member'))).toHaveLength(1);
+    // A model's grouping is a proposal: every organization triple lands pending (Matt, 2026-11-04).
+    expect(result.every(s => s.status === 'pending')).toBe(true);
     for (const groups of [[], [{ purpose: 'Invented', statementIds: initial.map(s => s.id) }], [{ purpose: 'Research', statementIds: [initial[0].id] }], [{ purpose: 'Research', statementIds: [initial[0].id, initial[0].id] }]]) expect(() => purposeOrganization(['Research'], groups, initial, 'action', 2)).toThrow();
+  });
+  it('an earlier grouping the person accepted goes to Review as a proposed removal, never silently dropped', () => {
+    expect(priorOrganizationStatus('confirmed')).toBe('pending-removal');
+    expect(priorOrganizationStatus('refined')).toBe('pending-removal');
+    expect(priorOrganizationStatus('pending')).toBe('superseded');
+    for (const settled of ['rejected', 'superseded', 'pending-removal'] as const) expect(priorOrganizationStatus(settled)).toBeNull();
   });
   it('keeps rejected repository claims out of comparisons and unknown overlap distinct from zero', () => {
     const profile = (id: string, status: 'confirmed' | 'rejected') => ({ ...docs[0].claims[0], s: { kind: 'iri' as const, value: `https://github.com/example/${id}` }, status });

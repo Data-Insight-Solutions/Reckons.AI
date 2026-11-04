@@ -141,11 +141,16 @@ export function evidenceProposals(claim: Statement, report: TripleCheckReport, h
  * "nothing new to add" after an unreachable model or a missing search would claim a check that did
  * not happen (kb:honest-status).
  */
+/** The warning when the person has not turned web checking on: a choice, not a failure. */
+export const WEB_CHECK_OFF = 'Web not checked: turned off for this space.';
+
 export function describeTripleCheck(report: Pick<TripleCheckReport, 'incomplete' | 'warnings' | 'proposed'> | null): string {
   if (!report) return 'Watching for new and changed statements.';
-  const note = report.warnings[0];
+  const note = report.warnings.find(w => w !== WEB_CHECK_OFF);
+  const webOff = report.warnings.includes(WEB_CHECK_OFF);
   if (report.incomplete) return `Check incomplete; it will retry.${note ? ` ${note}` : ''}`;
   const added = report.proposed ? `Added ${report.proposed} statement${report.proposed === 1 ? '' : 's'} to Review from what it found.` : '';
   if (note) return added ? `${added} ${note}` : `Partly checked. ${note}`;
-  return added || 'Checked a statement; nothing new to add.';
+  if (added) return added;
+  return webOff ? 'Compared locally (web checking is off); nothing new to add.' : 'Checked a statement; nothing new to add.';
 }

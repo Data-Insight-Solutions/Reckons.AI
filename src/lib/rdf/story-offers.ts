@@ -28,8 +28,8 @@ const OFFERABLE: Partial<Record<keyof SettingsRecord, Partial<Record<'true' | 'f
   prefer2D: { true: 'Use the 2D graph', false: 'Use the 3D graph' },
 };
 
-/** What an unset value means, so a button can say it is already done. Triple Check is off until turned on; its web half is on until turned off. */
-const DEFAULTS: Partial<Record<keyof SettingsRecord, boolean>> = { tripleCheckEnabled: false, tripleCheckWebEnabled: true, prefer2D: false };
+/** What an unset value means, so a button can say it is already done. Triple Check is off until turned on, and so is its web half (opt-in, Matt 2026-11-04). */
+const DEFAULTS: Partial<Record<keyof SettingsRecord, boolean>> = { tripleCheckEnabled: false, tripleCheckWebEnabled: false, prefer2D: false };
 
 export function offerApplied(offer: SettingOffer, current: Partial<SettingsRecord>): boolean {
   return ((current[offer.key] as boolean | undefined) ?? DEFAULTS[offer.key]) === offer.value;

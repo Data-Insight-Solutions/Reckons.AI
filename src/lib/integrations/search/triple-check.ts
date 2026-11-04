@@ -1,4 +1,5 @@
 import type { SettingsRecord } from '$lib/storage/db';
+import { WEB_CHECK_OFF } from '$lib/rdf/triple-check';
 import { isPermittedLocalUrl } from '../loopback';
 export type WebPassage = { url: string; title: string; content: string };
 /** Where a search goes when nothing is set: a SearXNG instance on this machine. */
@@ -6,7 +7,8 @@ export const DEFAULT_SEARXNG = 'http://localhost:8888';
 /** Triple Check searches only through a SearXNG instance on this machine (F100.1, Matt 2026-10-28: no API
  *  services off this device other than the web GET). Hosted search settings saved earlier are refused. */
 export function searchConfigurationError(s: SettingsRecord): string | null {
-  if (s.tripleCheckWebEnabled === false) return 'Web not checked: disabled for this space.';
+  // Opt-in (Matt, 2026-11-04): unset means OFF, because a web check sends the checked wording to public search engines.
+  if (s.tripleCheckWebEnabled !== true) return WEB_CHECK_OFF;
   if (s.tripleCheckSearch && s.tripleCheckSearch !== 'searxng') return 'Web not checked: only a SearXNG instance on this machine is supported.';
   if (s.tripleCheckScrape && s.tripleCheckScrape !== 'snippets') return 'Web not checked: only search passages are supported.';
   if (!isPermittedLocalUrl(s.searxngBaseUrl ?? DEFAULT_SEARXNG, s.tripleCheckLanHosts)) return 'Web not checked: the SearXNG address must be on this machine, or a private-network address you have listed.';

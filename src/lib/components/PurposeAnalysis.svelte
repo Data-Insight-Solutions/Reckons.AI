@@ -33,15 +33,15 @@
       await snapshotKnowledgeBaseState(db, 'Before purpose-based Analyze');
       await persistPurposeOrganization({ id: sourceId, title: 'Purpose-based Analyze', uri: `analysis://purpose/${sourceId}`, kind: 'analysis', ingestedAt: at, trustLevel: 'review' }, changes, initial);
       await updateSettings({ analyzeGuidance: purpose.trim() });
-      message = `Applied ${groups.length} purpose set(s) over ${initial.length} statements. Original wording and review decisions are preserved. Recovery snapshot saved in Settings.`;
+      message = `Proposed ${groups.length} purpose group(s) over ${initial.length} statements. Accept or reject them in Review; an earlier grouping you accepted waits there as a proposed removal. Recovery snapshot saved in Settings.`;
     } catch (e) { failed = true; message = e instanceof Error ? e.message : 'Analyze failed.'; } finally { busy = false; }
   }
 </script>
 <section class="purpose-analysis"><h3>Reshape this space around its purpose</h3>
-  <p>When your purpose changes, Analyze can apply new organizational links automatically. Factual corrections remain optional Triple Check suggestions.</p>
+  <p>When your purpose changes, Analyze proposes new organizational links for you to review. Factual corrections remain optional Triple Check suggestions.</p>
   <label>Current purposes — one per line<textarea bind:value={purpose} rows="3" disabled={busy}></textarea></label>
   <p>{scope.length} pending and retained assertions. One purpose groups entities directly; several purposes use your configured analysis model (up to 200 assertions).</p>
-  <button onclick={organize} disabled={busy || officialKbActive() || !scope.length || !purpose.trim()}>{busy ? 'Organizing…' : 'Analyze and apply organization'}</button>
+  <button onclick={organize} disabled={busy || officialKbActive() || !scope.length || !purpose.trim()}>{busy ? 'Organizing…' : 'Analyze and propose organization'}</button>
   {#if message}<p role={failed ? 'alert' : 'status'}>{message}</p>{/if}
   <a href="/settings/triple-check">Continuous validation settings →</a>
 </section>

@@ -2,9 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import type { KBaseDB, SettingsRecord } from '../db';
 import type { TripleCheckReport } from '$lib/rdf/triple-check';
 import { runTripleCheck, type CheckDependencies } from '../triple-check';
-import { selectNextClaim, describeTripleCheck } from '$lib/rdf/triple-check';
+import { selectNextClaim, describeTripleCheck, WEB_CHECK_OFF } from '$lib/rdf/triple-check';
 import { researchFixture } from '../../../../scripts/starter/research-fixture';
-const claim = researchFixture()[0].claims[0], config = { tripleCheckEnabled: true, tavilyApiKey: 'synthetic', preferredBackend: 'ollama', tripleCheckDailyLimit: 1 } as SettingsRecord;
+const claim = researchFixture()[0].claims[0], config = { tripleCheckEnabled: true, tripleCheckWebEnabled: true, tavilyApiKey: 'synthetic', preferredBackend: 'ollama', tripleCheckDailyLimit: 1 } as SettingsRecord;
 function setup() {
   const rows: TripleCheckReport[] = [];
   const db = { statements: { toArray: async () => [claim] }, sources: { get: async () => ({ uri: 'https://original.test/' }) }, tripleChecks: {
@@ -88,6 +88,11 @@ describe('Triple Check status line (honest status)', () => {
   it('proposals are reported, and a warning beside them is kept', () => {
     expect(describeTripleCheck({ warnings: [], proposed: 2 })).toMatch(/^Added 2 .* to Review from what it found\.$/);
     expect(describeTripleCheck({ warnings: ['Daily limit reached.'], proposed: 1 })).toContain('Daily limit reached.');
+  });
+  it('web checking left off is a choice, not a partial check', () => {
+    const line = describeTripleCheck({ warnings: [WEB_CHECK_OFF], proposed: 0 });
+    expect(line).toContain('web checking is off');
+    expect(line).not.toContain('Partly');
   });
   it('no report yet means watching', () => {
     expect(describeTripleCheck(null)).toMatch(/^Watching for new and changed /);

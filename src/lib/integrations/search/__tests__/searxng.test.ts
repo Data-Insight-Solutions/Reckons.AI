@@ -28,9 +28,18 @@ describe('SearXNG search (F100.7)', () => {
     await expect(searxng('https://example.test/searx', 'q', new AbortController().signal)).rejects.toThrow('403');
   });
   it('defaults to this machine, needs no key, and refuses another host', () => {
-    const s = { tripleCheckSearch: 'searxng' } as SettingsRecord;
+    const s = { tripleCheckSearch: 'searxng', tripleCheckWebEnabled: true } as SettingsRecord;
     expect(searchConfigurationError(s)).toBeNull();
     expect(searchConfigurationError({ ...s, searxngBaseUrl: 'http://localhost:8888' })).toBeNull();
     expect(searchConfigurationError({ ...s, searxngBaseUrl: 'https://search.example.com' })).toContain('this machine');
+  });
+});
+
+describe('web checking is opt-in (Matt, 2026-11-04)', () => {
+  it('unset means off: nothing is searched until the person turns it on', async () => {
+    const { WEB_CHECK_OFF } = await import('$lib/rdf/triple-check');
+    expect(searchConfigurationError({ tripleCheckSearch: 'searxng' } as SettingsRecord)).toBe(WEB_CHECK_OFF);
+    expect(searchConfigurationError({ tripleCheckSearch: 'searxng', tripleCheckWebEnabled: false } as SettingsRecord)).toBe(WEB_CHECK_OFF);
+    expect(searchConfigurationError({ tripleCheckSearch: 'searxng', tripleCheckWebEnabled: true } as SettingsRecord)).toBeNull();
   });
 });
