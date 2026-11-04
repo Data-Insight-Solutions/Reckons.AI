@@ -58,6 +58,13 @@ export interface MergeSuggestion {
   confidence: number;
 }
 
+/** A knowledge-base-defined (non built-in) entity type to offer the LLM. */
+export interface CustomTypeEntry {
+  iri: string;
+  label: string;
+  description: string;
+}
+
 export interface PruneSuggestion {
   entityIri: string;
   entityLabel: string;
@@ -206,10 +213,20 @@ Return exactly:
 }`;
 }
 
-function buildEntityTypesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string): string {
+export function buildEntityTypesPrompt(entities: EntitySummary[], kbTitle?: string, kbDescription?: string, analyzeGuidance?: string, customTypes?: CustomTypeEntry[]): string {
   const typeList = BUILT_IN_TYPES.map(
     (t) => `  ${t.iri} | "${t.label}" — ${t.description}`
   ).join('\n');
+
+  // Knowledge-base-defined custom types, listed after the built-ins. Built-in IRIs are
+  // filtered out defensively so a duplicate never appears twice. With no
+  // custom types this section is the empty string — the prompt is then
+  // byte-identical to the pre-custom-types version.
+  const builtInIris = new Set(BUILT_IN_TYPES.map((t) => t.iri));
+  const customs = (customTypes ?? []).filter((t) => !builtInIris.has(t.iri));
+  const customSection = customs.length > 0
+    ? `\n\nCUSTOM TYPES (defined in this knowledge base — prefer these when they fit):\n${customs.map((t) => `  ${t.iri} | "${t.label}"${t.description ? ` — ${t.description}` : ''}`).join('\n')}`
+    : '';
 
   return `${knowledgeBaseHeader(kbTitle, kbDescription, analyzeGuidance)}You are correcting entity types in an RDF knowledge graph. Your ONLY task is to find MISTYPED or UNTYPED entities that need a type correction.
 
@@ -229,7 +246,7 @@ RULES:
 - Output valid JSON only — no prose, no markdown fences.
 
 AVAILABLE TYPES:
-${typeList}
+${typeList}${customSection}
 
 ENTITIES (${entities.length}):
 ${entityBlock(entities)}
@@ -317,6 +334,8 @@ export interface ReAnalyzeOptions {
   analyzeGuidance?: string;
   /** Pre-formatted web search context (for 'enrich' analysis type) */
   webContext?: string;
+  /** Custom entity types defined in this knowledge base, offered in the 'entity-types' prompt (after the built-ins) */
+  customTypes?: CustomTypeEntry[];
   /** Custom user-edited prompt — replaces the built-in prompt entirely when set */
   customPrompt?: string;
 }
@@ -329,14 +348,14 @@ const EMPTY: ReAnalyzeResponse = {
 };
 
 export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeResponse> {
-  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, wasmModel, entities, analysisType, kbTitle, kbDescription, analyzeGuidance, webContext, customPrompt } = opts;
+  const { provider, apiKey, model, ollamaBaseUrl, reckonsBaseUrl, wasmModel, entities, analysisType, kbTitle, kbDescription, analyzeGuidance, webContext, customTypes, customPrompt } = opts;
   if (entities.length === 0) return EMPTY;
   if (analysisType === 'align') return EMPTY; // Align is handled by cross-kb-align, not LLM
 
   const prompt = customPrompt ??
     (analysisType === 'enrich'        ? (webContext ? buildEnrichPrompt(entities, webContext, kbTitle, kbDescription, analyzeGuidance) : buildNewTriplesPrompt(entities, kbTitle, kbDescription, analyzeGuidance)) :
     analysisType === 'merge'         ? buildMergePrompt(entities, kbTitle, kbDescription, analyzeGuidance) :
-    analysisType === 'entity-types'  ? buildEntityTypesPrompt(entities, kbTitle, kbDescription, analyzeGuidance) :
+    analysisType === 'entity-types'  ? buildEntityTypesPrompt(entities, kbTitle, kbDescription, analyzeGuidance, customTypes) :
                                        buildDeletePrompt(entities, kbTitle, kbDescription, analyzeGuidance));
 
   const messages = [{ role: 'user' as const, content: prompt }];
