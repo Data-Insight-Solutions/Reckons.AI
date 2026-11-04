@@ -86,6 +86,14 @@ export type ImportResult = {
   sources: Source[];
   /** Statements imported from a clean (non-annotated) Turtle file get this status */
   cleanImportCount: number;
+  /**
+   * Plain triples in an ANNOTATED file (one that also carries reification records) that had no
+   * matching record: imported as pending review work (sourceId 'imported') instead of being
+   * dropped — the 2026-11-03 data-loss case, where the app's next save to the space file would have
+   * deleted them.
+   * 0 for a plain file (that count is `cleanImportCount`) and for a fully recorded file.
+   */
+  unrecordedImported: number;
   /** Shelly persona overrides found in the TTL (from shelly: vocabulary) */
   shellyPersona?: ShellyPersonaOverrides;
   /**
@@ -129,6 +137,17 @@ function n3ToTerm(term: any): Term | null {
     };
   }
   return null;
+}
+
+/**
+ * Canonical string for one term — kind, value, and for literals the language and datatype — so
+ * the same triple written twice (clean graph section vs its reification block, with or without
+ * prefixes) produces one signature.
+ */
+function termSig(t: Term): string {
+  return t.kind === 'literal'
+    ? `literal|${t.value}|${t.lang ?? ''}|${t.datatype ?? ''}`
+    : `${t.kind}|${t.value}`;
 }
 
 /**
@@ -439,28 +458,65 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
     });
   }
 
-  // Fallback: treat direct triples as confirmed statements (plain Turtle import)
+  // Direct (non-reified) triples in the file become pending review entries:
+  //  - No records at all (a plain Turtle file): every plain triple imports, exactly as before.
+  //  - Records present (an annotated file): a plain triple whose subject|predicate|object matches
+  //    a reification record is already recovered from that record — importing it again would
+  //    duplicate the fact. A plain triple with NO matching record is the 2026-11-03 data-loss
+  //    case: a file mixing records with plain triples used to drop those triples silently, and
+  //    the app's next save then deleted them from disk. Import them as pending review work.
   let cleanImportCount = 0;
-  if (statements.length === 0 && directTriples.length > 0) {
-    const now = Date.now();
-    for (const { s, p, o } of directTriples) {
+  let unrecordedImported = 0;
+  if (directTriples.length > 0) {
+    const isPlainFile = statements.length === 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let candidates: Array<{ s: any; p: any; o: any }> = directTriples;
+    if (!isPlainFile) {
+      // The file's machine metadata is consumed elsewhere and is never a claim: the KB identity
+      // lines (kbStableId / contentAdvisory — re-read from the raw text by the sync path) and the
+      // shelly: persona block (read by the loop above).
+      candidates = candidates.filter(({ s, p }) =>
+        !(s.termType === 'NamedNode' && s.value === 'urn:reckons:kb') && !p.value.startsWith(SHELLY));
+    }
+    const toImport: Array<{ st: Term; pt: Term; ot: Term }> = [];
+    for (const { s, p, o } of candidates) {
       const st = n3ToTerm(s);
       const pt = n3ToTerm(p);
       const ot = n3ToTerm(o);
       if (!st || !pt || !ot || pt.kind !== 'iri') continue;
-      statements.push({
-        id:         crypto.randomUUID(), // Web Crypto API — Chrome 92+, Firefox 95+
-        s:          st,
-        p:          { kind: 'iri', value: pt.value },
-        o:          ot,
-        g:          { kind: 'iri', value: 'urn:kbase:source/imported' },
-        sourceId:   'imported',
-        confidence: 1,
-        status:     'pending',
-        createdAt:  now,
-        updatedAt:  now
-      });
-      cleanImportCount++;
+      toImport.push({ st, pt, ot });
+    }
+    if (!isPlainFile) {
+      // Triples already carried by a reification record (any status) are not re-imported.
+      const recorded = new Set<string>();
+      for (const d of stmtData.values()) {
+        const s = d.s as Term | null;
+        const p = d.p as Term | null;
+        const o = d.o as Term | null;
+        if (s && p && o) recorded.add(`${termSig(s)}|${termSig(p)}|${termSig(o)}`);
+      }
+      for (let i = toImport.length - 1; i >= 0; i--) {
+        const { st, pt, ot } = toImport[i];
+        if (recorded.has(`${termSig(st)}|${termSig(pt)}|${termSig(ot)}`)) toImport.splice(i, 1);
+      }
+    }
+    if (toImport.length > 0) {
+      const now = Date.now();
+      for (const { st, pt, ot } of toImport) {
+        statements.push({
+          id:         crypto.randomUUID(), // Web Crypto API — Chrome 92+, Firefox 95+
+          s:          st,
+          p:          { kind: 'iri', value: pt.value },
+          o:          ot,
+          g:          { kind: 'iri', value: 'urn:kbase:source/imported' },
+          sourceId:   'imported',
+          confidence: 1,
+          status:     'pending',
+          createdAt:  now,
+          updatedAt:  now
+        });
+        if (isPlainFile) cleanImportCount++; else unrecordedImported++;
+      }
     }
   }
 
@@ -475,6 +531,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
       samples: quarantineOriginals.slice(0, 5),
     };
     if (cleanImportCount > 0) cleanImportCount = Math.max(0, cleanImportCount - quarantined.count);
+    if (unrecordedImported > 0) unrecordedImported = Math.max(0, unrecordedImported - quarantined.count);
     statements.length = 0;
     statements.push(...kept);
     console.warn(
@@ -485,5 +542,5 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
 
   if (quarantined && quarantined.count > 0) void notifyImportQuarantine(opts.name, quarantined.count);
 
-  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(anchorProblems.length ? { anchorProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, shellyPersona, ...(quarantined ? { quarantined } : {}) };
+  return { statements, sources, chunks, ...(chunkProblems.length ? { chunkProblems } : {}), ...(anchorProblems.length ? { anchorProblems } : {}), ...(Object.keys(chunkVersions).length ? { chunkVersions } : {}), cleanImportCount, unrecordedImported, shellyPersona, ...(quarantined ? { quarantined } : {}) };
 }

@@ -452,6 +452,71 @@ describe('importTurtleFull — plain W3C Turtle import', () => {
   });
 });
 
+// ── 7.5. Annotated file with unrecorded plain triples (2026-11-03 data loss) ──
+
+describe('importTurtleFull — annotated file with unrecorded plain triples', () => {
+  it('imports a plain triple with no record as pending, counted in unrecordedImported', async () => {
+    const base = toTurtleFull([mkStmt()], [mkSource()]);
+    const ttl = `${base}
+      @prefix ex: <http://example.org/> .
+      ex:extra ex:knows "added by hand" .
+    `;
+    const result = await importTurtleFull(ttl);
+    expect(result.statements).toHaveLength(2);
+    expect(result.cleanImportCount).toBe(0);
+    expect(result.unrecordedImported).toBe(1);
+    const added = result.statements.find(s => s.s.value === 'http://example.org/extra');
+    expect(added).toBeDefined();
+    expect(added!.status).toBe('pending');
+    expect(added!.sourceId).toBe('imported');
+  });
+
+  it('a fully recorded file imports exactly as before (no unrecorded triples)', async () => {
+    const stmts = [mkStmt(), mkStmt({ id: 'w3c-rec2', s: iri('urn:kbase:concept/beta'), o: lit('Beta') })];
+    const result = await importTurtleFull(toTurtleFull(stmts, [mkSource()]));
+    expect(result.unrecordedImported).toBe(0);
+    expect(result.cleanImportCount).toBe(0);
+    // The clean-graph triples already carry records: they are not re-imported a second time.
+    expect(result.statements).toHaveLength(2);
+    expect(result.statements.every(s => s.status === 'confirmed')).toBe(true);
+  });
+
+  it('does not re-import a plain triple that duplicates a recorded (pending) triple', async () => {
+    const pending = mkStmt({ id: 'w3c-pending', status: 'pending', o: lit('P') });
+    const ttl = toTurtleFull([pending], [mkSource()])
+      + '\n<urn:kbase:concept/alpha> <http://www.w3.org/2000/01/rdf-schema#label> "P" .\n';
+    const result = await importTurtleFull(ttl);
+    expect(result.statements).toHaveLength(1);
+    expect(result.unrecordedImported).toBe(0);
+    expect(result.statements[0].status).toBe('pending');
+  });
+
+  it('treats the file identity lines (kbStableId, shelly persona) as metadata, not claims', async () => {
+    const ttl = toTurtleFull([mkStmt()], [mkSource()], {
+      kbStableId: 'urn:uuid:test-stable-123',
+      shellyPersona: { name: 'Shelly', greeting: 'Hi' },
+    });
+    const result = await importTurtleFull(ttl);
+    expect(result.statements).toHaveLength(1);
+    expect(result.unrecordedImported).toBe(0);
+    expect(result.shellyPersona?.name).toBe('Shelly');
+  });
+
+  it('keeps importing every triple of a plain (record-free) file, as before', async () => {
+    const ttl = `
+      @prefix ex: <http://example.org/> .
+      ex:a ex:knows ex:b .
+      <urn:reckons:kb> <urn:reckons:meta/kbStableId> "hand-written-file" .
+    `;
+    const result = await importTurtleFull(ttl);
+    // A record-free file keeps its historical behavior: every plain triple imports.
+    expect(result.cleanImportCount).toBe(2);
+    expect(result.unrecordedImported).toBe(0);
+    expect(result.statements).toHaveLength(2);
+    expect(result.statements.every(s => s.status === 'pending')).toBe(true);
+  });
+});
+
 // ── 8. Ghost graph parser — W3C Turtle ───────────────────────────────────────
 
 describe('parseGhostGraph — W3C Turtle compliance', () => {
