@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { ollamaModelFor } from '../integrations/llm/model-for-task';
+import { installedOllamaModels, ollamaReachable } from '../integrations/llm/prefer-local';
 import type { Source, Statement } from '../rdf/types';
 import { extractWithClaude } from '../integrations/llm/claude';
 import { extractWithWasm } from '../integrations/llm/wasm';
@@ -229,11 +230,21 @@ export async function ingest(
   // introduce retries or alter the old fallback; it makes the existing choice and its locality
   // inspectable. Direct Turtle import is an explicit manual path, not a pretend model run.
   const executionBackend = turtleStatements ? 'manual' : backend;
+  // Ollama resolves against the models the server has: the recorded model below IS the model
+  // that will run (a bare name resolved to the installed tag), so the ledger stays truthful.
+  // Nothing configured, or a chosen name not installed, picks the best installed model instead
+  // of a name the server cannot serve.
+  let ollamaModel: string | undefined;
+  if (!turtleStatements && backend === 'ollama') {
+    const base = s.ollamaBaseUrl || 'http://localhost:11434';
+    await ollamaReachable(base); // refreshes the probe, which caches the installed names
+    ollamaModel = ollamaModelFor('ingest', s, installedOllamaModels(base));
+  }
   const executionModel = turtleStatements ? 'turtle-import' :
     backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-5-5')                        :
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
-    backend === 'ollama'     ? ollamaModelFor('ingest', s)                               :
+    backend === 'ollama'     ? (ollamaModel ?? ollamaModelFor('ingest', s))             :
     backend === 'wasm'       ? (s.wasmIngestModel || s.wasmModel || 'onnx-community/Qwen2.5-0.5B-Instruct') :
     backend === 'openrouter' ? (s.openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free')  :
     backend === 'reckons'    ? (s.reckonsModel    ?? '@cf/meta/llama-3.1-8b-instruct')         :
@@ -379,7 +390,7 @@ export async function ingest(
         // prompt above — pass it through as an override so small-model prompt
         // selection doesn't replace it.
         triples = await extractWithOllama(text, title, {
-          model: ollamaModelFor('ingest', s),
+          model: ollamaModel ?? ollamaModelFor('ingest', s),
           baseUrl: s.ollamaBaseUrl,
           systemPromptOverride: kind === 'repository' ? systemPrompt : undefined,
           promptMode: s.ollamaPromptMode,

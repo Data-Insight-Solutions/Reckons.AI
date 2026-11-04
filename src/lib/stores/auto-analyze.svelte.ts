@@ -7,6 +7,7 @@
  */
 import { v4 as uuid } from 'uuid';
 import { ollamaModelFor } from '../integrations/llm/model-for-task';
+import { installedOllamaModels, ollamaReachable } from '../integrations/llm/prefer-local';
 import { settings } from './settings.svelte';
 import { addSource, addStatements, confirmedStatements, onAfterAddSource } from './kb.svelte';
 import { typeMap } from './entity-types.svelte';
@@ -106,10 +107,19 @@ export async function runAndStoreAnalysis(trigger: AnalysisTrigger = 'manual', a
   lastError = null;
   const now = Date.now();
   const analysisId = uuid();
+  // Ollama resolves against the models the server has (a bare name runs as the installed tag;
+  // nothing configured, or a chosen name not installed, picks the best installed model).
+  let ollamaModel: string | undefined;
+  if (provider === 'ollama') {
+    const base = s.ollamaBaseUrl || 'http://localhost:11434';
+    await ollamaReachable(base); // refreshes the probe, which caches the installed names
+    ollamaModel = ollamaModelFor('analyze', s, installedOllamaModels(base));
+  }
+
   const model =
     provider === 'openai'     ? s.openaiModel :
     provider === 'gemini'     ? s.geminiModel :
-    provider === 'ollama'     ? ollamaModelFor('analyze', s) :
+    provider === 'ollama'     ? ollamaModel! :
     provider === 'openrouter' ? s.openrouterModel :
     provider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
     s.claudeModel;

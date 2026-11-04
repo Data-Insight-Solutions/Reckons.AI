@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ollamaReachable, preferLocalBackend, preferLocalBackendSync, resetOllamaProbeCache } from '../prefer-local';
+import { ollamaReachable, preferLocalBackend, preferLocalBackendSync, resetOllamaProbeCache, installedOllamaModels } from '../prefer-local';
 
 const okResponse = { ok: true } as Response;
 const failResponse = { ok: false } as Response;
+const okWithModels = {
+  ok: true,
+  json: async () => ({ models: [{ name: 'llama3.2:3b' }, { name: 'mistral-small3.2:24b' }, { broken: 1 }] }),
+} as Response;
 
 describe('prefer-local routing', () => {
   beforeEach(() => {
@@ -77,5 +81,45 @@ describe('prefer-local routing', () => {
   it('sync variant respects explicit overrides and the off switch', () => {
     expect(preferLocalBackendSync({ preferLocal: true, ollamaBaseUrl: 'x' }, 'wasm')).toBeUndefined();
     expect(preferLocalBackendSync({ preferLocal: false, ollamaBaseUrl: 'x' }, undefined)).toBeUndefined();
+  });
+});
+
+describe('installedOllamaModels', () => {
+  beforeEach(() => {
+    resetOllamaProbeCache();
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('caches the model names from a successful /api/tags body', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okWithModels);
+    await ollamaReachable('http://localhost:11434');
+    expect(installedOllamaModels('http://localhost:11434')).toEqual(['llama3.2:3b', 'mistral-small3.2:24b']);
+  });
+
+  it('returns null on a cold cache — null means unknown, never empty', () => {
+    expect(installedOllamaModels('http://localhost:11434')).toBeNull();
+  });
+
+  it('returns null when the probe failed, even for the same base URL', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    await ollamaReachable('http://localhost:11434');
+    expect(installedOllamaModels('http://localhost:11434')).toBeNull();
+  });
+
+  it('survives a body without a model list — reachability is not a parse', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okResponse);
+    await ollamaReachable('http://localhost:11434');
+    expect(await ollamaReachable('http://localhost:11434')).toBe(true);
+    expect(installedOllamaModels('http://localhost:11434')).toBeNull();
+  });
+
+  it('clears with the probe cache', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(okWithModels);
+    await ollamaReachable('http://localhost:11434');
+    resetOllamaProbeCache();
+    expect(installedOllamaModels('http://localhost:11434')).toBeNull();
   });
 });
