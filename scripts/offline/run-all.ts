@@ -30,7 +30,7 @@ import { parseWaitMin, waitForGpu } from './lib/gpu-wait.js';
 import { openByProducer, tallyWorkspace } from './lib/proposal-tally.js';
 import { loadDeviceConfig } from '../agent/device-config.js';
 import { DEFAULT_HOLD_UNREVIEWED } from '../agent/session-schedule.js';
-import { jobsGraphPath, readJobs } from '../lib/jobs-graph-read.js';
+import { jobsGraphPath, parseJobs, readJobs } from '../lib/jobs-graph-read.js';
 
 /** F74.3 work tiering: `script` = deterministic, no LLM, zero tokens. `agent` = a local
  *  model filling a judgment hole inside a scripted harness; proposals only. */
@@ -53,6 +53,8 @@ const only = argv.find((a) => a.startsWith('--only='))?.split('=')[1]?.split(','
 const tier = argv.find((a) => a.startsWith('--tier='))?.split('=')[1] as Tier | undefined;
 const LIST = argv.includes('--list');
 const CI = argv.includes('--ci');
+// --blocking: run only the jobs marked blocking (the pre-push hook, F273 phase A).
+const BLOCKING_ONLY = argv.includes('--blocking');
 const GPU_GATE = !argv.includes('--no-gpu-gate');
 const HOLD_LIMIT = (() => {
   try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
@@ -65,8 +67,9 @@ const unreviewed = (): Map<string, number> => (unreviewedCache ??= (() => {
 })());
 const GPU_WAIT_MS = parseWaitMin(argv.find((a) => a.startsWith('--gpu-wait-min='))?.split('=')[1]) * 60_000;
 
-const jobsFile = jobsGraphPath();
-const all: Job[] = readJobs();
+// RECKONS_JOBS_FILE lets a test (or a hook test) point at a synthetic jobs graph (a .ttl in the reckons-jobs.ttl shape).
+const jobsFile = process.env.RECKONS_JOBS_FILE ? path.resolve(process.env.RECKONS_JOBS_FILE) : jobsGraphPath();
+const all: Job[] = process.env.RECKONS_JOBS_FILE ? parseJobs(readFileSync(jobsFile, 'utf8')) : readJobs();
 // Script tier first: it is free and catches the deterministic problems before a local
 // model spends time forming an opinion about them.
 const rank = (j: Job) => ((j.tier ?? 'agent') === 'script' ? 0 : 1);
@@ -93,7 +96,8 @@ if (LIST) {
 
 const selected = jobs
   .filter((j) => (only ? only.includes(j.name) : j.enabled ?? true))
-  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true));
+  .filter((j) => (tier ? (j.tier ?? 'agent') === tier : true))
+  .filter((j) => (BLOCKING_ONLY ? j.blocking === true : true));
 if (selected.length === 0) {
   console.log('No jobs selected. Edit static/reckons-jobs.ttl (set kpred:job-enabled "true") or pass --only=<name>.');
   process.exit(0);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PurposeAnalysis from './PurposeAnalysis.svelte';
   import { sources, statementsForSource, setStatus, statements } from '$lib/stores/kb.svelte';
   import { runAndStoreAnalysis, analysisRunning, lastAnalysisError } from '$lib/stores/auto-analyze.svelte';
   import { settings } from '$lib/stores/settings.svelte';
@@ -104,6 +105,8 @@
     return ANALYSIS_TYPE_LABELS[focus as AnalysisType] ?? focus;
   }
 </script>
+<PurposeAnalysis />
+
 
 <div class="panel">
   <div class="panel-header">

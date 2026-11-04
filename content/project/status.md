@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it.
 
-## Works today (44)
+## Works today (45)
 
 <p class="derived">Built and working. Production means also tested and in daily use.</p>
 
@@ -44,6 +44,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Model Cache Management](../features/llm-backends) · production — on the LLM Backends page
 - [Multi-Graph Management](../features/multi-kb) · production
 - [Open a fact's source at the exact words](../features/open-in-source) · functional
+- [Open questions answered from what you already decided](../features/question-presettle) · functional
 - [Passage Grounding](../features/passage-grounding) · production
 - [Persona System](../features/shelly) · functional — on the Shelly (AI Assistant) page
 - [Predicate Manager](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
@@ -63,7 +64,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Where a node's facts came from](../features/node-sources) · functional
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (8)
+## Partly built (9)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
@@ -75,6 +76,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Text Chunking](../features/text-chunking) · scaffolded
 - [The Your room example space](../features/your-room) · scaffolded
 - [Three.js examples on nodes](../features/threejs-examples) · in-progress
+- [Triple Check](../features/triple-check) · in-progress
 
 ## Not built yet (2)
 

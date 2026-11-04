@@ -28,10 +28,12 @@
  * and an export with no caller may be a published API. A detector that deletes on its own
  * judgement would be the most expensive kind of wrong.
  */
-import { readFileSync, existsSync, readdirSync, statSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import path from 'path';
 import { execSync } from 'child_process';
 import { loadGraphQuads, ownerOfFile } from './lib/graph-grounding.js';
+import { buildImportMap, deadModules } from './lib/import-graph.js';
 import { readTextOr } from '../lib/read-file.js';
 import { readJobs } from '../lib/jobs-graph-read.js';
 
@@ -184,9 +186,33 @@ for (const [iri, files] of filesOf) {
   }
 }
 
-// ── 4. DEAD EXPORT — an exported symbol nothing imports. Deliberately conservative:
-// a name used ANYWHERE else in the repo counts as used, so collisions cause MISSES, not noise.
+// ── 4. DEAD CODE, in two honest layers.
+//
+// LAYER 1 (module level): a real import resolver — the files no import line in the repo
+// points at. The claim "a module with no entry point" is made only when the resolver
+// proves it, and only for the file it proved it for.
+// LAYER 2 (symbol level): an exported symbol whose name never appears outside its own
+// file. Deliberately conservative: a name used ANYWHERE else in the repo counts as used,
+// so collisions cause MISSES, not noise. A true fact per symbol — but never rolled up
+// into a claim about the module around it (that rollup was the 2026-11-03 bug: it
+// reported src/lib/rdf and src/lib/integrations/llm as having "no entry point" while
+// they are imported everywhere, from symbol evidence it could not support).
 {
+  // LAYER 1 — import edges over this tree (the resolver is pure over its root argument;
+  // a fixture test drives it against a temp dir, never this repo).
+  const dead = new Set(deadModules(buildImportMap(process.cwd())));
+  for (const f of [...dead].sort()) {
+    const owner = ownerOfFile(f, quads);
+    const who = owner
+      ? `Owned by "${name(owner.iri)}"${status.get(owner.iri) ? ` (${status.get(owner.iri)})` : ''}.`
+      : 'No feature in the knowledge base claims this file.';
+    add('dead-module', f,
+      `No import line in the repo (app, tests, scripts, CLI, MCP server) resolves to ${f} — ` +
+      `checked $lib/… aliases, './x.js' and extensionless forms, and barrel re-exports. ${who}`,
+      `Decide: finish the wiring, or retire it. If something replaced it, record kpred:superseded-by ` +
+      `so the next session does not rebuild it.`);
+  }
+
   const srcFiles: string[] = [];
   const walk = (d: string) => {
     let entries: string[];
@@ -228,7 +254,9 @@ for (const [iri, files] of filesOf) {
       // just not outside its module: the `export` is surplus, which is tidiness, not rot.
       const total = selfUses.get(sym) ?? 0;
       if (total <= 1) {
-        uncalled.push({ file, sym });
+        // A symbol inside a dead module is already reported by that module's finding;
+        // listing it again would double-count the same dead code.
+        if (!dead.has(file)) uncalled.push({ file, sym });
       } else {
         add('over-exported', `${file}:${sym}`,
           `"${sym}" is used only inside its own file, so the \`export\` reaches nobody.`,
@@ -237,40 +265,20 @@ for (const [iri, files] of filesOf) {
     }
   }
 
-  // ROLL UP TO THE FEATURE. One uncalled helper is a loose end; a MODULE of uncalled
-  // exports is an orphaned or superseded feature, which is the question actually worth a
-  // human's time. Grouping is what turns 46 nits into a handful of real decisions.
-  const byOwner = new Map<string, { files: Set<string>; syms: string[] }>();
+  // ONE SYMPTOM AT A TIME. A symbol with no callers is a fact about that symbol — and it
+  // stays one. The old code rolled 3+ such symbols up into "a whole module with no entry
+  // point", which is true of the symbols and false of the module when the module is
+  // imported everywhere (the 2026-11-03 report did exactly that to src/lib/rdf and
+  // src/lib/integrations/llm). Module-level claims now come from the resolver above,
+  // where they are checkable.
   for (const u of uncalled) {
     const owner = ownerOfFile(u.file, quads);
-    const key = owner ? owner.iri : `unowned:${path.dirname(u.file)}`;
-    const e = byOwner.get(key) ?? { files: new Set<string>(), syms: [] };
-    e.files.add(u.file); e.syms.push(u.sym); byOwner.set(key, e);
-  }
-  for (const [key, e] of [...byOwner.entries()].sort((a, b) => b[1].syms.length - a[1].syms.length)) {
-    const unowned = key.startsWith('unowned:');
-    const st = unowned ? null : status.get(key);
-    const who = unowned ? key.slice('unowned:'.length) : `"${name(key)}"${st ? ` (${st})` : ''}`;
-    if (e.syms.length >= 3) {
-      add('orphaned-feature', unowned ? key.slice('unowned:'.length) : short(key),
-        `${who} has ${e.syms.length} symbols nothing ever calls across ${e.files.size} file(s): ` +
-        `${e.syms.slice(0, 5).join(', ')}${e.syms.length > 5 ? ' …' : ''}. ` +
-        (st && SHIPPED.has(st)
-          ? `It is marked ${st}, which cannot be true of code with no callers.`
-          : unowned
-            ? `No graph feature claims these files, so nothing records why they exist.`
-            : `A whole module with no entry point is either unfinished or replaced.`),
-        st && SHIPPED.has(st)
-          ? `Either the wiring is missing (then the status is wrong — kb:honest-status) or this was superseded and the status is stale. Decide which, and fix the one that is lying.`
-          : `Decide: finish the wiring, or retire it. If something replaced it, record kpred:superseded-by so the next session does not rebuild it.`);
-    } else {
-      for (const sym of e.syms) {
-        const f = [...e.files][0];
-        add('uncalled-symbol', `${f}:${sym}`,
-          `"${sym}" is defined and never called — not from another module, not even from its own file. Owner: ${who}.`,
-          `A loose end rather than an orphaned feature. Wire it, or delete it.`);
-      }
-    }
+    const who = owner
+      ? `"${name(owner.iri)}"${status.get(owner.iri) ? ` (${status.get(owner.iri)})` : ''}`
+      : `no feature claims ${u.file}`;
+    add('uncalled-symbol', `${u.file}:${u.sym}`,
+      `"${u.sym}" is defined and never called — not from another module, not even from its own file. Owner: ${who}.`,
+      `A loose end rather than an orphaned feature. Wire it, or delete it.`);
   }
 }
 
@@ -311,7 +319,7 @@ if (JSON_OUT) {
   process.exit(0);
 }
 
-const ORDER = ['orphaned-artifact', 'unclaimed-artifact', 'ghost-feature', 'orphaned-feature', 'superseded-candidate', 'uncalled-symbol', 'unused-dependency', 'over-exported'];
+const ORDER = ['orphaned-artifact', 'unclaimed-artifact', 'ghost-feature', 'dead-module', 'superseded-candidate', 'uncalled-symbol', 'unused-dependency', 'over-exported'];
 console.log(`\n${B}Dead weight — orphaned and superseded feature flags${X}`);
 console.log(`${D}Advisory. Nothing is deleted. Each finding is a question for a human.${X}\n`);
 
@@ -345,7 +353,7 @@ if (PENDING_OUT && findings.length) {
     if (f.check === 'over-exported') continue; // never worth a human's review slot
     const question = `[dead-weight/${f.check}] ${f.subject} — ${f.msg} ${f.action}`;
     if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
-    appendFileSync(PENDING, JSON.stringify({
+    appendQueueText(PENDING, JSON.stringify({
       subject: f.subject,
       predicate: `urn:sweep:pred/dead-weight`,
       question,
@@ -354,7 +362,7 @@ if (PENDING_OUT && findings.length) {
       // is retained by the drain rather than imported, so omitting this silently delivers nothing.
       kb: 'codebase',
       agent: 'offline:dead-weight',
-      priority: ['orphaned-artifact', 'ghost-feature', 'orphaned-feature'].includes(f.check) ? 'high' : 'medium',
+      priority: ['orphaned-artifact', 'ghost-feature', 'dead-module'].includes(f.check) ? 'high' : 'medium',
       addedAt: now,
       addedByMcp: true,
     }) + '\n');

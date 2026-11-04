@@ -1,5 +1,5 @@
 {
-  "built": 188,
+  "built": 196,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -269,16 +269,16 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "89a427a66b1dee6b"
+      "pageHash": "8ab169719c9ac156"
     },
     {
       "path": "coding-workflow/commit-trailers",
       "entity": "urn:reckons:docs/coding-workflow/CommitTrailers",
       "graph": "docs-coding-workflow.ttl",
-      "factHash": "45f039396df1d537",
+      "factHash": "7bcc7e8759d15fc4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "80496d9a6072be55"
+      "pageHash": "8fd0af57a5f11ab5"
     },
     {
       "path": "coding-workflow/context-compression-coding-workflow",
@@ -288,6 +288,15 @@
       "factCount": 3,
       "floor": "evidence",
       "pageHash": "a38f3106de20ccca"
+    },
+    {
+      "path": "coding-workflow/deputy-memory-readback",
+      "entity": "urn:reckons:docs/coding-workflow/DeputyMemoryReadback",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "6f36ae25139e3f79",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "562ef477da83b3ef"
     },
     {
       "path": "coding-workflow/git-analysis-coding-workflow",
@@ -308,6 +317,15 @@
       "pageHash": "98ef94c7ae85a4e4"
     },
     {
+      "path": "coding-workflow/local-deputy",
+      "entity": "urn:reckons:docs/coding-workflow/LocalDeputy",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "e68fd981ab4eb31c",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "ae98d07df387a569"
+    },
+    {
       "path": "coding-workflow/local-panel",
       "entity": "urn:reckons:docs/coding-workflow/LocalPanel",
       "graph": "docs-coding-workflow.ttl",
@@ -315,6 +333,24 @@
       "factCount": 7,
       "floor": "evidence",
       "pageHash": "1269f57c1793fff5"
+    },
+    {
+      "path": "coding-workflow/other-repo-agents",
+      "entity": "urn:reckons:docs/coding-workflow/OtherRepoAgents",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "10ffe539d3ce0d5a",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "7063f390b7adff1e"
+    },
+    {
+      "path": "coding-workflow/overseer-bench-rates",
+      "entity": "urn:reckons:docs/coding-workflow/OverseerBenchRates",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "569558255f31221d",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "7a861c456e253462"
     },
     {
       "path": "coding-workflow/personal-context",
@@ -458,7 +494,7 @@
       "factHash": "55f776935b6b145b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "374530bcd83f7984"
+      "pageHash": "7b0e2111bc839be6"
     },
     {
       "path": "features/agent-setup",
@@ -611,7 +647,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "421800fcd6536213"
+      "pageHash": "f695c755ea58edbb"
     },
     {
       "path": "features/open-in-source",
@@ -629,7 +665,7 @@
       "factHash": "d505068e4efd1090",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "9333d43d8a246a40"
+      "pageHash": "161c3bd40dd076df"
     },
     {
       "path": "features/physical-scene-simulator",
@@ -638,7 +674,7 @@
       "factHash": "81cf4041f76dca8e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "594b043abaa05a43"
+      "pageHash": "1751371f13d2900e"
     },
     {
       "path": "features/pod-view",
@@ -647,7 +683,7 @@
       "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b8121a57424763df"
+      "pageHash": "1453e1cbfbaadf43"
     },
     {
       "path": "features/prefer-local",
@@ -656,7 +692,7 @@
       "factHash": "cd3c8fce000a8bae",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1e3a6000a1ab610c"
+      "pageHash": "1e2fb7e7ab037a79"
     },
     {
       "path": "features/proposals",
@@ -665,7 +701,7 @@
       "factHash": "f5d268d7ae20bcb4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "525072f963a01d96"
+      "pageHash": "5b53c7955cfbcd41"
     },
     {
       "path": "features/published-docs",
@@ -674,7 +710,16 @@
       "factHash": "59ce634b4e121abf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "2cc303dd02215abb"
+      "pageHash": "47cb96adab005511"
+    },
+    {
+      "path": "features/question-presettle",
+      "entity": "urn:reckons:feature/QuestionPresettle",
+      "graph": "docs-features.ttl",
+      "factHash": "4d516eeec2b131ac",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "cb995df8212a3949"
     },
     {
       "path": "features/reckoning-simulator",
@@ -683,7 +728,7 @@
       "factHash": "590d782e12de88d8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "53d11c397766a626"
+      "pageHash": "47ab17b64bc795e0"
     },
     {
       "path": "features/review-system",
@@ -692,7 +737,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "66b0dbcabddd328a"
+      "pageHash": "07dd4c5082a6d3f4"
     },
     {
       "path": "features/review-workbench",
@@ -701,7 +746,7 @@
       "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "ba21d3592402fb3e"
+      "pageHash": "1797b4cec27f4ffd"
     },
     {
       "path": "features/room-scan",
@@ -710,7 +755,7 @@
       "factHash": "33d530c7b9161261",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "18f898063343358f"
+      "pageHash": "0b7459ae2932c2d1"
     },
     {
       "path": "features/shelly",
@@ -719,7 +764,7 @@
       "factHash": "9ce7701798b1640b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "82e60fd3be79c171"
+      "pageHash": "ac64d8f24ac33f15"
     },
     {
       "path": "features/source-refresh",
@@ -728,7 +773,7 @@
       "factHash": "7c2f9667eaeaf25a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b7049966536c9610"
+      "pageHash": "c8b5ca566288c39c"
     },
     {
       "path": "features/space-background",
@@ -773,7 +818,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "117f5189b0999927"
+      "pageHash": "ee4d4d4e4eb186fd"
     },
     {
       "path": "features/text-chunking",
@@ -782,7 +827,7 @@
       "factHash": "cbb1c67122d6a9f6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b92f5519b4f61f2b"
+      "pageHash": "2f10884358086748"
     },
     {
       "path": "features/threejs-examples",
@@ -791,7 +836,16 @@
       "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "ae6578bedecc7036"
+      "pageHash": "eb16f72a214c0b9f"
+    },
+    {
+      "path": "features/triple-check",
+      "entity": "urn:reckons:feature/TripleCheck",
+      "graph": "docs-features.ttl",
+      "factHash": "be3ef735790510fb",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "a599dd799b1703c8"
     },
     {
       "path": "features/ttl-export",
@@ -800,7 +854,7 @@
       "factHash": "6c90aecf25a1fd5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "f904fbe615f262c8"
+      "pageHash": "44447b1f9b9be37f"
     },
     {
       "path": "features/your-room",
@@ -809,7 +863,7 @@
       "factHash": "6c58358b0db864a8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "cf1dd2d15cfa36b9"
+      "pageHash": "030d2940a7cd1c82"
     },
     {
       "path": "guide/getting-started",
@@ -836,7 +890,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "56339ca71aac197c"
+      "pageHash": "9aa168683ebf86e8"
     },
     {
       "path": "guide/who-makes-this",
@@ -1052,7 +1106,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "d6df92e3bf66be4b"
+      "pageHash": "67f755ec0a6f2312"
     },
     {
       "path": "project/where-it-is-going",
@@ -1070,7 +1124,7 @@
       "factHash": "8c57311d6bb0d074",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d352db7432169727"
+      "pageHash": "4674cc845e9468ad"
     },
     {
       "path": "testing/graph-review-story",
@@ -1088,7 +1142,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "448263b0ead0a671"
+      "pageHash": "176ec7c685beb325"
     },
     {
       "path": "testing/release-review-spaces",
@@ -1100,13 +1154,22 @@
       "pageHash": "de6377e9ef1ed7da"
     },
     {
+      "path": "testing/starter-asset-smoke",
+      "entity": "urn:reckons:test/StarterAssetSmoke",
+      "graph": "docs-testing.ttl",
+      "factHash": "88d6ec7a008531ca",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "356c2dd12e116349"
+    },
+    {
       "path": "testing/test-suite",
       "entity": "urn:reckons:test/TestSuite",
       "graph": "docs-testing.ttl",
-      "factHash": "becc5146029c62b3",
+      "factHash": "b43fc161af718225",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "5474ed4fb83f5eb6"
+      "pageHash": "94e7dc34ab70e10e"
     },
     {
       "path": "testing/test-workflows",
@@ -1115,7 +1178,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "d54e52f0f940376c"
+      "pageHash": "8555ea144e253314"
     },
     {
       "path": "testing/three-example-nodes",
@@ -1124,7 +1187,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "5b9a420c940af103"
+      "pageHash": "a24098544978aaff"
     },
     {
       "path": "testing/visual-tests",
@@ -1133,7 +1196,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "06110b2d5a9f8a5d"
+      "pageHash": "b114a15af2a46a00"
     },
     {
       "path": "testing/vlm-workflow-streams",
@@ -1142,7 +1205,16 @@
       "factHash": "663a738d5de199f8",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "fee0d96fd1702fab"
+      "pageHash": "5e89125ea4a87b4f"
+    },
+    {
+      "path": "testing/workflow-build-change",
+      "entity": "urn:reckons:test/Workflow-BuildChange",
+      "graph": "docs-testing.ttl",
+      "factHash": "cda7009c6ebe907b",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "d5c0d8aa786bed71"
     },
     {
       "path": "testing/workflow-generated-assets",
@@ -1151,7 +1223,7 @@
       "factHash": "962e39450ad27746",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "eacab62c1b2385a6"
+      "pageHash": "5149ad34272204ba"
     },
     {
       "path": "testing/workflow-readme-path",
@@ -1160,7 +1232,7 @@
       "factHash": "b3958864258797fb",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "83420fa8198e48bc"
+      "pageHash": "66aa434f0aef0b23"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

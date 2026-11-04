@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import { ensureWasmReady, onWasmProgress } from '$lib/integrations/llm/wasm';
@@ -715,24 +716,14 @@
   }
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <div class="settings-heading-row">
-    <h1>system configuration</h1>
+<SettingsHeader>
+  {#snippet aside()}
     <div class="autosave-indicator" class:autosave-pulse={savedPulse} role="status">
       {savedPulse ? 'saved ✓' : 'auto-save on'}
     </div>
-  </div>
-
-  <div class="settings-nav">
-    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
-    <a href="/settings/publishing" class:active={page.url.pathname.includes('/publishing')} class="nav-link">publishing</a>
-    <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
-    <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
-  </div>
-  <nav class="section-toc">
+  {/snippet}
+  {#snippet toc()}
+    <nav class="section-toc">
     <a href="#s-status">status</a>
     <a href="#s-backends">backends</a>
     <a href="#s-claude">claude</a>
@@ -753,7 +744,8 @@
     <a href="#s-backup">backup</a>
     <a href="#s-workspace">workspace</a>
   </nav>
-</header>
+  {/snippet}
+</SettingsHeader>
 
 <section id="s-status" class="card provider-status-card">
   <h3>provider status</h3>
@@ -1796,32 +1788,6 @@
     50% { opacity: 0.3; }
   }
 
-  .head { margin-bottom: 1.25rem; }
-  .settings-heading-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
-  .kicker {
-    color: var(--accent);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    margin: 0 0 0.5rem;
-  }
-  .settings-nav {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 0.75rem;
-    /* Wrap, like the other settings pages. The tabs once clipped on mobile ("turtle" cut off),
-       and the fix scrolled them sideways instead; but six tabs are 698px wide in a 685px column,
-       so the row scrolled by 13px even on a wide desktop (Matt, staging 2026-10-08). */
-    flex-wrap: wrap;
-  }
   .section-toc {
     display: flex;
     flex-wrap: wrap;
@@ -1847,29 +1813,6 @@
     color: var(--accent);
     background: var(--accent-soft);
     border-color: var(--accent);
-  }
-  .nav-link {
-    padding: 0.35rem 0.6rem;
-    border-radius: var(--rad-sm);
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    border: 1px solid transparent;
-    transition: all 0.15s;
-    white-space: nowrap;
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-  }
-  .nav-link:hover {
-    color: var(--ink-2);
-    border-color: var(--muted-2);
-  }
-  .nav-link.active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
   }
   .card + .card { margin-top: 1rem; }
   .card h3 {

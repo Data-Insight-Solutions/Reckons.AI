@@ -109,6 +109,23 @@ export function transactPendingQueue<T>(
 }
 
 /**
+ * Append already-serialised JSONL under the queue lock.
+ *
+ * WHY. Ten producers called `appendFileSync(PENDING, …)` directly, outside the lock the rewriters
+ * (queueFindings, queue-dedupe, prune) hold. An append that lands between a rewriter's read and its
+ * atomic rename is silently lost; a non-atomic write over a longer file leaves tail fragments (see
+ * queue-integrity.ts). Same call shape as appendFileSync so the migration is mechanical. A missing
+ * trailing newline on the existing file is repaired rather than gluing two rows into one line.
+ */
+export function appendQueueText(queuePath: string, text: string, _encoding?: string): void {
+  if (!text) return;
+  transactPendingQueue(queuePath, (current) => {
+    const sep = current && !current.endsWith('\n') ? '\n' : '';
+    return { content: current + sep + text + (text.endsWith('\n') ? '' : '\n'), result: undefined };
+  });
+}
+
+/**
  * Jobs whose findings are recomputed from scratch on every run, so only the newest run describes
  * the world as it currently is.
  *

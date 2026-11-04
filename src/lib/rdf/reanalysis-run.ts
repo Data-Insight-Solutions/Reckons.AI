@@ -14,7 +14,7 @@ import {
 } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import { ollamaModelFor } from '../integrations/llm/model-for-task';
-import { preferLocalBackend } from '$lib/integrations/llm/prefer-local';
+import { installedOllamaModels, ollamaReachable, preferLocalBackend } from '$lib/integrations/llm/prefer-local';
 import { ethicsPreambleFor } from '$lib/safety/content-policy';
 import type { SettingsRecord } from '$lib/storage/db';
 import {
@@ -88,7 +88,13 @@ export async function runReanalysis(req: ReanalysisRequest, s: SettingsRecord): 
   try {
     if (provider === 'openai') raw = await chatOpenAI(messages, SYSTEM, s.openaiApiKey ?? '', s.openaiModel ?? 'gpt-4o-mini', 1024);
     else if (provider === 'gemini') raw = await chatGemini(messages, SYSTEM, s.geminiApiKey ?? '', s.geminiModel ?? 'gemini-2.0-flash', 1024);
-    else if (provider === 'ollama') raw = await chatOllama(messages, SYSTEM, ollamaModelFor('analyze', s), s.ollamaBaseUrl, 1024);
+    else if (provider === 'ollama') {
+      // Resolve the model against the models the server has (a bare name runs as the installed
+      // tag; nothing configured, or a chosen name not installed, picks the best installed model).
+      const base = s.ollamaBaseUrl || 'http://localhost:11434';
+      await ollamaReachable(base); // refreshes the probe, which caches the installed names
+      raw = await chatOllama(messages, SYSTEM, ollamaModelFor('analyze', s, installedOllamaModels(base)), base, 1024);
+    }
     else if (provider === 'openrouter') raw = await chatOpenRouter(messages, SYSTEM, s.openrouterApiKey ?? '', s.openrouterModel ?? 'meta-llama/llama-3.1-8b-instruct', 1024);
     else if (provider === 'reckons') raw = await chatReckons(messages, SYSTEM, s.reckonsApiKey ?? '', s.reckonsBaseUrl, undefined, 1024);
     else if (provider === 'wasm') raw = await chatWithWasm(messages, SYSTEM, s.wasmAnalyzeModel || s.wasmModel || undefined);

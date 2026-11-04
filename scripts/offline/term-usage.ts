@@ -322,6 +322,47 @@ export function insideMarkupExpression(line: string, at: number): boolean {
   return depth > 0;
 }
 
+/**
+ * A repository file path in a line of text: a run of path characters that contains at least one `/`
+ * and whose final component ENDS IN a file extension (a dot followed by 1–8 alphanumerics),
+ * e.g. `tests/e2e/graph-render.test.ts` or `src/lib/rdf/graph.ts`.
+ *
+ * This matters only in DOCS. A rendered `kpred:tested-by` value prints such a path, and every line
+ * of a `.md` file is prose, so the filename's segments (the `graph` in `graph-render`) landed in the
+ * free-prose ratchet as if they were wording. They are a NAME — the thing to keep is the
+ * `tested-by` fact, not the spelling of a file. In code the prose mask already keeps a module
+ * specifier out of the prose count; this closes the one hole, in docs. Without it, the only way to
+ * pass the ratchet was to delete a TRUE `tested-by` triple (2026-11-03) — the fact and the fix
+ * inverted.
+ *
+ * The original rule — any `/`-run whose final component merely CONTAINS a dot — was too loose, and
+ * its escapes were on the PROSE side (overseer, 2026-11-03): `graph/space.` at a sentence end
+ * carries the period in the run, so `space.` "had an extension", and `graph.Next` glued to an
+ * `and/or` did the same. Both are wording and both must count. So trim exactly one trailing `.`
+ * (the sentence punctuation, which the path never has) and then require the final component to END
+ * in an extension: `/\.[A-Za-z0-9]{1,8}$/`.
+ *
+ * A bare filename (`graph-render.test.ts`, no `/`), a directory (`src/lib/graph`, no extension), a
+ * ratio (`3/4`) or a host (`localhost:11434`) are NOT repo paths here and are left counted.
+ */
+export function repoPathSpans(line: string): Array<[number, number]> {
+  const out: Array<[number, number]> = [];
+  const endsInExtension = /\.[A-Za-z0-9]{1,8}$/;
+  for (const m of line.matchAll(/[A-Za-z0-9_.\-/]+/g)) {
+    const run = m[0];
+    if (!run.includes('/')) continue;
+    // A sentence-final period glues onto the run; the path itself never ends in one. Trim it so
+    // 'graph/space.' is not read as a file called `space.` and is left counted as two words.
+    let core = run;
+    if (core.endsWith('.')) core = core.slice(0, -1);
+    const last = core.slice(core.lastIndexOf('/') + 1);
+    if (!endsInExtension.test(last)) continue;
+    const start = m.index ?? 0;
+    out.push([start, start + core.length]);
+  }
+  return out;
+}
+
 function literal(quads: Quad[], subject: string, predicate: string): string | undefined {
   return quads.find((q) => q.subject.value === subject && q.predicate.value === predicate)?.object.value;
 }
@@ -494,9 +535,16 @@ export function scanText(text: string, file: string, tokens: Map<string, TokenUs
       isDoc || (inMarkup ? !insideTag(raw, at) && !insideMarkupExpression(raw, at) : !!codeMask?.[at]);
     const { binding, why } = bindingOfLine(raw);
     const lineRegister = registerOfLine(raw, file);
+    // In a doc, a rendered kpred:tested-by value is a repo file path, not wording. Skip a word that
+    // sits inside one (tests/e2e/graph-render.test.ts) rather than counting its segments as uses of
+    // the term — see repoPathSpans. Code files keep this out of the prose count via the prose mask.
+    const docPathSpans = isDoc ? repoPathSpans(raw) : [];
+    const inRepoPath = (at: number, len: number): boolean =>
+      docPathSpans.some(([s, e]) => at >= s && at + len <= e);
     const words = raw.matchAll(/[A-Za-z][A-Za-z0-9_$]*/g);
     for (const match of words) {
       const at = match.index ?? 0;
+      if (isDoc && inRepoPath(at, match[0].length)) continue;
       const register: Register = inMarkup && !insideTag(raw, at) ? 'user' : lineRegister;
       for (const seg of segmentsOf(match[0])) {
         const token = singular(seg);
