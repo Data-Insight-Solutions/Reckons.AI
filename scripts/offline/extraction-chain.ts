@@ -58,7 +58,7 @@ export interface ChainReport {
     /** Repair proposals withdrawn because the pair are siblings, not duplicates. */
     siblingsSpared: number;
   };
-  typing: { proposals: number; undecided: number; alreadyTyped: number };
+  typing: { proposals: number; undecided: number; alreadyTyped: number; undeclared: number };
   hierarchy: { roots: number; maxDepth: number; placed: number; orphans: number };
   /** Siblings a shared name head would place, which hierarchy alone cannot see. */
   coHyponyms: { groups: number; wouldPlace: number; heads: string[] };
@@ -177,7 +177,7 @@ export async function runChain(graph: string): Promise<
     graph: GRAPH,
     read: { statements: statements.length, entities: entities.size, syntheticSource },
     vocabulary: { entries: vocabulary.length, suspects: suspects.slice(0, 12), siblingsSpared },
-    typing: { proposals: survey.proposals.length, undecided: survey.undecided.length, alreadyTyped: survey.alreadyTyped },
+    typing: { proposals: survey.proposals.length, undecided: survey.undecided.length, alreadyTyped: survey.alreadyTyped, undeclared: survey.undeclared.length },
     hierarchy: { roots: roots.length, maxDepth: roots.length ? depthOf(roots) : 0, placed, orphans: Math.max(0, entities.size - placed) },
     coHyponyms: {
       groups: coGroups.length,
@@ -230,6 +230,7 @@ async function main() {
   const t = r.typing;
   const typable = t.proposals + t.undecided;
   console.log(`${B}3 typing${X}      ${t.alreadyTyped} typed · ${t.proposals} proposable · ${t.undecided} undecided` +
+    (t.undeclared ? ` · ${Y}${t.undeclared} fact(s) typed with a type the graph does not know${X}` : '') +
     (typable ? ` ${D}(${((t.proposals / typable) * 100).toFixed(0)}% of untyped settleable)${X}` : ''));
 
   const h = r.hierarchy;

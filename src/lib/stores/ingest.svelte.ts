@@ -622,9 +622,13 @@ export async function ingest(
     }
     // Say what could NOT be typed as loudly as what could. An entity the rules declined to type
     // is exactly the "undefined garbage" this stage exists to reduce, and hiding the count would
-    // make the stage look more effective than it is.
+    // make the stage look more effective than it is. Same for an rdf:type the graph does not know:
+    // naming the count keeps a whole knowledge base of undeclared types from reading as "nothing to do".
+    const undeclaredNote = typeSurvey.undeclared.length
+      ? `; ${typeSurvey.undeclared.length} fact(s) carry a type the graph does not know`
+      : '';
     console.info(
-      `[ingest] Typed ${typeSurvey.proposals.length} entities; ${typeSurvey.undecided.length} left untyped for the user`,
+      `[ingest] Typed ${typeSurvey.proposals.length} entities; ${typeSurvey.undecided.length} left untyped for the user${undeclaredNote}`,
     );
     run = finishExtractionStage(run, activeRunStage);
     await saveExtractionRun(run);

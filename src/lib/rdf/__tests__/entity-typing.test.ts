@@ -115,6 +115,56 @@ describe('surveyTypes', () => {
     );
     expect(survey.proposals).toHaveLength(0);
   });
+
+  // The 2026-11-03 bug: any rdf:type used to settle an entity, so a knowledge base where every
+  // entity carried an undeclared type surveyed to zero proposals and showed no type.
+  it('surveys an entity whose rdf:type the graph does not know, and reports the pairing', () => {
+    const survey = surveyTypes(
+      [
+        st('example-archive', 'is-a', 'Organization'),
+        st('example-archive', RDF_TYPE, { iri: 'urn:kbase:concept/Audience' }),
+      ],
+      BUILT_IN_TYPES,
+    );
+    expect(survey.proposals).toHaveLength(1);
+    expect(survey.proposals[0].typeIri).toBe('urn:kbase:type/Organization');
+    expect(survey.undeclared).toContainEqual({
+      entityIri: `${KB}example-archive`,
+      typeIri: 'urn:kbase:concept/Audience',
+    });
+    expect(survey.alreadyTyped).toBe(0);
+  });
+
+  it('does not let an unknown rdf:type in the EXISTING graph settle an entity either', () => {
+    const existing = [st('ada', RDF_TYPE, { iri: 'urn:kbase:concept/Audience' })];
+    const survey = surveyTypes([st('ada', 'birth-date', '1815-12-10')], BUILT_IN_TYPES, existing);
+    expect(survey.proposals).toHaveLength(1);
+    expect(survey.proposals[0].typeIri).toBe('urn:kbase:type/Person');
+    expect(survey.undeclared).toEqual([
+      { entityIri: `${KB}ada`, typeIri: 'urn:kbase:concept/Audience' },
+    ]);
+    expect(survey.alreadyTyped).toBe(0);
+  });
+
+  it('still skips an entity typed with a KNOWN type', () => {
+    const existing = [st('ada', RDF_TYPE, { iri: 'urn:kbase:type/Person' })];
+    const survey = surveyTypes([st('ada', 'birth-date', '1815-12-10')], BUILT_IN_TYPES, existing);
+    expect(survey.proposals).toHaveLength(0);
+    expect(survey.undecided).toHaveLength(0);
+    expect(survey.alreadyTyped).toBe(1);
+    expect(survey.undeclared).toHaveLength(0);
+  });
+
+  it('says "an" before a label that starts with a vowel', () => {
+    const survey = surveyTypes([st('acme', 'is-a', 'Organization')], BUILT_IN_TYPES);
+    expect(survey.proposals[0].reason).toContain('an organization');
+  });
+
+  it('says "a" before a label that starts with a consonant', () => {
+    const survey = surveyTypes([st('harbour', 'location', '43.6, -70.3')], BUILT_IN_TYPES);
+    expect(survey.proposals[0].basis).toBe('predicates');
+    expect(survey.proposals[0].reason).toContain('a place');
+  });
 });
 
 describe('buildTypeStatements', () => {
