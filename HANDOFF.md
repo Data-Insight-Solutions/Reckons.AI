@@ -5,7 +5,7 @@ the graph holds what was decided.
 
 ## 2026-11-03 (evening) — START HERE: review the overnight deputy queue (Claude Code, Opus)
 
-**Your first job is triage, not new work.** Six local deputy jobs (qwen3.8) were queued 2026-11-03
+**Your first job is triage, not new work.** Eight local deputy jobs (qwen3.8) were queued 2026-11-03
 about 20:00 CST to run overnight, one at a time, each on its own `agent/local-*` branch in its own
 worktree under `.claude/worktrees/`. None is pushed. For each: read the job log
 (`~/.local/state/reckons/jobs/night-*.log`), check the branch head (a job can exit 0 with nothing
@@ -20,6 +20,8 @@ PR to dev, or reject it out loud. A Sonnet overseer only for the importer job (c
 | 7 | `agent/local-typing-llm-custom` | LLM entity-types prompt ignores a space's custom types | same note |
 | 6 | `agent/local-ratchet-paths` | term-usage path exemption too loose | suggestion on term-ratchet |
 | 5 | `agent/local-dead-weight-alias` | dead-weight.ts misses `$lib` imports | drift-warning on job-dead-weight |
+| 4 | `agent/local-queue-chains` | `queue.ts add --after=<job>` chains; a deputy job whose branch head did not move is recorded `no-commit`, not `passed` | Matt, 2026-11-03: "craft local job chains" |
+| 3 | `agent/local-job-plan-space` | the queue written as a real, annotated `job-plan` space in the app's workspace every 10 min, so the plan is visible with no Claude tokens | Matt, 2026-11-03 |
 | -1, -2 | gpt-oss:120b benches | orchestrator, and overseer at 32k context x3; need 24 GB free RAM, give up after 4 h | compare with the 2026-10-28 table |
 
 **Dev is frozen** until Matt merges #556 (dev to staging, v0.2.7; CI green). Held PRs, all base dev,
