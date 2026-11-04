@@ -3,6 +3,22 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-04 (afternoon) — START HERE: crash diagnosed, queue RAM guard in #585 (Claude Code, Opus)
+
+**The 12:39 CST crash was Ollama, not Chrome.** Twice (12:30 qwen3.8-160k, 12:33 qwen3-coder from
+`sched:describe-entities`) Ollama 0.40.11 started llama-server without its CUDA backend and loaded about 17 GB
+into host RAM. The second load swapped for 5 min and took the X session down (journalctl -k OOM at
+12:31:11 and 12:39:07). Detail and measurements are on `kb:queue-ram-guard` (F74.11) in the roadmap.
+
+- **Queue is PAUSED** (since 12:58). Resume only after #585 merges: `npx tsx scripts/agent/queue.ts resume`.
+- **#585** (base dev): the RAM guard. Merge when CI is green.
+- **Matt:** systemd-oomd / MemoryMax drop-in for ollama.service. The command was given in chat on 2026-11-04;
+  as of then it was not applied.
+- **PR triage 2026-11-04:** closed #538 (superseded) and merged #584 (prod deps). Asked Dependabot to rebase
+  #473, #375 and #413; merge each when green, one at a time. #502 (vitest 5) and #583 (22 dev deps) need a
+  decision on major bumps. **Matt decides** whether to close or rebase the stale October feature PRs
+  #501, #513, #527, #532-#534, #536 and #539, and #486 (his roadmap branch, green but behind).
+
 ## 2026-11-04 (early) — START HERE: overnight queue triaged and merged (Claude Code, Opus)
 
 **Done (each checked as stated, 2026-11-04 ~07:00 UTC).** #556 (v0.2.7) reached staging 01:59 UTC,

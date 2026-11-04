@@ -39,12 +39,14 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
+    { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
     {
       id: 'quickstart',
       icon: '🚀',
       title: 'Quick-Start Example',
       body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to facts.',
       file: '/starter-quickstart.ttl',
+      space: 'Quick-Start Example',
       entities: 15,
       triples: 90
     },
@@ -919,6 +921,7 @@
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
       Explore generic example facts designed for learning Reckons.AI.
+      <a href="/settings/triple-check">Check any example with Triple Check →</a>
     </p>
 
     <div class="starter-grid">
