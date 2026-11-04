@@ -34,6 +34,8 @@ export type CommitInfo = {
   authorDate?: string;
   /** Parsed trailers as [key, value] pairs (git interpret-trailers --parse). */
   trailers: [string, string][];
+  /** Original trailer blocks retained by GitHub's squash message format. */
+  squashProvenance?: boolean;
 };
 
 export type Violation = { sha: string; subject: string; missing: ('Model' | 'Intent')[] };
@@ -80,6 +82,35 @@ export function parseTrailers(text: string): [string, string][] {
     .map((m) => [m[1], m[2]] as [string, string]);
 }
 
+/**
+ * GitHub squash merges retain each original message, then append a separate co-author block.
+ * Git only parses that final block. Recover the originals conservatively: a PR-number subject,
+ * GitHub's separator, and complete Model/Intent trailer blocks in EVERY constituent section.
+ * Ordinary messages and commit-msg hooks still require one final block. This is still an
+ * author's claim, like ordinary trailers; it is not independent provenance verification.
+ */
+export function squashTrailers(message: string, parse: (text: string) => [string, string][]): [string, string][] | null {
+  const titleEnd = message.indexOf('\n');
+  if (titleEnd < 0 || !/ \(#\d+\)$/.test(message.slice(0, titleEnd))) return null;
+  const divider = message.lastIndexOf('\n\n---------\n\n');
+  if (divider <= titleEnd) return null;
+  const final = parse(message);
+  if (final.some(([key]) => /^(Model|Intent)$/i.test(key))) return null;
+  const finalAuthors = final.filter(([key, value]) => /^Co-Authored-By$/i.test(key) && MODEL_NAME.test(value));
+  if (!finalAuthors.length) return null;
+  const body = message.slice(titleEnd, divider).trim();
+  if (!body.startsWith('* ')) return null;
+  const recovered: [string, string][] = [];
+  for (const section of body.split(/^\* /m).slice(1)) {
+    const fields = parse(section);
+    if (!['Model', 'Intent'].every((key) => fields.some(([k, value]) => k.toLowerCase() === key.toLowerCase() && value.trim()))) return null;
+    recovered.push(...fields);
+  }
+  const originalAuthors = new Set(recovered.filter(([key]) => /^Co-Authored-By$/i.test(key)).map(([, value]) => value.trim().toLowerCase()));
+  if (finalAuthors.some(([, value]) => !originalAuthors.has(value.trim().toLowerCase()))) return null;
+  return [...recovered, ...final];
+}
+
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
 function readRange(rangeArgs: string[]): CommitInfo[] {
@@ -89,8 +120,10 @@ function readRange(rangeArgs: string[]): CommitInfo[] {
     const authorDate = git('log', '-1', '--format=%aI', sha).trim();
     const parents = git('log', '-1', '--format=%P', sha).trim().split(/\s+/).filter(Boolean).length;
     const msg = git('log', '-1', '--format=%B', sha);
-    const trailers = parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: msg, encoding: 'utf8' }));
-    return { sha, subject, parents, authorDate, trailers };
+    const parse = (text: string) => parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: text, encoding: 'utf8' }));
+    const original = parents <= 1 ? squashTrailers(msg, parse) : null;
+    const trailers = original ?? parse(msg);
+    return { sha, subject, parents, authorDate, trailers, squashProvenance: original !== null };
   });
 }
 
@@ -142,6 +175,9 @@ function main() {
   const bad = checkCommits(commits);
   const agents = commits.filter((c) => c.parents <= 1 && isAgentCommit(c)).length;
   console.log(`commit-trailers: ${commits.length} commit(s) in ${how}; ${agents} agent commit(s)`);
+  for (const c of commits.filter((c) => c.squashProvenance)) {
+    console.log(`  SQUASH ${c.sha.slice(0, 7)} — Model and Intent read from every original message; final model co-authors matched`);
+  }
   if (!bad.length) {
     console.log('commit-trailers: OK — every agent commit carries Model: and Intent:');
     return;

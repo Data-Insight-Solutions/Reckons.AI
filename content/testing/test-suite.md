@@ -16,7 +16,7 @@ related:
 
 Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
-<p class="derived">It has 7 parts below.</p>
+<p class="derived">It has 8 parts below.</p>
 
 ## In this section
 
@@ -35,6 +35,10 @@ Open Generated assets, choose Create an asset with Shelly, enter a synthetic ima
 **[Local VLM workflow streams](../testing/vlm-workflow-streams)**
 
 Each stream uses fresh browser storage, synthetic UI inputs and an explicit loopback app origin.
+
+**[Starter assets in the production build](../testing/starter-asset-smoke)**
+
+The production smoke test opens Getting started and enables all previews.
 
 **[Three.js example loading and isolation](../testing/three-example-nodes)**
 

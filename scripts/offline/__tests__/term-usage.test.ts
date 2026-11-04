@@ -201,6 +201,34 @@ describe('scanText', () => {
     expect(tokens.get('class')!.occurrences).toBe(0);
     expect(tokens.get('class')!.excluded).toBe(1);
   });
+
+  it('does not count a rendered tested-by path as a use of the word (2026-11-03)', () => {
+    // The line that made deleting a true kpred:tested-by triple the only way to pass the ratchet:
+    // the file path prints on the docs page, and every docs line is prose, so the `graph` in the
+    // filename used to land in the free-prose count as if it were wording. A file name is a name,
+    // not a use of the term.
+    const tokens = usage('graph');
+    scanText('tests/e2e/graph-render.test.ts\n', 'content/testing/starter-asset-smoke.md', tokens);
+    const u = tokens.get('graph')!;
+    expect(u.occurrences).toBe(0);
+    expect(u.freeProse).toBe(0);
+  });
+
+  it('still counts the prose that says the word, next to and instead of a path', () => {
+    const tokens = usage('graph');
+    scanText('the graph shows it\n', 'content/testing/starter-asset-smoke.md', tokens);
+    const u = tokens.get('graph')!;
+    expect(u.occurrences).toBe(1);
+    expect(u.freeProse).toBe(1);
+  });
+
+  it('leaves a bare filename, a directory and a ratio counted (only file paths are names)', () => {
+    // graph-render.test.ts has no slash; src/lib/graph has no extension; 3/4 is a ratio.
+    // None is a repo file path, so each `graph` here is still a use of the word.
+    const tokens = usage('graph');
+    scanText('see graph-render.test.ts, src/lib/graph, and the graph\n', 'content/x.md', tokens);
+    expect(tokens.get('graph')!.occurrences).toBe(3);
+  });
 });
 
 describe('ambiguity ratchet (Matt, 2026-10-07)', () => {
