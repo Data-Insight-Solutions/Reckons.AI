@@ -9,6 +9,7 @@
    *     models, MCP servers. Only while `npm run dev` runs on this machine; absent on a deployed site.
    */
   import { onDestroy, onMount } from 'svelte';
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { settings } from '$lib/stores/settings.svelte';
   import { ago, duration, dueText, headline, sortDue, watcherProblem, type Level, type WatchStatus } from '$lib/device/agent-watch-view';
   import { browserSpecs, bytes, waitForExtension, type BrowserSpecs } from '$lib/device/browser-specs';
@@ -109,24 +110,15 @@
   };
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
-  <div class="settings-nav">
-    <a href="/settings" class="nav-link">backends</a>
-    <a href="/settings/publishing" class="nav-link">publishing</a>
-    <a href="/settings/integrations" class="nav-link">integrations</a>
-    <a href="/settings/turtle" class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class="nav-link">entity types</a>
-    <a href="/settings/device" class="nav-link active">this device</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
-  </div>
-  <nav class="section-toc">
-    <a href="#d-agents">agents</a>
-    <a href="#d-specs">specs</a>
-    <a href="#d-installed">installed</a>
-  </nav>
-</header>
+<SettingsHeader>
+  {#snippet toc()}
+    <nav class="section-toc">
+      <a href="#d-agents">agents</a>
+      <a href="#d-specs">specs</a>
+      <a href="#d-installed">installed</a>
+    </nav>
+  {/snippet}
+</SettingsHeader>
 
 <section id="d-agents" class="card">
   <div class="card-head">

@@ -70,6 +70,8 @@
     "kb:align:quick": "npx tsx scripts/kb-align.ts --skip-e2e",
     "sim:run": "npx tsx scripts/sim/run.ts",
     "md-align": "npx tsx scripts/md-align.ts",
+    "check:blocking": "npx tsx scripts/offline/run-all.ts --blocking --ci",
+    "hooks:install": "git config core.hooksPath .githooks && echo 'hooks on (npm prepare does this too): commit-msg, pre-commit, pre-push run the blocking script tier'",
     "docs:pages": "npx tsx scripts/docs-pages.ts",
     "docs:diagrams": "npx tsx scripts/docs-diagrams.ts",
     "docs:diagrams:check": "npx tsx scripts/docs-diagrams.ts --check",
