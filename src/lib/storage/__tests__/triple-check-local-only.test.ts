@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SettingsRecord } from '../db';
 import { searchTripleCheck, scrapeTripleCheck, searchConfigurationError } from '$lib/integrations/search/triple-check';
 import { judgeWebEvidence, judgeSpaceEvidence, tripleCheckProviderError } from '$lib/integrations/llm/triple-check';
+import { WEB_CHECK_OFF } from '$lib/rdf/triple-check';
 import { researchFixture } from '../../../../scripts/starter/research-fixture';
 
 const FILES = ['src/lib/integrations/search/triple-check.ts', 'src/lib/integrations/llm/triple-check.ts', 'src/lib/storage/triple-check.ts', 'src/lib/rdf/triple-check.ts', 'src/lib/stores/triple-check.svelte.ts'];
@@ -42,7 +43,8 @@ describe('Triple Check is local and free: static', () => {
   });
 });
 
-const withLocal = (x: Partial<SettingsRecord>) => ({ ollamaBaseUrl: 'http://localhost:11434', ...x }) as SettingsRecord;
+// Web checking is opt-in (Matt, 2026-11-04), and these cases test the web path, so they turn it on.
+const withLocal = (x: Partial<SettingsRecord>) => ({ ollamaBaseUrl: 'http://localhost:11434', tripleCheckWebEnabled: true, ...x }) as SettingsRecord;
 
 describe('Triple Check is local and free: every request, with fetch stubbed', () => {
   const claim = researchFixture()[0].claims[0];
@@ -65,7 +67,15 @@ describe('Triple Check is local and free: every request, with fetch stubbed', ()
   };
   const leaves = (calls: Call[]) => calls.filter(c => !LOOPBACK.has(c.url.hostname) && c.method !== 'GET');
 
-  it('default settings: runs the whole chain, and only GET or loopback requests are made', async () => {
+  it('nothing set: web checking is off, and search makes no request at all', async () => {
+    const calls: Call[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: unknown) => { calls.push({ url: new URL(String(input)), method: 'GET' }); return new Response('{}'); }));
+    const s = { ollamaBaseUrl: 'http://localhost:11434', tripleCheckEnabled: true } as SettingsRecord;
+    expect(searchConfigurationError(s)).toBe(WEB_CHECK_OFF);
+    await searchTripleCheck(s, 'a claim', new AbortController().signal).catch(() => {});
+    expect(calls).toEqual([]);
+  });
+  it('web checking on: runs the whole chain, and only GET or loopback requests are made', async () => {
     const { calls, refused } = await run({ tripleCheckEnabled: true });
     expect(refused).toBeNull(); expect(calls.length).toBeGreaterThan(0);
     for (const c of calls) expect(LOOPBACK.has(c.url.hostname) || c.method === 'GET', `${c.method} ${c.url.href}`).toBe(true);
