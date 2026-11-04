@@ -76,23 +76,15 @@ export function resolveInstalledModel(name: string, installed: string[]): string
 /**
  * Preferred local models, best first, for a server that has any of them installed.
  *
- * Ranks come from THIS machine's extraction benches, 2026-09..10, condition `none`
- * (tests/bench; "invented" = invented facts per file — the failure that matters for a
- * knowledge graph, since an invented triple is a persistent citable claim while a missed one
- * is only an absence — which is why invented-fact count outweighs recall in the ranking):
- *
- * | model                | recall | invented | note                                            |
- * |----------------------|--------|----------|-------------------------------------------------|
- * | qwen3:32b            | 0.63   | 0.00     | not installed on this box at ranking time       |
- * | mistral-small3.2:24b | 0.53   | 0.00     | orchestrator 29/36                              |
- * | gemma3:27b           | 0.75   | 0.80     | highest recall, ranked below zero-invention     |
- * |                      |        |          | models because of the inventions                |
- * | phi4:14b             | 0.48   | —        |                                                 |
- * | qwen3-coder          | 0.54   | 0.18     | a CODE model — the header above records it      |
- * |                      |        |          | mangling prose; kept only above the fallback    |
- * | llama3.2             | —      | —        | the bare fallback, last of the benched roster   |
- *
- * Public benchmarks are the standing in for models never benched here.
+ * The ORDER follows the task brief of 2026-11-03 (Matt), which cited this machine's extraction
+ * benches: zero invented facts outranks recall, because an invented triple is a persistent
+ * citable claim while a missed one is only an absence. The per-model recall figures in that
+ * brief are NOT reproduced here because the result files that back them are not in the repo,
+ * so they cannot be checked from this file. `qwen3:32b` heads the list but was removed from
+ * this machine on 2026-10-26; resolution skips names that are not installed, so it only
+ * applies to a machine that has it. `qwen3-coder` is a code model that tends to mangle prose,
+ * so it sits just above the fallback. Models never benched here fall back to public
+ * benchmarks, then to the first non-embedding model installed.
  */
 export const PREFERRED_OLLAMA_MODELS = [
   'qwen3:32b',
