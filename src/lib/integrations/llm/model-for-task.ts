@@ -11,6 +11,12 @@
  * ONE RESOLVER, NOT TEN FALLBACKS. Ten call sites each wrote `s.ollamaModel ?? 'llama3.2'`. Ten
  * copies of a default is ten places for it to drift, and no place to add a task without editing
  * all of them. Everything goes through here now.
+ *
+ * Since the installed-models pass, the resolver also knows WHAT THE SERVER HAS: given the list
+ * from Ollama `/api/tags`, a bare name resolves to the tag actually installed (`llama3.2` →
+ * `llama3.2:3b`, so the user never has to type the tag), and when nothing is configured — or
+ * the chosen name is not installed — the best installed model is picked instead of a name the
+ * server cannot serve. A model the user chose that IS installed is never overridden.
  */
 
 /**
@@ -52,13 +58,68 @@ const FIELD: Record<OllamaTask, keyof OllamaModelSettings> = {
 export const FALLBACK_OLLAMA_MODEL = 'llama3.2';
 
 /**
- * The model for a task: its own override, else the general `ollamaModel`, else the fallback.
- *
- * `diffSummary` and `mergeAnalysis` are sub-tasks of analyze and inherit from it, matching how
- * `diffSummaryBackend` already falls back to `analyzeBackend`. Splitting the backend but not the
- * model would otherwise send a sub-task to a model chosen for something else.
+ * Resolve a model name against the models the server actually has installed (the `/api/tags`
+ * names). Ollama installs models WITH a tag — a fresh `ollama pull llama3.2` lands as
+ * `llama3.2:3b` — and a request for the bare name then fails, which is why the user kept having
+ * to re-type `:3b` after every default. Order: exact match (a name the user chose is never
+ * rewritten), `name:latest`, then the first installed tag of that family. Returns undefined
+ * rather than inventing a name it cannot see in the list.
  */
-export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings): string {
+export function resolveInstalledModel(name: string, installed: string[]): string | undefined {
+  const trimmed = name.trim();
+  if (!trimmed) return undefined;
+  if (installed.includes(trimmed)) return trimmed;
+  if (installed.includes(`${trimmed}:latest`)) return `${trimmed}:latest`;
+  return installed.find((tag) => tag.startsWith(`${trimmed}:`));
+}
+
+/**
+ * Preferred local models, best first, for a server that has any of them installed.
+ *
+ * Ranks come from THIS machine's extraction benches, 2026-09..10, condition `none`
+ * (tests/bench; "invented" = invented facts per file — the failure that matters for a
+ * knowledge graph, since an invented triple is a persistent citable claim while a missed one
+ * is only an absence — which is why invented-fact count outweighs recall in the ranking):
+ *
+ * | model                | recall | invented | note                                            |
+ * |----------------------|--------|----------|-------------------------------------------------|
+ * | qwen3:32b            | 0.63   | 0.00     | not installed on this box at ranking time       |
+ * | mistral-small3.2:24b | 0.53   | 0.00     | orchestrator 29/36                              |
+ * | gemma3:27b           | 0.75   | 0.80     | highest recall, ranked below zero-invention     |
+ * |                      |        |          | models because of the inventions                |
+ * | phi4:14b             | 0.48   | —        |                                                 |
+ * | qwen3-coder          | 0.54   | 0.18     | a CODE model — the header above records it      |
+ * |                      |        |          | mangling prose; kept only above the fallback    |
+ * | llama3.2             | —      | —        | the bare fallback, last of the benched roster   |
+ *
+ * Public benchmarks are the standing in for models never benched here.
+ */
+export const PREFERRED_OLLAMA_MODELS = [
+  'qwen3:32b',
+  'mistral-small3.2:24b',
+  'gemma3:27b',
+  'phi4:14b',
+  'qwen3-coder',
+  'llama3.2',
+];
+
+/**
+ * The model to run when the user has not chosen one: the best preferred model the server has,
+ * else the first installed model that is not an embedding model (embedding models cannot do
+ * extraction or chat), else the bare fallback (nothing is installed — or Ollama is down).
+ */
+export function pickDefaultOllamaModel(installed: string[]): string {
+  for (const name of PREFERRED_OLLAMA_MODELS) {
+    const resolved = resolveInstalledModel(name, installed);
+    if (resolved) return resolved;
+  }
+  const firstUsable = installed.find((name) => !name.toLowerCase().includes('embed'));
+  return firstUsable ?? FALLBACK_OLLAMA_MODEL;
+}
+
+/** The user's own choice for a task — task override, else the sub-task's analyze parent, else the
+ *  general `ollamaModel`. Blank or whitespace-only counts as unset. `undefined` = nothing configured. */
+export function explicitOllamaModel(task: OllamaTask, s: OllamaModelSettings): string | undefined {
   const own = s[FIELD[task]];
   if (typeof own === 'string' && own.trim()) return own.trim();
 
@@ -69,5 +130,32 @@ export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings): string
 
   const general = s.ollamaModel;
   if (typeof general === 'string' && general.trim()) return general.trim();
-  return FALLBACK_OLLAMA_MODEL;
+  return undefined;
+}
+
+/**
+ * The model for a task: its own override, else the general `ollamaModel`, else the fallback.
+ *
+ * `diffSummary` and `mergeAnalysis` are sub-tasks of analyze and inherit from it, matching how
+ * `diffSummaryBackend` already falls back to `analyzeBackend`. Splitting the backend but not the
+ * model would otherwise send a sub-task to a model chosen for something else.
+ *
+ * `installed` (the `/api/tags` list) switches the last two steps onto reality: a bare name is
+ * resolved to the tag the server actually has (`llama3.2` → `llama3.2:3b`), and when nothing is
+ * configured — or the chosen name is not installed — `pickDefaultOllamaModel` picks the best
+ * model that IS there. A model the user chose that is installed is never overridden. Without a
+ * list the resolution is exactly what it was before: the chosen name, else the bare fallback.
+ */
+export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings, installed?: string[] | null): string {
+  const explicit = explicitOllamaModel(task, s);
+
+  if (installed) {
+    if (explicit) {
+      const resolved = resolveInstalledModel(explicit, installed);
+      if (resolved) return resolved;
+    }
+    return pickDefaultOllamaModel(installed);
+  }
+
+  return explicit ?? FALLBACK_OLLAMA_MODEL;
 }

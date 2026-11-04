@@ -13,7 +13,7 @@ import { settings } from '$lib/stores/settings.svelte';
 import { db } from '$lib/storage/db';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 import { findTemporalConflicts } from '$lib/rdf/temporal';
-import { preferLocalBackend } from './prefer-local';
+import { installedOllamaModels, ollamaReachable, preferLocalBackend } from './prefer-local';
 import { embedMany, cosine } from '$lib/embed';
 
 export interface MergeAnalysisStatement {
@@ -117,10 +117,19 @@ export async function analyzeMerge(params: MergeAnalysisParams): Promise<string>
     effectiveProvider === 'chrome-ai'  ? '' :
     (s.claudeApiKey ?? '');
 
+  // Ollama resolves against the models the server has (a bare name runs as the installed tag;
+  // nothing configured, or a chosen name not installed, picks the best installed model).
+  let ollamaModel: string | undefined;
+  if (effectiveProvider === 'ollama') {
+    const base = s.ollamaBaseUrl || 'http://localhost:11434';
+    await ollamaReachable(base); // refreshes the probe, which caches the installed names
+    ollamaModel = ollamaModelFor('mergeAnalysis', s, installedOllamaModels(base));
+  }
+
   const model =
     effectiveProvider === 'openai'     ? s.openaiModel :
     effectiveProvider === 'gemini'     ? s.geminiModel :
-    effectiveProvider === 'ollama'     ? ollamaModelFor('mergeAnalysis', s) :
+    effectiveProvider === 'ollama'     ? ollamaModel! :
     effectiveProvider === 'openrouter' ? s.openrouterModel :
     effectiveProvider === 'reckons'    ? (s.reckonsModel ?? '@cf/meta/llama-3.1-8b-instruct') :
     effectiveProvider === 'wasm'       ? (s.wasmAnalyzeModel || s.wasmModel) :
