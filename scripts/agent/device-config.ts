@@ -116,7 +116,7 @@ export function resolveEntities(sources: string[], host: string, type: string): 
 
 // ── schedules (compiled form) ──────────────────────────────────────────────
 
-export type CompiledSchedule = { iri: string; label: string; command: string; every: string; network: boolean; tier?: string; harness?: string; firstPass: boolean };
+export type CompiledSchedule = { iri: string; label: string; command: string; every: string; network: boolean; tier?: string; harness?: string; firstPass: boolean; cwd?: string };
 
 export function compileSchedules(sources: string[], host: string): CompiledSchedule[] {
   const out: CompiledSchedule[] = [];
@@ -124,7 +124,7 @@ export function compileSchedules(sources: string[], host: string): CompiledSched
     const command = p.get(`${KPRED}command`);
     const every = p.get(`${KPRED}every`);
     if (!command || !every || p.get(`${KPRED}enabled`) === 'false') continue;
-    out.push({ iri, label: p.get(RDFS_LABEL) ?? iri, command, every, network: p.get(`${KPRED}network`) === 'true', tier: p.get(`${KPRED}tier`), harness: p.get(`${KPRED}harness`), firstPass: p.get(`${KPRED}first-pass`) === 'true' });
+    out.push({ iri, label: p.get(RDFS_LABEL) ?? iri, command, every, network: p.get(`${KPRED}network`) === 'true', tier: p.get(`${KPRED}tier`), harness: p.get(`${KPRED}harness`), firstPass: p.get(`${KPRED}first-pass`) === 'true', cwd: p.get(`${KPRED}cwd`) });
   }
   return out;
 }

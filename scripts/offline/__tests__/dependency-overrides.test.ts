@@ -162,29 +162,36 @@ describe('security dependency overrides', () => {
     ).toBe(payload);
   });
 
-  it('keeps Minimatch 5 on the compatible patched brace-expansion line', () => {
-    // The current 2.x remediation is 2.1.4. Forcing 5.x here would break
-    // Minimatch 5, which requires brace-expansion as a function.
-    const minimatchRequire = createRequire(
-      path.join(process.cwd(), 'node_modules/filelist/node_modules/minimatch/minimatch.js')
+  it('keeps filelist working on the patched Minimatch 11 line', () => {
+    const filelistRequire = createRequire(
+      path.join(process.cwd(), 'node_modules/filelist/index.js')
     );
-    const bracePackage = minimatchRequire('brace-expansion/package.json') as {
+    const minimatchPackage = filelistRequire('minimatch/package.json') as {
       version: string;
     };
-    expect(versionAtLeast(bracePackage.version, '2.1.4')).toBe(true);
+    expect(versionAtLeast(minimatchPackage.version, '11.0.1')).toBe(true);
 
-    const minimatch = minimatchRequire('minimatch') as (
-      candidate: string,
-      pattern: string
-    ) => boolean;
-    expect(minimatch('src/graph.ts', 'src/{graph,review}.ts')).toBe(true);
+    const minimatch = filelistRequire('minimatch') as {
+      match: unknown;
+      minimatch(candidate: string, pattern: string): boolean;
+    };
+    expect(typeof minimatch.match).toBe('function');
+    expect(minimatch.minimatch('src/graph.ts', 'src/{graph,review}.ts')).toBe(true);
 
-    const expand = minimatchRequire('brace-expansion') as (
-      pattern: string,
-      options?: { max?: number; maxLength?: number }
-    ) => string[];
-    const bounded = expand('{alpha,beta}'.repeat(20), { maxLength: 1_000 });
-    expect(bounded.reduce((total, value) => total + value.length, 0)).toBeLessThanOrEqual(1_000);
+    const { FileList } = filelistRequire('filelist') as {
+      FileList: new () => { include(pattern: string): void; toArray(): string[] };
+    };
+    const fileList = new FileList();
+    fileList.include('package*.json');
+    expect(fileList.toArray()).toContain('package.json');
+  });
+
+  it('keeps workbox-build on the patched glob line', () => {
+    const workboxRequire = createRequire(
+      path.join(process.cwd(), 'node_modules/workbox-build/package.json')
+    );
+    const globPackage = workboxRequire('glob/package.json') as { version: string };
+    expect(versionAtLeast(globPackage.version, '14.0.2')).toBe(true);
   });
 
   it('keeps Workbox globbing on the patched modern brace-expansion line', () => {

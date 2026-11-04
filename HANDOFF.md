@@ -3,30 +3,102 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-10-28 (later) — START HERE. Merged #535 and #541; F273 and the overseer comparison in flight (Claude Code, Opus)
+## 2026-11-03 (evening) — START HERE: review the overnight deputy queue (Claude Code, Opus)
+
+**Your first job is triage, not new work.** Eight local deputy jobs (qwen3.8) were queued 2026-11-03
+about 20:00 CST to run overnight, one at a time, each on its own `agent/local-*` branch in its own
+worktree under `.claude/worktrees/`. None is pushed. For each: read the job log
+(`~/.local/state/reckons/jobs/night-*.log`), check the branch head (a job can exit 0 with nothing
+committed; the queue records exit 0 as "passed"), run its done-tests yourself, then push and open a
+PR to dev, or reject it out loud. A Sonnet overseer only for the importer job (core code).
+
+| Priority | Branch | Fixes | Graph note |
+|---|---|---|---|
+| 10 | `agent/local-ollama-default` | default Ollama model is bare `llama3.2` (fails without `:3b`); resolve installed tags and pick the best installed model by this machine's benches (mistral-small3.2:24b: 0 invented facts) | Matt, 2026-11-03 |
+| 9 | `agent/local-import-mixed` | import-ttl drops plain triples in annotated files; parseAssetRefs matches only full-IRI lines | drift-warning on workspace-sync |
+| 8 | `agent/local-typing-undeclared` | surveyTypes counts undeclared rdf:type as typed; "a audience" | drift-warning on entity-typing |
+| 7 | `agent/local-typing-llm-custom` | LLM entity-types prompt ignores a space's custom types | same note |
+| 6 | `agent/local-ratchet-paths` | term-usage path exemption too loose | suggestion on term-ratchet |
+| 5 | `agent/local-dead-weight-alias` | dead-weight.ts misses `$lib` imports | drift-warning on job-dead-weight |
+| 4 | `agent/local-queue-chains` | `queue.ts add --after=<job>` chains; a deputy job whose branch head did not move is recorded `no-commit`, not `passed` | Matt, 2026-11-03: "craft local job chains" |
+| 3 | `agent/local-job-plan-space` | the queue written as a real, annotated `job-plan` space in the app's workspace every 10 min, so the plan is visible with no Claude tokens | Matt, 2026-11-03 |
+| -1, -2 | gpt-oss:120b benches | orchestrator, and overseer at 32k context x3; need 24 GB free RAM, give up after 4 h | compare with the 2026-10-28 table |
+
+**Dev is frozen** until Matt merges #556 (dev to staging, v0.2.7; CI green). Held PRs, all base dev,
+merge only after #556: #559 (v0.2.9 plan), #561 (deputy env secrets), #564 (F274.4.1, stacked on
+#554), #565 (MCP from worktrees), #566 (F277 asset matrix and F278 hub assets plan), and this one.
+Merged into dev today: #558 (v0.2.7 closeout), #560 (glob/minimatch advisories). Triple Check #537
+has its e2e fix and href/redirect hardening pushed; CI not re-checked since.
+
+**Asset-generation demo.** The first real use of F277 is a private community-program space kept
+outside this repository, with its own repo and its own `HANDOFF.md` (path in Matt's private notes,
+not here). Two app bugs found there are the top two overnight jobs. Nothing from it belongs here.
+
+**Matt decides:** F277.5 logo source (form upload recommended, or web search); F278 on by default or
+opt-in per space; and the open questions recorded on F277 and F278 in the roadmap.
+
+## 2026-11-01 — v0.2.7 closeout and demo research (Codex, reviewed by Claude Code 2026-11-03)
+
+Branch: `fix/v027-release-closeout`, based on `origin/dev` aa4bd10b. The existing
+local deputy commit 210d7d9d supplied five docs entities; reviewed and reused here.
+
+Live GitHub checked 2026-11-01: v0.2.6 reached main through #528 on 2026-10-23.
+Main and staging still declare 0.2.6. #556 is the open dev-to-staging 0.2.7
+promotion. Its two observed failures are addressed on this branch: GitHub squash
+provenance is retained inside the message and now validated section by section;
+the starter asset smoke test searches and centers each entity before clicking.
+The commit-msg hook stays strict. No release was promoted or merged.
+
+Local verification on 2026-11-01: 33 trailer/hook tests, svelte-check zero errors
+and warnings, production build, and three repeated asset smoke runs without
+retries passed. Generated documentation and graph checks are run before commit;
+CI status must be checked on the PR, not inferred from this paragraph.
+
+Research used Reckons MCP plus qwen3.8 panels: 26 recent stars (78 votes), then
+11 primary READMEs (33 votes). Exact-quote validation rejected four of 33 quotes;
+unanimous opinions also misclassified optional tools, so do not trust consensus
+for this task. Reviewed proposals are pending on demo-videos, local-panel and
+competitive:ref-hyperframes. Next demo proposal: real synthetic-space capture,
+cached Hume narration and seekable captions/title motion; OpenDesign/HyperFrames
+for production, Construct for semantic 3D presentation, StableGen for one optional
+asset-quality trial. No renderer or new service was installed.
+
+## 2026-10-28 (end of day) — Everything for dev is merged (Claude Code, Opus)
 
 The session ran long; start a fresh one from here. Matt's decisions from today are in the graph,
 each quoted verbatim under kpred:decided on the entities named below.
 
-**Merged into dev:** #535 (local deputy, missing-model handling, `models:check`, parsed bench, audit
-gate at moderate, `npm-symlink-guard.sh`) and #541 (review links grouped by producer run, with `kb=`;
-/review shows reconnect, loading and unlinked states).
+**Merged into dev, all with CI green including E2E:**
+- #535: local deputy, missing-model handling, `models:check`, parsed bench, audit gate at moderate,
+  `npm-symlink-guard.sh`.
+- #541: review links grouped by producer run, with `kb=`; /review shows reconnect, loading and
+  unlinked states.
+- #542: `queue:check`, locked queue appends, term-senses with one subject per site, the quarantine
+  file git-ignored.
+- #545: the npm guard matches commands only and skips heredocs.
+- #546 (squash, so a personal path in one bench answer never reached dev): gpt-oss:120b vs Sonnet as
+  overseer. Sonnet 4/4 in 101 s; gpt-oss 2/4 in 2,422 s (one over-stop, one 20-minute timeout).
+  Decision so far: qwen3.8 stays the chat deputy, Sonnet the overseer, and gpt-oss is a by-hand second
+  reader. n=4, one run each. On kb:loop-local-deputy.
+- #543: **F273 phases 0 and A** (kb:procedure-over-prose, in-progress).
+  `npm run brief -- --entity=<kb:slug>` refuses a job without a done-test. Tracked git hooks in
+  .githooks/: commit-msg (trailers), pre-commit (generated files, five generators' --check),
+  pre-push (blocking script tier, about 10 s). `npm prepare` turns them on. The main checkout has
+  them on since 2026-10-28; `--no-verify` skips them. Phases B (procedures as code: land-pr,
+  merge-order) and C (runs recorded in the space) are next.
 
-**Open PRs (check `gh pr list --base dev`):**
-- #542 `chore/queue-integrity`: `queue:check`, locked queue appends, term-senses with one subject per
-  site, quarantine file git-ignored. The merge overseer was resolving a conflict in the generated
-  `reckons-jobs.ttl` (regenerate, never hand-edit), then reviewing and merging.
-- #543 `plan/procedure-over-prose`: **F273**. A Sonnet builder is doing phase 0 (a brief generator that
-  refuses without a done-test) and then phase A (tracked git hooks: commit-msg, pre-commit generator
-  check, pre-push blocking tier). The done-tests are on the entity; build to them, do not bend them.
-- #544 → `feat/triple-check` (Codex's #537): Triple Check runs on-device only. Search is a GET to
-  SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal address.
-  Decided on kb:triple-check. Lands with #537.
-- `bench/overseer-compare`: gpt-oss:120b vs Sonnet as overseer on four replayed cases with known
-  answers; gpt-oss runs at its native 131k maximum (160k is past what it was trained on). Results go
-  on kb:loop-local-deputy.
-- this branch: the npm guard skips heredocs and matches commands only (its first version blocked
-  prose that mentioned "npm ci").
+**Still open:**
+- #537 (Codex, `feat/triple-check`) with #544 on top of it: Triple Check runs on-device only. Search
+  is a GET to SearXNG, the model is Ollama, wasm or chrome-ai, and LAN hosts are opt-in by literal
+  address (decided on kb:triple-check). Not run live against SearXNG/Ollama yet.
+  **#544 reviewed (later, 2026-10-28):** two commits added (IPv6 allowlist entries match without
+  brackets; one term-ratchet "source" removed), review comment on the PR. Auto mode refused the merge
+  ("merge without review"), so **Matt merges #544 into feat/triple-check** — the next action.
+  **dev merged into feat/triple-check** (223139a6): clears #537's Dependencies failure (undici/fast-uri);
+  conflicts resolved toward dev's F273 hook; on the merge 4,405 unit tests, svelte-check 0, blocking
+  9/9, graph-lint 0 errors. #537 itself (4.3k lines) is not yet reviewed; wait for its CI first.
+- About 40 old agent worktrees under .claude/worktrees/, most with a symlinked node_modules. Matt
+  decides what to prune; the npm guard keeps them from emptying the main checkout.
 
 **Queue state (2026-10-28):**
 - **Removed:** about 210 trash rows rejected by verdict (code-review, a dead path, the four classes

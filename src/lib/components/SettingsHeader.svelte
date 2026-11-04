@@ -19,6 +19,7 @@
     { href: '/settings/publishing', label: 'publishing' },
     { href: '/settings/turtle', label: 'turtle' },
     { href: '/settings/entity-types', label: 'entity types' },
+    { href: '/settings/device', label: 'this device' },
   ];
   const current = $derived(page.url.pathname.replace(/\/$/, '') || '/settings');
 </script>

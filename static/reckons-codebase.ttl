@@ -375,6 +375,8 @@ code:publish  rdf:type     ktype:Concept ;
               skos:broader code:repo ;
               kpred:has-file "src/lib/publish/site-export.ts" ;
               kpred:has-file "src/lib/publish/site-import.ts" ;
+              kpred:has-file "src/lib/publish/markdown-site-import.ts" ;
+              kpred:has-file "scripts/import-markdown-site.ts" ;
               kpred:has-file "src/lib/publish/__tests__/post-reckoning.test.ts" ;
               kpred:has-file "src/lib/publish/__tests__/website-alignment.test.ts" ;
               kpred:has-file "src/lib/publish/md-escape.ts" ;
@@ -531,7 +533,8 @@ code:mobile-utils  rdf:type     ktype:Concept ;
                    skos:broader code:repo ;
                    kpred:has-file "src/lib/utils/mobile-auth.ts" ;
                    kpred:has-file "src/lib/utils/safe-href.ts" ;
-                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" .
+                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/safe-href.test.ts" .
 
 code:extension-bridge  rdf:type     ktype:Concept ;
                        rdfs:label   "Extension Bridge" ;
@@ -572,6 +575,11 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/settings/entity-types/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/integrations/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/turtle/+page.svelte" ;
+             kpred:has-file "src/routes/(app)/settings/device/+page.svelte" ;
+             kpred:has-file "src/lib/device/agent-watch-view.ts" ;
+             kpred:has-file "src/lib/device/browser-specs.ts" ;
+             kpred:has-file "src/lib/device/integrations.ts" ;
+             kpred:has-file "scripts/dev-server/device-bridge.ts" ;
              kpred:has-file "src/routes/(app)/about/+page.svelte" ;
              kpred:has-file "src/routes/(app)/about/case-study-0/+page.svelte" ;
              kpred:has-file "src/routes/(app)/analyze/+page.svelte" ;
