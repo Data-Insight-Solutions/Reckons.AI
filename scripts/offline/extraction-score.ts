@@ -61,7 +61,8 @@
  * Needs OLLAMA_BASE_URL for local models, ANTHROPIC_API_KEY for `claude:` arms. Emits PROPOSALS
  * only — it never writes source or TTL.
  */
-import { readFileSync, existsSync, appendFileSync, writeFileSync, mkdirSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import path from 'path';
 import { extractWithOllama } from '../../src/lib/integrations/llm/ollama-extract.js';
 import { extractWithClaude } from '../../src/lib/integrations/llm/claude.js';
@@ -1154,7 +1155,7 @@ function queue(scores: Score[], specs: Record<string, FileSpec>) {
     console.log(`\n${D}Nothing to queue — no inventions, regressions, fragments or drift.${X}`);
     return;
   }
-  appendFileSync(PENDING, lines.join('\n') + '\n');
+  appendQueueText(PENDING, lines.join('\n') + '\n');
   console.log(`\nQueued ${lines.length} finding(s) to ${PENDING} — review in Reckons.AI.`);
 }
 

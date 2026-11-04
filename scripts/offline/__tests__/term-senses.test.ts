@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { buildTask, moduleOf, sampleSites, sensesFor, sitesIn, type Site } from '../term-senses';
+import { buildTask, moduleOf, sampleSites, sensesFor, siteFinding, siteSubject, sitesIn, type Site } from '../term-senses';
 
 const TTL = readFileSync(resolve(import.meta.dirname, '../../../static/reckons-terminology.ttl'), 'utf8');
 
@@ -90,5 +90,26 @@ describe('terminology sweep word list (F203.6)', () => {
     expect(words.every((w) => w.meanings >= 2)).toBe(true);
     expect(words[0].meanings).toBeGreaterThanOrEqual(words[words.length - 1].meanings);
     expect(words.map((w) => w.word)).toContain('node');
+  });
+});
+
+describe('siteSubject — one subject per site, stable across runs', () => {
+  const verdict = (item: string) => ({ item, status: 'majority', value: 'rdf-node', votes: [{ model: 'm', answer: { sense: 'rdf-node' } }] }) as never;
+
+  it('gives two sites two different subjects', () => {
+    expect(siteSubject('node', 'src/a.ts:3')).not.toBe(siteSubject('node', 'src/a.ts:4'));
+    expect(siteSubject('node', 'src/a.ts:3')).not.toBe(siteSubject('node', 'src/b.ts:3'));
+  });
+
+  it('gives the same site the same subject, and treats the plural as the same word', () => {
+    expect(siteSubject('node', 'src/a.ts:3')).toBe(siteSubject('node', 'src/a.ts:3'));
+    expect(siteSubject('nodes', 'src/a.ts:3')).toBe(siteSubject('node', 'src/a.ts:3'));
+  });
+
+  it('never reuses the shared ontology subject, so the review tools cannot group the findings', () => {
+    const f = [siteFinding('node', 'unanimous', verdict('src/a.ts:3')), siteFinding('node', 'unanimous', verdict('src/b.ts:9'))];
+    expect(new Set(f.map((x) => x.subject)).size).toBe(2);
+    expect(f.every((x) => !x.subject.endsWith('terminology-ontology'))).toBe(true);
+    expect(f[0].question).toContain('src/a.ts:3');
   });
 });

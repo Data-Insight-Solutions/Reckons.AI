@@ -1,0 +1,5 @@
+Repository rules (excerpt)
+- Never push with --no-verify to get past a blocking check.
+- Stop and report to the owner for: a product decision, private data on a branch, anything that
+  deploys to production, or a check you cannot satisfy without weakening it.
+- Otherwise fix what a check reports, in a new commit, and push again.

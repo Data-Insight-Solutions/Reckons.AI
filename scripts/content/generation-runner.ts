@@ -198,7 +198,7 @@ export class GenerationRunner {
         atomic(statusPath, { request, state: 'failed', error: capability.reason });
         continue;
       }
-      addJobs([newJob(name, repoRoot, [process.execPath, '--import', 'tsx', import.meta.filename, `--job=${directory}`], undefined, true, false)]);
+      addJobs([newJob(name, repoRoot, [process.execPath, '--import', 'tsx', import.meta.filename, `--job=${directory}`], undefined, true, undefined, undefined, false)]);
       atomic(join(directory, ENQUEUED), { name, at: new Date().toISOString() });
       added = true;
     }

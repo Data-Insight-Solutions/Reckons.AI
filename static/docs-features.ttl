@@ -375,6 +375,15 @@ feat:ReviewWorkbench
     skos:definition     "The review page pairs its four tabs (incoming, deletions, merges, align) with a preview graph (a small live map beside the review list): browse controls step through items, a node-details + chat pane explains the selected fact in context, and clicking a review item flies the preview graph to its node with the relevant edge highlighted." ;
     skos:broader        feat:ReviewSystem .
 
+feat:QuestionPresettle
+    rdf:type            ktype:Concept ;
+    skos:exactMatch     kb:question-presettle ;
+    rdfs:label          "Open questions answered from what you already decided" ;
+    kpred:relates-to    kb:question-presettle ;
+    skos:definition     "An open question in the review queue — one with no proposed answer — can only be rejected or put off, so it waits. Before it does, a job tries to answer it from your own knowledge base. First a rule: when the question is about a file that may have been deleted, the job requires evidence of its deletion in dev history before offering an answer saying the question no longer applies. Absence from one checkout alone is not enough. Then a model running on your machine, with no call to the cloud, may answer, but it may only quote a decision you already recorded, and a second model on your machine checks the quote is really there before the answer is offered. An answer arrives as a proposal attached to the question's own decision: accepting it settles the question in one act, and the job itself settles nothing — it writes proposals, never decisions. In the run recorded on 2026-10-29 (UTC), 232 open questions yielded three candidate answers after the checks; human review found two usable, and only those two were queued. The checks also refused eleven model answers. The job did not settle any decision itself. It is a tool you run before asking, not a recurring job: at that yield, the queue mostly asks for an action, not a fact." ;
+    kpred:honest-note   "MOST OF THE QUEUE IS NOT ANSWERABLE THIS WAY. The questions the run left open are mostly machine findings that want an action, and the rest are genuinely open. The checking model was calibrated on two cases, and its precision on that one run was 2 of 3. An inline answer box on the review page is a later part of the same plan, and is not this job." ;
+    skos:broader        feat:ReviewSystem .
+
 ## =============================================================================
 ## Published Docs Site (F27)
 ## =============================================================================
@@ -616,6 +625,7 @@ feat:Currents             skos:exactMatch  kb:currents .
 feat:PodView              skos:exactMatch  kb:currents-phase-3 .
 feat:ReviewWorkbench      skos:exactMatch  kb:review-workbench .
 feat:PublishedDocs        skos:exactMatch  kb:graph-publishing .
+feat:TripleCheck          skos:exactMatch  kb:triple-check .
 
 feat:KBLeap               skos:broadMatch  kb:multi-kb .
 feat:KBIdentity           skos:broadMatch  kb:multi-kb .
@@ -865,3 +875,11 @@ Each item with a shape (a box, sphere or capsule) is a rigid body with a mass, f
 To try it, run `npm run sim:run -- --file=static/starter-sim-ramp-cup.ttl`. The command simulates 10 seconds, prints PASS or FAIL for each goal with the final position of every moving body, and exits with an error code if any goal fails. The example ball, as given, starts too low on the ramp to clear the cup's lip, so the run fails; moving it higher up the ramp makes the same run pass.
 
 The physics engine is Rapier. The same run with the same inputs gives the same positions on the same build, which is tested; this is not a promise across different builds or browsers. Runs are limited in length and in the number of bodies. Later phases are planned to let a reckoning propose changes to a scene and test each one here, and to replay a run in the 3D view.""" .
+
+feat:TripleCheck a ktype:Concept, skos:Concept ;
+    rdfs:label "Triple Check" ; skos:broader guide:WhatIsReckonsAI ;
+    skos:definition "Optional continuous checking of statements against your other spaces and, if you allow it, cited web pages. What it finds arrives in Review as pending statements from a new source." ;
+    kpred:description "Open Settings → Triple Check and enable checking for this space. While the app is open it checks one statement about once a minute. A page or another space that says the same thing becomes the same statement from that source, which you can accept as an extra citation. One that says something different becomes its own statement beside yours. A page that disputes a statement without saying what is true instead becomes a question. Nothing is accepted for you, and a proposal you rejected is not made again. In Review, group by source to accept or reject everything one source added at once; statements that disagree are held back for their own decision. All local spaces are compared, excluding archives. Optional meaning comparison uses your Ollama endpoint. Web checking sends each checked statement to the search service and model you chose, and can be turned off for sensitive content. To try it, open the walkthrough from Settings → Triple Check." ;
+    kpred:description "Each check retains dated citations. A likely true or false label summarizes a small sample of distinct publisher passages; it is not proof or a calibrated probability. Copied pages do not establish independence. You may ignore suggestions, mark evidence reviewed, or decide whether to refine a statement. Checking never accepts or rewrites your assertions automatically." ;
+    kpred:description "Repository comparison views show a selected shortlist, dated GitHub metrics and cited qualitative proposals. Save selected entities, relationships or specific assertions as a space view. The canvas limits visible entities by default and discloses hidden statements; expanding the view changes only the display. Analyze can explicitly apply purpose-based organization with a recovery snapshot. The bundled synthetic research space demonstrates conflicting document corpora." ;
+    kpred:honest-note "Evidence is stored in this browser and is not currently exported with the space. Paid provider accuracy and cost have not been calibrated. Enterprise SME discovery, RBAC and approved evidence projections remain planned; local checking provides no enterprise access enforcement." .
