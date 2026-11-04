@@ -6,7 +6,7 @@ section: "Guide"
 template: doc
 status: published
 nav: sidebar
-excerpt: "A personal knowledge graph that runs entirely in your browser."
+excerpt: "A personal knowledge graph (a collection of facts you have checked, each linking one thing to another) that runs entirely in your browser."
 generated: "docs-kb"
 related:
   - "architecture-integrations-tech"
@@ -16,7 +16,7 @@ related:
 
 # Reckons.AI
 
-A personal knowledge graph that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority.
+A personal knowledge graph (a collection of facts you have checked, each linking one thing to another) that runs entirely in your browser. Local-first, open-source, human-in-the-loop. Your data, your device, your authority.
 
 ## Related
 

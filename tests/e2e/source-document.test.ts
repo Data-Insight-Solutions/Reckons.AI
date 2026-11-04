@@ -27,6 +27,7 @@ async function seed(page: Page) {
       st('early', 'memo', 'Ferry', { excerpt: 'Section 2 describes the harbor ferry schedule in plain terms.', grounded: true }),
       st('late', 'memo', 'Pier', { excerpt: 'Section 19 describes the harbor ferry schedule in plain terms.', grounded: true, status: 'pending' }),
       st('loose', 'memo', 'Tide', { status: 'pending' }),
+      st('stale', 'memo', 'Dock', { excerpt: 'A sentence the kept text no longer contains.', grounded: true, status: 'pending' }),
       st('bare-fact', 'bare', 'Note', { excerpt: 'kept nowhere' }),
     ]);
     const result = await retainSourceCorpus({ sourceId: 'memo', title: 'Harbor memo', hash: 'memo-hash-0001', text });
@@ -72,8 +73,9 @@ for (const width of [1280, 390]) {
     await expect(fromSecond).toContainText('which passages extraction read is not recorded yet');
 
     // A statement without a quote is listed with its reason rather than guessed into a passage.
-    await document.getByRole('button', { name: '1 statement not placed in a passage' }).click();
+    await document.getByRole('button', { name: '2 statements not placed in a passage' }).click();
     await expect(document.getByText('Not placed: no quoted excerpt was saved.')).toBeVisible();
+    await expect(document.getByText(/Not placed: the saved quote is not in the text that was kept/)).toBeVisible();
     await page.screenshot({ path: testInfo.outputPath(`source-document-${width}.png`) });
 
     // From a passage to the statement's entity, whose detail carries the statement-side Evidence.
@@ -81,6 +83,21 @@ for (const width of [1280, 390]) {
     await document.getByRole('region', { name: 'Statements from passage 3' }).getByRole('button', { name: 'Pier' }).click();
     await expect(details.getByRole('heading', { name: 'Pier', exact: true })).toBeVisible();
     await expect(details.getByRole('region', { name: 'Evidence' })).toContainText('passage 3 of 3');
+
+    // F122.1.4: Open in source jumps to that passage with the supporting quote marked, in view.
+    await details.getByRole('region', { name: 'Evidence' }).getByRole('button', { name: 'Open in source' }).click();
+    const mark = details.locator('.source-document-mark');
+    await expect(mark).toHaveCount(1);
+    await expect(mark).toContainText('Section 19 describes the harbor ferry schedule in plain terms.');
+    await expect(boundaries.nth(2)).toHaveAttribute('aria-expanded', 'true');
+    await expect(mark).toBeInViewport({ ratio: 1 });
+    const box = await mark.boundingBox();
+    const scroller = await details.locator('.source-document-passages').boundingBox();
+    expect(box && scroller && box.y >= scroller.y - 1 && box.y + box.height <= scroller.y + scroller.height + 1).toBe(true);
+    // The count on the passage still matches the statements listed under it.
+    await expect(boundaries.nth(2)).toContainText('1 pending');
+    await expect(details.getByRole('region', { name: 'Statements from passage 3' })).toContainText('fact late');
+    await page.screenshot({ path: testInfo.outputPath(`source-jump-${width}.png`) });
 
     // A source whose text was never kept says so. Both sources are selected by default.
     await details.getByRole('button', { name: 'Close source details' }).click();

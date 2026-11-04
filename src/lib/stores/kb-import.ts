@@ -17,7 +17,8 @@ export type KnowledgeBaseImportData = { ttl: string; assets: Map<string, Uint8Ar
 type DecodedAsset =
   | { kind: 'gif'; id: string; blob: Blob; filename: string }
   | { kind: 'glb'; id: string; url: string }
-  | { kind: 'icon'; id: string; url: string };
+  | { kind: 'icon'; id: string; url: string }
+  | { kind: 'splat'; id: string; bytes: Uint8Array };
 
 /**
  * Parse TTL + assets into `target`, REPLACING its statements/sources.
@@ -57,7 +58,7 @@ export async function populateKbFromTtl(
   const { importTurtleFull } = await import('../rdf/import-ttl');
   const { v4: uuid } = await import('uuid');
 
-  const { statements: rawStmts, sources: rawSources, cleanImportCount } = await importTurtleFull(ttl, { name });
+  const { statements: rawStmts, sources: rawSources, cleanImportCount, chunks: rawChunks = [], chunkVersions } = await importTurtleFull(ttl, { name });
   if (rawStmts.length === 0) return 0;
 
   const now = Date.now();
@@ -116,6 +117,13 @@ export async function populateKbFromTtl(
     }
   }
 
+  // Imported splat files (F58.9.7): assets/splats/<id> goes back to IndexedDB under the name the
+  // space's statements already use (asset:splat/<id>).
+  for (const [path, bytes] of assets) {
+    const m = /^assets\/splats\/([A-Za-z0-9_-]+\.(?:ply|spz|sog))$/.exec(path);
+    if (m) decoded.push({ kind: 'splat', id: m[1], bytes });
+  }
+
   // Build the pre-replace recovery snapshot BEFORE the transaction (serialization awaits would
   // otherwise commit the transaction early), then persist it inside the same atomic replace.
   const { buildKbSnapshot, pruneSnapshots } = await import('../storage/kb-snapshots');
@@ -123,7 +131,7 @@ export async function populateKbFromTtl(
 
   await target.transaction(
     'rw',
-    [target.statements, target.sources, target.entityGifs, target.glbOverrides, target.icon2dOverrides, target.kbSnapshots],
+    [target.statements, target.sources, target.entityGifs, target.glbOverrides, target.icon2dOverrides, target.kbSnapshots, target.splatFiles],
     async () => {
       if (snapshot) await target.kbSnapshots.put(snapshot);
       await target.statements.clear();
@@ -132,6 +140,7 @@ export async function populateKbFromTtl(
       await target.statements.bulkPut(outStatements);
       for (const a of decoded) {
         if (a.kind === 'gif') await target.entityGifs.put({ id: a.id, blob: a.blob, filename: a.filename });
+        else if (a.kind === 'splat') await target.splatFiles.put({ id: a.id, blob: new Blob([a.bytes.buffer as ArrayBuffer]), filename: a.id, size: a.bytes.length, importedAt: now });
         else if (a.kind === 'glb') await target.glbOverrides.put({ id: a.id, url: a.url });
         else await target.icon2dOverrides.put({ id: a.id, url: a.url });
       }
@@ -140,6 +149,18 @@ export async function populateKbFromTtl(
 
   // Prune old snapshots after the atomic replace has committed (housekeeping, not safety-critical).
   if (snapshot) await pruneSnapshots(target, target.name).catch(() => {});
+
+  // F107.10.3: passages that travel in the saved file are kept where the Source View looks. A failure
+  // here never fails the import: the claims are already in.
+  if (rawChunks.length > 0) {
+    try {
+      const { adoptSpacePassages } = await import('./source-corpus');
+      const report = await adoptSpacePassages(rawChunks, chunkVersions, outSources);
+      if (report && report.skipped.length > 0) console.warn('[import] passages not kept:', report.skipped);
+    } catch (e) {
+      console.warn('[import] passages not kept:', e);
+    }
+  }
 
   return outStatements.length;
 }

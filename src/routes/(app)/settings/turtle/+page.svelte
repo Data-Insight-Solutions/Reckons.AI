@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { onDestroy } from 'svelte';
   import { page } from '$app/state';
   import { turtleSettings, updateTurtleSettings, setTurtlePersonality, setVoiceType } from '$lib/stores/turtle-settings.svelte';
@@ -112,19 +113,7 @@
 </script>
 
 <div class="turtle-settings">
-  <header class="head">
-    <p class="kicker mono">settings</p>
-    <h1>system configuration</h1>
-
-    <div class="settings-nav">
-      <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
-      <a href="/settings/publishing" class:active={page.url.pathname.includes('/publishing')} class="nav-link">publishing</a>
-      <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
-      <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
-      <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
-      <a href="/analyze" class="nav-link">analyze history &#x2197;</a>
-    </div>
-  </header>
+  <SettingsHeader />
 
   <p class="page-intro">
     Configure Shelly, your knowledge assistant (identity, personality, voice) and the turtle companion
@@ -692,13 +681,6 @@ shelly:persona
     padding: 2rem;
   }
 
-  .head { margin-bottom: 1.25rem; }
-  .kicker {
-    color: var(--accent);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    margin: 0 0 0.25rem;
-  }
 
   .page-intro {
     font-size: 0.88rem;
@@ -729,35 +711,9 @@ shelly:persona
     white-space: nowrap;
   }
 
-  .settings-nav {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--line);
-  }
 
-  .nav-link {
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--rad-sm);
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: var(--muted);
-    border: 1px solid var(--line);
-    text-decoration: none;
-    transition: all 0.15s;
-  }
 
-  .nav-link:hover {
-    color: var(--ink-2);
-    border-color: var(--muted-2);
-  }
 
-  .nav-link.active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
 
   .settings-grid {
     display: grid;

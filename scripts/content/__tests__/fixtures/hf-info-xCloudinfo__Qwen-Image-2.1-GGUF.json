@@ -1,0 +1,125 @@
+{
+ "_id": "6ab7f2617e1f313bfef24f00",
+ "id": "xCloudinfo/Qwen-Image-2.1-GGUF",
+ "private": false,
+ "pipeline_tag": "text-to-image",
+ "tags": [
+  "gguf",
+  "image-generation",
+  "comfyui",
+  "text-to-image",
+  "base_model:Qwen/Qwen-Image-2.1",
+  "base_model:quantized:Qwen/Qwen-Image-2.1",
+  "license:apache-2.0",
+  "region:us"
+ ],
+ "downloads": 516,
+ "likes": 1,
+ "modelId": "xCloudinfo/Qwen-Image-2.1-GGUF",
+ "author": "xCloudinfo",
+ "sha": "6eb11679ad9dacf5f545dc5cd9d747d9c675d718",
+ "lastModified": "2026-10-03T13:47:49.000Z",
+ "gated": false,
+ "disabled": false,
+ "model-index": null,
+ "config": {},
+ "cardData": {
+  "license": "apache-2.0",
+  "base_model": "Qwen/Qwen-Image-2.1"
+ },
+ "gguf": {
+  "total": 7115124736,
+  "architecture": "qwen_image21",
+  "totalFileSize": 2616269600
+ },
+ "siblings": [
+  {
+   "rfilename": ".gitattributes",
+   "blobId": "70851f31c90cf318e0f6833d270664f3ad8d207e",
+   "size": 1891
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q2_K.gguf",
+   "blobId": "73ba4a9b39306a3b9a254bb3d896f5bc06970c54",
+   "size": 2616269600,
+   "lfs": {
+    "sha256": "df3deea9a56af1f6681c61f52f35cda9c8d1bb83c56d83d0ef3b7afd0d302418",
+    "size": 2616269600,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q3_K_M.gguf",
+   "blobId": "c33790169fa70f1bed6522b0813c15fbe4be9479",
+   "size": 3346078496,
+   "lfs": {
+    "sha256": "dcb866ced8dc59ea0cc8c3b1e10c90934070c66ab3aa0feb53a9c1577fede637",
+    "size": 3346078496,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q4_K_M.gguf",
+   "blobId": "c6740494ce7701575bb5c9027b137569d473b135",
+   "size": 4335934240,
+   "lfs": {
+    "sha256": "ad28983bc5a8f998119579058706d37d970a23be138bf2ee5d792519e8d5c03f",
+    "size": 4335934240,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q5_K_M.gguf",
+   "blobId": "fa10f69c22097452a316bb8e7f332ad6841312b8",
+   "size": 5141240608,
+   "lfs": {
+    "sha256": "71a5b124382bcc98cf168f3f3680ef83691c14b0ec5f16a3706c104405ab13eb",
+    "size": 5141240608,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q6_K.gguf",
+   "blobId": "90d257a1504701b4ec44ee2acb574519557074e1",
+   "size": 5996878624,
+   "lfs": {
+    "sha256": "26e38c44c0ed50d039d067e916553cbb62edc6fd080eccc6445b1d6c36e434ab",
+    "size": 5996878624,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "Qwen-Image-2.1-Q8_0.gguf",
+   "blobId": "3363bd83a2d53d893e11241bb640e19414bd139e",
+   "size": 7687183136,
+   "lfs": {
+    "sha256": "681434c711ddc8e14892349e557b64b5a6587cc0e7bec157ca5c42889dd16c85",
+    "size": 7687183136,
+    "pointerSize": 135
+   }
+  },
+  {
+   "rfilename": "text_encoders/qwen3vl_8b_bf16.safetensors",
+   "blobId": "96913abdb450c149239bf34d67f9e62b0eafce0a",
+   "size": 17534334616,
+   "lfs": {
+    "sha256": "68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9",
+    "size": 17534334616,
+    "pointerSize": 136
+   }
+  },
+  {
+   "rfilename": "vae/qwen_image_2.1_vae.safetensors",
+   "blobId": "5c78907e022a677ffc002bd10150a1a521e89e8b",
+   "size": 1350989512,
+   "lfs": {
+    "sha256": "a07a1b7c4ee2966a1b3bdc37de9b4f983d56937e46619f709a80b6e490675417",
+    "size": 1350989512,
+    "pointerSize": 135
+   }
+  }
+ ],
+ "spaces": [],
+ "createdAt": "2026-09-26T16:27:13.000Z",
+ "usedStorage": 48008908832
+}

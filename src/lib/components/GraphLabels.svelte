@@ -114,6 +114,9 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95), 0 0 6px rgba(0, 0, 0, 0.6);
     transition: transform 0.12s ease-out, color 0.18s ease-out, opacity 0.28s ease-out;
     letter-spacing: 0.02em;
+    /* One line box = one em. A label's preview thumbnail (a sibling drawn above the label) is
+       positioned from this height, so the label's height must not depend on the font's metrics. */
+    line-height: 1;
     max-width: 220px;
     overflow: hidden;
     text-overflow: ellipsis;

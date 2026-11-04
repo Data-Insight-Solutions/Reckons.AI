@@ -622,6 +622,8 @@ kb:competitor-scan rdf:type    ktype:Feature ;
                kpred:feature-id   "F86" ;
                kpred:has-status   "functional" ;
                kpred:has-file     "scripts/offline/competitor-scan.ts" ;
+               kpred:has-file     "scripts/offline/license-compare.ts" ;
+               kpred:tested-by    "scripts/offline/__tests__/license-compare.test.ts" ;
                kpred:test-coverage "none" ;
                kpred:honest-note  "Untested, declared (2026-07-15): the fetch is deterministic and runs daily via the offline runner, but there is no unit test — a real one needs the GitHub API mocked, which is proper task work, not a drive-by. Declaring 'none' rather than shipping the gap silently (kb:honest-status)." ;
                kpred:description  "Refreshes every kb:Competitor's metadata and LICENSE from the GitHub API, and discovers candidate new competitors by topic search. Deterministic, zero tokens, no model: stars, license SPDX, last push and archived status are facts, not judgments. Drift (a license change, a new candidate, an abandoned project) is emitted to knowledge.pending.jsonl as a proposal for human review — the script never edits this TTL." ;
@@ -968,6 +970,47 @@ kb:comp-flora rdf:type ktype:Competitor ;
                kpred:assessment   "WHAT IT IS NOT, IN MATT'S WORDS (2026-09-23): 'It is not ontology building, it is generative ai canvas.' So it does not compete on the review spine — no pending state, no human gating what enters — on provenance, on a portable standard format a user owns, or on local-first storage. Those are structural differences rather than feature gaps, and a demo will not surface them because they are properties of where the data lives and who approves it." ;
                kpred:honest-note  "ASSESSED FROM A DEMONSTRATION AND THE PUBLIC DOCS URL, NOT FROM USE. Nothing here is measured: no licence check, no storage-model verification, no test of whether assets or projects can be exported. Those are exactly the questions that decide how much of the above holds, and none has been asked yet. Treat this as a first reading to be corrected, not as a competitive finding." ;
                kpred:relates-to   kb:asset-generation .
+
+kb:comp-morf rdf:type ktype:Competitor ;
+               rdfs:label   "Morf (playmorf.com) — type what you want to build, get a playable 3D world" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   39 ;
+               kpred:product-url  "https://playmorf.com/" ;
+               kpred:description  "An AI game builder whose landing page is one chat box: 'What do you want to build?' with a Send button, beside a playable 3D demo world (WASD to move, drag to look, Space to jump). The page says 'Demo builds are limited. Download Morf to make anything', so the full builder is a downloaded app. It links to a Community page and to asset credits for the demo game. The same neighbourhood holds Rosebud (browser 2D/3D game maker, one-click publish), Summer Engine (desktop app, open-source core, hosted AI credits) and Seele (Unity and Three.js), all prompt-first." ;
+               kpred:assessment   "THE OVERLAP IS THE OUTCOME: a fully customized game made from a description. Matt saw it 2026-10-21 and called it 'doing what I was thinking about with Reckons.AI fully customized games'. That outcome is kb:game-development (F143, speculative), and Morf has shipped a version of it while F143 has not been tried once." ;
+               kpred:assessment   "THE DIFFERENCE IS THE BUILD PROCESS, IN MATT'S WORDS (2026-10-21): 'This is not core purpose of Reckons.AI, rather I have put much more time into the build process being a graph meant for manual, visual and automatic review and refinement. Their process is just a chat window from what I've seen.' In Reckons.AI the steps of a build are graph entities: canon, generated variants and rejection reasons are proposals a person approves (kb:game-variant-review), visual checks run before a human sees anything (kb:visual-acceptance), and script-tier checks gate what lands. A chat log is an order of turns; it cannot be queried, diffed or approved one part at a time." ;
+               kpred:assessment   "WHAT IT DOES BETTER: time to first play. A person types a sentence and walks around a world. Reckons.AI has no game path at all today, and its generated-assets story (kb:generated-assets-story) stops at an image, video or splat. A review graph is only worth its cost once there is enough output to review." ;
+               kpred:honest-note  "ASSESSED 2026-10-21 FROM THE LANDING PAGE ONLY, NOT FROM USE. The page does not say what engine runs the world, whether generation is local or cloud, the price, the licence, who makes it, or whether a build can be inspected, edited or exported. 'Just a chat window' is Matt's reading of what he saw; the downloaded app may show more of the build than the landing page does. A web search found no independent write-up." ;
+               kpred:relates-to   kb:game-development ;
+               kpred:relates-to   kb:game-variant-review .
+
+kb:ref-slowroads rdf:type ktype:Reference ;
+               rdfs:label   "Slow Roads (slowroads.io) — endless procedural driving in three.js, scenery set from a settings panel" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   40 ;
+               kpred:product-url  "https://slowroads.io/" ;
+               kpred:license      "CC BY-NC-ND 4.0 (as reported for the site, not read from it)" ;
+               kpred:copy-permitted "NO — NoDerivatives forbids adapted copies and NonCommercial forbids commercial use, and the source is not published. Learn the concept only." ;
+               kpred:description  "A free browser driving game by a developer known as anslo, built on three.js: an endless road through procedurally generated scenery. Matt shared it 2026-10-21 as 'another great three.js example, with adjustable settings for the game, live reload of the environment'. Scenery, weather and lighting change from settings and keys while driving (Q and E cycle weather and lighting), with auto-drive and mouse steering. Google's web.dev case study (web.dev/case-studies/slow-roads) presents it as evidence of what 3D in the browser can do." ;
+               kpred:principle    "SETTINGS ARE DATA AND THE WORLD FOLLOWS. A changed setting regenerates the environment while you are in it, with no reload or rebuild step. That is the loop a graph-described scene needs: change a triple, and the scene that depends on it rebuilds live. kb:game-engine-bridge and the F260 reckoning simulator (scene from graph; plan and core in open PRs #497 and #498 on 2026-10-21) both need it, and the background settings already do a small version of it (scale, yaw, opacity apply live)." ;
+               kpred:principle    "PROCEDURAL BEATS GENERATED FOR ENVIRONMENTS. An endless world from a seed and a few parameters costs kilobytes and no model run, where a generated splat background costs tens of megabytes and a GPU. For a background, a parameterised procedural scene may be the browser-only path kb:generated-assets-onboarding asks for." ;
+               kpred:honest-note  "NOT FETCHED: slowroads.io returned HTTP 403 to an automated fetch on 2026-10-21, so the settings list, licence and controls come from web.dev, 80.lv and a controls listing, not from the site. It cannot be a kb:threejs-example-background source: it is not a threejs.org example, and its licence forbids derivatives. A Slow Roads 2 with a rebuilt engine was announced for spring 2024; whether it shipped was not checked." ;
+               kpred:relates-to   kb:threejs-example-background ;
+               kpred:relates-to   kb:game-engine-bridge .
+
+kb:ref-synfield rdf:type ktype:Reference ;
+               rdfs:label   "SYNFIELD (synfield.space) — eighteen interactive worlds of light, matter and sound that answer movement" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   41 ;
+               kpred:product-url  "https://synfield.space/" ;
+               kpred:license      "none stated" ;
+               kpred:copy-permitted "NO — no licence or source link is published, so all rights are reserved. Learn the concept only." ;
+               kpred:description  "'An independent experiment in interactive art' credited to Sandra Bamboo. Eighteen worlds (Nebula, Liquid Light, Matter, Strings of Light, Vortex, Ink, Soundscape and others) respond to mouse, touch or optional camera hand tracking: open palm, fist, pinch, hold and release. Matter is 'Thousands of particles, ready for your forces.' Hand tracking 'runs directly in your browser' and audio 'is generated directly in your browser'. Matt shared it 2026-10-21." ;
+               kpred:principle    "GESTURE IN THE BROWSER, WITH NO DEVICE AND NO SERVER. Camera hand tracking that stays on the page is the embodied input kb:sets-xr imagines (grab nodes, gather them into a set), reached without a headset. The same local-only rule applies here: camera frames never leave the device." ;
+               kpred:principle    "MOTION IS OPT-OUT AND SOUND IS OPT-IN. A Pause motion control, sound off by default, and a still start when the device asks for reduced motion. That is the right default for any moving background (kb:threejs-example-background) or ambient mode behind a graph." ;
+               kpred:honest-note  "ASSESSED 2026-10-21 FROM THE LANDING PAGE ONLY. The page does not name its rendering stack (three.js, WebGL or WebGPU), so it is filed for its interaction model, not as a three.js reference. No worlds were tried, and the hand-tracking privacy claim is the site's own, not checked." ;
+               kpred:relates-to   kb:sets-xr ;
+               kpred:relates-to   kb:threejs-example-background .
 
 kb:ref-cyber-ocean rdf:type    ktype:Reference ;
                rdfs:label   "SahilK-027/Cyber-Ocean — Three.js underwater scene: surface-sampled particles, flow field, post-processing" ;

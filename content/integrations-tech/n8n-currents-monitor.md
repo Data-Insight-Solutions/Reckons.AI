@@ -15,7 +15,7 @@ related:
 
 # Currents Monitor (n8n)
 
-n8n workflow (workflow-id qb9uPZ8GScAmuUOX) extending the Source Monitor pattern for Currents: fetches enabled currents on a 30-minute schedule, respecting each current's own cadence via a due-check against its last-fetched time. RSS/Atom currents use the RSS Read node; URL-kind currents fetch-and-hash like Source Monitor. Items are deduplicated per (url, graph) before insert, so re-running the sweep never creates duplicate arrivals. Exposes a register webhook (upsert current definitions) and an items webhook (pull new rows for a graph, optionally since a timestamp) that the app polls to populate pod-view arrivals.
+n8n workflow (workflow-id qb9uPZ8GScAmuUOX) extending the Source Monitor pattern for Currents: fetches enabled currents on a 30-minute schedule, respecting each current's own cadence via a due-check against its last-fetched time. RSS/Atom currents use the RSS Read node; URL-kind currents fetch-and-hash like Source Monitor. Items are deduplicated per (url, graph) before insert, so re-running the sweep never creates duplicate arrivals. Exposes a register webhook (upsert current definitions) and an items webhook (pull new rows for a graph, optionally since a timestamp) that the app polls to populate pod-view arrivals after local opt-in in Integrations. The browser connection checks every five minutes while the app is open (waiting longer after failures); it needs the server origin allowed by the build connection policy and CORS on the server. Setting the URL in the app alone cannot widen a hosted build policy.
 
 ## Related
 

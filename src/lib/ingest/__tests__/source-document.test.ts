@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { iri, lit, type ReviewStatus, type Statement } from '../../rdf/types';
 import {
-  deriveSourceDocument, statusSummary, groupByStatus, sourceDocumentNotice, EMPTY_PASSAGE_NOTE,
+  deriveSourceDocument, statusSummary, groupByStatus, sourceDocumentNotice, EMPTY_PASSAGE_NOTE, locatePassageJump,
 } from '../source-document';
 import { deriveEvidence } from '../statement-evidence';
 
@@ -95,5 +95,40 @@ describe('status helpers', () => {
   it('groups statements by status in the same order', () => {
     const p = st('q', 'pending'), c = st('q', 'confirmed'), r = st('q', 'rejected');
     expect(groupByStatus([p, r, c]).map((g) => g.status)).toEqual(['confirmed', 'pending', 'rejected']);
+  });
+});
+
+describe('locatePassageJump (F122.1.4)', () => {
+  const quote = 'Paragraph 7 says something distinct about topic 7.';
+
+  it('agrees with the Evidence section about which passage holds the quote', () => {
+    const jump = locatePassageJump(text, st(quote), null, opts);
+    const ev = deriveEvidence({ sourceTitle: 't', excerpt: quote, sourceText: text }, opts);
+    expect(jump?.via).toBe('quote-match');
+    expect(ev.kind).toBe('anchored');
+    if (ev.kind === 'anchored') expect(jump?.chunkIndex).toBe(ev.chunkIndex);
+    expect(jump?.highlight).toContain(quote);
+    const doc = deriveSourceDocument(text, [], opts);
+    expect(doc.kind).toBe('document');
+    if (doc.kind === 'document') expect(jump!.before + jump!.highlight + jump!.after).toBe(doc.passages[jump!.chunkIndex].text);
+  });
+
+  it('prefers a stored span when the kept text at that span is still the quote', () => {
+    const at = text.indexOf(quote);
+    const jump = locatePassageJump(text, st(quote), { start: at, end: at + quote.length }, opts);
+    expect(jump?.via).toBe('stored-anchor');
+    expect(jump?.highlight).toContain(quote);
+  });
+
+  it('ignores a stored span that no longer holds the quote and falls back to matching', () => {
+    const jump = locatePassageJump(text, st(quote), { start: 0, end: 20 }, opts);
+    expect(jump?.via).toBe('quote-match');
+  });
+
+  it('returns null, never the top of the document, when the quote is not in the kept text', () => {
+    expect(locatePassageJump(text, st('Nothing like this appears anywhere.'), null, opts)).toBeNull();
+    expect(locatePassageJump(text, st(undefined), null, opts)).toBeNull();
+    expect(locatePassageJump(text, st(quote, 'pending', false), null, opts)).toBeNull();
+    expect(locatePassageJump(null, st(quote), null, opts)).toBeNull();
   });
 });

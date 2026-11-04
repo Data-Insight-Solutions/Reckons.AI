@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { clearStorage, waitForApp } from './helpers';
+import { clearStorage, waitForApp, modelPromptsDismissed } from './helpers';
 
 /**
  * Regression gate for the REVIEW view's visuals (Matt's prod report, 2026-07-17):
@@ -41,9 +41,16 @@ test('review preview graph renders node labels for a real graph (not blank)', as
   // The 3D canvas mounts…
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 8_000 });
 
-  // …and the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
+  // By default the preview follows the group under review, which is smaller than the space. It
+  // must still draw labels, not a blank canvas.
   await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   const labels = page.locator('.node-label');
+  await expect.poll(() => labels.count(), { timeout: 20_000, message: 'the followed group should draw labels' }).toBeGreaterThanOrEqual(1);
+
+  // …and on the whole graph, the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
+  await page.getByRole('button', { name: 'following review' }).click();
+  await expect(page.getByRole('button', { name: 'whole graph' })).toBeVisible();
+  await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   await expect.poll(() => labels.count(), {
     timeout: 20_000,
     message: 'review preview graph should emit DOM labels after settling',
@@ -61,6 +68,8 @@ test('notifications collapse to a corner bell on /review and expand on click', a
   // Follow the same client-side transition a person uses. A hard reload intentionally resets the
   // in-memory notification tray, and Firefox cannot create the Chromium-only "Protect your graph"
   // workspace notice as a replacement.
+  await page.waitForTimeout(1500);
+  const promptsBeforeReview = modelPromptsDismissed(page);
   await page.locator('nav').getByRole('link', { name: /review/i }).click();
   await page.waitForURL((url) => url.pathname === '/review');
   await page.waitForTimeout(1500);
@@ -70,6 +79,12 @@ test('notifications collapse to a corner bell on /review and expand on click', a
   const bell = page.locator('.notif-bell');
   await expect(bell).toBeVisible({ timeout: 5_000 });
   await expect(page.locator('.notification-stack')).toHaveCount(0);
+
+  // Review works without a model (the person decides each fact), so entering it with the starter's
+  // three pending facts must NOT raise a "Download model?" dialog (MATT, 2026-10-13). The shared
+  // dismisser counts every prompt it had to close, so it cannot hide one.
+  await expect(page.locator('.consent-dialog')).toHaveCount(0);
+  expect(modelPromptsDismissed(page), 'entering Review must not prompt for a model download').toBe(promptsBeforeReview);
 
   // Clicking the bell expands the stack in place.
   await bell.click();

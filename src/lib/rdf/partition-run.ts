@@ -24,6 +24,7 @@
 
 import type { SettingsRecord } from '../storage/db';
 import { ollamaModelFor } from '../integrations/llm/model-for-task';
+import { installedOllamaModels, ollamaReachable } from '../integrations/llm/prefer-local';
 import { ethicsPreambleFor } from '$lib/safety/content-policy';
 import {
   chatClaude,
@@ -129,8 +130,13 @@ export async function runPartition(
   try {
     if (provider === 'openai')
       raw = await chatOpenAI(messages, SYSTEM, s.openaiApiKey ?? '', s.openaiModel ?? 'gpt-4o-mini', 1024);
-    else if (provider === 'ollama')
-      raw = await chatOllama(messages, SYSTEM, ollamaModelFor('analyze', s), s.ollamaBaseUrl, 1024);
+    else if (provider === 'ollama') {
+      // Resolve the model against the models the server has (a bare name runs as the installed
+      // tag; nothing configured, or a chosen name not installed, picks the best installed model).
+      const base = s.ollamaBaseUrl || 'http://localhost:11434';
+      await ollamaReachable(base); // refreshes the probe, which caches the installed names
+      raw = await chatOllama(messages, SYSTEM, ollamaModelFor('analyze', s, installedOllamaModels(base)), base, 1024);
+    }
     else if (provider === 'openrouter')
       raw = await chatOpenRouter(messages, SYSTEM, s.openrouterApiKey ?? '', s.openrouterModel ?? 'meta-llama/llama-3.1-8b-instruct', 1024);
     else if (provider === 'reckons')

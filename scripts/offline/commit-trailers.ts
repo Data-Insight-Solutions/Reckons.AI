@@ -1,0 +1,198 @@
+#!/usr/bin/env npx tsx
+/**
+ * COMMIT TRAILERS (F254 phase 1a, SCRIPT tier) — every agent commit names its model and intent.
+ *
+ * Matt, 2026-10-08: "we need to track editor model for every change. Auditable user intent is
+ * also critical." An AGENT commit (a Co-Authored-By trailer naming a model, or a Model: trailer
+ * already present) must carry BOTH non-empty trailers:
+ *   Model: <id>[@<version>]
+ *   Intent: <the person's request>
+ * Merge commits and human commits are exempt. A violation exits non-zero.
+ *
+ * RANGE. `--base=<ref>` checks <ref>..HEAD. With no --base: origin/dev..HEAD when that range is
+ * non-empty (a PR: the checkout is a merge commit, which is exempt, plus the PR's commits).
+ * When it is empty (a push to dev itself, where HEAD == origin/dev) fall back to commits since
+ * the cutoff instant 2026-10-13T17:56:06Z, when this check itself merged (#423; it was 2026-10-09T12:00Z, which made every local sweep on dev fail on 27 commits that predate the rule; a bare date was tried first and failed: UTC midnight
+ * had already passed with agent commits on dev that predate this check), so old history is grandfathered and never fails. `--since=<date>`
+ * overrides the cutoff.
+ *
+ * HONEST LIMIT: trailers are self-attested text. A model id here is a CLAIM the committing
+ * agent made, not a verification, and a person can type any Intent. This catches forgetting,
+ * not lying. Co-Authored-By detection is a name match, so an agent that omits that trailer
+ * AND the Model trailer is invisible to this check.
+ */
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+
+export const CUTOFF = '2026-10-13T17:56:06Z';
+
+export type CommitInfo = {
+  sha: string;
+  subject: string;
+  parents: number;
+  /** Author date, ISO 8601. The AUTHOR date, because a rebase or cherry-pick resets the committer date. */
+  authorDate?: string;
+  /** Parsed trailers as [key, value] pairs (git interpret-trailers --parse). */
+  trailers: [string, string][];
+  /** The whole message, to tell a MISSING trailer from one written where git does not read it. */
+  body?: string;
+  /** Original trailer blocks retained by GitHub's squash message format. */
+  squashProvenance?: boolean;
+};
+
+/** `hidden`: the line IS in the message but outside the final paragraph, so git does not parse it as a trailer. */
+export type Violation = { sha: string; subject: string; missing: ('Model' | 'Intent')[]; hidden?: boolean };
+
+const MODEL_NAME = /claude|anthropic|gpt|openai|codex|gemini|llama|mistral|qwen|devstral|copilot|cursor|ollama|deepseek|grok|\bai\b|\bllm\b/i;
+
+const get = (c: CommitInfo, key: string) =>
+  c.trailers.filter(([k]) => k.toLowerCase() === key.toLowerCase()).map(([, v]) => v.trim());
+
+export function isAgentCommit(c: CommitInfo): boolean {
+  if (get(c, 'Model').length > 0) return true;
+  return get(c, 'Co-Authored-By').some((v) => MODEL_NAME.test(v));
+}
+
+/** Pure core: which commits break the rule. */
+export function checkCommits(commits: CommitInfo[]): Violation[] {
+  const out: Violation[] = [];
+  for (const c of commits) {
+    if (c.parents > 1 || !isAgentCommit(c)) continue;
+    const missing: Violation['missing'] = [];
+    if (!get(c, 'Model').some((v) => v.length > 0)) missing.push('Model');
+    if (!get(c, 'Intent').some((v) => v.length > 0)) missing.push('Intent');
+    // 2026-10-27, PR #537: six commits carried both lines and failed as "missing", because a blank
+    // line before Co-Authored-By left them out of the final trailer paragraph. Say which it is.
+    const hidden = missing.length > 0 && missing.every((k) => new RegExp(`^${k}:\\s*\\S`, 'm').test(c.body ?? ''));
+    if (missing.length) out.push({ sha: c.sha, subject: c.subject, missing, ...(hidden ? { hidden } : {}) });
+  }
+  return out;
+}
+
+/**
+ * GRANDFATHERING IN EVERY MODE, not only on a push to dev. Without it, merging this check made every
+ * already-open PR fail, because their agent commits predate the rule (found 2026-10-09 in review: the
+ * whole 0.2.6 queue would have gone red). Commits authored before the cutoff are not checked.
+ * A commit with no known date is checked, so a missing date cannot excuse a commit.
+ */
+export function afterCutoff(commits: CommitInfo[], cutoff: string): CommitInfo[] {
+  const t = Date.parse(cutoff);
+  return commits.filter((c) => !c.authorDate || Date.parse(c.authorDate) >= t);
+}
+
+export function parseTrailers(text: string): [string, string][] {
+  return text
+    .split('\n')
+    .map((l) => l.match(/^([A-Za-z][A-Za-z0-9-]*):\s*(.*)$/))
+    .filter((m): m is RegExpMatchArray => !!m)
+    .map((m) => [m[1], m[2]] as [string, string]);
+}
+
+/**
+ * GitHub squash merges retain each original message, then append a separate co-author block.
+ * Git only parses that final block. Recover the originals conservatively: a PR-number subject,
+ * GitHub's separator, and complete Model/Intent trailer blocks in EVERY constituent section.
+ * Ordinary messages and commit-msg hooks still require one final block. This is still an
+ * author's claim, like ordinary trailers; it is not independent provenance verification.
+ */
+export function squashTrailers(message: string, parse: (text: string) => [string, string][]): [string, string][] | null {
+  const titleEnd = message.indexOf('\n');
+  if (titleEnd < 0 || !/ \(#\d+\)$/.test(message.slice(0, titleEnd))) return null;
+  const divider = message.lastIndexOf('\n\n---------\n\n');
+  if (divider <= titleEnd) return null;
+  const final = parse(message);
+  if (final.some(([key]) => /^(Model|Intent)$/i.test(key))) return null;
+  const finalAuthors = final.filter(([key, value]) => /^Co-Authored-By$/i.test(key) && MODEL_NAME.test(value));
+  if (!finalAuthors.length) return null;
+  const body = message.slice(titleEnd, divider).trim();
+  if (!body.startsWith('* ')) return null;
+  const recovered: [string, string][] = [];
+  for (const section of body.split(/^\* /m).slice(1)) {
+    const fields = parse(section);
+    if (!['Model', 'Intent'].every((key) => fields.some(([k, value]) => k.toLowerCase() === key.toLowerCase() && value.trim()))) return null;
+    recovered.push(...fields);
+  }
+  const originalAuthors = new Set(recovered.filter(([key]) => /^Co-Authored-By$/i.test(key)).map(([, value]) => value.trim().toLowerCase()));
+  if (finalAuthors.some(([, value]) => !originalAuthors.has(value.trim().toLowerCase()))) return null;
+  return [...recovered, ...final];
+}
+
+const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+
+function readRange(rangeArgs: string[]): CommitInfo[] {
+  const shas = git('rev-list', ...rangeArgs).split('\n').filter(Boolean);
+  return shas.map((sha) => {
+    const subject = git('log', '-1', '--format=%s', sha).trim();
+    const authorDate = git('log', '-1', '--format=%aI', sha).trim();
+    const parents = git('log', '-1', '--format=%P', sha).trim().split(/\s+/).filter(Boolean).length;
+    const msg = git('log', '-1', '--format=%B', sha);
+    const parse = (text: string) => parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: text, encoding: 'utf8' }));
+    const original = parents <= 1 ? squashTrailers(msg, parse) : null;
+    const trailers = original ?? parse(msg);
+    return { sha, subject, parents, authorDate, trailers, squashProvenance: original !== null, body: msg };
+  });
+}
+
+/**
+ * commit-msg hook mode (F273 phase A): check ONE message before the commit exists, with the same
+ * parser and rule as the CI range check. Comment lines are stripped the way git does.
+ */
+function checkMessageFile(file: string): never {
+  const msg = execFileSync('git', ['stripspace', '--strip-comments'], { input: readFileSync(file, 'utf8'), encoding: 'utf8' });
+  const trailers = parseTrailers(execFileSync('git', ['interpret-trailers', '--parse'], { input: msg, encoding: 'utf8' }));
+  const c: CommitInfo = { sha: 'HEAD', subject: msg.split('\n')[0], parents: 1, trailers };
+  const bad = checkCommits([c]);
+  if (!bad.length) process.exit(0);
+  console.error(
+    `commit-trailers: this is an agent commit but it is missing ${bad[0].missing.map((m) => m + ':').join(' and ')}.\n` +
+      "Fix: end the message with ONE block, no blank line inside it: 'Model: <id>', 'Intent: <the request>', then 'Co-Authored-By: ...'. " +
+      'A blank line before Co-Authored-By splits the block and hides Model/Intent (this failed CI on 2026-10-28).',
+  );
+  process.exit(1);
+}
+
+function main() {
+  const argv = process.argv.slice(2);
+  const arg = (k: string) => argv.find((a) => a.startsWith(`--${k}=`))?.split('=')[1];
+  const messageFile = arg('message-file');
+  if (messageFile) checkMessageFile(messageFile);
+  const base = arg('base');
+  let rangeArgs: string[];
+  let how: string;
+  if (base) {
+    rangeArgs = [`${base}..HEAD`];
+    how = `${base}..HEAD`;
+  } else {
+    let n = 0;
+    try { n = Number(git('rev-list', '--count', 'origin/dev..HEAD').trim()); } catch { /* no origin/dev */ }
+    if (n > 0) {
+      rangeArgs = ['origin/dev..HEAD'];
+      how = 'origin/dev..HEAD';
+    } else {
+      const since = arg('since') ?? CUTOFF;
+      rangeArgs = ['HEAD', `--since=${since}`];
+      how = `commits since ${since} (no commits ahead of origin/dev; older history grandfathered)`;
+    }
+  }
+  const cutoff = arg('since') ?? CUTOFF;
+  const inRange = readRange(rangeArgs);
+  const commits = afterCutoff(inRange, cutoff);
+  if (commits.length < inRange.length) how += `; ${inRange.length - commits.length} authored before ${cutoff} grandfathered`;
+  const bad = checkCommits(commits);
+  const agents = commits.filter((c) => c.parents <= 1 && isAgentCommit(c)).length;
+  console.log(`commit-trailers: ${commits.length} commit(s) in ${how}; ${agents} agent commit(s)`);
+  for (const c of commits.filter((c) => c.squashProvenance)) {
+    console.log(`  SQUASH ${c.sha.slice(0, 7)} — Model and Intent read from every original message; final model co-authors matched`);
+  }
+  if (!bad.length) {
+    console.log('commit-trailers: OK — every agent commit carries Model: and Intent:');
+    return;
+  }
+  for (const v of bad) console.log(v.hidden
+    ? `  FAIL ${v.sha.slice(0, 7)} ${v.subject} — ${v.missing.map((m) => m + ':').join(' and ')} written, but not in the LAST paragraph, so git does not read it as a trailer. Put Model:, Intent: and Co-Authored-By: together with no blank line between them.`
+    : `  FAIL ${v.sha.slice(0, 7)} ${v.subject} — missing ${v.missing.map((m) => m + ':').join(' and ')}`);
+  console.log(`commit-trailers: ${bad.length} violation(s). Amend with trailers 'Model: <id>[@<version>]' and 'Intent: <the request>'.`);
+  process.exit(1);
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) main();

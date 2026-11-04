@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
@@ -389,27 +390,19 @@
 
   // ── n8n automation server (F20) ──────────────────────────────────────────────
   let n8nBaseUrl = $state(settings().n8nBaseUrl ?? '');
+  let n8nCurrentsEnabled = $state(settings().n8nCurrentsEnabled ?? false);
   let n8nSaving = $state(false);
 
   async function saveN8n() {
     n8nSaving = true;
-    await updateSettings({ n8nBaseUrl: n8nBaseUrl.trim() || undefined });
+    await updateSettings({ n8nBaseUrl: n8nBaseUrl.trim() || undefined, n8nCurrentsEnabled });
     n8nSaving = false;
   }
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
-  <div class="settings-nav">
-    <a href="/settings" class="nav-link">backends</a>
-    <a href="/settings/publishing" class="nav-link">publishing</a>
-    <a href="/settings/integrations" class="nav-link active">integrations</a>
-    <a href="/settings/turtle" class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class="nav-link">entity types</a>
-    <a href="/analyze" class="nav-link">analyze history ↗</a>
-  </div>
-  <nav class="section-toc">
+<SettingsHeader>
+  {#snippet toc()}
+    <nav class="section-toc">
     <a href="#s-mobile">mobile</a>
     <a href="#s-preference">preference</a>
     <a href="#s-models">models</a>
@@ -417,7 +410,8 @@
     <a href="#s-indico">indico</a>
     <a href="#s-planned">roadmap</a>
   </nav>
-</header>
+  {/snippet}
+</SettingsHeader>
 
 <!-- Mobile access -->
 <section id="s-mobile" class="card">
@@ -779,7 +773,8 @@
 
 <section id="s-n8n" class="card">
   <h3>n8n automation <span class="badge-local mono">self-host</span></h3>
-  <p class="sub">Point at your self-hosted n8n instance to route web integrations — graph sync, currents, and the contact form — through your own automation workflows. Open-source, no SaaS.</p>
+  <p class="sub">Connect your own n8n instance for optional automation. Each integration needs its corresponding workflow installed and active.</p>
+  <p class="sub">Your instance must allow this app's origin through CORS and be allowed by this build's connection policy. For a custom server, self-host Reckons.AI with <code>VITE_N8N_BASE_URL</code> configured; entering a new URL here cannot change a hosted build's policy.</p>
 
   <div class="indico-fields">
     <label class="field-row">
@@ -792,7 +787,14 @@
       />
     </label>
     <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
-      The contact form posts to <code>/webhook/reckons-contact</code> on this instance.
+      Currents sends this space's ID and saved current definitions to your instance, then checks for arrivals every five minutes while the app is open. New facts wait for your review.
+    </p>
+    <label class="field-row">
+      <input type="checkbox" bind:checked={n8nCurrentsEnabled} />
+      <span>Connect currents for this space on this browser</span>
+    </label>
+    <p class="sub" style="margin: 0.2rem 0 0; font-size: 0.72rem;">
+      Configure streams in <a href="/kb#currents">Currents</a>. Turning this connection off stops this browser; to stop n8n schedules too, disable or remove those currents and let them sync before disconnecting. Changing instances leaves the old instance's schedules in place.
     </p>
     <button class="save-indico-btn" onclick={saveN8n} disabled={n8nSaving}>
       {n8nSaving ? 'saving...' : 'save'}
@@ -834,28 +836,7 @@
 </footer>
 
 <style>
-  .head { margin-bottom: 2rem; }
-  .kicker { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 0.25rem; font-family: var(--font-mono); }
-  h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0 0 1rem; }
 
-  .settings-nav {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 0.5rem;
-  }
-  .nav-link {
-    font-size: 0.82rem;
-    font-family: var(--font-mono);
-    color: var(--muted);
-    text-decoration: none;
-    padding: 0.3rem 0.7rem;
-    border-radius: var(--rad-sm);
-    transition: color 0.15s, background 0.15s;
-  }
-  .nav-link:hover { color: var(--ink); background: var(--surface-2); }
-  .nav-link.active { color: var(--accent); background: var(--accent-soft); }
 
   .section-toc {
     display: flex;

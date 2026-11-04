@@ -4,18 +4,21 @@
   import { readRetainedSourceText } from '$lib/stores/source-corpus';
   import {
     deriveSourceDocument, groupByStatus, statusSummary, sourceDocumentNotice,
-    UNPLACED_REASON, EMPTY_PASSAGE_NOTE,
+    locatePassageJump, UNPLACED_REASON, EMPTY_PASSAGE_NOTE, JUMP_NOT_FOUND, type PassageJump,
   } from '$lib/ingest/source-document';
+  import { tick } from 'svelte';
   import StatementCard from './StatementCard.svelte';
 
   // Thin renderer: the derivation is in $lib/ingest/source-document (pure, tested). Text is read
   // the same way StatementEvidence reads it, so both views cut the same passages.
-  let { sourceId, sourceHash, statements, onterm } = $props<{
+  let { sourceId, sourceHash, statements, onterm, jump = null } = $props<{
     sourceId: string;
     sourceHash?: string;
     statements: Statement[];
     /** Open an entity (a statement's subject or object) in the source view. */
     onterm: (key: string) => void;
+    /** "Open in source" (F122.1.4): open the passage holding this fact's quote and mark it. */
+    jump?: { statementId: string; nonce: number } | null;
   }>();
 
   let sourceText = $state<string | null>(null);
@@ -40,6 +43,25 @@
 
   const doc = $derived(loaded ? deriveSourceDocument(sourceText, statements) : null);
   const notice = $derived(doc ? sourceDocumentNotice(doc) : null);
+
+  let marked = $state<(PassageJump & { statementId: string }) | null>(null);
+  let jumpMissing = $state(false);
+  let handledNonce = -1;
+  $effect(() => {
+    if (!jump || !loaded || jump.nonce === handledNonce) return;
+    handledNonce = jump.nonce;
+    const target = statements.find((st: Statement) => st.id === jump.statementId);
+    // A stored span would be passed as the third argument once facts carry one (F122.1.1).
+    const found = target ? locatePassageJump(sourceText, target) : null;
+    jumpMissing = !found;
+    marked = found && target ? { ...found, statementId: target.id } : null;
+    if (!found) return;
+    openPassage = found.chunkIndex;
+    tick().then(() => {
+      document.querySelector(`[data-passage-index="${found.chunkIndex}"] .source-document-mark`)
+        ?.scrollIntoView({ block: 'center', behavior: 'auto' });
+    });
+  });
 </script>
 
 {#if doc}
@@ -49,17 +71,22 @@
       <p class="source-document-note">{notice}</p>
     {:else}
       <h4>Document · {doc.passages.length} passage{doc.passages.length === 1 ? '' : 's'}</h4>
+      {#if jumpMissing}<p class="source-document-note source-document-missing" role="status">{JUMP_NOT_FOUND}</p>{/if}
       <p class="source-document-note">Choose a passage to see the statements that came from it.</p>
       <ol class="source-document-passages">
         {#each doc.passages as passage (passage.index)}
           {@const summary = statusSummary(passage.counts)}
-          <li class="source-document-passage" class:open={openPassage === passage.index} data-passage={passage.number}>
+          <li class="source-document-passage" data-passage-index={passage.index} class:open={openPassage === passage.index} data-passage={passage.number}>
             <button class="source-document-boundary" aria-expanded={openPassage === passage.index}
               onclick={() => (openPassage = openPassage === passage.index ? null : passage.index)}>
               <span class="mono">Passage {passage.number}</span>
               <span class="source-document-counts">{summary ?? 'no statements'}</span>
             </button>
-            <p class="source-document-text">{passage.text}</p>
+            {#if marked && marked.chunkIndex === passage.index}
+              <p class="source-document-text">{marked.before}<mark class="source-document-mark" data-statement-id={marked.statementId}>{marked.highlight}</mark>{marked.after}</p>
+            {:else}
+              <p class="source-document-text">{passage.text}</p>
+            {/if}
             {#if openPassage === passage.index}
               <div class="source-document-statements" role="region" aria-label={`Statements from passage ${passage.number}`}>
                 {#each groupByStatus(passage.statements) as group (group.status)}
@@ -104,6 +131,8 @@
   .source-document-boundary { display: flex; justify-content: space-between; gap: 0.5rem; width: 100%; min-height: 44px; padding: 0.35rem 0.6rem; border: none; background: none; color: var(--ink-2); cursor: pointer; text-align: left; font-size: 0.75rem; }
   .source-document-boundary:hover { color: var(--accent); }
   .source-document-counts { color: var(--muted); text-align: right; }
+  .source-document-mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
+  .source-document-missing { color: var(--ink-2); }
   .source-document-text { margin: 0; padding: 0 0.6rem 0.5rem; font-size: 0.8rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
   .source-document-statements { padding: 0 0.6rem 0.6rem; display: grid; gap: 0.3rem; }
   .source-document-statements h5 { margin: 0.3rem 0 0; font-family: var(--font-mono); font-size: 0.7rem; color: var(--accent); text-transform: uppercase; }

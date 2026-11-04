@@ -13,7 +13,7 @@ const startStory = vi.fn();
 const startExplore = vi.fn();
 vi.mock('../shelly-bridge.svelte', () => ({ startStory, startExplore }));
 
-const { detectStory, promptStoryIfPresent } = await import('../story-prompt.svelte');
+const { detectStory, promptStoryIfPresent, startStoryFromLink } = await import('../story-prompt.svelte');
 import type { Statement } from '../../rdf/types';
 
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -36,6 +36,14 @@ const step = (n: number) => st(`urn:kbase:concept/step-${n}`, RDF_TYPE, 'urn:rec
 beforeEach(() => vi.clearAllMocks());
 
 describe('detectStory', () => {
+  it('offers the interactive story for already-imported Generated assets examples', () => {
+    const graph = [st('urn:kbase:concept/generated-assets', RDF_TYPE, 'urn:kbase:type/Concept')];
+    expect(detectStory(graph)).toEqual({ steps: 2, title: 'Create an asset with Shelly' });
+    promptStoryIfPresent(graph, 'generated-assets');
+    pushNotification.mock.calls.at(-1)![0].action.onclick();
+    expect(startStory).toHaveBeenCalledWith('urn:reckons:story/create-generated-asset');
+    expect(detectStory(graph.map(s => ({ ...s, status: 'rejected' as const })))).toEqual({ steps: 0, title: undefined });
+  });
   it('counts step SUBJECTS, not triples', () => {
     // A step node carries title, content, order, layout… Counting statements would report a
     // five-step story as seventeen steps.
@@ -141,3 +149,23 @@ describe('promptStoryIfPresent', () => {
     expect(new Set(ids).size).toBe(2);
   });
 });
+
+describe('startStoryFromLink (F261)', () => {
+  const S = 'urn:reckons:story/';
+  const tour = (id: string) => [
+    st(id, RDF_TYPE, `${S}Story`),
+    st(`${id}/1`, `${S}partOf`, id), st(`${id}/1`, `${S}order`, '1', true),
+    st(`${id}/2`, `${S}partOf`, id), st(`${id}/2`, `${S}order`, '2', true),
+  ];
+  it('starts the first story for ?story, a named one for ?story=<iri>, and nothing without it', () => {
+    const graph = [...tour('urn:a'), ...tour('urn:b')];
+    expect(startStoryFromLink(graph, null)).toBe(false);
+    expect(startStory).not.toHaveBeenCalled();
+    expect(startStoryFromLink(graph, '')).toBe(true);
+    expect(startStory).toHaveBeenLastCalledWith('urn:a');
+    expect(startStoryFromLink(graph, 'urn:b')).toBe(true);
+    expect(startStory).toHaveBeenLastCalledWith('urn:b');
+    expect(startStoryFromLink([], '')).toBe(false);
+  });
+});
+

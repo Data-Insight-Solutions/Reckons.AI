@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
+  import { openExampleSpace } from '$lib/storage/example-space';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
   import { startStory } from '$lib/stores/shelly-bridge.svelte';
@@ -38,16 +39,62 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
+    { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
     {
       id: 'quickstart',
       icon: '🚀',
       title: 'Quick-Start Example',
       body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to facts.',
       file: '/starter-quickstart.ttl',
+      space: 'Quick-Start Example',
       entities: 15,
       triples: 90
     },
-  ];
+    {
+      // F58.9.4: opens as its OWN space, so trying it never mixes into the one you are working in.
+      id: 'generated-assets',
+      icon: '✦',
+      title: 'Generated assets',
+      body: 'Pictures, clips and Gaussian splats made by local models on one machine, each linked to the prompt it came from. Opens as its own space.',
+      file: '/starter-generated-assets.ttl',
+      space: 'Generated assets',
+      entities: 9,
+      triples: 81
+    },
+    {
+      // F58.9.10: a guided space. The room in it is SYNTHETIC; the steps say how to use a real scan.
+      id: 'your-room',
+      icon: '⌂',
+      title: 'Your room',
+      body: 'Scan a room, bring it in as the background, and place generated objects inside it. Four steps, with a made-up room so you can try them first. Opens as its own space.',
+      file: '/starter-your-room.ttl',
+      space: 'Your room',
+      entities: 7,
+      triples: 53
+    },
+    {
+      // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
+      id: 'review-0.2.6',
+      icon: '✓',
+      title: 'Review 0.2.6',
+      body: 'The main workflows of v0.2.6 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note. Opens as its own space.',
+      file: '/review-0.2.6.ttl',
+      space: 'Review 0.2.6',
+      entities: 21,
+      triples: 119
+    },
+    {
+      // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
+      id: 'review-0.2.7',
+      icon: '✓',
+      title: 'Review 0.2.7',
+      body: 'The main workflows of v0.2.7 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note. Opens as its own space.',
+      file: '/review-0.2.7.ttl',
+      space: 'Review 0.2.7',
+      entities: 7,
+      triples: 31
+    },
+  ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 
   let loadingKb = $state<string | null>(null);
   let loadError = $state('');
@@ -57,6 +104,7 @@
     loadingKb = kb.id;
     loadError = '';
     try {
+      if (kb.space) { await openExampleSpace(kb.file, kb.space); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
@@ -873,6 +921,7 @@
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
       Explore generic example facts designed for learning Reckons.AI.
+      <a href="/settings/triple-check">Check any example with Triple Check →</a>
     </p>
 
     <div class="starter-grid">
@@ -894,7 +943,7 @@
           {#if loadingKb === kb.id}
             <span class="starter-loading mono">importing...</span>
           {:else}
-            <span class="starter-action mono">import →</span>
+            <span class="starter-action mono">{kb.space ? 'open as a space →' : 'import →'}</span>
           {/if}
         </button>
       {/each}

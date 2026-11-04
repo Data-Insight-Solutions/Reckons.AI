@@ -26,6 +26,12 @@
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
+  import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
+  import { occluderRadius, projectedRadius } from './splat-occlusion';
+  import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, splatOriginOf, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
+  import { roomView, focalPick } from './room-view';
+  import { roomCentreWorld } from './room-focus';
+  import { layoutSpread, formatSpread } from './layout-metrics';
 
   interactivity();
 
@@ -198,6 +204,72 @@
     return map;
   });
 
+  /**
+   * GAUSSIAN SPLATS (F58.9.2 / F58.9.3). A node with p:splat is drawn inside its splat, which
+   * follows the node and turns slowly; the space's background splat sits beneath the graph, dimmed,
+   * like an island the graph floats over. Neither is raycast, so picking still hits the marker.
+   */
+  /** Node keys whose splat has loaded: those nodes stop drawing their marker shape (Matt, 2026-10-14). */
+  let splatDrawnKeys = $state(new Set<string>());
+  const splatItems = $derived.by((): SplatItem[] => {
+    const items: SplatItem[] = [];
+    const byKey = new Map(nodes.map((n) => [n.key, n] as const));
+    // A node placed in a SURROUND room is drawn at its place and size, still, in the room's frame
+    // (F58.9.9); every other node's splat follows the node and turns, node-sized.
+    const bgUrl = backgroundSplatFrom(statements as Statement[]);
+    const roomSet = backgroundSettingsFrom(statements as Statement[]);
+    const placed = bgUrl && roomSet.mode === 'surround' ? placementsFrom(statements as Statement[]) : new Map();
+    for (const [iri, url] of splatMapFrom(statements as Statement[])) {
+      const n = byKey.get('i:' + iri);
+      if (!n) continue;
+      // A room is not an object: the node that carries the background scan keeps its ordinary marker
+      // (the room is already drawn behind), instead of drawing the whole room a second time, node-sized.
+      const origin = splatOriginOf(statements as Statement[], url);
+      if (bgUrl && url === bgUrl && (origin === 'reconstructed' || origin === 'synthetic')) continue;
+      const pl = placed.get(iri);
+      if (pl) {
+        const yaw = pl.yaw + roomSet.yaw;
+        items.push({
+          key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: pl.scale * roomSet.scale,
+          quaternion: () => qAboutY(yaw), position: () => n.pos, occludes: true,
+        });
+        continue;
+      }
+      items.push({ key: n.key, url, orientation: splatOrientationFor(statements as Statement[], url), radius: Math.max(1.6, markerWorldRadius(n.degree) * 3), position: () => n.pos, spin: 0.35, occludes: true });
+    }
+    const bg = backgroundSplatFrom(statements as Statement[]);
+    if (bg) {
+      const set = backgroundSettingsFrom(statements as Statement[]);
+      const quat = backgroundQuaternion(set);
+      const orientation = splatOrientationFor(statements as Statement[], bg);
+      if (set.mode === 'surround') {
+        // The graph sits INSIDE the room: the room keeps its own scale (one file unit = `scale`
+        // world units), is centred on the graph, and does not turn.
+        items.push({
+          key: 'background', url: bg, orientation, keepScale: true, radius: 1, opacity: set.opacity,
+          size: () => set.scale, quaternion: () => quat,
+          position: () => {
+            const c = graphCentroid();
+            const rc = roomCentreWorld([c.x, c.y, c.z], set.offset, set.focal, set.scale, set.yaw);
+            return bgRoomCentre.set(rc[0], rc[1], rc[2]);
+          },
+        });
+      } else {
+        // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
+        // space's size; recomputed each frame because the layout keeps moving.
+        items.push({
+          key: 'background', url: bg, orientation, radius: 10, opacity: set.opacity, spin: 0.02, quaternion: () => quat,
+          // size() runs first each frame (SplatLayer), so the frame is computed once per frame.
+          size: () => graphFrame().radius * set.scale,
+          position: () => bgRoomCentre.copy(bgFrame.anchor).add(bgOffset.set(set.offset[0], set.offset[1], set.offset[2])),
+        });
+      }
+    }
+    return items;
+  });
+  /** F58.9.13: entity key → world radius of its splat's occluding core, for labels (HTML is not depth-tested). */
+  const splatOccluderWorld = $derived(new Map(splatItems.filter((i) => i.occludes).map((i) => [i.key, occluderRadius(i.radius)])));
+
   type Node = {
     key: string;
     label: string;
@@ -229,13 +301,91 @@
   // create a reactive dependency that would cause a write→read cycle.
   // The physics useTask mutates node.pos in place, so the Vector3 refs stay current.
   const nodePositionCache = new Map<string, THREE.Vector3>();
+  /**
+   * Edge length of the cube a new node is first dropped into (F58.9.16). It was 8. The layout settles
+   * in about 130 frames (SIM_ALPHA_DECAY) and never reaches equilibrium, so where nodes START decides
+   * how spread out they END far more than REPEL or BASE_REST does (the 2026-09-18 sweep found those
+   * "moved the spread by less than noise"; so did a first attempt at this on 2026-10-15, whose
+   * nearest-neighbour distance moved by less than the run-to-run variation).
+   */
+  const SPAWN_EXTENT = 14;
   // Per-node color assigned by the current layout (source cluster, hub cluster).
   let nodeColorMap = $state<Map<string, string>>(new Map());
   // Keys of hub nodes in hub mode (projected from actual node.pos, not anchor pos).
   let hubNodeKeys = $state<string[]>([]);
   let cameraTarget = new THREE.Vector3(0, 0, 0);
   const projVec = new THREE.Vector3();
-  const { camera, renderer } = useThrelte();
+  /**
+   * Where the background splat sits and how big it is: BEHIND the graph as a backdrop, 2.4
+   * graph-radii back and a little low, 2.2 graph-radii across. (Placed below the graph first, it
+   * fell outside the camera's fit and was never seen, 2026-10-14.) The graph radius is the
+   * 90th-percentile node distance from the centroid, so one far outlier does not shrink the rest.
+   */
+  const bgFrame = { anchor: new THREE.Vector3(), radius: 10 };
+  const bgDistances: number[] = [];
+  const bgRoomCentre = new THREE.Vector3();
+  const bgOffset = new THREE.Vector3();
+  const centroidTmp = new THREE.Vector3();
+  /** Node key to its world position, for nodes placed in a surround room (F58.9.9). */
+  const placedNodes = new Map<string, { pos: THREE.Vector3; yaw: number }>();
+  const placedTmp = new THREE.Vector3();
+  const roomPlacement = $derived.by(() => {
+    const bg = backgroundSplatFrom(statements as Statement[]);
+    const set = backgroundSettingsFrom(statements as Statement[]);
+    const placed = bg && set.mode === 'surround' ? placementsFrom(statements as Statement[]) : new Map<string, import('./splat').Placement>();
+    return { bg, set, placed };
+  });
+  // Placing or moving a node changes the layout problem: let its neighbours settle around it.
+  $effect(() => { void JSON.stringify([...roomPlacement.placed]); reheat(0.3); });
+
+  /** Each frame: publish the camera and room for "Place in room", and hold placed nodes where they were put (F58.9.9). */
+  function updateRoom() {
+    const rp = roomPlacement;
+    if (placedNodes.size || rp.placed.size) {
+      for (const k of [...placedNodes.keys()]) if (!rp.placed.has(k.slice(2))) placedNodes.delete(k);
+      for (const iri of rp.placed.keys()) if (!placedNodes.has('i:' + iri)) placedNodes.set('i:' + iri, { pos: new THREE.Vector3(), yaw: 0 });
+    }
+    const c = graphCentroid();
+    const centre = roomCentreWorld([c.x, c.y, c.z], rp.set.offset, rp.set.focal, rp.set.scale, rp.set.yaw);
+    const cam = camera.current;
+    if (cam) { roomView.camera = [cam.position.x, cam.position.y, cam.position.z]; }
+    roomView.target = [cameraTarget.x, cameraTarget.y, cameraTarget.z];
+    roomView.centre = centre; roomView.scale = rp.set.scale; roomView.yaw = rp.set.yaw;
+    roomView.surround = !!rp.bg && rp.set.mode === 'surround'; roomView.live = true;
+    if (!placedNodes.size) return;
+    const frame: RoomFrame = { centre, scale: rp.set.scale, yaw: rp.set.yaw };
+    for (const n of nodes) {
+      if (!placedNodes.has(n.key)) continue;
+      const pl = rp.placed.get(n.key.slice(2));
+      if (!pl) continue;
+      const w = placementWorld(pl, frame);
+      n.pos.set(w.pos[0], w.pos[1], w.pos[2]);
+      n.vel.set(0, 0, 0);
+    }
+  }
+  function graphCentroid() {
+    centroidTmp.set(0, 0, 0);
+    if (!nodes.length) return centroidTmp;
+    // Placed nodes are pinned RELATIVE to this point, so they must not move it.
+    let free = 0;
+    for (const n of nodes) { if (placedNodes.has(n.key)) continue; centroidTmp.add(n.pos); free++; }
+    return free ? centroidTmp.multiplyScalar(1 / free) : centroidTmp;
+  }
+  function graphFrame() {
+    const c = bgFrame.anchor.set(0, 0, 0);
+    if (!nodes.length) return bgFrame;
+    for (const n of nodes) c.add(n.pos);
+    c.multiplyScalar(1 / nodes.length);
+    bgDistances.length = 0;
+    for (const n of nodes) bgDistances.push(n.pos.distanceTo(c));
+    bgDistances.sort((a, b) => a - b);
+    const r = Math.max(4, bgDistances[Math.floor(bgDistances.length * 0.9)] ?? 4);
+    bgFrame.radius = r * 2.2;
+    c.y -= r * 0.4;
+    c.z -= r * 2.4;
+    return bgFrame;
+  }
+  const { camera, renderer, scene: threeScene } = useThrelte();
   let previousCanvasWidth = 0;
   let previousCanvasHeight = 0;
   let previousCameraAspect = 0;
@@ -317,7 +467,7 @@
         if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -334,7 +484,7 @@
           existing.label = st.o.value;
         } else if (!floored && st.s.kind === 'iri') {
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -351,7 +501,7 @@
         if (!nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -370,7 +520,7 @@
           // Reuse cached position so filter toggles don't scatter the graph;
           // fall back to a random spawn only for genuinely new nodes.
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0, fullText: fullVal });
           nodePositionCache.set(k, pos); // ensure new nodes are cached
         }
@@ -409,7 +559,7 @@
       const r = intrinsic > 0 ? glbWorldRadius(intrinsic, n.degree) : markerWorldRadius(n.degree);
       if (r > maxR) maxR = r;
     }
-    return Math.max(9, maxR * 2.6 + 4);
+    return Math.max(12, maxR * 2.6 + 4);
   });
 
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
@@ -431,7 +581,7 @@
      *
      * Taking the max of the three keeps the layered look while guaranteeing both clearances.
      */
-    const RING_GAP = 2.2;
+    const RING_GAP = 4.2;
     const nodeRadiusOf = (key: string, degree: number) => {
       const url = entityIcon3dMap.get(key);
       const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
@@ -1202,13 +1352,14 @@
     if (simAlpha >= SIM_ALPHA_MIN) {
     /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
     const fdt = dt * simAlpha;
-    const REPEL      = 1.6;
+    // F58.9.16: free and focus a bit more spread out (Matt, 2026-10-15). Measured in tests/e2e/layout-spread.test.ts.
+    const REPEL      = layout === 'force' ? 2.8 : layout === 'focus' ? 2.0 : 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     // The free layout has no camera fit, so a longer rest is genuinely visible there where it
     // would merely rescale a fitted layout (Matt: "free mode should be a bit more spread").
-    const BASE_REST  = layout === 'force' ? 3.4 : 2.4;
+    const BASE_REST  = layout === 'force' ? 5.0 : layout === 'focus' ? 2.9 : 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
     const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
@@ -1419,9 +1570,14 @@
     simAlpha += (0 - simAlpha) * SIM_ALPHA_DECAY;
     if (simAlpha < SIM_ALPHA_MIN) simAlpha = 0;
     } // end if (simAlpha >= SIM_ALPHA_MIN) — cooled, simulation at rest
+    updateRoom();
     if (simAlpha === 0 && !reportedSettled) {
       reportedSettled = true;
       emitSettled(true);
+      // What a person looking at the settled layout sees, as numbers (read by the spread measurement).
+      if (renderer && nodes.length <= 600) {
+        renderer.domElement.dataset.spread = formatSpread(layoutSpread(nodes.map((n) => ({ x: n.pos.x, y: n.pos.y, z: n.pos.z, r: markerWorldRadius(n.degree) }))));
+      }
     }
 
     if (lineGeom) {
@@ -1573,7 +1729,10 @@
           const sy = (-projVec.y * 0.5 + 0.5) * canvas.clientHeight;
           // Screen radius: worldRadius / (tan(fov/2) * rawDist) * halfH
           const meshScale = 0.85 + 0.45 * Math.log2(1 + n.degree);
-          const screenRadius = (meshScale * 0.32 / (CAM_HALF_TAN * rawDist)) * halfH;
+          let screenRadius = (meshScale * 0.32 / (CAM_HALF_TAN * rawDist)) * halfH;
+          // A drawn entity splat hides labels behind it too: widen its disc to the splat's core.
+          const core = splatDrawnKeys.has(n.key) ? splatOccluderWorld.get(n.key) : undefined;
+          if (core) screenRadius = Math.max(screenRadius, projectedRadius(core, rawDist, CAM_HALF_TAN, halfH));
           allProjected.push({ key: n.key, label: n.label, sx, sy, rawDist, adjDist, screenRadius });
         }
 
@@ -1655,6 +1814,39 @@
         }
       }
     }
+  });
+
+  // ── Set focal point (F58.9.16) ───────────────────────────────────────────
+  // While the panel asks for a focal point, a plain click (not a drag) on the canvas sends the camera
+  // ray to it instead of selecting a node. The panel turns the ray into a point in the room.
+  $effect(() => {
+    // Listens on the window, in the capture phase, and checks the target lazily: `renderer` can still
+    // be undefined when this first runs (nothing re-runs the effect when it appears).
+    let down: { x: number; y: number } | null = null;
+    const raycaster = new THREE.Raycaster();
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; };
+    const onClick = (e: MouseEvent) => {
+      if (!focalPick.active || !focalPick.onray) return;
+      const canvas = renderer?.domElement;
+      if (!canvas) return;
+      // The click lands on a wrapper div above the canvas, not on the canvas itself: take any click
+      // inside the canvas's rectangle that is not on a panel or a control.
+      const box = canvas.getBoundingClientRect();
+      if (e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom) return;
+      if ((e.target as Element | null)?.closest?.('.snap-panel, button, a, input, select, textarea, nav, [role="button"], [role="dialog"]')) return;
+      const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 0;
+      if (moved > 5) return; // an orbit drag, not a pick
+      const cam = camera.current;
+      if (!cam) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const r = canvas.getBoundingClientRect();
+      raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)), cam);
+      const o = raycaster.ray.origin, d = raycaster.ray.direction;
+      focalPick.onray([o.x, o.y, o.z], [d.x, d.y, d.z]);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('click', onClick, true);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('click', onClick, true); };
   });
 
   // ── Right-click drag for timeline scrubbing ──────────────────────────────
@@ -1825,6 +2017,7 @@
     colorOverride={nodeColorMap.get(n.key) ?? null}
     tripleRank={nodeTypeRankMap.get(n.key) ?? 0.5}
     isLeapNode={leapKeys.has(n.key)}
+    hideShape={splatDrawnKeys.has(n.key)}
     onhover={(k) => (isHistoryMode ? onhover(null) : onhover(k))}
     onclick={(e) => {
       if (isHistoryMode) return;
@@ -1833,6 +2026,22 @@
     }}
   />
 {/each}
+
+<!-- Gaussian splats: node splats and the space background (lazy; absent until loaded) -->
+{#if splatItems.length > 0}
+  <!-- data-splats on the canvas ("loaded/failed") lets a test, or a person in devtools, see that
+       the splats actually loaded: nothing else in the DOM can say what WebGL drew. -->
+  <SplatLayer
+    items={splatItems}
+    onstatus={(l, f) => {
+      if (!renderer) return;
+      renderer.domElement.dataset.splats = `${l}/${f}`;
+      // Read by tests/e2e/splat-occlusion.test.ts to probe pixels; nothing in the app reads it.
+      (renderer.domElement as unknown as { __rk?: unknown }).__rk = { scene: threeScene, getCamera: () => camera.current, renderer };
+    }}
+    onloadedkeys={(keys) => (splatDrawnKeys = keys)}
+  />
+{/if}
 
 <!-- Concentric rings: focus (teal, hop-distance) and hub (orange, degree-band) -->
 {#if layoutRingRadii.length > 0}

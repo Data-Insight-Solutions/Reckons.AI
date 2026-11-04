@@ -2,8 +2,9 @@
  * Source chunks (F221 / F78) — the shared, pure half of the source corpus.
  *
  * Matt, 2026-09-29: chunk text is stored as Turtle, one corpus file per source
- * (sources/<slug>-<hash8>/chunks.ttl), beside the original and never inside the knowledge graph
- * file; and the browser and the CLI use the SAME code so neither drifts into its own format. So
+ * (sources/<slug>-<hash8>/chunks.ttl), beside the original. REVERSED 2026-10-06 ("fold the chunks
+ * in"): the saved file carries them too (foldedChunksSection, F107.10.2); chunks.ttl remains a
+ * readable cache. Either way they are evidence and never claims. And the browser and the CLI use the SAME code so neither drifts into its own format. So
  * this module touches no DOM, no filesystem and no Node API: it turns text into chunks, chunks into
  * Turtle, and an excerpt into a chunk reference. The IO half writes the file.
  *
@@ -20,6 +21,8 @@
  *     W3C Web Annotation oa:TextPositionSelector — the same selector a statement's evidence anchor
  *     uses (F122.1), so chunk and anchor speak one language.
  */
+
+import type { EvidenceSpan } from '../rdf/types';
 
 /** Characters of a source the extractor reads in one call. The single source of truth. */
 export const EXTRACTION_TEXT_LIMIT = 12_000;
@@ -116,7 +119,40 @@ export type ChunkCorpus = {
   generatedAt: string;
 };
 
-/** chunks.ttl for one source. Everything in it is derived and rebuildable from the original. */
+const PREFIXED = {
+  isPartOf: 'dcterms:isPartOf', position: 'schema:position', derived: 'prov:wasDerivedFrom', at: 'prov:generatedAtTime',
+  selector: 'oa:hasSelector', selectorType: 'oa:TextPositionSelector', start: 'oa:start', end: 'oa:end', value: 'rdf:value',
+  dateTime: 'xsd:dateTime',
+};
+/** Full IRIs, so a block can sit in a file whose own prefixes it must not depend on. */
+const FULL: typeof PREFIXED = {
+  isPartOf: '<http://purl.org/dc/terms/isPartOf>', position: '<https://schema.org/position>', derived: '<http://www.w3.org/ns/prov#wasDerivedFrom>',
+  at: '<http://www.w3.org/ns/prov#generatedAtTime>', selector: '<http://www.w3.org/ns/oa#hasSelector>', selectorType: '<http://www.w3.org/ns/oa#TextPositionSelector>',
+  start: '<http://www.w3.org/ns/oa#start>', end: '<http://www.w3.org/ns/oa#end>', value: '<http://www.w3.org/1999/02/22-rdf-syntax-ns#value>',
+  dateTime: '<http://www.w3.org/2001/XMLSchema#dateTime>',
+};
+
+/** One chunk entry. The same block goes to a per-document chunks.ttl and into a saved file. */
+function chunkBlock(sourceId: string, c: Pick<Chunk, 'index' | 'start' | 'end' | 'text'>, generatedAt: string, n: typeof PREFIXED): string[] {
+  const src = `<${sourceIri(sourceId)}>`;
+  return [
+    `<${chunkIri(sourceId, c.index)}> ${n.isPartOf} ${src} ;`,
+    `    ${n.position} ${c.index} ;`,
+    `    ${n.derived} ${src} ;`,
+    `    ${n.at} "${generatedAt}"^^${n.dateTime} ;`,
+    `    ${n.selector} [ a ${n.selectorType} ; ${n.start} ${c.start} ; ${n.end} ${c.end} ] ;`,
+    `    ${n.value} ${turtleLiteral(c.text)} .`,
+    '',
+  ];
+}
+
+/**
+ * chunks.ttl for one document. Everything in it is derived and rebuildable from the original.
+ *
+ * Since F107.10.2 this file is a CACHE beside the original, not the authority: the saved file
+ * carries the same chunks (foldedChunksSection). It stays readable, and retainSource still writes
+ * it, so a file exported before the fold keeps its passages and a retained document works alone.
+ */
 export function chunksToTurtle(corpus: ChunkCorpus): string {
   const src = `<${sourceIri(corpus.sourceId)}>`;
   const lines = [
@@ -127,23 +163,54 @@ export function chunksToTurtle(corpus: ChunkCorpus): string {
     '@prefix schema:  <https://schema.org/> .',
     '@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .',
     '',
-    '# Derived from the source text: rebuildable, never loaded into the statement store,',
-    '# never part of an exported or published space (F221).',
+    '# Derived from the source text: rebuildable. These passages are evidence, never claims: the',
+    '# importer returns them apart from the statements. The space file carries the same chunks',
+    '# (F107.10.2); they are never part of a PUBLISHED space (site-export writes claims only).',
     `${src} dcterms:title ${turtleLiteral(corpus.title)} ;`,
     `    dcterms:hasVersion ${turtleLiteral(`sha256:${corpus.sha256}`)} ;`,
     `    schema:numberOfItems ${corpus.chunks.length} .`,
     '',
   ];
-  for (const c of corpus.chunks) {
-    lines.push(
-      `<${chunkIri(corpus.sourceId, c.index)}> dcterms:isPartOf ${src} ;`,
-      `    schema:position ${c.index} ;`,
-      `    prov:wasDerivedFrom ${src} ;`,
-      `    prov:generatedAtTime "${corpus.generatedAt}"^^xsd:dateTime ;`,
-      `    oa:hasSelector [ a oa:TextPositionSelector ; oa:start ${c.start} ; oa:end ${c.end} ] ;`,
-      `    rdf:value ${turtleLiteral(c.text)} .`,
-      '',
-    );
+  for (const c of corpus.chunks) lines.push(...chunkBlock(corpus.sourceId, c, corpus.generatedAt, PREFIXED));
+  return lines.join('\n');
+}
+
+/** What a saved file needs to know about one document's passages. */
+export type FoldedCorpus = {
+  sourceId: string;
+  /** SHA-256 of the text the chunks were cut from, when known: names the version. */
+  sha256?: string;
+  generatedAt: string;
+  chunks: Array<Pick<Chunk, 'index' | 'start' | 'end' | 'text'>>;
+};
+
+export const FOLDED_CHUNKS_HEADER = '# ---- source passages (chunks): evidence, never claims; not part of a published space ----';
+
+/**
+ * The chunk section of a saved file, written AFTER the claims so a reader that stops early never
+ * parses it (F107.10.2). Canonical: documents by id, chunks by position, so two copies of the same
+ * space carry identical chunk bytes. Full IRIs throughout, so it depends on no prefix declared
+ * above it. Empty string when there are no chunks.
+ */
+export function foldedChunksSection(corpora: FoldedCorpus[]): string {
+  // One block per source: two corpora for the same document merge, and the first chunk at a position wins,
+  // so the file never holds two chunks at one position (the importer would report the second).
+  const merged = new Map<string, FoldedCorpus>();
+  for (const c of corpora) {
+    const have = merged.get(c.sourceId);
+    if (!have) { merged.set(c.sourceId, { ...c, chunks: [...c.chunks] }); continue; }
+    const taken = new Set(have.chunks.map((k) => k.index));
+    for (const k of c.chunks) if (!taken.has(k.index)) { have.chunks.push(k); taken.add(k.index); }
+    have.sha256 ??= c.sha256;
+  }
+  const sorted = [...merged.values()].filter((c) => c.chunks.length > 0).sort((a, b) => (a.sourceId < b.sourceId ? -1 : a.sourceId > b.sourceId ? 1 : 0));
+  if (sorted.length === 0) return '';
+  const lines: string[] = [FOLDED_CHUNKS_HEADER, ''];
+  for (const corpus of sorted) {
+    const src = `<${sourceIri(corpus.sourceId)}>`;
+    if (corpus.sha256) lines.push(`${src} <http://purl.org/dc/terms/hasVersion> ${turtleLiteral(`sha256:${corpus.sha256}`)} ;`);
+    lines.push(`${corpus.sha256 ? '    ' : src + ' '}<https://schema.org/numberOfItems> ${corpus.chunks.length} .`, '');
+    for (const c of [...corpus.chunks].sort((a, b) => a.index - b.index)) lines.push(...chunkBlock(corpus.sourceId, c, corpus.generatedAt, FULL));
   }
   return lines.join('\n');
 }
@@ -169,8 +236,12 @@ export function anchorExcerpt(text: string, excerpt: string, chunks: Chunk[]): C
   let end = start + needle.length;
   let match: ChunkAnchor['match'] = 'exact';
   if (start < 0) {
-    const pattern = needle.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
-    const m = new RegExp(pattern).exec(text);
+    // The same leniency grounding applied (grounding.ts normalizeForGrounding): whitespace, case,
+    // curly versus straight quotes, and dash variants. A quote grounding accepted must be placeable.
+    const quote = (c: string) =>
+      /['‘’‛′]/.test(c) ? "['‘’‛′]" : /["“”‟″]/.test(c) ? '["“”‟″]' : /[-‐-―−]/.test(c) ? '[-‐-―−]' : c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = needle.split(/\s+/).map((w) => Array.from(w).map(quote).join('')).join('\\s+');
+    const m = new RegExp(pattern, 'i').exec(text);
     if (!m) return null;
     start = m.index;
     end = m.index + m[0].length;
@@ -178,4 +249,60 @@ export function anchorExcerpt(text: string, excerpt: string, chunks: Chunk[]): C
   }
   const chunk = chunks.find((c) => start >= c.start && start < c.end);
   return chunk ? { chunkIndex: chunk.index, start, end, match } : null;
+}
+
+/**
+ * Group chunks read from a saved file back into per-document corpora, ready to be written again
+ * (foldedChunksSection) or indexed. `versions` is ImportResult.chunkVersions. A corpus keeps the
+ * first chunk's generation time: it was derived at one moment.
+ */
+export function corporaFromImported(
+  chunks: Array<Pick<Chunk, 'index' | 'start' | 'end' | 'text'> & { sourceId: string; generatedAt?: string }>,
+  versions: Record<string, string> = {},
+): FoldedCorpus[] {
+  const by = new Map<string, FoldedCorpus>();
+  for (const c of chunks) {
+    let corpus = by.get(c.sourceId);
+    if (!corpus) {
+      corpus = { sourceId: c.sourceId, ...(versions[c.sourceId] ? { sha256: versions[c.sourceId] } : {}), generatedAt: c.generatedAt ?? new Date(0).toISOString(), chunks: [] };
+      by.set(c.sourceId, corpus);
+    }
+    corpus.chunks.push({ index: c.index, start: c.start, end: c.end, text: c.text });
+  }
+  return [...by.values()];
+}
+
+/**
+ * The stored anchor for one grounded quote (F122.1.1): the same anchorExcerpt the views use, run once
+ * when grounding has verified the quote. Null when the quote is not in the text. A pure function of
+ * (document id, text, excerpt), so the same text always yields the same chunk IRI.
+ */
+export function anchorFor(
+  source: { id: string; hash?: string },
+  text: string,
+  excerpt: string,
+  chunks: Chunk[] = chunkText(text),
+): EvidenceSpan | null {
+  if (!source.hash) return null;
+  const a = anchorExcerpt(text, excerpt, chunks);
+  return a ? { chunk: chunkIri(source.id, a.chunkIndex), start: a.start, end: a.end, sourceHash: source.hash } : null;
+}
+
+/**
+ * Attach `anchor` to every verified fact. Only `grounded === true` facts get one: an
+ * ungrounded or unchecked quote stays unanchored rather than guessed at. The text is chunked once
+ * for the batch. Statements that already carry an anchor are left as they are.
+ */
+export function attachAnchors<T extends { excerpt?: string; grounded?: boolean; anchor?: EvidenceSpan }>(
+  statements: T[],
+  source: { id: string; hash?: string },
+  text: string | undefined,
+): T[] {
+  if (!text || !source.hash || !statements.some((s) => s.grounded === true && s.excerpt)) return statements;
+  const chunks = chunkText(text);
+  return statements.map((s) => {
+    if (s.grounded !== true || !s.excerpt || s.anchor) return s;
+    const anchor = anchorFor(source, text, s.excerpt, chunks);
+    return anchor ? { ...s, anchor } : s;
+  });
 }

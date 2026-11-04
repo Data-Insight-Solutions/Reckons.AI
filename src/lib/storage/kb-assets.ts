@@ -37,6 +37,7 @@
  */
 
 import type { KBaseDB } from './db';
+import { Parser } from 'n3';
 
 // ── Asset predicates ────────────────────────────────────────────────────────
 
@@ -55,7 +56,14 @@ export const LEGACY_TO_ASSET: Record<string, string> = {
 
 // ── Categories ──────────────────────────────────────────────────────────────
 
-export type AssetCategory = 'icons' | 'previews' | 'models';
+export type AssetCategory = 'icons' | 'previews' | 'models' | 'splats';
+
+/**
+ * Imported Gaussian splat files (F58.9.7) are the fourth kind. They need no extra reference triple:
+ * the space's own statements already name each file as `asset:splat/<id>`, and the file is written
+ * as `assets/splats/<id>`, so the name is the link. kb-import puts it back in IndexedDB on import.
+ */
+export const SPLAT_ASSET_DIR = 'splats';
 
 export const PREDICATE_TO_DIR: Record<string, AssetCategory> = {
   [ASSET_ICON]:    'icons',
@@ -63,7 +71,7 @@ export const PREDICATE_TO_DIR: Record<string, AssetCategory> = {
   [ASSET_MODEL]:   'models',
 };
 
-export const DIR_TO_PREDICATE: Record<AssetCategory, string> = {
+export const DIR_TO_PREDICATE: Record<Exclude<AssetCategory, 'splats'>, string> = {
   icons:    ASSET_ICON,
   previews: ASSET_PREVIEW,
   models:   ASSET_MODEL,
@@ -173,6 +181,16 @@ export async function collectAssets(database: KBaseDB): Promise<CollectedAsset[]
     }
   }
 
+  // Splats — imported scans, the whole file (the name is its content hash)
+  for (const row of await database.splatFiles.toArray()) {
+    assets.push({
+      entityIri: `asset:splat/${row.id}`,
+      category: 'splats',
+      filename: row.id,
+      data: new Uint8Array(await row.blob.arrayBuffer()),
+    });
+  }
+
   return assets;
 }
 
@@ -206,11 +224,12 @@ export async function assetTriples(
     byCategory.set(a.category, list);
   }
 
-  const labels: Record<AssetCategory, string> = {
+  const labels: Record<Exclude<AssetCategory, 'splats'>, string> = {
     icons: '2D node icons', previews: 'Hover preview images', models: '3D node models',
   };
 
-  for (const cat of ['icons', 'previews', 'models'] as AssetCategory[]) {
+  for (const cat of ['icons', 'previews', 'models'] as const) {
+    // (splats have no reference triple: the statements already name the file; see SPLAT_ASSET_DIR)
     const entries = byCategory.get(cat);
     if (!entries?.length) continue;
     lines.push(`# ${labels[cat]}`);
@@ -259,11 +278,14 @@ export type AssetRef = {
 /**
  * Parse asset reference triples from TTL text.
  * Recognises both new `urn:kbase:asset/*` and legacy predicates.
+ *
+ * Prefers a real parse (the n3 Parser, the same one import-ttl uses) so refs written with
+ * prefixes and inside predicate lists are found, not just the strict
+ * `<full-iri> <full-iri> "value" .` line shape the regex below matches. If the text does not
+ * parse, the regex pass runs — it is deliberately forgiving and recovers the strict lines a
+ * half-valid file still carries.
  */
 export function parseAssetRefs(ttl: string): AssetRef[] {
-  const results: AssetRef[] = [];
-  const seen = new Set<string>();
-
   const allPredicates: Record<string, AssetCategory> = {
     ...PREDICATE_TO_DIR,
     // Legacy
@@ -271,6 +293,35 @@ export function parseAssetRefs(ttl: string): AssetRef[] {
     'urn:kbase:meta/gifPreview':  'previews',
     'urn:kbase:meta/glbModel':    'models',
   };
+
+  try {
+    // TriG is a strict superset of Turtle, so every .ttl the regex could read parses here too.
+    const quads = new Parser({ format: 'TriG' }).parse(ttl);
+    const results: AssetRef[] = [];
+    const seen = new Set<string>();
+    // New predicates are listed before their legacy aliases, so "new wins over legacy" holds by
+    // first-seen — the same rule the regex pass implemented.
+    for (const [pred, cat] of Object.entries(allPredicates)) {
+      for (const q of quads) {
+        if (q.predicate.value !== pred) continue;
+        if (q.subject.termType !== 'NamedNode' || q.object.termType !== 'Literal') continue;
+        if (!q.object.value) continue; // the regex required a non-empty literal
+        const key = `${q.subject.value}|${cat}`;
+        if (seen.has(key)) continue; // new predicate takes priority over legacy
+        seen.add(key);
+        results.push({ entityIri: q.subject.value, category: cat, value: q.object.value });
+      }
+    }
+    return results;
+  } catch {
+    return parseAssetRefsByRegex(ttl, allPredicates);
+  }
+}
+
+/** Fallback for text the parser rejects: the strict `<iri> <iri> "value" .` line shape only. */
+function parseAssetRefsByRegex(ttl: string, allPredicates: Record<string, AssetCategory>): AssetRef[] {
+  const results: AssetRef[] = [];
+  const seen = new Set<string>();
 
   for (const [pred, cat] of Object.entries(allPredicates)) {
     // Escape ALL regex metacharacters in the predicate IRI, not just '/' — otherwise a '.' or '('

@@ -21,6 +21,8 @@ import {
   isKeywordUse,
   readTerms,
   scanText,
+  proseMask,
+  freshProseState,
   type TokenUsage,
 } from '../term-usage.js';
 
@@ -199,6 +201,62 @@ describe('scanText', () => {
     expect(tokens.get('class')!.occurrences).toBe(0);
     expect(tokens.get('class')!.excluded).toBe(1);
   });
+
+  it('does not count a rendered tested-by path as a use of the word (2026-11-03)', () => {
+    // The line that made deleting a true kpred:tested-by triple the only way to pass the ratchet:
+    // the file path prints on the docs page, and every docs line is prose, so the `graph` in the
+    // filename used to land in the free-prose count as if it were wording. A file name is a name,
+    // not a use of the term.
+    const tokens = usage('graph');
+    scanText('tests/e2e/graph-render.test.ts\n', 'content/testing/starter-asset-smoke.md', tokens);
+    const u = tokens.get('graph')!;
+    expect(u.occurrences).toBe(0);
+    expect(u.freeProse).toBe(0);
+  });
+
+  it('still counts the prose that says the word, next to and instead of a path', () => {
+    const tokens = usage('graph');
+    scanText('the graph shows it\n', 'content/testing/starter-asset-smoke.md', tokens);
+    const u = tokens.get('graph')!;
+    expect(u.occurrences).toBe(1);
+    expect(u.freeProse).toBe(1);
+  });
+
+  it('leaves a bare filename, a directory and a ratio counted (only file paths are names)', () => {
+    // graph-render.test.ts has no slash; src/lib/graph has no extension; 3/4 is a ratio.
+    // None is a repo file path, so each `graph` here is still a use of the word.
+    const tokens = usage('graph');
+    scanText('see graph-render.test.ts, src/lib/graph, and the graph\n', 'content/x.md', tokens);
+    expect(tokens.get('graph')!.occurrences).toBe(3);
+  });
+
+  it('exempts repo file paths, not prose that merely carries a slash (overseer, 2026-11-03)', () => {
+    // The old rule — any /-run whose last segment contains a dot — read the sentence-final period
+    // as a file extension, so WORDING escaped the ratchet. A path ends in an extension, not a dot:
+    // trim one trailing '.' and require the last segment to END in one.
+
+    // 'graph/space.' at a sentence end: 'space.' is not an extension. Both words count — that is
+    // the point, this prose used to be exempt.
+    const prose = new Map<string, TokenUsage>([['graph', emptyUsage('graph')], ['space', emptyUsage('space')]]);
+    scanText('We use the word graph/space.\n', 'content/x.md', prose);
+    expect(prose.get('graph')!.occurrences).toBe(1);
+    expect(prose.get('space')!.occurrences).toBe(1);
+    expect(prose.get('graph')!.freeProse + prose.get('space')!.freeProse).toBe(2);
+
+    // 'and/or graph.Next': a slash between two words is not a path separator at all.
+    const glued = usage('graph');
+    scanText('either and/or graph.Next\n', 'content/x.md', glued);
+    expect(glued.get('graph')!.occurrences).toBe(1);
+    expect(glued.get('graph')!.freeProse).toBe(1);
+
+    // The real paths stay exempt: the final component genuinely ends in an extension.
+    const p1 = usage('graph');
+    scanText('tests/e2e/graph-render.test.ts\n', 'content/x.md', p1);
+    expect(p1.get('graph')!.occurrences).toBe(0);
+    const p2 = usage('graph');
+    scanText('src/lib/rdf/graph.ts\n', 'content/x.md', p2);
+    expect(p2.get('graph')!.occurrences).toBe(0);
+  });
 });
 
 describe('ambiguity ratchet (Matt, 2026-10-07)', () => {
@@ -243,5 +301,70 @@ describe('the export keyword is syntax, the export feature is a term', () => {
     expect(isKeywordUse('export', 'const exported = await exportSpace(id);', 6)).toBe(false);
     expect(isKeywordUse('export', 'settings.export = true;', 9)).toBe(false);
     expect(isKeywordUse('export', "label: 'export this space'", 8)).toBe(false);
+  });
+});
+
+describe('the ratchet counts prose only (kb:term-ratchet-prose-only, Matt 2026-10-13)', () => {
+  const proseOf = (line: string) => {
+    const m = proseMask(line, freshProseState());
+    return [...line].filter((_, i) => m[i]).join('');
+  };
+
+  it('marks comments and strings as prose, identifiers as code', () => {
+    expect(proseOf(`const statementId = 'the statement'; // a statement`)).toBe(`'the statement'// a statement`);
+    expect(proseOf('const t = `quoted ${statement.excerpt} text`;')).toBe('`quoted  text`');
+  });
+
+  it('a module path is code, not prose', () => {
+    expect(proseOf(`import { checkAnchor } from '../ingest/statement-evidence'; // the statement`)).toBe('// the statement');
+    expect(proseOf(`const m = await import('./source-chunks');`)).toBe('');
+    expect(proseOf(`export * from "./statement";`)).toBe('');
+  });
+
+  it('a regex literal is code, and a quote or backtick inside it opens nothing', () => {
+    const st = freshProseState();
+    expect([...'const re = /(^kb:ball[^"]*")`/m;'].filter((_, i) => proseMask('const re = /(^kb:ball[^"]*")`/m;', st)[i]).join('')).toBe('');
+    expect(st.inTemplate).toBe(false);
+    // Division is not a regex: the string after it is still prose.
+    expect(proseOf(`const half = total / 2; const t = 'a statement';`)).toBe(`'a statement'`);
+  });
+
+  it('carries block comments and template literals across lines', () => {
+    const st = freshProseState();
+    proseMask('/** A statement', st);
+    expect(st.inBlockComment).toBe(true);
+    const m = proseMask(' * ends here */ const statement = 1;', st);
+    expect(m.indexOf(false)).toBeGreaterThan(' * ends here */'.length - 1);
+    expect(st.inBlockComment).toBe(false);
+  });
+
+  it('a new identifier does not move the ratchet; new wording does', () => {
+    const tokens = usage('statement');
+    scanText('import type { Statement } from "./types";\nexport interface C { statementId: string }\n', 'src/lib/rdf/p.ts', tokens);
+    const u = tokens.get('statement')!;
+    expect(u.binding.free).toBeGreaterThan(0);
+    expect(u.freeProse).toBe(0);
+    scanText('// resolves a statement to its passage\n', 'src/lib/rdf/p.ts', tokens);
+    expect(u.freeProse).toBe(1);
+  });
+
+  it('svelte markup text is prose, its {expressions} and tags are code; docs are all prose', () => {
+    const tokens = usage('statement');
+    scanText('<p class="statement-row">One statement: {statement.label}</p>\n', 'src/lib/components/X.svelte', tokens);
+    expect(tokens.get('statement')!.freeProse).toBe(1);
+    const doc = usage('statement');
+    scanText('Each statement is reviewed.\n', 'content/docs/x.md', doc);
+    expect(doc.get('statement')!.freeProse).toBe(1);
+  });
+
+  it('a prose baseline is compared with the prose count', () => {
+    const meaning = (id: string) => ({ iri: `urn:kbase:term/${id}`, id, prefLabel: id, binding: 'free' as const, tokens: [] });
+    const u = emptyUsage('source', [meaning('a'), meaning('b')]);
+    u.binding.free = 500;
+    u.freeProse = 40;
+    expect(readTermRatchets('<s> kpred:term-ratchet "source/prose/40" .')).toEqual([{ token: 'source', binding: 'prose', max: 40 }]);
+    expect(ratchetFails(checkTermRatchets([u], [{ token: 'source', binding: 'prose', max: 40 }]))).toBe(false);
+    u.freeProse = 41;
+    expect(ratchetFails(checkTermRatchets([u], [{ token: 'source', binding: 'prose', max: 40 }]))).toBe(true);
   });
 });

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# F273 phase A: an agent commit must carry Model:/Intent: in ONE trailer block. Same rule and
+# parser as the CI check (scripts/offline/commit-trailers.ts); human commits are exempt.
+ROOT="${RECKONS_ROOT:-$(git rev-parse --show-toplevel)}"
+# tsx from the tool root, not the cwd: the repo being committed to may have no node_modules.
+TSX="$ROOT/node_modules/.bin/tsx"; [ -x "$TSX" ] || TSX="npx --no-install tsx"
+exec $TSX "$ROOT/scripts/offline/commit-trailers.ts" --message-file="$1"

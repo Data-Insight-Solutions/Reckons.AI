@@ -19,6 +19,7 @@
   import { merge, splitByConcept, closure } from '$lib/rdf/reasoning';
   import PredicateManager from '$lib/components/PredicateManager.svelte';
   import GraphPackagePanel from '$lib/components/GraphPackagePanel.svelte';
+  import SpaceBackgroundPanel from '$lib/components/SpaceBackgroundPanel.svelte';
   import { v4 as uuid } from 'uuid';
   import type { Statement } from '$lib/rdf/types';
   import { recommendDuplicateChoice, describeProbe, type KbProbe } from '$lib/storage/kb-duplicate-choice';
@@ -63,6 +64,7 @@
   import { allTypes } from '$lib/stores/entity-types.svelte';
   import GraphPreview from '$lib/components/GraphPreview.svelte';
   import { focusOnMount } from '$lib/actions/focus-on-mount';
+  import { countLabel } from '$lib/utils/count-label';
 
   // ── KB identity ────────────────────────────────────────────────────────────
   const currentKbId = getCurrentKbId();
@@ -890,9 +892,13 @@
 
 <!-- ── KB Identity ─────────────────────────────────────────────────────────── -->
 <div class="kb-identity">
-  <div class="kb-id-row">
-    <span class="kb-badge mono">{currentKbId}</span>
-  </div>
+  <!-- The default entry's id is the engineering word "kbase", meaningless to a person; only an
+       entry with its own identifier shows one. -->
+  {#if currentKbId !== 'kbase'}
+    <div class="kb-id-row">
+      <span class="kb-badge mono">{currentKbId}</span>
+    </div>
+  {/if}
   <div class="kb-title-row">
     <input
       class="kb-title-input"
@@ -913,11 +919,11 @@
   ></textarea>
 
   <div class="kb-stats mono">
-    <span class="stat">{entityCount} entities</span>
+    <span class="stat">{countLabel(entityCount, 'entity', 'entities')}</span>
     <span class="sep">·</span>
-    <span class="stat">{confirmedStatements().length} facts</span>
+    <span class="stat">{countLabel(confirmedStatements().length, 'fact')}</span>
     <span class="sep">·</span>
-    <span class="stat">{nonAnalysisSources.length} sources</span>
+    <span class="stat">{countLabel(nonAnalysisSources.length, 'source')}</span>
     {#if pendingTotal > 0}
       <span class="sep">·</span>
       <a href="/review" class="stat stat-pending">{pendingTotal} pending review →</a>
@@ -1144,7 +1150,7 @@
               </span>
             {/if}
             <div class="kb-entry-sub">
-              <span class="kb-entry-id mono">{kb.id}</span>
+              {#if kb.id !== 'kbase'}<span class="kb-entry-id mono">{kb.id}</span>{/if}
               {#if kb.lastModified}
                 <span class="kb-entry-date mono">{relativeTime(kb.lastModified)}</span>
               {/if}
@@ -1153,7 +1159,7 @@
                    "not opened yet" instead. -->
               {#if kb.statementCount != null}
                 <span class="kb-entry-size mono" title="{kb.statementCount} confirmed statements">
-                  {kb.statementCount.toLocaleString()} facts
+                  {countLabel(kb.statementCount, 'fact')}
                 </span>
               {:else}
                 <span class="kb-entry-size mono muted-size" title="No statement count recorded — this space has not been opened or saved yet">
@@ -1276,7 +1282,7 @@
             <span class="kb-archive-name">{archive.name}</span>
             {#if archive.statementCount != null}
               <span class="kb-entry-size mono" title="{archive.statementCount} archived statements">
-                {archive.statementCount.toLocaleString()} facts
+                {countLabel(archive.statementCount, 'fact')}
               </span>
             {:else}
               <span class="kb-entry-size mono muted-size" title="No statement count recorded — this archive has not been opened or saved yet">
@@ -1606,7 +1612,7 @@
 </section>
 
 <!-- ── Currents ───────────────────────────────────────────────────────────── -->
-<section class="section">
+<section id="currents" class="section">
   <div class="section-head">
     <h3>currents</h3>
     <button class="ghost sm mono" onclick={() => (showCurrents = !showCurrents)}>
@@ -1615,7 +1621,7 @@
   </div>
   {#if showCurrents}
     <div class="currents-editor">
-      <p class="section-hint">recurring streams (rss / url / topic) that bring new arrivals into this space. arrivals always land as pending facts — review them in the pod view.</p>
+      <p class="section-hint">recurring streams bring new arrivals into this space through your n8n Currents Monitor. <a href="/settings/integrations#s-n8n">connect currents in integrations</a> to receive them while this app is open. arrivals land as pending facts — review them in the pod view or review queue. automatic ranking and full-text extraction are not connected yet.</p>
 
       <div class="currents-field">
         <label class="pod-toggle-row" for="pod-view-toggle">
@@ -1721,10 +1727,18 @@
       </div>
     </div>
   {:else}
+    <!-- Found in Matt's 0.2.6 dev review: this said "feeding arrivals" with no n8n connected, so an
+         RSS current silently delivered nothing. Arrivals need the connection the layout polls with. -->
+    {@const n = currentsDraft.currents.length}
+    {@const connected = settings().n8nCurrentsEnabled === true && !!settings().n8nBaseUrl?.trim()}
     <p class="section-hint">
-      {currentsDraft.currents.length > 0
-        ? `${currentsDraft.currents.length} current${currentsDraft.currents.length !== 1 ? 's' : ''} configured, feeding arrivals into the pod view.`
-        : 'define recurring streams (rss / url / topic) that bring new arrivals into this space.'}
+      {#if n === 0}
+        define recurring streams (rss / url / topic) that bring new arrivals into this space.
+      {:else if connected}
+        {n} current{n !== 1 ? 's' : ''} configured, delivered through your n8n server while this app is open.
+      {:else}
+        {n} current{n !== 1 ? 's' : ''} configured, but nothing will arrive yet: currents run on your own n8n server. <a href="/settings/integrations#s-n8n">connect it in integrations</a>.
+      {/if}
     </p>
   {/if}
 </section>
@@ -1738,6 +1752,14 @@
     <h3>share package &amp; sync</h3>
   </div>
   <GraphPackagePanel statementCount={statements().length} />
+</section>
+
+<!-- Space background (F58.9.7): a scanned room from this device, drawn behind the 3D graph. -->
+<section class="section">
+  <div class="section-head">
+    <h3>space background</h3>
+  </div>
+  <SpaceBackgroundPanel />
 </section>
 
 

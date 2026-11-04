@@ -3,6 +3,7 @@ import type { Statement, Source, Term, NamedNode } from './types';
 import { notifyExportSkipped } from './cut-notice';
 import { isIRI, isLit, isBNode, termToString, hasLeakedTermKey } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
+import { foldedChunksSection, type FoldedCorpus } from '../ingest/source-chunks';
 
 /* ============================================================
  *  PREFIX REGISTRY
@@ -341,7 +342,16 @@ export type ShellyPersonaExport = {
 export function toTurtleFull(
   statements: Statement[],
   sources: Source[],
-  opts: Pick<TurtleOptions, 'header' | 'prefixes'> & { shellyPersona?: ShellyPersonaExport; kbStableId?: string } = {}
+  opts: Pick<TurtleOptions, 'header' | 'prefixes'> & {
+    shellyPersona?: ShellyPersonaExport;
+    kbStableId?: string;
+    /**
+     * The space's document passages (F107.10.2), written LAST under their own header so a reader that
+     * stops early never parses them. Evidence, never claims: the importer returns them apart from
+     * the facts, and toTurtle / site-copy never write them.
+     */
+    chunks?: FoldedCorpus[];
+  } = {}
 ): string {
   const prefixes = { ...FULL_PREFIXES, ...(opts.prefixes ?? {}) };
   const dropped = dropUnserializable(statements);
@@ -471,11 +481,26 @@ export function toTurtleFull(
     if (st.altitude) lines.push(`    meta:altitude "${st.altitude}" ;`);
     if (st.gloss) lines.push(`    meta:gloss ${JSON.stringify(st.gloss)} ;`);
     if (st.excerpt) lines.push(`    meta:excerpt ${JSON.stringify(st.excerpt)} ;`);
+    // F122.1.2: where the quote sits, as a W3C Web Annotation target on the chunk it starts in, so a
+    // fact and its passage are joined inside the one file. Full IRIs: no prefix dependence.
+    if (st.anchor) {
+      const a = st.anchor;
+      const version = /^[0-9a-f]{64}$/i.test(a.sourceHash) ? `sha256:${a.sourceHash}` : `unverified:${a.sourceHash}`;
+      lines.push(
+        `    <http://www.w3.org/ns/oa#hasTarget> [ <http://www.w3.org/ns/oa#hasSource> <${a.chunk}> ;`,
+        `        <http://www.w3.org/ns/oa#hasSelector> [ a <http://www.w3.org/ns/oa#TextPositionSelector> ; <http://www.w3.org/ns/oa#start> ${a.start} ; <http://www.w3.org/ns/oa#end> ${a.end} ] ;`,
+        `        <http://purl.org/dc/terms/hasVersion> ${JSON.stringify(version)} ] ;`,
+      );
+    }
     if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${st.supersedes}> ;`);
     lines.push(`    prov:wasDerivedFrom ${termTTL(st.g, prefixes)} ;`);
     lines.push(`    dc:created "${new Date(st.createdAt).toISOString()}"^^xsd:dateTime .`);
     lines.push('');
   }
+
+  // 4. Source passages, after every claim (F107.10.2)
+  const folded = foldedChunksSection(opts.chunks ?? []);
+  if (folded) lines.push(folded);
 
   return lines.join('\n');
 }
