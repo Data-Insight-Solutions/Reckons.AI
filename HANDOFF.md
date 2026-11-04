@@ -28,7 +28,7 @@ PR to dev, or reject it out loud. A Sonnet overseer only for the importer job (c
 merge only after #556: #559 (v0.2.9 plan), #561 (deputy env secrets), #564 (F274.4.1, stacked on
 #554), #565 (MCP from worktrees), #566 (F277 asset matrix and F278 hub assets plan), and this one.
 Merged into dev today: #558 (v0.2.7 closeout), #560 (glob/minimatch advisories). Triple Check #537
-has its e2e fix and href/redirect hardening pushed; CI not re-checked since.
+has its e2e fix and href/redirect hardening pushed; CI green (16 pass, 1 skipped) on 2026-11-03 late evening, mergeable to dev after #556.
 
 **Asset-generation demo.** The first real use of F277 is a private community-program space kept
 outside this repository, with its own repo and its own `HANDOFF.md` (path in Matt's private notes,
