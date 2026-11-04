@@ -1,5 +1,5 @@
 /**
- * Headless rendering of a generated Three.js scene (F183.3). Serves one folder at
+ * Headless rendering of a generated Three.js scene (F183.5). Serves one folder at
  * /bench-generation/assets/ on a throwaway local port, opens the page in Chromium with software
  * WebGL (so it takes no GPU), and measures: console errors, a canvas, pixel variance of the
  * screenshot, and frames per second over 5 s. The judgement lives in bench-review-lib.ts.

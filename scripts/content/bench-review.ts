@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Review-graph bench (F183.3): one prompt, three local generation pipelines, every branch detailed,
+ * Review-graph bench (F183.5): one prompt, three local generation pipelines, every branch detailed,
  * the result a private graph a person reviews by eye. See bench-review-lib.ts for the design.
  *
  *   npm run bench:review -- --pipelines=image,splat,three --gpu=1 [--prompt="..."] [--models=a,b]

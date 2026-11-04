@@ -8043,8 +8043,8 @@ kb:gen-bench-in-graph rdf:type ktype:Phase ;
     kpred:remaining "Judge reliability on counts and text has not been checked against a human; 6 of 10 hard briefs are still perfect for both arms, so a still-harder tier would separate more; video and splat have no hard tier or run yet." .
 
 kb:bench-review-space rdf:type ktype:Phase ;
-    rdfs:label "F183.3 — a private review graph for local generation settings: one prompt, branches that each detail how they differ" ;
-    kpred:feature-id "F183.3" ;
+    rdfs:label "F183.5 — a private review graph for local generation settings: one prompt, branches that each detail how they differ" ;
+    kpred:feature-id "F183.5" ;
     kpred:has-status "functional" ;
     kpred:part-of kb:task-model-bench ;
     kpred:depends-on kb:gen-model-bench, kb:splat-local-pipeline ;
@@ -8063,7 +8063,7 @@ kb:bench-three-viewer rdf:type ktype:Phase ;
     kpred:has-status "speculative" ;
     kpred:part-of kb:task-model-bench ;
     kpred:depends-on kb:bench-review-space ;
-    kpred:open-question "src/lib/3d/three-example.ts accepts only https://threejs.org/examples/ today, and that is a security boundary (a sandboxed frame with constrained sources). The F183.3 review space therefore shows a generated scene as a screenshot (p:photo) plus a link to the local HTML file, not inside the viewer. Opening it inside the viewer means admitting a same-origin generated source (code a local model wrote), which is a different trust class from a named public host. Whether to admit it, and under what sandbox, is Matt\u0027s decision; the allow-list was NOT widened by F183.3." ;
+    kpred:open-question "src/lib/3d/three-example.ts accepts only https://threejs.org/examples/ today, and that is a security boundary (a sandboxed frame with constrained sources). The F183.5 review space therefore shows a generated scene as a screenshot (p:photo) plus a link to the local HTML file, not inside the viewer. Opening it inside the viewer means admitting a same-origin generated source (code a local model wrote), which is a different trust class from a named public host. Whether to admit it, and under what sandbox, is Matt\u0027s decision; the allow-list was NOT widened by F183.3." ;
     kpred:remaining "The decision, then the sandbox design, then the code." .
 
 kb:tenet-alignment rdf:type    ktype:Feature ;
