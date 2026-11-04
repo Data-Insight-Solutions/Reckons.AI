@@ -11266,7 +11266,7 @@ kb:open-ttl-from-link rdf:type ktype:Feature ;
 
 kb:local-overseer-model rdf:type ktype:Feature ;
     rdfs:label "A very large local model as overseer for the local job agents" ;
-    kpred:feature-id "F268" ;
+    kpred:feature-id "F282" ;
     kpred:has-status "planned" ;
     kpred:relates-to kb:local-jobs-default ;
     kpred:decided "Matt, 2026-10-27: \"We should consider getting a very large model running locally, I'm seen some extreme cases of low ram usage at the cost of slow speed, but maybe a setup like that could be the Overseer for the local job agents, helping with complicated bits.\"" ;
