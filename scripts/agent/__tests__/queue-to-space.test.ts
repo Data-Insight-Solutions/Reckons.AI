@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { buildRecords, buildSpaceText, type JobRecord } from '../queue-to-space.js';
@@ -127,4 +128,18 @@ describe('the space, through the app importer', () => {
     expect(t1.split('\n')[0]).not.toBe(t2.split('\n')[0]); // the only variable line moves
     expect(strip(t1)).toBe(strip(t2)); // everything else is byte-identical
   });
+});
+
+describe('CLI flags', () => {
+  it('accepts both `--out value` and `--out=value` (and --dir), writing only to the given path', () => {
+    const script = path.resolve(__dirname, '../queue-to-space.ts');
+    const env = { ...process.env, XDG_DATA_HOME: path.join(dir, 'no-default-here') };
+    const spaced = path.join(dir, 'spaced.ttl');
+    const eq = path.join(dir, 'eq.ttl');
+    execFileSync('npx', ['tsx', script, '--dir', dir, '--out', spaced], { env, stdio: 'ignore' });
+    execFileSync('npx', ['tsx', script, `--dir=${dir}`, `--out=${eq}`], { env, stdio: 'ignore' });
+    expect(existsSync(spaced)).toBe(true);
+    expect(existsSync(eq)).toBe(true);
+    expect(existsSync(path.join(dir, 'no-default-here'))).toBe(false); // the default path was not touched
+  }, 60_000);
 });
