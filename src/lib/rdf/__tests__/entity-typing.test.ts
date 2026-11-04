@@ -118,7 +118,7 @@ describe('surveyTypes', () => {
 
   // The 2026-11-03 bug: any rdf:type used to settle an entity, so a knowledge base where every
   // entity carried an undeclared type surveyed to zero proposals and showed no type.
-  it('surveys an entity whose rdf:type the graph does not know, and reports the pairing', () => {
+  it('surveys an entity whose rdf:type is undeclared, and reports the pairing', () => {
     const survey = surveyTypes(
       [
         st('example-archive', 'is-a', 'Organization'),
@@ -135,7 +135,7 @@ describe('surveyTypes', () => {
     expect(survey.alreadyTyped).toBe(0);
   });
 
-  it('does not let an unknown rdf:type in the EXISTING graph settle an entity either', () => {
+  it('does not let an unknown rdf:type among the EXISTING facts settle an entity either', () => {
     const existing = [st('ada', RDF_TYPE, { iri: 'urn:kbase:concept/Audience' })];
     const survey = surveyTypes([st('ada', 'birth-date', '1815-12-10')], BUILT_IN_TYPES, existing);
     expect(survey.proposals).toHaveLength(1);

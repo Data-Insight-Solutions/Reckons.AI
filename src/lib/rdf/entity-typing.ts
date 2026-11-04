@@ -62,7 +62,7 @@ export type UndeclaredType = {
 export type TypingSurvey = {
   proposals: TypeProposal[];
   undecided: UntypedEntity[];
-  /** Entities that already carry a type the graph knows — nothing to do, and not counted as a win. */
+  /** Entities that already carry a declared type — nothing to do, and not counted as a win. */
   alreadyTyped: number;
   /**
    * rdf:type facts whose object is an IRI the passed type list does not know. Surfaced, never
@@ -116,7 +116,7 @@ export function surveyTypes(
   types: EntityTypeDef[],
   existing: Statement[] = [],
 ): TypingSurvey {
-  // Only a type the graph KNOWS settles an entity. An rdf:type to an IRI outside the passed type
+  // Only a DECLARED type settles an entity. An rdf:type to an IRI outside the passed type
   // list does not: treating it as settled was the whole failure — a knowledge base where every
   // entity carries an undeclared type surveyed to zero proposals and showed no type. Those
   // entities are surveyed normally, and every unknown pairing is reported in `undeclared`

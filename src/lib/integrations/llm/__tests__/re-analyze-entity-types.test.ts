@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildEntityTypesPrompt, type EntitySummary } from '../re-analyze';
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 
-/** One synthetic entity — no real graph data. */
+/** One synthetic entity — no real user data. */
 const entity: EntitySummary = {
   iri: 'urn:kbase:program/launch-campaign',
   label: 'Launch Campaign',
