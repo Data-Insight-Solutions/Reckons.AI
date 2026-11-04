@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GenerationRunner, lockOwnerAlive, prepareParent, queueJobName, runQueuedJob } from '../generation-runner';
+import { GenerationRunner, lockOwnerAlive, prepareParent, queueJobName, runQueuedJob, worker } from '../generation-runner';
 import { readDone, readQueue } from '../../agent/session-queue';
+import { generateStage } from '../gen-assets.js';
 import type { GenerationJob, GenerationRequest } from '../../../src/lib/generation/protocol';
 
 const availability = vi.hoisted(() => ({ available: false }));
@@ -13,6 +14,8 @@ vi.mock('../gen-assets.js', () => ({
   generationAvailability: () => availability.available ? { available: true } : { available: false, reason: 'Synthetic missing model' },
   generateStage: vi.fn(),
 }));
+// The vision review needs a local model; the loop test decides each attempt by its checks alone.
+vi.mock('../asset-review.js', () => ({ reviewAsset: vi.fn(async () => undefined) }));
 const directories: string[] = [];
 const temp = () => { const dir = mkdtempSync(join(tmpdir(), 'generation-test-')); directories.push(dir); return dir; };
 // The shared queue lives under XDG_STATE_HOME; never let a test write the real one.
@@ -233,5 +236,53 @@ describe('lastErrorLine', () => {
     writeFileSync(log, "node:internal/modules/package_json_reader:256\nError [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /x/\n    at Object.getPackageJSONURL (node:internal)\n\nNode.js v22.17.1\n");
     expect(lastErrorLine(log)).toBe("Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'tsx' imported from /x/");
     expect(lastErrorLine(join(dir, 'missing.log'))).toBe('');
+  });
+});
+
+describe('QA fix loop in the worker (F281.3)', () => {
+  const imageRequest = (id: string): GenerationRequest => ({ version: 1, id, spaceId: 'synthetic-space', stage: 'image', prompt: 'Synthetic harbor', seed: 42 });
+  /** A stand-in stage: seeds in `bad` write a flat image that fails its check, others a good one. */
+  function stage(bad: number[]) {
+    vi.mocked(generateStage).mockImplementation(async (_s, brief, dir) => {
+      const bytes = Buffer.from(`image for seed ${brief.seed}`);
+      writeFileSync(join(dir, 'image.webp'), bytes);
+      const pass = !bad.includes(brief.seed);
+      return {
+        stage: 'image', tool: { name: 'fixture', license: 'MIT', version: '1', repo: 'x' },
+        models: [{ role: 'image', file: 'fixture', sha256: 'a'.repeat(64), bytes: 1, license: 'MIT', source: 'x' }],
+        input: { prompt: brief.imagePrompt }, settings: { seed: brief.seed }, ranAt: '2026-11-04T12:00:00Z', durationS: 1,
+        output: { file: 'image.webp', sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length },
+        check: { pass, problems: pass ? [] : ['flat image: largest channel standard deviation 0.00'], notes: [], measured: {} },
+      };
+    });
+  }
+  function job(id: string) {
+    const dir = join(temp(), id);
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'request.json'), JSON.stringify(imageRequest(id)));
+    return dir;
+  }
+
+  it('reseeds after a failed check, keeps the passing attempt, and records both', async () => {
+    stage([42]);
+    const dir = job('0f6c2d9e-4b1a-4c3d-9e8f-1a2b3c4d5e6f');
+    await worker(dir);
+    const status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')) as GenerationJob;
+    expect(status.state).toBe('completed');
+    expect(status.receipt?.settings.seed).toBe(43);
+    expect(status.receipt?.qa).toMatchObject({ chosen: 1, verdict: 'draft-with-notes', fixed: ['flat image: largest channel standard deviation 0.00'], open: ['visual review not run'] });
+    expect(status.receipt?.qa?.attempts.map((a) => [a.seed, a.pass])).toEqual([[42, false], [43, true]]);
+    expect(readFileSync(join(dir, 'image.webp'), 'utf8')).toBe('image for seed 43');
+    expect(existsSync(join(dir, 'attempts'))).toBe(false);
+  });
+
+  it('fails the job with the reason when every attempt fails, and leaves no attempt folders', async () => {
+    stage([42, 43, 44]);
+    const dir = job('1a6c2d9e-4b1a-4c3d-9e8f-1a2b3c4d5e6f');
+    await worker(dir);
+    const status = JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8')) as GenerationJob;
+    expect(status.state).toBe('failed');
+    expect(status.error).toMatch(/All 3 attempt\(s\) failed their checks: flat image/);
+    expect(existsSync(join(dir, 'attempts'))).toBe(false);
   });
 });
