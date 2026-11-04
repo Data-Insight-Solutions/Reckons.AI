@@ -64,3 +64,19 @@ describe('local-claude --repo (F274.1): where the deputy works', () => {
     expect(r.err).toMatch(/not inside a git repository/);
   });
 });
+
+describe('local-claude: secret-shaped variables never reach the deputy', () => {
+  function envNames(extra: Record<string, string>) {
+    const r = spawnSync('bash', [SH], { env: { ...process.env, ...extra, RECKONS_DEPUTY_PRINT_ENV: '1' }, encoding: 'utf8' });
+    return { code: r.status, names: r.stdout.trim().split('\n') };
+  }
+  it('drops provider keys, tokens, secrets and passwords, and keeps ordinary settings', () => {
+    const r = envNames({
+      VITE_OPENAI_API_KEY: 'sk-synthetic', N8N_API_KEY: 'synthetic', SOME_TOKEN: 'synthetic',
+      APP_SECRET: 'synthetic', DB_PASSWORD: 'synthetic', OLLAMA_BASE_URL: 'http://localhost:11434'
+    });
+    expect(r.code).toBe(0);
+    for (const v of ['VITE_OPENAI_API_KEY', 'N8N_API_KEY', 'SOME_TOKEN', 'APP_SECRET', 'DB_PASSWORD']) expect(r.names).not.toContain(v);
+    expect(r.names).toContain('OLLAMA_BASE_URL');
+  });
+});

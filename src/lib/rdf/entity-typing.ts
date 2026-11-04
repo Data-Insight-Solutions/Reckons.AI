@@ -54,14 +54,28 @@ export type UntypedEntity = {
   predicates: string[];
 };
 
+export type UndeclaredType = {
+  entityIri: string;
+  typeIri: string;
+};
+
 export type TypingSurvey = {
   proposals: TypeProposal[];
   undecided: UntypedEntity[];
-  /** Entities that already carry a type — nothing to do, and not counted as a win. */
+  /** Entities that already carry a declared type — nothing to do, and not counted as a win. */
   alreadyTyped: number;
+  /**
+   * rdf:type facts whose object is an IRI the passed type list does not know. Surfaced, never
+   * treated as settled: counting an unknown type as "already typed" was silencing an entire space
+   * whose entities all carry a type no one declared — zero proposals, no type shown.
+   */
+  undeclared: UndeclaredType[];
 };
 
 const shortName = (iri: string) => iri.split(/[/#]/).pop() ?? iri;
+
+/** "an" before a label that starts with a vowel letter, "a" before anything else. */
+const article = (word: string) => (/^[aeiou]/i.test(word) ? 'an' : 'a');
 
 /** Normalise a name for comparison: "Web Page", "web-page" and "webpage" are the same word. */
 function fold(value: string): string {
@@ -102,9 +116,26 @@ export function surveyTypes(
   types: EntityTypeDef[],
   existing: Statement[] = [],
 ): TypingSurvey {
+  // Only a DECLARED type settles an entity. An rdf:type to an IRI outside the passed type
+  // list does not: treating it as settled was the whole failure — a knowledge base where every
+  // entity carries an undeclared type surveyed to zero proposals and showed no type. Those
+  // entities are surveyed normally, and every unknown pairing is reported in `undeclared`
+  // instead of swallowed.
+  const knownTypes = new Set(types.map((t) => t.iri));
   const typedAlready = new Set<string>();
+  const undeclared: UndeclaredType[] = [];
+  const undeclaredSeen = new Set<string>();
   for (const st of [...existing, ...batch]) {
-    if (st.p.value === RDF_TYPE && isIRI(st.s)) typedAlready.add(st.s.value);
+    if (st.p.value !== RDF_TYPE || !isIRI(st.s) || !isIRI(st.o)) continue;
+    if (knownTypes.has(st.o.value)) {
+      typedAlready.add(st.s.value);
+    } else {
+      const key = `${st.s.value}\u0000${st.o.value}`;
+      if (!undeclaredSeen.has(key)) {
+        undeclaredSeen.add(key);
+        undeclared.push({ entityIri: st.s.value, typeIri: st.o.value });
+      }
+    }
   }
 
   const byType = new Map<string, EntityTypeDef>(types.map((t) => [t.iri, t]));
@@ -141,7 +172,7 @@ export function surveyTypes(
         entityIri,
         typeIri: type.iri,
         typeLabel: type.label,
-        reason: `the source says it is a ${type.label.toLowerCase()}`,
+        reason: `the source says it is ${article(type.label)} ${type.label.toLowerCase()}`,
         evidence: [`${shortName(stated.p.value)} → ${value}`],
         basis: 'stated',
       });
@@ -163,7 +194,7 @@ export function surveyTypes(
         entityIri,
         typeIri,
         typeLabel: type.label,
-        reason: `only a ${type.label.toLowerCase()} has ${evidence.join(', ')}`,
+        reason: `only ${article(type.label)} ${type.label.toLowerCase()} has ${evidence.join(', ')}`,
         evidence,
         basis: 'predicates',
       });
@@ -176,7 +207,7 @@ export function surveyTypes(
     });
   }
 
-  return { proposals, undecided, alreadyTyped: typedAlready.size };
+  return { proposals, undecided, alreadyTyped: typedAlready.size, undeclared };
 }
 
 /**
