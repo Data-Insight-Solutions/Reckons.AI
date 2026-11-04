@@ -732,5 +732,244 @@
       ],
       "why": "section headings and whole clauses as entity slugs — looksLikeProposition should reject these, so their appearance is a regression in that guard"
     }
-  }
+  },
+  "06-garden-build.txt": {
+    "title": "build a small space (F183.3)",
+    "expected": [
+      {
+        "id": "06.1",
+        "why": "a count stays a count on the garden",
+        "s": [
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden"
+        ],
+        "p": [
+          "raised-beds",
+          "has-raised-beds",
+          "number-of-raised-beds",
+          "raised-bed-count",
+          "bed-count",
+          "beds",
+          "has-beds",
+          "number-of-beds"
+        ],
+        "o": [
+          "12",
+          "twelve",
+          "12-raised-beds",
+          "twelve-raised-beds"
+        ],
+        "mock": {
+          "s": "elm-street-community-garden",
+          "p": "raised-beds",
+          "o": "12",
+          "literal": true
+        }
+      },
+      {
+        "id": "06.2",
+        "why": "who coordinates, in either direction",
+        "s": [
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden",
+          "priya-shah"
+        ],
+        "p": [
+          "coordinator",
+          "coordinated-by",
+          "coordinates",
+          "coordinator-of",
+          "has-coordinator"
+        ],
+        "o": [
+          "priya-shah",
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden"
+        ],
+        "mock": {
+          "s": "elm-street-community-garden",
+          "p": "coordinator",
+          "o": "priya-shah"
+        }
+      },
+      {
+        "id": "06.3",
+        "why": "the shed's day is its own fact",
+        "s": [
+          "tool-shed",
+          "shed",
+          "garden-tool-shed"
+        ],
+        "p": [
+          "open-on",
+          "opens-on",
+          "open",
+          "opening-day",
+          "opening-days",
+          "open-days",
+          "hours"
+        ],
+        "o": [
+          "saturday",
+          "saturdays",
+          "on-saturdays"
+        ],
+        "mock": {
+          "s": "tool-shed",
+          "p": "open-on",
+          "o": "Saturday",
+          "literal": true
+        }
+      },
+      {
+        "id": "06.4",
+        "why": "the water source is captured",
+        "s": [
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden",
+          "beds",
+          "raised-beds",
+          "water"
+        ],
+        "p": [
+          "water-source",
+          "water-from",
+          "gets-water-from",
+          "watered-by",
+          "water-comes-from",
+          "source-of-water"
+        ],
+        "o": [
+          "rain-barrel",
+          "a-rain-barrel"
+        ],
+        "mock": {
+          "s": "elm-street-community-garden",
+          "p": "water-source",
+          "o": "rain-barrel"
+        }
+      }
+    ],
+    "mockMatch": "The Elm Street community garden has twelve raised beds."
+  },
+  "07-garden-change.txt": {
+    "title": "change it (F183.3)",
+    "expected": [
+      {
+        "id": "07.1",
+        "why": "the NEW day, not the old one",
+        "s": [
+          "tool-shed",
+          "shed",
+          "garden-tool-shed"
+        ],
+        "p": [
+          "open-on",
+          "opens-on",
+          "open",
+          "opening-day",
+          "opening-days",
+          "open-days",
+          "hours"
+        ],
+        "o": [
+          "sunday",
+          "sundays",
+          "on-sundays"
+        ],
+        "mock": {
+          "s": "tool-shed",
+          "p": "open-on",
+          "o": "Sunday",
+          "literal": true
+        }
+      },
+      {
+        "id": "07.2",
+        "why": "the new coordinator",
+        "s": [
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden",
+          "marco-ruiz"
+        ],
+        "p": [
+          "coordinator",
+          "coordinated-by",
+          "coordinates",
+          "coordinator-of",
+          "has-coordinator"
+        ],
+        "o": [
+          "marco-ruiz",
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden"
+        ],
+        "mock": {
+          "s": "elm-street-community-garden",
+          "p": "coordinator",
+          "o": "marco-ruiz"
+        }
+      },
+      {
+        "id": "07.3",
+        "why": "the new total, not the number added",
+        "s": [
+          "elm-street-community-garden",
+          "community-garden",
+          "elm-street-garden",
+          "garden",
+          "the-garden"
+        ],
+        "p": [
+          "raised-beds",
+          "has-raised-beds",
+          "number-of-raised-beds",
+          "raised-bed-count",
+          "bed-count",
+          "beds",
+          "has-beds",
+          "number-of-beds"
+        ],
+        "o": [
+          "16",
+          "sixteen",
+          "16-raised-beds",
+          "sixteen-raised-beds"
+        ],
+        "mock": {
+          "s": "elm-street-community-garden",
+          "p": "raised-beds",
+          "o": "16",
+          "literal": true
+        }
+      }
+    ],
+    "forbidden": {
+      "slugs": [
+        "saturday",
+        "saturdays"
+      ],
+      "why": "07 says the shed is no longer open on Saturdays; asserting Saturday from this note writes the old state back as if new"
+    },
+    "mockMatch": "the tool shed is now open on Sundays instead of Saturdays."
+  },
+  "_mock": "An entry with `mockMatch` and per-fact `mock` triples is returned by the MOCK backend (src/lib/integrations/llm/corpus-fixture.ts) when an ingested note contains `mockMatch`, so a browser test can drive real content (F183.3). Only the explicit mock backend reads it, never the placeholder fallback after a model fails. `mock` is one correct reading among the accepted forms, not the only one."
 }

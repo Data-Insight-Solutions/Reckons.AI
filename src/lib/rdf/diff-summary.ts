@@ -10,7 +10,7 @@ import type { Statement } from './types';
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI, type ChatMessage } from '$lib/integrations/llm/providers';
 import { chatWithWasm } from '$lib/integrations/llm/wasm';
 import type { SettingsRecord } from '$lib/storage/db';
-import { preferLocalBackend } from '$lib/integrations/llm/prefer-local';
+import { installedOllamaModels, ollamaReachable, preferLocalBackend } from '$lib/integrations/llm/prefer-local';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
 
 export type DiffSummary = {
@@ -102,7 +102,11 @@ export async function generateDiffSummary(
     } else if (provider === 'gemini') {
       raw = await chatGemini(messages, SUMMARY_SYSTEM, s.geminiApiKey ?? '', s.geminiModel ?? 'gemini-2.0-flash', 512);
     } else if (provider === 'ollama') {
-      raw = await chatOllama(messages, SUMMARY_SYSTEM, ollamaModelFor('diffSummary', s), s.ollamaBaseUrl, 512);
+      // Resolve the model against the models the server has (a bare name runs as the installed
+      // tag; nothing configured, or a chosen name not installed, picks the best installed model).
+      const base = s.ollamaBaseUrl || 'http://localhost:11434';
+      await ollamaReachable(base); // refreshes the probe, which caches the installed names
+      raw = await chatOllama(messages, SUMMARY_SYSTEM, ollamaModelFor('diffSummary', s, installedOllamaModels(base)), base, 512);
     } else if (provider === 'openrouter') {
       raw = await chatOpenRouter(messages, SUMMARY_SYSTEM, s.openrouterApiKey ?? '', s.openrouterModel ?? 'meta-llama/llama-3.1-8b-instruct', 512);
     } else if (provider === 'reckons') {

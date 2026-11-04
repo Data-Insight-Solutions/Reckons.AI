@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_NUM_BATCH, OllamaHttpError, deviceNumBatch, isTransient, localOptions, retryTransient } from '../local-model';
+import { DEFAULT_NUM_BATCH, MissingModelError, OllamaHttpError, assertOk, deviceNumBatch, isTransient, localOptions, missingModelIn, retryTransient } from '../local-model';
 
 const noWait = { waitMs: 0, sleep: async () => {}, onRetry: () => {} };
 
@@ -51,5 +51,21 @@ describe('retryTransient', () => {
     let calls = 0;
     await expect(retryTransient(async () => { calls++; throw new OllamaHttpError(404, 'not found'); }, noWait)).rejects.toThrow('404');
     expect(calls).toBe(1);
+  });
+});
+
+describe('a model that is not installed', () => {
+  // Ollama 0.40.11's answer, verbatim (2026-10-28)
+  const body = `{"error":"model 'qwen3.6:latest' not found"}`;
+  it('is recognized from the 404 body, and nothing else is', () => {
+    expect(missingModelIn(404, body)).toBe('qwen3.6:latest');
+    expect(missingModelIn(500, body)).toBeNull();
+    expect(missingModelIn(404, '{"error":"page not found"}')).toBeNull();
+  });
+  it('assertOk names the model and the fix, and it is never retried', async () => {
+    const err = await assertOk({ ok: false, status: 404, text: async () => body }).catch((e) => e);
+    expect(err).toBeInstanceOf(MissingModelError);
+    expect(err.message).toMatch(/"qwen3\.6:latest" is not installed.*ollama pull qwen3\.6:latest.*RECKONS_LOCAL_MODEL/);
+    expect(isTransient(err)).toBe(false);
   });
 });

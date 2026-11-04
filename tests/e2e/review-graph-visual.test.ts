@@ -41,9 +41,16 @@ test('review preview graph renders node labels for a real graph (not blank)', as
   // The 3D canvas mounts…
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 8_000 });
 
-  // …and the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
+  // By default the preview follows the group under review, which is smaller than the space. It
+  // must still draw labels, not a blank canvas.
   await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   const labels = page.locator('.node-label');
+  await expect.poll(() => labels.count(), { timeout: 20_000, message: 'the followed group should draw labels' }).toBeGreaterThanOrEqual(1);
+
+  // …and on the whole graph, the shared GraphLabels overlay emits several real node labels (the bug was ZERO labels).
+  await page.getByRole('button', { name: 'following review' }).click();
+  await expect(page.getByRole('button', { name: 'whole graph' })).toBeVisible();
+  await expect(page.locator('.graph-pane')).toHaveAttribute('data-graph-settled', 'true', { timeout: 20_000 });
   await expect.poll(() => labels.count(), {
     timeout: 20_000,
     message: 'review preview graph should emit DOM labels after settling',

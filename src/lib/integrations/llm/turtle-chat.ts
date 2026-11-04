@@ -1,7 +1,7 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChromeAI, type ChatMessage } from './providers';
 import { ollamaModelFor } from './model-for-task';
 import { chatWithWasm } from './wasm';
-import { preferLocalBackendSync } from './prefer-local';
+import { installedOllamaModels, preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
 import { ethicsPreambleFor, localityOf } from '../../safety/content-policy';
 
@@ -239,7 +239,10 @@ export function resolveChatProvider(s: {
   const model =
     provider === 'openai' ? (s.openaiModel ?? (pref === 'openrouter' ? s.openrouterModel : 'gpt-4o-mini'))
     : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-    : provider === 'ollama' ? ollamaModelFor('chat', s)
+    // Sync path: last-known-good installed list from the probe (which preferLocalBackendSync
+    // above keeps refreshing in the background); null when no probe has succeeded, in which
+    // case resolution is exactly what it was before.
+    : provider === 'ollama' ? ollamaModelFor('chat', s, installedOllamaModels(s.ollamaBaseUrl || 'http://localhost:11434'))
     : provider === 'wasm' ? (s.wasmChatModel || s.wasmModel || undefined)
     : provider === 'chrome-ai' ? undefined
     : provider === 'mock' ? undefined

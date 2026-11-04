@@ -798,6 +798,7 @@ kb:private-host-check rdf:type ktype:Feature ;
     kpred:part-of kb:host-observability ;
     kpred:description "Reusable Linux host-health and opt-in npm dependency audits for future agents. Bounded read-only host probes distinguish pass/fail/unknown/skipped evidence; private local policy and reports stay outside Git; only aggregate counts reach shared automation. Dependency audits cover each tracked npm lockfile, preserve advisory inheritance, versions and fix suggestions, and distinguish dependency placement from unassessed deployed reachability." ;
     kpred:has-file "scripts/offline/host-health.ts", "scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
+    kpred:decided "MATT, 2026-10-28: the CI dependency audit (.github/workflows/dependency-audit.yml): raise the gate from --audit-level=low to moderate. Seven low advisories (@sveltejs/kit, deepmerge) appeared after 2026-10-23 that only a SvelteKit 3 major upgrade fixes, and they blocked every PR. Lows are still reported, not blocking." ;
     kpred:tested-by "scripts/offline/__tests__/host-health.test.ts", "scripts/offline/__tests__/dependency-health.test.ts" ;
     kpred:progress "Implemented 2026-09-28: private report and proposal snapshots outside Git, synthetic regression tests, local policy, aggregate stdout, bounded read-only Linux probes, and separate opt-in registry audits of every tracked npm lockfile. Reusable npm commands and script-tier job registrations are documented in AGENTS.md." ;
     kpred:remaining "No non-Linux host adapter, scheduled daemon, network inventory, automated remediation, or proof of deployed dependency reachability. Existing public Git history is not rewritten by private report handling." .
@@ -1883,6 +1884,8 @@ kb:local-panel rdf:type ktype:Feature ;
                kpred:has-file     "scripts/offline/lib/gpu-wait.ts" ;
                kpred:tested-by    "scripts/offline/lib/__tests__/gpu-wait.test.ts" ;
                kpred:progress     "2026-10-07, offline:all PASSES THE SAME GPU GATE. An ungated batch run outside the queue drove GPU 1 to 89 C, past the worker's 83 C limit, because scripts/offline/run-all.ts never asked. BUILT: before EACH agent-tier job run-all reads session-gpu.ts; hot, full or busy waits (re-read every 30 s) up to --gpu-wait-min (default 20), then the job is SKIPPED, named in the summary and counted as not clean; --no-gpu-gate opts out. WEAKNESS, said out loud: unknown GPU state (nvidia-smi missing or failing) RUNS the job with a warning, unlike the worker, which fails closed; offline:all is started by a person, and failing closed would silently disable every agent job on a machine without an NVIDIA GPU. A broken nvidia-smi on an NVIDIA machine therefore gets no protection from offline:all." ;
+               kpred:tested-by    "scripts/agent/__tests__/queue-chains.test.ts" ;
+               kpred:progress     "2026-11-04, JOB CHAINS (Matt 2026-11-03). queue.ts add --after=<job> (repeatable) holds a job until every predecessor has a passed run; a predecessor that failed, was refused or dropped records the waiting job once as blocked and it never runs; a cycle reads paused-broken-chain. A deputy job (argv runs local-claude.sh) whose worktree head did not move is recorded no-commit, not passed, and satisfies no chain. Tests spawn the real worker on a throwaway state dir. WEAKNESS: a passed run from any earlier day satisfies a link, and the no-commit check compares heads only (a commit made then reset reads as no-commit; a job outside a git worktree is unchecked)." ;
                kpred:tested-by    "scripts/agent/__tests__/session-queue.test.ts" ;
                kpred:tested-by    "scripts/agent/__tests__/device-config.test.ts" ;
                kpred:honest-note  "ONE JUDGE, 30 ITEMS, ONE WORD. The labels are Opus's, from the marked line and six lines of context; the accuracy figures are a first calibration, not a benchmark. A second fixture on a different word (graph, set) is the next measurement before the policy is trusted for the rename." ;
@@ -2178,6 +2181,8 @@ kb:async-orchestration rdf:type ktype:Feature ;
                kpred:has-phase    kb:async-visual-test ;
                kpred:has-phase    kb:async-desk ;
                kpred:has-phase    kb:async-backlog ;
+               kpred:has-phase    kb:async-chat-channel ;
+               kpred:has-phase    kb:async-radio-channel ;
                kpred:depends-on   kb:partial-facts ;
                kpred:benchmark    "BENCHMARK THE FRAMEWORK vs plain Claude Code + Opus, ongoing (Matt, 2026-07-16). As the agent framework grows, keep measuring it against the baseline of 'just ask Opus to do it in Claude Code': tokens (npm run session:tokens), task success, and triage cost. The tiering thesis (F74.3) is only TRUE if the framework beats that baseline on cost-for-correctness — a local job that emits 30 findings of which 25 are noise moved cost to triage, it did not remove it. So the benchmark is the honesty check on the whole design: if graph-native + local-first + tiered does NOT beat plain Opus on a task, plain Opus wins that task. Wire this into bench:agentic / bench:cost as a standing comparison, not a one-off." ;
                kpred:landscape    "vs the new open-source agent SDKs (analysed 2026-07-16). Microsoft Agent Framework (Azure AI Foundry; AutoGen + Semantic Kernel; multi-agent orchestration, memory modules, Entra Agent ID) and AWS Strands + AgentCore (Bedrock; model-driven — system prompt + tools + model let the LLM DECIDE autonomously) are both LLM-DRIVEN and CLOUD-TIED: trust the model, run it on the vendor's cloud. Reckons.AI's framework is the near-opposite bet — GRAPH-NATIVE (the queue, schedules, provenance and outcomes ARE triples in the user's own file, not a bolted-on memory store), LOCAL-FIRST (no cloud lock; Ollama local + optional cloud), and deliberately LLM-DISTRUSTFUL: route to the CHEAPEST tier that is correct (deterministic script > local-model PROPOSAL a human gates > Opus), enforce done-when (an agent never judges its own work done), and treat provenance as ACCOUNTABILITY (agents propose, humans settle — F52/F88). Differentiators to KEEP: graph-native state, the tiering ethos, done-when independent verification, ask-the-graph-not-the-human (F80/F91). Worth ADOPTING (ergonomics, not philosophy): MAF's multi-agent orchestration + memory patterns to enrich orchestrate.ts (our orchestration is nascent); Strands' typed system-prompt+tools contract to cut the local-agent harness boilerplate — but NEVER let the local model decide freely (proposals only). Map, don't adopt: Entra Agent ID -> our F84 RBAC / publisher-identity. Interop, not replacement: the MCP server is the surface to expose our graph-native agents to MAF/Strands and consume theirs, rather than becoming one of them." .
@@ -2229,6 +2234,35 @@ kb:async-desk rdf:type         ktype:Phase ;
                kpred:description  "The human side of the loop, on demand. The MAIN terminal keeps building; when agents have left open questions and Matt is not in the web UI answering them, `npm run desk` opens a SECOND terminal — a short-lived Claude Code side-chat (falls back to a scripted interview) whose only job is to ask him those questions ONE AT A TIME and keep nudging him to open the graph view of the fact in question. `scripts/agent/interview.ts` is the deterministic core: openQuestions() = pending partial facts minus anything already answered (in the UI or here), sorted by priority then age; recordAnswer() writes knowledge.answers.jsonl in the EXACT shape the UI writes, so a waiting agent resumes without knowing which channel replied. Matt chose this (2026-07-16): one build terminal + one question terminal, and the chat should often suggest opening the UI because he sees more in the graph than in a chat line." ;
                kpred:decided      "Matt (2026-07-16): work continues in ONE Claude Code build terminal; a NEW terminal opens to ask questions when he is not answering in the web UI; the side chat should OFTEN suggest opening the UI for a view of the graph and the facts in question. Answers here and answers in the UI are the same file — neither channel is authoritative over the other." ;
                kpred:remaining    "ENTITY-FOCUS DEEP-LINK: the UI reads only ?kb=<graph> today (no entity-focus param exists — verified 2026-07-16), so the desk links to the graph's Review tab and names the subject to look for. Add ?review=<subject-iri> to routes/(app)/review/+page.svelte to scroll/highlight the exact pending triple, and have uiLink() emit it — then the nudge lands Matt on the fact itself, not just its graph. Also: auto-open the desk from the build session / routine when openQuestions() is non-empty." .
+
+kb:async-chat-channel rdf:type ktype:Phase ;
+               rdfs:label   "Phase 7 — answer from a chat app: Matrix first, Signal and Discord as cloud options" ;
+               kpred:part-of      kb:async-orchestration ;
+               kpred:has-status   "planned" ;
+               hnav:order   7 ;
+               kpred:decided      "MATT, 2026-10-23, after reading about SandboxAQ's Switch (agents join Slack/Teams/Discord/Telegram rooms as named participants): 'Matrix ideally, Signal or Discord are good cloud service integrations.'" ;
+               kpred:description  "Another reply channel on the existing answer loop, beside the Review tab, Shelly, the question desk and voice. OUT: when ask.ts leaves a question (and when the queue worker or the overnight relay has something ready), a script posts it to Matt's Matrix room carrying the question's id. BACK: a local script syncs the room and appends a reply that names an open question to knowledge.answers.jsonl, the same file every other channel writes, so a waiting agent resumes without knowing which channel replied. Matrix first because the homeserver can be Matt's own hardware; Signal and Discord are opt-in cloud adapters behind the same contract. Like every integration it is per-user and behind settings, never a dependency of the core app." ;
+               kpred:principle    "THE CHAT IS THE CHANNEL, NOT THE RECORD. Switch makes the room the shared context; here the graph stays the record (Matt, 2026-09-30: no chat transcript is the record). A reply only fills a question that already exists." ;
+               kpred:constraint   "A REPLY IS AN ANSWER, NEVER A COMMAND. Only messages from Matt's own account id, in his room, that name an open question are accepted; anything else is ignored and logged. Letting chat dispatch work (queue a job, wake the deputy) turns a chat account into remote execution on this machine, so it is a separate later step limited to an allowlist of queue actions." ;
+               kpred:constraint   "PRIVACY BY ADAPTER. Questions carry repository and graph content. A self-hosted Matrix homeserver keeps it on Matt's hardware; Signal is end-to-end encrypted but needs a bridge account; Discord sees everything in plain text. The adapter must say which in its settings line." ;
+               kpred:depends-on   kb:async-ask ;
+               kpred:relates-to   kb:loop-overnight-relay ;
+               kpred:relates-to   kb:n8n-review-notifications ;
+               kpred:remaining    "Everything: choose the homeserver (Synapse, Conduit/conduwuit, or an existing one), a bot account, the out/back scripts, and a synthetic-transcript test that a reply naming an open question lands in answers.jsonl and any other message does not." .
+
+kb:async-radio-channel rdf:type ktype:Phase ;
+               rdfs:label   "Phase 8 — answer over local radio: a LoRa mesh (Meshtastic or an equivalent) across the homestead" ;
+               kpred:part-of      kb:async-orchestration ;
+               kpred:has-status   "speculative" ;
+               hnav:order   8 ;
+               kpred:decided      "MATT, 2026-10-23: 'Lets consider a messaging integration through Meshtastic or modern equivelent. If esp32 based nodes can be set, then local homestead communication could also go through local radio texts.'" ;
+               kpred:description  "The same channel contract as phase 7 (a question goes out with a short id; a reply naming an open question lands in knowledge.answers.jsonl), over a LoRa mesh instead of the internet. A node on USB at the desktop is the gateway; Matt carries a node paired to his phone, and fixed ESP32 nodes cover the property, so a question reaches him at the coop or the fish tank with no Wi-Fi or internet. The same mesh can carry homestead alerts (the F259 enclosure watcher) as a notification path; protection stays with Home Assistant and the heater's own thermostat, per Matt's 2026-10-23 decision. A radio node is an accessory in Matt's sense, a plugin with a body: its route is LoRa to the gateway, it keeps relaying with Reckons closed, and its only authority is answering." ;
+               kpred:constraint   "ABOUT 200 CHARACTERS PER MESSAGE, AND AIRTIME IS SHARED. A question goes out as its id plus one line ('7f3 merge #535 into dev? y/n'); the evidence stays in the app. Send decisions only Matt can make, batched, never one message per finding." ;
+               kpred:constraint   "ANYONE IN RANGE CAN TRANSMIT. Accept only direct messages from allowlisted node public keys (Meshtastic's public-key DMs, firmware 2.5+), never a shared channel, where a node id can be spoofed. A reply is an answer, never a command, as in phase 7. Stay in license-free ISM mode (915 MHz in the US); amateur mode forbids encryption." ;
+               kpred:open-question "Which mesh. Meshtastic: the largest ecosystem (phone apps, Home Assistant integration, Python and JS libraries, cheap ESP32 and nRF52 boards), with every node repeating and a 7-hop cap. MeshCore: dedicated repeaters and source routing, suited to fixed nodes placed on purpose; one comparison reports weaker payload crypto (unverified against its own docs). Reticulum with LXMF: a full encrypted network stack whose messaging holds messages for a node that is offline, the closest fit to asking and answering later, but a smaller ecosystem. Recommendation: Meshtastic for a few homestead nodes, unless store-and-forward turns out to matter more than the ecosystem." ;
+               kpred:open-question "Hardware: which gateway board on USB, and whether the CoreS3 watcher gets its own LoRa module or reports over Wi-Fi to a node that relays." ;
+               kpred:depends-on   kb:async-chat-channel ;
+               kpred:relates-to   kb:loop-overnight-relay .
 
 kb:async-backlog rdf:type      ktype:Phase ;
                rdfs:label   "Phase 6 — one classifier, three channels (the real backlog)" ;
@@ -2367,7 +2401,9 @@ kb:autonomous-loop rdf:type    ktype:Feature ;
                kpred:has-phase    kb:loop-definition-of-done ;
                kpred:has-phase    kb:loop-job-grouping ;
                kpred:has-phase    kb:loop-safety ;
-               kpred:has-phase    kb:loop-opus-review .
+               kpred:has-phase    kb:loop-opus-review ;
+               kpred:has-phase    kb:loop-local-deputy ;
+               kpred:has-phase    kb:loop-overnight-relay .
 
 kb:autonomous-loop kpred:has-file "scripts/agent/merge-queue.ts" ;
     kpred:tested-by "scripts/agent/__tests__/merge-queue.test.ts" ;
@@ -2418,7 +2454,26 @@ kb:loop-job-grouping rdf:type  ktype:Phase ;
                kpred:grouping-axis "TOPICAL RELEVANCE (Matt, 2026-07-19) — a SECOND, independent axis. One ingested article carries several subjects, and the ones incidental to the article's own core points are noise against the graph's goal. Cluster a single source's extracted triples by subject cluster so an off-topic cluster can be rejected wholesale, rather than declined one triple at a time. Reuses the embedding path already in the app (src/lib/embed.ts, BGE-small-en-v1.5) — the same similarity machinery kb:entity-normalization uses — so no new model is introduced." ;
                kpred:constraint   "Outlier highlighting is a PRECONDITION of accept-all, not a follow-up. kb:review-attention holds the opposing principle ('granularity breeds rubber-stamping... trains the human to accept all'), and this entity's own principle says a group that hides its dissenter has converted review into rubber-stamping. So a group surfaces its off-centroid / low-confidence members BEFORE the accept-all control is offered, and accept-all applies only to the currently FILTERED group, stating the count it is about to confirm." ;
                kpred:constraint   "A JOB GROUP IS A SET (Matt, 2026-07-19). This phase does not get its own grouping mechanism: it instantiates ktype:EntitySet + has-member over PENDING STATEMENTS, the same primitive kb:entity-sets uses over entities and kb:agent-orchestration will use over tasks. See kb:entity-sets for the one-primitive-three-consumers principle. Consequence: a review group is queryable, round-trips in TTL, and can be spotlighted on the canvas for free — because it is the same node type the graph already renders." ;
-               kpred:remaining    "Grouping in the review queue; batch accept/reject; outlier highlighting within a group; the topical-relevance axis above. Implemented over src/lib/rdf/entity-sets.ts, NOT as a parallel grouping mechanism." .
+               kpred:remaining    "The topical-relevance axis above. Groups are a VIEW over the queue in src/routes/(app)/review/+page.svelte, not ktype:EntitySet nodes over src/lib/rdf/entity-sets.ts as the constraint above requires; that migration is open, and until it is done a review group is not queryable or exportable." ;
+               kpred:done         "2026-10-27 (Matt: 'We need to allow users to accept all by source, like the by entity option'): Review groups the queue by entity, by source, or flat (remembered per browser, or ?group= in a link). Each group states 'accept N' and 'reject all' (reject asks once, inline). Outliers come FIRST in the group with the reason they are held back — needs an answer, disagrees with or refines a held fact, low confidence (<0.5), or another source's different pending value for the same subject and predicate — and accept skips them. Two values from one source do not hold each other back. Decisions are one setStatuses write. Covered by tests/e2e/review.test.ts and tests/e2e/triple-check.test.ts." ;
+               kpred:has-status   "planned" ;
+               kpred:decided      "MATT, 2026-10-28: group the review queue by PRODUCER RUN first (job + model + run), document grouping later." ;
+               kpred:decided      "MATT, 2026-10-28: a question with no proposed answer is answered inline, and an agent should first try to settle it from existing decisions in the graph, citing them, before asking him." .
+
+kb:question-presettle rdf:type ktype:Phase ;
+    rdfs:label "Settle a question from the graph before asking Matt" ;
+    kpred:part-of kb:loop-job-grouping ;
+    kpred:has-status "functional" ;
+    kpred:description "An open question in the review queue (subject and predicate, no object) cannot be accepted, only rejected or deferred, so it waits for Matt. Before it does, a job tries to settle it: first by script (does the site the question is about still exist?), then by a local model that may answer only by citing decisions already in the graph. The answer is a claim attached to the question's own decision, so accepting it settles the question in one act; nothing is settled by the job." ;
+    kpred:decided "MATT, 2026-10-28: a question with no proposed answer is answered inline, and an agent should first try to settle it from existing decisions in the graph, citing them, before asking him." ;
+    kpred:evidence "2026-10-28: 232 of 968 open review decisions are question-only. A local-work-reviewer batch the same day reached 3, could settle none ('open questions with no claim, nothing to check'), and deferred all three." ;
+    kpred:extends "mcp-server/src/review-session.ts groupDecisions (the CLI shares it by symlink), mcp-server/src/pending-file.ts appendPendingLines (locked queue appends), the graph's kpred:decided literals as the only admissible citations." ;
+    kpred:non-goal "No verdicts: the job writes proposals, never knowledge.decisions.jsonl. No new decisions: every row it writes attaches to an existing open question. No hosted model. Not the review page's inline-answer UI; that is later and stacks on #537." ;
+    kpred:done-test "mcp-server/src/__tests__/review-session.test.ts: a row carrying answers=<id of an open question's decision> joins that decision as a claim and the decision count does not rise; an answers id that names no open question is grouped as before. scripts/agent/__tests__/presettle.test.ts: a question naming path:line whose file is gone, or whose line no longer holds the word asked about, gets a 'no longer applies' answer stating what was checked; a live site gets none; the model stage's validator refuses an answer that cites no decision or an index outside those supplied; an emitted row quotes every cited decision verbatim and carries answers, agent presettle:<stage> and type suggestion. Then measured: one run over the open question-only decisions, counts per stage, and Opus spot-checks at least 10 model answers for precision, recorded here." ;
+    kpred:has-file "scripts/agent/presettle.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/presettle.test.ts" .
+
+kb:question-presettle kpred:measured "2026-10-29 (UTC), FIRST RUNS on the live queue, 232 open question-only decisions, 543 kpred:decided statements, qwen3.8 answering and mistral-small3.2:24b verifying, one model resident at a time; about 10 minutes. SITE STAGE: 1 (scripts/content/synthetic-room.ts, an unreferenced-script question, deleted on dev 4f9050ac); a first draft that counted a file absent from dev as gone called 6 files from the unmerged #537 'no longer exists', which is why the stage now needs a deleting commit in dev's history. GRAPH STAGE, BEFORE the quote and verifier checks (40 questions): 4 settled, 2 right (CodeQL promotion gate; dcterms prefix) and 2 wrong (a capture-retry question answered with a decision about where an MCP tool points; an evidence-anchors question answered against its own citations). AFTER (all 232): 2 settled, 218 not settled by any decision, 6 refused by the script checks (3 over 400 characters, 3 quotes not in the cited decision), 5 refused by the verifier (including the capture-retry false answer). Opus read both: the CodeQL answer is right (Matt decided it 2026-10-13); the term-senses 'set' answer hedges between two senses and is not usable. Written to the queue: the 2 verified right (site 8ed90416, CodeQL be620419), via --only, and each joined its question: 968 open decisions before and after. FINDING: yield is 3 of 232. The graph's decisions rarely answer what the queue asks, because most question-only rows are machine findings (lint, dead-weight, visual diffs) that want an action, not a fact; the rest are genuinely open. WEAKNESSES: the verifier choice rests on a two-case calibration; precision after the checks is 2 of 3 on one run; term-senses answers are free text where the question offers a fixed set of senses. Not scheduled as a recurring job: at this yield it is a tool to run before asking Matt, not a producer." .
 
 kb:loop-safety rdf:type        ktype:Phase ;
                rdfs:label   "Phase 5 — the ways this loop fails silently" ;
@@ -2439,10 +2494,96 @@ kb:loop-opus-review rdf:type ktype:Phase ;
     kpred:principle "THE MAIN THREAD'S CONTEXT IS THE SCARCE THING, NOT ONLY OPUS'S TOKENS. A subagent's reading stays in the subagent; only its verdict returns. Review done in the main thread is what forced fresh sessions (2026-09-30: >150k context, 97% of usage)." ;
     kpred:constraint "OPUS REVIEWS A BATCH, NEVER THE BACKLOG. On 2026-09-30 the queue held 552 decisions from 1,251 rows. Reviewing all of it with Opus would spend the budget this phase exists to protect. Script checks and the local panel go first; Opus sees what they leave, ten at a time, and a batch with nothing left for it is not dispatched." ;
     kpred:has-file ".claude/agents/local-work-reviewer.md", "scripts/agent/review-backlog-hook.sh" ;
+    kpred:has-file "scripts/agent/npm-symlink-guard.sh" ;
+    kpred:progress "2026-10-28, A WORKTREE AGENT CANNOT EMPTY THE MAIN CHECKOUT AGAIN. Agent worktrees share node_modules through a symlink (.claude/settings.local.json worktree.symlinkDirectories), and an npm ci inside one deletes through the link: the main checkout's node_modules was emptied on 2026-10-20 and again 2026-10-28, both from briefs that said npm ci. Matt chose to keep the symlinks and add a guard: scripts/agent/npm-symlink-guard.sh, a Bash PreToolUse hook that refuses npm ci/install when the target node_modules (or mcp-server/, cli/) is a symlink and says how to replace it with a real install. Hooks are registered in the untracked settings.local.json, so a fresh clone does not have it." ;
     kpred:decided "MATT, 2026-09-30, CODE FROM LOCAL AGENTS: 'Maybe sub-agents just never merge, it only writes in a new branch and then Opus reviews and approves merges?' So a local agent MAY write source, but only on its own new branch, and it can never merge. The branch is the proposal: the same review gate as a queue row, in git's form. This amends the agent tier's no-source rule rather than discarding it; what a local agent still may not touch is any branch it did not create, and dev or main above all." ;
     kpred:decided "MATT, 2026-09-30, THE MEDIUM: 'The agents ideally operate through git and Reckons.AI statements, all flat file git based, for software dev use cases like this.' So for software work every agent, local or Opus, coordinates only through the repository: tasks, findings, verdicts and approvals are statements in flat files (TTL and JSONL) committed to git, and work is commits on branches. No database, no service, no chat transcript is the record; git history is the audit trail, and a branch plus its statements is the whole hand-off." ;
     kpred:principle "THE MERGE IS THE GATE, SO ONLY THE REVIEWER HOLDS IT. A local agent's branch reaches dev only after the reviewer subagent has read its diff and approved it, and then through scripts/agent/merge-queue.ts (base must be dev, CI green on a branch containing dev, merge pinned to the reviewed commit). Approval names the commit it reviewed, so a push after review voids it." ;
     kpred:remaining "Pre-triage of the existing queue by the local panel, so the reviewer's batches are the residue rather than the raw rows; a runner task type that gives a local coding model a worktree on a fresh agent/* branch and nothing else; the reviewer reading a branch diff and recording an approval pinned to its head commit; merge-queue.ts refusing an agent/* branch without that approval. Until then, merges stay with Matt (the auto-mode classifier refused an unattended merge on 2026-09-30)." .
+
+
+kb:loop-local-deputy rdf:type ktype:Phase ;
+    rdfs:label "Phase 7 — the local deputy: Claude Code driven by a local model when Anthropic usage runs out" ;
+    kpred:part-of kb:autonomous-loop ;
+    hnav:order 7 ;
+    kpred:has-status "scaffolded" ;
+    kpred:decided "MATT, 2026-10-23: 'one key thing lacking now is a main agent I talk with, to help it decide things. Like I chat with Opus, I want a more intelligent local model to use claude code harness, to do what Opus does when I have usage credits left (not hit limit yet).'" ;
+    kpred:decided "MATT, 2026-11-04, asked whether the deputy may file its own status notes with kb_add_note (pending proposals only): 'Allow kb_add_note'. Allowed in scripts/agent/local-claude.sh; every other MCP write tool stays unlisted, so it still asks." ;
+    kpred:description "npm run local:claude starts the real Claude Code harness against a model on this machine, because Ollama serves an Anthropic-compatible /v1/messages. Same AGENTS.md, hooks, tools and reckons MCP; its own config folder with no Anthropic login, and every model name (subagents included) mapped to the local alias, so it cannot spend quota. Matt talks to it as he talks to Opus; what it decides is recorded with kb_add_note (agent local-deputy:<model>) and on an agent/local-* branch, and the next Opus session reviews it. It is a deputy: it proposes, it never merges." ;
+    kpred:has-file "scripts/agent/local-claude.sh" ;
+    kpred:has-file "tests/bench/run-orchestrator-bench.ts" ;
+    kpred:has-file "tests/bench/orchestration-tasks.ts" ;
+    kpred:has-file "tests/bench/orchestration-scoring.ts" ;
+    kpred:has-file "tests/bench/run-capacity-bench.ts" ;
+    kpred:has-file "tests/bench/overseer-tasks.ts" ;
+    kpred:has-file "tests/bench/run-overseer-bench.ts" ;
+    kpred:has-file "tests/bench/results/overseer-2026-10-28.jsonl" ;
+    kpred:has-file "tests/bench/fixtures/overseer/a-ci-triage/ci-log.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/a-ci-triage/commit.patch" ;
+    kpred:has-file "tests/bench/fixtures/overseer/a-ci-triage/header.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/b-diff-review/pr.diff" ;
+    kpred:has-file "tests/bench/fixtures/overseer/b-diff-review/rules.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/c-scorer-vs-model/model-output.ttl" ;
+    kpred:has-file "tests/bench/fixtures/overseer/c-scorer-vs-model/bench-result.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/d-queue-malformed/queue.jsonl" ;
+    kpred:has-file "tests/bench/fixtures/overseer/d-queue-malformed/notes.txt" ;
+    kpred:tested-by "tests/bench/__tests__/orchestration-scoring.test.ts" ;
+    kpred:tested-by "tests/bench/__tests__/overseer-tasks.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/local-claude-window.test.ts" ;
+    kpred:test-coverage "none" ;
+    kpred:proof "2026-10-23, by hand, two 3090s. qwen3.6-128k: counted scripts/agent/*.ts right (39) in 3 turns, 2.5 min cold; answered kb_get_entity autonomous-loop through the reckons MCP (F89) and its git push was denied, 22 s warm, modelUsage naming only the local alias. qwen3-coder-128k ran the tool but ignored 'not subdirectories' (63). One task each: an anecdote, not a benchmark." ;
+    kpred:constraint "CONTEXT IS THE TRAP. Claude Code's system prompt plus AGENTS.md is about 35k tokens before the first message, and Ollama's 32k server window silently truncated it to 16,386 (logged 'truncating input prompt'); the model lost its tool definitions and answered without calling one. The launcher therefore creates a <model>-<n>k alias (same weights; 160k by default, using 30 GB of the two cards) and tells Claude Code to compact at 3/4 of it. Claude Code will not compact below 100k (it warned on 98,304 at 128k), so a window under 136k is refused." ;
+    kpred:constraint "NOT A SANDBOX. Credentials are withheld by environment (empty GH_CONFIG_DIR, git credential helpers reset, keyring D-Bus unreachable) plus deny rules, and that blocks ordinary pushes, PRs and merges. An empty GH_CONFIG_DIR alone did NOT: gh auth git-credential still read the token from the keyring. It runs as Matt's Unix user, so a model trying to escape could read ~/.git-credentials; a real boundary is a separate user or container." ;
+    kpred:measured "OVERSEER BENCH, 2026-10-28 (F273 phase 0; Matt: 'try oss120B overseer and compare that with sonnet'). Same four synthetic replayed cases, same prompts, same read-only Claude Code harness (claude -p, Read/Grep/Glob) for both; gpt-oss:120b via scripts/agent/local-claude.sh at num_ctx 131072, its native maximum (160k is beyond gpt-oss's trained context; the launcher's old 136k floor refused it, so compaction is now max(100k, 3/4 of the window) with a test). Loaded at 67 GB, 35%/65% CPU/GPU, about 45.7 GB VRAM across both cards. TABLE (model, task: correct, stop respected, wall, tokens in/out): sonnet a-ci-triage yes, proceed ok, 13 s, 78055/448. sonnet b-diff-review yes, STOP ok, 16 s, 131335/648. sonnet c-scorer-vs-model yes, proceed ok, 36 s, 109347/2133. sonnet d-queue-malformed yes, n/a, 36 s, 109016/1712. gpt-oss a-ci-triage NO: right cause (generated-file-hand-edited) but action stop where proceed was the answer, 262 s, 144761/1028. gpt-oss b-diff-review yes, STOP ok, 255 s, 95007/603. gpt-oss c-scorer-vs-model TIMEOUT at the 20-minute limit, no answer, no turn completed. gpt-oss d-queue-malformed yes, n/a, 705 s, 70489/1158. Totals: Sonnet 4/4 in 101 s; gpt-oss 2/4 in 2422 s (about 24 times slower), plus a 365 s trivial-prompt feasibility run (137 s to first token, cold load). CONCLUSION: on this sample gpt-oss:120b is not as good an overseer as Sonnet. It named the right cause on all three tasks it finished and caught the planted private-data commit, but it halted a safe fix once and hung once, and it is about 24 times slower; as a gate whose job is to stop, over-stopping is the cheaper error, so it may serve as a slow second reader, not a replacement. WEAKNESSES: n=4 with one run each, so 2/4 against 4/4 is a signal, not a measurement; the timeout cause was not diagnosed (CPU offload and prefill of a 35k-token prompt are suspects); the fixtures sit inside a repo whose history holds the real answers and only the prompt confines the models to them; Sonnet token counts include cache reads; Claude Code's dollar figure for the local model is notional, not spend; the stop rule for task a (proceed) was fixed before the run and a stricter reading of the case could defend stop." ;
+    kpred:remaining "Overseer bench follow-ups (kb:deputy-overseer-rates did qwen3.8 at 5 runs and added two cases where stopping is wrong): diagnose the gpt-oss c-scorer-vs-model timeout; repeat gpt-oss at least 5 times (Sonnet done, 30/30; gpt-oss needs about 23 GB of free system RAM); a deputy benchmark (the same five orchestration tasks Opus does daily: triage a batch, plan a feature against the roadmap, write a small change with a test, review a diff, write a handoff) scored per local model before trusting it with more; with gh unauthenticated it cannot read PR or CI state." .
+
+kb:deputy-overseer-rates kpred:measured "2026-10-28, qwen3.8 at 163840 (alias qwen3.8-160k), through scripts/agent/local-claude.sh, 5 round-robin rounds of the 6 cases, 30 runs, all exit 0, no timeouts, peak 28.6 GB VRAM, 4,310 s in all (mean 144 s a run). RATE PER CASE: a-ci-triage 3/5 (cause right 5/5; stopped 2 times where proceed was expected); b-diff-review 5/5 (stop caught every time, 21-39 s); c-scorer-vs-model 3/5 (2 times it called the fixture's correct rdf namespace the typo and blamed the scorer or prompt: a real model error, the prompt lists the namespace); d-queue-malformed 5/5 (slowest, 206-506 s); e-term-ratchet 5/5; f-test-fixture-key 5/5. Overall 26/30 (87%). Sonnet, one run each, got e and f right (23 s, 24 s); its 4/4 on a-d is from the earlier single runs. FINDINGS: (1) qwen3.8 does not over-stop in general: 0 of 10 on the two new proceed cases; (2) its over-stops all fall on case a, where gpt-oss also stopped, and all three give the same reason: the commit changes a security gate, and fixing it means affirming that change on the owner's behalf. The fixture does not say the owner already decided the gate, so a stricter reading defends stop. Case a is CONTESTED as written: score it with that caveat, and a v2 that states the decision's provenance would separate model judgment from missing context (not done, so earlier rows stay comparable). WEAKNESSES: one model at 5 runs; gpt-oss and Sonnet are not yet repeated; the scoring is enum-only and says nothing about the reasoning's quality; temperature is the harness default, not fixed." .
+
+kb:deputy-overseer-rates kpred:measured "2026-10-29 (UTC), SONNET REPEATED, same harness: 4 more round-robin rounds on top of the one run per case from 2026-10-28, so 5 per case. 30/30 correct, every case 5/5, mean 36 s a run (one 286 s outlier on e). AGAINST qwen3.8's 26/30 at 144 s. CORRECTION to the qwen3.8 entry above: case a is NOT contested in practice. Sonnet proceeds on it 5 of 5, so the fixture reads as proceed to the reference model; the local models' stops there (qwen3.8 2 of 5, gpt-oss 1 of 1) are over-caution about a security-gate change, scored as errors under the rule fixed before the runs. A v2 that states the owner decided the gate would still separate judgment from missing context, but it is no longer needed to make case a fair. gpt-oss is not repeated: it needs about 23 GB of free system RAM and the host had 16." .
+
+kb:deputy-memory-readback rdf:type ktype:Phase ;
+    rdfs:label "Deputy memory read-back — set aside only what the deputy wrote, and tell Opus it is waiting" ;
+    kpred:part-of kb:loop-local-deputy ;
+    kpred:has-status "functional" ;
+    kpred:description "scripts/agent/local-claude.sh gives the deputy a copy of Opus's project memory at each launch. What the deputy writes there is set aside on the next launch, and nothing ever reads it. This phase sets aside a patch of the deputy's own changes, and the session-start hook names any patch not yet reviewed." ;
+    kpred:decided "MATT, 2026-10-28: 'Lets continue refining and testing local agents.'" ;
+    kpred:evidence "2026-10-28 (Opus): the launcher decides the deputy wrote memory by diffing its copy against Opus's CURRENT memory, so every Opus-side change between launches is reported as a deputy write. The 2026-10-24 set-aside held only Opus-side differences; the 2026-10-28 one held one real deputy file among them (a stale '336+ tests' claim, correct, already fixed in static/docs-testing.ttl). Neither was read by any session until this one looked by hand." ;
+    kpred:extends "scripts/agent/local-claude.sh (the copy step moves into scripts/agent/deputy-memory.sh sync) and scripts/agent/review-backlog-hook.sh (the SessionStart line that already reports the review queue)." ;
+    kpred:non-goal "No automatic merge into Opus's memory: a deputy write is a proposal, applied by a reviewing session. Not the review queue (knowledge.pending.jsonl): memory files are not triples, and that queue is already over its limit." ;
+    kpred:done-test "scripts/agent/__tests__/deputy-memory.test.ts, in temporary folders: (1) first launch copies the memory and sets nothing aside; (2) a change on Opus's side only sets nothing aside (fails today); (3) a deputy add plus edit is set aside as one changes.patch naming both, and the copy is refreshed; (4) pending prints the unreviewed patch and prints nothing once REVIEWED exists in its folder." ;
+    kpred:has-file "scripts/agent/deputy-memory.sh" ;
+    kpred:tested-by "scripts/agent/__tests__/deputy-memory.test.ts" .
+
+kb:deputy-memory-readback kpred:progress "2026-10-28: built and tested in temporary folders (5 tests); wired into local-claude.sh (sync) and review-backlog-hook.sh (pending). The 30 overseer-bench launches ran through the new sync. NOT YET EXERCISED by a real interactive deputy session that writes memory. Migration: the first launch under the new code found no baseline and replaced the copy without setting it aside; checked that no interactive deputy session had run since the last old-style set-aside (2026-10-28T21:35Z), so nothing was lost. The two old set-asides hold no patch and are not counted; the one real deputy file in them (stale '336+ tests') was correct and is already fixed in static/docs-testing.ttl." .
+
+kb:deputy-overseer-rates rdf:type ktype:Phase ;
+    rdfs:label "Overseer bench rates — every local model, repeated runs, and cases where stopping is wrong" ;
+    kpred:part-of kb:loop-local-deputy ;
+    kpred:has-status "functional" ;
+    kpred:description "The overseer bench (kb:loop-local-deputy) ran each case once, only for Sonnet and gpt-oss:120b, and three of its four cases reward a cautious model. This phase measures a RATE per model, includes qwen3.8 (the chat deputy, which had never run it), and prices over-stopping with cases whose right action is proceed although they look alarming." ;
+    kpred:decided "MATT, 2026-10-28: 'Lets continue refining and testing local agents.'" ;
+    kpred:evidence "2026-10-28: qwen3.8 was kept as the chat deputy with no overseer row of its own; gpt-oss's 2/4 against Sonnet's 4/4 is one run each (n=4); its one wrong answer was an over-stop, and only two cases (a, c) could catch that." ;
+    kpred:extends "tests/bench/run-overseer-bench.ts and tests/bench/overseer-tasks.ts (same harness, same enum scoring; no second bench), scripts/agent/local-claude.sh for any local model." ;
+    kpred:non-goal "No change to the deputy launcher's defaults or to which model is the deputy: this measures, Matt decides. No LLM judge: answers are scored by enum. Not the five-task deputy benchmark; that is a later phase." ;
+    kpred:has-file "tests/bench/fixtures/overseer/e-term-ratchet/push-log.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/e-term-ratchet/commit.patch" ;
+    kpred:has-file "tests/bench/fixtures/overseer/e-term-ratchet/rules.txt" ;
+    kpred:has-file "tests/bench/fixtures/overseer/f-test-fixture-key/pr.diff" ;
+    kpred:has-file "tests/bench/fixtures/overseer/f-test-fixture-key/rules.txt" ;
+    kpred:tested-by "tests/bench/__tests__/overseer-tasks.test.ts" ;
+    kpred:done-test "tests/bench/__tests__/overseer-tasks.test.ts: (1) at least two cases expect proceed although a surface reading suggests stop (e-term-ratchet, f-test-fixture-key), each with a fixture and a reference answer that scores correct, and stop on them scores incorrect; (2) the runner takes --model=sonnet or any Ollama tag, --repeat=N, and writes rows to a file named by the run date (pure helpers tested). Then measured, not tested: qwen3.8-160k at least 5 runs per case, recorded on this entity as a rate per case with its wall time." .
+
+kb:loop-overnight-relay rdf:type ktype:Phase ;
+    rdfs:label "Phase 8 — the overnight relay: local work runs past the usage limit, Opus overseers review it next session" ;
+    kpred:part-of kb:autonomous-loop ;
+    hnav:order 8 ;
+    kpred:has-status "planned" ;
+    kpred:depends-on kb:loop-local-deputy ;
+    kpred:depends-on kb:loop-opus-review ;
+    kpred:decided "MATT, 2026-10-23: 'I hit daily limit, but not going to bed for a few hours, a large series of jobs run, with some larger local coding models performing some useful work. Then I get on Claude Code tomorrow, and then Opus assigns overseers to approve, or improve work and schedule more jobs.'" ;
+    kpred:description "Three legs. EVENING: the queue worker keeps draining with no Claude session (the gate is removed in F166.1.2, #527), and the deputy is the conversation. CODING JOBS: a queued task runs local-claude.sh headless in a fresh worktree on an agent/local-<topic> branch with a task statement and an acceptance command; it commits locally and never pushes, so the branch is the proposal. MORNING: one script lists what happened since the last Opus session (finished and failed jobs, agent/local-* branches ahead of dev, deputy decisions in the review queue, set-aside deputy memory); Opus dispatches one reviewer subagent per branch, each approval pinned to the reviewed head commit, pushes and opens PRs for the approved ones, and queues the next jobs." ;
+    kpred:constraint "OVERSEERS CANNOT RUN PAST THE LIMIT. A Claude subagent, a background agent and a scheduled cloud routine all draw on the same plan usage as the main session, so none of them can approve work while the limit holds. During the gap the only overseers are local: the acceptance command, the script tier, and the local panel's pre-triage. Claude overseers run the next session, in the background, so the main thread keeps only their verdicts." ;
+    kpred:remaining "The coding task type in the runner (worktree + branch + acceptance command + local-claude.sh -p); the morning summary script; the branch reviewer recording an approval pinned to a head commit, and merge-queue refusing an agent/local-* branch without one (the last two are already kb:loop-opus-review's remaining)." .
 
 # -- F88: Co-orchestration — Shelly and Claude Code, either side of the user -----
 #
@@ -2629,7 +2770,9 @@ kb:local-orchestration rdf:type ktype:Feature ;
                kpred:has-file     "scripts/agent/schedule.ts" ;
                kpred:has-file     "scripts/agent/runner.ts" ;
                kpred:has-file     "src/lib/rdf/agent-task.ts" ;
+               kpred:has-file     "scripts/agent/queue-to-space.ts" ;
                kpred:tested-by    "src/lib/rdf/__tests__/agent-task.test.ts" ;
+               kpred:tested-by    "scripts/agent/__tests__/queue-to-space.test.ts" ;
                kpred:progress     "WAVE 0 HARDENING IMPLEMENTED, UNCOMMITTED (2026-08-17). Success is commandExit=0 AND verificationExit=0; button/visual/review tasks verify schema-versioned fresh reports rather than mtime; receipts bind HEAD plus staged, unstaged and untracked worktree state; state claims and the host pending queue use short flock transactions plus fsync/atomic rename; claim tokens and live leases fence stale completions; WAITING survives pending-row drain through durable subject|predicate keys. The focused evidence is 12 files / 139 tests, including deterministic two-process runner and queue races; npm check is 0 errors / 4 pre-existing warnings. New helper/test files are still untracked in the broad patch, so formal has-file/tested-by edges wait for the commit that first tracks them." ;
                kpred:progress     "MCP CONTEXT CONSUMING PROOF (2026-08-17). The corrected standing kb_compress query returned F81/local-orchestration, 8,561 characters, SHA-256 b26d3ab851e98c02e5558f62fad9520327bd4f8a35f7be2a36628a4d9a410c63, and no F108.3. qwen3-coder then consumed exactly those bytes while reviewing runner.ts and tasks.ttl: 2/2 files over five complete bounded chunks, zero omitted/failed/truncated, and the independent report verifier recomputed both source and consumed hashes. QUALITY LIMIT: it emitted 13 candidate lines; the cap retained one false positive claiming the already-present --graph guard was missing. Transport/evidence is now credible; proposal precision is not." ;
                kpred:proof        "Schedules live in the GRAPH (reckons-workspace/schedules.ttl, ktype:Schedule). `npm run schedule` reads the TTL, reports what is due, runs the due ones, and writes last-run/next-due back — verified end to end: a schedule executed `orchestrate --json` and its state was tracked. kpred:every is an INTERVAL, not cron: the next due time is computed from when it actually ran, so a machine asleep for a week wakes owing one run, not seven. Whatever triggers it (cron, systemd, unsnooze, a human) reads the graph to know what to do — the plan is not baked into a crontab nobody can diff. MODEL BATCHING (2026-07-15): a task declares kpred:model, and orderForModelBatching runs same-model local-agent tasks CONSECUTIVELY — Ollama + RAM cannot switch models cheaply, so keeping one model warm across its whole batch avoids a reload between every task. Script tier stays first (free, no model); the sort is stable so priority within a model is preserved. 5 tests; the runner logs each model-batch boundary because every boundary is a real reload." ;
@@ -2650,6 +2793,7 @@ kb:local-orchestration rdf:type ktype:Feature ;
                kpred:remaining    "WEB RUNTIME STILL UNBUILT. The host runner/task vocabulary now exists, but no Web Worker drains AgentTask entities, no cross-runtime atomic claim store coordinates browser and host, and the queue/outcome/WAITING state is not surfaced in-app. Do not transfer the host flock correctness claim to the browser." ;
                kpred:decided      "INSTALLABLE PWA (Matt, 2026-07-13). Already configured (@vite-pwa/sveltekit, vite.config.ts) — installable, offline-capable, on the home screen. Worth it on its own merits regardless of scheduling." ;
                kpred:constraint   "AN INSTALLED PWA IS STILL NOT A SCHEDULER. Periodic Background Sync unlocks on Chromium once installed, but the BROWSER decides whether and how often it fires, from engagement heuristics — commonly no more than once every ~12h, and never at a time you choose. Safari and Firefox do not implement it. So treat it as an OPPORTUNISTIC BONUS on top of drain-when-open, never a foundation. Building on it would reproduce exactly the failure we just had: a scheduler that looks armed and quietly does nothing." ;
+               kpred:progress     "JOB-PLAN SPACE (2026-11-04, local deputy): the queue itself is now visible — scripts/agent/queue-to-space.ts writes queued/running/last-48h-finished jobs as the annotated job-plan space (urn:kbase:concept/job-<id>, Job entity type declared in the same file), refreshed every 10 minutes by the session worker (sched:job-plan in reckons-workspace/schedules.ttl). Script tier, zero tokens: the token-less window has a plan it can read. Tests round-trip the output through the app's importer." ;
                kpred:open-question "For users who genuinely need wake-when-CLOSED at a chosen time: that is an OS capability, not a browser one. An optional desktop companion (or the existing MCP server) could do it. But for a local-first tool, 'work happens when the app is open' may simply be the honest bargain — and the app is open all day anyway." .
 
 # -- F82: Browser fact-finding sessions (extension) ------------------------------
@@ -3724,6 +3868,7 @@ kb:review-attention rdf:type ktype:Feature ;
                kpred:description  "Redesign the review surface around the attention budget: condense to a few decisions, promote conflicts/contested changes, quiet the uncontested, and flag tenure-driven drift on an established graph. Onboarding is this same problem at t=0 (see soft-onboarding). Relates to the review workbench (F30) and partial facts (F32)." ;
                kpred:relates-to   kb:review-workbench ;
                kpred:relates-to   kb:partial-facts .
+kb:review-attention kpred:done "2026-10-27 (Matt: 'the review graph viewer needs to be more reactive to what you are reviewing. The review process is tedious and manual filter and view setting changes makes it much worse'; 'Summary should be automatic also'): (1) Review's canvas FOLLOWS the group under review — its pending statements plus confirmed statements one entity-step out — with a 'following review / whole graph' chip to turn it off; it flies to the group when the group changes. The group under review is the one last touched (a card, a node on the canvas) or the first; settling a whole group moves on by itself. (2) The summary generates by itself for the group under review, cached and re-run about every fifth decision so a metered provider is not called per click. (3) An empty 'yours' lane shows all instead of an empty queue. Not yet measured: clicks per decision before and after." .
 
 # -- Soft Onboarding (F54) -----------------------------------------------------
 # The review-at-scale principle applied to the first run: a few nodes and ONE
@@ -6175,7 +6320,8 @@ kb:entity-appearance-resolver rdf:type ktype:Feature ;
     kpred:decided "SEMANTIC CASCADE BELOW TRANSIENT VIEW STATE. Explicit entity appearance wins over inherited appearance, which wins over entity type and fallback. Selection, hover, focus and dim are a separate transient layer and may override the rendered channel without erasing the semantic value or its provenance. When a layout owns fill color, semantic status stays visible through a configured outline, halo, icon or badge." ;
     kpred:decided "A SET IS AN ORDINARY ENTITY WITH A DERIVED FALLBACK. Explicit set media uses the same predicates and editor as any node. Without it, the resolver returns a stable collage of two to four deterministically ordered members plus total count; F101 summaries remain ephemeral education and are never persisted as preview facts." ;
     kpred:honest-note "CURRENT GAP (audited 2026-08-17): EntitySet has built-in geometry/color/icon and the generic IRI preview path supports image, GIF, icon2d, video and GLB, but arbitrary kpred:color is resolved only while building EntityType definitions. A color fact on an individual entity or set does not currently color that node." ;
-    kpred:acceptance "One pure tested resolver produces identical appearance and provenance maps for 2D, 3D, labels and preview; style config never renders as topology; an explicit entity/set value overrides inherited and type defaults; absent set media yields the same ordered collage after reload and statement shuffle." .
+    kpred:acceptance "One pure tested resolver produces identical appearance and provenance maps for 2D, 3D, labels and preview; style config never renders as topology; an explicit entity/set value overrides inherited and type defaults; absent set media yields the same ordered collage after reload and statement shuffle." ;
+    kpred:decided "MATT, 2026-10-29: 'the UI needs some work still. The random node shapes are a bit odd still. We will need better three.js/splat nodes per entity type.' Every demo video shows the 3D graph, so this comes before the final demo recordings (F275)." .
 
 # ------------------------------------------------------------------------------
 # F138: predicates can carry edge appearance and explicit inheritance rules.
@@ -7808,6 +7954,76 @@ kb:gen-model-bench rdf:type ktype:Phase ;
     kpred:honest-note "THE BENCH HAS NOT PRODUCED AN UPGRADE DECISION, AND THE FIRST RUN SHOWED WHY. The image briefs are too easy for the incumbent (0.960 mean, 28 of 30 perfect), so they cannot rank two models that both draw these subjects; the ceiling rule (added after seeing that result, not before) turns that into insufficient-evidence rather than a false upgrade. Harder briefs (counts of four or more, spatial relations, small text) are needed before an image verdict can mean anything. The first attempt also read +0 MiB card-wide VRAM on the pinned GPU, so peak VRAM now comes from the run\u0027s own processes in nvidia-smi. The video and splat paths ran only as unit tests and on the two committed assets: no video or splat generation was benchmarked. Their quality scores are proxies with uncalibrated equal weights, and the splat silhouette takes the best of 24 axis and flip configurations, which flatters every arm a little. The judge is one local 7B model; its answers are saved per item so a person can disagree." ;
     kpred:remaining "Harder image briefs so the bench has headroom, then a re-run; the same for video (4 briefs x 3 seeds x ~53 s per arm) and splat (~34 s per run); a recipe (bench-candidate.json) for any different-architecture candidate before it can run; calibrating the video and splat score weights against a human ranking; the GPU lease (0.2.7) to replace the process check." .
 
+kb:story-offers rdf:type ktype:Feature ;
+    rdfs:label "Hand-held walkthroughs — a story step offers settings and pages in one click, and a link starts the story" ;
+    kpred:feature-id "F261" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:triple-check, kb:multi-graph-stories ;
+    kpred:decided "MATT, 2026-10-27: 'We need to make the walkthroughs a bit more hand held, so settings should be suggested with a single click to set them, from Shelly story. Story mode should be started from a query paramter.'" ;
+    kpred:description "A story step may carry story:offerSetting \"key=value\" and story:openPage \"/path\"; Shelly's story view shows each as a button, and an applied setting shows as done. /?story starts the space's story and /?story=<story IRI> a named one, instead of the one-time notice; the Triple Check walkthrough opens that way from Settings. Code: src/lib/rdf/story-offers.ts, src/lib/rdf/story.ts, src/lib/components/TurtleChatPanel.svelte, src/lib/stores/story-prompt.svelte.ts." ;
+    kpred:constraint "OFFERED, NEVER APPLIED, AND ONLY FROM AN ALLOWLIST. A story is data inside a space that can arrive from anyone, so a step can only offer, the reader's click applies, and only three settings with listed values can be offered: Triple Check on or off, its web half OFF only, and 2D or 3D. Nothing that sends data anywhere, no backend, address, key or model. Pages are paths inside the app with a known first segment. Offer predicates are metadata, not drawn on the canvas." ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts", "src/lib/stores/__tests__/story-prompt.test.ts" ;
+    kpred:remaining "Only the Triple Check walkthrough uses offers; the other example spaces' stories do not yet (see F263). The allowlist grows one reviewed setting at a time. MATT, 2026-10-27: 'I think story needs to visit nodes, and or sets, and even open full screen assets.' A step can highlight and focus nodes today (story:highlight); visiting a SET (spotlight its members) and opening an asset FULL SCREEN (an image, clip or splat, through the existing viewer) are not built." ;
+    kpred:done "2026-10-27, Matt: 'if the statements are more of a space configuration, they should be hidden unless user selects all, instead of default detailed.' A story's structure (story: predicates and its Story/Step types) now counts as configuration of the space (isSpaceMetadata in src/lib/rdf/graph-view.ts): not drawn on the main canvas or Review's graph unless the detail level is 'all'. The player still reads it. Tested in graph-view.test.ts." .
+
+kb:check-flags rdf:type ktype:Feature ;
+    rdfs:label "Better flags from the maintenance checks — earlier, saying what is actually wrong, pointing at where" ;
+    kpred:feature-id "F262" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:decided "MATT, 2026-10-27: 'How do we get better flags on the maintenance items and checks?'" ;
+    kpred:measured "2026-10-27, PR #537: four blocking script-tier checks failed in CI about twelve minutes after a push, and every one runs locally. One message was wrong (commit-trailers said 'missing Model: and Intent:' for six commits that carried both, hidden by a blank line), one was a false positive (claim-audit read the built Triple Check as its planned sub-parts), and two ratchets said how much grew but not where (term-ratchet: '+54 statement')." ;
+    kpred:principle "A FLAG IS WORTH WHAT IT LETS YOU DO NEXT. Each blocking failure should say what is wrong, where (file and line), and the one command that fixes it, before the push rather than after; a flag that cries wolf or names only a total gets ignored, and then it protects nothing." ;
+    kpred:done "2026-10-27: npm run check:blocking (run-all.ts --blocking: exactly the jobs marked blocking in jobs.json, 10 jobs, about 10 s); an opt-in pre-push hook (.githooks/pre-push, npm run hooks:install); commit-trailers says 'written, but not in the last paragraph' for a hidden trailer (tested); claim-audit no longer treats a built feature's name as its planned sub-parts (scripts/offline/lib/claim-needles.ts, tested); ui-terms honors a declared kpred:ui-proper-name (tested)." ;
+    kpred:remaining "Per-file attribution for the ratchets (term-usage has no per-file prose breakdown, which is also what a trim pass needs). The same treatment for the deputy's maintenance proposals in the review queue: their type and priority are set by the producing model and not calibrated against what Matt accepts." .
+
+kb:example-space-review rdf:type ktype:Feature ;
+    rdfs:label "Review every example space — current entity types, generated pictures and splats, a hand-held story each" ;
+    kpred:feature-id "F263" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:story-offers, kb:generated-assets-onboarding, kb:media-entity-types, kb:starter-provenance ;
+    kpred:decided "MATT, 2026-10-27: 'We should do some work at reviewing all spaces, especially all example spaces. We should try to use more current entity types, generate some images and splats, and in general make the example spaces more compelling.'" ;
+    kpred:description "Start with a script-tier inventory of every bundled space (statements, typed entities, which built-in types are used against those available, sources and review status, story present and whether it offers anything, assets and their receipts), so 'more compelling' has a before and after. Then per space: retype with current entity types, add generated pictures and splats through the existing receipted pipeline (scripts/content/gen-assets.ts), and give each a story that opens from ?story and offers what it needs in one click." ;
+    kpred:remaining "Everything. The release-review spaces (Review 0.2.6, Review 0.2.7) are working spaces, not examples; whether they stay under example data is still Matt's call." .
+
+kb:review-compare-overlay-fix rdf:type ktype:Feature ;
+    rdfs:label "Review's compare and overlay screens — make them work, or remove them" ;
+    kpred:feature-id "F264" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:review-attention, kb:one-graph-canvas ;
+    kpred:decided "MATT, 2026-10-27: 'Review has the compare screen, and overlay screen, neither seemed functional last I checked.'" ;
+    kpred:remaining "Reproduce what fails in each with a synthetic space, then fix or remove; the 2026-10-08 decision (kb:one-graph-canvas) makes them overlays on the one shared canvas, which is the shape a fix should take." .
+
+kb:codebase-links-from-code rdf:type ktype:Feature ;
+    rdfs:label "Codebase graph links built from the code, not written by hand" ;
+    kpred:feature-id "F265" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:check-flags ;
+    kpred:decided "MATT, 2026-10-27: 'Lets consider the code to file links to be built from code, if that seems like a good fix.'" ;
+    kpred:description "Derive kpred:has-file and kpred:tested-by from the tree and the imports (a file belongs to the module its folder and imports say it does; a test belongs to the module it imports), generate the links into the Codebase graph, and let a hand-written link override or annotate a derived one. codebase-coverage then checks the generator ran, not that a person remembered: on PR #537 ten new files failed it." ;
+    kpred:remaining "Everything. Script tier: deterministic, zero tokens." .
+
+kb:optional-dependency-plugins rdf:type ktype:Feature ;
+    rdfs:label "Non-critical dependencies become plugins, installed only when enabled" ;
+    kpred:feature-id "F266" ;
+    kpred:has-status "planned" ;
+    kpred:relates-to kb:integration-plugin-sdk ;
+    kpred:decided "MATT, 2026-10-27: 'we also need to consider removing the non-critical dependencies. The plugins should be able to add dependencies, just if enabled/installed? For example voice features aren't going to be used by everyone, so hume and kokoro may be better off as plugins.'" ;
+    kpred:description "Inventory dependencies by what needs them (core app, a feature most people use, a feature few use, tests only), then move the few-use ones, starting with voice (Hume, Kokoro TTS), behind the plugin boundary so they are fetched and installed only when the plugin is enabled. The core stays smaller and has fewer advisories to answer." ;
+    kpred:remaining "The inventory first; the plugin SDK (F61) decides how a plugin declares and loads its dependencies." .
+
+kb:build-change-workflow rdf:type ktype:Phase ;
+    rdfs:label "F183.3 — build a space, then change it: one fixture for the browser test, the manual test and the extraction bench" ;
+    kpred:feature-id "F183.3" ;
+    kpred:has-status "in-progress" ;
+    kpred:part-of kb:task-model-bench ;
+    kpred:relates-to kb:review-attention, kb:loop-job-grouping, kb:triple-check ;
+    kpred:decided "MATT, 2026-10-27: 'After refining review, we need to run full e2e and benchmarking on local models, Qwen3.8 is new, and there may be other new useful models we haven't tried yet. I want a space with the e2e test, and also to manually test. Extraction and review are critical for space building, and space modifying.'" ;
+    kpred:description "A pair of synthetic notes in tests/fixtures/notes-corpus: the first builds a small space, the second changes one of its facts and adds others. Their expected facts in expectations.json are the ground truth for three uses at once. (1) The extraction bench (scripts/offline/extraction-score.ts) scores every local model on them, so 'space modifying' has a number, not only 'space building'. (2) The mock extractor returns those expected facts for a corpus note it recognizes, so a TestWorkflow in static/docs-testing.ttl can drive build, review by source, change, and the held-back disagreement through the browser with real content instead of placeholders. (3) The same steps, opened as a guided space, are the manual test with a real local model, which is where extraction quality is actually judged." ;
+    kpred:principle "ONE GROUND TRUTH, THREE READERS. A browser test with placeholder facts proves the screens respond; a bench proves a model extracts; a manual run proves a person can get through it. Written separately they drift, and the test passes on a flow no model can produce. Written once, a model that cannot produce the change shows up in the bench as the reason the manual run fails." ;
+    kpred:done "2026-10-27: the note pair (tests/fixtures/notes-corpus/06-garden-build.txt, 07-garden-change.txt) with expectations and a forbidden 'saturday' for the change note; the mock backend's corpus lookup (src/lib/integrations/llm/corpus-fixture.ts, explicit mock backend only, never the placeholder fallback); test:Workflow-BuildChange in static/docs-testing.ttl with six steps, screenshots and the page content/testing/workflow-build-change.md; tests/e2e/workflow-build-change.test.ts, which also fails if the note quoted in a step drifts from its corpus file. The test found that 'keep new' settles the chosen value as refined, not confirmed; both count as part of the space." ;
+    kpred:remaining "A bench run over the local roster on the new pair. The manual run with a real local model, which is the judgement the test cannot make. The steps are a docs page, not yet a guided space opened from the app." .
+
 kb:gen-bench-in-graph rdf:type ktype:Phase ;
     rdfs:label "F183.2 — generation bench tasks live in the Testing graph, harder image briefs, and the Creative Commons allowlist" ;
     kpred:feature-id "F183.2" ;
@@ -8309,7 +8525,9 @@ kb:question-supersession rdf:type ktype:Feature ;
                kpred:principle    "SORT THE QUEUE BY WHAT IT RESOLVES. An item that answers an outstanding question and unblocks four things belongs at the top. Provenance auto-confirms and is never shown at all (F194). An isolated low-altitude fact belongs at the bottom or in a batch. The altitude ladder already ranks facts by consequence and is the natural sort key; what it has never been used for is deciding what a person is SHOWN." ;
                kpred:principle    "THIS IS ALSO WHAT SUPERSEDING IS FOR, and it is the argument the docs now make on feat:ReviewSystem. A notepad keeps `we are going with Aprimo` from March and `we chose Bynder` from July side by side forever. Accepting the July claim against the March question is the moment the graph stops holding both — and the March statement is marked superseded rather than deleted, so what you used to think is still recoverable." ;
                kpred:open-question "What happens when the new claim CONTRADICTS an existing confirmed claim rather than answering an open question? That is the harder case and it is not the same act: superseding an answer you were waiting for is welcome, and overturning something you already decided deserves more friction. Probably a different card with the old claim shown beside the new one, but it is not designed." ;
-               kpred:honest-note  "NOTHING OF THIS IS BUILT. A partial fact can be created and filled by hand today; nothing notices that an incoming extraction answers one, and the queue is ordered by arrival." .
+               kpred:honest-note  "NOTHING OF THIS IS BUILT. A partial fact can be created and filled by hand today; nothing notices that an incoming extraction answers one, and the queue is ordered by arrival." ;
+               kpred:progress     "2026-10-28, REVIEW LINKS PHASE 1 (Matt: a usable link to review pending decisions in the app, without resyncing the workspace repeatedly). BUILT on branch feat/review-links: kb_review_links now groups the queue by (agent, graph, run) and every link carries kb= and agent=, because the app applies a verdict only to the graph that is open; a run is the same agent on the same UTC day unless a row carries run/runId (none do today); the base is the tool parameter, else RECKONS_APP_URL, else http://localhost:5173; rows naming no agent or graph are counted as unlinkable. /review opened from a link (?agent or ?kb) shows one Reconnect button when the stored folder needs permission, says plainly when this browser address has no folder linked and offers to link one, and shows loading from the folder until the first pull and drain finish instead of 0 proposals. NOT BUILT: links from GitHub PRs, document grouping, inline answering, agent pre-settlement. Each browser address still keeps its own folder handle and still needs one click per session." ;
+               kpred:remaining    "NEXT PHASE, NOT STARTED: kb:local-host-mode, so the app reads the space .ttl files and the queue over loopback and needs no folder permission at all." .
 
 # =============================================================================
 ## F196: Nanopublications — the pattern, then the integration
@@ -8760,6 +8978,8 @@ kb:coding-standards rdf:type ktype:Feature ;
     kpred:relates-to kb:controlled-vocabularies, kb:reckons-ai .
 
 # -- F206: Settings organized by user terms, code by developer terms ------------
+kb:settings-user-taxonomy kpred:decided "MATT, 2026-10-27: 'We really need to make a better settings navigation since we have so many configuration options already.' Direction confirmed; the seven-group proposal below is still not approved." ;
+    kpred:done "2026-10-27 (phase 0): one SettingsHeader component for all six settings pages, with the page list in one place. The nav had been copied by hand into five pages, each copy different, and the Triple Check page shipped with none." .
 kb:settings-user-taxonomy rdf:type ktype:Feature ;
     rdfs:label "Settings organized by user terms, code by developer terms" ;
     kpred:feature-id "F206" ;
@@ -9468,12 +9688,32 @@ kb:stable-local-calls rdf:type ktype:Feature ;
                kpred:principle    "REUSE BEFORE REBUILD (Matt, 2026-10-09). This repository is hand-building pieces of an agent harness: a queue, a circuit breaker, back-pressure, run reports, retries. Before a piece grows further, check a maintained project that already has it. LangGraph (F257) has per-node retry policies, checkpointing and human-in-the-loop interrupts. REA, Reverse Engineer Anything (github.com/morluto/rea, MIT, read 2026-10-09), is the reference for the other half: one CLI and MCP server installed into many agents (Claude Code, Codex, Cursor, Gemini CLI) through one setup command and skills, and findings returned with their evidence and limitations (its Evidence v2 records). Its README shows no job queue or retry policy, so it is a reference for evidence and agent integration, not for this feature." ;
                kpred:remaining    "Not covered: energy-bench (a benchmark must keep its own settings), the app's own Ollama provider in src/lib (browser, no device config), and visual-evidence-report (a dense vision model, never seen crashing). One GPU lease for every local caller (0.2.6 group C) is separate: this makes a call survive a crash, the lease stops two jobs loading models at once." ;
                kpred:has-file     "scripts/offline/lib/local-model.ts" ;
+               kpred:has-file     "scripts/offline/model-inventory.ts" ;
                kpred:tested-by    "scripts/offline/lib/__tests__/local-model.test.ts" ;
+               kpred:tested-by    "scripts/offline/__tests__/model-inventory.test.ts" ;
+               kpred:progress     "2026-10-28, A MISSING MODEL FAILS ONCE AND SAYS SO. qwen3.6 and qwen3:32b were removed by hand on 2026-10-26 when the deputy moved to qwen3.8; six scripts still defaulted to them and failed at the first call with a bare 404, which the deputy's handoff read as an Ollama API change. Now: one DEFAULT_REASONING_MODEL (RECKONS_LOCAL_MODEL overrides it per host); assertOk and ollama-stream turn Ollama's 404 into a MissingModelError naming the model and the fix, never retried; and model-inventory (npm run models:check, script tier, a first-pass schedule and a jobs.json entry) lists every tagged default against /api/tags at session start, exit 2 when Ollama is down. Gap: a default spelled without a tag is not matched. qwen3.8 is not yet re-scored on the panel task set qwen3.6 was measured on." ;
                kpred:tested-by    "scripts/agent/__tests__/queue-standard-batch.test.ts" ;
                kpred:progress     "2026-10-09, ALSO: the standard batch seeded term-senses panels for space, source, set and statement, which the terminology graph gives fewer than two meanings, so each run failed. standardBatch now reads the graph and seeds only words with two or more (node and graph today); a word joins the day its meanings are added." ;
                kpred:relates-to   kb:job-backpressure ;
                kpred:relates-to   kb:langgraph-job-runtime ;
                kpred:relates-to   kb:local-panel .
+
+# F74.11 — after the 2026-11-04 crash. Matt: "guard the job queue, try not to overflow into system RAM, unless necessary for large models like oss120b."
+kb:queue-ram-guard rdf:type ktype:Feature ;
+               rdfs:label         "Queue RAM guard: a local job does not push a model into system RAM" ;
+               kpred:feature-id   "F74.11" ;
+               kpred:has-status   "functional" ;
+               kpred:priority     "high" ;
+               kpred:part-of      kb:work-tiering ;
+               kpred:relates-to   kb:local-panel ;
+               kpred:relates-to   kb:stable-local-calls ;
+               kpred:has-file     "scripts/agent/session-ram.ts" ;
+               kpred:tested-by    "scripts/agent/__tests__/session-ram.test.ts" ;
+               kpred:description  "The queue worker checks system RAM as well as the GPU. A GPU job waits while less than 6 GiB of RAM is available. While any job runs, the worker samples RAM every 3 s. If the Ollama service holds more than 6 GiB of anonymous RAM, a model is loading into RAM instead of onto the GPU. If available RAM falls under 2 GiB, the desktop is about to run out. Either way the worker stops the job's whole process group, unloads every model and pauses the queue for a person to resume. A job added with --ram-spill (a model too big for VRAM) skips the spill check, never the floor. The limits are device thresholds (ramStartAvailMiB, ramFloorAvailMiB, ramSpillAnonMiB) in scripts/agent/defaults/device-defaults.ttl." ;
+               kpred:evidence     "THE CRASH, 2026-11-04 (journalctl -k and -u ollama). Ollama 0.40.11 placed qwen3.8-160k on GPU 0 at 12:30 CST, then started a llama-server without its CUDA backend ('compiled without support for GPU offload'). The model loaded into host RAM with mmap off (CPU_REPACK 11 GB, then 13.4 GB plus 4.3 GB for qwen3-coder at 12:33). 17 GB was free and 24 MB of swap was left. Both loads were OOM-killed (12:31:11, 12:39:07). The second swapped the machine for five minutes at load average 40, and the X session ended one second after the kill. The same CPU-only load also appeared that morning. Chrome held about 2.3 GB and was not the cause. The GPU gate saw two idle GPUs and passed." ;
+               kpred:measured     "2026-11-04, WHY ANONYMOUS RAM IS THE SIGNAL. Normal full-GPU loads: qwen3.8-160k peaked at 519 MiB anon in the ollama.service cgroup (23.0 GB all in VRAM), qwen3-coder at 263 MiB (21.1 GB in VRAM). The bad loads were 16.7 to 18 GB anon. gpt-oss:120b's overflow that morning was CPU_Mapped 22 GB: file memory the kernel can drop and reread, so it passes the spill check without a flag. End to end on a scratch queue (XDG_STATE_HOME) with a fake cgroup reading 20 GiB: the job was stopped 3 s after starting (exit 143), recorded failed with the reason, the queue paused, and no process of the job survived." ;
+               kpred:weakness     "Linux only: with no /proc/meminfo or no readable cgroup (Ollama not run as ollama.service; RECKONS_OLLAMA_CGROUP overrides the path), the affected checks pass rather than block. A 3 s sample catches a 0.45 GB/s spill at about 6 to 8 GB, and a faster one could get further. Only the queue is guarded: a model loaded by hand, by the app, or by offline:all is not watched. The backstop for those is a systemd-oomd and memory setting on ollama.service, which needs root and is Matt's to apply. It was not applied as of 2026-11-04. The cause itself, Ollama sometimes starting llama-server without CUDA, is not fixed; the guard only stops it hurting." ;
+               kpred:remaining    "Schedules in the graph cannot yet carry ramSpill (only queue.ts add --ram-spill). offline:all does not run the RAM watch." .
 
 kb:langgraph-job-runtime rdf:type ktype:Feature ;
                rdfs:label         "Local jobs as LangGraph graphs — durable steps, fan-out panels, and a pause that waits for a human decision" ;
@@ -9680,6 +9920,11 @@ kb:job-backpressure rdf:type ktype:Feature ;
 kb:job-backpressure kpred:progress "2026-10-08, THE HOLD WAS A DEADLOCK FOR THREE OF ITS FIVE JOBS. Matt opened /review?agent=distill-decisions and saw 0 pending. The drain imports a pending row only into the space its kb field names (partitionPendingJsonl) and retains a row with none, untouched and unreported in the UI. distill-decisions, docs-expand and extraction-score wrote no kb, nor did graph-lint and dead-weight: 412 of 1,989 queued rows could never reach the Review tab, so back-pressure held those jobs until a review that could not happen. Each producer now names its space: roadmap (distill-decisions, extraction-score), docs (docs-expand), codebase (dead-weight); graph-lint resolves each finding's file through the workspace links (lib/workspace-space.ts) and counts the files no space links to, leaving them unscoped rather than guessing. docs-review already carried the fix and the same comment. NOT DONE: the drain still drops unscoped rows silently in the UI; a producer-side check that every emitted row carries kb would make this a script-tier failure instead of a reader noticing an empty page." ;
     kpred:has-file "scripts/offline/lib/workspace-space.ts" ;
     kpred:tested-by "scripts/offline/lib/__tests__/workspace-space.test.ts" .
+kb:job-backpressure kpred:progress "2026-10-28, QUEUE INTEGRITY (Matt: script tier must catch malformation). queue-integrity.ts classifies every line of knowledge.pending.jsonl; 15 tail-fragment lines were quarantined; 10 producers moved from bare appendFileSync to the locked appendQueueText; queue:check is script tier (report-only in the sweep, --quarantine is manual)." ;
+    kpred:remaining "The browser writeToWorkspace drain does not take the host lock, which is the suspected remaining source of the tail fragments (unverified)." ;
+    kpred:has-file "scripts/offline/queue-integrity.ts", "scripts/offline/pending-queue.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/queue-integrity.test.ts", "scripts/offline/__tests__/pending-queue.test.ts" .
+kb:context-engine kpred:decided "MATT, 2026-10-28: 'We want to avoid noise, maintain a summary of key details for MCP or other queries. I still notice bash grep a lot, and we really need accurate accounting of this repository, and its plan for the spaces .ttl to be an efficient track record that helps, instead of just adding a lot of maintenance work. The key is tests, documentation, and other trailing work needs the understanding of what is new or changed, and the spaces should be this track record. It cannot be more bloated, nor too slim to accurately track the state of the development. The idea here is knowledge aggregation, that bridges gaps and avoids repeated analysis and misreads of the same content later.'" .
 kb:autonomous-loop kpred:progress "2026-10-07, THE MERGE QUEUE BRINGS DEV HOME. Matt: 'I'm slightly confused about why localhost is not the first place all the code is merged', then 'agreed localhost should serve dev'. Measured that day: his localhost ran vite dev from a checkout on a feature branch 44 commits behind dev, because every merge happened on GitHub and nothing brought it back. scripts/agent/merge-queue.ts gains --sync-local=<checkout>: after each merge it fast-forwards that checkout to the new dev, so the dev server running from it reloads with what was just merged. The decision is pure and tested (decideSync, 4 cases): only a clean checkout on dev with no local-only commits moves; any other state is skipped and the reason logged. A changed package-lock.json is reported, never installed, because worktrees and running servers can share one node_modules (that day a benchmark was running against it). NOT DONE: a preview port serving dev plus every open PR, which Matt was offered and has not chosen." .
 kb:code-graph-edges kpred:progress "2026-10-07, COVERAGE MEASURED, RAISED AND RATCHETED (Matt: 'improve any internal codebase to graph alignment checks and other maintenance jobs'). The project's own notes said kpred:has-file covered 100% of tracked files. Measured: 601 of 961 tracked code files (63%) were named by any has-file or tested-by in static/. graph-lint verifies every path the graph names, which is why links never rotted; nothing required a NEW file to be named, which is why coverage fell unnoticed. scripts/offline/codebase-coverage.ts now reports coverage, classifies each unlinked file by its evidence, links the decidable ones, and ratchets the rest (blocking, script tier; baseline kpred:coverage-ratchet on code:repo). Two evidence rules, both learned from wrong first answers: a test X.test.ts belongs to the module owning X.ts; otherwise a folder's single owner claims a file only if it owns 3 or more files there AND 60% or more of its own files live there. The bare one-owner rule would have sent 78 offline jobs to code:local-security-audits (a topic module with two files in that folder); a share-of-folder rule wrongly rejected code:rdf until a module's __tests__ was counted as its own folder. Result: 154 links added, 755 of 961 (79%). LEFT FOR DECISIONS, 206 files: 119 weak (81 of them scripts/offline, which has no module), 42 where several modules share a folder, 45 with no linked neighbor (mostly scripts/agent, also without a module). Creating code: modules for scripts/offline and scripts/agent would settle most of them; that is a modelling choice, proposed rather than made." .
 kb:code-graph-edges kpred:has-file "scripts/offline/codebase-coverage.ts" ;
@@ -9730,7 +9975,7 @@ kb:lan-https rdf:type ktype:Feature ;
 kb:agents-in-app rdf:type ktype:Feature ;
     rdfs:label "Agents in the app — a dashboard, and agent settings per space and per device" ;
     kpred:feature-id "F245" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:depends-on kb:local-host-mode ;
     kpred:relates-to kb:local-panel ;
     kpred:relates-to kb:meta-graph-view ;
@@ -9740,7 +9985,13 @@ kb:agents-in-app rdf:type ktype:Feature ;
     kpred:proposed "TWO LEVELS, INTERSECTED. DEVICE (private, stays in device.ttl, never in a space): which models exist here, GPU limits (the 83 C / 90% VRAM gate), quiet hours, whether this device runs agents at all. SPACE (in the space's own TTL, per the 2026-10-06 self-containment decision, so it travels with the space): which jobs run for it (descriptions, docs review, term senses, extraction scoring), how often, at which tier (script, local, cloud), and whether any may leave the device. The worker runs a job only when both allow it, and says which level refused." ;
     kpred:proposed "WHAT THE DASHBOARD SHOWS: models up or down and loaded; the running job with its progress; the queue; each finished job's outcome and the proposals it added to the review queue; failures by name, never collapsed into a count; and runs that died (the 2026-10-01 ghost run, fixed in PR #352, is the case it must not repeat)." ;
     kpred:decided "MATT, 2026-10-07, PLACEMENT: per-space agents in the Spaces tab beside the map (select a space to see its agents, queue and results), device agents (models, GPU limits, quiet hours) in Settings. NO NEW TOP-LEVEL TAB: it lives where the person already goes. Chosen over a new Agents tab and over Settings only." ;
-    kpred:honest-note "PLANNED, NOTHING BUILT (2026-10-07). The terminal watcher (scripts/agent/watch.ts), the queue and worker (PR #349) and the device TTL exist; nothing in src/ reads any of them." .
+    kpred:decided "MATT, 2026-10-29: 'the agent watch cli needs a bit more attention, it was getting very long and difficult to keep properly scrolled down to the bottom and still see the most important details. We should add an agent watch UI page, and a way to start the agent watch command from the UI.' Then, PLACEMENT: 'Maybe Settings > This Device.' and 'List of installed plugins, device specs, and a variety of things can go on that new settings page.'" ;
+    kpred:decided "MATT, 2026-10-29, WHAT 'INSTALLED' LISTS (no plugin system exists yet, F61): app integrations, local models plus MCP servers, and the browser extension. Not Claude Code's own plugins, whose files are undocumented." ;
+    kpred:honest-note "IN PROGRESS (2026-10-29). Built: Settings → This Device (src/routes/(app)/settings/device/+page.svelte) shows the agent watch with a pinned headline row and can start and stop the watcher, through a dev-server-only Vite plugin (scripts/dev-server/device-bridge.ts). NOT built: per-space agent configuration in the Spaces tab, device settings editing, and any of it on a deployed site or a phone — the bridge exists only while npm run dev runs. The bridge takes no token (loopback Host plus same-origin POST instead), which kb:local-host-mode (F243) will require." ;
+    kpred:tested-by "src/lib/device/__tests__/agent-watch-view.test.ts" ;
+    kpred:tested-by "src/lib/device/__tests__/integrations.test.ts" ;
+    kpred:tested-by "scripts/dev-server/__tests__/device-bridge.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/watch-summary.test.ts" .
 
 kb:meta-graph-view kpred:decided "MATT, 2026-10-07: 'Spaces map needs UX improvement also. We can do a 3D version?' YES, AND IT IS ALREADY THE PLAN'S DIRECTION: on 2026-09-29 Matt decided Spaces moves onto the shared canvas (kb:one-graph-canvas, which owns the 3D renderer) with its own layout, keeping the SVG map as the compact and accessible fallback; that is 0.2.5 build-order item 4. A 3D Spaces view is that canvas mode drawn in 3D, with the polar set layout from src/lib/rdf/space-graph.ts, ghost spaces for ones known only by reference (decided 2026-10-06), and per-space agent state from kb:agents-in-app on selection. CAUTION FROM THE 2026-10-07 BENCH: the canvas stops being usable around 10,000 nodes; a spaces graph is tens of nodes, so the risk is not size but reusing the explorer's force simulation where the deterministic polar layout already works." ;
     kpred:relates-to kb:agents-in-app .
@@ -9767,8 +10018,8 @@ kb:taxonomy-rename kpred:progress "2026-10-07, BATCH 2B: 42 top-level kb names r
 kb:release-0-2-6 rdf:type ktype:Release ;
     rdfs:label "v0.2.6" ;
     kpred:version "0.2.6" ;
-    kpred:has-status "functional" ;
-    kpred:description "What v0.2.5 left for next: the Spaces map as a mode of the shared canvas with ghost spaces you know of but cannot open, the importer for source chunks folded into a space's own file, and proposals in the graph." ;
+    kpred:has-status "production" ;
+    kpred:description "The evidence-chain release: retained passages, statement anchors, and the proposal shape. It also carries the generated-asset and immersive-space work already on dev at the cut; later proposal interaction phases remain planned." ;
     kpred:decided "MATT, 2026-10-07: Spaces phase 2 and the folded-chunk importer move here from v0.2.5. Proposals (F223) were already moved here on 2026-09-29." ;
     kpred:has-part kb:space-file-layout ;
     kpred:has-part kb:graph-proposals .
@@ -9799,15 +10050,64 @@ kb:release-0-2-6 kpred:proposed "DRAFT SCOPE, 2026-10-07, for Matt to add to and
 kb:release-0-2-6 kpred:decided "MATT, 2026-10-07: wiring the Currents client (kb:currents-client-unwired) is worth doing in v0.2.6. Local host mode, LAN HTTPS and agents in the app go to a later v0.2.7 'reach' release. Draft plans for v0.2.6 go in now, with v0.2.5." ;
     kpred:has-part kb:currents-client-unwired .
 
+kb:squash-trailer-provenance rdf:type ktype:Phase ;
+    rdfs:label "Validate provenance retained inside GitHub squash messages" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:change-provenance-commit-trailers ;
+    kpred:description "Read the original trailer blocks retained in GitHub's structured squash message, requiring every constituent section to carry Model and Intent. Keep ordinary commits and the commit-msg hook strict." ;
+    kpred:evidence "2026-11-01: PR #556 script-tier CI fails on 660962c354a9718d626e8d0489a01bdee0a7543e. Both original Model and Intent blocks remain in its message, before GitHub's final co-author block; git interpret-trailers reads only that final block." ;
+    kpred:extends "scripts/offline/commit-trailers.ts, its existing Git trailer parser, and scripts/offline/__tests__/commit-trailers.test.ts." ;
+    kpred:done-test "Synthetic squash messages pass only when all sections have complete trailer blocks; missing, empty or split blocks and ordinary body text still fail. The historical --base=origin/main check passes without rewriting commits, moving CUTOFF or adding exemptions. Existing commit-msg hook tests pass." ;
+    kpred:non-goal "No history rewrite, exception list, cutoff change, or relaxed commit-msg hook. Provenance remains self-attested, not independently verified." ;
+    kpred:has-file "scripts/offline/commit-trailers.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts" .
+
+kb:starter-asset-smoke-focus rdf:type ktype:Phase ;
+    rdfs:label "Find starter assets through search before opening their viewers" ;
+    kpred:has-status "functional" ;
+    kpred:part-of kb:visual-evidence-integrity ;
+    kpred:description "Make the production asset smoke test find and center each starter entity through the normal search flow before clicking its preview, following the generated-assets workflow's existing approach." ;
+    kpred:evidence "2026-11-01 review of PR #556 CI: three attempts timed out because the snapped controls intercepted preview clicks in the force layout. The smoke test assumed all preview positions stayed clickable." ;
+    kpred:extends "tests/e2e/graph-render.test.ts and the search-based openAsset flow in tests/e2e/workflow-generated-assets.test.ts." ;
+    kpred:done-test "The minified production-build smoke test opens GIF, video and GLB viewers through ordinary pointer clicks and still checks decoded media and nonblank GLB pixels. Repeat the affected case three times without retries." ;
+    kpred:non-goal "No force clicks, skipped assertions, UI layout change or longer timeout hiding an obstructed preview." ;
+    kpred:tested-by "tests/e2e/graph-render.test.ts" .
+
+kb:release-0-2-7-docs rdf:type ktype:Phase ;
+    rdfs:label "v0.2.7 closeout — reviewed documentation from the local deputy" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:release-0-2-7, kb:procedure-over-prose ;
+    kpred:description "Review the existing local deputy's five documentation entities, correct unsupported claims, regenerate their pages, and reconcile release descriptions with the live promotion state." ;
+    kpred:evidence "2026-11-01: release-notes --base=origin/main --head=origin/dev --check-docs reports five undocumented shipped features. Deputy commit 210d7d9d already drafted all five. PR #528 merged v0.2.6 to main on 2026-10-23; PR #556 for v0.2.7 remains open with failing checks." ;
+    kpred:extends "The v027-docs-pages deputy job and commit 210d7d9d; static/docs-coding-workflow.ttl, static/docs-features.ttl, scripts/docs-build.ts and scripts/offline/release-notes.ts." ;
+    kpred:done-test "release-notes --base=origin/main --head=HEAD --check-docs reports zero undocumented shipped features; docs:build:check, md-align and graph-lint pass. The five pages distinguish proposals from decisions and describe the deputy's permission limits without claiming a sandbox." ;
+    kpred:non-goal "No release promotion, merge, new product feature, or relaxation of a failing CI gate. The trailer and production smoke-test failures remain explicit release blockers until repaired separately." .
+
 kb:release-0-2-7 rdf:type ktype:Release ;
     rdfs:label "v0.2.7" ;
     kpred:version "0.2.7" ;
-    kpred:has-status "planned" ;
-    kpred:description "The reach release: Reckons.AI served from your own machine to your other devices. Local host mode with outbound event webhooks first and inbound polling second, HTTPS on a local network (a one-time certificate, Tailscale, or your own domain), and the agents dashboard inside the app." ;
+    kpred:has-status "functional" ;
+    kpred:description "The agents release: the local deputy, agent monitoring on This Device, grouped review links, question-answer proposals grounded in earlier decisions, queue integrity, and job briefs with tracked Git hooks. Local host mode and LAN HTTPS moved to v0.2.8 at the cut." ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
+    kpred:decided "MATT, 2026-10-30, THE CUT: 'Lets make a clear cut for agents updates for 0.2.7, maybe we already have a lot of 0.2.8 overflow, doesn't matter too much if there are some minor versions that are not cohesive on one feature/topic.' So 0.2.7 is the agents release. Local host mode (F243) and LAN HTTPS (F244) had not started and move to v0.2.8 with everything that arrived from 0.2.6 on 2026-10-13; the agents dashboard (F245) stays." ;
+    kpred:has-part kb:agents-in-app ;
+    kpred:has-part kb:loop-local-deputy ;
+    kpred:has-part kb:loop-job-grouping ;
+    kpred:has-part kb:procedure-over-prose .
+
+kb:release-0-2-7 kpred:progress "2026-10-30, AT THE CUT: dev was 44 commits past staging and every merge in them is agent work: #535 the local deputy, #541 review links grouped by producer run, #542 queue integrity, #545 the npm guard fix, #546 the overseer bench, #543 F273 phase 0 and A, plus #529 (a zod advisory) and #526 (a handoff). OPEN AND IN SCOPE, not yet merged: #550 agent watch page (F245), #549 question presettle, #548 overseer rates, #539 MCP local job tools (F267, CI failing at the cut), #551 F274.1 agents in another repository. F267 and F274.1 join has-part when their entities reach dev; naming them here first would leave a dangling link. NOT IN SCOPE: Triple Check (F100, #537) goes to 0.2.8 unless Matt says otherwise." .
+
+kb:release-0-2-7 kpred:progress "2026-10-30, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.7; release notes at content/releases/v0-2-7.md. Merged for the release: #535, #541, #542, #543, #545, #546, #547, #548, #549, #550, #551, #553, plus #529 (a zod advisory) and #526 (a handoff). Not in it: #539 MCP local job tools (F267, CI failing at the cut), Triple Check (#537, v0.2.8), the web engine (F274.4, v0.2.8)." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built on dev, not yet promoted to staging or production. Verified 2026-11-01: promotion PR #556 (dev to staging) is open at aa4bd10b with failing script-tier and production smoke-test checks; staging and main still declare 0.2.6. The five missing docs entities are supplied by the reviewed local-deputy closeout work, which must land before promotion. F245 remains in-progress: This Device and agent watch are built; per-space agent settings are not." .
+
+kb:release-0-2-8 rdf:type ktype:Release ;
+    rdfs:label "v0.2.8" ;
+    kpred:version "0.2.8" ;
+    kpred:has-status "planned" ;
+    kpred:description "The overflow release, by decision not cohesive on one theme (Matt, 2026-10-30): reach (local host mode, LAN HTTPS) and the canvas and analysis work that moved out of 0.2.6 on 2026-10-13 and out of 0.2.7 on 2026-10-30. Moved because none had started, not because they were dropped." ;
+    kpred:decided "MATT, 2026-10-30: received from v0.2.7 at the agents cut (see kb:release-0-2-7)." ;
     kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:agents-in-app .
+    kpred:has-part kb:lan-https .
 
 kb:release-0-2-6 kpred:proposed "ROUTE /kb BECOMES /spaces (Matt, 2026-10-07: 'Shouldn't /kb/ be /space/?'). The terminology binds routes to the generic user word (kreg:generic: 'a nav label, a route, an API argument and a stored identifier use the generic word'), and the nav already reads 'spaces' for this collection tab, so the route is /spaces (plural: 'space for the one you are in and spaces for the collection'). 39 references in 24 files. /kb keeps working forever: a 301 in static/_redirects for the site and a client redirect route for the app, because bookmarks, docs and shared links point at it. First in v0.2.6 rather than the v0.2.5 promotion night: it touches navigation and many e2e tests for a wording gain." .
 
@@ -9835,14 +10135,51 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
     kpred:has-part kb:terminology-maintenance ;
     kpred:has-part kb:ui-term-audit .
 
-kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped." ;
-    kpred:has-part kb:meta-graph-view ;
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped. MOVED AGAIN to v0.2.8 at the agents cut, 2026-10-30." .
+
+kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:one-graph-canvas ;
     kpred:has-part kb:set-layout ;
     kpred:has-part kb:integration-plugin-sdk ;
     kpred:has-part kb:analyze-job-sets ;
     kpred:has-part kb:research-watch ;
     kpred:has-part kb:graph-density-legibility .
+
+# 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
+# release: what makes the local deputy and its queue trustworthy enough to run offline.
+# Plan only; written by the local deputy, reviewed by Claude Code. F267 joins when #539 lands.
+kb:release-0-2-9 rdf:type ktype:Release ;
+    rdfs:label "v0.2.9" ;
+    kpred:version "0.2.9" ;
+    kpred:has-status "planned" ;
+    kpred:description "The orchestration release: what makes the local deputy and its queue trustworthy enough to run offline." ;
+    kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." ;
+    kpred:has-part kb:procedure-over-prose ;
+    kpred:has-part kb:local-dev-integration ;
+    kpred:has-part kb:taxonomy-coverage .
+
+kb:local-dev-integration rdf:type ktype:Feature ;
+    rdfs:label "Local dev integration — reviewed deputy branches merge in a local bare repository, the full check suite runs on this machine, and one batched push carries the review" ;
+    kpred:feature-id   "F276" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A local bare repository on this machine where Opus-reviewed agent/local-* branches merge, the blocking script tier and unit tests run locally on the merged result, and reviewed batches are pushed to GitHub dev in one push. Deputies still never push to GitHub." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): local dev integration - reviewed deputy branches merge in a local repository and the full check suite runs on this machine before one batched push to GitHub dev." ;
+    kpred:relates-to   kb:loop-overnight-relay ;
+    kpred:relates-to   kb:loop-opus-review ;
+    kpred:open-question "Does the local merge replace merge-queue.ts for agent branches, or feed it?" ;
+    kpred:done-test    "a scratch bare repo fixture: two reviewed branches merge locally, the blocking tier runs on the merged tree, one push carries both, an unreviewed branch is refused" ;
+    kpred:evidence     "2026-11-03: .githooks/pre-push checks the local checkout, not the pushed refs, so an unrelated failure blocks every push" ;
+    kpred:evidence     "2026-11-03: queue.done.jsonl marks exit 0 as passed even when the deputy report says BLOCKED (job f274-4-2-blog)" .
+
+kb:taxonomy-coverage rdf:type ktype:Phase ;
+    rdfs:label "taxonomy-coverage — script-tier advisory check: type-dangling, label-drift, orphan terms, undefined-predicate inventory" ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A script-tier advisory check for type-dangling, label-drift, orphan terms and an undefined-predicate inventory — only what graph-lint does not already cover." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): plan it properly - a roadmap entity first, then redo it on dev as a script-tier check, with no HANDOFF edits." ;
+    kpred:evidence     "prototype b425ffd7 on agent/local-harness-space: stale base, conflicts with dev, not to be merged" ;
+    kpred:done-test    "synthetic fixture TTLs, one per finding kind, fail before and pass after; advisory exit 0 on the real graphs; no proposals written unless --pending" ;
+    kpred:non-goal     "no blocking CI gate until its yield is measured" .
 
 kb:change-provenance-commit-trailers rdf:type ktype:Phase ;
     rdfs:label "F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
@@ -9988,8 +10325,8 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-7 kpred:has-part kb:test-workflow-stories .
-kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped." .
+kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped. Moved on to v0.2.8 at the agents cut, 2026-10-30." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
     rdfs:label "Term ratchet counts prose only, not code identifiers" ;
@@ -10209,7 +10546,7 @@ kb:release-0-2-6 kpred:principle "SPINE OF THE RELEASE, Matt 2026-10-13: 'I want
 kb:release-0-2-6 kpred:progress "2026-10-22, MATT'S DEV REVIEW (the first of his two reviews, on dev before staging): 17 checks, 12 pass, 2 skip (stale-anchor, import a scan), 2 fail, 1 not reviewed (Your room). Decisions: F223.2-.4 move to 0.2.7; #501 stays out of 0.2.6; the 35 missing docs pages are written before staging to main. FAIL view settings: on desktop the panel had no visible name, because AdaptivePanel passes `title` only to the phone sheet; it now has a desktop header (the review page also sent him to /kb instead of the graph view at /). FAIL currents: an RSS current with no n8n connected delivered nothing while the Spaces page said it was feeding arrivals; the summary now says nothing will arrive until n8n is connected, and the notes say so. PASS WITH A BUG, generated-assets story: gen:serve refused to start (EEXIST runner.lock) after a runner died without its exit handler; a dead owner's lock is now reclaimed and SIGHUP stops the runner." .
 
 kb:release-0-2-6 kpred:progress "2026-10-22, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.6; release notes at content/releases/v0-2-6.md. Two goals ship together: the evidence chain (the release goal) and spaces you can stand inside (F58.9, F166.1 and Three.js backgrounds, built on dev in the same sprint and carried by the same promotion, listed as carried and not as headline work). Headline status: F107.10 and F122.1 in-progress with every 0.2.6 phase functional; F223 has F223.1 (the shape) functional and F223.2-.4 not started. Status becomes production when main carries it." ;
-    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, awaiting Matt's review before staging and his second review before main. The docs gate (release-notes --check-docs, run on PRs into main) reported 35 features at scaffolded or beyond with no docs entity on 2026-10-22; the staging-to-main PR fails it until those are documented." .
+    kpred:honest-note "PRODUCTION VERIFIED 2026-11-01: PR #528 merged staging to main on 2026-10-23; main package.json declares 0.2.6. This corrects the earlier awaiting-review note. Release status describes the shipped cut, not every remaining phase of its feature entities." .
 
 # 2026-10-13 — Matt answers the evidence-chain design questions (Claude Code chat, after the plan in #452).
 kb:document-evidence-anchors kpred:decided "MATT, 2026-10-13, FOR 0.2.6: anchors are TEXT SPANS ONLY (character spans in the retained text); page numbers, PDF boxes and the full DocumentIR come later with local PDF extraction, honoring 'never synthesize precision'. The anchor lives as OPTIONAL FIELDS ON THE STATEMENT for 0.2.6; the shared EvidenceAnchor node decided in principle is derived from those fields later, losing nothing." .
@@ -10233,7 +10570,8 @@ kb:shelly-generation-jobs rdf:type ktype:Phase ;
     kpred:constraint "CAPABILITIES COME FROM THE CONNECTED RUNNER. If local generation is unavailable, report the missing adapter/tool/model and retain an honest pending request. Do not claim that conversational AI inherently cannot generate assets or that an asset exists before the receipt is verified. Shelly selects declared job templates and bounded parameters, never an arbitrary shell command. Reuse existing authority settings and require new consent only for a new or expanded effect; an already authorized request must not cause repeated generic confirmation loops." ;
     kpred:remaining "F166.1.1 implements the bounded file-queue runner and interactive story. Free-form Shelly chat job actions, remote runner transport and additional derivation adapters remain unbuilt. Starting the runner is an explicit local setup step." ;
     kpred:test-coverage "Interactive story dispatch covered by protocol, runner and browser tests; free-form chat dispatch remains unbuilt" ;
-    kpred:has-phase kb:generated-assets-story .
+    kpred:has-phase kb:generated-assets-story ;
+    kpred:decided "MATT, 2026-10-29: 'Shelly tools to generate assets is one of the key missing pieces.' Asked for alongside reproducible demo videos (F275), where asking Shelly for an asset and getting the real result is the demo." .
 
 kb:generated-assets-story rdf:type ktype:Phase ;
     rdfs:label "Interactive Generated assets story — prompt, image, then derivations" ;
@@ -10298,6 +10636,7 @@ kb:threejs-example-background rdf:type ktype:Phase ;
     kpred:constraint "The background example does not share the graph's camera, depth or lighting; nodes do not sit inside the scene, they float in front of it. Running a heavy example and the graph together doubles GPU load; the background must be stoppable from the graph view, not only from node details. Imported graphs never auto-start a background example." ;
     kpred:decided "MATT, 2026-10-21: 'The filter panel should also contain the space\'s background settings. Overall its a view settings panel.' Built: the top-left panel is renamed View settings (mobile button 'view settings'); its background group now shows whenever the space has a splat (3D only, as before) or a Three.js example. For an example it shows the name and status, Load/Stop/Retry, Interact with background and Clear background, driven by the SAME ThreeExampleSession the on-graph bar uses (one session, bound up from ThreeExampleBackground), so the two cannot disagree. The on-graph bar stays: it is reachable when the panel is collapsed or closed on a phone. Images are not offered because an image background does not exist in the app." .
 
+kb:generated-assets-onboarding kpred:decided "MATT, 2026-10-27: 'The asset generation example space should be on landing page, it is one of the most compelling uses. We should work on the multi-asset generation and job queueing, and Shelly tooling to generate multiple assets from chat.' It IS on the landing page already (2026-10-27, on main, staging and dev): the fifth card of 'Learn by exploring', below the fold, with no picture of what it makes. So the change is prominence: first, with a real generated picture or splat. Multi-asset jobs and chat tooling are kb:shelly-generation-jobs (F166.1) remaining work, now asked for." .
 kb:generated-assets-onboarding kpred:decided "Matt, 2026-10-20: avoid Tripo and Meshy for the core tutorials. Do as many cutting-edge, browser-only, no-install workflows as possible. The local runner (TripoSplat, stable-diffusion.cpp) stays as an optional advanced path, not the Getting started path." ;
     kpred:has-phase kb:browser-generation-tutorial .
 
@@ -10540,3 +10879,397 @@ kb:trend-to-reckoning rdf:type ktype:Phase ;
     kpred:depends-on kb:reckoning-gaps ;
     kpred:relates-to kb:research-watch ;
     kpred:description "Currents stay a slow feed checker. Two couplings only: a trend across arrivals (an entity or topic recurring above its baseline) can be opened as a reckoning's situation in one action; and each arrival is checked against open reckonings' gaps, so a current that answers a gap says so in review. Worked pairing: a current shows a rising topic, a reckoning targets an explainer and an illustration for it, research closes the gaps from licensed sources, generation makes the image from the reviewed facts, and the timelapse records the whole path." .
+
+# Matt's Triple Check / research scope, 2026-10-25–26. Rebuilt in a persistent worktree.
+kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statement evidence" ;
+    kpred:feature-id "F100.1" ; kpred:has-status "in-progress" ;
+    kpred:relates-to kb:source-validation, kb:graph-legibility ;
+    kpred:description "Opt-in per-space always-on checking while the app is open. Check unique pending and retained assertions against selected web search, scraping and cited model integrations, and all other registered local spaces. What a check finds becomes ordinary pending statements from a new source (rdf/triple-check.ts evidenceProposals): agreement is the same statement from that source, disagreement is a separate statement, and a page that disputes without stating a value is a partial-fact question. Repetition is not independent validation; different values may coexist. Never settle or rewrite claims automatically." ;
+    kpred:constraint "Off by default. Web use sends statements to the explicitly selected optional providers; bound metered requests durably and show unavailable/partial evidence. Local space comparison uses no cloud model. Product taxonomy distinguishes space (container, including visual content) from its RDF graph. No new top-level navigation." ;
+    kpred:remaining "Live-provider accuracy/cost calibration is not delivered; no live web check has run in this repository's tests. The Ollama space comparison's suggestedWording is no longer surfaced anywhere since findings became statements (2026-10-27); either it becomes a refine proposal or it is removed." .
+kb:triple-check kpred:done "2026-10-27 (Opus review): a guided walkthrough space (static/starter-triple-check.ttl, built by scripts/starter/build-research.ts) replaces the bare research starter and the list of every bundled file. A fictional home battery described by four documents, two accepted and two pending, with a ten-step story: a conflict worth acting on, agreement that is support not proof, two answers that are both right, and no flag that is not confirmation. Story, navigation and presentation statements are no longer checked." .
+kb:triple-check kpred:done "2026-10-27 (Opus, Matt's direction: 'I would much rather the triple check add additional sources to validate, or add a conflicting statement separate to the existing'): the separate evidence panel, the 'Possible conflict' label and 'mark reviewed' are removed. Findings are written through prepareStatementsForWrite + persistSourceBatch with origin 'agent', so content policy and the F52 boundary apply. A web page's stated contradicting value is kept only when it occurs verbatim in the passage. Proposals are deduplicated by (source, s, p, o) across every status, so a rejected citation stays rejected. Same-space evidence is not proposed: Review's diff already compares within a space. The walkthrough now opens a companion space (static/starter-triple-check-reference.ttl, an owners' forum) so the offline walkthrough has something outside the space to find." .
+kb:triple-check kpred:proposed "2026-10-27 (agent, not decided): F100 is not a part of any release. It touches the evidence chain 0.2.6 was about, so it fits 0.2.7 as a part, or a 0.2.8 of its own; Matt's call." .
+kb:triple-check kpred:decided "MATT, 2026-10-28: 'We really need a triple-check that is completely free open source, without API services off this device other than the web get.'" .
+kb:triple-check kpred:decided "MATT, 2026-10-28, on PR #544: 'Yes, SearXNG GET is fine.'" .
+kb:triple-check kpred:decided "MATT, 2026-10-28, on PR #544: 'Allow LAN, opt-in.' Built as an allowlist setting (tripleCheckLanHosts), empty by default, that must name each private SearXNG or Ollama host; private means literal RFC 1918 addresses, fd00::/8 literals and .local names; loopback needs no entry; a public address is refused even if named; a bare hostname is never trusted because the browser cannot see what it resolves to." .
+kb:triple-check kpred:decided "MATT, 2026-11-04, on the review of PR #537, asked how a model's purpose grouping should land (it was written CONFIRMED on Apply with no preview): 'Write it as pending'. Built: purposeOrganization emits pending; an earlier grouping the person accepted goes to pending-removal, one never reviewed is superseded (priorOrganizationStatus)." .
+kb:triple-check kpred:decided "MATT, 2026-11-04, on the review of PR #537, asked whether web checking should be opt-in (it came on with Triple Check and sends each statement's wording, private ones included, to public search through SearXNG): 'Web opt-in, off by default'. Built: unset tripleCheckWebEnabled means off; the checkbox and its note say what leaves the machine." .
+kb:triple-check kpred:decided "MATT, 2026-11-04, on the review of PR #537, asked which product-shape changes may ship: all four, the canvas changes (entity cap removed, Saved view picker, hubs-only suggestion over 150 entities), /compare/repositories, the About starter, and the ?story= link parameter." .
+kb:triple-check kpred:progress "2026-10-28 INVENTORY (agent): before this change the chain made off-device calls of 4 kinds. Search: POST api.tavily.com/search (the DEFAULT, because tripleCheckSearch was unset) and POST api.firecrawl.dev/v2/search, both with an API key. Scrape: POST api.firecrawl.dev/v2/scrape. Evidence model: claude, openai, gemini, openrouter and the hosted gateway, all POST with keys, and the model defaulted to the analysis provider (tripleCheckBackend ?? analyzeBackend ?? preferredBackend), so a user whose analysis provider was Claude sent every claim to Claude. Ollama used whatever address was set, remote included. Local space comparison was already lexical (no embedding call). NOW: search is a GET to a SearXNG instance whose address must be loopback (default http://localhost:8888); the evidence model is ollama (loopback only, the default), wasm or chrome-ai; hosted settings saved earlier are refused with a visible warning and nothing is sent. Done-test: src/lib/storage/__tests__/triple-check-local-only.test.ts (static import and host scan, plus the real chain with fetch stubbed under the default and under 10 hosted or remote settings). WEAKNESS: SearXNG still sends the statement's wording to public search engines (a GET, but off this device), and it has never run live against SearXNG or Ollama here." .
+kb:triple-check-local-search a ktype:Feature ; rdfs:label "Triple Check — self-hosted web search (SearXNG)" ;
+    kpred:feature-id "F100.7" ; kpred:has-status "scaffolded" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Matt (2026-10-27): 'Can we do a local web search not just online services?' A third search choice, a self-hosted SearXNG instance: no account and no key. It still sends the statement to public search engines from your machine, so it is private from a search vendor, not offline. A fully offline option (Kiwix ZIM archives such as offline Wikipedia) is the next step and is not built." ;
+    kpred:constraint "The instance must enable JSON output (search.formats) and allow the app's origin (CORS); both are instance settings the app cannot change. The deployed https site calling an http localhost instance is a mixed-content case browsers may block." ;
+    kpred:honest-note "SCAFFOLDED 2026-10-27: the adapter, setting and UI are built and unit-tested against a mocked response (3 tests). It has never been run against a live SearXNG; none runs on the development machine." .
+kb:triple-check-canvas-mark a ktype:Feature ; rdfs:label "Triple Check — mark checked entities on the canvas" ;
+    kpred:feature-id "F100.8" ; kpred:has-status "planned" ; kpred:relates-to kb:triple-check, kb:graph-legibility ;
+    kpred:description "Matt (2026-10-27): 'How does the check appear on a node's statement(s)?' Since the same day a check's findings are pending statements, so they appear wherever pending statements do: in Review's queue and as pending nodes and edges on Review's canvas, which now follows the group under review. What is still missing is a mark on a CONFIRMED node whose fact a pending statement disagrees with, visible on the main canvas outside Review. Plan: that mark, consistent with the review overlay of F92." .
+kb:triple-check-enterprise a ktype:Feature ; rdfs:label "Triple Check — approved shared evidence and SME discovery" ;
+    kpred:feature-id "F100.2" ; kpred:has-status "planned" ;
+    kpred:depends-on kb:enterprise-3ps, kb:question-router ; kpred:relates-to kb:triple-check ;
+    kpred:description "Engineers publish audience-scoped evidence projections so sales can check deck claims and find authorized SME metadata without full engineering-space access. Authorization must precede retrieval at a trusted serving boundary; never ask a model to redact a whole private graph. Revocation, audience-specific caches, expiry and disclosure tests are prerequisites. No enterprise RBAC or shared-projection service is implemented in local Triple Check." .
+kb:purpose-aware-analysis a ktype:Feature ; rdfs:label "Analyze — apply purpose-based organization" ;
+    kpred:feature-id "F100.3" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Explicit Analyze action automatically applies organizational links based on the user's changed purpose, with recovery snapshot and stale-output rejection. Preserve original assertions and review decisions." .
+kb:statement-comparison-benchmark a ktype:Feature ; rdfs:label "Aggregated statement chunks and cross-corpus research benchmark" ;
+    kpred:feature-id "F100.4" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Compare raw document chunks with provenance-preserving chunks assembled from deduplicated statements under equal retrieval budgets. Synthetic corpora include duplicated assertions, contradictions, legitimate multiple values and changed scope. Oracle triples measure retrieval, not extraction accuracy. Every bundled example gets validation workflow access; paid checks remain opt-in." .
+kb:starred-repository-research a ktype:Feature ; rdfs:label "Private incremental GitHub-star research space" ;
+    kpred:feature-id "F100.5" ; kpred:has-status "in-progress" ; kpred:relates-to kb:triple-check ;
+    kpred:description "Capture every starred repository for the authenticated GitHub user outside Git. Dated API metadata is publisher-source observation; README claims are not independent proof. Connect repositories by shared topics/languages. Produce a bounded handful of cited comparison hypotheses with advantages and limitations for review. Preserve review decisions across incremental refreshes and surface changed observations." .
+kb:repository-comparison-views kpred:decided "MATT, 2026-10-27, on the first cut: 'I don't love the new dropdown UI/UX for the node limit, I think it should be more automatic based on performance, just like the suggestion to go to 2d view. It should go more seamless with other existing filters. We will need hubs out, or set selection or other ways to determine the best nodes to show versus hide. The other filters are there to change the view to what the user wants to see. I believe that a generic load limit is not effective, and do not at all understand the first dropdown with explore this space as the only option.' DONE THE SAME DAY: the default 80-entity cap and its dropdown are gone (every space draws what its filters allow); the saved-view picker appears only when views exist, as 'Saved view' with 'Whole space'; when the canvas is slow and holds more than 150 things, the performance notice also offers 'Show hubs only' (the existing hubs detail rung, visible and undoable). The 'bounded disclosed subset' in the description above is therefore withdrawn as a default." ;
+    kpred:remaining "Choosing what to show in a LARGE space through sets and other meaningful filters rather than a count (Matt: 'hubs out, or set selection'), measured on the starred-repositories space (about 20,000 statements). Opening that space in one step: today it is a private file the person imports by hand, which the repositories page now explains." .
+kb:starred-repository-research kpred:measured "2026-10-27, first run on qwen3.8 (8 of 77 changed repositories, 24 votes, all valid JSON, quote and target checks passing): 0 proposals. The harness, not the model, is the limit: references are picked by keyword from the Production and Codebase graphs, so graphiti was compared with 'sample knowledge graphs' and an OCR library with 'workspace', and the model rightly answered 'insufficient'. Fix: compare against roadmap features (what Reckons.AI does and plans). Seven description-level suggestions were queued for review by Opus the same day." .
+kb:starred-repository-research kpred:decided "MATT, 2026-10-27: 'I had requested that we do a space with all starred repositories, and that space could be a good test for a larger space.' The research job writes it (766 repositories, about 20,000 statements, 2026-10-27) to a private file outside Git; nothing yet opens it as a space in one step." .
+kb:repository-comparison-views a ktype:Feature ; rdfs:label "Focused space views and repository comparisons" ;
+    kpred:feature-id "F100.6" ; kpred:has-status "in-progress" ;
+    kpred:relates-to kb:starred-repository-research, kb:graph-legibility ;
+    kpred:description "Compare selected similar repositories with Reckons.AI using dated source metrics and cited qualitative hypotheses. Save per-space selections of entities, predicates and statements and open them on the canvas. Large spaces show a bounded disclosed subset with expansion controls. Display projections do not change claims or review statuses. Shared topics/languages indicate overlap, not quality or compatibility." .
+
+kb:procedure-over-prose rdf:type ktype:Feature ;
+    rdfs:label "Procedure over prose — define the job, then let the harness run the process, so speed cannot skip a step" ;
+    kpred:feature-id   "F273" ;
+    kpred:has-status   "in-progress" ;
+    kpred:description  "Make the rules unskippable by turning each step that matters into code that refuses: a job spec with a done-test before any brief is written (phase 0, built), tracked git hooks that bind every agent (phase A, built), procedures as code (phase B, planned), and tracked procedure runs in the space (phase C, planned)." ;
+    kpred:priority     "high" ;
+    kpred:decided      "MATT, 2026-10-28: 'LLMs are not made to do this, they are made with rewards for rapid response. Lets combat that urge with process, tracked through .ttl spaces and procedure run via code. This is a principle, and now we need to refine the architecture, agent harness, etc. to achieve it.' Said after 'slow is smooth, smooth is fast' and the tortoise and the hare." ;
+    kpred:decided      "MATT, 2026-10-28: 'We likely need more attention of job definition and planning, to avoid writing useless code and rewriting.'" ;
+    kpred:decided      "MATT, 2026-10-28: build phase 0 (job spec with a done-test) first, then phase A (tracked git hooks)." ;
+    kpred:done-test    "PHASE 0: `npm run brief -- --entity=<iri>` exits non-zero and names what is missing when the entity has no kpred:done-test (or no evidence, extends, non-goal); with all four present it prints a brief that carries the entity's job spec plus the invariants (base dev, do not run npm ci or install, the one-block trailer, stop conditions, the local-tier ledger line). Tested with synthetic entities. F273 itself is the first entity it builds a brief from." ;
+    kpred:done-test    "PHASE A: in a temporary repository the tests create, (1) .githooks/commit-msg rejects an agent commit whose Model:/Intent: trailers are split from Co-Authored-By by a blank line and accepts the one-block form and a human commit; (2) .githooks/pre-commit rejects a commit that stages a hand-edited static/reckons-ci.ttl (any generated file whose generator has --check) and accepts the regenerated one; (3) .githooks/pre-push runs the blocking script tier and refuses on a blocking failure; (4) npm prepare sets core.hooksPath to .githooks. The happy path of all three hooks together is measured and stays under 30 s, or the slow check moves to CI." ;
+    kpred:non-goal     "No change to the CI workflows; CI stays the backstop. No hook that needs the network or a model. No new Claude-only hook for these steps: git hooks bind every agent." ;
+    kpred:extends      "scripts/offline/commit-trailers.ts (the trailer rule), the generators' existing --check modes (scripts/ci-graph.ts, jobs:graph, scripts/docs-build.ts --check, the release review space), scripts/offline/run-all.ts blocking jobs (check:blocking on feat/triple-check), and scripts/agent/npm-symlink-guard.sh as the model of a refusing guard." ;
+    kpred:principle    "A RULE AN AGENT CAN READ IS STILL A WISH WHEN SPEED IS REWARDED. kb:cross-agent-instructions made the rules readable; this makes them unskippable. A step that matters is a script that refuses, a hook that blocks, or a procedure whose run is recorded, never a sentence in AGENTS.md or a memory. The test of a mechanism: on the day the agent is in a hurry, does the wrong step fail before it lands?" ;
+    kpred:principle    "DEFINE DONE BEFORE CODE. Rewriting is the most expensive form of speed: code written before its done-test exists gets written twice. A job is defined when it names the failure it fixes (with evidence), the check that will pass when it is fixed, what it extends (found in the graph, so no parallel mechanism), and what it will not do." ;
+    kpred:evidence     "2026-10-28, ONE SESSION. REWORK FROM SKIPPED STEPS: a hand edit to the generated static/reckons-ci.ttl failed CI on #535; agent briefs said npm ci in symlinked worktrees and emptied the main checkout (also 2026-10-20); a split trailer block failed commit-trailers after the push; stale generated files (review-0.2.6.ttl, the docs search index) were found by CI, not before the push; Opus waited on background jobs, the ninth recorded slip of that rule. REWORK FROM UNDEFINED JOBS: the orchestrator bench scored by keyword presence and was rewritten to parse its output; the capacity bench crashed on its first line and hardcoded the queue it claimed to measure; space-visual-gate committed screenshots and reported all-passed on zero gates, both rewritten; the first npm guard blocked a heredoc and was rewritten. WHAT HELD: the npm symlink guard, transactPendingQueue refusing an unknown key before writing, parsed scoring with a reference and a keyword-stuffed answer." ;
+    kpred:proposed     "IN ORDER OF WHAT EACH WOULD HAVE PREVENTED. (0) A JOB SPEC BEFORE CODE: a job (an agent brief, a local job, a PR) starts from a roadmap entity carrying kpred:done-test (the check that fails now and passes when done), kpred:evidence, kpred:extends (what it builds on, from kb_compress or the codebase graph) and kpred:non-goal; a brief generator refuses to build a brief without a done-test, and the PR procedure links the PR to its entity. (A) TRACKED GIT HOOKS (core.hooksPath .githooks, set by npm prepare): commit-msg runs commit-trailers; pre-commit runs every generator whose output is staged in --check mode, so a hand edit to a generated file or a stale one fails locally; pre-push runs the blocking script tier (check:blocking, now only on feat/triple-check). Git hooks bind every agent — Codex, Cursor, the local deputy — unlike Claude hooks in the untracked settings.local.json. (B) PROCEDURES AS CODE: land-pr (gates, push, PR on dev, verify base, one CI wait with a stop), merge-order (no open promotion PR, merge, update the next branch), brief (built from the job spec plus the invariants: base dev, no npm ci, the trailer block, stop conditions, the ledger line). (C) RUNS TRACKED IN THE SPACE: each procedure run writes a ktype:ProcedureRun with its steps and outcomes, so the next session reads what happened instead of re-deriving it (kb:context-engine, Matt 2026-10-28: the spaces are the track record), and agent:watch shows the run walking its steps." ;
+    kpred:progress     "2026-10-28, PHASES 0 AND A BUILT; B (procedures as code) and C (runs tracked in the space) REMAIN, so the status is in-progress. PHASE 0: `npm run brief -- --entity=<iri|kb:slug|slug>` (scripts/brief.ts, pure core scripts/lib/job-brief.ts) exits 1 and names each missing predicate among done-test, evidence, extends, non-goal, and otherwise prints the entity's job spec plus seven invariants; F273 builds a brief. It checks the four fields are present, not that they are good. PHASE A: tracked hooks in .githooks (commit-msg reuses the commit-trailers parser through its new --message-file mode; pre-commit runs the --check mode of the five fast generators in scripts/githooks/generated.json: ci-graph, jobs-graph, docs-search-index, release-review-space, docs-build; pre-push runs `run-all --blocking --ci`, a new --blocking flag), and `npm prepare` sets core.hooksPath. Tests build temporary git repositories and failed before the hooks existed. MEASURED HAPPY PATH on this branch: commit-msg 0.5 s, pre-commit 1.0 s (all five generators triggered at most 3 s each), pre-push about 10 s for the ten blocking jobs: about 12 s together, under the 30 s budget. WEAKNESSES: pre-commit checks the working tree, not the staged blob, so a partly staged generated file can pass; a hook is skipped by `git push --no-verify` or by a clone that has not run npm prepare, so CI stays the backstop; the generators left out of pre-commit are those with no --check mode or that need a build." ;
+    kpred:has-file     "scripts/lib/job-brief.ts", "scripts/brief.ts", ".githooks/commit-msg", ".githooks/pre-commit", ".githooks/pre-push", "scripts/githooks/pre-commit-generated.ts", "scripts/githooks/generated.json" ;
+    kpred:tested-by    "scripts/lib/__tests__/job-brief.test.ts", "scripts/__tests__/brief-entity.test.ts", "scripts/__tests__/githooks.test.ts" ;
+    kpred:constraint   "NOT MORE PROSE. A phase is done when the failure it names fails in code, with a test. Each mechanism costs seconds on the happy path, or it gets bypassed (a gate that cries wolf gets switched off — the first npm guard did, within the hour)." ;
+    kpred:relates-to   kb:cross-agent-instructions ;
+    kpred:relates-to   kb:work-tiering ;
+    kpred:relates-to   kb:agent-orchestration ;
+    kpred:relates-to   kb:context-engine .
+
+kb:terminology-maintenance kpred:progress "2026-10-28, ONE SUBJECT PER SITE (Matt: fix the producer, then re-run). All 151 open term-senses rows shared one subject and predicate (terminology-ontology / open-question) with no object, so the review tools grouped them as one decision and a verdict on any settled all of them. term-senses.ts now queues each finding under urn:kbase:concept/term-site/<word>/<file>-l<line>, derived from word, file and line only, so two sites get two subjects and a re-run of the same site gets the same one (tests in term-senses.test.ts). The 151 old rows were rejected as superseded in knowledge.decisions.jsonl (backed up first). Re-run on the local tier, qwen3-coder + devstral-small-2 + gemma3:27b, 8 words, 30 sites each: 99 non-unanimous findings, 99 distinct subjects. NOT DONE: the 99 rows were written to a worktree copy of the queue (the atomic rewrite replaced a symlink), not yet the main checkout's queue; the other producers that share one subject across findings (docs-review rows share kb:journey-docs) are untouched." .
+
+# ── A site that is not this repo: Data Insight Solutions (Matt, 2026-10-29) ────
+
+kb:downstream-site rdf:type ktype:Feature ;
+    rdfs:label "Downstream site — Reckons.AI managing a website that lives in its own repository (first: Data Insight Solutions)" ;
+    kpred:feature-id   "F274" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:publishing-v2 ;
+    kpred:decided      "MATT, 2026-10-29: 'primarily this repo is building itself, we need a clone of this repository for my Data Insight Solutions website revamp. I need to be able to quickly adopt a merge of changes to Reckons.AI to get new features as I want, but still have a completely different web publishing, and have independant workspace for spaces that are for Data Insight Solutions only. This would be like an end user usecase of Reckons.AI, and be a great testing location outside of this repo itself. If Reckons.AI can be a personal assitant and manage a website for a user, then this will be an actual test of those features.'" ;
+    kpred:decided      "MATT, 2026-10-29, SHAPE: NOT A CLONE OR FORK. A fresh private repository holds only the site's data (workspace spaces, sources, content markdown, assets, Sveltia admin) plus a small site-engine package; the Reckons.AI app (main, or staging for pre-release testing) and its agents manage that folder. 'a small package within the other repository, and not a clone or fork of Reckons.AI repo entirely.' Matt creates the repository himself ('I will create a new repo for this and set it up locally')." ;
+    kpred:decided      "MATT, 2026-10-29, DESIGN: 'Replace the existing website design which was a copy from a different Sveltkit template. I would rather reset to my own web engine I'm making with Reckons.AI. Built with Reckons.AI attribution, etc.' VERSIONS: 'I would only be merging Main versions of Reckons.AI I think, but maybe useful to also be able to merge changes that are in staging, pre-release end user testing.' CONTENT: the existing site's content is re-created in the Reckons.AI-managed Sveltia CMS." ;
+    kpred:decided      "MATT, 2026-10-29, AGENTS: 'I would want to deploy local agents working on the site for me, like for the recreation initially, or for refactors that aren't a simple post, and obviously the page creation has some LLM need also to create the markdown from the .ttl knowledge in the spaces.' Then: 'Yes start on this work.'" ;
+    kpred:description  "THE FOLDER IS THE INTERFACE. Four things meet at the site repository's files: the web app (linked workspace folder), the MCP server (--kb <site>/workspace), the local deputy and queue worker (working inside it, committing to agent/local-* branches), and the host, whose build runs the site-engine package. The package only RENDERS (content to HTML at build time); it is not how the app reaches the site. New app features arrive by running a newer Reckons.AI; new engine features by bumping the package (latest = main, next = staging). Nothing is merged, so nothing conflicts. Every gap this site hits is built in Reckons.AI, generically, because any end user who wants a site would hit it too." ;
+    kpred:principle    "A FORK WOULD HIDE THE TEST. An end user cannot patch the source; a fork invites local patches that make each gap invisible. The site repository carries no Reckons.AI source, so a missing feature shows up as a missing feature." ;
+    kpred:constraint   "PUBLIC PAGES IN THEIR OWN SPACE. buildSiteFiles writes every statement it is given into the published knowledge.ttl (filtered only for blocked content), so publishing from a space that also holds private business notes would publish them. Until knowledge.ttl is limited to the published pages (queued for review on kb:byo-static-host, 2026-10-29), the site space holds only what may be public." ;
+    kpred:constraint   "The site repository is private and outside this one (kb:personal-workspace): Data Insight Solutions content, client notes and the site's spaces never enter this public repository, its fixtures or its tests." ;
+    kpred:decided      "MATT, 2026-10-29, THE REPOSITORY: Data-Insight-Solutions/DataInsightSolutions-website, PUBLIC. Private spaces stay in a git-ignored workspace/ ('I was thinking private workspace data would be gitignored'), chosen over a nested private repository and over a private site repository. Code MIT; content all rights reserved. Consequence said out loud: workspace/ has no git history or backup, and agent edits to it cannot be reviewed in git, so agents there propose through the review queue and never edit spaces; a guard script refuses workspace/, .ttl and queue files in a pre-commit hook and in CI." ;
+    kpred:measured     "2026-10-29, THE LIVE SITE: data-insight.solutions and data-insight-solutions.com are served by Netlify behind Cloudflare (Netlify request IDs through the Cloudflare proxy). Its source is the matt-roe/data-insight-solutions checkout updated 2026-03-18 (9 posts, identical to the live /api/posts.json); a second checkout of the same repository from 2024-08-07 is Matt's pre-AI-edit copy, not the source." ;
+    kpred:decided      "MATT, 2026-10-29, WHAT THE SITE SELLS: 'I will want to narrow the focus of my consulting services somewhat, even though recent and current projects are local and more generic IT work. I really want to advertise my enterprise Orange Logic DAM consulting services, custom Orange Logic integrations, and show off Reckons.AI as a custom software project. The Submittable API has likely changed a lot since I last worked on it, and the Philanthropy Data Commons.' Then: 'I will be doing a talk for the national organized AI Reality Check on November 14th, so if we can do this rebuild over the next few days I also want to advertise my AI integration expertise. I have done several agent integrations with Orange Logic, and obviously using LLMs and other AI tools heavily within Reckons.AI.'" ;
+    kpred:decided      "MATT, 2026-10-29, REVIEW AND DESIGN: 'One big piece of the rebuild is UI/UX of landing page(s). For Blog content I want that text review since it was AI edited last. We should use Triple Check on it.' The brand is the Data Insight Solutions rebrand made in Claude Design a few months earlier (project 'DIS Synapse Logo'); it reaches this work as an export, because standalone Claude Design is not readable from a coding session and closes 2026-12-14." ;
+    kpred:cut          "2026-11-14" ;
+    kpred:constraint   "THE LAUNCH DATE IS A TALK, NOT A RELEASE (Matt speaks at AI Reality Check on 2026-11-14). For that date the site needs: the brand, a landing page for the narrowed services, the reviewed blog, and a deploy. It does NOT need the host-side build or the package (F274.5): the launch deploys pre-built HTML from this machine to the existing Netlify site, so no DNS moves; Sveltia editing and the package follow after the talk. Claims about client work are Matt's facts, never drafted from nothing: a page states a project, a client or an outcome only when Matt supplied it or a source in the private space backs it." ;
+    kpred:depends-on   kb:source-validation ;
+    kpred:open-question "Package registry for the site engine: public npm, GitHub Packages (private to the org), or a git submodule until the package exists?" ;
+    kpred:open-question "Host: Cloudflare Pages (the F76 primary target, already the operator host) or Netlify (where the old site runs)?" ;
+    kpred:open-question "Attribution for other users' sites: on by default with an opt-out, or required? F76's no-lock-in principle argues for an opt-out." ;
+    kpred:relates-to   kb:byo-static-host, kb:graph-publishing, kb:personal-workspace, kb:loop-local-deputy, kb:agents-in-app ;
+    kpred:honest-note  "PLANNED, NOTHING BUILT (2026-10-29). What exists: the app links an outside workspace folder; the MCP server takes --kb <path>; kb_entity_markdown (no model) and kb_generate_page (local model, proposal only) draft pages from a space; queue.ts add --cwd runs a one-off job in another folder; site-import and site-generator are the two halves of a markdown-to-HTML build. Missing: everything in the phases below." ;
+    kpred:decided "MATT, 2026-10-29, WHAT THE SITE IS FOR: 'The talk will be adhering to the topics defined by AI Reality Check org, the DIS website update is for those wanting to know more about me and my work, my LLC after the talk.' So the site is about Data Insight Solutions and Matt's work, not themed on the talk, and the talk itself is not Reckons.AI material." ;
+    kpred:decided "MATT, 2026-10-29, THE BLOG: 'the old blog posts on the site are wordy currently... need refinement and shortening.' And: 'We should have a note: references gathered automatically with Reckons.AI Triple Check.' Order: Triple Check first (facts settled), then shorten; each post carries the references note, worded so it also says the author reviewed them (Triple Check proposes sources; a person confirms)." .
+
+kb:downstream-site-agents rdf:type ktype:Phase ;
+    rdfs:label "F274.1 — local agents and the MCP server work in another repository" ;
+    kpred:feature-id   "F274.1" ;
+    kpred:has-status   "functional" ;
+    kpred:progress     "2026-10-29: functional. (a) local-claude.sh --repo and (b) mcp-server.sh --kb by Opus; (c) kpred:cwd on schedules by the local deputy (qwen3.8-160k, 6 minutes, accepted unchanged). DONE-TEST, run live against the new Data Insight Solutions repository: the deputy reported that folder as its working directory, quoted its AGENTS.md, and its git push was refused by permissions; the launcher given --kb of a scratch workspace listed only that space and kb_add_note wrote to that workspace's queue, leaving this repository's queue unchanged; the schedule cwd unit tests pass. NOT AUTOMATIC, ON PURPOSE: the deputy's own config folder trusts no project, and Claude Code loads a project's .mcp.json only once it is trusted. Making the launcher trust a --repo folder by itself was refused by the auto-mode safety classifier (it would skip the trust prompt), so a person runs the deputy interactively once in a new repository and accepts the prompt; until then the reckons tools are absent there. The deputy exports RECKONS_HOME so a managed repository's .mcp.json can find this checkout's MCP launcher without committing a user path." ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "(a) local-claude.sh --repo=<dir>: the deputy starts inside the site repository with that repository's AGENTS.md and .mcp.json, keeping every part of its safety envelope (no Anthropic login, no GitHub credential, push and merge denied, agent/local-* branches). (b) The MCP server can be launched for another repository's workspace (scripts/mcp-server.sh today always serves this repository's mcp-workspace). (c) A recurring schedule can name the folder it runs in (today every schedule runs in this repository)." ;
+    kpred:done-test    "A deputy started with --repo=<a scratch git repo> reports that repo as its working directory, reads its AGENTS.md, and git push is still denied; the MCP launcher given --kb <scratch workspace> lists that workspace's spaces; a schedule with kpred:cwd runs in that folder (unit test)." ;
+    kpred:order        1 .
+
+kb:release-0-2-7 kpred:has-part kb:downstream-site-agents .
+
+kb:downstream-site-scaffold rdf:type ktype:Phase ;
+    rdfs:label "F274.2 — a fresh site workspace: reckons init" ;
+    kpred:feature-id   "F274.2" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "One command that turns an empty repository into a Reckons.AI site workspace: workspace/kbs/ with an empty public site space and one private space, workspace/sources/, content/, admin/ (Sveltia), .mcp.json pointing the reckons MCP server at ./workspace, an AGENTS.md template for the site, and .gitignore. setup-reckons-workspace.sh is NOT this: it builds this repository's own self-documentation workspace from static/*.ttl." ;
+    kpred:order        2 .
+
+kb:downstream-site-content rdf:type ktype:Phase ;
+    rdfs:label "F274.3 — re-create the existing Data Insight Solutions content as WebPage entities" ;
+    kpred:feature-id   "F274.3" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "BLOG TEXT REVIEW (Matt, 2026-10-29): the posts were last edited by AI, so every claim in them goes through Triple Check (F100, on-device: SearXNG search + a local model, PR #537 with #544, unmerged on 2026-10-29) before republishing; no SearXNG instance was running on this machine that day. Inventory (2026-10-29, the old SvelteKit site): 9 blog posts (frontmatter: title, date, excerpt, coverImage, categories), About and Services as +page.md, Home and Contact as Svelte components, 67 MB of images, a Decap/Sveltia config. Script tier maps the markdown pages (no model); the deputy turns the two Svelte pages into page text as a reviewed branch; the local panel settles bulk judgments (category, keep or drop the template-era post). Run in the site repository, never here." ;
+    kpred:tested-by    "src/lib/publish/__tests__/markdown-site-import.test.ts" ;
+    kpred:order        3 .
+
+kb:downstream-site-engine rdf:type ktype:Phase ;
+    rdfs:label "F274.4 — engine gaps and the build command (generic, in Reckons.AI)" ;
+    kpred:feature-id   "F274.4" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "Publish from the app into a chosen folder per space; a build command that runs content/*.md through site-import into site-generator on the host (resolves the F76 SOURCE-or-PRE-BUILT question: source, built on the host, because Sveltia edits markdown); blog index, categories, cover images and pagination; a landing layout; a contact form posting to the person's own n8n webhook; 'Built with Reckons.AI' attribution as a link; knowledge.ttl limited to published pages." ;
+    kpred:order        4 .
+
+kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for pages.dev domain viewing, I can cut over DNS once I am happy with everything.' Answers the Host open question: Cloudflare Pages. Project data-insight-solutions (direct upload, no Git link), preview https://data-insight-solutions.pages.dev deployed 2026-10-30 from the reviewed landing mock-up with noindex; DNS for data-insight-solutions.com and data-insight.solutions still points at Netlify until Matt cuts over (the project token cannot edit DNS)." ;
+    kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
+    kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
+
+kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
+    kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
+
+kb:downstream-site-build rdf:type ktype:Phase ;
+    rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
+    kpred:feature-id   "F274.4.1" ;
+    kpred:has-status   "functional" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:description  "npm run site:build -- --site=<repo> --out=<dir> reads <repo>/content/**/*.md through site-import into WebPage statements, renders them with generateStaticSite, copies <repo>/assets and <repo>/admin, and writes _headers. A page whose frontmatter status is draft is not built." ;
+    kpred:extends      "src/lib/publish/site-import.ts, src/lib/publish/site-generator.ts, src/lib/publish/site-export.ts" ;
+    kpred:tested-by    "src/lib/publish/__tests__/site-build.test.ts" ;
+    kpred:evidence     "2026-10-30: the first pages.dev preview of the Data Insight Solutions site was hand-prepared from a mock-up because no command builds another repository's content/." ;
+    kpred:done-test    "On a synthetic fixture site under src/lib/publish/__tests__/fixtures/ (three pages, one with status draft, an assets/ file and an admin/ folder): the output has index.html, one page per published file and none for the draft, assets/ and admin/ copied, and a second run is byte-identical. npm run check 0 errors." ;
+    kpred:non-goal     "No package (F274.5), no deploy, no theme work; it uses the generator's existing output." ;
+    kpred:order        1 .
+
+kb:downstream-site-blog rdf:type ktype:Phase ;
+    rdfs:label "F274.4.2 — blog: index, posts, categories, cover images and a references note" ;
+    kpred:feature-id   "F274.4.2" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "Pages under content/blog/ become posts: a blog index newest first with date, excerpt and cover image; one page per category; and, when a post's frontmatter sets references-note, the note Matt asked for (references gathered with Reckons.AI Triple Check and reviewed by the author) under the post." ;
+    kpred:extends      "kb:downstream-site-build; src/lib/publish/markdown-site-import.ts (F274.3, the old posts' frontmatter: title, date, excerpt, coverImage, categories)" ;
+    kpred:evidence     "2026-10-30: Matt, 'we need sveltia and the blog setup and working'; the generator has no blog index or categories." ;
+    kpred:done-test    "Fixture with three posts (one draft, two categories): the blog index lists the two published posts newest first with excerpt and cover; each category page lists only its posts; the draft appears nowhere; a post with references-note renders the note. Unit tests pass." ;
+    kpred:non-goal     "No comments, search or pagination until a site has more than 20 posts; the old posts are not republished until Matt reviews them (F274.3)." ;
+    kpred:order        2 .
+
+kb:downstream-site-landing-layout rdf:type ktype:Phase ;
+    rdfs:label "F274.4.3 — the landing layout: the approved mock-up as a generic template" ;
+    kpred:feature-id   "F274.4.3" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "template: landing renders the design Matt approved on 2026-10-30 (soft drifting color wash, translucent panels, asymmetric card grid, reveal on scroll, light and dark, phone menu, contact form posting to the site's own n8n webhook) from page sections and site theme values, so any Reckons.AI site can use it. Brand colors, fonts and the webhook come from site configuration, never hard-coded." ;
+    kpred:extends      "kb:downstream-site-build; kb:downstream-site-landing (F274.6)" ;
+    kpred:evidence     "2026-10-30: Matt approved the mock-up ('That deployed SPA is looking pretty good'); it exists only as one hand-written HTML file in a private folder." ;
+    kpred:done-test    "A fixture landing page with the same sections renders with no script errors and no horizontal scroll at 390 and 1440 px, and npm run visual:local's model judges it the same layout as the approved preview; brand values change when the fixture's theme changes." ;
+    kpred:non-goal     "No page builder UI; sections are markdown and frontmatter." ;
+    kpred:order        3 .
+
+kb:downstream-site-sveltia rdf:type ktype:Phase ;
+    rdfs:label "F274.4.4 — Sveltia CMS for a site repository" ;
+    kpred:feature-id   "F274.4.4" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:description  "Generate admin/index.html and admin/config.yml for a site repository: GitHub backend on that repository, collections for pages and blog posts whose fields match what site-import reads, media in assets/. Sign-in reuses the existing reckons-sveltia-cms-auth Worker (admin.reckons.ai); the site's domains are added to its SVELTIA_ALLOWED_DOMAINS." ;
+    kpred:extends      "static/admin/config.yml, scripts/sveltia-auth-secrets.sh (the Reckons.AI site's own Sveltia setup)" ;
+    kpred:evidence     "2026-10-30: Matt, 'we need sveltia ... setup and working'." ;
+    kpred:done-test    "The generated config.yml parses; every collection field maps to a frontmatter key site-import reads (unit test); a post saved through the collection's fields round-trips through site:build unchanged." ;
+    kpred:non-goal     "No second OAuth app or Worker." ;
+    kpred:order        4 .
+
+kb:downstream-site-deploy rdf:type ktype:Phase ;
+    rdfs:label "F274.4.5 — deploy: build on push and publish to Cloudflare Pages" ;
+    kpred:feature-id   "F274.4.5" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site-engine ;
+    kpred:depends-on   kb:downstream-site-build ;
+    kpred:description  "A workflow in the site repository: on push (Sveltia commits included) it checks out Reckons.AI at a pinned commit, runs site:build, and deploys with wrangler pages deploy (branch previews for pull requests, production for main). The pinned commit is bumped by pull request until the package (F274.5) replaces it." ;
+    kpred:evidence     "2026-10-30: Sveltia edits commit to GitHub, so a build that only runs on Matt's machine would leave them unpublished." ;
+    kpred:done-test    "On a pull request in the site repository the workflow is green and its preview URL serves the built index; the repository secret holds the Cloudflare token and no workflow log prints it." ;
+    kpred:non-goal     "No DNS change: cutover is Matt's, in the dashboard." ;
+    kpred:order        5 .
+
+kb:downstream-site-package rdf:type ktype:Phase ;
+    rdfs:label "F274.5 — the site engine as a package, with latest (main) and next (staging)" ;
+    kpred:feature-id   "F274.5" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "Generator, theme, import, Sveltia config and the build CLI published from this repository on each promotion: staging publishes next, main publishes latest. The site repository depends on it alone, so a version is adopted by bumping one dependency (a bot can open that PR). Pure code with few dependencies (marked, n3), so host builds stay fast; the app's own dependencies never reach the site's build." ;
+    kpred:order        5 .
+
+kb:downstream-site-landing rdf:type ktype:Phase ;
+    rdfs:label "F274.6 — landing page design: the rebrand and the narrowed services, designed before it is built" ;
+    kpred:feature-id   "F274.6" ;
+    kpred:has-status   "planned" ;
+    kpred:part-of      kb:downstream-site ;
+    kpred:description  "The landing page(s) for Data Insight Solutions, in the Claude Design rebrand: what the business does now (enterprise Orange Logic DAM consulting, custom Orange Logic integrations, AI and agent integration, Reckons.AI as a custom software example), proof for each, and one call to action, ready before the 2026-11-14 talk. Designed first as a mock-up Matt reviews, then built as a generic landing layout in the site generator (F274.4) whose sections and copy are graph entities, so other Reckons.AI sites get the same layout." ;
+    kpred:depends-on   kb:downstream-site-engine ;
+    kpred:order        6 .
+
+# ── Demo videos as code (Matt, 2026-10-29) ─────────────────────────────────────
+
+kb:demo-videos rdf:type ktype:Feature ;
+    rdfs:label "Demo videos as code — narrated walkthroughs rendered reproducibly from the graph" ;
+    kpred:feature-id   "F275" ;
+    kpred:has-status   "planned" ;
+    kpred:decided      "MATT, 2026-10-29: 'The talk is not Reckons.AI roadmap, but very compelling demo videos are. Is there a way to automate the video generation, such that the whole video is reproducable? I have mostly run manual demos, but it might be nice to mass produce with TTS tools. I could speak personally about the company or other elements, adding a second voice. The TTS would need to be good. Hume quality not kokoro.' Then: 'I want indico and n8n demos for sure also.' And: 'I have a low cost Hume subscription that includes rights to use commercially. lets test full Hume integration.'" ;
+    kpred:description  "A demo is a graph entity with ordered steps, like a TestWorkflow: each step names an app action, a narration line, a voice (a Hume narrator, or Matt) and a caption. One command renders it: Playwright drives the app at 1920x1080 on a seeded synthetic space and records; Hume speaks each line (cached by text and voice, so a re-render only pays for changed lines); each step holds until its narration ends; ffmpeg joins picture and sound; captions come from the same text; a receipt records the commit, graph hash, voices and timings, so any video can be rebuilt. Matt's own voice: recorded lines dropped in as <demo>/<step>.wav replace synthesis for those steps. Slow local generation (14-50 s an asset) runs for real and is trimmed to a fixed hold, with its receipt shown." ;
+    kpred:measured     "2026-10-29, HUME LIVE, first time: synthesizeHumeSpeech (src/lib/integrations/hume/tts.ts) returned 6.7 s of 128 kbps MP3 in 2.9 s from api.hume.ai/v0/tts with the X-Hume-Api-Key header; the client-credentials token exchange answered 200 with a 30-minute token (the EVI path); the configured EVI config exists, version 1, voice 'Shelly V1'; the TTS voice library listed. Not yet exercised: a live EVI conversation in the browser." ;
+    kpred:constraint   "HUME IS A PAID CLOUD SERVICE. It narrates the videos; it is not what the videos demonstrate. A video showing local, subscription-free work says in its credits that the narration was made with Hume, so the claim on screen stays true. Matt's plan includes commercial-use rights (his statement, 2026-10-29)." ;
+    kpred:constraint   "SYNTHETIC DATA ONLY in anything rendered: demos start from a seeded made-up space (the F34.2 rule), never a person's real spaces." ;
+    kpred:open-question "First demos and their order: asset generation (prompt to image, video and splat, all local), Indico, n8n, the review loop. Recommended: asset generation first, after per-type nodes (kb:entity-appearance-resolver) and Shelly's generation tool (kb:shelly-generation-jobs)." ;
+    kpred:relates-to   kb:test-workflow-stories, kb:story-narration-voice, kb:int-hume, kb:int-indico, kb:int-n8n, kb:generated-assets-story, kb:downstream-site ;
+    kpred:honest-note  "PLANNED, NOTHING BUILT (2026-10-29). What exists: Playwright test workflows with steps and screenshots (F34.2), narrated in-app stories (F5.1), a Hume TTS client now verified live, local generation (F58.9.1, functional)." .
+
+kb:squash-trailer-provenance kpred:progress "2026-11-01: built on the closeout branch. Seven new regression cases failed before implementation; the trailer and hook suites then passed 33 tests. The historical origin/main..HEAD check reads 660962c from its retained original blocks and passes; no history rewrite or exemption." .
+
+kb:starter-asset-smoke-focus kpred:progress "2026-11-01: built on the closeout branch. The affected minified-build case passed three consecutive runs without retries (23.7 seconds total), with normal pointer clicks and unchanged decoded-media and GLB pixel assertions." .
+
+kb:release-0-2-7-docs kpred:progress "2026-11-01: reviewed the five entities from local deputy commit 210d7d9d; corrected sandbox and question-settlement overclaims, dated measurements, regenerated pages and reconciled the release state. The release docs gate reports zero undocumented shipped features. This branch still needs PR review and CI; it does not itself promote a release." .
+
+# 2026-11-03 — F277 ASSET MATRIX, PLANNED (Matt, in chat with Claude Code). Many audiences by many
+# document templates, generated from one space and regenerated when its facts change. First use is a
+# private community-program space kept OUTSIDE this repository; nothing from it belongs here.
+kb:asset-matrix rdf:type ktype:Feature ;
+    rdfs:label "Asset matrix — document variants for every audience and template, generated from a space and regenerated when its facts change" ;
+    kpred:feature-id   "F277" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A space holds a program's confirmed facts, its audiences (each with a message, a call to action and optional scripture or tone rules), and its document templates (each with named slots and a design source such as a Canva design id). Generation crosses audiences with templates, fills only the slots, keeps the art fixed, and records every variant as an entity with what it was generated from. Change a fact and only the variants that read it are stale." ;
+    kpred:decided      "MATT, 2026-11-03: 'I want to easily be able to regenerate from existing space node sets, and this is a perfect asset generation many (subgroups) to many (documents) situation.'" ;
+    kpred:decided      "MATT, 2026-11-03: 'This project will turn into a key demo. With a simple allocation of a new distribution partner, the documents personalized to their organization are packaged and shared in an email draft for me to send after manual review.'" ;
+    kpred:principle    "GENERATION READS ONLY CONFIRMED FACTS. A proposed message or an open question never reaches a printed page; an open question names the variants it blocks, and those variants wait." ;
+    kpred:principle    "THE EMAIL IS A DRAFT, NEVER A SEND. The recipient is a third party, so the person reviews every package and sends it themselves (see kb:n8n-document-output on why forwarding is an approval)." ;
+    kpred:relates-to   kb:n8n-document-output ;
+    kpred:relates-to   kb:downstream-site ;
+    kpred:relates-to   kb:space-file-layout ;
+    kpred:open-question "Which release carries it: v0.2.8, v0.2.9, or its own demo release?" ;
+    kpred:open-question "Canva or local SVG as the first renderer? Canva keeps the existing designs and is only reachable through Claude's Canva connector; local SVG through the Inkscape command line runs as a script with no account." .
+
+kb:asset-matrix-schema rdf:type ktype:Phase ;
+    rdfs:label "F277.1 — audience, template and variant types with their predicates" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "a synthetic fixture space (two audiences, two templates, one open question) parses; graph-lint passes; the types and predicates are named in reckons-vocabulary.ttl" .
+
+kb:asset-matrix-generator rdf:type ktype:Phase ;
+    rdfs:label "F277.2 — script that turns a space into one fill plan per audience and template, and reports stale variants" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:done-test    "on the fixture: four plans, the blocked one withheld with its question named; editing one audience fact marks exactly the two variants that read it as stale; no network and no model call" .
+
+kb:asset-matrix-render rdf:type ktype:Phase ;
+    rdfs:label "F277.3 — render each plan: local SVG to PDF, and a Canva adapter that copies the source design and fills its text" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-generator ;
+    kpred:done-test    "the fixture renders to one PDF per variant and one combined PDF; each variant entity records its output file or design id" .
+
+kb:asset-matrix-partner-package rdf:type ktype:Phase ;
+    rdfs:label "F277.4 — partner package: one new partner entity yields its co-branded documents as one PDF in an email draft" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:depends-on   kb:n8n-document-output ;
+    kpred:done-test    "adding a synthetic partner to the fixture produces its variants, one combined PDF, and an email DRAFT addressed to the partner contact; nothing is sent; the draft id is recorded on the partner entity" .
+
+# 2026-11-03 — F277 GROWS: THE APP MAKES FRESH DESIGNS (Matt, in chat with Claude Code).
+kb:asset-matrix kpred:decided "MATT, 2026-11-03: 'I think we may want Inkscape templates, that the generator fills... However it would be much more impressive to have the Reckons.AI app make fresh svg designs. The jobs may include web search for partner logos, generating new background images, adjusting layout of document content with new background, etc.'" ;
+    kpred:principle "A MODEL NEVER DRAWS THE PAGE. Layout is a deterministic engine over named slots; models only pick among candidates or score them. Free-form model SVG cannot be checked, and a co-branded document that misplaces a partner's name is worse than none." ;
+    kpred:principle "EVERY JOB OUTPUT IS A PROPOSAL. A found logo, a generated background and a laid-out page each land in the space as pending assets for a person to pick, the same review loop as any fact." ;
+    kpred:principle "A LOGO IS PERMISSION, NOT A SEARCH RESULT. A search can find a partner's logo; it cannot grant the right to print it. A logo reaches a document only with the partner's consent recorded on the partner entity. Club emblems follow their organization's published usage rules." .
+
+kb:asset-matrix-logo-job rdf:type ktype:Phase ;
+    rdfs:label "F277.5 — partner logo job: search for a new partner's logo, store candidates as pending assets, print only with recorded consent" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:open-question "Which search: the local SearXNG instance Triple Check (F100, PR #537) introduces, or the partner uploading its own logo through the sign-up form?" ;
+    kpred:done-test    "for a synthetic partner with a fixture search response: up to three candidate images land as pending assets with their source URLs; a document using the logo refuses to render until a consent fact is confirmed on the partner" .
+
+kb:asset-matrix-background-job rdf:type ktype:Phase ;
+    rdfs:label "F277.6 — background job: a local image generation run from an audience's visual direction, candidates as pending assets" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:mvg-image-gen ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:relates-to   kb:generated-assets-story ;
+    kpred:done-test    "a brief built only from confirmed audience facts; N candidates at the template's page size with a clear text area; each recorded with its prompt and model; nothing runs without the opt-in local runner" .
+
+kb:asset-matrix-layout-engine rdf:type ktype:Phase ;
+    rdfs:label "F277.7 — layout engine: fit slot content onto a chosen background, generate layout candidates, score them, never overflow" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:relates-to   kb:vlm-workflow-streams ;
+    kpred:done-test    "text measured with the real font; any slot that does not fit fails loudly instead of clipping; text contrast against the background checked numerically; a local vision model's score is recorded as advice, never as the gate" .
+
+kb:asset-matrix-in-app rdf:type ktype:Phase ;
+    rdfs:label "F277.8 — in the app: allocating a partner starts the jobs; the package appears for review where the space already lives" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-partner-package ;
+    kpred:depends-on   kb:asset-matrix-logo-job ;
+    kpred:depends-on   kb:asset-matrix-layout-engine ;
+    kpred:principle    "No new navigation tab: the jobs start from the partner entity and their results arrive in Review and on the variant entities." ;
+    kpred:done-test    "in the demo space, adding one partner entity queues logo, layout and package jobs; their outputs appear as pending assets and variants; the email draft is created only after a person approves the package" .
+
+# 2026-11-03 — F278 HUB ASSETS BY DEFAULT, PLANNED (Matt, in chat with Claude Code, while F277's
+# info sheets were being given a purpose-chosen photo and the real token art).
+kb:hub-default-assets rdf:type ktype:Feature ;
+    rdfs:label "Hub assets by default — every hub in a space gets generated assets, chained (image, then splat)" ;
+    kpred:feature-id   "F278" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "When a node qualifies as a hub (F148), the space queues asset generation for it without being asked: an image grounded in the hub's confirmed facts, then derivations chained from that image, starting with a Gaussian splat. Results attach to the hub as pending assets (preview, image, splat) for a person to keep or reject." ;
+    kpred:decided      "MATT, 2026-11-03: 'We need a feature where hub nodes in the space graph get assets generated for them by default, even chained, like image then splat.'" ;
+    kpred:depends-on   kb:hub-eligibility ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:depends-on   kb:gen-video-to-splat ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:entity-appearance-resolver ;
+    kpred:principle    "DEFAULT MEANS QUEUED, NOT RUN. Generation costs a GPU for minutes per asset, so 'by default' puts jobs in the local queue with a per-space budget and back-pressure; a space with no local runner shows what it would generate and runs nothing." ;
+    kpred:principle    "GROUNDED PROMPTS. A hub's image prompt is built only from its confirmed facts and type (F51 review-anchored generation), so a picture never asserts something the space does not." ;
+    kpred:principle    "A CHAIN IS A GRAPH. Each step records what it was made from (image from prompt, splat from image) so a rejected image cancels its derivations and a regenerated one marks them stale." ;
+    kpred:open-question "On by default in every space, or opt-in per space with the default set at space creation? Recommended: on for spaces with a connected local runner, with a per-space budget (for example 5 hubs per night)." ;
+    kpred:open-question "Which hubs first: the top N by degree, or every eligible hub without an image?" .
+
+kb:hub-default-assets-select rdf:type ktype:Phase ;
+    rdfs:label "F278.1 — choose hubs that lack assets and build a grounded prompt for each (script tier, no model)" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "on a synthetic space: eligible hubs without a preview are selected in degree order within the budget; each prompt cites only confirmed facts; a hub with an image is skipped" .
+
+kb:hub-default-assets-chain rdf:type ktype:Phase ;
+    rdfs:label "F278.2 — queue the chain: image job, then a splat job that starts only from the kept image" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-select ;
+    kpred:done-test    "with a mock runner: an image job, then a splat job whose input is the image's recorded output; a failed or rejected image leaves no splat job queued" .
+
+kb:hub-default-assets-attach rdf:type ktype:Phase ;
+    rdfs:label "F278.3 — attach results to the hub as pending assets, with provenance, in the app's asset form" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-chain ;
+    kpred:done-test    "the hub shows the generated image as its hover preview and the splat in the 3D view after a person keeps them; the asset records survive the app's own export and re-import" .
+
+# 2026-11-04 — F279 OLLAMA RUNS WHAT IS INSTALLED, AND SAYS SO (Matt, in chat with Claude Code).
+kb:ollama-installed-model rdf:type ktype:Feature ;
+    rdfs:label "Ollama runs an installed model, and says so when it is not the one you chose" ;
+    kpred:feature-id   "F279" ;
+    kpred:has-status   "functional" ;
+    kpred:relates-to   kb:backend-ollama ;
+    kpred:description  "The Ollama model for each task is resolved against the server's installed tags (/api/tags): a bare name becomes the tag that is installed (llama3.2 becomes llama3.2:3b), and when nothing is chosen the best installed model is picked by this machine's extraction benches (#568, 2026-11-04). When a chosen model is not installed, the best installed one runs in its place and an important warning names both models, the task, the 'ollama pull' fix and a link to the Ollama settings, once per chosen and used pair per page load." ;
+    kpred:decided      "MATT, 2026-11-03 (task brief): when the user has not chosen a model, or the chosen name is not installed, pick the best installed model; a chosen model that is installed is never overridden." ;
+    kpred:decided      "MATT, 2026-11-04: 'make it a notification, need some ntoice.' (asked whether a replaced model should fail loudly instead)" ;
+    kpred:principle    "NEVER A SILENT SWAP. A different model writes different facts, so running one the person did not choose is always announced." ;
+    kpred:honest-note  "The notice depends on the installed list the prefer-local probe caches; before the first successful probe nothing is substituted and nothing is announced, and a missing model then fails on Ollama's own 404 as before. The Settings field still shows the bare llama3.2 placeholder." ;
+    kpred:has-file     "src/lib/integrations/llm/model-for-task.ts" ;
+    kpred:has-file     "src/lib/stores/ollama-model-notice.ts" ;
+    kpred:tested-by    "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
+    kpred:tested-by    "src/lib/stores/__tests__/ollama-model-notice.test.ts" .

@@ -23,7 +23,8 @@
  *   npm run release:burndown -- --measure         print a ready-to-paste kpred:measured line
  *   --stale-days=N (default 4)   --today=YYYY-MM-DD (for tests)
  */
-import { readFileSync, readdirSync, existsSync, appendFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { appendQueueText } from './pending-queue.js';
 import { Parser, type Quad } from 'n3';
 
 const KPRED = 'urn:kbase:predicate/';
@@ -151,7 +152,7 @@ function main() {
     const note = `[release-burndown] v${version}: ${b.verdict}; ${b.stale.length} part(s) stale ${staleDays}+ days (${b.stale.map((p) => p.id || short(p.iri)).join(', ')}). Move them, start them or record progress.`;
     const existing = existsSync(PENDING) ? readFileSync(PENDING, 'utf8') : '';
     if (!existing.includes(JSON.stringify(note).slice(1, -1))) {
-      appendFileSync(PENDING, JSON.stringify({
+      appendQueueText(PENDING, JSON.stringify({
         subject: b.release, predicate: 'urn:sweep:pred/release-burndown', question: note, type: 'status-update',
         kb: 'roadmap', agent: 'offline:release-burndown', priority: 'medium', addedAt: new Date().toISOString(),
       }) + '\n');

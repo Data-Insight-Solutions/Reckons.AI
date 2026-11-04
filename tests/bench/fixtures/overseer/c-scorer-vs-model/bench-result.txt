@@ -1,0 +1,5 @@
+Task T2 (write a schedule entity). The task prompt listed the namespaces exactly:
+  rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>, kpred: <urn:kbase:predicate/>, ktype: <urn:kbase:type/>, sched: <urn:reckons:schedule/>
+Scorer verdict: syntax/valid FAIL; rdf:type-is-Schedule FAIL; 2 of 9 expectations met.
+Scorer rule: TTL is parsed with N3, then the rdf:type triple is matched on the standard RDF namespace IRI
+http://www.w3.org/1999/02/22-rdf-syntax-ns#type . The model complains the scorer is "too strict".
