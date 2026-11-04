@@ -408,6 +408,7 @@
     <a href="/settings/integrations" class="nav-link active">integrations</a>
     <a href="/settings/turtle" class="nav-link">turtle</a>
     <a href="/settings/entity-types" class="nav-link">entity types</a>
+    <a href="/settings/device" class="nav-link">this device</a>
     <a href="/analyze" class="nav-link">analyze history ↗</a>
   </div>
   <nav class="section-toc">

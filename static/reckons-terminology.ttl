@@ -546,7 +546,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     kpred:term-ratchet "graph/prose/3279" ;
     kpred:term-ratchet "statement/prose/962" ;
     kpred:term-ratchet "source/prose/1461" ;
-    kpred:term-ratchet "space/prose/549" ;
+    kpred:term-ratchet "space/prose/551" ;
     kpred:term-ratchet "node/prose/1254" ;
     kpred:term-ratchet "export/prose/252" ;
     kpred:term-ratchet "share/prose/142" ;
@@ -581,3 +581,5 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-22 RAISED BY THE RESIDUAL, v0.2.6 RELEASE NOTES (trim-then-bump, Matt 2026-10-13). content/releases/v0-2-6.md is prose for a first-time reader about a release whose subject is sources, spaces and the graph view, so those are the user words it has to use. Trimmed first ('Set its orientation' to 'Choose', 'One graph says' to 'It says'); the remainder raised exactly: graph 3260 to 3268, source 1429 to 1439, space 475 to 498, node 1234 to 1240, export 245 to 247. No other file changed a count." .
 
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-22 RAISED BY THE RESIDUAL, v0.2.6 DOCS PAGES (trim-then-bump, Matt 2026-10-13). The docs gate found 35 shipped features with no docs page; the new pages (static/docs-features.ttl, docs-coding-workflow.ttl, docs-testing.ttl, generated into content/) explain spaces, sources, nodes and the graph view to a first-time reader, so they use those user words. Trimmed first ('set its size' to 'change its size', 'set pass, fail or a note' to 'mark it pass or fail'); the remainder raised exactly: statement 961 to 962, graph 3268 to 3279, source 1439 to 1461, node 1240 to 1254, set 714 to 716, space 498 to 549, export 247 to 252, share 141 to 142." .
+
+<urn:kbase:vocabulary/terminology> kpred:measured "2026-10-30 RAISED BY THE RESIDUAL, v0.2.7 RELEASE NOTES (trim-then-bump, Matt 2026-10-13). content/releases/v0-2-7.md first added graph +1, source +1, set +1, space +4; rewording removed all but space +2 ('opens the right space', the user word for the thing opened). Baseline space 549 -> 551." .

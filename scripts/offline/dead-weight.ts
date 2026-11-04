@@ -28,7 +28,8 @@
  * and an export with no caller may be a published API. A detector that deletes on its own
  * judgement would be the most expensive kind of wrong.
  */
-import { readFileSync, existsSync, readdirSync, statSync, appendFileSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import path from 'path';
 import { execSync } from 'child_process';
 import { loadGraphQuads, ownerOfFile } from './lib/graph-grounding.js';
@@ -344,7 +345,7 @@ if (PENDING_OUT && findings.length) {
     if (f.check === 'over-exported') continue; // never worth a human's review slot
     const question = `[dead-weight/${f.check}] ${f.subject} — ${f.msg} ${f.action}`;
     if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
-    appendFileSync(PENDING, JSON.stringify({
+    appendQueueText(PENDING, JSON.stringify({
       subject: f.subject,
       predicate: `urn:sweep:pred/dead-weight`,
       question,
