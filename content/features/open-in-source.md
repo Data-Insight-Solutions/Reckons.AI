@@ -1,7 +1,7 @@
 ---
 title: "Open a fact's source at the exact words"
 slug: "open-in-source"
-order: 1027
+order: 1028
 section: "Features"
 parent: "passage-grounding"
 template: doc

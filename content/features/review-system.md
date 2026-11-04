@@ -1,7 +1,7 @@
 ---
 title: "Review — where your graph gets smaller and truer"
 slug: "review-system"
-order: 1038
+order: 1039
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

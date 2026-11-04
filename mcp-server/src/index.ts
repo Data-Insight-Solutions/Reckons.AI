@@ -30,6 +30,7 @@ import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
 import { appendPendingLines } from './pending-file.js';
+import { defaultCtx, jobEnqueue, jobList, jobStatus } from './local-jobs.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -57,7 +58,7 @@ HARD CONVENTIONS (getting these wrong breaks the graph):
 
 VALIDATE — never commit broken output. Every TTL must parse (N3); run the relevant tests/build first.
 
-WHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note (type 'question': subject + predicate known, object left open — a partial fact); it surfaces in the Reckons.AI review UI for a human. This is the offline safety valve.
+LONG JOBS GO TO THE LOCAL QUEUE. An e2e suite, a benchmark, a research or batch-analysis run is not yours to run inline on a cloud model: kb_job_list shows the defined local jobs, kb_job_enqueue(name) queues one, kb_job_status(id) reports it. Queueing works even when no worker is running.\n\nWHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note (type 'question': subject + predicate known, object left open — a partial fact); it surfaces in the Reckons.AI review UI for a human. This is the offline safety valve.
 
 POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*.md — add entities to the TTL KBs. Surface findings/proposals as pending graph entries (kb_add_note), not chat.`;
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
@@ -415,6 +416,34 @@ const TOOLS = [
         ...KB_PARAM
       },
       required: ['prompt']
+    }
+  },
+  {
+    name: 'kb_job_list',
+    description: 'List the local jobs that can be queued (static/reckons-jobs.ttl and the schedules file): name, tier, what each does, last run and current state. Check here BEFORE running a long job (e2e suite, benchmark, research, batch analysis) yourself: if a local job exists for it, queue it with kb_job_enqueue instead of spending cloud tokens.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'kb_job_enqueue',
+    description: 'Queue one defined local job for the local worker. Only names from kb_job_list are accepted, never a command. Returns the queue id. Works with no worker running: the job is recorded and stays queued until `npm run agent:watch` starts the worker. Optional args are appended (shell-quoted) to the job command.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Job name exactly as kb_job_list shows it' },
+        args: { type: 'array', items: { type: 'string' }, description: 'Extra arguments appended to the defined command' }
+      },
+      required: ['name']
+    }
+  },
+  {
+    name: 'kb_job_status',
+    description: 'Status of a local job by queue id (from kb_job_enqueue) or by name: queued, running, done or failed, exit code, the last 40 log lines and where the full log is. Says so when the job is queued with no worker running.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Queue id returned by kb_job_enqueue' },
+        name: { type: 'string', description: 'Job name; reports its newest state' }
+      }
     }
   },
   {
@@ -1744,6 +1773,9 @@ rl.on('line', (line) => {
               .then(result => respond(id ?? null, result))
               .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
             break;
+          case 'kb_job_list': respond(id ?? null, { content: [{ type: 'text', text: jobList(defaultCtx()) }] }); break;
+          case 'kb_job_enqueue': { const r = jobEnqueue(defaultCtx(), toolArgs as { name?: string; args?: string[] }); respond(id ?? null, { content: [{ type: 'text', text: r.text }], ...(r.ok ? {} : { isError: true }) }); break; }
+          case 'kb_job_status': respond(id ?? null, { content: [{ type: 'text', text: jobStatus(defaultCtx(), toolArgs as { id?: string; name?: string }) }] }); break;
           case 'kb_entity_markdown': respond(id ?? null, handleKbEntityMarkdown(toolArgs as { entity: string; kb?: string })); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);
