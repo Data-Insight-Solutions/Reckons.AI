@@ -10816,3 +10816,131 @@ kb:squash-trailer-provenance kpred:progress "2026-11-01: built on the closeout b
 kb:starter-asset-smoke-focus kpred:progress "2026-11-01: built on the closeout branch. The affected minified-build case passed three consecutive runs without retries (23.7 seconds total), with normal pointer clicks and unchanged decoded-media and GLB pixel assertions." .
 
 kb:release-0-2-7-docs kpred:progress "2026-11-01: reviewed the five entities from local deputy commit 210d7d9d; corrected sandbox and question-settlement overclaims, dated measurements, regenerated pages and reconciled the release state. The release docs gate reports zero undocumented shipped features. This branch still needs PR review and CI; it does not itself promote a release." .
+
+# 2026-11-03 — F277 ASSET MATRIX, PLANNED (Matt, in chat with Claude Code). Many audiences by many
+# document templates, generated from one space and regenerated when its facts change. First use is a
+# private community-program space kept OUTSIDE this repository; nothing from it belongs here.
+kb:asset-matrix rdf:type ktype:Feature ;
+    rdfs:label "Asset matrix — document variants for every audience and template, generated from a space and regenerated when its facts change" ;
+    kpred:feature-id   "F277" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A space holds a program's confirmed facts, its audiences (each with a message, a call to action and optional scripture or tone rules), and its document templates (each with named slots and a design source such as a Canva design id). Generation crosses audiences with templates, fills only the slots, keeps the art fixed, and records every variant as an entity with what it was generated from. Change a fact and only the variants that read it are stale." ;
+    kpred:decided      "MATT, 2026-11-03: 'I want to easily be able to regenerate from existing space node sets, and this is a perfect asset generation many (subgroups) to many (documents) situation.'" ;
+    kpred:decided      "MATT, 2026-11-03: 'This project will turn into a key demo. With a simple allocation of a new distribution partner, the documents personalized to their organization are packaged and shared in an email draft for me to send after manual review.'" ;
+    kpred:principle    "GENERATION READS ONLY CONFIRMED FACTS. A proposed message or an open question never reaches a printed page; an open question names the variants it blocks, and those variants wait." ;
+    kpred:principle    "THE EMAIL IS A DRAFT, NEVER A SEND. The recipient is a third party, so the person reviews every package and sends it themselves (see kb:n8n-document-output on why forwarding is an approval)." ;
+    kpred:relates-to   kb:n8n-document-output ;
+    kpred:relates-to   kb:downstream-site ;
+    kpred:relates-to   kb:space-file-layout ;
+    kpred:open-question "Which release carries it: v0.2.8, v0.2.9, or its own demo release?" ;
+    kpred:open-question "Canva or local SVG as the first renderer? Canva keeps the existing designs and is only reachable through Claude's Canva connector; local SVG through the Inkscape command line runs as a script with no account." .
+
+kb:asset-matrix-schema rdf:type ktype:Phase ;
+    rdfs:label "F277.1 — audience, template and variant types with their predicates" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "a synthetic fixture space (two audiences, two templates, one open question) parses; graph-lint passes; the types and predicates are named in reckons-vocabulary.ttl" .
+
+kb:asset-matrix-generator rdf:type ktype:Phase ;
+    rdfs:label "F277.2 — script that turns a space into one fill plan per audience and template, and reports stale variants" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:done-test    "on the fixture: four plans, the blocked one withheld with its question named; editing one audience fact marks exactly the two variants that read it as stale; no network and no model call" .
+
+kb:asset-matrix-render rdf:type ktype:Phase ;
+    rdfs:label "F277.3 — render each plan: local SVG to PDF, and a Canva adapter that copies the source design and fills its text" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-generator ;
+    kpred:done-test    "the fixture renders to one PDF per variant and one combined PDF; each variant entity records its output file or design id" .
+
+kb:asset-matrix-partner-package rdf:type ktype:Phase ;
+    rdfs:label "F277.4 — partner package: one new partner entity yields its co-branded documents as one PDF in an email draft" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:depends-on   kb:n8n-document-output ;
+    kpred:done-test    "adding a synthetic partner to the fixture produces its variants, one combined PDF, and an email DRAFT addressed to the partner contact; nothing is sent; the draft id is recorded on the partner entity" .
+
+# 2026-11-03 — F277 GROWS: THE APP MAKES FRESH DESIGNS (Matt, in chat with Claude Code).
+kb:asset-matrix kpred:decided "MATT, 2026-11-03: 'I think we may want Inkscape templates, that the generator fills... However it would be much more impressive to have the Reckons.AI app make fresh svg designs. The jobs may include web search for partner logos, generating new background images, adjusting layout of document content with new background, etc.'" ;
+    kpred:principle "A MODEL NEVER DRAWS THE PAGE. Layout is a deterministic engine over named slots; models only pick among candidates or score them. Free-form model SVG cannot be checked, and a co-branded document that misplaces a partner's name is worse than none." ;
+    kpred:principle "EVERY JOB OUTPUT IS A PROPOSAL. A found logo, a generated background and a laid-out page each land in the space as pending assets for a person to pick, the same review loop as any fact." ;
+    kpred:principle "A LOGO IS PERMISSION, NOT A SEARCH RESULT. A search can find a partner's logo; it cannot grant the right to print it. A logo reaches a document only with the partner's consent recorded on the partner entity. Club emblems follow their organization's published usage rules." .
+
+kb:asset-matrix-logo-job rdf:type ktype:Phase ;
+    rdfs:label "F277.5 — partner logo job: search for a new partner's logo, store candidates as pending assets, print only with recorded consent" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:open-question "Which search: the local SearXNG instance Triple Check (F100, PR #537) introduces, or the partner uploading its own logo through the sign-up form?" ;
+    kpred:done-test    "for a synthetic partner with a fixture search response: up to three candidate images land as pending assets with their source URLs; a document using the logo refuses to render until a consent fact is confirmed on the partner" .
+
+kb:asset-matrix-background-job rdf:type ktype:Phase ;
+    rdfs:label "F277.6 — background job: a local image generation run from an audience's visual direction, candidates as pending assets" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:mvg-image-gen ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:relates-to   kb:generated-assets-story ;
+    kpred:done-test    "a brief built only from confirmed audience facts; N candidates at the template's page size with a clear text area; each recorded with its prompt and model; nothing runs without the opt-in local runner" .
+
+kb:asset-matrix-layout-engine rdf:type ktype:Phase ;
+    rdfs:label "F277.7 — layout engine: fit slot content onto a chosen background, generate layout candidates, score them, never overflow" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:relates-to   kb:vlm-workflow-streams ;
+    kpred:done-test    "text measured with the real font; any slot that does not fit fails loudly instead of clipping; text contrast against the background checked numerically; a local vision model's score is recorded as advice, never as the gate" .
+
+kb:asset-matrix-in-app rdf:type ktype:Phase ;
+    rdfs:label "F277.8 — in the app: allocating a partner starts the jobs; the package appears for review where the space already lives" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-partner-package ;
+    kpred:depends-on   kb:asset-matrix-logo-job ;
+    kpred:depends-on   kb:asset-matrix-layout-engine ;
+    kpred:principle    "No new navigation tab: the jobs start from the partner entity and their results arrive in Review and on the variant entities." ;
+    kpred:done-test    "in the demo space, adding one partner entity queues logo, layout and package jobs; their outputs appear as pending assets and variants; the email draft is created only after a person approves the package" .
+
+# 2026-11-03 — F278 HUB ASSETS BY DEFAULT, PLANNED (Matt, in chat with Claude Code, while F277's
+# info sheets were being given a purpose-chosen photo and the real token art).
+kb:hub-default-assets rdf:type ktype:Feature ;
+    rdfs:label "Hub assets by default — every hub in a space gets generated assets, chained (image, then splat)" ;
+    kpred:feature-id   "F278" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "When a node qualifies as a hub (F148), the space queues asset generation for it without being asked: an image grounded in the hub's confirmed facts, then derivations chained from that image, starting with a Gaussian splat. Results attach to the hub as pending assets (preview, image, splat) for a person to keep or reject." ;
+    kpred:decided      "MATT, 2026-11-03: 'We need a feature where hub nodes in the space graph get assets generated for them by default, even chained, like image then splat.'" ;
+    kpred:depends-on   kb:hub-eligibility ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:depends-on   kb:gen-video-to-splat ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:entity-appearance-resolver ;
+    kpred:principle    "DEFAULT MEANS QUEUED, NOT RUN. Generation costs a GPU for minutes per asset, so 'by default' puts jobs in the local queue with a per-space budget and back-pressure; a space with no local runner shows what it would generate and runs nothing." ;
+    kpred:principle    "GROUNDED PROMPTS. A hub's image prompt is built only from its confirmed facts and type (F51 review-anchored generation), so a picture never asserts something the space does not." ;
+    kpred:principle    "A CHAIN IS A GRAPH. Each step records what it was made from (image from prompt, splat from image) so a rejected image cancels its derivations and a regenerated one marks them stale." ;
+    kpred:open-question "On by default in every space, or opt-in per space with the default set at space creation? Recommended: on for spaces with a connected local runner, with a per-space budget (for example 5 hubs per night)." ;
+    kpred:open-question "Which hubs first: the top N by degree, or every eligible hub without an image?" .
+
+kb:hub-default-assets-select rdf:type ktype:Phase ;
+    rdfs:label "F278.1 — choose hubs that lack assets and build a grounded prompt for each (script tier, no model)" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "on a synthetic space: eligible hubs without a preview are selected in degree order within the budget; each prompt cites only confirmed facts; a hub with an image is skipped" .
+
+kb:hub-default-assets-chain rdf:type ktype:Phase ;
+    rdfs:label "F278.2 — queue the chain: image job, then a splat job that starts only from the kept image" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-select ;
+    kpred:done-test    "with a mock runner: an image job, then a splat job whose input is the image's recorded output; a failed or rejected image leaves no splat job queued" .
+
+kb:hub-default-assets-attach rdf:type ktype:Phase ;
+    rdfs:label "F278.3 — attach results to the hub as pending assets, with provenance, in the app's asset form" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-chain ;
+    kpred:done-test    "the hub shows the generated image as its hover preview and the splat in the 3D view after a person keeps them; the asset records survive the app's own export and re-import" .
