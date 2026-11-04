@@ -476,7 +476,7 @@ describe('importTurtleFull — annotated file with unrecorded plain triples', ()
     const result = await importTurtleFull(toTurtleFull(stmts, [mkSource()]));
     expect(result.unrecordedImported).toBe(0);
     expect(result.cleanImportCount).toBe(0);
-    // The clean-graph triples already carry records: they are not re-imported a second time.
+    // The plain-triple section already carries records: they are not re-imported a second time.
     expect(result.statements).toHaveLength(2);
     expect(result.statements.every(s => s.status === 'confirmed')).toBe(true);
   });

@@ -141,7 +141,7 @@ function n3ToTerm(term: any): Term | null {
 
 /**
  * Canonical string for one term — kind, value, and for literals the language and datatype — so
- * the same triple written twice (clean graph section vs its reification block, with or without
+ * the same triple written twice (plain-triple section vs its reification block, with or without
  * prefixes) produces one signature.
  */
 function termSig(t: Term): string {
