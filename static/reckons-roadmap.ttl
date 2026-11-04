@@ -10816,3 +10816,50 @@ kb:squash-trailer-provenance kpred:progress "2026-11-01: built on the closeout b
 kb:starter-asset-smoke-focus kpred:progress "2026-11-01: built on the closeout branch. The affected minified-build case passed three consecutive runs without retries (23.7 seconds total), with normal pointer clicks and unchanged decoded-media and GLB pixel assertions." .
 
 kb:release-0-2-7-docs kpred:progress "2026-11-01: reviewed the five entities from local deputy commit 210d7d9d; corrected sandbox and question-settlement overclaims, dated measurements, regenerated pages and reconciled the release state. The release docs gate reports zero undocumented shipped features. This branch still needs PR review and CI; it does not itself promote a release." .
+
+# 2026-11-03 — F277 ASSET MATRIX, PLANNED (Matt, in chat with Claude Code). Many audiences by many
+# document templates, generated from one space and regenerated when its facts change. First use is a
+# private community-program space kept OUTSIDE this repository; nothing from it belongs here.
+kb:asset-matrix rdf:type ktype:Feature ;
+    rdfs:label "Asset matrix — document variants for every audience and template, generated from a space and regenerated when its facts change" ;
+    kpred:feature-id   "F277" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A space holds a program's confirmed facts, its audiences (each with a message, a call to action and optional scripture or tone rules), and its document templates (each with named slots and a design source such as a Canva design id). Generation crosses audiences with templates, fills only the slots, keeps the art fixed, and records every variant as an entity with what it was generated from. Change a fact and only the variants that read it are stale." ;
+    kpred:decided      "MATT, 2026-11-03: 'I want to easily be able to regenerate from existing space node sets, and this is a perfect asset generation many (subgroups) to many (documents) situation.'" ;
+    kpred:decided      "MATT, 2026-11-03: 'This project will turn into a key demo. With a simple allocation of a new distribution partner, the documents personalized to their organization are packaged and shared in an email draft for me to send after manual review.'" ;
+    kpred:principle    "GENERATION READS ONLY CONFIRMED FACTS. A proposed message or an open question never reaches a printed page; an open question names the variants it blocks, and those variants wait." ;
+    kpred:principle    "THE EMAIL IS A DRAFT, NEVER A SEND. The recipient is a third party, so the person reviews every package and sends it themselves (see kb:n8n-document-output on why forwarding is an approval)." ;
+    kpred:relates-to   kb:n8n-document-output ;
+    kpred:relates-to   kb:downstream-site ;
+    kpred:relates-to   kb:space-file-layout ;
+    kpred:open-question "Which release carries it: v0.2.8, v0.2.9, or its own demo release?" ;
+    kpred:open-question "Canva or local SVG as the first renderer? Canva keeps the existing designs and is only reachable through Claude's Canva connector; local SVG through the Inkscape command line runs as a script with no account." .
+
+kb:asset-matrix-schema rdf:type ktype:Phase ;
+    rdfs:label "F277.1 — audience, template and variant types with their predicates" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "a synthetic fixture space (two audiences, two templates, one open question) parses; graph-lint passes; the types and predicates are named in reckons-vocabulary.ttl" .
+
+kb:asset-matrix-generator rdf:type ktype:Phase ;
+    rdfs:label "F277.2 — script that turns a space into one fill plan per audience and template, and reports stale variants" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:done-test    "on the fixture: four plans, the blocked one withheld with its question named; editing one audience fact marks exactly the two variants that read it as stale; no network and no model call" .
+
+kb:asset-matrix-render rdf:type ktype:Phase ;
+    rdfs:label "F277.3 — render each plan: local SVG to PDF, and a Canva adapter that copies the source design and fills its text" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-generator ;
+    kpred:done-test    "the fixture renders to one PDF per variant and one combined PDF; each variant entity records its output file or design id" .
+
+kb:asset-matrix-partner-package rdf:type ktype:Phase ;
+    rdfs:label "F277.4 — partner package: one new partner entity yields its co-branded documents as one PDF in an email draft" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:depends-on   kb:n8n-document-output ;
+    kpred:done-test    "adding a synthetic partner to the fixture produces its variants, one combined PDF, and an email DRAFT addressed to the partner contact; nothing is sent; the draft id is recorded on the partner entity" .
