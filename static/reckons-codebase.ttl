@@ -253,6 +253,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/__tests__/app-db.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/graph-sets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/kb-duplicate-choice.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/kb-assets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/multi-graph-store.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/settings-persistence.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/space-leaps.test.ts" ;
@@ -383,6 +384,8 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/post-reckoning.ts" ;
               kpred:has-file "src/lib/publish/publish-gate.ts" ;
               kpred:has-file "src/lib/publish/website-alignment.ts" ;
+              kpred:has-file "src/lib/publish/site-build.ts" ;
+              kpred:has-file "scripts/site-build.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 
@@ -421,6 +424,7 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/integrations/llm/turtle-chat.ts" ;
           kpred:has-file "src/lib/integrations/llm/merge-analysis.ts" ;
           kpred:has-file "src/lib/integrations/llm/re-analyze.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/re-analyze-entity-types.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-cache.ts" ;
           kpred:has-file "src/lib/integrations/llm/model-revisions.ts" ;
           kpred:has-file "src/lib/integrations/llm/__tests__/model-revisions.test.ts" ;
@@ -887,7 +891,9 @@ code:scripts  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/visual-evidence-report.ts" ;
               kpred:has-file "scripts/visual-baseline-update.ts" ;
               kpred:has-file "scripts/__tests__/visual-evidence-contract.test.ts" ;
-              kpred:has-file "scripts/sveltia-auth-secrets.sh" .
+              kpred:has-file "scripts/sveltia-auth-secrets.sh" ;
+              kpred:has-file "scripts/offline/lib/import-graph.ts" ;
+              kpred:has-file "scripts/offline/__tests__/import-graph.test.ts" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
                  rdfs:label   "Sample Knowledge Graphs" ;

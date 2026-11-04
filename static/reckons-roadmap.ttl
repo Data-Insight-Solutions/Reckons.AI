@@ -10048,6 +10048,42 @@ kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:research-watch ;
     kpred:has-part kb:graph-density-legibility .
 
+# 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
+# release: what makes the local deputy and its queue trustworthy enough to run offline.
+# Plan only; written by the local deputy, reviewed by Claude Code. F267 joins when #539 lands.
+kb:release-0-2-9 rdf:type ktype:Release ;
+    rdfs:label "v0.2.9" ;
+    kpred:version "0.2.9" ;
+    kpred:has-status "planned" ;
+    kpred:description "The orchestration release: what makes the local deputy and its queue trustworthy enough to run offline." ;
+    kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." ;
+    kpred:has-part kb:procedure-over-prose ;
+    kpred:has-part kb:local-dev-integration ;
+    kpred:has-part kb:taxonomy-coverage .
+
+kb:local-dev-integration rdf:type ktype:Feature ;
+    rdfs:label "Local dev integration — reviewed deputy branches merge in a local bare repository, the full check suite runs on this machine, and one batched push carries the review" ;
+    kpred:feature-id   "F276" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A local bare repository on this machine where Opus-reviewed agent/local-* branches merge, the blocking script tier and unit tests run locally on the merged result, and reviewed batches are pushed to GitHub dev in one push. Deputies still never push to GitHub." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): local dev integration - reviewed deputy branches merge in a local repository and the full check suite runs on this machine before one batched push to GitHub dev." ;
+    kpred:relates-to   kb:loop-overnight-relay ;
+    kpred:relates-to   kb:loop-opus-review ;
+    kpred:open-question "Does the local merge replace merge-queue.ts for agent branches, or feed it?" ;
+    kpred:done-test    "a scratch bare repo fixture: two reviewed branches merge locally, the blocking tier runs on the merged tree, one push carries both, an unreviewed branch is refused" ;
+    kpred:evidence     "2026-11-03: .githooks/pre-push checks the local checkout, not the pushed refs, so an unrelated failure blocks every push" ;
+    kpred:evidence     "2026-11-03: queue.done.jsonl marks exit 0 as passed even when the deputy report says BLOCKED (job f274-4-2-blog)" .
+
+kb:taxonomy-coverage rdf:type ktype:Phase ;
+    rdfs:label "taxonomy-coverage — script-tier advisory check: type-dangling, label-drift, orphan terms, undefined-predicate inventory" ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A script-tier advisory check for type-dangling, label-drift, orphan terms and an undefined-predicate inventory — only what graph-lint does not already cover." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): plan it properly - a roadmap entity first, then redo it on dev as a script-tier check, with no HANDOFF edits." ;
+    kpred:evidence     "prototype b425ffd7 on agent/local-harness-space: stale base, conflicts with dev, not to be merged" ;
+    kpred:done-test    "synthetic fixture TTLs, one per finding kind, fail before and pass after; advisory exit 0 on the real graphs; no proposals written unless --pending" ;
+    kpred:non-goal     "no blocking CI gate until its yield is measured" .
+
 kb:change-provenance-commit-trailers rdf:type ktype:Phase ;
     rdfs:label "F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
     kpred:feature-id "F254.1" ;
@@ -10789,10 +10825,11 @@ kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
 kb:downstream-site-build rdf:type ktype:Phase ;
     rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
     kpred:feature-id   "F274.4.1" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:part-of      kb:downstream-site-engine ;
     kpred:description  "npm run site:build -- --site=<repo> --out=<dir> reads <repo>/content/**/*.md through site-import into WebPage statements, renders them with generateStaticSite, copies <repo>/assets and <repo>/admin, and writes _headers. A page whose frontmatter status is draft is not built." ;
     kpred:extends      "src/lib/publish/site-import.ts, src/lib/publish/site-generator.ts, src/lib/publish/site-export.ts" ;
+    kpred:tested-by    "src/lib/publish/__tests__/site-build.test.ts" ;
     kpred:evidence     "2026-10-30: the first pages.dev preview of the Data Insight Solutions site was hand-prepared from a mock-up because no command builds another repository's content/." ;
     kpred:done-test    "On a synthetic fixture site under src/lib/publish/__tests__/fixtures/ (three pages, one with status draft, an assets/ file and an admin/ folder): the output has index.html, one page per published file and none for the draft, assets/ and admin/ copied, and a second run is byte-identical. npm run check 0 errors." ;
     kpred:non-goal     "No package (F274.5), no deploy, no theme work; it uses the generator's existing output." ;

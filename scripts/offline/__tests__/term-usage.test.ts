@@ -229,6 +229,34 @@ describe('scanText', () => {
     scanText('see graph-render.test.ts, src/lib/graph, and the graph\n', 'content/x.md', tokens);
     expect(tokens.get('graph')!.occurrences).toBe(3);
   });
+
+  it('exempts repo file paths, not prose that merely carries a slash (overseer, 2026-11-03)', () => {
+    // The old rule — any /-run whose last segment contains a dot — read the sentence-final period
+    // as a file extension, so WORDING escaped the ratchet. A path ends in an extension, not a dot:
+    // trim one trailing '.' and require the last segment to END in one.
+
+    // 'graph/space.' at a sentence end: 'space.' is not an extension. Both words count — that is
+    // the point, this prose used to be exempt.
+    const prose = new Map<string, TokenUsage>([['graph', emptyUsage('graph')], ['space', emptyUsage('space')]]);
+    scanText('We use the word graph/space.\n', 'content/x.md', prose);
+    expect(prose.get('graph')!.occurrences).toBe(1);
+    expect(prose.get('space')!.occurrences).toBe(1);
+    expect(prose.get('graph')!.freeProse + prose.get('space')!.freeProse).toBe(2);
+
+    // 'and/or graph.Next': a slash between two words is not a path separator at all.
+    const glued = usage('graph');
+    scanText('either and/or graph.Next\n', 'content/x.md', glued);
+    expect(glued.get('graph')!.occurrences).toBe(1);
+    expect(glued.get('graph')!.freeProse).toBe(1);
+
+    // The real paths stay exempt: the final component genuinely ends in an extension.
+    const p1 = usage('graph');
+    scanText('tests/e2e/graph-render.test.ts\n', 'content/x.md', p1);
+    expect(p1.get('graph')!.occurrences).toBe(0);
+    const p2 = usage('graph');
+    scanText('src/lib/rdf/graph.ts\n', 'content/x.md', p2);
+    expect(p2.get('graph')!.occurrences).toBe(0);
+  });
 });
 
 describe('ambiguity ratchet (Matt, 2026-10-07)', () => {
