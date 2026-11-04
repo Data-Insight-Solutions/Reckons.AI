@@ -1,7 +1,7 @@
 ---
 title: "Passage Grounding"
 slug: "passage-grounding"
-order: 1028
+order: 1029
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
