@@ -10863,3 +10863,44 @@ kb:asset-matrix-partner-package rdf:type ktype:Phase ;
     kpred:depends-on   kb:asset-matrix-render ;
     kpred:depends-on   kb:n8n-document-output ;
     kpred:done-test    "adding a synthetic partner to the fixture produces its variants, one combined PDF, and an email DRAFT addressed to the partner contact; nothing is sent; the draft id is recorded on the partner entity" .
+
+# 2026-11-03 — F277 GROWS: THE APP MAKES FRESH DESIGNS (Matt, in chat with Claude Code).
+kb:asset-matrix kpred:decided "MATT, 2026-11-03: 'I think we may want Inkscape templates, that the generator fills... However it would be much more impressive to have the Reckons.AI app make fresh svg designs. The jobs may include web search for partner logos, generating new background images, adjusting layout of document content with new background, etc.'" ;
+    kpred:principle "A MODEL NEVER DRAWS THE PAGE. Layout is a deterministic engine over named slots; models only pick among candidates or score them. Free-form model SVG cannot be checked, and a co-branded document that misplaces a partner's name is worse than none." ;
+    kpred:principle "EVERY JOB OUTPUT IS A PROPOSAL. A found logo, a generated background and a laid-out page each land in the space as pending assets for a person to pick, the same review loop as any fact." ;
+    kpred:principle "A LOGO IS PERMISSION, NOT A SEARCH RESULT. A search can find a partner's logo; it cannot grant the right to print it. A logo reaches a document only with the partner's consent recorded on the partner entity. Club emblems follow their organization's published usage rules." .
+
+kb:asset-matrix-logo-job rdf:type ktype:Phase ;
+    rdfs:label "F277.5 — partner logo job: search for a new partner's logo, store candidates as pending assets, print only with recorded consent" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-schema ;
+    kpred:open-question "Which search: the local SearXNG instance Triple Check (F100, PR #537) introduces, or the partner uploading its own logo through the sign-up form?" ;
+    kpred:done-test    "for a synthetic partner with a fixture search response: up to three candidate images land as pending assets with their source URLs; a document using the logo refuses to render until a consent fact is confirmed on the partner" .
+
+kb:asset-matrix-background-job rdf:type ktype:Phase ;
+    rdfs:label "F277.6 — background job: a local image generation run from an audience's visual direction, candidates as pending assets" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:mvg-image-gen ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:relates-to   kb:generated-assets-story ;
+    kpred:done-test    "a brief built only from confirmed audience facts; N candidates at the template's page size with a clear text area; each recorded with its prompt and model; nothing runs without the opt-in local runner" .
+
+kb:asset-matrix-layout-engine rdf:type ktype:Phase ;
+    rdfs:label "F277.7 — layout engine: fit slot content onto a chosen background, generate layout candidates, score them, never overflow" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-render ;
+    kpred:relates-to   kb:vlm-workflow-streams ;
+    kpred:done-test    "text measured with the real font; any slot that does not fit fails loudly instead of clipping; text contrast against the background checked numerically; a local vision model's score is recorded as advice, never as the gate" .
+
+kb:asset-matrix-in-app rdf:type ktype:Phase ;
+    rdfs:label "F277.8 — in the app: allocating a partner starts the jobs; the package appears for review where the space already lives" ;
+    kpred:part-of      kb:asset-matrix ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-matrix-partner-package ;
+    kpred:depends-on   kb:asset-matrix-logo-job ;
+    kpred:depends-on   kb:asset-matrix-layout-engine ;
+    kpred:principle    "No new navigation tab: the jobs start from the partner entity and their results arrive in Review and on the variant entities." ;
+    kpred:done-test    "in the demo space, adding one partner entity queues logo, layout and package jobs; their outputs appear as pending assets and variants; the email draft is created only after a person approves the package" .
