@@ -324,8 +324,8 @@ export function insideMarkupExpression(line: string, at: number): boolean {
 
 /**
  * A repository file path in a line of text: a run of path characters that contains at least one `/`
- * and whose final component has a file extension (a dot), e.g. `tests/e2e/graph-render.test.ts` or
- * `src/lib/rdf/graph.ts`.
+ * and whose final component ENDS IN a file extension (a dot followed by 1–8 alphanumerics),
+ * e.g. `tests/e2e/graph-render.test.ts` or `src/lib/rdf/graph.ts`.
  *
  * This matters only in DOCS. A rendered `kpred:tested-by` value prints such a path, and every line
  * of a `.md` file is prose, so the filename's segments (the `graph` in `graph-render`) landed in the
@@ -335,18 +335,30 @@ export function insideMarkupExpression(line: string, at: number): boolean {
  * pass the ratchet was to delete a TRUE `tested-by` triple (2026-11-03) — the fact and the fix
  * inverted.
  *
+ * The original rule — any `/`-run whose final component merely CONTAINS a dot — was too loose, and
+ * its escapes were on the PROSE side (overseer, 2026-11-03): `graph/space.` at a sentence end
+ * carries the period in the run, so `space.` "had an extension", and `graph.Next` glued to an
+ * `and/or` did the same. Both are wording and both must count. So trim exactly one trailing `.`
+ * (the sentence punctuation, which the path never has) and then require the final component to END
+ * in an extension: `/\.[A-Za-z0-9]{1,8}$/`.
+ *
  * A bare filename (`graph-render.test.ts`, no `/`), a directory (`src/lib/graph`, no extension), a
  * ratio (`3/4`) or a host (`localhost:11434`) are NOT repo paths here and are left counted.
  */
 export function repoPathSpans(line: string): Array<[number, number]> {
   const out: Array<[number, number]> = [];
+  const endsInExtension = /\.[A-Za-z0-9]{1,8}$/;
   for (const m of line.matchAll(/[A-Za-z0-9_.\-/]+/g)) {
     const run = m[0];
-    const start = m.index ?? 0;
     if (!run.includes('/')) continue;
-    const last = run.slice(run.lastIndexOf('/') + 1);
-    if (!last.includes('.')) continue;
-    out.push([start, start + run.length]);
+    // A sentence-final period glues onto the run; the path itself never ends in one. Trim it so
+    // 'graph/space.' is not read as a file called `space.` and is left counted as two words.
+    let core = run;
+    if (core.endsWith('.')) core = core.slice(0, -1);
+    const last = core.slice(core.lastIndexOf('/') + 1);
+    if (!endsInExtension.test(last)) continue;
+    const start = m.index ?? 0;
+    out.push([start, start + core.length]);
   }
   return out;
 }

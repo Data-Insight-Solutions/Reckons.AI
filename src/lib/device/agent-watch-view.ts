@@ -26,6 +26,7 @@ export type QueueView =
   | ({ kind: 'ready' | 'paused-idle' | 'paused-ollama-down' | 'paused-manual'; queued: number }
     | { kind: 'working'; job: string; attempt?: number; maxAttempts?: number; index: number; total: number; queued: number }
     | { kind: 'paused-resources'; queued: number; reason?: string }
+    | { kind: 'paused-broken-chain'; queued: number; reason?: string }
     | { kind: 'empty' }) & { held?: string[] };
 
 export type Vote = { model: string; item: string; value?: string; reason?: string; error?: string };
@@ -87,6 +88,7 @@ function queueHeadline(q: QueueView | undefined): Headline {
     case 'paused-ollama-down': return { key: 'queue', label: 'queue', value: 'paused', detail: `Ollama down · ${n} queued`, level: 'bad' };
     case 'paused-manual': return { key: 'queue', label: 'queue', value: 'paused', detail: `by hand (PAUSE file) · ${n} queued`, level: 'warn' };
     case 'paused-resources': return { key: 'queue', label: 'queue', value: 'paused', detail: `${q.reason ?? 'GPU over a limit'} · ${n} queued`, level: 'warn' };
+    case 'paused-broken-chain': return { key: 'queue', label: 'queue', value: 'paused', detail: `${q.reason ?? 'a chain is waiting on itself'} · ${n} queued`, level: 'warn' };
     case 'empty': return { key: 'queue', label: 'queue', value: 'empty', detail: q.held?.length ? `${q.held.length} held` : 'nothing queued', level: q.held?.length ? 'warn' : 'ok' };
   }
 }

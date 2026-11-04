@@ -11,6 +11,10 @@
  * Reachability is probed against GET {base}/api/tags with a short timeout and
  * cached briefly, so a downed Ollama costs one failed probe per window, after
  * which everything falls through to the existing chain untouched.
+ *
+ * The probe already fetches the model list (it is IN the /api/tags response),
+ * so the names are cached alongside reachability: `model-for-task.ts` resolves
+ * defaults against them instead of guessing at tags.
  */
 
 
@@ -20,6 +24,8 @@ const CACHE_TTL_MS = 60_000;
 let cachedAt = 0;
 let cachedReachable = false;
 let cachedBaseUrl = '';
+/** Installed model names from the last successful probe, or null if none succeeded. */
+let cachedModels: string[] | null = null;
 let inflight: Promise<boolean> | null = null;
 
 /**
@@ -40,8 +46,23 @@ export async function ollamaReachable(baseUrl = 'http://localhost:11434'): Promi
       const res = await fetch(`${baseUrl.replace(/\/$/, '')}/api/tags`, { signal: ctrl.signal });
       clearTimeout(timer);
       cachedReachable = res.ok;
+      // The reachability signal is res.ok; the model list is a bonus parsed from the same body.
+      // Tolerate a body without one — parsing must never cost reachability.
+      if (res.ok && typeof res.json === 'function') {
+        try {
+          const data = await res.json();
+          cachedModels = ((data?.models ?? []) as Array<{ name?: unknown }>)
+            .map((m) => (typeof m?.name === 'string' ? m.name : ''))
+            .filter((name) => name !== '');
+        } catch {
+          cachedModels = null;
+        }
+      } else {
+        cachedModels = null;
+      }
     } catch {
       cachedReachable = false;
+      cachedModels = null;
     }
     cachedAt = Date.now();
     inflight = null;
@@ -55,7 +76,19 @@ export function resetOllamaProbeCache(): void {
   cachedAt = 0;
   cachedBaseUrl = '';
   cachedReachable = false;
+  cachedModels = null;
   inflight = null;
+}
+
+/**
+ * The model names the server reported in its last successful /api/tags probe, or null if no
+ * probe for this base URL has succeeded. Last-known-good is deliberate: the list only changes
+ * when the user pulls or unpulls a model, and null must mean "we do not know" (the resolver
+ * falls back to bare-name resolution) — never "nothing is installed".
+ */
+export function installedOllamaModels(baseUrl = 'http://localhost:11434'): string[] | null {
+  if (baseUrl !== cachedBaseUrl || !cachedReachable) return null;
+  return cachedModels;
 }
 
 /**

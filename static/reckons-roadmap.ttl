@@ -1884,6 +1884,8 @@ kb:local-panel rdf:type ktype:Feature ;
                kpred:has-file     "scripts/offline/lib/gpu-wait.ts" ;
                kpred:tested-by    "scripts/offline/lib/__tests__/gpu-wait.test.ts" ;
                kpred:progress     "2026-10-07, offline:all PASSES THE SAME GPU GATE. An ungated batch run outside the queue drove GPU 1 to 89 C, past the worker's 83 C limit, because scripts/offline/run-all.ts never asked. BUILT: before EACH agent-tier job run-all reads session-gpu.ts; hot, full or busy waits (re-read every 30 s) up to --gpu-wait-min (default 20), then the job is SKIPPED, named in the summary and counted as not clean; --no-gpu-gate opts out. WEAKNESS, said out loud: unknown GPU state (nvidia-smi missing or failing) RUNS the job with a warning, unlike the worker, which fails closed; offline:all is started by a person, and failing closed would silently disable every agent job on a machine without an NVIDIA GPU. A broken nvidia-smi on an NVIDIA machine therefore gets no protection from offline:all." ;
+               kpred:tested-by    "scripts/agent/__tests__/queue-chains.test.ts" ;
+               kpred:progress     "2026-11-04, JOB CHAINS (Matt 2026-11-03). queue.ts add --after=<job> (repeatable) holds a job until every predecessor has a passed run; a predecessor that failed, was refused or dropped records the waiting job once as blocked and it never runs; a cycle reads paused-broken-chain. A deputy job (argv runs local-claude.sh) whose worktree head did not move is recorded no-commit, not passed, and satisfies no chain. Tests spawn the real worker on a throwaway state dir. WEAKNESS: a passed run from any earlier day satisfies a link, and the no-commit check compares heads only (a commit made then reset reads as no-commit; a job outside a git worktree is unchecked)." ;
                kpred:tested-by    "scripts/agent/__tests__/session-queue.test.ts" ;
                kpred:tested-by    "scripts/agent/__tests__/device-config.test.ts" ;
                kpred:honest-note  "ONE JUDGE, 30 ITEMS, ONE WORD. The labels are Opus's, from the marked line and six lines of context; the accuracy figures are a first calibration, not a benchmark. A second fixture on a different word (graph, set) is the next measurement before the policy is trusted for the rename." ;
@@ -2505,6 +2507,7 @@ kb:loop-local-deputy rdf:type ktype:Phase ;
     hnav:order 7 ;
     kpred:has-status "scaffolded" ;
     kpred:decided "MATT, 2026-10-23: 'one key thing lacking now is a main agent I talk with, to help it decide things. Like I chat with Opus, I want a more intelligent local model to use claude code harness, to do what Opus does when I have usage credits left (not hit limit yet).'" ;
+    kpred:decided "MATT, 2026-11-04, asked whether the deputy may file its own status notes with kb_add_note (pending proposals only): 'Allow kb_add_note'. Allowed in scripts/agent/local-claude.sh; every other MCP write tool stays unlisted, so it still asks." ;
     kpred:description "npm run local:claude starts the real Claude Code harness against a model on this machine, because Ollama serves an Anthropic-compatible /v1/messages. Same AGENTS.md, hooks, tools and reckons MCP; its own config folder with no Anthropic login, and every model name (subagents included) mapped to the local alias, so it cannot spend quota. Matt talks to it as he talks to Opus; what it decides is recorded with kb_add_note (agent local-deputy:<model>) and on an agent/local-* branch, and the next Opus session reviews it. It is a deputy: it proposes, it never merges." ;
     kpred:has-file "scripts/agent/local-claude.sh" ;
     kpred:has-file "tests/bench/run-orchestrator-bench.ts" ;
@@ -10051,6 +10054,42 @@ kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:research-watch ;
     kpred:has-part kb:graph-density-legibility .
 
+# 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
+# release: what makes the local deputy and its queue trustworthy enough to run offline.
+# Plan only; written by the local deputy, reviewed by Claude Code. F267 joins when #539 lands.
+kb:release-0-2-9 rdf:type ktype:Release ;
+    rdfs:label "v0.2.9" ;
+    kpred:version "0.2.9" ;
+    kpred:has-status "planned" ;
+    kpred:description "The orchestration release: what makes the local deputy and its queue trustworthy enough to run offline." ;
+    kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." ;
+    kpred:has-part kb:procedure-over-prose ;
+    kpred:has-part kb:local-dev-integration ;
+    kpred:has-part kb:taxonomy-coverage .
+
+kb:local-dev-integration rdf:type ktype:Feature ;
+    rdfs:label "Local dev integration — reviewed deputy branches merge in a local bare repository, the full check suite runs on this machine, and one batched push carries the review" ;
+    kpred:feature-id   "F276" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A local bare repository on this machine where Opus-reviewed agent/local-* branches merge, the blocking script tier and unit tests run locally on the merged result, and reviewed batches are pushed to GitHub dev in one push. Deputies still never push to GitHub." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): local dev integration - reviewed deputy branches merge in a local repository and the full check suite runs on this machine before one batched push to GitHub dev." ;
+    kpred:relates-to   kb:loop-overnight-relay ;
+    kpred:relates-to   kb:loop-opus-review ;
+    kpred:open-question "Does the local merge replace merge-queue.ts for agent branches, or feed it?" ;
+    kpred:done-test    "a scratch bare repo fixture: two reviewed branches merge locally, the blocking tier runs on the merged tree, one push carries both, an unreviewed branch is refused" ;
+    kpred:evidence     "2026-11-03: .githooks/pre-push checks the local checkout, not the pushed refs, so an unrelated failure blocks every push" ;
+    kpred:evidence     "2026-11-03: queue.done.jsonl marks exit 0 as passed even when the deputy report says BLOCKED (job f274-4-2-blog)" .
+
+kb:taxonomy-coverage rdf:type ktype:Phase ;
+    rdfs:label "taxonomy-coverage — script-tier advisory check: type-dangling, label-drift, orphan terms, undefined-predicate inventory" ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A script-tier advisory check for type-dangling, label-drift, orphan terms and an undefined-predicate inventory — only what graph-lint does not already cover." ;
+    kpred:decided      "MATT, 2026-11-03 (chat): plan it properly - a roadmap entity first, then redo it on dev as a script-tier check, with no HANDOFF edits." ;
+    kpred:evidence     "prototype b425ffd7 on agent/local-harness-space: stale base, conflicts with dev, not to be merged" ;
+    kpred:done-test    "synthetic fixture TTLs, one per finding kind, fail before and pass after; advisory exit 0 on the real graphs; no proposals written unless --pending" ;
+    kpred:non-goal     "no blocking CI gate until its yield is measured" .
+
 kb:change-provenance-commit-trailers rdf:type ktype:Phase ;
     rdfs:label "F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;
     kpred:feature-id "F254.1" ;
@@ -10792,10 +10831,11 @@ kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
 kb:downstream-site-build rdf:type ktype:Phase ;
     rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
     kpred:feature-id   "F274.4.1" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:part-of      kb:downstream-site-engine ;
     kpred:description  "npm run site:build -- --site=<repo> --out=<dir> reads <repo>/content/**/*.md through site-import into WebPage statements, renders them with generateStaticSite, copies <repo>/assets and <repo>/admin, and writes _headers. A page whose frontmatter status is draft is not built." ;
     kpred:extends      "src/lib/publish/site-import.ts, src/lib/publish/site-generator.ts, src/lib/publish/site-export.ts" ;
+    kpred:tested-by    "src/lib/publish/__tests__/site-build.test.ts" ;
     kpred:evidence     "2026-10-30: the first pages.dev preview of the Data Insight Solutions site was hand-prepared from a mock-up because no command builds another repository's content/." ;
     kpred:done-test    "On a synthetic fixture site under src/lib/publish/__tests__/fixtures/ (three pages, one with status draft, an assets/ file and an admin/ folder): the output has index.html, one page per published file and none for the draft, assets/ and admin/ copied, and a second run is byte-identical. npm run check 0 errors." ;
     kpred:non-goal     "No package (F274.5), no deploy, no theme work; it uses the generator's existing output." ;
@@ -11016,3 +11056,19 @@ kb:hub-default-assets-attach rdf:type ktype:Phase ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:hub-default-assets-chain ;
     kpred:done-test    "the hub shows the generated image as its hover preview and the splat in the 3D view after a person keeps them; the asset records survive the app's own export and re-import" .
+
+# 2026-11-04 — F279 OLLAMA RUNS WHAT IS INSTALLED, AND SAYS SO (Matt, in chat with Claude Code).
+kb:ollama-installed-model rdf:type ktype:Feature ;
+    rdfs:label "Ollama runs an installed model, and says so when it is not the one you chose" ;
+    kpred:feature-id   "F279" ;
+    kpred:has-status   "functional" ;
+    kpred:relates-to   kb:backend-ollama ;
+    kpred:description  "The Ollama model for each task is resolved against the server's installed tags (/api/tags): a bare name becomes the tag that is installed (llama3.2 becomes llama3.2:3b), and when nothing is chosen the best installed model is picked by this machine's extraction benches (#568, 2026-11-04). When a chosen model is not installed, the best installed one runs in its place and an important warning names both models, the task, the 'ollama pull' fix and a link to the Ollama settings, once per chosen and used pair per page load." ;
+    kpred:decided      "MATT, 2026-11-03 (task brief): when the user has not chosen a model, or the chosen name is not installed, pick the best installed model; a chosen model that is installed is never overridden." ;
+    kpred:decided      "MATT, 2026-11-04: 'make it a notification, need some ntoice.' (asked whether a replaced model should fail loudly instead)" ;
+    kpred:principle    "NEVER A SILENT SWAP. A different model writes different facts, so running one the person did not choose is always announced." ;
+    kpred:honest-note  "The notice depends on the installed list the prefer-local probe caches; before the first successful probe nothing is substituted and nothing is announced, and a missing model then fails on Ollama's own 404 as before. The Settings field still shows the bare llama3.2 placeholder." ;
+    kpred:has-file     "src/lib/integrations/llm/model-for-task.ts" ;
+    kpred:has-file     "src/lib/stores/ollama-model-notice.ts" ;
+    kpred:tested-by    "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
+    kpred:tested-by    "src/lib/stores/__tests__/ollama-model-notice.test.ts" .

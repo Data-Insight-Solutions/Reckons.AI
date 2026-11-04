@@ -3,7 +3,41 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-03 (evening) — START HERE: review the overnight deputy queue (Claude Code, Opus)
+## 2026-11-04 (early) — START HERE: overnight queue triaged and merged (Claude Code, Opus)
+
+**Done (each checked as stated, 2026-11-04 ~07:00 UTC).** #556 (v0.2.7) reached staging 01:59 UTC,
+which unfroze dev. Merged into dev: the held PRs #565 (MCP serves the main checkout's build from
+worktrees, the cause of every deputy's CONNECTION_CLOSED), #566, #554, #564, #567, #559, #561; and
+six overnight deputy branches, each reviewed by a Sonnet overseer against its brief's done-tests:
+#568 ollama-default, #569 import-mixed, #570 typing-undeclared, #571 typing-llm-custom,
+#572 ratchet-paths, #573 dead-weight-alias. #574 fixed the term ratchet (below).
+
+**What went wrong, so it is not repeated:**
+- Two deputy reports said "run-all 9/9" when codebase-coverage was failing (new test file unlinked:
+  #569, #571). The overseer caught both. Read deputy "all green" lines as unverified.
+- #569 broke e2e `sync-preservation`: the new unrecorded-triple import turned the sync layer's
+  `urn:kbase:asset/*` reference lines into pending facts. Fixed (b88588d5) by excluding that
+  namespace; legacy icon2d/glbModel predicates still import as statements.
+- Merging #568-#573 back to back, each green alone, put dev over the "graph" term ratchet
+  (3281 vs 3279) and turned dev's script tier red. #574 reworded six uses; no baseline raised.
+  When landing several PRs, re-run term-usage on the combined tree between merges.
+
+**Still open:**
+- **Matt:** v0.2.7 is on staging; no staging → main PR exists yet. Claude can open one for him.
+- **Matt:** #568 now replaces a chosen Ollama model that is not installed with the best installed
+  one, as its brief asked; only the ingest ledger shows the swap. Two-line change if he wants an
+  explicit choice to fail loudly instead.
+- #537 Triple Check: dev merged in (6ca52752); still not reviewed (4.3k lines). The merge moved
+  `settings/device` onto SettingsHeader — needs a visual check. Two `dependency-overrides` test
+  failures seen locally are probably that worktree's stale node_modules; CI decides.
+- Queue: night-queue-chains running (started 06:08 UTC, on a worktree fast-forwarded to include
+  #565), then night-job-plan-space, then the two gpt-oss benches. Triage both deputy branches the
+  same way when they finish.
+- Review queue: one batch of 5 dead-weight sweep questions, all deferred to Matt (no claim to
+  check). Suggestion filed on job-dead-weight: drop symbols that no longer exist before asking.
+  docs-expand is held by the backlog limit (62 unreviewed > 50), by design.
+
+## 2026-11-03 (evening) — review the overnight deputy queue (Claude Code, Opus) — DONE 2026-11-04, see above
 
 **Your first job is triage, not new work.** Eight local deputy jobs (qwen3.8) were queued 2026-11-03
 about 20:00 CST to run overnight, one at a time, each on its own `agent/local-*` branch in its own

@@ -278,6 +278,7 @@ export function renderQueue(q: QueueView | undefined, due: Due[] | undefined, lv
       case 'paused-ollama-down': out.push(`${head}  ${lvl('bad', `PAUSED — Ollama down (${q.queued} queued)`)}`); break;
       case 'paused-manual': out.push(`${head}  ${lvl('warn', `PAUSED — manually (PAUSE file; npx tsx scripts/agent/queue.ts resume) · ${q.queued} queued`)}`); break;
       case 'paused-resources': out.push(`${head}  ${lvl('warn', `PAUSED — GPU busy/hot/full: ${q.reason ?? 'over a limit'} · ${q.queued} queued`)}`); break;
+      case 'paused-broken-chain': out.push(`${head}  ${lvl('warn', `PAUSED — chain stalled: ${q.reason ?? 'a job waits on a job that waits on it'} · ${q.queued} queued (re-run the predecessor: npx tsx scripts/agent/queue.ts list)`)}`); break;
       case 'empty': out.push(`${head}  ${dim('EMPTY — nothing queued')}`); break;
     }
     if (q.held?.length) out.push(`  ${lvl('warn', 'held')}: ${q.held.slice(0, 4).join(' · ')}${q.held.length > 4 ? dim(` +${q.held.length - 4} more`) : ''}`);
