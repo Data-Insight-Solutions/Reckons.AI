@@ -1,5 +1,5 @@
 {
-  "built": 195,
+  "built": 196,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -1154,13 +1154,22 @@
       "pageHash": "356c2dd12e116349"
     },
     {
+      "path": "testing/synthetic-room-benchmark",
+      "entity": "urn:reckons:test/SyntheticRoomBenchmark",
+      "graph": "docs-testing.ttl",
+      "factHash": "e1e80cd0e03a4e84",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "184cb3d27a2af430"
+    },
+    {
       "path": "testing/test-suite",
       "entity": "urn:reckons:test/TestSuite",
       "graph": "docs-testing.ttl",
       "factHash": "b43fc161af718225",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "94e7dc34ab70e10e"
+      "pageHash": "850610b9cdb33ff3"
     },
     {
       "path": "testing/test-workflows",
@@ -1178,7 +1187,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "a24098544978aaff"
+      "pageHash": "637c018a8ece6608"
     },
     {
       "path": "testing/visual-tests",
@@ -1187,7 +1196,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "b114a15af2a46a00"
+      "pageHash": "6f66b09e3a95399a"
     },
     {
       "path": "testing/vlm-workflow-streams",

@@ -17,6 +17,13 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix code:   <urn:reckons:code/> .
 
+code:room-benchmark
+    rdf:type ktype:Concept ;
+    rdfs:label "Synthetic room quality benchmark" ;
+    skos:definition "Seeded Blender room renders with known poses and disjoint training/evaluation views, a bounded Brush training run, image fidelity metrics, compressed size, runtime and a local visual report. No automatic replacement of the bundled room." ;
+    kpred:has-file "scripts/content/scan-synthetic-room.py", "scripts/content/room-bench.ts", "scripts/content/room-bench-lib.ts" ;
+    kpred:tested-by "scripts/content/__tests__/room-bench.test.ts" .
+
 code:generation
     rdf:type ktype:Concept ;
     rdfs:label "Local generation story and workspace queue" ;

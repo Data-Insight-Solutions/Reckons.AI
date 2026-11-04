@@ -552,6 +552,13 @@
       "blocking": false,
       "cmd": "npx tsx scripts/offline/taxonomy-current.ts --check",
       "desc": "F280. Compares the central taxonomy with the code: every built-in entity type needs a term or vocabulary class, no term may name a type the code dropped, and the review-status, feature-status and action-status values the code enforces must match their vocabulary schemes. Advisory: a missing term is a proposal for Matt to accept, so this reports and never blocks."
+    },
+    {
+      "name": "room-benchmark",
+      "tier": "script",
+      "enabled": false,
+      "cmd": "npm run bench:room -- --help",
+      "desc": "MANUAL, GPU. Synthetic room reconstruction benchmark: prepare a seeded Blender dataset, then pass --dataset and a new --out directory outside the checkout. Exact camera poses, disjoint evaluation views, versioned RGB PSNR/block8 luminance SSIM, per-view image pairs, runtime and SPZ size. No model judge, network or automatic asset replacement. The registered command prints usage; heavy rendering/training requires explicit arguments and is never part of the sweep. Fidelity is measured before compression, not in the browser."
     }
   ]
 }
