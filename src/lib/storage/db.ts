@@ -20,6 +20,22 @@ export type KbStoryStep = {
 
 export type SettingsRecord = {
   key: 'main' | 'user-defaults';
+  tripleCheckEnabled?: boolean;
+  tripleCheckWebEnabled?: boolean;
+  tripleCheckDailyLimit?: number;
+  tripleCheckSearch?: 'searxng';
+  /** Self-hosted SearXNG (F100.7), e.g. http://localhost:8888. No key; the instance must allow JSON output and this origin (CORS). */
+  searxngBaseUrl?: string;
+  tripleCheckScrape?: 'snippets';
+  /** Private-network hosts (literal RFC 1918 / fd00:: addresses, *.local) the user names as allowed for SearXNG and Ollama. Empty by default; loopback needs no entry. */
+  tripleCheckLanHosts?: string[];
+  tripleCheckBackend?: 'ollama' | 'wasm' | 'chrome-ai';
+  tripleCheckModel?: string;
+  tripleCheckSpaceAnalysis?: boolean;
+  tripleCheckReferenceSpaceIds?: string[];
+  researchViews?: import('../rdf/space-view').SpaceView[];
+  canvasEntityLimit?: number;
+
   claudeApiKey?: string;
   claudeModel: string;
   openaiApiKey?: string;
@@ -413,6 +429,7 @@ export class KBaseDB extends Dexie {
   kbSnapshots!: Table<KnowledgeBaseSnapshotRow, string>;
   extractionRuns!: Table<ExtractionRun, string>;
   splatFiles!: Table<SplatFileRow, string>;
+  tripleChecks!: Table<import('../rdf/triple-check').TripleCheckReport, string>;
 
   constructor(name?: string) {
     super(name ?? resolveDbName());
@@ -519,6 +536,7 @@ export class KBaseDB extends Dexie {
       extractionRuns: 'id, sourceId, startedAt, status',
       splatFiles: 'id'
     });
+    this.version(10).stores({ tripleChecks: 'id, statementId, checkedAt' });
   }
 }
 
@@ -583,6 +601,7 @@ export async function clearUserDefaults(): Promise<void> {
 }
 
 export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void> {
+  return db.transaction('rw', db.settings, async () => {
   try {
     const cur = await getSettings();
     // Merge patch over current DB values, then build a plain serializable object.
@@ -600,6 +619,19 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       wasmIngestModel: m.wasmIngestModel,
       wasmAnalyzeModel: m.wasmAnalyzeModel,
       wasmChatModel: m.wasmChatModel,
+      tripleCheckEnabled: m.tripleCheckEnabled,
+      tripleCheckWebEnabled: m.tripleCheckWebEnabled,
+      tripleCheckDailyLimit: m.tripleCheckDailyLimit,
+      tripleCheckSearch: m.tripleCheckSearch,
+      searxngBaseUrl: m.searxngBaseUrl,
+      tripleCheckScrape: m.tripleCheckScrape,
+      tripleCheckLanHosts: m.tripleCheckLanHosts,
+      tripleCheckBackend: m.tripleCheckBackend,
+      tripleCheckModel: m.tripleCheckModel,
+      tripleCheckSpaceAnalysis: m.tripleCheckSpaceAnalysis,
+      tripleCheckReferenceSpaceIds: m.tripleCheckReferenceSpaceIds,
+      researchViews: m.researchViews,
+      canvasEntityLimit: m.canvasEntityLimit,
       preferredBackend: m.preferredBackend,
       ingestBackend: m.ingestBackend,
       analyzeBackend: m.analyzeBackend,
@@ -688,4 +720,5 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
     console.error('Failed to save settings:', e);
     throw e;
   }
+  });
 }

@@ -2,7 +2,7 @@
   /**
    * The space background's settings (F58.9.8, F58.9.16): backdrop or surround, scale, yaw, opacity, up
    * axis, offset, Level the floor and Set focal point. One component, shown in the Graphs tab beside
-   * the import button and in the graph view's Filters & layout panel, so the two cannot drift apart.
+   * the import button and in the graph view's View settings panel, so the two cannot drift apart.
    * Settings are meta triples on the space, never edges. Renders nothing when there is no background.
    */
   import { onDestroy } from 'svelte';

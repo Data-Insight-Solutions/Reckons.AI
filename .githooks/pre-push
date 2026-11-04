@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# F273 phase A: run the blocking script-tier jobs (the same ones CI blocks on) before the push.
+# To skip once, deliberately: git push --no-verify (CI will still run them).
+ROOT="${RECKONS_ROOT:-$(git rev-parse --show-toplevel)}"
+# tsx from the tool root, not the cwd: the repo being committed to may have no node_modules.
+TSX="$ROOT/node_modules/.bin/tsx"; [ -x "$TSX" ] || TSX="npx --no-install tsx"
+out="$($TSX "$ROOT/scripts/offline/run-all.ts" --blocking --ci --no-gpu-gate 2>&1)"
+if [ $? -ne 0 ]; then
+  echo "$out" | grep -E '✗|BLOCKING' >&2
+  echo "pre-push: a blocking check failed (named above). Run 'npx tsx scripts/offline/run-all.ts --blocking --ci' to see the output, fix it, push again." >&2
+  exit 1
+fi

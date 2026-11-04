@@ -13,7 +13,7 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.6" ;
-    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: planned." ;
+    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: production." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
     p:has rev:wf-readme-path, rev:gap .
@@ -92,7 +92,7 @@ rev:gap-f223 rdf:type ktype:Concept ;
 
 rev:gap-f122-1 rdf:type ktype:Concept ;
     rdfs:label "F122.1 Document evidence anchors — page, block, span and geometry provenance" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/ingest/__tests__/anchor-contract.test.ts, src/lib/rdf/__tests__/anchor-roundtrip.test.ts, scripts/offline/__tests__/anchor-resolution.test.ts, src/lib/ingest/__tests__/anchor-staleness.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/ingest/__tests__/anchor-contract.test.ts, src/lib/ingest/__tests__/anchor-staleness.test.ts, src/lib/rdf/__tests__/anchor-roundtrip.test.ts, scripts/offline/__tests__/anchor-resolution.test.ts, src/lib/stores/__tests__/space-passages-roundtrip.test.ts, src/lib/ingest/__tests__/anchor-multipage.test.ts, src/lib/stores/__tests__/export-excludes-originals.test.ts)." .
 
 rev:gap-f33-2 rdf:type ktype:Concept ;
     rdfs:label "F33.2 CI as a graph — every check, what it guards, and whether it can block a merge" ;
@@ -100,7 +100,7 @@ rev:gap-f33-2 rdf:type ktype:Concept ;
 
 rev:gap-f74-10 rdf:type ktype:Concept ;
     rdfs:label "F74.10 Stable local model calls — one batch size per device, and a retry when the model server restarts" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/local-model.test.ts, scripts/agent/__tests__/queue-standard-batch.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/local-model.test.ts, scripts/offline/__tests__/model-inventory.test.ts, scripts/agent/__tests__/queue-standard-batch.test.ts)." .
 
 rev:gap-currents-client-delivery-gap-resolved-in-the-app rdf:type ktype:Concept ;
     rdfs:label "Currents client delivery gap — resolved in the app" ;
@@ -112,7 +112,7 @@ rev:gap-f65 rdf:type ktype:Concept ;
 
 rev:gap-f74-9 rdf:type ktype:Concept ;
     rdfs:label "F74.9 Job back-pressure — an agent job whose proposals nobody reviews stops producing more" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/proposal-tally.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/offline/lib/__tests__/workspace-space.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/offline/lib/__tests__/proposal-tally.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/offline/lib/__tests__/workspace-space.test.ts, scripts/offline/__tests__/queue-integrity.test.ts, scripts/offline/__tests__/pending-queue.test.ts)." .
 
 rev:gap-f254-1 rdf:type ktype:Concept ;
     rdfs:label "F254.1 F254 phase 1a — agent commits carry Model: and Intent: trailers, checked in CI" ;

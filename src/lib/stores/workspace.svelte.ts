@@ -120,6 +120,17 @@ let pulling = false;
 export function workspaceHandle(): FileSystemDirectoryHandle | null { return _handle; }
 export function workspaceName(): string | null { return name; }
 export function workspaceState(): 'none' | 'disconnected' | 'connected' { return state; }
+/**
+ * True from the moment a linked folder becomes connected until its first pull AND its queue drain
+ * have both finished. A page that counts proposals before this is false is counting a queue that
+ * has not been read yet, and "0 proposals" would be a lie (review links landing, 2026-10-28).
+ * Remains false when auto-sync is off, because nothing is then loading on its own.
+ */
+let _initialLoading = $state(false);
+/** False until loadWorkspace has looked for a stored handle; before that 'none' means "not asked yet". */
+let _checked = $state(false);
+export function workspaceChecked(): boolean { return _checked; }
+export function workspaceInitialLoading(): boolean { return _initialLoading; }
 export function lastSyncTime(): number | null { return _lastSyncTime; }
 export function syncedKbCount(): number { return _syncedKnowledgeBaseCount; }
 export function autoSyncEnabled(): boolean { return _autoSyncEnabled; }
@@ -178,6 +189,10 @@ function readAutoSyncPref(): boolean {
 
 /** Called on app startup — loads the stored handle and checks current permission. */
 export async function loadWorkspace(): Promise<void> {
+  try { await loadWorkspaceInner(); } finally { _checked = true; }
+}
+
+async function loadWorkspaceInner(): Promise<void> {
   // App-level, with a one-time adoption of any handle an older version left in this graph's
   // own database. See app-db.ts: the handle describes the browser, not the graph.
   const row = await getWorkspaceRow(legacyWorkspaceStores());
@@ -212,10 +227,11 @@ function onWorkspaceConnected(): void {
   // next reload or a manual refresh — so a note dictated into a ring arrived on disk, and then
   // appeared to have vanished. Connecting a folder is exactly when the user expects what is in
   // it to show up.
+  _initialLoading = true;
   void pullFromWorkspace()
     .then(() => drainAndImportPending())
     .catch(() => { /* both paths report their own failures; never break connection on this */ })
-    .finally(() => startWorkspacePolling());
+    .finally(() => { _initialLoading = false; startWorkspacePolling(); });
 }
 
 /** Ask the user to pick a directory. Returns true on success. */

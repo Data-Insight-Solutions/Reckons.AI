@@ -17,6 +17,16 @@
 @prefix ktype:  <urn:kbase:type/> .
 @prefix hnav:   <urn:reckons:nav/> .
 @prefix kpred:  <urn:kbase:predicate/> .
+@prefix kb:     <urn:kbase:concept/> .
+
+test:StarterAssetSmoke rdf:type ktype:Concept ;
+    rdfs:label "Starter assets in the production build" ;
+    skos:broader test:TestSuite ;
+    skos:definition "The production smoke test opens Getting started and enables all previews. It checks that the GIF decodes and the video has real dimensions and duration, then finds each asset by its entity identifier through search before opening its viewer with a normal pointer click. Search centers an asset that the force layout may have placed behind the view controls. The GLB viewer must paint nonblank pixels. This runs against the minified build, where renderer failures can differ from the development server." ;
+    kpred:command "npm run test:e2e:smoke" ;
+    kpred:honest-note "This checks the bundled synthetic starter assets and their viewers. It does not run image, video or splat generation, or establish that every layout leaves every preview unobstructed." ;
+    kpred:tested-by "tests/e2e/graph-render.test.ts" ;
+    kpred:relates-to kb:starter-asset-smoke-focus .
 
 test:GeneratedAssetStory rdf:type ktype:Concept ;
     rdfs:label "Interactive asset generation story" ;
@@ -60,13 +70,14 @@ test:VlmWorkflowStreams
     kpred:description "Each stream uses fresh browser storage, synthetic UI inputs and an explicit loopback app origin. Network requests are limited to same-origin GET/HEAD; service workers, websocket connections, popups and downloads are unavailable. Real external integrations are outside this harness. Artifacts are private under XDG_STATE_HOME/reckons/visual-streams (default ~/.local/state), with ordered screenshots and hashes, configuration, raw model responses, validated actions, browser errors and assertion results. Run provenance records the checkout commit and dirty flag; it does not attest which build the supplied preview serves." ;
     kpred:honest-note "A verified goal means configured browser assertions passed, not that the VLM's visual judgment is correct. Goal-driven exploration stops when all assertions hold. Without assertions, a model finish is unverified. Step exhaustion, malformed output, deadline and browser failures are incomplete/error results. Visual issues and uncertainty become proposals in the main workspace review queue. CLI exit 2 means failed/incomplete execution, exit 1 means visual proposals need review, exit 0 means the run completed; read each stream status. No cloud fallback and no product edits. This is a local tool, not an autonomous CI approval gate." ;
     kpred:tested-by "scripts/visual-streams/__tests__/contract.test.ts" ;
-    kpred:tested-by "tests/e2e/visual-streams.test.ts" .
+    kpred:tested-by "tests/e2e/visual-streams.test.ts" ;
+    kpred:relates-to kb:vlm-workflow-streams .
 
 test:TestSuite
     rdf:type            ktype:Concept ;
     rdfs:label          "Test Suite" ;
     hnav:order          110 ;
-    skos:definition     "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
+    skos:definition     "Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys." ;
     skos:related        guide:WhatIsReckonsAI .
 
 test:GraphReviewStory
@@ -171,8 +182,8 @@ test:GraphReview-Step6
 test:UnitTests
     rdf:type            ktype:Concept ;
     rdfs:label          "Unit Tests" ;
-    skos:definition     "336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
-    kpred:test-count    "336" ;
+    skos:definition     "4,285 tests in 317 files via Vitest (counted 2026-10-27) with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run." ;
+    kpred:test-count    "4285" ;
     kpred:framework     "vitest" ;
     kpred:command       "npx vitest run" ;
     skos:broader        test:TestSuite .
@@ -690,6 +701,15 @@ shelly:persona
 ## them can disagree with another. kpred:screenshot is written by `npm run workflow:shots`, never by
 ## hand; a step with no kpred:screenshot has no captured screenshot yet.
 
+test:ReleaseReviewSpaces
+    rdf:type            ktype:Concept ;
+    rdfs:label          "A review space for each release" ;
+    skos:definition     """Each release gets a space of its own for the person who approves it. It is generated from the roadmap and from the test workflows: the release's test workflows in the order a person would follow them, each step with its screenshot and what the test checks, and every part of the release that has no workflow listed together under one node, No visual test yet, so the gap stays in view. Open it from About, under example data (Review 0.2.6, Review 0.2.7). Select a step, look at its picture, and mark it pass or fail, or add a note, in the node panel.""" ;
+    kpred:command       "npx tsx scripts/offline/release-review-space.ts (add --check to fail when a review space is out of date)" ;
+    kpred:honest-note   "MOSTLY GAPS SO FAR. When v0.2.6 closed, 1 of its 15 parts had a test workflow, so Review 0.2.6 is mostly the No visual test yet list. The person's verdicts are kept in their own copy of the space and are not collected anywhere else." ;
+    skos:broader        test:TestWorkflows ;
+    kpred:relates-to    kb:release-review-spaces .
+
 test:TestWorkflows
     rdf:type            ktype:Concept ;
     rdfs:label          "Test workflows" ;
@@ -710,6 +730,111 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.""" ;
     skos:broader        test:TestSuite .
+
+test:Workflow-BuildChange
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Build a space from a note, then change it with another" ;
+    skos:definition     """Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change. The second half is where a space goes wrong quietly: a new value that replaces an old one has to be noticed and decided, not accepted in a batch. A browser test runs these steps, and you can run the same steps by hand with your own model (F183.3).""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Both notes are invented: a community garden on an Elm Street, its beds, its coordinator and its tool shed. They are part of the notes corpus the extraction benchmark scores models on (`tests/fixtures/notes-corpus/06-garden-build.txt` and `07-garden-change.txt`).
+
+**What is scripted.** The browser test uses no language model. Its stand-in reader returns the facts a careful reader would take from each note, written down beside the notes as the benchmark's expected answers. So the pictures show the review working on the right facts. Whether a real model reads the notes that well is what the benchmark measures, and what you see when you run the steps by hand with your own model.""" ;
+    kpred:workflow-id   "build-change" ;
+    kpred:test-file     "tests/e2e/workflow-build-change.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-BuildChange-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Add the first note" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "add-first-note" ;
+    kpred:short-label   "Add the first note" ;
+    kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, under the note's title and text" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/build-change/01-add-first-note.webp" ;
+    kpred:page-name     "the Add tab" ;
+    skos:definition     "Open the Add tab, title the note \"Garden notes\" and paste: \"The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed.\" Then press Extract facts. Every fact it reads arrives waiting for your decision." ;
+    kpred:assertion     "Reading the note leaves the Add tab and puts its facts in Review, each waiting." .
+
+test:Workflow-BuildChange-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Accept the note's facts in one go" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "accept-source" ;
+    kpred:short-label   "Accept by source" ;
+    kpred:box-label     "Accept 4" ;
+    kpred:box-target    "the note's card in Review grouped by source, and its accept button with the count it will accept" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/02-accept-source.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "Open Review and choose by source. The note is one card. Nothing in it disagrees with anything yet, so its accept button offers all of it; press it once. A real model may read the note differently: refine or reject what it got wrong." ;
+    kpred:assertion     "Grouped by source, the note's card offers to accept 4, and one press leaves nothing waiting." .
+
+test:Workflow-BuildChange-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Add a note that changes things" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "add-change-note" ;
+    kpred:short-label   "Add the change" ;
+    kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, with the change note filled in" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/build-change/03-add-change-note.webp" ;
+    kpred:page-name     "the Add tab" ;
+    skos:definition     "Back on the Add tab, title it \"Garden meeting\" and paste: \"Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen.\" Press Extract facts." ;
+    kpred:assertion     "Reading the change note leaves the Add tab and puts its facts in Review." .
+
+test:Workflow-BuildChange-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See what disagrees with the space" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "see-held-back" ;
+    kpred:short-label   "See the disagreements" ;
+    kpred:box-label     "Held back" ;
+    kpred:box-target    "the change note's card, with its facts held back and the reason above each" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/04-see-held-back.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "In Review, by source, the meeting note's card says how many facts are held back. Each new value sits next to the one it would replace, with the reason it is held: it disagrees with a fact you have. Accepting the card in one go would skip them; they need a decision each. The graph beside the list shows only this note's facts and what they touch." ;
+    kpred:assertion     "The meeting note's card shows all three facts held back as disagreeing with a fact you have, and offers no group accept." .
+
+test:Workflow-BuildChange-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Keep the new values" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "keep-new" ;
+    kpred:short-label   "Keep the new values" ;
+    kpred:box-label     "Keep new" ;
+    kpred:box-target    "the keep new button on a held-back fact" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/build-change/05-keep-new.webp" ;
+    kpred:page-name     "the Review tab" ;
+    skos:definition     "Press keep new on each one: Sunday, Marco Ruiz and 16 raised beds. The old values are kept on record as replaced, not deleted. If a real model wrote the number added instead of the new total, or the old day again, this is where you catch it." ;
+    kpred:assertion     "Pressing keep new on each disagreement settles it until nothing is waiting." .
+
+test:Workflow-BuildChange-Step6
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the space after the change" ;
+    kpred:part-of       test:Workflow-BuildChange ;
+    kpred:step-order    "6"^^xsd:integer ;
+    kpred:step-id       "see-changed-space" ;
+    kpred:short-label   "See the changed space" ;
+    kpred:box-label     "The garden's facts" ;
+    kpred:box-target    "the garden's facts in its panel, under the note each came from" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/build-change/06-see-changed-space.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Open the graph and select the garden. Its facts are listed under the note each came from: 16 raised beds and Marco Ruiz as coordinator from the meeting, the rain barrel from the first note. The replaced values are kept on record but are no longer part of the space." ;
+    kpred:assertion     "The space holds the new values and keeps the old ones as replaced; the garden's panel lists 16 raised beds under the meeting note and no 12." .
 
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
@@ -833,6 +958,8 @@ TripoSplat guesses the far side of an object from one picture. A splat made this
 
 **What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again.""" ;
     kpred:workflow-id   "generated-assets" ;
+    kpred:relates-to    kb:splat-e2e-workflow ;
+    kpred:relates-to    kb:splat-local-pipeline ;
     kpred:test-file     "tests/e2e/workflow-generated-assets.test.ts" ;
     kpred:render-inline "true" ;
     kpred:children-label "The steps" ;
@@ -957,6 +1084,7 @@ bench:Task-image rdf:type bench:BenchTask ;
     bench:stage "image" ;
     skos:broader test:TestSuite ;
     kpred:relates-to kb:gen-bench-in-graph ;
+    kpred:relates-to kb:gen-model-bench ;
     bench:seed 101 ;
     bench:seed 202 ;
     bench:seed 303 .
@@ -967,6 +1095,7 @@ bench:Task-video rdf:type bench:BenchTask ;
     bench:stage "video" ;
     skos:broader test:TestSuite ;
     kpred:relates-to kb:gen-bench-in-graph ;
+    kpred:relates-to kb:gen-model-bench ;
     bench:seed 101 ;
     bench:seed 202 ;
     bench:seed 303 .
@@ -977,6 +1106,7 @@ bench:Task-splat rdf:type bench:BenchTask ;
     bench:stage "splat" ;
     skos:broader test:TestSuite ;
     kpred:relates-to kb:gen-bench-in-graph ;
+    kpred:relates-to kb:gen-model-bench ;
     bench:seed 101 ;
     bench:seed 202 ;
     bench:seed 303 .

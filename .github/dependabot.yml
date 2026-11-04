@@ -9,6 +9,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # Held 2026-11-04: @huggingface/transformers 4.3.x ships ort-wasm-simd-threaded.asyncify.wasm at
+    # 25.6 MiB, over Cloudflare Pages' 25 MiB per-file limit, so the host-size gate fails the build
+    # (#562). Lift when a release ships the wasm under the limit, or when we host it elsewhere.
+    ignore:
+      - dependency-name: "@huggingface/transformers"
+        versions: [">=4.3.0"]
     groups:
       dev-dependencies:
         dependency-type: development
