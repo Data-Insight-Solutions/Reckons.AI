@@ -5,7 +5,7 @@ the graph holds what was decided.
 
 ## 2026-11-03 (evening) — START HERE: review the overnight deputy queue (Claude Code, Opus)
 
-**Your first job is triage, not new work.** Five local deputy jobs (qwen3.8) were queued 2026-11-03
+**Your first job is triage, not new work.** Six local deputy jobs (qwen3.8) were queued 2026-11-03
 about 20:00 CST to run overnight, one at a time, each on its own `agent/local-*` branch in its own
 worktree under `.claude/worktrees/`. None is pushed. For each: read the job log
 (`~/.local/state/reckons/jobs/night-*.log`), check the branch head (a job can exit 0 with nothing
@@ -14,6 +14,7 @@ PR to dev, or reject it out loud. A Sonnet overseer only for the importer job (c
 
 | Priority | Branch | Fixes | Graph note |
 |---|---|---|---|
+| 10 | `agent/local-ollama-default` | default Ollama model is bare `llama3.2` (fails without `:3b`); resolve installed tags and pick the best installed model by this machine's benches (mistral-small3.2:24b: 0 invented facts) | Matt, 2026-11-03 |
 | 9 | `agent/local-import-mixed` | import-ttl drops plain triples in annotated files; parseAssetRefs matches only full-IRI lines | drift-warning on workspace-sync |
 | 8 | `agent/local-typing-undeclared` | surveyTypes counts undeclared rdf:type as typed; "a audience" | drift-warning on entity-typing |
 | 7 | `agent/local-typing-llm-custom` | LLM entity-types prompt ignores a space's custom types | same note |
