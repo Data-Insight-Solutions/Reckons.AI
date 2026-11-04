@@ -11070,6 +11070,19 @@ kb:trend-to-reckoning rdf:type ktype:Phase ;
     kpred:relates-to kb:research-watch ;
     kpred:description "Currents stay a slow feed checker. Two couplings only: a trend across arrivals (an entity or topic recurring above its baseline) can be opened as a reckoning's situation in one action; and each arrival is checked against open reckonings' gaps, so a current that answers a gap says so in review. Worked pairing: a current shows a rising topic, a reckoning targets an explainer and an illustration for it, research closes the gaps from licensed sources, generation makes the image from the reviewed facts, and the timelapse records the whole path." .
 
+kb:taxonomy-current rdf:type ktype:Feature ;
+    rdfs:label "Taxonomy current — the central terminology and vocabulary are checked against the code" ;
+    kpred:feature-id "F280" ;
+    kpred:has-status "in-progress" ;
+    kpred:relates-to kb:work-tiering ;
+    kpred:description "A script compares every built-in entity type in the code with the terminology and vocabulary graphs and reports types that have no term, terms that name a type the code dropped, and any disagreement between the value sets the code enforces (review status, feature status, schema action status) and their vocabulary schemes. A local model then drafts a term for each missing type from the code's own description, as a pending proposal only; a term stays a proposal until Matt accepts it." ;
+    kpred:has-file "scripts/offline/taxonomy-current.ts" ;
+    kpred:has-file "scripts/offline/draft-terms.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/taxonomy-current.test.ts" ;
+    kpred:honest-note "Not functional until the script has run in offline:all on dev and Matt has decided what to do with the drafted terms. Generation job states are not checked because no such enum exists in the code (2026-10-23). Whether a type counts as having a term is decided by a label match or a link to its type IRI, so a term that describes a type under a very different name is reported as a gap." .
+
+kb:taxonomy-current kpred:measured "2026-10-23, FIRST RUN: 18 built-in entity types, 15 have no term (type-no-term 15), 0 terms name a dropped type, and 0 disagreements in the review-status, feature-status and schema action-status value sets. Local model qwen3.8 drafted terms for the 15: 11 queued as pending proposals, 4 rejected by the validator (Person, Place, Organization, Concept: the code's one-line description left a definition under 6 words). Nothing was written to a TTL." .
+
 # Matt's Triple Check / research scope, 2026-10-25–26. Rebuilt in a persistent worktree.
 kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statement evidence" ;
     kpred:feature-id "F100.1" ; kpred:has-status "in-progress" ;
