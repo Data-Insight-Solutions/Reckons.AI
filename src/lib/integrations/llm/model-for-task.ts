@@ -16,7 +16,8 @@
  * from Ollama `/api/tags`, a bare name resolves to the tag actually installed (`llama3.2` →
  * `llama3.2:3b`, so the user never has to type the tag), and when nothing is configured — or
  * the chosen name is not installed — the best installed model is picked instead of a name the
- * server cannot serve. A model the user chose that IS installed is never overridden.
+ * server cannot serve. A model the user chose that IS installed is never overridden, and one that
+ * is replaced raises a notice through the substitution listener below.
  */
 
 /**
@@ -146,8 +147,25 @@ export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings, install
       const resolved = resolveInstalledModel(explicit, installed);
       if (resolved) return resolved;
     }
-    return pickDefaultOllamaModel(installed);
+    const used = pickDefaultOllamaModel(installed);
+    if (explicit) substitutionListener?.({ task, chosen: explicit, used });
+    return used;
   }
 
   return explicit ?? FALLBACK_OLLAMA_MODEL;
+}
+
+/** A chosen model the server does not have, and the installed one that ran in its place. */
+export type OllamaSubstitution = { task: OllamaTask; chosen: string; used: string };
+
+/**
+ * NEVER A SILENT SWAP (Matt, 2026-11-04: "make it a notification, need some notice"). Running a
+ * different model than the one chosen changes what gets extracted, so the person must be told.
+ * The resolver stays free of UI: the app registers one listener (stores/ollama-model-notice.ts)
+ * and every call site above is covered without passing anything through.
+ */
+let substitutionListener: ((sub: OllamaSubstitution) => void) | null = null;
+
+export function setOllamaSubstitutionListener(fn: ((sub: OllamaSubstitution) => void) | null): void {
+  substitutionListener = fn;
 }
