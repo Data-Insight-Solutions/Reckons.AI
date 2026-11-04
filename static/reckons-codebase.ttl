@@ -253,6 +253,7 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/__tests__/app-db.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/graph-sets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/kb-duplicate-choice.test.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/kb-assets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/multi-graph-store.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/settings-persistence.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/space-leaps.test.ts" ;
