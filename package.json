@@ -18,6 +18,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
+    "bench:review": "tsx scripts/content/bench-review.ts",
     "build": "npx tsx scripts/offline/vite-secret-guard.ts && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
