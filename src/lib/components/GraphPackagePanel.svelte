@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * Graph-package controls for the graph menu (the "Filters & layout" panel).
+   * Graph-package controls for the graph menu (the "View settings" panel).
    *
    * Everything here is specific to THIS graph's package — its `.ttl`, sidecar
    * files (icons / preview images / GLB models), its guided story, its

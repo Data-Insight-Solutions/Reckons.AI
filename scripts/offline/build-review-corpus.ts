@@ -38,12 +38,13 @@ import { reconcileVocabulary, reconcileSummary } from '../../src/lib/rdf/vocabul
 import { selectVocabulary, buildVocabularySection } from '../../src/lib/rdf/vocabulary-context.js';
 import { selectStructuralContext, buildStructuralSection } from '../../src/lib/rdf/structural-context.js';
 import type { Source, Statement } from '../../src/lib/rdf/types.js';
+import { DEFAULT_REASONING_MODEL } from './lib/local-model.js';
 
 const B = '\x1b[1m', D = '\x1b[2m', G = '\x1b[32m', Y = '\x1b[33m', C = '\x1b[36m', X = '\x1b[0m';
 
 const args = process.argv.slice(2);
 const arg = (k: string, d: string) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1] ?? d;
-const MODEL = arg('model', 'qwen3:32b');
+const MODEL = arg('model', DEFAULT_REASONING_MODEL);
 const CORPUS = arg('corpus', 'tests/fixtures/notes-corpus');
 const OUT = arg('out', 'reckons-workspace/kbs/review-test/review-test.ttl');
 const GROUND = args.includes('--ground');

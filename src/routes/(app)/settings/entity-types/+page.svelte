@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import {
     allTypes,
     createCustomType,
@@ -152,18 +153,7 @@
   }
 </script>
 
-<header class="head">
-  <p class="kicker mono">settings</p>
-  <h1>system configuration</h1>
-  <div class="settings-nav">
-    <a href="/settings" class:active={!page.url.pathname.includes('/turtle') && !page.url.pathname.includes('/entity-types') && !page.url.pathname.includes('/integrations') && !page.url.pathname.includes('/publishing')} class="nav-link">backends</a>
-    <a href="/settings/publishing" class:active={page.url.pathname.includes('/publishing')} class="nav-link">publishing</a>
-    <a href="/settings/integrations" class:active={page.url.pathname.includes('/integrations')} class="nav-link">integrations</a>
-    <a href="/settings/turtle" class:active={page.url.pathname.includes('/turtle')} class="nav-link">turtle</a>
-    <a href="/settings/entity-types" class:active={page.url.pathname.includes('/entity-types')} class="nav-link">entity types</a>
-    <a href="/kb" class="nav-link">← graph</a>
-  </div>
-</header>
+<SettingsHeader />
 
 <!-- ── Built-in types ──────────────────────────────────────────────────── -->
 <section class="card">
@@ -367,34 +357,7 @@
 </section>
 
 <style>
-  .head { margin-bottom: 1.25rem; }
-  .kicker {
-    color: var(--accent);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    margin: 0 0 0.5rem;
-  }
   .sub { color: var(--muted); font-size: 0.82rem; margin: 0.2rem 0 0.7rem; }
-  .settings-nav {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--line);
-  }
-  .nav-link {
-    padding: 0.35rem 0.75rem;
-    border-radius: var(--rad-sm);
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    border: 1px solid var(--line);
-    color: var(--muted);
-    text-decoration: none;
-    transition: all 0.15s;
-  }
-  .nav-link:hover { color: var(--ink-2); border-color: var(--muted-2); }
-  .nav-link.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   h3 {
     font-family: var(--font-mono);
     font-size: 0.85rem;

@@ -29,7 +29,9 @@
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
   import { occluderRadius, projectedRadius } from './splat-occlusion';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, splatOriginOf, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
-  import { roomView } from './room-view';
+  import { roomView, focalPick } from './room-view';
+  import { roomCentreWorld } from './room-focus';
+  import { layoutSpread, formatSpread } from './layout-metrics';
 
   interactivity();
 
@@ -246,7 +248,11 @@
         items.push({
           key: 'background', url: bg, orientation, keepScale: true, radius: 1, opacity: set.opacity,
           size: () => set.scale, quaternion: () => quat,
-          position: () => bgRoomCentre.set(set.offset[0], set.offset[1], set.offset[2]).add(graphCentroid()),
+          position: () => {
+            const c = graphCentroid();
+            const rc = roomCentreWorld([c.x, c.y, c.z], set.offset, set.focal, set.scale, set.yaw);
+            return bgRoomCentre.set(rc[0], rc[1], rc[2]);
+          },
         });
       } else {
         // Sized to the graph and sat beneath it, so the graph floats above the scene whatever the
@@ -295,6 +301,14 @@
   // create a reactive dependency that would cause a write→read cycle.
   // The physics useTask mutates node.pos in place, so the Vector3 refs stay current.
   const nodePositionCache = new Map<string, THREE.Vector3>();
+  /**
+   * Edge length of the cube a new node is first dropped into (F58.9.16). It was 8. The layout settles
+   * in about 130 frames (SIM_ALPHA_DECAY) and never reaches equilibrium, so where nodes START decides
+   * how spread out they END far more than REPEL or BASE_REST does (the 2026-09-18 sweep found those
+   * "moved the spread by less than noise"; so did a first attempt at this on 2026-10-15, whose
+   * nearest-neighbour distance moved by less than the run-to-run variation).
+   */
+  const SPAWN_EXTENT = 14;
   // Per-node color assigned by the current layout (source cluster, hub cluster).
   let nodeColorMap = $state<Map<string, string>>(new Map());
   // Keys of hub nodes in hub mode (projected from actual node.pos, not anchor pos).
@@ -332,7 +346,7 @@
       for (const iri of rp.placed.keys()) if (!placedNodes.has('i:' + iri)) placedNodes.set('i:' + iri, { pos: new THREE.Vector3(), yaw: 0 });
     }
     const c = graphCentroid();
-    const centre: [number, number, number] = [c.x + rp.set.offset[0], c.y + rp.set.offset[1], c.z + rp.set.offset[2]];
+    const centre = roomCentreWorld([c.x, c.y, c.z], rp.set.offset, rp.set.focal, rp.set.scale, rp.set.yaw);
     const cam = camera.current;
     if (cam) { roomView.camera = [cam.position.x, cam.position.y, cam.position.z]; }
     roomView.target = [cameraTarget.x, cameraTarget.y, cameraTarget.z];
@@ -453,7 +467,7 @@
         if (!floored && !nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -470,7 +484,7 @@
           existing.label = st.o.value;
         } else if (!floored && st.s.kind === 'iri') {
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label: st.o.value, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -487,7 +501,7 @@
         if (!nodeMap.has(k) && st.s.kind === 'iri') {
           const label = st.s.value.split('/').pop() ?? st.s.value;
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: 'concept', pos, vel: new THREE.Vector3(), degree: 0 });
           nodePositionCache.set(k, pos);
         }
@@ -506,7 +520,7 @@
           // Reuse cached position so filter toggles don't scatter the graph;
           // fall back to a random spawn only for genuinely new nodes.
           const pos = nodePositionCache.get(k)
-            ?? new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
+            ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
           nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0, fullText: fullVal });
           nodePositionCache.set(k, pos); // ensure new nodes are cached
         }
@@ -545,7 +559,7 @@
       const r = intrinsic > 0 ? glbWorldRadius(intrinsic, n.degree) : markerWorldRadius(n.degree);
       if (r > maxR) maxR = r;
     }
-    return Math.max(9, maxR * 2.6 + 4);
+    return Math.max(12, maxR * 2.6 + 4);
   });
 
   function buildFocusAnchors(): { anchors: Map<string, THREE.Vector3>; radii: number[]; distances: Map<string, number> } {
@@ -567,7 +581,7 @@
      *
      * Taking the max of the three keeps the layered look while guaranteeing both clearances.
      */
-    const RING_GAP = 2.2;
+    const RING_GAP = 4.2;
     const nodeRadiusOf = (key: string, degree: number) => {
       const url = entityIcon3dMap.get(key);
       const intrinsic = url ? (glbRadius.get(url) ?? 0) : 0;
@@ -1338,13 +1352,14 @@
     if (simAlpha >= SIM_ALPHA_MIN) {
     /** Force timestep, scaled by the cooling schedule. Damping and integration use raw dt. */
     const fdt = dt * simAlpha;
-    const REPEL      = 1.6;
+    // F58.9.16: free and focus a bit more spread out (Matt, 2026-10-15). Measured in tests/e2e/layout-spread.test.ts.
+    const REPEL      = layout === 'force' ? 2.8 : layout === 'focus' ? 2.0 : 1.6;
     const SPRING     = layout === 'force' ? 0.18 : 0.10;
     const CENTER     = activeAnchors.size > 0 ? 0.008 : 0.04;
     const DAMP       = 0.86;
     // The free layout has no camera fit, so a longer rest is genuinely visible there where it
     // would merely rescale a fitted layout (Matt: "free mode should be a bit more spread").
-    const BASE_REST  = layout === 'force' ? 3.4 : 2.4;
+    const BASE_REST  = layout === 'force' ? 5.0 : layout === 'focus' ? 2.9 : 2.4;
     const LOCK_TIMELINE_X = layout === 'timeline';
     const LOCK_HIERARCHY_Y = layout === 'hierarchy';
 
@@ -1559,6 +1574,10 @@
     if (simAlpha === 0 && !reportedSettled) {
       reportedSettled = true;
       emitSettled(true);
+      // What a person looking at the settled layout sees, as numbers (read by the spread measurement).
+      if (renderer && nodes.length <= 600) {
+        renderer.domElement.dataset.spread = formatSpread(layoutSpread(nodes.map((n) => ({ x: n.pos.x, y: n.pos.y, z: n.pos.z, r: markerWorldRadius(n.degree) }))));
+      }
     }
 
     if (lineGeom) {
@@ -1795,6 +1814,39 @@
         }
       }
     }
+  });
+
+  // ── Set focal point (F58.9.16) ───────────────────────────────────────────
+  // While the panel asks for a focal point, a plain click (not a drag) on the canvas sends the camera
+  // ray to it instead of selecting a node. The panel turns the ray into a point in the room.
+  $effect(() => {
+    // Listens on the window, in the capture phase, and checks the target lazily: `renderer` can still
+    // be undefined when this first runs (nothing re-runs the effect when it appears).
+    let down: { x: number; y: number } | null = null;
+    const raycaster = new THREE.Raycaster();
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY }; };
+    const onClick = (e: MouseEvent) => {
+      if (!focalPick.active || !focalPick.onray) return;
+      const canvas = renderer?.domElement;
+      if (!canvas) return;
+      // The click lands on a wrapper div above the canvas, not on the canvas itself: take any click
+      // inside the canvas's rectangle that is not on a panel or a control.
+      const box = canvas.getBoundingClientRect();
+      if (e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom) return;
+      if ((e.target as Element | null)?.closest?.('.snap-panel, button, a, input, select, textarea, nav, [role="button"], [role="dialog"]')) return;
+      const moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) : 0;
+      if (moved > 5) return; // an orbit drag, not a pick
+      const cam = camera.current;
+      if (!cam) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      const r = canvas.getBoundingClientRect();
+      raycaster.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1)), cam);
+      const o = raycaster.ray.origin, d = raycaster.ray.direction;
+      focalPick.onray([o.x, o.y, o.z], [d.x, d.y, d.z]);
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('click', onClick, true);
+    return () => { window.removeEventListener('pointerdown', onDown, true); window.removeEventListener('click', onClick, true); };
   });
 
   // ── Right-click drag for timeline scrubbing ──────────────────────────────

@@ -6,7 +6,7 @@ section: "Testing"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers."
+excerpt: "Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers."
 generated: "docs-kb"
 related:
   - "what-is-reckons-ai"
@@ -14,9 +14,9 @@ related:
 
 # Test Suite
 
-Reckons.AI test infrastructure: 336+ unit tests (Vitest + jsdom), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
+Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
-<p class="derived">It has 5 parts below.</p>
+<p class="derived">It has 8 parts below.</p>
 
 ## In this section
 
@@ -28,13 +28,25 @@ The Reckons.AI Graph Review is an offline, exhaustive audit of the whole app tre
 
 A test workflow is one whole task a person does in Reckons.AI, written down as numbered steps and then run, step by step, by an automated test in a real browser.
 
+**[Interactive asset generation story](../testing/generated-asset-story)**
+
+Open Generated assets, choose Create an asset with Shelly, enter a synthetic image prompt, and wait for a checked result before choosing a video or Gaussian splat.
+
 **[Local VLM workflow streams](../testing/vlm-workflow-streams)**
 
 Each stream uses fresh browser storage, synthetic UI inputs and an explicit loopback app origin.
 
+**[Starter assets in the production build](../testing/starter-asset-smoke)**
+
+The production smoke test opens Getting started and enables all previews.
+
+**[Three.js example loading and isolation](../testing/three-example-nodes)**
+
+Attach a synthetic official-host WebGL example through node details.
+
 ### Unit Tests
 
-336+ tests via Vitest with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run.
+4,285 tests in 317 files via Vitest (counted 2026-10-27) with jsdom environment. Coverage: RDF serialize/import, temporal conflict detection, semantic diff, merge analysis, content safety (28 tests), embedding, mobile auth. Run: npx vitest run.
 
 #### Detail
 
@@ -48,7 +60,7 @@ vitest
 
 **Test Count**
 
-336
+4285
 
 **[Visual Regression Tests](../testing/visual-tests)**
 

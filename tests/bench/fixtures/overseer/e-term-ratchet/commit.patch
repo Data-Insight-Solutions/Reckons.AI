@@ -1,0 +1,11 @@
+commit 4e1d0a7 (HEAD -> feat/example-search)
+    fix(search): trim whitespace in the query before it is sent
+
+diff --git a/src/lib/integrations/search/query.ts b/src/lib/integrations/search/query.ts
+--- a/src/lib/integrations/search/query.ts
++++ b/src/lib/integrations/search/query.ts
+@@ -4,5 +4,6 @@ export function buildQuery(text: string): string {
+-  return text;
++  // Trim before sending: a trailing newline from the source field changes the results.
++  return text.trim();
+ }

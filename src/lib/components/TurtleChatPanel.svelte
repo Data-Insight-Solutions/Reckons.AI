@@ -12,6 +12,7 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { offerApplied } from '$lib/rdf/story-offers';
   import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
@@ -29,6 +30,7 @@
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
+  import GenerationStory from './GenerationStory.svelte';
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
@@ -588,7 +590,7 @@
       if (found) {
         openStory(found);
         // Auto-play if requested (e.g. from "Getting started" button)
-        if (storyAutoPlayRequested()) {
+        if (storyAutoPlayRequested() && !found.interaction) {
           clearStoryAutoPlay();
           setTimeout(() => toggleAutoPlay(), 100);
         }
@@ -606,7 +608,7 @@
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
     // Play step 0 — voice plays only if user has explicitly enabled it
-    playStoryStep(story, 0);
+    if (!story.interaction) playStoryStep(story, 0);
     tab = 'explore';
   }
 
@@ -1578,7 +1580,9 @@
 
   <!-- ── Explore tab (stories + LLM tour) ── -->
   <Tabs.Content value="explore" class="tcp-tab-content">
-    {#if currentStory}
+    {#if currentStory?.interaction === 'generate-assets'}
+      <GenerationStory onexit={() => { stopAutoPlay(); stopStory(); currentStory = null; }} />
+    {:else if currentStory}
       <!-- Story playback -->
       <div class="chat">
         <div class="msg-list" bind:this={storyListRef}>
@@ -1586,7 +1590,26 @@
             {#if msg.role === 'shelly'}
               <div class="msg assistant" class:step-msg={msg.isStep}>
                 <img src="/svg/head1.svg" alt="" class="msg-icon" />
-                <div class="msg-body">{@html renderMarkdown(msg.content)}</div>
+                <div class="msg-body">
+                  {@html renderMarkdown(msg.content)}
+                  <!-- F261: what the step offers, one click each. Offered, never applied: the reader's
+                       click is the consent, and story-offers.ts limits what may be offered at all. -->
+                  {#if msg.isStep && msg.stepIdx !== undefined && currentStory?.steps[msg.stepIdx]?.offers?.length}
+                    <div class="step-offers">
+                      {#each currentStory.steps[msg.stepIdx].offers ?? [] as offer (offer.label)}
+                        {#if offer.kind === 'setting'}
+                          {@const done = offerApplied(offer, settings())}
+                          <button class="step-offer" class:done disabled={done}
+                            onclick={() => updateSettings({ [offer.key]: offer.value })}>
+                            {done ? '✓ ' : ''}{offer.label}
+                          </button>
+                        {:else}
+                          <button class="step-offer" onclick={() => goto(offer.path)}>{offer.label} →</button>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
             {:else}
               <div class="msg user">
@@ -2427,6 +2450,13 @@
     color: var(--muted);
   }
 
+  .step-offers { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+  .step-offer {
+    padding: 0.4rem 0.7rem; border-radius: var(--rad-sm); cursor: pointer; font-size: 0.8rem;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+  }
+  .step-offer:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .step-offer.done { background: transparent; color: var(--muted); border-color: var(--line); cursor: default; }
   .step-msg .msg-body {
     border-left: 2px solid var(--data);
     padding-left: 0.5rem;

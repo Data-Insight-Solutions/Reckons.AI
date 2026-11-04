@@ -8,6 +8,7 @@
 @prefix kb:    <urn:kbase:concept/> .
 @prefix p:     <urn:kbase:predicate/> .
 @prefix schema: <https://schema.org/> .
+@prefix story: <urn:reckons:story/> .
 
 ## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.
 
@@ -15,6 +16,26 @@ kb:generated-assets rdf:type ktype:Concept ;
     rdfs:label "Generated on this machine" ;
     rdfs:comment "Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real." ;
     p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt .
+
+story:create-generated-asset rdf:type story:Story ;
+    rdfs:label "Create an asset with Shelly" ;
+    story:description "Describe an image, generate it locally, then choose a video, Gaussian splat or another image." ;
+    story:interaction "generate-assets" ;
+    story:autoplay "false" .
+
+story:generate-image rdf:type story:Step ;
+    story:partOf story:create-generated-asset ;
+    story:order "1" ;
+    story:title "Imagine an image" ;
+    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result." ;
+    story:question "What image would you like me to generate?" .
+
+story:derive-asset rdf:type story:Step ;
+    story:partOf story:create-generated-asset ;
+    story:order "2" ;
+    story:title "Choose what happens next" ;
+    story:content "Once the image is ready, choose an available derivation. Each output links back to its source image." ;
+    story:question "Would you like a video, a Gaussian splat, or another image?" .
 
 kb:license-apache-2-0 rdf:type ktype:License ;
     rdfs:label "Apache-2.0" ;

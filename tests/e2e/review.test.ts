@@ -96,11 +96,15 @@ test('review-at-scale: pending facts group into entity cards with a plan headlin
   await expect(page.getByText(/company.alpha|employee|50|2020/i).first()).toBeVisible({ timeout: 5_000 });
   await expect(page.getByRole('button', { name: /^(confirm|✓|accept)$/i }).first()).toBeVisible();
 
-  // The by-entity / flat toggle switches the grouping off.
-  const toggle = page.getByRole('button', { name: /^(by entity|flat list)$/i });
-  await expect(toggle).toBeVisible();
-  await toggle.click();
+  // Grouping is by entity, by source or a flat list; by source puts each source's facts in one card.
+  await page.getByRole('button', { name: 'by source', exact: true }).click();
+  await expect(page.getByTestId('source-cards')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^accept \d+$/ }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'flat list', exact: true }).click();
   await expect(page.getByTestId('entity-cards')).toHaveCount(0);
+  await expect(page.getByTestId('source-cards')).toHaveCount(0);
+  // Put the default back: the choice is remembered for the next visit.
+  await page.getByRole('button', { name: 'by entity', exact: true }).click();
 });
 
 test('reject button removes statement from review', async ({ page }) => {

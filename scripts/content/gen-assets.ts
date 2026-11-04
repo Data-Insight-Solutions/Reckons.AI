@@ -92,6 +92,23 @@ export const MODELS: Record<'image' | 'video' | 'splat', ModelFile[]> = {
 export const OUTPUTS = { image: 'image.webp', video: 'video.webm', splat: 'splat.ply' } as const;
 export type Stage = keyof typeof OUTPUTS;
 
+/** Capability discovery for the optional workspace runner; no model download or GPU work. */
+export function generationAvailability(stage: Stage): { available: boolean; reason?: string } {
+  const required = [
+    ...(stage === 'splat' ? [PY, join(TRIPO_SRC, '.git')] : [join(SD_DIR, 'sd-cli')]),
+    ...MODELS[stage].map(m => modelPath(m.path)),
+  ];
+  const missing = required.filter(path => !existsSync(path));
+  if (missing.length) return { available: false, reason: `${stage}: ${missing.length} tool/model file(s) missing. Run scripts/content/gen-setup.sh on the runner machine.` };
+  return { available: true };
+}
+
+/** The caller supplies a private job directory. The existing demonstration CLI keeps its paths. */
+export async function generateStage(stage: Stage, brief: Brief, directory: string): Promise<StageReceipt> {
+  const run = { image: stageImage, video: stageVideo, splat: stageSplat };
+  return run[stage](brief, directory);
+}
+
 export interface StageReceipt {
   stage: Stage;
   tool: { name: string; license: string; version: string; repo: string };
@@ -322,6 +339,7 @@ export function exampleTtl(receipts: Receipt[]): string {
     '@prefix kb:    <urn:kbase:concept/> .',
     '@prefix p:     <urn:kbase:predicate/> .',
     '@prefix schema: <https://schema.org/> .',
+    '@prefix story: <urn:reckons:story/> .',
     '',
     '## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.',
     '',
@@ -331,6 +349,28 @@ export function exampleTtl(receipts: Receipt[]): string {
     `    p:has ${receipts.map((r) => `kb:gen-${r.slug}-prompt`).join(', ')} .`,
     '',
   ];
+  out.push(
+    'story:create-generated-asset rdf:type story:Story ;',
+    '    rdfs:label "Create an asset with Shelly" ;',
+    '    story:description "Describe an image, generate it locally, then choose a video, Gaussian splat or another image." ;',
+    '    story:interaction "generate-assets" ;',
+    '    story:autoplay "false" .',
+    '',
+    'story:generate-image rdf:type story:Step ;',
+    '    story:partOf story:create-generated-asset ;',
+    '    story:order "1" ;',
+    '    story:title "Imagine an image" ;',
+    '    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result." ;',
+    '    story:question "What image would you like me to generate?" .',
+    '',
+    'story:derive-asset rdf:type story:Step ;',
+    '    story:partOf story:create-generated-asset ;',
+    '    story:order "2" ;',
+    '    story:title "Choose what happens next" ;',
+    '    story:content "Once the image is ready, choose an available derivation. Each output links back to its source image." ;',
+    '    story:question "Would you like a video, a Gaussian splat, or another image?" .',
+    '',
+  );
   // License is an entity: assets LINK to it (an edge between two entities), and it carries its own
   // SPDX id and URL as attributes. Ids and URLs come from the SPDX list, never from the receipt text.
   const licenses = [...new Set(receipts.flatMap((r) => Object.values(r.stages).flatMap((st) => st ? [st.tool.license, ...st.models.map((m) => m.license)] : [])))].sort();

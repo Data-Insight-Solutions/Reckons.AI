@@ -54,7 +54,7 @@ room:step-import rdf:type ktype:Concept ;
 
 room:step-generate rdf:type ktype:Concept ;
     rdfs:label "4. Generate objects and place them" ;
-    rdfs:comment "A browser cannot run the models. On a computer that has the tools, npm run gen:assets makes a picture, a clip and a Gaussian splat from a prompt (the Generated assets example shows the results). Open a splat on its node and press Place in room: it stands on the floor in front of the camera, and the move, raise, turn and size buttons adjust it. The carved turtle in this room was placed that way. Unplace returns it to the layout." ;
+    rdfs:comment "A browser cannot run the models. On a computer that has the tools, npm run gen:assets makes a picture, a clip and a Gaussian splat from a prompt (the Generated assets example shows the results). Open a splat on its node and press Place in space: the large preview folds away, the splat stands on the floor in front of the camera, and a bar over the graph moves, raises, turns and sizes it while you watch it move inside the background. Done or Escape leaves placing. The carved turtle in this room was placed that way. Unplace returns it to the layout. The Background section of the Filters panel sets surround, scale and a focal point." ;
     p:uses room:turtle ;
     hnav:order "4"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;

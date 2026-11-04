@@ -14,6 +14,7 @@ export interface ChangeLogEntry {
     | 'confirm'       // Statement status changed to 'confirmed'
     | 'reject'        // Statement status changed to 'rejected'
     | 'supersede'     // Statement superseded by another
+    | 'propose-removal' // Statement moved to 'pending-removal' for the person to decide
     | 'delete'        // Statement deleted
     | 'merge'         // Entities merged
     | 'trust_update'  // Source trust level changed

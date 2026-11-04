@@ -42,11 +42,23 @@ export function isSplatUrl(v: string): boolean {
 const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'superseded' && s.status !== 'pending-removal';
 
 /** Entity IRI → splat URL, from p:splat literals. */
+/**
+ * Bundled files that were replaced by a different file name. A copy saved in the browser keeps the
+ * address it was written with, so after a replacement it points at a file that is gone (404) and no
+ * room appears. Reading maps the old address to the current one; the saved copy is untouched.
+ */
+const MOVED_BUNDLED_SPLATS: Readonly<Record<string, string>> = {
+  '/generated/synthetic-room/splat.ply': '/generated/synthetic-room/splat.spz',
+};
+export function currentSplatUrl(url: string): string {
+  return MOVED_BUNDLED_SPLATS[url] ?? url;
+}
+
 export function splatMapFrom(statements: readonly Statement[]): Map<string, string> {
   const m = new Map<string, string>();
   for (const s of statements) {
     if (s.p.value === SPLAT_PREDICATE && s.s.kind === 'iri' && s.o.kind === 'literal' && live(s) && isSplatUrl(s.o.value)) {
-      if (!m.has(s.s.value)) m.set(s.s.value, s.o.value);
+      if (!m.has(s.s.value)) m.set(s.s.value, currentSplatUrl(s.o.value));
     }
   }
   return m;
@@ -60,7 +72,7 @@ export function backgroundSplatFrom(statements: readonly Statement[]): string | 
     if (!isSplatUrl(s.o.value)) continue;
     if (!best || (s.updatedAt ?? 0) >= (best.updatedAt ?? 0)) best = s;
   }
-  return best?.o.value ?? null;
+  return best ? currentSplatUrl(best.o.value) : null;
 }
 
 /**
@@ -74,7 +86,7 @@ export type SplatOrientation = 'triposplat' | 'none';
 export function splatOriginOf(statements: readonly Statement[], url: string): SplatOrigin | null {
   const owners = new Set<string>();
   for (const s of statements) {
-    if (s.p.value === SPLAT_PREDICATE && s.o.kind === 'literal' && s.o.value === url && s.s.kind === 'iri' && live(s)) owners.add(s.s.value);
+    if (s.p.value === SPLAT_PREDICATE && s.o.kind === 'literal' && currentSplatUrl(s.o.value) === url && s.s.kind === 'iri' && live(s)) owners.add(s.s.value);
   }
   for (const s of statements) {
     if (s.p.value === SPLAT_ORIGIN_PREDICATE && owners.has(s.s.value) && s.o.kind === 'literal' && live(s)
@@ -182,6 +194,8 @@ export const BG_OPACITY_PREDICATE = META + 'background-opacity';
  * in metres: unless the person sets a scale, the room's longest side is fitted to ROOM_FIT_UNITS.
  */
 export const BG_EXTENT_PREDICATE = META + 'background-extent';
+/** F58.9.16: the room's focal point, "x y z" in room units from its centre. */
+export const BG_FOCAL_PREDICATE = META + 'background-focal';
 export const ROOM_FIT_UNITS = 10;
 
 /** backdrop: a dimmed scene behind the graph, sized to it. surround: the graph sits INSIDE the room, which keeps its own scale. */
@@ -208,9 +222,14 @@ export interface BackgroundSettings {
   floor: number | null;
   /** Measured extent of the scan in file units, or null (null when the file could not be measured). */
   extent: number | null;
+  /**
+   * The focal point (F58.9.16): the point of the room, in room units from its centre, that sits at the
+   * graph's centre. [0,0,0] is the room's own centre. Set by clicking in the 3D view, never typed.
+   */
+  focal: Vec3;
 }
 
-export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5, floor: null, extent: null };
+export const BACKGROUND_DEFAULTS: BackgroundSettings = { mode: 'backdrop', up: '+y', yaw: 0, level: null, scale: 1, offset: [0, 0, 0], opacity: 0.5, floor: null, extent: null, focal: [0, 0, 0] };
 
 const nums = (v: string, n: number): number[] | null => {
   const a = v.trim().split(/[\s,]+/).map(Number);
@@ -221,7 +240,7 @@ const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x
 /** The space's background settings. The newest live value of each wins; anything malformed falls back to its default. */
 export function backgroundSettingsFrom(statements: readonly Statement[]): BackgroundSettings {
   const newest = new Map<string, Statement>();
-  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE, BG_EXTENT_PREDICATE]);
+  const wanted = new Set([BG_MODE_PREDICATE, BG_UP_PREDICATE, BG_YAW_PREDICATE, BG_LEVEL_PREDICATE, BG_SCALE_PREDICATE, BG_OFFSET_PREDICATE, BG_OPACITY_PREDICATE, BG_FLOOR_PREDICATE, BG_EXTENT_PREDICATE, BG_FOCAL_PREDICATE]);
   for (const s of statements) {
     if (s.s.value !== SPACE_SUBJECT || !wanted.has(s.p.value) || s.o.kind !== 'literal' || !live(s)) continue;
     const prev = newest.get(s.p.value);
@@ -236,6 +255,7 @@ export function backgroundSettingsFrom(statements: readonly Statement[]): Backgr
   const opacity = Number(val(BG_OPACITY_PREDICATE));
   const offset = nums(val(BG_OFFSET_PREDICATE) ?? '', 3);
   const level = nums(val(BG_LEVEL_PREDICATE) ?? '', 4);
+  const focal = nums(val(BG_FOCAL_PREDICATE) ?? '', 3);
   const extentRaw = val(BG_EXTENT_PREDICATE) === undefined ? NaN : Number(val(BG_EXTENT_PREDICATE));
   const extent = Number.isFinite(extentRaw) && extentRaw > 0 ? extentRaw : null;
   const floor = val(BG_FLOOR_PREDICATE) === undefined ? NaN : Number(val(BG_FLOOR_PREDICATE));
@@ -250,6 +270,7 @@ export function backgroundSettingsFrom(statements: readonly Statement[]): Backgr
     scale: Number.isFinite(scale) && scale > 0 && val(BG_SCALE_PREDICATE) !== undefined ? clamp(scale, 0.001, 1000) : resolvedMode === 'surround' && extent ? clamp(ROOM_FIT_UNITS / extent, 0.001, 1000) : d.scale,
     extent,
     offset: offset ? (offset.map((x) => clamp(x, -1e4, 1e4)) as Vec3) : d.offset,
+    focal: focal ? (focal.map((x) => clamp(x, -1e4, 1e4)) as Vec3) : d.focal,
     // Unset opacity: a backdrop is dimmed so labels stay readable; a room you are inside is not.
     opacity: Number.isFinite(opacity) && val(BG_OPACITY_PREDICATE) !== undefined ? clamp(opacity, 0, 1) : resolvedMode === 'surround' ? 1 : d.opacity,
   };

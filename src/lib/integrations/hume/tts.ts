@@ -10,8 +10,9 @@
  * caller can drop to the local Kokoro voice. A story that goes silent because a remote voice
  * failed is worse than one narrated in a different voice.
  *
- * NOT YET VERIFIED against the live Hume endpoint — that needs a real key. The response parsing
- * is deliberately permissive and every failure path is tested.
+ * VERIFIED LIVE 2026-10-29 with an own API key: 6.7 s of MP3 back in 2.9 s (the generations[0].audio
+ * shape). The delegated-token path is not yet exercised end to end. The response parsing stays
+ * deliberately permissive and every failure path is tested.
  */
 import { fetchHumeTokenFromUrl, type HumeAuthPlan } from './token';
 
