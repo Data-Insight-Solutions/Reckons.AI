@@ -10904,3 +10904,43 @@ kb:asset-matrix-in-app rdf:type ktype:Phase ;
     kpred:depends-on   kb:asset-matrix-layout-engine ;
     kpred:principle    "No new navigation tab: the jobs start from the partner entity and their results arrive in Review and on the variant entities." ;
     kpred:done-test    "in the demo space, adding one partner entity queues logo, layout and package jobs; their outputs appear as pending assets and variants; the email draft is created only after a person approves the package" .
+
+# 2026-11-03 — F278 HUB ASSETS BY DEFAULT, PLANNED (Matt, in chat with Claude Code, while F277's
+# info sheets were being given a purpose-chosen photo and the real token art).
+kb:hub-default-assets rdf:type ktype:Feature ;
+    rdfs:label "Hub assets by default — every hub in a space gets generated assets, chained (image, then splat)" ;
+    kpred:feature-id   "F278" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "When a node qualifies as a hub (F148), the space queues asset generation for it without being asked: an image grounded in the hub's confirmed facts, then derivations chained from that image, starting with a Gaussian splat. Results attach to the hub as pending assets (preview, image, splat) for a person to keep or reject." ;
+    kpred:decided      "MATT, 2026-11-03: 'We need a feature where hub nodes in the space graph get assets generated for them by default, even chained, like image then splat.'" ;
+    kpred:depends-on   kb:hub-eligibility ;
+    kpred:depends-on   kb:shelly-generation-jobs ;
+    kpred:depends-on   kb:gen-video-to-splat ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:entity-appearance-resolver ;
+    kpred:principle    "DEFAULT MEANS QUEUED, NOT RUN. Generation costs a GPU for minutes per asset, so 'by default' puts jobs in the local queue with a per-space budget and back-pressure; a space with no local runner shows what it would generate and runs nothing." ;
+    kpred:principle    "GROUNDED PROMPTS. A hub's image prompt is built only from its confirmed facts and type (F51 review-anchored generation), so a picture never asserts something the space does not." ;
+    kpred:principle    "A CHAIN IS A GRAPH. Each step records what it was made from (image from prompt, splat from image) so a rejected image cancels its derivations and a regenerated one marks them stale." ;
+    kpred:open-question "On by default in every space, or opt-in per space with the default set at space creation? Recommended: on for spaces with a connected local runner, with a per-space budget (for example 5 hubs per night)." ;
+    kpred:open-question "Which hubs first: the top N by degree, or every eligible hub without an image?" .
+
+kb:hub-default-assets-select rdf:type ktype:Phase ;
+    rdfs:label "F278.1 — choose hubs that lack assets and build a grounded prompt for each (script tier, no model)" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:done-test    "on a synthetic space: eligible hubs without a preview are selected in degree order within the budget; each prompt cites only confirmed facts; a hub with an image is skipped" .
+
+kb:hub-default-assets-chain rdf:type ktype:Phase ;
+    rdfs:label "F278.2 — queue the chain: image job, then a splat job that starts only from the kept image" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-select ;
+    kpred:done-test    "with a mock runner: an image job, then a splat job whose input is the image's recorded output; a failed or rejected image leaves no splat job queued" .
+
+kb:hub-default-assets-attach rdf:type ktype:Phase ;
+    rdfs:label "F278.3 — attach results to the hub as pending assets, with provenance, in the app's asset form" ;
+    kpred:part-of      kb:hub-default-assets ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:hub-default-assets-chain ;
+    kpred:done-test    "the hub shows the generated image as its hover preview and the splat in the 3D view after a person keeps them; the asset records survive the app's own export and re-import" .
