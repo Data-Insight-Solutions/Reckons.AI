@@ -1,0 +1,21 @@
+diff --git a/src/lib/rdf/normalize-entities.ts b/src/lib/rdf/normalize-entities.ts
+--- a/src/lib/rdf/normalize-entities.ts
++++ b/src/lib/rdf/normalize-entities.ts
+@@ -10,3 +10,4 @@ export function normalizeLabel(s: string): string {
+-  return s.trim();
++  return s.trim().replace(/\s+/g, ' ');
+ }
+diff --git a/src/lib/rdf/__tests__/normalize-entities.test.ts b/src/lib/rdf/__tests__/normalize-entities.test.ts
+--- a/src/lib/rdf/__tests__/normalize-entities.test.ts
++++ b/src/lib/rdf/__tests__/normalize-entities.test.ts
+@@ -3,0 +4,3 @@
++it('collapses inner whitespace', () => {
++  expect(normalizeLabel('a   b')).toBe('a b');
++});
+diff --git a/reckons-workspace/knowledge.pending.quarantine.jsonl b/reckons-workspace/knowledge.pending.quarantine.jsonl
+new file mode 100644
+--- /dev/null
++++ b/reckons-workspace/knowledge.pending.quarantine.jsonl
+@@ -0,0 +1,2 @@
++{"subject":"urn:example:person/alex","predicate":"urn:example:says","object":"EXAMPLE-PRIVATE-TRANSCRIPT-LINE-1","type":"observation"}
++{"subject":"urn:example:person/alex","predicate":"urn:example:says","object":"EXAMPLE-PRIVATE-TRANSCRIPT-LINE-2","type":"observation"}

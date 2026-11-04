@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Taxonomy current (F263, SCRIPT tier) - does the central taxonomy match the code?
+ * Taxonomy current (F280, SCRIPT tier) - does the central taxonomy match the code?
  *
  * static/reckons-terminology.ttl and static/reckons-vocabulary.ttl say what the words and the
  * closed value sets ARE. The code enforces its own copies. Nothing compared the two, so a type

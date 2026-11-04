@@ -295,6 +295,22 @@ function claimId(decision: string, object: string): string {
  * however the parts are spelled.
  */
 export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, Arity>): Decision[] {
+  /*
+   * An ANSWER names the open question it answers by decision id (kb:question-presettle), and joins
+   * that decision as a claim. Without this, an answer on a multi-valued predicate would be grouped
+   * per object into a decision of its own, and every answered question would become two decisions.
+   * An id that names no open question is ignored and the row is grouped as any other.
+   */
+  const openQuestionKey = new Map<string, string>();
+  for (const row of rows) {
+    const subject = String(row.subject ?? '').trim();
+    const predicate = String(row.predicate ?? '').trim();
+    const object = String(row.object ?? '').trim();
+    if (!subject || !predicate || (object !== '' && object !== '?')) continue;
+    const kb = normalizeKb((row as { kb?: unknown }).kb);
+    openQuestionKey.set(decisionId(kb, subject, predicate), JSON.stringify([kb, subject, predicate]));
+  }
+
   const byQuestion = new Map<string, PendingRow[]>();
   for (const row of rows) {
     const subject = String(row.subject ?? '').trim();
@@ -310,7 +326,8 @@ export function groupDecisions(rows: PendingRow[], arity?: ReadonlyMap<string, A
      */
     const object = String(row.object ?? '').trim();
     const perFinding = arity?.get(localName(predicate)) !== 'functional' && object !== '' && object !== '?';
-    const key = JSON.stringify(perFinding ? [kb, subject, predicate, object] : [kb, subject, predicate]);
+    const answered = row.answers ? openQuestionKey.get(String(row.answers).trim()) : undefined;
+    const key = answered ?? JSON.stringify(perFinding ? [kb, subject, predicate, object] : [kb, subject, predicate]);
     byQuestion.set(key, [...(byQuestion.get(key) ?? []), row]);
   }
 
@@ -703,7 +720,12 @@ export function buildVerdict(input: DecideInput): Verdict {
       decision: d.id, verdict: 'accept', claim: chosen.id,
       rows: d.rowIds, subject: d.subject, predicate: d.predicate,
       object: chosen.object, kb: d.kb,
-      supersedes: d.kind === 'choice' ? d.claims.filter((c) => c.id !== chosen.id).map((c) => c.object) : [],
+      // An answered question is closed by its answer: the app holds the question as the placeholder `?`
+      // (F32), which would otherwise stay pending beside the accepted fact (kb:question-presettle).
+      supersedes: [
+        ...(d.kind === 'choice' ? d.claims.filter((c) => c.id !== chosen.id).map((c) => c.object) : []),
+        ...(d.open ? ['?'] : []),
+      ],
       note, actor,
       at: input.now ?? new Date().toISOString(),
     };

@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Draft terms (F263, AGENT tier) - a LOCAL model drafts a missing taxonomy term as a PROPOSAL.
+ * Draft terms (F280, AGENT tier) - a LOCAL model drafts a missing taxonomy term as a PROPOSAL.
  *
  * taxonomy-current (script tier) FINDS the built-in entity types that have no term. Writing the
  * term is judgment over language, so it goes to a local model inside the usual harness:
