@@ -11144,7 +11144,8 @@ kb:asset-matrix-layout-engine rdf:type ktype:Phase ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:asset-matrix-render ;
     kpred:relates-to   kb:vlm-workflow-streams ;
-    kpred:done-test    "text measured with the real font; any slot that does not fit fails loudly instead of clipping; text contrast against the background checked numerically; a local vision model's score is recorded as advice, never as the gate" .
+    kpred:relates-to   kb:asset-qa-layout-remedies ;
+    kpred:done-test    "text measured with the real font; a slot that does not fit is first fixed by the bounded remedies of F281.4 (font step-down within the template's minimum, then the next layout candidate) and fails loudly, never clipping, only when none fits; text contrast against the background checked numerically; a local vision model's score is recorded as advice, never as the gate" .
 
 kb:asset-matrix-in-app rdf:type ktype:Phase ;
     rdfs:label "F277.8 — in the app: allocating a partner starts the jobs; the package appears for review where the space already lives" ;
@@ -11211,3 +11212,66 @@ kb:ollama-installed-model rdf:type ktype:Feature ;
     kpred:has-file     "src/lib/stores/ollama-model-notice.ts" ;
     kpred:tested-by    "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
     kpred:tested-by    "src/lib/stores/__tests__/ollama-model-notice.test.ts" .
+
+# 2026-11-04 — F281 ASSET QA LOOP (Matt, in chat with Claude Code).
+kb:asset-qa-loop rdf:type ktype:Feature ;
+    rdfs:label "Asset QA loop: every generated asset is checked, its flaws are fixed automatically within a budget, and the best draft reaches review with its report" ;
+    kpred:feature-id   "F281" ;
+    kpred:has-status   "in-progress" ;
+    kpred:has-file     "scripts/content/asset-qa.ts" ;
+    kpred:has-file     "scripts/content/asset-review.ts" ;
+    kpred:has-file     "scripts/content/asset-checks.ts" ;
+    kpred:has-file     "scripts/content/generation-runner.ts" ;
+    kpred:has-file     "src/lib/generation/protocol.ts" ;
+    kpred:tested-by    "scripts/content/__tests__/asset-qa.test.ts" ;
+    kpred:tested-by    "scripts/content/__tests__/generation-runner.test.ts" ;
+    kpred:measured     "2026-11-04, FIRST RUNS, THIS MACHINE. Synthetic A4 PDFs made with Inkscape: the good page passed; text moved off the page failed ('1 word(s) run off the page', and the phrase it cut was reported missing); a two-page file with an empty second page failed 'page 2 is blank'. The checks also caught a real mistake in the fixture itself: Inkscape reads unitless SVG sizes as 96 dpi pixels, so a 595x842 page came out 446x632 pt. Faint text (#ece6dc on #f4efe6) failed the deterministic check (render spread 0.85) before any model was asked. qwen2.5vl:7b gave the good flyer 5/5 with no defects, and REJECTED the overlapping-text page (1/5) but named the WRONG defects (blank-or-placeholder, off-intent instead of text-overlap). Two real image jobs through the runner's worker (sd-cli, budget 2 and 3): a lighthouse in 27 s and a lettered shop sign in 19 s, each checked, reviewed 5/5 and accepted on the first attempt. Looking at them: the sign's lettering was correct, but the lighthouse was photographic although the prompt asked for watercolor, and the model did not object." ;
+    kpred:weakness     "The vision model's verdict is usable for 'reject or keep' and NOT yet for 'which defect': on 2026-11-04 it rejected a bad page with the wrong defect names and missed a style mismatch. Remedies that depend on the defect's name (F281.4) need a bench on labelled generated assets first. The retry path ran end to end only with a stubbed generator (unit test); none of today's real generations needed a second attempt." ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:visual-testing ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:hub-default-assets ;
+    kpred:relates-to   kb:generated-assets-story ;
+    kpred:relates-to   kb:queue-ram-guard ;
+    kpred:decided      "MATT, 2026-11-04: 'We need to repurpose existing visual testing, for asset generation processes, obviously flaws should be automatically fixed and there should be a decent draft version for human review that isn't a total mess, this should be for image, PDF and other asset generations.'" ;
+    kpred:description  "The same three tiers that test the app's screens now check what the generators make. (1) Deterministic checks per type (scripts/content/asset-checks.ts): an image has size and variation, a video moves, a splat parses, a PDF has the pages, page size, embedded fonts, non-blank pages and expected text it should, an SVG renders. (2) The local vision model from visual testing (tests/visual/vision-vlm.ts, qwen2.5vl:7b) reviews a picture of the asset against its intent and names defects from a fixed list. (3) A bounded fix loop: a defect that a remedy can fix is fixed and the asset is checked again, up to a budget, and the best attempt becomes the draft. A person reviews that draft with a report of every attempt, what was fixed and what is still wrong." ;
+    kpred:principle    "A DRAFT IS NEVER A MESS. If any attempt passes the deterministic checks, a failing one is never shown as the draft. If none passes, there is no draft, only the report. A draft with defects still open says which ones, in the sentence that shows it." ;
+    kpred:principle    "MODELS SCORE, REMEDIES FIX. The vision model only names defects and scores attempts (the F277 rule: a model never draws the page). Every fix is a deterministic, bounded change to the inputs: a new seed for generated media, a smaller font or the next layout candidate for a page. The vision model's verdict is advice; the deterministic checks are the gate." ;
+    kpred:principle    "BOUNDED. Each fix loop has an attempt budget (default 3) and every attempt is recorded, so a GPU never loops all night on a prompt the model cannot draw." .
+
+kb:asset-qa-checks rdf:type ktype:Phase ;
+    rdfs:label "F281.1 — deterministic checks for PDF and SVG beside image, video and splat" ;
+    kpred:part-of      kb:asset-qa-loop ;
+    kpred:has-status   "functional" ;
+    kpred:done-test    "on synthetic fixtures: a good PDF passes; a PDF with a blank page, a missing expected phrase, an unembedded font, the wrong page size or text off the page fails with that reason; an SVG that renders passes and a broken one fails; every judge is pure and unit-tested without the PDF tools installed" .
+
+kb:asset-qa-review rdf:type ktype:Phase ;
+    rdfs:label "F281.2 — visual review: the visual-testing vision model names defects in a generated asset" ;
+    kpred:part-of      kb:asset-qa-loop ;
+    kpred:has-status   "functional" ;
+    kpred:depends-on   kb:asset-qa-checks ;
+    kpred:done-test    "the review prompt asks for JSON with a fixed defect list; the parser keeps only listed defects, clamps the score and marks an unparseable answer invalid rather than clean; video is reviewed by its middle frame, a PDF by its first pages, an SVG by its render; with no OLLAMA_BASE_URL the report says the review was not run" .
+
+kb:asset-qa-fix-loop rdf:type ktype:Phase ;
+    rdfs:label "F281.3 — fix loop for generated media: reseed within a budget, keep the best attempt" ;
+    kpred:part-of      kb:asset-qa-loop ;
+    kpred:has-status   "functional" ;
+    kpred:depends-on   kb:asset-qa-review ;
+    kpred:done-test    "the local generation runner retries a stage whose check fails or whose review names a defect, with the next seed, up to the budget; the best attempt is the job's output; the receipt records each attempt's seed, problems, defects and score and the seed actually used; a receipt whose seed differs from the request validates only when its QA record names that seed" .
+
+kb:asset-qa-layout-remedies rdf:type ktype:Phase ;
+    rdfs:label "F281.4 — remedies for laid-out pages (PDF, SVG): font step-down, next layout candidate, contrast scrim" ;
+    kpred:part-of      kb:asset-qa-loop ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-qa-checks ;
+    kpred:depends-on   kb:asset-matrix-layout-engine ;
+    kpred:done-test    "on the F277 fixture: a slot whose text overflows is fixed by stepping the font down to the template's minimum, then by the next layout candidate; text under the contrast threshold gets a scrim or the alternate text color; each fix is recorded on the variant; a page that no remedy fixes fails with its reason" ;
+    kpred:honest-note  "NOT BUILT, AND IT CANNOT BE YET (2026-11-04): this repository has no page renderer. The F277 layout engine and renderer (F277.3, F277.7) are planned, and page remedies change that engine's inputs. Until then a PDF or SVG from anywhere can be CHECKED (F281.1, npm run asset:qa) but not fixed." .
+
+kb:asset-qa-in-review rdf:type ktype:Phase ;
+    rdfs:label "F281.5 — the QA report beside the pending asset in review" ;
+    kpred:part-of      kb:asset-qa-loop ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-qa-fix-loop ;
+    kpred:done-test    "a pending generated asset shows its QA verdict (clean, draft with notes), the number of attempts, what was fixed and what is still open, in the existing review flow; no new navigation" .
+

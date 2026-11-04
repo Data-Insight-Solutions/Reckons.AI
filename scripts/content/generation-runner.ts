@@ -17,6 +17,8 @@ import {
   validJobId, validateReceipt, type GenerationJob, type GenerationRequest,
 } from '../../src/lib/generation/protocol.js';
 import { generationAvailability, generateStage } from './gen-assets.js';
+import { improve, qaBudget } from './asset-qa.js';
+import { reviewAsset } from './asset-review.js';
 
 function json(path: string): unknown {
   const bytes = readFileSync(path);
@@ -56,22 +58,50 @@ export function prepareParent(jobs: string, request: GenerationRequest, director
   copyFileSync(source, join(directory, OUTPUT_FILES.image));
 }
 
-async function worker(directory: string) {
+/** One job, in its own process (main --worker=). Exported for the QA loop test. */
+export async function worker(directory: string) {
   const request = parseRequest(json(join(directory, 'request.json')));
   if (request.id !== directory.split('/').pop()) throw new Error('Job directory does not match request');
   const save = (job: GenerationJob) => atomic(join(directory, 'status.json'), job);
   try {
     prepareParent(dirname(directory), request, directory);
-    if (existsSync(join(directory, 'cancel.json'))) { save({ request, state: 'cancelled' }); return; }
-    const receipt = await generateStage(request.stage, {
-      slug: request.id, label: 'Generated asset', imagePrompt: request.prompt, videoPrompt: request.prompt,
-      seed: request.seed, gaussians: 32768, role: 'node',
-    }, directory);
+    const cancelled = () => existsSync(join(directory, 'cancel.json'));
+    if (cancelled()) { save({ request, state: 'cancelled' }); return; }
+    // F281.3 FIX LOOP: each attempt runs in its own folder with the next seed; a failed check or a
+    // defect the vision model names earns another attempt, up to the budget; the best one becomes the
+    // job's output. The prompt is the person's and is never rewritten.
+    const attempts = join(directory, 'attempts');
+    const { qa, best } = await improve({
+      seed: request.seed, budget: qaBudget(), cancelled,
+      attempt: async (seed, i) => {
+        const dir = join(attempts, String(i));
+        safeDirectory(attempts); safeDirectory(dir);
+        if (request.parentId) copyFileSync(join(directory, OUTPUT_FILES.image), join(dir, OUTPUT_FILES.image));
+        const r = await generateStage(request.stage, {
+          slug: request.id, label: 'Generated asset', imagePrompt: request.prompt, videoPrompt: request.prompt,
+          seed, gaussians: 32768, role: 'node',
+        }, dir);
+        return { file: join(dir, r.output.file), check: r.check, payload: { r, dir } };
+      },
+      review: (file) => reviewAsset(file, request.prompt),
+    });
+    if (qa.verdict === 'failed') {
+      const why = best.check.problems.slice(0, 3).join('; ') || 'no attempt passed its checks';
+      throw new Error(`All ${qa.attempts.length} attempt(s) failed their checks: ${why}`);
+    }
+    // The chosen attempt's files replace the job folder's (the parent image copy is identical).
+    for (const f of readdirSync(best.payload.dir)) {
+      const from = join(best.payload.dir, f);
+      if (lstatSync(from).isFile()) copyFileSync(from, join(directory, f));
+    }
+    rmSync(attempts, { recursive: true, force: true });
+    const receipt = { ...best.payload.r, qa };
     validateReceipt(receipt, request);
     verifiedBytes(join(directory, receipt.output.file), receipt);
     if (existsSync(join(directory, 'cancel.json'))) save({ request, state: 'cancelled' });
     else save({ request, state: 'completed', receipt });
   } catch (e) {
+    rmSync(join(directory, 'attempts'), { recursive: true, force: true });
     // Full tool output stays private beside the request, never in a graph or public artifact.
     writeFileSync(join(directory, 'error.log'), String(e), { mode: 0o600 });
     const stderr = String((e as { stderr?: unknown })?.stderr ?? '').trim().split('\n').pop();
