@@ -1,7 +1,7 @@
 ---
 title: "Starter assets in the production build"
 slug: "starter-asset-smoke"
-order: 1022
+order: 1029
 section: "Testing"
 parent: "test-suite"
 template: doc

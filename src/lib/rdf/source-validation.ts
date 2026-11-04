@@ -38,6 +38,8 @@ export interface SourceJudgment {
   stance: Stance;
   /** 0..1 confidence from the judge; used to break ties and rank evidence. */
   confidence: number;
+  /** For a contradiction: the value the passage states instead, verbatim, when it states one. */
+  statedValue?: string;
 }
 
 export type FactVerdict = 'supported' | 'contradicted' | 'mixed' | 'unverified';

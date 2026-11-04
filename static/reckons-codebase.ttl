@@ -538,7 +538,9 @@ code:mobile-utils  rdf:type     ktype:Concept ;
                    skos:definition "Mobile browser auth helpers and touch adaptations." ;
                    skos:broader code:repo ;
                    kpred:has-file "src/lib/utils/mobile-auth.ts" ;
-                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" .
+                   kpred:has-file "src/lib/utils/safe-href.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/mobile-auth.test.ts" ;
+                   kpred:tested-by "src/lib/utils/__tests__/safe-href.test.ts" .
 
 code:extension-bridge  rdf:type     ktype:Concept ;
                        rdfs:label   "Extension Bridge" ;
@@ -1063,3 +1065,30 @@ code:job-plan-space rdf:type ktype:Concept ;
     kpred:description "queue-to-space.ts reads the local job queue (queue.jsonl, current.json, and the last 48 h of queue.done.jsonl) and writes the annotated job-plan space the app renders as a graph — one node per job (urn:kbase:concept/job-<id>) with status, priority, cwd, branch, head, log, started, finished, outcome-reason and job-after edges; the Job entity type (icon box, colour #5b2a86) is declared in the same file. Pure core plus thin IO: buildSpaceText is deterministic — statement ids are the sha1 of the fact, so two runs over the same queue are byte-identical apart from the generated-at line. Script tier, zero tokens." ;
     kpred:has-file "scripts/agent/queue-to-space.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" .
+
+# Triple Check and focused research views (2026-10-26).
+code:rdf kpred:has-file "src/lib/rdf/triple-check.ts", "src/lib/rdf/statement-chunks.ts", "src/lib/rdf/space-view.ts", "src/lib/rdf/repository-comparison.ts", "src/lib/rdf/purpose-organization.ts" .
+code:storage kpred:has-file "src/lib/storage/triple-check.ts" .
+code:stores kpred:has-file "src/lib/stores/triple-check.svelte.ts" .
+code:llm kpred:has-file "src/lib/integrations/llm/triple-check.ts" .
+code:search kpred:has-file "src/lib/integrations/search/triple-check.ts" .
+code:components kpred:has-file "src/lib/components/PurposeAnalysis.svelte" .
+code:routes kpred:has-file "src/routes/(app)/settings/triple-check/+page.svelte", "src/routes/(app)/compare/repositories/+page.svelte" .
+code:scripts kpred:has-file "scripts/research/github-stars.ts", "scripts/starter/build-research.ts", "scripts/starter/research-fixture.ts", "scripts/starter/triple-check-walkthrough.ts" .
+code:test-bench kpred:has-file "tests/bench/run-statement-comparison-bench.ts" .
+code:static kpred:has-file "static/starter-triple-check.ttl", "static/starter-triple-check-reference.ttl" .
+code:rdf kpred:tested-by "src/lib/rdf/__tests__/research-validation.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check.test.ts" .
+code:search kpred:tested-by "src/lib/integrations/search/__tests__/searxng.test.ts" .
+code:storage kpred:tested-by "src/lib/storage/__tests__/triple-check-local-only.test.ts" .
+code:llm kpred:has-file "src/lib/integrations/loopback.ts" .
+# Review and settings polish, and the build-and-change workflow (2026-10-27).
+code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
+code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
+    kpred:tested-by "src/lib/integrations/llm/__tests__/corpus-fixture.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts" .
+code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
+# Hand-held walkthroughs (F261).
+code:rdf kpred:has-file "src/lib/rdf/story-offers.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts" .

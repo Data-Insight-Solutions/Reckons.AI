@@ -41,19 +41,21 @@ const SCHEME = 'urn:kbase:vocabulary/terminology';
 const KPRED = 'urn:kbase:predicate/';
 const SKOS = 'http://www.w3.org/2004/02/skos/core#';
 
-export type TermConfig = { jargon: Map<string, string | undefined>; surfaces: string[]; ratchets: Record<string, number> };
+export type TermConfig = { jargon: Map<string, string | undefined>; surfaces: string[]; ratchets: Record<string, number>; properNames?: string[] };
 
 /** Pure: the jargon (word -> suggested user word), technical surfaces and ratchet baselines. */
 export function readTermConfig(ttl: string): TermConfig {
   const quads = new Parser({ format: 'Turtle' }).parse(ttl);
   const jargon = new Map<string, string | undefined>();
   const surfaces: string[] = [];
+  const properNames: string[] = [];
   const ratchets: Record<string, number> = {};
   const props = new Map<string, Map<string, string[]>>();
   for (const q of quads) {
     const s = q.subject.value;
     if (s === SCHEME && q.predicate.value === `${KPRED}ui-jargon`) jargon.set(q.object.value, undefined);
     else if (s === SCHEME && q.predicate.value === `${KPRED}technical-surface`) surfaces.push(q.object.value);
+    else if (s === SCHEME && q.predicate.value === `${KPRED}ui-proper-name`) properNames.push(q.object.value);
     else if (s === SCHEME && q.predicate.value === `${KPRED}ui-term-ratchet`) {
       const m = q.object.value.match(/^([\w-]+)\/(\d+)$/);
       if (m) ratchets[m[1]] = Number(m[2]);
@@ -75,7 +77,7 @@ export function readTermConfig(ttl: string): TermConfig {
       if (jargon.has(label) && !jargon.get(label) && user) jargon.set(label, user);
     }
   }
-  return { jargon, surfaces, ratchets };
+  return { jargon, surfaces, ratchets, properNames };
 }
 
 /** One pattern over every jargon word: whole words, an optional plural, exact case for acronyms. */
@@ -100,6 +102,13 @@ export function findings(occ: Occurrence[], cfg: TermConfig): Finding[] {
   for (const o of occ) {
     if (cfg.surfaces.some((s) => o.file.startsWith(s))) continue;
     if (o.kind === 'jargon') {
+      // A word inside a decided proper name ("Triple Check") is the name, not the jargon word. Only
+      // when the word survives with every proper name removed is it reported.
+      const names = cfg.properNames ?? [];
+      if (names.length) {
+        const rest = names.reduce((s, n) => s.replace(new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' '), o.sentence);
+        if (!new RegExp(`(?<![\\w-])${o.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'i').test(rest)) continue;
+      }
       const key = [...cfg.jargon.keys()].find((k) => o.word.toLowerCase().replace(/s$/, '') === k.toLowerCase() || o.word.toLowerCase() === k.toLowerCase());
       out.push({ file: o.file, line: o.line, where: o.where, word: o.word, sentence: o.sentence, check: 'jargon', suggest: key ? cfg.jargon.get(key) : undefined });
     } else if (o.kind === 'graph' && /^graphs?$/i.test(o.word)) {

@@ -45,6 +45,7 @@
   import { termKey, iriFromNodeKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { newAliasValues, primaryLabelAfterMerge, buildAliasStatements } from '$lib/rdf/merge-aliases';
   import { computeDiff } from '$lib/rdf/diff';
+  import { isSpaceMetadata } from '$lib/rdf/graph-view';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
   import { buildReviewPlan, reviewPlanSummary } from '$lib/rdf/review-pipeline';
@@ -240,11 +241,18 @@
 
   /** Which lane the user is looking at. Defaults to `user` — the point is to show them less. */
   let gateFilter = $state<'user' | 'machine' | 'agent' | 'all'>('user');
+  /**
+   * An EMPTY "yours" lane shows everything instead. Defaulting to yours is right when there is
+   * something of yours; when there is not, it showed an empty queue above a count of waiting items,
+   * and the person had to find the "all" chip to see any of them — one of the manual filter changes
+   * Matt named (2026-10-27) as what makes review tedious.
+   */
+  const effectiveGate = $derived(gateFilter === 'user' && routed.user.length === 0 ? 'all' : gateFilter);
 
   const shownEntries = $derived.by(() => {
     let list = questionsOnly ? questionEntries : diff.entries;
-    if (gateFilter !== 'all') {
-      list = list.filter((e) => (gateById.get(e.incoming.id) ?? 'user') === gateFilter);
+    if (effectiveGate !== 'all') {
+      list = list.filter((e) => (gateById.get(e.incoming.id) ?? 'user') === effectiveGate);
     }
     // Most-blocking first. An item with four things stalled behind it is not "newer" or
     // "older" than a curiosity — it is a different kind of item.
@@ -429,29 +437,130 @@
     }
   }
 
-  /** F83: group the SHOWN entries into per-entity cards so the user decides about things, not rows. */
-  let groupByEntity = $state(true);
-  const entityGroups = $derived.by(() => {
+  /**
+   * Group the SHOWN entries so the user decides about things, not rows (F83, kb:loop-job-grouping):
+   * by the entity they describe, or by the SOURCE they came from (Matt, 2026-10-27: "allow users to
+   * accept all by source, like the by entity option"). One source is usually one decision — an
+   * article you trust, a page you don't, everything Triple Check found in another space.
+   *
+   * A view over the queue, not ktype:EntitySet nodes as kb:loop-job-grouping asks for; recorded there.
+   */
+  type GroupMode = 'entity' | 'source' | 'flat';
+  const GROUP_MODES: { id: GroupMode; label: string; title: string }[] = [
+    { id: 'entity', label: 'by entity', title: 'One card per thing the facts describe' },
+    { id: 'source', label: 'by source', title: 'One card per document, page or space the facts came from' },
+    { id: 'flat', label: 'flat list', title: 'Every fact in one list, most blocking first' },
+  ];
+  let groupMode = $state<GroupMode>('entity');
+  function setGroupMode(mode: GroupMode) {
+    groupMode = mode;
+    activeGroupKey = null;
+    try { localStorage.setItem('reckons-review-group', mode); } catch { /* a convenience, not state */ }
+  }
+
+  /** (subject, predicate) -> the values pending for it and which source said each. */
+  const pendingValues = $derived.by(() => {
+    const m = new Map<string, { o: string; source: string }[]>();
+    for (const st of incoming) {
+      const k = `${termKey(st.s)}|${st.p.value}`;
+      const list = m.get(k);
+      const v = { o: termKey(st.o), source: st.sourceId };
+      if (list) list.push(v); else m.set(k, [v]);
+    }
+    return m;
+  });
+  const BULK_KINDS = new Set(['new', 'reinforces', 'synonym-reinforces', 'duplicate']);
+  /**
+   * Why a fact is HELD BACK from a group accept, or null when it can go in one.
+   *
+   * kb:loop-job-grouping: "Outlier highlighting is a PRECONDITION of accept-all, not a follow-up."
+   * A group accept is exactly where a bad fact slips through, so anything that disagrees — with a
+   * fact already held (the diff's conflict and refine), or with another SOURCE's pending value for
+   * the same thing — waits for its own decision and is listed first. Two values from one source are
+   * that source's list, not a disagreement, so they do not hold each other back.
+   */
+  function holdReason(e: (typeof shownEntries)[number]): string | null {
+    const st = e.incoming;
+    if (st.needsObject) return 'needs an answer';
+    if (!BULK_KINDS.has(e.kind)) return e.kind === 'refines' ? 'refines a fact you have' : 'disagrees with a fact you have';
+    if (st.confidence < 0.5) return 'low confidence';
+    const o = termKey(st.o);
+    if (pendingValues.get(`${termKey(st.s)}|${st.p.value}`)?.some((v) => v.o !== o && v.source !== st.sourceId)) return 'another source says otherwise';
+    return null;
+  }
+  const holdById = $derived(new Map(shownEntries.map((e) => [e.incoming.id, holdReason(e)])));
+  const acceptableAll = $derived(shownEntries.length - [...holdById.values()].filter(Boolean).length);
+
+  const reviewGroups = $derived.by(() => {
+    if (groupMode === 'flat') return [];
     const m = new Map<string, typeof shownEntries>();
     for (const e of shownEntries) {
-      const k = e.incoming.s.value;
+      const k = groupMode === 'source' ? e.incoming.sourceId : e.incoming.s.value;
       const g = m.get(k);
       if (g) g.push(e);
       else m.set(k, [e]);
     }
-    return [...m.entries()].map(([iri, entries]) => {
+    return [...m.entries()].map(([key, entries]) => {
+      const held = entries.filter((e) => holdById.get(e.incoming.id));
       const labelStmt = entries.find(
         (e) => e.incoming.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && e.incoming.o.kind === 'literal',
       );
       return {
-        iri,
-        label: labelStmt ? labelStmt.incoming.o.value : labelFromIRI(iri),
-        entries,
+        key,
+        label: groupMode === 'source' ? sourceLabel(key) : labelStmt ? labelStmt.incoming.o.value : labelFromIRI(key),
+        // The odd ones out first: a group shows what it holds back BEFORE it offers to accept the rest.
+        entries: [...held, ...entries.filter((e) => !holdById.get(e.incoming.id))],
+        held: held.length,
         gate: gateById.get(entries[0].incoming.id) ?? 'user',
-        spotlight: spotlightSubjects.has(iri),
+        spotlight: groupMode === 'entity' && spotlightSubjects.has(key),
       };
     });
   });
+
+  /**
+   * THE GROUP BEING REVIEWED, which the canvas and the summary follow (Matt, 2026-10-27: "the review
+   * graph viewer needs to be more reactive to what you are reviewing"). It is the group last touched
+   * — a card clicked, a node picked on the canvas — or else the first. Settling a whole group moves
+   * on by itself, because the group is gone and the next one becomes first.
+   */
+  let activeGroupKey = $state<string | null>(null);
+  const activeGroup = $derived(reviewGroups.find((g) => g.key === activeGroupKey) ?? reviewGroups[0] ?? null);
+  function groupKeyOf(st: Statement): string { return groupMode === 'source' ? st.sourceId : st.s.value; }
+
+  /** One group's decisions in a single write. Held-back facts are left for their own decision. */
+  async function acceptEntries(entries: typeof shownEntries) {
+    error = null; isProcessing = true; bulkResult = null;
+    try {
+      const updates: { id: string; status: 'confirmed' | 'rejected' }[] = [];
+      let accepted = 0, dismissed = 0, held = 0;
+      for (const e of entries) {
+        if (holdReason(e)) { held++; continue; }
+        // An exact duplicate is the SAME (s,p,o) in the SAME graph: nothing to decide, so it is
+        // dismissed rather than confirmed twice. `reinforces` — same claim, NEW source — is confirmed,
+        // which is what records the extra citation.
+        if (e.kind === 'duplicate') { updates.push({ id: e.incoming.id, status: 'rejected' }); dismissed++; }
+        else { updates.push({ id: e.incoming.id, status: 'confirmed' }); accepted++; }
+      }
+      if (updates.length) await setStatuses(updates);
+      // Say what happened, including when the answer is "nothing".
+      bulkResult = [
+        accepted ? `accepted ${accepted}` : null,
+        dismissed ? `dismissed ${dismissed} exact duplicate${dismissed === 1 ? '' : 's'}` : null,
+        held ? `${held} held back for a decision of ${held === 1 ? 'its' : 'their'} own` : null,
+      ].filter(Boolean).join(', ') || 'nothing pending';
+    } catch (e) { error = e instanceof Error ? e.message : String(e); }
+    finally { isProcessing = false; setTimeout(() => (bulkResult = null), 8000); }
+  }
+  /** Rejecting a whole group asks once, inline: it is the one bulk act that discards claims. */
+  let confirmRejectKey = $state<string | null>(null);
+  async function rejectEntries(entries: typeof shownEntries) {
+    error = null; isProcessing = true; confirmRejectKey = null;
+    try {
+      await setStatuses(entries.map((e) => ({ id: e.incoming.id, status: 'rejected' as const })));
+      bulkResult = `rejected ${entries.length}`;
+    } catch (e) { error = e instanceof Error ? e.message : String(e); }
+    finally { isProcessing = false; setTimeout(() => (bulkResult = null), 8000); }
+  }
 
   $effect(() => {
     const inc = incoming;
@@ -527,14 +636,45 @@
   }
 
   // ── Diff summary ──────────────────────────────────────────────────────────
+  /**
+   * AUTOMATIC, and of what is being reviewed (Matt, 2026-10-27: "Summary should be automatic also").
+   * It was a "summarize changes" button over the whole queue. Now it summarizes the active group — or
+   * the shown list when ungrouped — shortly after that changes.
+   *
+   * The cache key buckets the group's size in fives, so deciding facts one at a time re-summarizes
+   * about every fifth decision rather than after each: on a metered provider a call per click is a
+   * cost the person never chose. Without a configured model it is the counts-only summary, no call.
+   */
   let diffSummary = $state<DiffSummary | null>(null);
   let summaryLoading = $state(false);
-  async function loadSummary() {
-    summaryLoading = true;
-    try { diffSummary = await generateDiffSummary(diff, settings()); }
-    catch { /* handled */ }
-    finally { summaryLoading = false; }
+  const summaryEntries = $derived(activeGroup?.entries ?? shownEntries);
+  const summaryKey = $derived(`${groupMode}:${activeGroup?.key ?? '*'}:${Math.ceil(summaryEntries.length / 5)}`);
+  const summaryCache = new Map<string, DiffSummary>();
+  function diffOf(entries: typeof shownEntries): ReturnType<typeof computeDiff> {
+    const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
+    const field: Record<string, keyof typeof summary> = {
+      new: 'new', duplicate: 'duplicate', reinforces: 'reinforces', conflicts: 'conflicts', refines: 'refines', returned: 'returned',
+      'near-duplicate': 'nearDuplicate', 'synonym-reinforces': 'synonymReinforces', 'antonym-conflicts': 'antonymConflicts',
+    };
+    for (const e of entries) summary[field[e.kind]]++;
+    return { entries, summary };
   }
+  $effect(() => {
+    const key = summaryKey, entries = summaryEntries;
+    if (activeTab !== 'incoming' || entries.length === 0) { diffSummary = null; return; }
+    const cached = summaryCache.get(key);
+    if (cached) { diffSummary = cached; return; }
+    const timer = setTimeout(async () => {
+      summaryLoading = true;
+      try {
+        const result = await generateDiffSummary(diffOf(entries), settings());
+        summaryCache.set(key, result);
+        if (key === summaryKey) diffSummary = result;
+      } catch { /* generateDiffSummary falls back to counts itself; nothing to show beyond that */ }
+      finally { summaryLoading = false; }
+    }, 1200);
+    return () => clearTimeout(timer);
+  });
 
 
   let draining = $state(false);
@@ -601,15 +741,41 @@
 
   // ── Graph: preview mode (confirmed + pending highlighted) ─────────────────
   // Combine confirmed + pending so the graph shows the effect of accepting
-  const previewStatements = $derived.by(() => {
+  //
+  // FOLLOWS THE REVIEW by default: the active group's pending facts and what they touch in the graph
+  // one step out, rather than the whole graph with the group somewhere in it. Matt, 2026-10-27: "the
+  // review graph viewer needs to be more reactive to what you are reviewing... manual filter and view
+  // setting changes makes it much worse." `followReview` off is the old whole-graph picture.
+  let followReview = $state(true);
+  const reviewScope = $derived.by(() => {
+    const entries = activeGroup?.entries ?? shownEntries;
+    return {
+      ids: new Set(entries.map((e) => e.incoming.id)),
+      keys: new Set(entries.flatMap((e) => [termKey(e.incoming.s), termKey(e.incoming.o)])),
+    };
+  });
+  const scoped = $derived(followReview && activeTab === 'incoming' && reviewScope.ids.size > 0);
+  /** Everything the preview could draw; the search box looks here, not only at the followed group. */
+  const allPreviewStatements = $derived.by(() => {
     const confirmed = confirmedStatements();
     const pending = incoming;
     // Filter same as main page
     return [...confirmed, ...pending].filter(s => {
       if (isMetaPredicate(s.p.value)) return false;
       if (GRAPH_EXCLUDED_PREDICATES.has(s.p.value)) return false;
+      // Configuration (the container's own record, a story's steps) only at the `all` detail level,
+      // as on the main canvas.
+      if (reviewDetail !== 'all' && isSpaceMetadata(s)) return false;
       return true;
     });
+  });
+  const previewStatements = $derived.by(() => {
+    const all = allPreviewStatements;
+    if (!scoped) return all;
+    // Context reaches one step along entities only: two facts sharing the literal "true" are not related.
+    return all.filter((s) => s.status === 'pending'
+      ? reviewScope.ids.has(s.id)
+      : reviewScope.keys.has(termKey(s.s)) || (s.o.kind === 'iri' && reviewScope.keys.has(termKey(s.o))));
   });
 
   // How many edges the tree layout can actually build a hierarchy from.
@@ -691,6 +857,9 @@
     if (pendingDeletions.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('deletions');
     if (pendingMerges.some((st: Statement) => statementHasKey(st, key))) tabsWith.push('merges');
     if (tabsWith.length && !tabsWith.includes(activeTab)) activeTab = tabsWith[0];
+    // A node picked on the canvas makes its group the one under review, so the list and the summary follow.
+    const hit = shownEntries.find((e) => statementHasKey(e.incoming, key));
+    if (hit && groupMode !== 'flat') activeGroupKey = groupKeyOf(hit.incoming);
 
     // After the tab (and therefore the list) has rendered.
     requestAnimationFrame(() => {
@@ -701,6 +870,7 @@
 
   function focusStatement(st: Statement) {
     selectionSource = 'panel';
+    if (groupMode !== 'flat' && reviewGroups.some((g) => g.key === groupKeyOf(st))) activeGroupKey = groupKeyOf(st);
     const key = termKey(st.s);
     selected = key;
     focusedEdge = { s: termKey(st.s), o: termKey(st.o), p: st.p.value.split('/').pop() ?? st.p.value };
@@ -738,9 +908,28 @@
     return `Show ${labelFromIRI(st.s.value)} in the preview graph`;
   }
 
+  // When the group under review changes, the canvas goes to it: a scoped graph re-lays itself out,
+  // and flying to the group's first subject keeps the reviewer from hunting for it.
+  let lastFlownGroup: string | null = null;
+  $effect(() => {
+    const g = activeGroup;
+    if (!g || !scoped || g.key === lastFlownGroup) return;
+    lastFlownGroup = g.key;
+    const key = termKey(g.entries[0].incoming.s);
+    focusKey = null;
+    requestAnimationFrame(() => { focusKey = key; });
+  });
+
   /** Focus the preview graph on an arbitrary node key (called from the node search box). */
   function focusNode(key: string) {
     selectionSource = 'panel';
+    // A node found by search may sit outside the followed group: follow ITS group, or, when it has
+    // nothing pending, show the whole graph, rather than flying the camera to a node not drawn.
+    if (scoped && !reviewScope.keys.has(key)) {
+      const hit = shownEntries.find((e) => statementHasKey(e.incoming, key));
+      if (hit && groupMode !== 'flat') activeGroupKey = groupKeyOf(hit.incoming);
+      else followReview = false;
+    }
     selected = key;
     focusedEdge = null;
     focusKey = null;
@@ -822,7 +1011,7 @@
     const q = nodeSearchQuery.trim().toLowerCase();
     if (q.length < 1) return [];
     const seen = new Map<string, string>();
-    for (const s of previewStatements) {
+    for (const s of allPreviewStatements) {
       for (const term of [s.s, s.o]) {
         if (term.kind !== 'iri') continue;
         const k = termKey(term);
@@ -1194,52 +1383,8 @@
   async function dismissMerge(id: string) { await setStatus(id, 'rejected'); }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
-  async function acceptAll() {
-    error = null; isProcessing = true;
-    bulkResult = null;
-    let accepted = 0, dismissed = 0, skippedPartial = 0, skippedKind = 0;
-    try {
-      for (const e of diff.entries) {
-        // Partial facts (F32) must be filled individually — never bulk-confirm a '?'.
-        if (e.incoming.needsObject) { skippedPartial++; continue; }
-
-        // An exact duplicate is the SAME (s,p,o) in the SAME graph — byte-identical to a fact
-        // already held. There is no decision in it: confirming adds nothing and rejecting loses
-        // nothing, so making a human dismiss each one by hand is pure tax. `reinforces` is the
-        // case that actually carries information (same claim, NEW source) and is confirmed below,
-        // which is what records the extra citation.
-        if (e.kind === 'duplicate') {
-          await setStatus(e.incoming.id, 'rejected');
-          dismissed++;
-          continue;
-        }
-
-        if (e.kind === 'new' || e.kind === 'reinforces' || e.kind === 'synonym-reinforces') {
-          await setStatus(e.incoming.id, 'confirmed');
-          accepted++;
-        } else {
-          skippedKind++;
-        }
-      }
-      // Say what happened, including when the answer is "nothing". A whole graph can consist of
-      // partial facts — every code-review finding is a question with no object — and this button
-      // then correctly confirms none of them while looking broken. Silence is the bug; refusing
-      // to bulk-confirm a '?' is not.
-      bulkResult = accepted > 0 || dismissed > 0
-        ? [
-            accepted ? `confirmed ${accepted}` : null,
-            dismissed ? `dismissed ${dismissed} exact duplicate(s)` : null,
-            skippedPartial ? `${skippedPartial} need an answer first` : null,
-            skippedKind ? `${skippedKind} need a decision` : null,
-          ].filter(Boolean).join(', ')
-        : skippedPartial > 0
-          ? `nothing to confirm — ${skippedPartial} partial fact(s) need an object before they can be accepted`
-          : skippedKind > 0
-            ? `nothing to confirm — ${skippedKind} entr(y/ies) are conflicts or refinements, which need a decision`
-            : 'nothing pending';
-    } catch (e) { error = e instanceof Error ? e.message : String(e); }
-    finally { isProcessing = false; setTimeout(() => (bulkResult = null), 8000); }
-  }
+  /** Every shown fact that can go in one decision; the rest are held back and said to be. */
+  function acceptAll() { return acceptEntries(shownEntries); }
   /**
    * SETTLE A CONTESTED DECISION IN ONE ACTION (Matt, 2026-08-21).
    *
@@ -1390,6 +1535,11 @@
       alignSelectedKbs = new Set(alignParam.split(',').filter(Boolean));
       activeTab = 'align';
     }
+    const groupParam = params.get('group');
+    let storedGroup: string | null = null;
+    try { storedGroup = localStorage.getItem('reckons-review-group'); } catch { /* private window */ }
+    const initialGroup = groupParam ?? storedGroup;
+    if (initialGroup === 'entity' || initialGroup === 'source' || initialGroup === 'flat') groupMode = initialGroup;
     const agentParam = params.get('agent');
     if (agentParam) { agentFilter = agentParam; activeTab = 'incoming'; }
     const tabParam = params.get('tab');
@@ -1528,6 +1678,13 @@
           </Popover.Portal>
         </Popover.Root>
 
+        {#if graphMode === 'preview' && activeTab === 'incoming'}
+          <button class="chip follow-chip" class:active={followReview} aria-pressed={followReview}
+            onclick={() => (followReview = !followReview)}
+            title={followReview ? 'The graph shows the group under review and what it touches. Click for the whole graph.' : 'The graph shows everything. Click to follow the group under review.'}>
+            <span class="lbl mono">{followReview ? 'following review' : 'whole graph'}</span>
+          </button>
+        {/if}
         {#if graphMode === 'preview'}
           <div class="node-search-wrap">
             <input
@@ -1653,6 +1810,8 @@
     <div class="graph-render">
       {#if graphMode === 'preview' && focusedLabel}
         <span class="focus-badge" title={focusedLabel}>◉ {focusedLabel}</span>
+      {:else if graphMode === 'preview' && scoped && activeGroup}
+        <span class="focus-badge" title={activeGroup.label}>reviewing {activeGroup.label}</span>
       {/if}
 
       <!-- Node details (left) + scoped chat — shown when a node is selected in preview OR overlay -->
@@ -1866,46 +2025,49 @@
           <div class="gates">
             <span class="gate-line mono">{routingLine}</span>
             <div class="gate-chips">
-              <button class="gc" class:active={gateFilter === 'user'} onclick={() => (gateFilter = 'user')}
+              <button class="gc" class:active={effectiveGate === 'user'} onclick={() => (gateFilter = 'user')}
                 title="Only you can settle these — your domain, your decision, your principles">
                 yours <span class="gc-n">{routed.user.length}</span>
               </button>
               {#if routed.machine.length > 0}
-                <button class="gc gc-machine" class:active={gateFilter === 'machine'} onclick={() => (gateFilter = 'machine')}
+                <button class="gc gc-machine" class:active={effectiveGate === 'machine'} onclick={() => (gateFilter = 'machine')}
                   title="A script settles these — a path either exists or it does not. They should never have needed you.">
                   a script can settle <span class="gc-n">{routed.machine.length}</span>
                 </button>
               {/if}
               {#if routed.agent.length > 0}
-                <button class="gc gc-agent" class:active={gateFilter === 'agent'} onclick={() => (gateFilter = 'agent')}
+                <button class="gc gc-agent" class:active={effectiveGate === 'agent'} onclick={() => (gateFilter = 'agent')}
                   title="A reviewing agent settles these — did the cited passage actually say this?">
                   an agent can settle <span class="gc-n">{routed.agent.length}</span>
                 </button>
               {/if}
-              <button class="gc gc-all" class:active={gateFilter === 'all'} onclick={() => (gateFilter = 'all')}>
+              <button class="gc gc-all" class:active={effectiveGate === 'all'} onclick={() => (gateFilter = 'all')}>
                 all <span class="gc-n">{diff.entries.length}</span>
               </button>
             </div>
           </div>
         {/if}
 
-        {#if diffSummary}
-          <div class="ds-cards">
-            {#if diffSummary.newSummary && diffSummary.newSummary !== 'None.'}
-              <div class="ds-card ds-new"><h4 class="ds-h mono">new</h4><p>{diffSummary.newSummary}</p></div>
-            {/if}
-            {#if diffSummary.reinforcingSummary && diffSummary.reinforcingSummary !== 'None.'}
-              <div class="ds-card ds-reinforce"><h4 class="ds-h mono">reinforcing</h4><p>{diffSummary.reinforcingSummary}</p></div>
-            {/if}
-            {#if diffSummary.conflictingSummary && diffSummary.conflictingSummary !== 'None.'}
-              <div class="ds-card ds-conflict"><h4 class="ds-h mono">conflicts</h4><p>{diffSummary.conflictingSummary}</p></div>
-            {/if}
-          </div>
-        {:else if diff.entries.length > 0}
-          <button class="ghost-btn" onclick={loadSummary} disabled={summaryLoading}>
-            {summaryLoading ? 'summarizing...' : 'summarize changes'}
-          </button>
-        {/if}
+        <!-- The automatic summary of what is under review: inside the active group's card when grouped,
+             here when the list is flat. -->
+        {#snippet summaryCards()}
+          {#if diffSummary}
+            <div class="ds-cards" data-testid="review-summary">
+              {#if diffSummary.newSummary && !/^none\b/i.test(diffSummary.newSummary)}
+                <div class="ds-card ds-new"><h4 class="ds-h mono">new</h4><p>{diffSummary.newSummary}</p></div>
+              {/if}
+              {#if diffSummary.reinforcingSummary && !/^none\b/i.test(diffSummary.reinforcingSummary)}
+                <div class="ds-card ds-reinforce"><h4 class="ds-h mono">reinforcing</h4><p>{diffSummary.reinforcingSummary}</p></div>
+              {/if}
+              {#if diffSummary.conflictingSummary && !/^none\b/i.test(diffSummary.conflictingSummary)}
+                <div class="ds-card ds-conflict"><h4 class="ds-h mono">conflicts</h4><p>{diffSummary.conflictingSummary}</p></div>
+              {/if}
+            </div>
+          {:else if summaryLoading}
+            <p class="ds-loading mono">summarizing…</p>
+          {/if}
+        {/snippet}
+        {#if groupMode === 'flat'}{@render summaryCards()}{/if}
 
         {#if diff.entries.length === 0}
           <div class="empty-state">
@@ -2236,29 +2398,53 @@
           {/if}
 
           <div class="bulk-bar">
-            <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing}>
-              {isProcessing ? 'accepting...' : 'accept all new'}
-            </button>
-            <button class="group-toggle" class:active={groupByEntity}
-              onclick={() => (groupByEntity = !groupByEntity)}
-              title="Group facts by the entity they describe">
-              {groupByEntity ? 'by entity' : 'flat list'}
-            </button>
-            {#if bulkResult}<p class="bulk-result mono">{bulkResult}</p>{/if}
+            <!-- Absent, not disabled, at zero: a dead "accept all 0" is one more control to read past. -->
+            {#if acceptableAll > 0}
+              <button class="bulk-btn" onclick={acceptAll} disabled={isProcessing}
+                title="Accept every shown fact that can go in one decision. Facts that disagree with something are held back.">
+                {isProcessing ? 'accepting...' : `accept all ${acceptableAll}`}
+              </button>
+            {/if}
+            <div class="group-modes" role="group" aria-label="Group facts">
+              {#each GROUP_MODES as m (m.id)}
+                <button class="group-toggle" class:active={groupMode === m.id} aria-pressed={groupMode === m.id}
+                  onclick={() => setGroupMode(m.id)} title={m.title}>{m.label}</button>
+              {/each}
+            </div>
+            {#if bulkResult}<p class="bulk-result mono" role="status">{bulkResult}</p>{/if}
             {#if error}<p class="error-text">{error}</p>{/if}
           </div>
 
-          {#if groupByEntity}
-            <div class="entity-cards" data-testid="entity-cards">
-              {#each entityGroups as g (g.iri)}
-                <div class="entity-card" class:spotlit={g.spotlight}>
+          {#if groupMode !== 'flat'}
+            <div class="entity-cards" data-testid={groupMode === 'entity' ? 'entity-cards' : 'source-cards'}>
+              {#each reviewGroups as g (g.key)}
+                {@const acceptable = g.entries.length - g.held}
+                {@const isActive = activeGroup?.key === g.key}
+                <div class="entity-card" class:spotlit={g.spotlight} class:active-group={isActive}>
                   <div class="entity-head">
-                    <span class="entity-label">{g.label}</span>
-                    <span class="entity-count mono">{g.entries.length} fact{g.entries.length === 1 ? '' : 's'}</span>
+                    <button class="entity-label" onclick={() => (activeGroupKey = g.key)}
+                      title={isActive ? 'Under review: the graph and the summary follow this group' : 'Review this group: the graph and the summary follow it'}
+                      aria-current={isActive ? 'true' : undefined}>{g.label}</button>
+                    <span class="entity-count mono">{g.entries.length} fact{g.entries.length === 1 ? '' : 's'}{#if g.held} · {g.held} held back{/if}</span>
                     <span class="entity-gate mono gate-{g.gate}">{g.gate}</span>
+                    <span class="group-actions">
+                      {#if acceptable > 0}
+                        <button class="group-accept mono" disabled={isProcessing} onclick={() => { activeGroupKey = g.key; acceptEntries(g.entries); }}
+                          title={g.held ? `Accept ${acceptable}; the ${g.held} held back above stay for a decision of their own` : `Accept all ${acceptable}`}>accept {acceptable}</button>
+                      {/if}
+                      {#if confirmRejectKey === g.key}
+                        <button class="group-reject confirm mono" disabled={isProcessing} onclick={() => rejectEntries(g.entries)}>reject {g.entries.length}?</button>
+                        <button class="group-cancel mono" onclick={() => (confirmRejectKey = null)}>keep</button>
+                      {:else}
+                        <button class="group-reject mono" disabled={isProcessing} onclick={() => (confirmRejectKey = g.key)}
+                          title="Reject every fact in this group, including any held back">reject all</button>
+                      {/if}
+                    </span>
                   </div>
+                  {#if isActive}{@render summaryCards()}{/if}
                   <div class="entry-list">
                     {#each g.entries as e (e.incoming.id)}
+                      {#if holdById.get(e.incoming.id)}<p class="held-reason mono">held back: {holdById.get(e.incoming.id)}</p>{/if}
                       {@render entryCard(e)}
                     {/each}
                   </div>
@@ -3575,6 +3761,21 @@
     font-size: 0.78rem;
   }
   .group-toggle.active { border-color: var(--accent); color: var(--accent); }
+  .group-modes { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; }
+  .entity-card.active-group { border-color: var(--accent); }
+  .entity-head .entity-label { background: none; border: 0; padding: 0; color: inherit; font-family: inherit; cursor: pointer; text-align: left; }
+  .entity-head .entity-label:hover { color: var(--accent); }
+  .group-actions { margin-left: auto; display: inline-flex; gap: 0.3rem; flex-wrap: wrap; }
+  .group-accept, .group-reject, .group-cancel {
+    font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: var(--rad-sm); cursor: pointer;
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+  }
+  .group-accept { border-color: var(--accent); color: var(--accent); }
+  .group-accept:hover { background: var(--accent-soft); }
+  .group-reject:hover, .group-reject.confirm { border-color: var(--danger); color: var(--danger); }
+  .group-accept:disabled, .group-reject:disabled { opacity: 0.4; cursor: not-allowed; }
+  .held-reason { font-size: 0.68rem; color: var(--data); margin: 0.4rem 0 0.1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  .ds-loading { font-size: 0.72rem; color: var(--muted); margin: 0.4rem 0; }
   .entity-cards { display: flex; flex-direction: column; gap: 0.7rem; }
   .entity-card {
     border: 1px solid var(--line);
@@ -3584,6 +3785,7 @@
   .entity-card.spotlit { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
   .entity-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     padding: 0.1rem 0.15rem 0.45rem;
@@ -3591,7 +3793,6 @@
   .entity-label { font-weight: 600; font-size: 0.9rem; }
   .entity-count { font-size: 0.72rem; color: var(--muted, #888); }
   .entity-gate {
-    margin-left: auto;
     font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;

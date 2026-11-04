@@ -590,3 +590,7 @@ kb:threejs-example-nodes rdf:type ktype:Feature ;
     kpred:has-status "in-progress" ;
     kpred:description "Official WebGL/WebGPU example links can be attached to a node and explicitly loaded in a sandboxed frame. A separate CSP, graphics checks, error/context-loss reports, render deadline and heartbeat watchdog provide failure containment; browser/GPU-process crashes cannot be guaranteed contained. No remote code is run by merely importing or opening a graph." ;
     kpred:tested-by "src/lib/3d/__tests__/three-example.test.ts", "tests/e2e/three-example.test.ts" .
+
+kb:triple-check a ktype:Feature ; rdfs:label "Triple Check and research comparison views" ;
+    kpred:has-status "in-progress" ;
+    kpred:description "Feature branch implements optional continuous per-statement web and local-space evidence, reference taxonomy suggestions through Ollama, reactive conflict notices, focused repository comparison views and recoverable purpose organization. Not deployed. Live provider classification quality, evidence export and enterprise authorization remain outside the implemented local scope." .
