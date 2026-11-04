@@ -34,6 +34,7 @@
   import ArchiveReferenceDialog from '$lib/components/ArchiveReferenceDialog.svelte';
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
+  import { initOllamaModelNotice } from '$lib/stores/ollama-model-notice';
   import { initViewport } from '$lib/stores/viewport.svelte';
   import { readCurrentsSettings } from '$lib/rdf/currents';
   import { startCurrentsPolling } from '$lib/integrations/n8n/currents-poll';
@@ -96,6 +97,8 @@
   onMount(async () => {
     // Register download consent handlers before any model loading can occur
     initDownloadConsent();
+    // Before any Ollama call: a chosen model that is not installed must never be swapped silently
+    initOllamaModelNotice();
 
     // Load in background; show UI immediately for testing
     Promise.all([loadAll(), loadSettings(), loadTurtleSettings(), loadGlbOverrides(), loadGifOverrides(), loadIcon2dOverrides()]).then(async () => {
