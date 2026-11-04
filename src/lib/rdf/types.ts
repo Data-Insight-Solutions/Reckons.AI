@@ -506,7 +506,6 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   // F183.5 bench review: what a bench branch differs by and what was measured, literal attributes of the branch entity.
   ...['differs-by', 'seconds', 'peak-vram-mib', 'peak-ram-mib', 'output-bytes', 'checks-passed', 'checks-failed', 'fps', 'vision-hint', 'scene-file']
     .map((n) => `urn:kbase:predicate/${n}`),
-
   ...JOB_ATTRIBUTE_PREDICATES,
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
