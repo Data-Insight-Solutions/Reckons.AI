@@ -472,6 +472,17 @@ export const GENERATION_PROVENANCE_PREDICATES = [
   'urn:kbase:predicate/generated-gaussians',
 ] as const;
 
+/** F166.1.2: what a Job entity records about itself. Attributes in the detail panel, never value
+ *  vertices (a bare "queued" or "image" floating on the canvas would say nothing). The edges waits-for
+ *  and produced stay visible: they are the chain. */
+export const JOB_ATTRIBUTE_PREDICATES = [
+  'urn:kbase:predicate/job-stage',
+  'urn:kbase:predicate/job-state',
+  'urn:kbase:predicate/job-error',
+  'urn:kbase:predicate/requested-by',
+  'urn:kbase:predicate/queued-at',
+] as const;
+
 /** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
  * the raw data-URI or URL as a junk literal node, so they're metadata here.
@@ -495,6 +506,8 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   // F183.5 bench review: what a bench branch differs by and what was measured, literal attributes of the branch entity.
   ...['differs-by', 'seconds', 'peak-vram-mib', 'peak-ram-mib', 'output-bytes', 'checks-passed', 'checks-failed', 'fps', 'vision-hint', 'scene-file']
     .map((n) => `urn:kbase:predicate/${n}`),
+
+  ...JOB_ATTRIBUTE_PREDICATES,
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
 ]);

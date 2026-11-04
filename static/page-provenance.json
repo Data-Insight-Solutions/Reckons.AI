@@ -563,10 +563,10 @@
       "path": "features/generation-setup",
       "entity": "urn:reckons:feature/GenerationSetup",
       "graph": "docs-features.ttl",
-      "factHash": "7bd62434ffed204d",
+      "factHash": "dfc52be42fe9be5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "6ea35d4e3bbe54b2"
+      "pageHash": "ae6fa5af4efd83ed"
     },
     {
       "path": "features/git-analysis-features",

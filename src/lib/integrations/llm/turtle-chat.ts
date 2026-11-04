@@ -74,6 +74,26 @@ function buildReviewSection(ctx: KBContext): string {
   return `\n\n---\nVISUAL REVIEW — this graph is a visual-test story with ${ctx.reviewSteps!.length} step(s). Each step captured a screen; walk them IN ORDER and review the picture, not the graph. The steps (with their IRIs — use these in adjust_view selectEntity to bring each screenshot on screen):\n${steps}`;
 }
 
+/**
+ * F166.1.2: tell Shelly what the person's own machine can make right now, and how to ask for it.
+ * Written from the runner's live capabilities, so she never offers a stage that is missing and
+ * never claims she "cannot generate images" when the honest answer is "your runner is not
+ * connected" (kb:shelly-generation-jobs constraint).
+ */
+export function buildJobsSection(ctx: KBContext): string {
+  const stages = ctx.localJobs?.stages ?? [];
+  if (!ctx.localJobs) return `\n\n---\nLOCAL JOBS — no local generation runner is connected. If asked to make images, videos or splats, say that generation runs on the person's own computer and needs the local runner connected (Generated assets story, or the setup guide at /docs/features/generation-setup). Do not say you are unable to make images in principle, and do not propose queue_jobs.`;
+  const ready = stages.filter(s => s.available).map(s => s.stage);
+  const missing = stages.filter(s => !s.available).map(s => `${s.stage} (${s.reason ?? 'unavailable'})`);
+  if (!ready.length) return `\n\n---\nLOCAL JOBS — the local runner is connected but nothing can run: ${missing.join('; ')}. Say what is missing; do not propose queue_jobs.`;
+  return `\n\n---\nLOCAL JOBS — the person's own computer can make: ${ready.join(', ')}.${missing.length ? ` Not available: ${missing.join('; ')}.` : ''}
+To make things, end your message with ONE queue_jobs action listing every job. Each job is {"stage":"image","prompt":"..."} or a derivation {"stage":"splat","from":N} / {"stage":"video","from":N,"prompt":"motion words"} where N is the 0-based index of an EARLIER image job in the same list. At most 12 jobs. Example, two images with a splat each:
+<kb-actions>
+[{"type":"queue_jobs","label":"2 images, each with a Gaussian splat","jobs":[{"stage":"image","prompt":"a brass lantern on a wooden table, studio light"},{"stage":"splat","from":0},{"stage":"image","prompt":"a ceramic teapot on a linen cloth, soft daylight"},{"stage":"splat","from":2}]}]
+</kb-actions>
+When asked for several DIFFERENT images, write a distinct, specific prompt for each. The person approves the whole list once; jobs run one at a time on their GPU (roughly 15 s per image, 40 s per splat, 60 s per video), and each result appears in this knowledge base with a Job entity recording it.`;
+}
+
 function buildContextSection(ctx: KBContext): string {
   if (ctx.reviewSteps?.length) return buildReviewSection(ctx);
   const entities = ctx.sampleEntities
@@ -85,7 +105,7 @@ function buildContextSection(ctx: KBContext): string {
   if (ctx.untypedEntityCount > 0) alerts.push(`${ctx.untypedEntityCount} entities have no type (use query_kb filter:"no-type" to see them)`);
   if (ctx.manualStatementCount > 0) alerts.push(`${ctx.manualStatementCount} manually added statements (use query_kb filter:"no-source")`);
 
-  return `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
+  return buildJobsSection(ctx) + `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
 }
 
 function parseActions(text: string): { clean: string; actions: KBAction[] } {

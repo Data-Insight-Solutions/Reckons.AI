@@ -52,6 +52,7 @@ describe('BUILT_IN_TYPES', () => {
     // because of which dialect wrote it.
     // F58.9.5: Image (box-flat), Video (box) and License (cylinder) reuse a shape because the
     // renderer has no unused shape left; they differ by color and icon, like Document and Web Page.
+    // F166.1.2: Job reuses box for the same reason.
     const SHARED_GEOMETRIES = new Set(['cone', 'tetrahedron', 'box-flat', 'torus-knot', 'box', 'cylinder']);
     const geoCounts = new Map<string, string[]>();
     for (const t of BUILT_IN_TYPES) {

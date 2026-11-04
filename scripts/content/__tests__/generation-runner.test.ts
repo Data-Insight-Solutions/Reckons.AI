@@ -3,17 +3,26 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GenerationRunner, lockOwnerAlive, prepareParent } from '../generation-runner';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GenerationRunner, lockOwnerAlive, prepareParent, queueJobName, runQueuedJob } from '../generation-runner';
+import { readDone, readQueue } from '../../agent/session-queue';
 import type { GenerationJob, GenerationRequest } from '../../../src/lib/generation/protocol';
 
+const availability = vi.hoisted(() => ({ available: false }));
 vi.mock('../gen-assets.js', () => ({
-  generationAvailability: () => ({ available: false, reason: 'Synthetic missing model' }),
+  generationAvailability: () => availability.available ? { available: true } : { available: false, reason: 'Synthetic missing model' },
   generateStage: vi.fn(),
 }));
 const directories: string[] = [];
 const temp = () => { const dir = mkdtempSync(join(tmpdir(), 'generation-test-')); directories.push(dir); return dir; };
-afterEach(() => directories.forEach(dir => rmSync(dir, { recursive: true, force: true })));
+// The shared queue lives under XDG_STATE_HOME; never let a test write the real one.
+const savedState = process.env.XDG_STATE_HOME;
+beforeEach(() => { process.env.XDG_STATE_HOME = temp(); availability.available = false; });
+afterEach(() => {
+  process.env.XDG_STATE_HOME = savedState;
+  directories.splice(0).forEach(dir => rmSync(dir, { recursive: true, force: true }));
+});
+const status = (dir: string) => JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8'));
 
 const parent: GenerationRequest = {
   version: 1, id: 'd67cf353-5af2-404b-b93d-41d10ffb6f15', spaceId: 'synthetic-space',
@@ -61,7 +70,7 @@ describe('private generation queue', () => {
     const workspace = temp();
     const runner = new GenerationRunner(workspace);
     try {
-      expect(() => new GenerationRunner(workspace)).toThrow();
+      expect(() => new GenerationRunner(workspace)).toThrow('already serving');
       const dir = join(runner.jobs, parent.id);
       mkdirSync(dir);
       writeFileSync(join(dir, 'request.json'), JSON.stringify(parent));
@@ -72,6 +81,13 @@ describe('private generation queue', () => {
       runner.tick();
       expect(JSON.parse(readFileSync(join(dir, 'status.json'), 'utf8'))).toEqual(result);
     } finally { runner.close(); }
+  });
+  it('never takes a lock held by a live queue worker', () => {
+    const workspace = temp();
+    const lock = join(workspace, '.reckons-generation', 'runner.lock');
+    mkdirSync(lock, { recursive: true });
+    writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }));
+    expect(() => new GenerationRunner(workspace)).toThrow('already serving');
   });
   it('honors cancellation before dispatch and refuses replay of interrupted jobs', () => {
     const runner = new GenerationRunner(temp());
@@ -120,11 +136,89 @@ describe('runner lock', () => {
     const gone = () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }); };
     expect(lockOwnerAlive(4242, () => false)).toBe(false);
     expect(lockOwnerAlive(4242, live, () => 'node tsx scripts/content/generation-runner.ts --workspace=x')).toBe(true);
+    expect(lockOwnerAlive(4242, live, () => 'node tsx scripts/agent/queue-worker.ts --workspace=x')).toBe(true);
     expect(lockOwnerAlive(4242, live, () => 'code eslint-server')).toBe(false);
     expect(lockOwnerAlive(4242, live, gone, () => true)).toBe(false);
     expect(lockOwnerAlive(4242, live, gone, () => false)).toBe(true);
     expect(lockOwnerAlive(process.pid)).toBe(true);
     expect(lockOwnerAlive(undefined)).toBe(false);
+  });
+});
+
+describe('generation through the shared local-job queue (F166.1.2)', () => {
+  const runner = () => new GenerationRunner(temp());
+  const submit = (r: GenerationRunner, req: GenerationRequest) => {
+    const dir = join(r.jobs, req.id);
+    mkdirSync(dir);
+    writeFileSync(join(dir, 'request.json'), JSON.stringify(req));
+    return dir;
+  };
+  it('enqueues an available request once, as a fixed argv that carries no prompt and skips Ollama', () => {
+    availability.available = true;
+    const r = runner();
+    try {
+      submit(r, parent);
+      r.tick();
+      r.tick();
+      const queue = readQueue();
+      expect(queue).toHaveLength(1);
+      expect(queue[0]).toMatchObject({ name: queueJobName(parent), ollama: false });
+      expect(queue[0].gpu).toBeUndefined(); // a GPU job, so the GPU gate applies
+      expect(queue[0].argv.at(-1)).toBe(`--job=${join(r.jobs, parent.id)}`);
+      expect(queue[0].argv.join(' ')).not.toContain(parent.prompt);
+    } finally { r.close(); }
+  });
+  it('holds a derivation until its image completes, and fails it when the image does not', () => {
+    availability.available = true;
+    const r = runner();
+    try {
+      submit(r, parent);
+      submit(r, request);
+      r.tick();
+      expect(readQueue().map(j => j.name)).toEqual([queueJobName(parent)]);
+      rmSync(join(r.jobs, parent.id), { recursive: true });
+      const { job } = parentFixture(r.jobs); // the image completed
+      r.tick();
+      expect(readQueue().map(j => j.name)).toContain(queueJobName(request));
+      // Same chain, failed image: the splat is failed without reaching the queue.
+      const other = { ...request, id: '7c6da8a8-1574-46bb-97fd-453db308379d' };
+      const otherDir = submit(r, other);
+      writeFileSync(join(r.jobs, parent.id, 'status.json'), JSON.stringify({ ...job, state: 'failed', receipt: undefined, error: 'x' }));
+      r.tick();
+      expect(status(otherDir).error).toContain('source image');
+      expect(readQueue().map(j => j.name)).not.toContain(queueJobName(other));
+    } finally { r.close(); }
+  });
+  it('drops a cancelled job from the queue before it starts, and fails one the queue lost', () => {
+    availability.available = true;
+    const r = runner();
+    try {
+      const dir = submit(r, parent);
+      r.tick();
+      writeFileSync(join(dir, 'cancel.json'), '{}');
+      r.tick();
+      expect(status(dir).state).toBe('cancelled');
+      expect(readQueue()).toHaveLength(0);
+      expect(readDone()).toMatchObject([{ name: queueJobName(parent), outcome: 'dropped' }]);
+      const lost = submit(r, { ...parent, id: 'a67cf353-5af2-404b-b93d-41d10ffb6f15' });
+      writeFileSync(join(lost, 'enqueued.json'), '{}'); // enqueued earlier, then refused by the breaker
+      r.tick();
+      expect(status(lost).error).toContain('did not run');
+    } finally { r.close(); }
+  });
+  it('a queue job is a no-op once handled, honors cancel, and fails loudly when the tool is missing', async () => {
+    const dir = temp();
+    const jobDir = join(dir, parent.id);
+    mkdirSync(jobDir);
+    writeFileSync(join(jobDir, 'request.json'), JSON.stringify(parent));
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    expect(await runQueuedJob(jobDir)).toBe(1);
+    expect(status(jobDir)).toMatchObject({ state: 'failed', error: 'Synthetic missing model' });
+    expect(await runQueuedJob(jobDir)).toBe(0); // replay does not rerun
+    rmSync(join(jobDir, 'status.json'));
+    writeFileSync(join(jobDir, 'cancel.json'), '{}');
+    expect(await runQueuedJob(jobDir)).toBe(0);
+    expect(status(jobDir).state).toBe('cancelled');
   });
 });
 
