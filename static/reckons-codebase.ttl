@@ -890,7 +890,9 @@ code:scripts  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/visual-evidence-report.ts" ;
               kpred:has-file "scripts/visual-baseline-update.ts" ;
               kpred:has-file "scripts/__tests__/visual-evidence-contract.test.ts" ;
-              kpred:has-file "scripts/sveltia-auth-secrets.sh" .
+              kpred:has-file "scripts/sveltia-auth-secrets.sh" ;
+              kpred:has-file "scripts/offline/lib/import-graph.ts" ;
+              kpred:has-file "scripts/offline/__tests__/import-graph.test.ts" .
 
 code:sample-kgs  rdf:type     ktype:Concept ;
                  rdfs:label   "Sample Knowledge Graphs" ;
