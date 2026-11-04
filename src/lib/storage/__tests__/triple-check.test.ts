@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { KBaseDB, SettingsRecord } from '../db';
 import type { TripleCheckReport } from '$lib/rdf/triple-check';
 import { runTripleCheck, type CheckDependencies } from '../triple-check';
-import { selectNextClaim } from '$lib/rdf/triple-check';
+import { selectNextClaim, describeTripleCheck } from '$lib/rdf/triple-check';
 import { researchFixture } from '../../../../scripts/starter/research-fixture';
 const claim = researchFixture()[0].claims[0], config = { tripleCheckEnabled: true, tavilyApiKey: 'synthetic', preferredBackend: 'ollama', tripleCheckDailyLimit: 1 } as SettingsRecord;
 function setup() {
@@ -69,5 +69,27 @@ describe('durable Triple Check worker', () => {
     await runTripleCheck(db, 'current', off, deps, new AbortController().signal);
     await runTripleCheck(db, 'current', { ...off, tripleCheckModel: 'changed' }, deps, new AbortController().signal);
     expect(rows).toHaveLength(1); expect(rows[0].configuration).toContain('changed');
+  });
+});
+
+describe('Triple Check status line (honest status)', () => {
+  it('never says "nothing new to add" when the web was not checked', () => {
+    const line = describeTripleCheck({ warnings: ['Web not checked: offline.'], proposed: 0 });
+    expect(line).not.toContain('nothing new');
+    expect(line).toContain('Web not checked: offline.');
+  });
+  it('an incomplete check says it will retry, with the reason', () => {
+    expect(describeTripleCheck({ incomplete: true, warnings: ['Search failed.'] }))
+      .toBe('Check incomplete; it will retry. Search failed.');
+  });
+  it('a full check with no findings and no warnings says nothing new', () => {
+    expect(describeTripleCheck({ warnings: [], proposed: 0 })).toMatch(/nothing new to add\.$/);
+  });
+  it('proposals are reported, and a warning beside them is kept', () => {
+    expect(describeTripleCheck({ warnings: [], proposed: 2 })).toMatch(/^Added 2 .* to Review from what it found\.$/);
+    expect(describeTripleCheck({ warnings: ['Daily limit reached.'], proposed: 1 })).toContain('Daily limit reached.');
+  });
+  it('no report yet means watching', () => {
+    expect(describeTripleCheck(null)).toMatch(/^Watching for new and changed /);
   });
 });

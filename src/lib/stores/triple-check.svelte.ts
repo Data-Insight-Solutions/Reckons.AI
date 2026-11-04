@@ -3,7 +3,7 @@ import { db, getSettings } from '$lib/storage/db';
 import { getCurrentKbId, getRegistry } from '$lib/storage/kb-registry';
 import { loadGraphsForQuery } from '$lib/storage/multi-graph-store';
 import { runTripleCheck } from '$lib/storage/triple-check';
-import type { EvidenceProposal } from '$lib/rdf/triple-check';
+import { describeTripleCheck, type EvidenceProposal } from '$lib/rdf/triple-check';
 import { persistSourceBatch, prepareStatementsForWrite } from '$lib/stores/kb.svelte';
 import { searchTripleCheck, scrapeTripleCheck } from '$lib/integrations/search/triple-check';
 import { judgeWebEvidence, judgeSpaceEvidence, tripleCheckProviderError } from '$lib/integrations/llm/triple-check';
@@ -40,9 +40,7 @@ export function startTripleCheck() {
           judge: (claim, sources, signal) => judgeWebEvidence(claim, sources, config, signal),
           judgeSpaces: (claim, sources, signal) => judgeSpaceEvidence(claim, sources, config, signal), propose,
         }, signal);
-        status = !result ? 'Watching for new and changed statements.'
-          : result.proposed ? `Added ${result.proposed} statement${result.proposed === 1 ? '' : 's'} to Review from what it found.`
-          : 'Checked a statement; nothing new to add.';
+        status = describeTripleCheck(result);
       });
     } catch { if (!lifetime.signal.aborted) status = 'Check incomplete; it will retry.'; }
     finally { running = false; active = null; }

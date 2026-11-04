@@ -135,3 +135,17 @@ export function evidenceProposals(claim: Statement, report: TripleCheckReport, h
   }
   return [...groups.values()];
 }
+
+/**
+ * The one-line status after a check. A check that skipped the web or failed part-way must say so:
+ * "nothing new to add" after an unreachable model or a missing search would claim a check that did
+ * not happen (kb:honest-status).
+ */
+export function describeTripleCheck(report: Pick<TripleCheckReport, 'incomplete' | 'warnings' | 'proposed'> | null): string {
+  if (!report) return 'Watching for new and changed statements.';
+  const note = report.warnings[0];
+  if (report.incomplete) return `Check incomplete; it will retry.${note ? ` ${note}` : ''}`;
+  const added = report.proposed ? `Added ${report.proposed} statement${report.proposed === 1 ? '' : 's'} to Review from what it found.` : '';
+  if (note) return added ? `${added} ${note}` : `Partly checked. ${note}`;
+  return added || 'Checked a statement; nothing new to add.';
+}
