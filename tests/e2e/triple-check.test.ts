@@ -23,14 +23,14 @@ for (const width of [1280, 390]) {
       await db.sources.put({ id: 'draft', title: 'Synthetic marketing draft', uri: 'note:synthetic', kind: 'note', ingestedAt: 1 });
       const other = createKb('Engineering reference'), foreign = new KBaseDB(other.id);
       await foreign.statements.put({ ...current, id: 'engineering', status: 'confirmed', sourceId: 'engineering-source', o: { kind: 'literal', value: '200' } }); foreign.close();
-      await updateSettings({ tripleCheckWebEnabled: false, prefer2D: true }); await loadAll();
+      await updateSettings({ prefer2D: true }); await loadAll();
     });
     // #544 removed the hosted search/scrape options: Triple Check now offers a SearXNG address (loopback
-    // by default) and a local evidence model, and "Check the internet" stays off here so the check is the
-    // fully local space comparison — no search GET, no model call, nothing that could leave the machine.
+    // by default) and a local evidence model. "Also check the internet" is left unset, which means off (opt-in,
+    // Matt 2026-11-04), so the check is the fully local space comparison — no search GET, no model call, nothing that could leave the machine.
     await enable.check(); await page.getByLabel('SearXNG address').fill('http://localhost:8888'); await page.getByLabel('Evidence model').selectOption('ollama');
     await expect(page.getByRole('status').filter({ hasText: 'Settings saved' })).toBeVisible(); await page.reload();
-    await expect(enable).toBeChecked(); await expect(page.getByLabel('SearXNG address')).toHaveValue('http://localhost:8888'); await expect(page.getByLabel('Evidence model')).toHaveValue('ollama'); await expect(page.getByRole('checkbox', { name: 'Check the internet', exact: true })).not.toBeChecked();
+    await expect(enable).toBeChecked(); await expect(page.getByLabel('SearXNG address')).toHaveValue('http://localhost:8888'); await expect(page.getByLabel('Evidence model')).toHaveValue('ollama'); await expect(page.getByRole('checkbox', { name: 'Also check the internet', exact: true })).not.toBeChecked();
     await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true }); await page.goto('/review?group=source');
     // What the check found is an ordinary pending statement from its own source, in the queue — not a panel beside it.
     const found = page.getByTestId('source-cards').locator('.entity-card').filter({ hasText: 'Engineering reference (another space)' });
@@ -42,10 +42,10 @@ for (const width of [1280, 390]) {
       const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); const { loadAll } = await runtimeImport('/src/lib/stores/kb.svelte.ts');
       await db.statements.update('fixture', { o: { kind: 'literal', value: '300' } }); await loadAll();
     });
-    await page.goto('/analyze'); await page.getByLabel('Current purposes — one per line').fill('Engineering comparison'); await page.getByRole('button', { name: 'Analyze and apply organization' }).click();
-    await expect(page.getByRole('status').filter({ hasText: 'Applied 1 purpose' })).toBeVisible();
-    const result = await page.evaluate(async () => { const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); return { original: await db.statements.get('fixture'), snapshots: await db.kbSnapshots.count(), members: (await db.statements.toArray()).filter((s: { p: { value: string } }) => s.p.value.endsWith('#member')).length }; });
-    expect(result.original.status).toBe('pending'); expect(result.original.o.value).toBe('300'); expect(result.snapshots).toBeGreaterThan(0); expect(result.members).toBe(1);
+    await page.goto('/analyze'); await page.getByLabel('Current purposes — one per line').fill('Engineering comparison'); await page.getByRole('button', { name: 'Analyze and propose organization' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Proposed 1 purpose' })).toBeVisible();
+    const result = await page.evaluate(async () => { const runtimeImport = (p: string) => import(/* @vite-ignore */ p); const { db } = await runtimeImport('/src/lib/storage/db.ts'); return { original: await db.statements.get('fixture'), snapshots: await db.kbSnapshots.count(), members: (await db.statements.toArray()).filter((s: { p: { value: string } }) => s.p.value.endsWith('#member')).map((s: { status: string }) => s.status) }; });
+    expect(result.original.status).toBe('pending'); expect(result.original.o.value).toBe('300'); expect(result.snapshots).toBeGreaterThan(0); expect(result.members).toEqual(['pending']); // a model's grouping is a proposal (Matt, 2026-11-04)
   });
   test(`Repository shortlist saves a bounded space view at ${width}px`, async ({ page }, testInfo) => {
     test.setTimeout(90000); await page.setViewportSize({ width, height: 900 }); await page.goto('/compare/repositories');
