@@ -1,0 +1,10 @@
+{
+  "$comment": "The showcase subject (F58.9 / kb:showcase-splat): one synthetic, generic, detail-rich object, kept apart from gen-briefs.json so npm run gen:assets does not regenerate it. Seed 11 was picked by eye from seeds 11, 23 and 42 at 1024 px (the whole object visible, the cleanest carving). Splat settings are the best of the sweep recorded on kb:showcase-splat.",
+  "slug": "ornate-music-box",
+  "label": "Ornate carved music box",
+  "imagePrompt": "An ornate hand-carved wooden music box with intricate floral filigree relief on every face, brass hinges and a small brass crank, a lid inlaid with a mother-of-pearl rose, three-quarter view from the front and slightly above, the whole object visible with its depth clear, studio product photo on a plain light grey background, soft even lighting, extremely detailed",
+  "videoPrompt": "",
+  "seed": 11,
+  "gaussians": 262144,
+  "role": "node"
+}

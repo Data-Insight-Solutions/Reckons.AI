@@ -23,6 +23,7 @@
   import BackgroundExampleControls from '$lib/components/BackgroundExampleControls.svelte';
   import type { ThreeExampleSession } from '$lib/3d/three-example-session.svelte';
   import { setMeta } from '$lib/stores/space-room';
+  import { splatDemand } from '$lib/stores/splat-demand.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import BackgroundSettingsControls from '$lib/components/BackgroundSettingsControls.svelte';
@@ -1359,6 +1360,7 @@
    * node click leave the app in the same state.
    */
   function openNodeFromThumb(key: string) {
+    splatDemand.request(key); // opening an entity asks for its on-demand splat (no-op for any other entity)
     expandedAssetKey = key;
     assetFullscreen = false;
     if (selected !== key) {
@@ -2990,6 +2992,13 @@
     </div>
     {/snippet}
     <div class="np-body">
+      {#if selected && splatDemand.deferred.has(selected) && !splatDemand.requested.has(selected)}
+        <!-- F58.9: a heavy entity splat is not loaded at startup (ENTITY_SPLAT_STARTUP_BUDGET). -->
+        <button class="np-act-btn np-act-primary np-load-splat" onclick={() => splatDemand.request(selected!)}
+          title="This splat has {(splatDemand.counts.get(selected) ?? 0).toLocaleString()} Gaussians, so it waits to be asked for">
+          ✦ Load 3D splat
+        </button>
+      {/if}
       <!-- Also known as — every other name this node answers to (entities only) -->
       {#if selectedIri}
       <div class="np-aliases">

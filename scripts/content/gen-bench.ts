@@ -179,7 +179,7 @@ function chooseGpu(): number {
 }
 
 /** Samples memory.used for every GPU into a file while a run executes (our event loop is blocked by the run, so a child does it). */
-function startVramMonitor(file: string) {
+export function startVramMonitor(file: string) {
   const fd = openSync(file, 'w');
   const p = spawn('nvidia-smi', ['--query-gpu=index,memory.used', '--format=csv,noheader,nounits', '-lms', '250'], { stdio: ['ignore', fd, 'ignore'] });
   // Per-process memory: Vulkan and CUDA children appear here, so the run's own footprint can be told
@@ -255,7 +255,7 @@ async function ensureSource(brief: string, work: string, gpu: number): Promise<s
   return out;
 }
 
-const pin = (gpu: number): Record<string, string> => ({ CUDA_VISIBLE_DEVICES: String(gpu), GGML_VK_VISIBLE_DEVICES: String(gpu) });
+export const pin = (gpu: number): Record<string, string> => ({ CUDA_VISIBLE_DEVICES: String(gpu), GGML_VK_VISIBLE_DEVICES: String(gpu) });
 
 async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBriefs: number, tier: Tier | 'all', gpu: number, work: string, waitS: number, judgeModel: string) {
   const records: RunRecord[] = [];
