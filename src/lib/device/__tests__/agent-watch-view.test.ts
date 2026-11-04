@@ -38,6 +38,9 @@ describe('headline', () => {
   it('names the queue state by kind', () => {
     expect(tile(snapshot({ queue: { kind: 'paused-ollama-down', queued: 3 } }), 'queue').level).toBe('bad');
     expect(tile(snapshot({ queue: { kind: 'paused-manual', queued: 3 } }), 'queue').level).toBe('warn');
+    const chain = tile(snapshot({ queue: { kind: 'paused-broken-chain', queued: 2, reason: 'a waiting on b; b waiting on a' } }), 'queue');
+    expect(chain.level).toBe('warn');
+    expect(chain.detail).toContain('waiting on b');
     const held = tile(snapshot({ queue: { kind: 'empty', held: ['panel-a', 'panel-b'] } }), 'queue');
     expect(held.level).toBe('warn');
   });

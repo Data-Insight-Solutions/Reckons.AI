@@ -17,6 +17,12 @@
  * held (heldSchedules) until the breaker is reset; any failed or refused schedule rests 30 min.
  * Each pass it also enqueues recurring jobs that are overdue (session-schedule.ts), once each.
  *
+ * JOB CHAINS (Matt 2026-11-03): a job whose --after predecessor never passed never runs; the
+ * worker records it once in the done log as 'blocked' (with the reason) and moves on. A deputy
+ * job (argv runs local-claude.sh) in a git worktree is checked for the known mislabel — a stalled
+ * deputy that exits 0 used to count as work done: the head before and after the run are recorded,
+ * and a clean exit that moved nothing is 'no-commit', not 'passed', and satisfies no chain link.
+ *
  * Usage: npm run agent:queue-worker [-- --idle-minutes=20] [--poll-seconds=60] [--stay]
  * Exits when the queue is empty unless --stay.
  *
@@ -24,11 +30,11 @@
  * http://localhost:11434 when unset; a job that merely does not need the GPU (notes-pull) is still
  * held while Ollama is down, because one gate is simpler than a per-job one.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { DEFAULT_IDLE_MINUTES, addJobs, heartbeatFresh, isGpuJob, isPaused, mutateQueue, newJob, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type QueueJob, type WorkerState } from './session-queue.js';
+import { DEFAULT_IDLE_MINUTES, addJobs, chainBlocked, chainStallReason, heartbeatFresh, isGpuJob, isPaused, mutateQueue, newJob, orderQueue, pickNext, readDone, readHeartbeatMtime, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
@@ -42,6 +48,15 @@ async function ollamaUp(): Promise<boolean> {
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** A deputy job runs scripts/agent/local-claude.sh; for those, a clean exit is not proof the work happened. */
+const isDeputy = (job: QueueJob): boolean => job.argv.some((a) => /local-claude\.sh$/.test(a));
+
+/** The head commit in the job's folder; '' when it is not a working tree with commits (the no-commit gate then cannot apply). */
+const gitHead = (cwd: string): string => {
+  try { return spawnSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).stdout.trim(); }
+  catch { return ''; }
+};
 
 function runJob(job: QueueJob): Promise<number> {
   const jobWatch = path.join(path.dirname(fileURLToPath(import.meta.url)), 'job-watch.ts');
@@ -111,13 +126,30 @@ async function main(): Promise<void> {
       const added = addJobs(selectDue(statuses, [], undefined, 5, held)).add;
       if (added.length) console.log(`queue-worker: enqueued overdue: ${added.map((a) => a.name).join(', ')}`);
     }
+    // JOB CHAINS: a job whose predecessor finished without passing can never run as things stand.
+    // Record it ONCE, 'blocked' with the reason, and take it out of the queue — re-running the
+    // predecessor is the user's call. Drained before classification so the state the window shows is
+    // about what is still live, and so a drained queue reads as empty on the next pass.
+    {
+      const blocked = chainBlocked(readQueue(), readDone());
+      if (blocked.length) {
+        const gone = new Set(blocked.map((b) => b.job.id));
+        mutateQueue((jobs) => ({
+          jobs: jobs.filter((j) => !gone.has(j.id)),
+          done: blocked.map(({ job, reason }) => ({ ...job, finishedAt: new Date().toISOString(), outcome: 'blocked' as const, reason })),
+          result: undefined,
+        }));
+        for (const b of blocked) console.log(`queue-worker: ${b.job.name} blocked — ${b.reason}`);
+      }
+    }
     const queue = orderQueue(readQueue());
     // Only ask nvidia-smi when a GPU job could actually start (session active, Ollama up, not paused).
     const gate = fresh && up && !isPaused() && queue.some(isGpuJob) ? await readGpuVerdict() : { ok: true as const };
     const gpuBlocked = gate.ok ? undefined : gate.reason;
-    const step = workerStep({ queue, running: false, heartbeatFresh: fresh, ollamaUp: up, manualPause: isPaused(), gpuBlocked });
+    const doneLog = readDone();
+    const step = workerStep({ queue, running: false, heartbeatFresh: fresh, ollamaUp: up, manualPause: isPaused(), gpuBlocked, done: doneLog });
     if (step.state !== lastState) {
-      const say = { 'paused-manual': `paused — PAUSE file present (queue.ts resume); ${queue.length} queued`, 'paused-resources': `paused — ${gpuBlocked}; ${queue.length} queued`, 'paused-idle': `paused — no session activity in ${idleMinutes} min; ${queue.length} queued`, 'paused-ollama-down': `paused — Ollama is down at ${OLLAMA}; ${queue.length} queued`, empty: 'queue empty', working: 'working', ready: 'ready' }[step.state];
+      const say = { 'paused-manual': `paused — PAUSE file present (queue.ts resume); ${queue.length} queued`, 'paused-resources': `paused — ${gpuBlocked}; ${queue.length} queued`, 'paused-broken-chain': `paused — ${step.reason ?? 'a chain is waiting on itself'}; ${queue.length} queued`, 'paused-idle': `paused — no session activity in ${idleMinutes} min; ${queue.length} queued`, 'paused-ollama-down': `paused — Ollama is down at ${OLLAMA}; ${queue.length} queued`, empty: 'queue empty', working: 'working', ready: 'ready' }[step.state];
       console.log(`queue-worker: ${say}`);
       lastState = step.state;
     }
@@ -127,15 +159,31 @@ async function main(): Promise<void> {
       await sleep(pollMs);
       continue;
     }
-    const job = pickNext(queue, gpuBlocked)!;
+    const job = pickNext(queue, gpuBlocked, doneLog, queue);
+    if (!job) { await sleep(pollMs); continue; } // only waiting jobs left (a chain cycle); the next pass says so
     writeWorker({ state: 'working', job: job.name, index: finished + 1, total: finished + queue.length, held: heldList });
+    // 'passed' must mean the work happened. A deputy job runs in a worktree: a clean exit that left
+    // the head unchanged is a stalled deputy (exit 0 was its failure mode), recorded no-commit.
+    const deputy = isDeputy(job);
+    const headBefore = deputy ? gitHead(job.cwd) : '';
     const code = await runJob(job);
     finished++;
+    let outcome: DoneJob['outcome'] = code === 0 ? 'passed' : code === 3 ? 'refused' : 'failed';
+    let reason: string | undefined;
+    let headAfter: string | undefined;
+    if (deputy && headBefore) {
+      headAfter = gitHead(job.cwd) || undefined;
+      if (outcome === 'passed' && headAfter === headBefore) {
+        outcome = 'no-commit';
+        reason = `deputy exited clean but no new commit: head ${headBefore.slice(0, 8)} unchanged in ${job.cwd}`;
+      }
+    }
     mutateQueue((jobs) => ({
       jobs: jobs.filter((j) => j.id !== job.id),
-      done: [{ ...job, finishedAt: new Date().toISOString(), outcome: code === 0 ? 'passed' : code === 3 ? 'refused' : 'failed', exitCode: code }],
+      done: [{ ...job, finishedAt: new Date().toISOString(), outcome, exitCode: code, ...(reason ? { reason } : {}), ...(headBefore ? { headBefore } : {}), ...(headAfter ? { headAfter } : {}) }],
       result: undefined,
     }));
+    if (reason) console.log(`queue-worker: ${job.name} ${outcome} — ${reason}`);
   }
 }
 

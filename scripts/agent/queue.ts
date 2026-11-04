@@ -1,7 +1,7 @@
 /**
  * npm run agent:queue — the local-job queue a session worker drains (F74.7).
  *
- *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate)
+ *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] [--after=<job>…] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate; --after names predecessors that must have a passed run, repeatable)
  *   queue.ts list                                                     queued jobs, then recurring jobs and when each is due
  *   queue.ts pause | resume                                           create / remove the PAUSE file; while it exists the worker starts nothing
  *   queue.ts drop <id>                                                remove a queued job (recorded as dropped)
@@ -90,16 +90,18 @@ function main(): void {
     const name = flag('name');
     const cwd = flag('cwd');
     const priority = flag('priority') !== undefined ? Number(flag('priority')) : undefined;
+    // Repeatable: --after=<name> --after=<id> … each names a predecessor this job runs after.
+    const after = flags.filter((a) => a.startsWith('--after=')).map((a) => a.slice('--after='.length).trim()).filter((a) => a.length > 0);
     if (!name || !cwd || argv.length === 0 || (priority !== undefined && !Number.isFinite(priority))) {
-      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] -- <argv…>');
+      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] [--after=<job>…] -- <argv…>');
       process.exit(2);
     }
-    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined)]);
+    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined, after)]);
     console.log(r.add.length ? `queued ${name} (${r.add[0].id})` : `already queued: ${name} in ${cwd}`);
   } else if (cmd === 'list') {
     const q = orderQueue(readQueue());
     console.log(`QUEUE ${queuePath()} — ${q.length} job(s)${isPaused() ? ' — PAUSED (queue.ts resume)' : ''}`);
-    for (const j of q) console.log(`  ${j.id}  ${j.name}${j.priority ? ` (p${j.priority})` : ''}  ${j.cwd}  ${j.argv.join(' ').slice(0, 90)}`);
+    for (const j of q) console.log(`  ${j.id}  ${j.name}${j.priority ? ` (p${j.priority})` : ''}${j.after?.length ? ` after:${j.after.join(',')}` : ''}  ${j.cwd}  ${j.argv.join(' ').slice(0, 90)}`);
     const { jobs, successes } = loadRecurring(root);
     const due = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(readDone())), Date.now());
     console.log(`RECURRING — ${due.length}: ${due.map(dueLabel).join(', ') || 'none'}`);
