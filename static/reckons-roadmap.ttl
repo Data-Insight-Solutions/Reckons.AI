@@ -11881,3 +11881,54 @@ kb:demo-narration-provider rdf:type ktype:Phase ;
 
 kb:demo-first-render kpred:measured "2026-11-05, FIRST RENDER, THIS MACHINE: npm run demo:render -- --workflow=generated-assets made a 63.4 s MP4 (1920x1080 H.264, AAC 62.8 s), WebVTT captions and a receipt whose output hash matches the file. Six Hume lines of 9.1-10.2 s, synthesized once and now cached; each step held 9.7-10.8 s. The workflow test passed in demo mode and, separately, unchanged without it (2 passed, 44 s). NOT YET: Matt's verdict on the video and on the six DRAFT lines (drafted by a Sonnet subagent, claims checked against the receipts)." ;
     kpred:honest-note "The six narration lines are DRAFTS until Matt approves them. Hume's TTS ends 2026-11-13 (kb:int-hume): any line he changes must be re-synthesized before then, or wait for F275.8." .
+
+# 2026-11-05 — Matt reviews the first demo; three follow-ups (in chat with Claude Code).
+kb:demo-first-render kpred:evidence "MATT, 2026-11-05, after watching it: 'That demo video was pretty good. The receipt comments are a bit ambigious, but more importantly the first steps loading the graph did not visually match the description of going to the about page.' Causes found the same day: step 1 passes through loading, the example list (about 2 s), the map of spaces and loading again, so a line about the About page played mostly over other screens; and the test's own 1280x800 viewport overrode the demo's 1920x1080, leaving grey margins in every frame (not reported by Matt; seen in sampled frames). Fixed: the line now follows the screens, 'receipt' became 'a saved record of how it was made', and a demo render keeps 1920x1080." .
+
+kb:demo-composite-asset rdf:type ktype:Phase ;
+    rdfs:label "F275.9 — a rendered demo is a composite asset in the graph: transcript, narration audio, screen capture, and the finished video" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-mux ;
+    kpred:relates-to   kb:media-entity-types ;
+    kpred:relates-to   kb:generation-composition ;
+    kpred:decided      "MATT, 2026-11-05: 'the demo video should be an available multi-part composite asset, it has a transcript, audio, video screen capture.'" ;
+    kpred:description  "A render writes entities, not only files: one composite asset (the finished demo) with kpred:has-part links to its Transcript (the narration text with its timings, the WebVTT), its narration Audio (the mixed track, and each line's clip with its voice and source), and its screen-capture Video; each part carries its hash, and the composite carries the receipt's provenance (commit, graph hash, voices, tools). Transcript and Audio join the built-in media types beside Prompt, Image, Video, Model3D, GaussianSplat and License (F58.9.5). The parts are what F167.1 edits at the cheapest layer: change a line in the transcript, re-voice that line, re-mux, without recording again." ;
+    kpred:done-test    "unit tests: the render's receipt converts to a composite entity with exactly one transcript, one mixed audio, one screen capture and one finished video, each with a hash that matches its file, and per-line audio parts with voice and source; Transcript and Audio are built-in types with their attributes listed; importing the composite into a space shows the parts as linked nodes." .
+
+kb:demo-visual-qa rdf:type ktype:Phase ;
+    rdfs:label "F275.10 — demo QA in the visual testing suite: frames sampled at every step, checked, and compared with the narration" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:video-frame-sampling ;
+    kpred:relates-to   kb:visual-testing ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:decided      "MATT, 2026-11-05: 'Visual testing suite should be re-used and video sampling should be a working part of the visual testing suite.'" ;
+    kpred:description  "After the mux, frames are sampled at each step's start, middle and end (the marks say where). Deterministic checks fail the render: the app fills the frame (no uniform margins, the defect of the first render), no frame at a step's middle is a loading screen or blank. Then the visual suite's local vision model (tests/visual/vision-vlm.ts, qwen2.5vl) answers per step whether the middle frame shows what the narration line says; that answer is advice written into the receipt, never a pass. The same tiers as F281: rules decide, the model names suspected mismatches for a person." ;
+    kpred:done-test    "on the first render's video (grey margins) the margin check fails and names the steps; on a fixed render it passes; a synthetic frame sequence with a loading screen mid-step fails; the vision answer for each step is stored in the receipt as advice with the model name, and an unparseable answer is marked invalid rather than as a match." .
+
+kb:video-frame-sampling rdf:type ktype:Phase ;
+    rdfs:label "F93.1 — frame sampling as a working part of the visual testing suite" ;
+    kpred:part-of      kb:video-asset-analysis ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:visual-testing ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:decided      "MATT, 2026-11-05: 'Visual testing suite should be re-used and video sampling should be a working part of the visual testing suite.'" ;
+    kpred:description  "One sampler for every video the project checks: frames at given times or at a fixed cadence, via ffmpeg, as PNG files and as small greyscale buffers for rules. Used by generated-asset QA (F281, which today compares only the first and last frame for motion), by demo QA (F275.10), and by the visual suite's vision-model checks. Its own frame rules (blank, uniform margins, near-duplicate of the previous sample) live beside it. Sampling is a rule (script tier); reasoning about a frame is the vision model's (agent tier, advice)." ;
+    kpred:done-test    "unit tests on synthetic videos made with ffmpeg: frames come back at the asked times within one frame; a padded video is found to have margins and an unpadded one is not; a black video is blank; asset-checks' motion measure uses the shared sampler and gives the same numbers as before on the committed generated clips." ;
+    kpred:evidence     "2026-11-05: the first demo render had grey margins around the app in every frame (a 1280x800 viewport inside 1920x1080), and step 1's narration did not match its screens. Both were found only by Opus extracting a contact sheet by hand with ffmpeg; asset-checks.ts samples only the first and last frame of a clip, for motion." ;
+    kpred:extends      "scripts/content/asset-checks.ts (its ffmpeg frame read and judgeVideo motion measure: move the frame read into the shared sampler, keep judgeVideo's results identical) and the visual suite in tests/visual/ (vision-vlm.ts is the vision-model caller F275.10 uses later; do not change it here)." ;
+    kpred:non-goal     "No vision-model calls in this phase; no demo QA wiring (that is F275.10); no new npm dependency (ffmpeg and ffprobe as installed); no change to judgeVideo's thresholds or results." .
+
+kb:proposal-outcome-assets rdf:type ktype:Phase ;
+    rdfs:label "F223.5 — a proposal names its outcome as a list of assets, and closes when they exist" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:proposal-shape ;
+    kpred:relates-to   kb:demo-composite-asset ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:decided      "MATT, 2026-11-05: 'Reckoning needs the asset list as an outcome for the proposal.'" ;
+    kpred:description  "Each option of a reckoning's proposal lists the assets it will produce (for example: a demo video, with its transcript, narration audio and screen capture; a poster as SVG and PDF; a splat), each with its type and how it would be made (local job, Open in app, or an outside service, F117). The list is part of the proposal's target shape: the proposal is complete when every listed asset exists in the graph with a passing check, which is a rule, not a model's opinion (the F223.1 lifecycle)." ;
+    kpred:done-test    "unit tests: a proposal option with an asset list validates against the proposal shape; the target shape requires each listed asset type with a passing receipt; the proposal moves to completed only when all exist, and an asset that failed its check keeps it active; the reckoning page lists the assets under each option." .
+
+kb:demo-narration-provider kpred:evidence "2026-11-05, HUGGING FACE, trending text-to-speech models (huggingface.co/api/models, pipeline_tag=text-to-speech; license tags as listed there, NOT yet read from each model's license file). Permissive-license candidates for commercial narration: Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign (apache-2.0; a voice from a written description, which could approximate the chosen Hume voice without copying it), Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice and 0.6B-Base (apache-2.0), ResembleAI/chatterbox (MIT), microsoft/VibeVoice-1.5B (MIT; long-form and multi-speaker, fits a second voice for Matt), openbmb/VoxCPM2 (apache-2.0), sesame/csm-1b (apache-2.0), canopylabs/orpheus-3b-0.1-ft (apache-2.0), inclusionAI/Ming-3.0-tts-0.5B (MIT), and the current local voice hexgrad/Kokoro-82M (apache-2.0). EXCLUDED for commercial use by their tags: cc-by-nc models (gradium/phonon-40m-en and others) and 'other' licenses until read (fishaudio drama-3 and s2-pro, coqui/XTTS-v2, bosonai higgs-tts-3, nvidia/magpie_tts_multilingual_357m). The first comparison: Qwen3-TTS VoiceDesign, Chatterbox and VibeVoice on the six demo lines, beside the cached Hume clips. Next time use tests/visual/hf-model-query.ts, the existing query script." .

@@ -4,7 +4,7 @@ import { execFileSync } from 'child_process';
 import { join } from 'path';
 import { clearStorage, waitForApp } from './helpers';
 import { boxTarget } from '../visual/workflow-harness';
-import { demoRecorder } from './demo-recorder';
+import { demoRecorder, isDemoRender } from './demo-recorder';
 import type { Workflow } from '../../scripts/lib/test-workflow';
 
 /**
@@ -175,7 +175,8 @@ const impls: Record<string, StepImpl> = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // The screenshots are 1280x800; a demo render keeps its 1920x1080 (playwright.demo.config.ts).
+  if (!isDemoRender()) await page.setViewportSize({ width: 1280, height: 800 });
   await clearStorage(page);
   await waitForApp(page);
 });

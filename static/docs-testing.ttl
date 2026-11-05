@@ -983,7 +983,7 @@ test:Workflow-GeneratedAssets-Step1
     kpred:part-of       test:Workflow-GeneratedAssets ;
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "open-example" ;
-    kpred:narration     "Welcome. We start on the About page and open the Generated assets example, which appears as a new space of its own, so nothing touches your other work." ;
+    kpred:narration     "Welcome. From the list of examples, we open Generated assets. It arrives as its own space on the map of spaces, so nothing touches your other work." ;
     kpred:short-label   "Open the example" ;
     kpred:box-label     "Generated assets" ;
     kpred:box-target    "the Generated assets card under example data" ;
@@ -1015,7 +1015,7 @@ test:Workflow-GeneratedAssets-Step3
     kpred:part-of       test:Workflow-GeneratedAssets ;
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "picture" ;
-    kpred:narration     "This picture came from a written prompt. It was made earlier, on this computer, with an open model and no cloud service, and it matches its receipt exactly." ;
+    kpred:narration     "This picture came from a written prompt, made earlier on this computer with an open model. The app checks it against a saved record of how it was made." ;
     kpred:short-label   "Picture from a prompt" ;
     kpred:box-label     "Made by Z-Image-Turbo" ;
     kpred:box-target    "the enlarged picture" ;
@@ -1031,7 +1031,7 @@ test:Workflow-GeneratedAssets-Step4
     kpred:part-of       test:Workflow-GeneratedAssets ;
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "video" ;
-    kpred:narration     "Next, a short clip made from that same picture. Its receipt records how much it moves, so a clip where nothing happens would be reported, not called fine." ;
+    kpred:narration     "Next, a short clip made from that same picture. Its record measures how much it moves, so a clip where nothing happens would be flagged, not called fine." ;
     kpred:short-label   "Clip from the picture" ;
     kpred:box-label     "Made by Wan2.2" ;
     kpred:box-target    "the clip, paused part way through" ;
@@ -1063,7 +1063,7 @@ test:Workflow-GeneratedAssets-Step6
     kpred:part-of       test:Workflow-GeneratedAssets ;
     kpred:step-order    "6"^^xsd:integer ;
     kpred:step-id       "background" ;
-    kpred:narration     "Finally, the scene can sit behind the whole graph as a slowly turning backdrop. All of it was made on one computer, and each result is checked against its receipt." ;
+    kpred:narration     "Finally, the scene can sit behind the whole graph as a slowly turning backdrop. All of it was made on one computer, and every file is checked against its record." ;
     kpred:short-label   "Splat as the background" ;
     kpred:box-label     "The island behind the graph" ;
     kpred:box-target    "the graph with the lighthouse island splat drawn behind it" ;
