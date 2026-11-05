@@ -175,7 +175,7 @@ const impls: Record<string, StepImpl> = {
 };
 
 test.beforeEach(async ({ page }) => {
-  // The screenshots are 1280x800; a demo render keeps its 1920x1080 (playwright.demo.config.ts).
+  // The screenshots are 1280x800; a demo render keeps its own 1280x720 at 1.5x (playwright.demo.config.ts).
   if (!isDemoRender()) await page.setViewportSize({ width: 1280, height: 800 });
   await clearStorage(page);
   await waitForApp(page);
