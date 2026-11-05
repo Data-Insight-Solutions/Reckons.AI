@@ -1037,6 +1037,53 @@ kb:capability-awareness rdf:type ktype:Feature ;
     kpred:honest-note "PLANNED, NOTHING BUILT (2026-07-30). There is no capability model, no purpose taxonomy (F116), no benchmark harness comparing a local path to an integrated one, and no referral relationship with anybody. The measurement discipline above is a design constraint written before the money exists, which is the only time it can be written honestly." ;
     kpred:remaining "A capability model per purpose (what is connected, what it enables); a local-vs-integrated benchmark harness reusing the tests/bench infrastructure; a report that states measured deltas and explicitly names what was NOT measured; permanent mute; and referral disclosure at the point of claim if referrals are ever taken." .
 
+# 2026-11-05 — F117 gets its trigger and its vendor side (Matt, in chat with Claude Code).
+kb:capability-awareness kpred:decided "MATT, 2026-11-05: 'A key new feature would be to suggest possible integration services to use for a request. 'generate a splat' cannot always happen locally, and we should try to setup service referal kickbacks with each vendor as possible. Hume.AI for example if users complain about local kokoro voice quality.'" ;
+    kpred:priority "high" ;
+    kpred:relates-to kb:model-routing-ledger ;
+    kpred:relates-to kb:story-narration-voice ;
+    kpred:relates-to kb:optional-dependency-plugins ;
+    kpred:constraint "SUGGEST, NEVER ROUTE. A suggestion names a service; it does not send anything to it. Crossing from local to a third-party service stays an explicit user step under F74.6 (kb:model-routing-ledger: no silent local-to-cloud fallback). A request with no local route is a visible answer that lists the options, not a quiet hand-off." ;
+    kpred:open-question "MATT DECIDES: may referral status ever affect which service is listed first? Proposed: no. Order comes from measured fit and what the user already has connected; referral status is not an input to ordering, and a deterministic test holds that, so the claim can be checked rather than trusted." ;
+    kpred:open-question "MATT DECIDES: are suggestions offered only at a gap (no local route) or a complaint (the user says the local result is not good enough), or also unprompted? Proposed: only at a gap or a complaint, plus a settings view of what is connected, so a working local path is never interrupted by an offer." .
+
+kb:service-catalog rdf:type ktype:Phase ;
+    rdfs:label "F117.1 — a service catalog by purpose: what each service does, where it runs, what it costs, whether we earn from it" ;
+    kpred:part-of      kb:capability-awareness ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:integration-purposes ;
+    kpred:description  "Graph entities, not code: for each purpose (F116), the services that serve it. Each service records its locality (device, local network, third-party cloud), its cost model, what the user needs (account, key, subscription), whether this repository has an adapter for it, and its referral status (none, applied, active), with disclosure text where active. Seed with the purposes that have a real local gap today: 3D and splat generation (local runner via scripts/content/gen-assets.ts; the Meshy adapter in src/lib/integrations/meshy), speech synthesis (local Kokoro; Hume adapter in src/lib/integrations/hume, verified live 2026-10-29), and web scraping (local fetch; Firecrawl named in F117's description)." ;
+    kpred:done-test    "a script-tier check fails when a catalog service lacks a locality, a cost model or a referral status from the enum, when a service marked active has no disclosure text, or when a service claims an adapter whose path does not exist; the seed purposes each list the local route first." ;
+    kpred:honest-note  "NOT BUILT (2026-11-05). F116, the purpose vocabulary this depends on, is planned with no entities yet; the catalog's seed purposes are the first ones it needs." .
+
+kb:no-local-route-suggestion rdf:type ktype:Phase ;
+    rdfs:label "F117.2 — when a request cannot run here, say why and name the services that can" ;
+    kpred:part-of      kb:capability-awareness ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:service-catalog ;
+    kpred:description  "When a request has no eligible local route (no generation runner connected, too little GPU memory for the stage, the model not installed), the answer says which of those it is and what would make it run locally, then lists the catalog's services for that purpose, each marked connected or not, with any referral disclosed in the same line. First surface: Shelly's LOCAL JOBS context (src/lib/integrations/llm/turtle-chat.ts), which today only says the local runner is not connected." ;
+    kpred:done-test    "unit tests: a splat request with no runner names the missing runner first and then the catalog's splat services; a connected service is marked connected; a service with an active referral carries its disclosure in the suggestion itself; nothing is queued or sent to a service by the suggestion; a muted purpose produces no suggestion and still produces the local explanation." ;
+    kpred:touches-file "src/lib/integrations/llm/turtle-chat.ts" .
+
+kb:quality-complaint-suggestion rdf:type ktype:Phase ;
+    rdfs:label "F117.3 — when the user says a local result is not good enough, offer the alternative once, side by side" ;
+    kpred:part-of      kb:capability-awareness ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:service-catalog ;
+    kpred:depends-on   kb:story-narration-voice ;
+    kpred:description  "An explicit signal from the user about quality (a thumbs-down on a narration, or saying in chat that the voice sounds robotic) offers that purpose's alternatives once. Where the user already has access, the offer is a comparison on THEIR content: the same passage read by Kokoro and by Hume, played one after the other, so the user judges a measured difference rather than our claim. Where they have no access, the offer says the comparison was not run. Declining mutes the purpose permanently." ;
+    kpred:done-test    "unit tests: a quality complaint about local speech offers the speech services once; a second complaint after a decline offers nothing; with a Hume key present the offer plays the same text in both voices; without one it says no comparison was run; the local voice keeps working after a decline." ;
+    kpred:honest-note  "Depends on kb:story-narration-voice: story narration still calls Kokoro whatever voice is chosen, so a Hume comparison for narration has nowhere to play until that is fixed." .
+
+kb:vendor-referrals rdf:type ktype:Phase ;
+    rdfs:label "F117.4 — referral agreements with vendors, recorded in the catalog and disclosed where used" ;
+    kpred:part-of      kb:capability-awareness ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:service-catalog ;
+    kpred:description  "Business work, Matt's: for each catalog service, find out whether the vendor runs a referral or affiliate program, its terms, and apply where it fits. Each result is recorded on the service entity (none, applied, active, terms, date checked). The product's only role is to show the status where a suggestion is made; it never decides which vendor to approach." ;
+    kpred:done-test    "every catalog service has a referral status with the date it was checked; a service marked active has its terms and disclosure text; the F117.1 check passes." ;
+    kpred:honest-note  "NOTHING CHECKED (2026-11-05). No vendor's referral program, Hume's included, has been looked up yet, and Reckons.AI has a referral agreement with nobody. Matt holds a paid Hume subscription with commercial-use rights (his statement, 2026-10-29), which is not a referral agreement." .
+
 # -- F118: Structured data and repeatable calculation --------------------------
 kb:structured-data rdf:type ktype:Feature ;
     rdfs:label "Structured data and repeatable calculation" ;
