@@ -3,21 +3,29 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-04 (afternoon) — START HERE: crash diagnosed, queue RAM guard in #585 (Claude Code, Opus)
+## 2026-11-04 (evening) — START HERE: everything open merged; asset QA loop in (Claude Code, Opus)
 
-**The 12:39 CST crash was Ollama, not Chrome.** Twice (12:30 qwen3.8-160k, 12:33 qwen3-coder from
-`sched:describe-entities`) Ollama 0.40.11 started llama-server without its CUDA backend and loaded about 17 GB
-into host RAM. The second load swapped for 5 min and took the X session down (journalctl -k OOM at
-12:31:11 and 12:39:07). Detail and measurements are on `kb:queue-ram-guard` (F74.11) in the roadmap.
+**Merged into dev today (verified as one tree, #587, CI 16/16 green at 4ce0a5f7, dev a1a46707):** #585 queue
+RAM guard; then #486, #533, #534, #501, #513, #536, #527, #586 (F281 asset QA loop), #473, #375, #413, #539 (jobs graph
+is the source; jobs.json deleted). Closed: #532 (stale handoff), #538 (superseded). Cross-PR conflicts and how
+they were resolved are in #587's description.
 
-- **Queue is PAUSED** (since 12:58). Resume only after #585 merges: `npx tsx scripts/agent/queue.ts resume`.
-- **#585** (base dev): the RAM guard. Merge when CI is green.
-- **Matt:** systemd-oomd / MemoryMax drop-in for ollama.service. The command was given in chat on 2026-11-04;
-  as of then it was not applied.
-- **PR triage 2026-11-04:** closed #538 (superseded) and merged #584 (prod deps). Asked Dependabot to rebase
-  #473, #375 and #413; merge each when green, one at a time. #502 (vitest 5) and #583 (22 dev deps) need a
-  decision on major bumps. **Matt decides** whether to close or rebase the stale October feature PRs
-  #501, #513, #527, #532-#534, #536 and #539, and #486 (his roadmap branch, green but behind).
+**The 12:39 CST crash was Ollama, not Chrome**: llama-server started without CUDA and loaded ~17 GB into RAM
+(evidence on `kb:queue-ram-guard`, F74.11). The queue is RESUMED and guarded.
+
+- **Matt:** the systemd-oomd / MemoryMax drop-in for ollama.service (command in chat 2026-11-04); not applied as of then.
+- **Matt, numbering:** collisions renumbered — taxonomy-current F263->F280, bench review F183.3->F183.5,
+  local-overseer-model F268->F282.
+- **#527 removed the session-heartbeat gate** (Matt, 2026-10-23): the queue worker now runs jobs without an active
+  Claude session. Expect jobs to start whenever the worker is up.
+- **F281 asset QA loop:** checks (image, video, splat, PDF, SVG), qwen2.5vl review as advice, reseed-and-keep-best
+  in the generation runner, `npm run asset:qa -- <file>`. NEXT: a bench of the vision reviewer on labelled
+  generated assets (it rejected a bad page with the wrong defect names, and missed a style mismatch), then F281.4
+  page remedies once the F277 layout engine exists, and F281.5 (QA verdict in review).
+- **Local-only e2e failure:** `generated-assets-story.test.ts:220` (Shelly queues a chain) fails on this machine,
+  also on #527's own branch, and passes in CI. Not chased.
+- **Still open:** #502 (vitest 5, mcp-server) and #583 (22 dev deps) — major bumps failing CI; #562 waits on
+  Dependabot's transformers exclusion.
 
 ## 2026-11-04 (early) — START HERE: overnight queue triaged and merged (Claude Code, Opus)
 
