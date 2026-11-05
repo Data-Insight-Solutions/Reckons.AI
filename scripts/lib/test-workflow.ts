@@ -49,6 +49,10 @@ export const P = {
   shotsNote: `${KPRED}shots-note`,
   shortLabel: `${KPRED}short-label`,
   screenshot: `${KPRED}screenshot`,
+  /** F275.1: the line spoken while the step plays in a demo video. */
+  narration: `${KPRED}narration`,
+  /** F275.1: the Hume voice (name or id) a workflow's demo is narrated in. */
+  narrator: `${KPRED}narrator`,
 } as const;
 
 export interface WorkflowStep {
@@ -73,6 +77,8 @@ export interface WorkflowStep {
   pageName: string;
   /** Site-root path of the annotated screenshot, or null when none has been captured. */
   screenshot: string | null;
+  /** F275.1: what the demo narrator says during this step, or null when the step plays silent. */
+  narration: string | null;
 }
 
 export interface Workflow {
@@ -83,6 +89,8 @@ export interface Workflow {
   /** Markdown on how the screenshots were made and what is scripted; shown after the diagram. */
   shotsNote: string;
   testFile: string;
+  /** F275.1: the Hume voice its demo is narrated in, or null for the render's default. */
+  narrator: string | null;
   steps: WorkflowStep[];
 }
 
@@ -132,6 +140,7 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
         boxTarget: need(sIri, P.boxTarget, 'kpred:box-target'),
         pageName: need(sIri, P.pageName, 'kpred:page-name'),
         screenshot: lit(sIri, P.screenshot),
+        narration: lit(sIri, P.narration)?.trim() || null,
       });
     }
     steps.sort((a, b) => a.order - b.order);
@@ -146,6 +155,7 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
       definition: lit(iri, SKOS_DEFINITION) ?? '',
       shotsNote: lit(iri, P.shotsNote) ?? '',
       testFile: need(iri, P.testFile, 'kpred:test-file'),
+      narrator: lit(iri, P.narrator)?.trim() || null,
       steps,
     });
   }

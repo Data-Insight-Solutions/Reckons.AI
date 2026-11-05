@@ -11849,3 +11849,23 @@ kb:asset-qa-in-review rdf:type ktype:Phase ;
 kb:work-tiering kpred:decided "MATT, 2026-11-04: 'local upgrades versus service upgrades (Claude), should be handled by the opposite side.' Confirmed reading, the same day: Claude in the cloud plans, runs and verifies upgrades to the LOCAL stack, and the local deputy runs and verifies upgrades to the CLAUDE side." ;
     kpred:principle "NO SIDE UPGRADES ITSELF. A broken upgrade must leave a working side to diagnose it and roll it back. LOCAL STACK, upgraded by Claude: Ollama, local model tags and their defaults, GPU drivers and CUDA, sd-cli and the other generation tools, the deputy harness (scripts/agent/local-claude.sh, queue worker). CLAUDE SIDE, upgraded by the local deputy: Claude Code, the Anthropic SDK (@anthropic-ai/sdk), model IDs in code and config, MCP connector and plugin versions. Each upgrade records the version before and after, a check that passed on the new version, and the rollback command. The deputy's work stays a proposal on a branch that a person merges, as for any deputy job." ;
     kpred:evidence "WHY, 2026-11-04: Ollama 0.40.11 intermittently started llama-server without its CUDA backend, and the resulting RAM spill took the desktop down (kb:queue-ram-guard). A local model could not have diagnosed that, because its own runtime was the broken part; Claude did, from the journal. The reverse holds for a broken Claude Code or SDK upgrade: the local side still runs." .
+
+# 2026-11-05 — HUME ENDS ITS TTS AND EVI APIS ON 2026-11-13 (Matt, in chat with Claude Code).
+kb:int-hume kpred:known-issue "SUNSET, 2026-11-13. Matt, 2026-11-05, quoting a notice he saw from Hume: 'Hume is sunsetting the TTS and EVI APIs. Access ends November 13, 2026 at 12:01 a.m. EST, and both APIs remain fully supported until then. Any data in your account is permanently deleted after that date.' NOT CONFIRMED from Hume's public docs: the linked page (dev.hume.ai/audio-decisions/docs/overview, read 2026-11-05) describes only the Audio Decisions API, which scores audio and does not synthesize it. After the date, every Hume path in the app fails: Shelly's conversational voice (ShellyVoice, EVI), Hume narration (src/lib/integrations/hume/tts.ts), and the custom voice 'Shelly V1', which is deleted with the account data." ;
+    kpred:remaining "Before 2026-11-13: render and keep every narration line the first demos need (the F275.2 cache keeps clips locally, so a cached line still plays after the date). Then: the app must say Hume is gone and fall back to the local voice audibly, never fail silent (the F5.1 fallback rule), and a replacement narration provider is chosen by a listening comparison on the same lines (kb:demo-narration-provider)." .
+
+kb:voice-interface kpred:known-issue "Hume's EVI API ends 2026-11-13 (see kb:int-hume). Shelly's conversational voice stops working on that date unless it is moved to another provider; until then it works as before." .
+
+kb:demo-videos kpred:decided "MATT, 2026-11-05: 'Warm Female Assistant Voice is a great start.' The first demos are narrated in Hume's library voice 'Warm Female Assistant Voice' (id a623d3ed-612c-413b-b09f-e0a379a317f0), not the custom 'Shelly V1' proposed earlier the same day." ;
+    kpred:constraint "HUME ENDS 2026-11-13 (kb:int-hume). Narration clips are cached by provider, voice and text outside the repository, so a line synthesized before the date still renders after it; a NEW or changed line after the date needs another provider. Voice strings are provider-qualified (hume:<id>) so a later provider cannot collide with a cached Hume clip." .
+
+kb:demo-narration-provider rdf:type ktype:Phase ;
+    rdfs:label "F275.8 — narration after Hume: a listening comparison on the same lines, then a provider chosen" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-narration-audio ;
+    kpred:relates-to   kb:nemo-speech ;
+    kpred:relates-to   kb:kokoro-tts ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:description  "Hume's TTS ends 2026-11-13. Candidates are rendered on the SAME narration lines as the Hume clips and played to Matt side by side (the F117 rule: measured on our content, not a vendor's claim). Local candidates first (NVIDIA NeMo MagpieTTS, kb:nemo-speech; other open models with a commercial-use license), then cloud ones where Matt has an account. Each candidate records its license and commercial-use terms." ;
+    kpred:done-test    "the first demo's lines exist as clips from at least two candidates beside the Hume clips; each candidate's license and commercial terms are recorded; Matt's choice is recorded on this entity; the narration plan accepts the chosen provider's voice string." .
