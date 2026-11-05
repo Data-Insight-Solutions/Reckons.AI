@@ -30,6 +30,11 @@ export interface DemoRecorder {
   finish(): void;
 }
 
+/** True while `npm run demo:render` records; a test keeps the demo's 1920x1080 viewport instead of its own. */
+export function isDemoRender(env: NodeJS.ProcessEnv = process.env): boolean {
+  return !!(env.DEMO_TIMINGS && env.DEMO_MARKS);
+}
+
 export function demoRecorder(page: Page, env: NodeJS.ProcessEnv = process.env): DemoRecorder {
   const timingsPath = env.DEMO_TIMINGS;
   const marksPath = env.DEMO_MARKS;
