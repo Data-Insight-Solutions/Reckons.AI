@@ -30,7 +30,12 @@
     addSource,
   } from '$lib/stores/kb.svelte';
   import { getRegistry, getCurrentKbId } from '$lib/storage/kb-registry';
-  import { drainAndImportPending, pendingWaitingElsewhere, workspaceState, supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import {
+    drainAndImportPending, pendingWaitingElsewhere, workspaceState, supportsWorkspace,
+    workspaceChecked, workspaceInitialLoading, workspaceName, reconnectWorkspace, pickWorkspace,
+  } from '$lib/stores/workspace.svelte';
+  import ReviewLinkLanding from '$lib/components/review/ReviewLinkLanding.svelte';
+  import { landingKind, isReviewLink } from '$lib/review/link-landing';
   import { runPartition } from '$lib/rdf/partition-run';
   import { planOptionCascade, cascadeWrites } from '$lib/rdf/option-cascade';
   import {
@@ -533,6 +538,23 @@
 
 
   let draining = $state(false);
+
+  // Arriving from a review link: do not show counts until the folder behind it has been read.
+  let fromLink = $state(false);
+  let landingBusy = $state(false);
+  const linkKind = $derived(landingKind({
+    fromLink, checked: workspaceChecked(), state: workspaceState(),
+    loading: workspaceInitialLoading(), supported: supportsWorkspace(),
+  }));
+  const linkBlocked = $derived(linkKind !== 'none' && linkKind !== 'ready');
+  async function landingReconnect() {
+    landingBusy = true;
+    try { await reconnectWorkspace(); } finally { landingBusy = false; }
+  }
+  async function landingLink() {
+    landingBusy = true;
+    try { await pickWorkspace(); } finally { landingBusy = false; }
+  }
   let drainResult = $state<string | null>(null);
 
   /** What the last bulk accept actually did — including when the honest answer is "nothing". */
@@ -1362,6 +1384,7 @@
   // Auto-populate from URL params
   onMount(() => {
     const params = new URL(window.location.href).searchParams;
+    fromLink = isReviewLink(params);
     const alignParam = params.get('align');
     if (alignParam) {
       alignSelectedKbs = new Set(alignParam.split(',').filter(Boolean));
@@ -1814,7 +1837,12 @@
       re-runs to re-enrich the semantic diff. Svelte then updates only the entry that changed.
     -->
 
-      {#if activeTab === 'incoming'}
+      {#if fromLink}
+        <ReviewLinkLanding kind={linkKind} folder={workspaceName()} origin={window.location.origin}
+          filter={agentFilter} busy={landingBusy} onreconnect={landingReconnect} onlink={landingLink} />
+      {/if}
+
+      {#if activeTab === 'incoming' && !linkBlocked}
         <!-- Summary chips -->
         <div class="summary">
           <span class="sc new">{diff.summary.new} new</span>

@@ -1,0 +1,10 @@
+@prefix rdf:   <http://www.w3.org/1999-02-22-rdf-syntax-ns#> .
+@prefix kpred: <urn:kbase:predicate/> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix sched: <urn:reckons:schedule/> .
+
+sched:daily-script-checks rdf:type ktype:Schedule ;
+    kpred:every "1d" ;
+    kpred:command "npm run offline:all -- --tier=script" ;
+    kpred:tier "script" ;
+    kpred:harness "session-worker" .

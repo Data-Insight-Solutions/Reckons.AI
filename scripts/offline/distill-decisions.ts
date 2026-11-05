@@ -33,7 +33,8 @@
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/distill-decisions.ts --limit=5
  *   … --graph=static/reckons-roadmap.ttl --model=qwen3-coder:latest --dry --pending
  */
-import { readFileSync, appendFileSync } from 'fs';
+import { readFileSync } from 'fs';
+import { appendQueueText } from './pending-queue.js';
 import { readGraph } from './read-graph.js';
 import { buildReviewTree, distillationRequest, validateProposedOptions, questionText } from '../../src/lib/rdf/review-tree.js';
 import type { DistillationRequest, ProposedOptions } from '../../src/lib/rdf/review-tree.js';
@@ -204,7 +205,7 @@ if (PENDING_OUT && emit.length) {
   for (const e of emit) {
     const note = `[distill/${MODEL}] option for "${e.question.slice(0, 90)}"${e.consequence ? ` — ${e.consequence}` : ''}`;
     if (existing.includes(JSON.stringify(`${e.subject}|${e.label}`).slice(1, -1))) continue;
-    appendFileSync(PENDING, JSON.stringify({
+    appendQueueText(PENDING, JSON.stringify({
       subject: e.subject,
       predicate: 'urn:kbase:predicate/has-option',
       object: e.label,

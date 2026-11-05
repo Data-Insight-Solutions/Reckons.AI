@@ -254,15 +254,29 @@ test('Getting started + Preview all demonstrates GIF, video, and GLB assets', as
     { message: 'the WebM should load metadata and dimensions' },
   ).toMatchObject({ ready: true, duration: 4, width: 640 });
 
+  // The force layout can place a preview underneath the snapped controls. Find
+  // and center each entity through the same search flow used by the generated
+  // assets workflow, then click normally so obstruction still fails the test.
+  const focusAsset = async (slug: string) => {
+    await page.keyboard.press('Escape');
+    await page.getByPlaceholder('search nodes or facts…').fill(slug);
+    await page.locator('.sb-node-row')
+      .filter({ has: page.locator('.sb-node-iri') })
+      .filter({ hasText: slug }).first().click();
+  };
+
   // Exercise the kind-specific large viewers, not merely three asset URLs in the Turtle file.
+  await focusAsset('ev-campfire');
   await gifThumb.click();
   await expect(page.locator('.asset-large img')).toHaveAttribute('src', '/gif/starter/campfire.gif');
   await page.locator('.asset-large .asset-controls button[title="Close"]').click();
 
+  await focusAsset('ev-sunrise-shoot');
   await videoThumb.click();
   await expect(page.locator('.asset-large video.asset-media')).toHaveAttribute('src', '/video/starter/sunrise-shoot.webm');
   await page.locator('.asset-large .asset-controls button[title="Close"]').click();
 
+  await focusAsset('ev-pitch-camp');
   await glbThumb.click();
   const glbCanvas = page.locator('.asset-large .asset-glb canvas');
   await expect(glbCanvas).toBeVisible({ timeout: 15_000 });

@@ -69,13 +69,17 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { hostname, tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { logEvent } from './local-activity.js';
-import { OllamaHttpError, localOptions, retryTransient } from '../offline/lib/local-model.js';
+import { DEFAULT_REASONING_MODEL, OllamaHttpError, localOptions, retryTransient } from '../offline/lib/local-model.js';
 
 const ROOT = resolve(import.meta.dirname ?? '.', '../..');
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
 
-/** One strong model, three votes — measured better and faster than three families (see header). */
-export const DEFAULT_PANEL = ['qwen3.6:latest'];
+/**
+ * One strong model, three votes — measured better and faster than three families (see header).
+ * The header's numbers are qwen3.6's; the default is now DEFAULT_REASONING_MODEL (qwen3.6 was
+ * removed 2026-10-26), unscored until someone re-runs --labels on it.
+ */
+export const DEFAULT_PANEL = [DEFAULT_REASONING_MODEL];
 export const DEFAULT_SELF_VOTES = 3;
 
 export type Accept = 'unanimous' | 'majority';
