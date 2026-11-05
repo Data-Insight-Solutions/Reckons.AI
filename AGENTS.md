@@ -168,6 +168,12 @@ Before doing any recurring task yourself, route it to the **cheapest tier that c
 
 **Offloading is not free.** A local job that emits 30 findings of which 25 are noise moves cost from generation to *triage* rather than removing it; deterministic checks have zero triage cost because they're right by construction. So **prefer growing the script tier over the agent tier**, and measure with `npm run session:tokens`.
 
+**Upgrades run on the opposite side (Matt, 2026-11-04).** Claude upgrades the LOCAL stack (Ollama, local
+models and their defaults, GPU drivers, generation tools, the deputy harness); the local deputy upgrades the
+CLAUDE side (Claude Code, the Anthropic SDK, model IDs, MCP connectors). No side upgrades itself, so a broken
+upgrade still has a working side to diagnose and roll it back. Record version before and after, the passing
+check, and the rollback. Full rule: `kb:work-tiering` in the roadmap.
+
 **Promotion ladder**: anything Opus does twice becomes an agent job or a script; anything an agent gets right *reliably* is demoted to a script — reliability proves the rule was expressible. Opus designs the harness; the local model is a plugin inside it (the PR #43 devstral lesson: local models hallucinate conventions and mangle serialization, so ground-first and validate).
 
 Jobs live in `static/reckons-jobs.ttl` (the source; each `ktype:OfflineJob` has a `kpred:job-tier`, a `kpred:command`, `hnav:order`). `npm run offline:all` runs script tier first; `npm run offline:all -- --tier=script` runs only the free ones.
