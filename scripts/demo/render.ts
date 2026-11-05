@@ -19,7 +19,7 @@
  * not source: recordings are large, and Matt's voice files are his.
  *   cache       $XDG_CACHE_HOME/reckons/demo-tts/<sha256>.mp3
  *   recordings  $XDG_DATA_HOME/reckons/demo-voice/<workflow>/<step>.wav   (override a line)
- *   output      $XDG_DATA_HOME/reckons/demos/<workflow>/<timestamp>/
+ *   output      <Videos>/reckons-demos/<workflow>/<timestamp>/   (xdg-user-dir VIDEOS; DEMO_OUT_DIR overrides)
  *
  * HUME ENDS ITS TTS API ON 2026-11-13 (kb:int-hume). A line cached before then keeps rendering; a new
  * or changed line after then needs another provider (F275.8). Until then a hume: voice needs
@@ -45,7 +45,17 @@ const fail = (msg: string): never => { console.error(`demo:render: ${msg}`); pro
 const xdg = (envName: string, fallback: string) => process.env[envName] || join(homedir(), fallback);
 const CACHE_DIR = join(xdg('XDG_CACHE_HOME', '.cache'), 'reckons', 'demo-tts');
 const VOICE_DIR = join(xdg('XDG_DATA_HOME', '.local/share'), 'reckons', 'demo-voice');
-const OUT_ROOT = join(xdg('XDG_DATA_HOME', '.local/share'), 'reckons', 'demos');
+// Rendered videos go to the person's Videos folder, NOT a hidden directory: snap-packaged players
+// (VLC on Ubuntu) cannot read hidden folders in home, and the first render, kept under
+// ~/.local/share, would not open (2026-11-05). DEMO_OUT_DIR overrides.
+function videosDir(): string {
+  try {
+    const d = execFileSync('xdg-user-dir', ['VIDEOS'], { encoding: 'utf8' }).trim();
+    if (d && d !== homedir()) return d;
+  } catch { /* not a desktop with xdg-user-dirs */ }
+  return join(homedir(), 'Videos');
+}
+const OUT_ROOT = process.env.DEMO_OUT_DIR || join(videosDir(), 'reckons-demos');
 
 const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
