@@ -822,10 +822,10 @@ On a **Mac**: open Terminal and install [Homebrew](https://brew.sh) by following
 
 ```
 xcode-select --install
-brew install node git uv
+brew install node git uv ffmpeg
 ```
 
-On **Linux (Ubuntu)**: run `sudo apt install git curl unzip`, install the JavaScript runtime at version 22 or later (for example with [nvm](https://github.com/nvm-sh/nvm)), and install [uv](https://docs.astral.sh/uv/getting-started/installation/). Install the NVIDIA driver for your card if it is not already there.
+On **Linux (Ubuntu)**: run `sudo apt install git curl unzip ffmpeg`, install the JavaScript runtime at version 22 or later (for example with [nvm](https://github.com/nvm-sh/nvm)), and install [uv](https://docs.astral.sh/uv/getting-started/installation/). Install the NVIDIA driver for your card if it is not already there.
 
 #### Step 2. Get Reckons.AI
 
@@ -846,10 +846,10 @@ On a Mac it installs the Apple Silicon (Metal) build of stable-diffusion.cpp for
 Make an empty folder for your generated files, outside the Reckons.AI folder (for example `~/Documents/reckons-assets`). Then, from the Reckons.AI folder, run:
 
 ```
-npm run gen:serve -- --workspace="$HOME/Documents/reckons-assets"
+npm run gen:serve -- --no-recurring --workspace="$HOME/Documents/reckons-assets"
 ```
 
-Leave that terminal open; the runner works only while it runs. It takes one request at a time and writes each result with a private receipt, a saved record of how the file was made and checked. Add `--no-recurring` if you want it to run only what you ask for.
+Leave that terminal open; the runner works only while it runs. It takes one request at a time and writes each result with a private receipt, a saved record of how the file was made and checked. `--no-recurring` makes it run only what you ask for; without it, it also runs the project's own scheduled maintenance jobs, which are meant for the developers' machines.
 
 #### Step 5. Make something
 

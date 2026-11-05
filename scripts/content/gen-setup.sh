@@ -28,10 +28,10 @@ case "$OS/$ARCH" in
 esac
 
 missing=""
-for c in curl unzip tar git uv node; do command -v "$c" >/dev/null || missing="$missing $c"; done
+for c in curl unzip tar git uv node ffmpeg ffprobe; do command -v "$c" >/dev/null || missing="$missing $c"; done
 if [ -n "$missing" ]; then
   echo "Missing:$missing"
-  if [ "$PLATFORM" = mac ]; then echo "Install with Homebrew: brew install$missing  (uv: brew install uv)";
+  if [ "$PLATFORM" = mac ]; then echo "Install with Homebrew: brew install$missing  (ffprobe comes with ffmpeg)";
   else echo "Install with your package manager (uv: https://docs.astral.sh/uv/getting-started/installation/)"; fi
   exit 1
 fi
