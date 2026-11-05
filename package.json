@@ -77,6 +77,7 @@
     "docs:diagrams": "npx tsx scripts/docs-diagrams.ts",
     "docs:diagrams:check": "npx tsx scripts/docs-diagrams.ts --check",
     "workflow:shots": "npx tsx scripts/workflow-shots.ts",
+    "demo:render": "npx tsx scripts/demo/render.ts",
     "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
     "gen:serve": "npx tsx scripts/agent/queue-worker.ts",
