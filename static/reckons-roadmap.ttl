@@ -10361,7 +10361,7 @@ kb:release-0-2-7-docs rdf:type ktype:Phase ;
 kb:release-0-2-7 rdf:type ktype:Release ;
     rdfs:label "v0.2.7" ;
     kpred:version "0.2.7" ;
-    kpred:has-status "functional" ;
+    kpred:has-status "production" ;
     kpred:description "The agents release: the local deputy, agent monitoring on This Device, grouped review links, question-answer proposals grounded in earlier decisions, queue integrity, and job briefs with tracked Git hooks. Local host mode and LAN HTTPS moved to v0.2.8 at the cut." ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
     kpred:decided "MATT, 2026-10-30, THE CUT: 'Lets make a clear cut for agents updates for 0.2.7, maybe we already have a lot of 0.2.8 overflow, doesn't matter too much if there are some minor versions that are not cohesive on one feature/topic.' So 0.2.7 is the agents release. Local host mode (F243) and LAN HTTPS (F244) had not started and move to v0.2.8 with everything that arrived from 0.2.6 on 2026-10-13; the agents dashboard (F245) stays." ;
@@ -10373,7 +10373,7 @@ kb:release-0-2-7 rdf:type ktype:Release ;
 kb:release-0-2-7 kpred:progress "2026-10-30, AT THE CUT: dev was 44 commits past staging and every merge in them is agent work: #535 the local deputy, #541 review links grouped by producer run, #542 queue integrity, #545 the npm guard fix, #546 the overseer bench, #543 F273 phase 0 and A, plus #529 (a zod advisory) and #526 (a handoff). OPEN AND IN SCOPE, not yet merged: #550 agent watch page (F245), #549 question presettle, #548 overseer rates, #539 MCP local job tools (F267, CI failing at the cut), #551 F274.1 agents in another repository. F267 and F274.1 join has-part when their entities reach dev; naming them here first would leave a dangling link. NOT IN SCOPE: Triple Check (F100, #537) goes to 0.2.8 unless Matt says otherwise." .
 
 kb:release-0-2-7 kpred:progress "2026-10-30, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.7; release notes at content/releases/v0-2-7.md. Merged for the release: #535, #541, #542, #543, #545, #546, #547, #548, #549, #550, #551, #553, plus #529 (a zod advisory) and #526 (a handoff). Not in it: #539 MCP local job tools (F267, CI failing at the cut), Triple Check (#537, v0.2.8), the web engine (F274.4, v0.2.8)." ;
-    kpred:honest-note "FUNCTIONAL HERE MEANS built on dev, not yet promoted to staging or production. Verified 2026-11-01: promotion PR #556 (dev to staging) is open at aa4bd10b with failing script-tier and production smoke-test checks; staging and main still declare 0.2.6. The five missing docs entities are supplied by the reviewed local-deputy closeout work, which must land before promotion. F245 remains in-progress: This Device and agent watch are built; per-space agent settings are not." .
+    kpred:honest-note "PRODUCTION VERIFIED 2026-11-05: PR #556 merged dev to staging on 2026-11-04; Matt merged #576 staging to main on 2026-11-05 at 21:54 UTC; main package.json declares 0.2.7 and main CI passed. This corrects the earlier note that it was not yet promoted. NOT DONE: no v0.2.7 GitHub release exists yet (v0.2.6's was created by hand), and the Extension Build & Sign job failed on main because the extension manifest is still 0.1.0, a version AMO has already signed ('Submission failed (2): Conflict'). F245 remains in-progress: This Device and agent watch are built; per-space agent settings are not." .
 
 kb:release-0-2-8 rdf:type ktype:Release ;
     rdfs:label "v0.2.8" ;
