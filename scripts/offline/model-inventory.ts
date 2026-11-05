@@ -10,7 +10,7 @@
  *
  * WHAT COUNTS AS A DEFAULT. A string literal with an Ollama tag (`name:tag`) on a line that mentions
  * "model", in a git-tracked scripts/ file outside tests; `--model=` / `--models=` flags in
- * schedules.ttl and jobs.json; and DEFAULT_REASONING_MODEL as resolved on this host. A bare name
+ * schedules.ttl and reckons-jobs.ttl; and DEFAULT_REASONING_MODEL as resolved on this host. A bare name
  * with no tag is not matched (too much noise: "opus", "accept"), which is a gap said out loud.
  * Benches under tests/bench are left out: they are run by hand with their model named.
  *
@@ -74,7 +74,7 @@ async function main(): Promise<number> {
     .split('\n').filter((f) => f && !/__tests__|\.test\.ts$/.test(f));
   const expected: Expectation[] = [{ model: DEFAULT_REASONING_MODEL, where: 'DEFAULT_REASONING_MODEL (scripts/offline/lib/local-model.ts)' }];
   for (const f of files) expected.push(...defaultsInSource(f, readFileSync(path.join(root, f), 'utf8')));
-  for (const f of ['reckons-workspace/schedules.ttl', 'scripts/offline/jobs.json']) {
+  for (const f of ['reckons-workspace/schedules.ttl', 'static/reckons-jobs.ttl']) {
     try { expected.push(...flagsInConfig(f, readFileSync(path.join(root, f), 'utf8'))); } catch { /* absent on a fresh clone */ }
   }
 

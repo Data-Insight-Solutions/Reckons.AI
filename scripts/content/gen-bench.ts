@@ -157,7 +157,7 @@ function lockReasons(): string[] {
   return generationLock(apps, ps, ancestors(process.pid));
 }
 
-async function awaitFree(waitS: number): Promise<void> {
+export async function awaitFree(waitS: number): Promise<void> {
   const until = Date.now() + waitS * 1000;
   for (;;) {
     const why = lockReasons();
@@ -179,7 +179,7 @@ function chooseGpu(): number {
 }
 
 /** Samples memory.used for every GPU into a file while a run executes (our event loop is blocked by the run, so a child does it). */
-function startVramMonitor(file: string) {
+export function startVramMonitor(file: string) {
   const fd = openSync(file, 'w');
   const p = spawn('nvidia-smi', ['--query-gpu=index,memory.used', '--format=csv,noheader,nounits', '-lms', '250'], { stdio: ['ignore', fd, 'ignore'] });
   // Per-process memory: Vulkan and CUDA children appear here, so the run's own footprint can be told
@@ -220,7 +220,7 @@ function videoFrames(file: string): Uint8Array[] {
   return Array.from({ length: Math.floor(raw.length / n) }, (_, i) => new Uint8Array(raw.subarray(i * n, (i + 1) * n)));
 }
 
-async function ask(model: string, png: Buffer, question: string): Promise<string> {
+export async function ask(model: string, png: Buffer, question: string): Promise<string> {
   const res = await fetch(`${OLLAMA}/api/generate`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt: `${question}\nAnswer with exactly one word: YES or NO.`, images: [png.toString('base64')], stream: false, keep_alive: '10m',
@@ -230,7 +230,7 @@ async function ask(model: string, png: Buffer, question: string): Promise<string
   if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
   return ((await res.json()) as { response?: string }).response?.trim() ?? '';
 }
-async function unload(model: string) {
+export async function unload(model: string) {
   await fetch(`${OLLAMA}/api/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, prompt: '', keep_alive: 0 }) }).catch(() => {});
 }
 
@@ -255,7 +255,7 @@ async function ensureSource(brief: string, work: string, gpu: number): Promise<s
   return out;
 }
 
-const pin = (gpu: number): Record<string, string> => ({ CUDA_VISIBLE_DEVICES: String(gpu), GGML_VK_VISIBLE_DEVICES: String(gpu) });
+export const pin = (gpu: number): Record<string, string> => ({ CUDA_VISIBLE_DEVICES: String(gpu), GGML_VK_VISIBLE_DEVICES: String(gpu) });
 
 async function runStage(stage: GenStage, arms: ArmSpec[], seeds: number[], nBriefs: number, tier: Tier | 'all', gpu: number, work: string, waitS: number, judgeModel: string) {
   const records: RunRecord[] = [];

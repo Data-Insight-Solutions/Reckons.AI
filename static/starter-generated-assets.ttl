@@ -15,7 +15,7 @@
 kb:generated-assets rdf:type ktype:Concept ;
     rdfs:label "Generated on this machine" ;
     rdfs:comment "Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real." ;
-    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt .
+    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt, kb:gen-ornate-music-box-prompt .
 
 story:create-generated-asset rdf:type story:Story ;
     rdfs:label "Create an asset with Shelly" ;
@@ -122,3 +122,29 @@ kb:gen-lighthouse-island-splat rdf:type ktype:GaussianSplat ;
     p:generated-gaussians "65536" ;
     rdfs:comment "Open it and choose Set as background to put this island behind the graph." ;
     p:generated-at "2026-10-14" .
+
+kb:gen-ornate-music-box-prompt rdf:type ktype:Prompt ;
+    rdfs:label "Prompt: Ornate carved music box" ;
+    rdfs:comment "An ornate hand-carved wooden music box with intricate floral filigree relief on every face, brass hinges and a small brass crank, a lid inlaid with a mother-of-pearl rose, three-quarter view from the front and slightly above, the whole object visible with its depth clear, studio product photo on a plain light grey background, soft even lighting, extremely detailed" .
+
+kb:gen-ornate-music-box-image rdf:type ktype:Image ;
+    rdfs:label "Image: ornate carved music box" ;
+    p:photo "/generated/ornate-music-box/image.webp" ;
+    p:made-from kb:gen-ornate-music-box-prompt ;
+    p:generated-with "Z-Image-Turbo (Q8) on stable-diffusion.cpp" ;
+    schema:license kb:license-apache-2-0, kb:license-mit ;
+    p:generated-duration "19.5 s" ;
+    p:generated-seed "11" ;
+    p:generated-at "2026-10-21" .
+
+kb:gen-ornate-music-box-splat rdf:type ktype:GaussianSplat ;
+    rdfs:label "Splat: ornate carved music box" ;
+    p:splat "/generated/ornate-music-box/splat.spz" ;
+    p:made-from kb:gen-ornate-music-box-image ;
+    p:generated-with "TripoSplat" ;
+    schema:license kb:license-mit ;
+    p:generated-duration "36.7 s" ;
+    p:generated-seed "11" ;
+    p:generated-gaussians "262144" ;
+    rdfs:comment "Invented from one picture by TripoSplat: the far side is a guess." ;
+    p:generated-at "2026-10-21" .

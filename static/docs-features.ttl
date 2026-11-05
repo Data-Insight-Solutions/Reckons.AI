@@ -294,6 +294,17 @@ feat:MCPWorkspace
 
 
 ## =============================================================================
+## Local jobs over MCP (F267)
+## =============================================================================
+
+feat:LocalJobsMCP
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Local jobs through MCP" ;
+    skos:definition     "Long-running work (an e2e suite, a benchmark, a research or batch-analysis run) belongs on the local job queue, not inline on a cloud model. Three tools on the MCP server reach that queue: kb_job_list shows every defined job with its tier, what it does and its last run; kb_job_enqueue(name, args?) queues one by name and returns a queue id; kb_job_status(id or name) reports queued, running, done or failed with the exit code, the last 40 log lines and where the full log is. Only jobs defined in static/reckons-jobs.ttl or the schedules file can be queued, never a command. Queueing works with no worker running: the job waits until npm run agent:watch starts the worker. Not built yet: a hook that stops a foreground long-running command and names these tools, and defining a job in the app UI." ;
+    skos:broader        feat:MCPWorkspace .
+
+
+## =============================================================================
 ## Confluence Migration (F26)
 ## =============================================================================
 
@@ -617,6 +628,7 @@ feat:SourceMonitoring     skos:exactMatch  kb:n8n-source-monitor .
 feat:ContextCompression   skos:exactMatch  kb:context-compression .
 feat:EntityNormalization  skos:exactMatch  kb:entity-normalization .
 feat:MCPWorkspace         skos:exactMatch  kb:mcp-workspace .
+feat:LocalJobsMCP         skos:exactMatch  kb:local-jobs-default .
 feat:ConfluenceMigration  skos:exactMatch  kb:confluence-migration .
 feat:TextChunking         skos:exactMatch  kb:text-chunking .
 feat:TurtlePersona        skos:exactMatch  kb:graph-persona .
@@ -793,11 +805,25 @@ feat:GenerationSetup rdf:type ktype:Concept ;
 
 1. Use a checkout of Reckons.AI with its npm dependencies installed. The current installer was tested on Ubuntu 24.04 with NVIDIA RTX 3090 GPUs; other operating systems and GPUs are unverified. It uses Linux x86-64 binaries, Vulkan for image/video, and Python 3.11 with CUDA for splats. Install prerequisites including Node.js, git, curl, unzip, tar and uv before running it. Allow about 27 GB for tools/model weights plus space for outputs; this is a download, not a small browser plugin.
 2. Read [the setup script](https://github.com/Data-Insight-Solutions/Reckons.AI/blob/dev/scripts/content/gen-setup.sh), then run `bash scripts/content/gen-setup.sh`. It installs tools and downloads models outside the checkout, under `~/.local/share/reckons/gen` by default. Set `RECKONS_GEN_HOME` to choose another location and use the same value for the runner.
-3. Choose a private workspace folder outside a Git checkout, or an ignored workspace folder. From the checkout, run `npm run gen:serve -- --workspace=/path/to/your/private-workspace`. Keep this process running. It accepts only image, video and splat requests and writes private job receipts.
+3. Choose a private workspace folder outside a Git checkout, or an ignored workspace folder. From the checkout, run `npm run gen:serve -- --workspace=/path/to/your/private-workspace`. Keep this process running. It is your computer's local job queue: from the browser it accepts only image, video and splat requests, runs them one at a time alongside any other local jobs you have configured, and writes private job receipts. Add `--no-recurring` if you want it to run only what you ask for.
 4. In desktop Chrome or Edge, open Generated assets, choose **Create an asset with Shelly**, and connect that same folder. This file-queue adapter does not connect directly to a remote SSH server or work in browsers without folder access.
 5. Enter an image prompt. The runner checks the output before Shelly adds it for review. After the image arrives, choose a video and describe its motion, or choose a Gaussian splat. A splat invents unseen geometry; it is not a measured scan.
 
 The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C or by closing its terminal. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. If a runner was killed without stopping cleanly, the next one to start takes over its lock once it finds that runner is gone; it refuses while another runner is still running on the same workspace.
+
+### What it takes: measured, per stage
+
+Measured on 2x RTX 3090 (24 GB each, one card used per run), driver 575.57.08, Ryzen 9 3900X with 31 GB RAM, Ubuntu 24.04, on 2026-10-20. GPU memory is the peak held by the run's own processes (nvidia-smi), not the whole card. System RAM is the peak resident size of the largest process. Time is wall clock from start to file, and the model-loading part is included.
+
+| Stage | Peak GPU memory | Peak system RAM | Time | Weights to download (on disk) |
+| --- | --- | --- | --- | --- |
+| Image, standard (768 px, 8 steps) | 11,992 MiB (11.7 GiB) | 1.2 GiB | 15.6 s | 11.2 GB (Z-Image-Turbo weights) |
+| Image, showcase (1024 px, 8 steps) | 13,258 MiB (12.9 GiB) | 1.2 GiB | 19.5 s | the same files |
+| Video (49 frames, 512 px, 20 steps) | 17,356 MiB (16.9 GiB) | 1.5 GiB | 58.8 s | 12.9 GB (Wan2.2 weights) |
+| Splat, standard (32,768 Gaussians, 20 steps) | 6,998 MiB (6.8 GiB) | 5.3 GiB | 31.5 s (11.2 s load + 20.3 s generate) | 4.5 GB (TripoSplat weights) |
+| Splat, showcase (262,144 Gaussians, 20 steps) | 7,000 MiB (6.8 GiB) | 5.3 GiB | 33.7 s (11.0 s load + 22.7 s generate) | the same files |
+
+All three models' weights together are 28.5 GB. Smaller GPUs are untested: nothing here was run on a card below 24 GB, so no minimum is claimed. The splat stage's peak is about 7 GB at both quality levels, because the Gaussian count only changes how many points the decoder writes out, so the video stage (about 17 GB) is the one a smaller card is most likely to fail. The image numbers include 1024 px because the splat model resizes its input to 1024 px anyway. System RAM was read as the largest single process, so a machine that also runs a browser and other tools needs more than this column alone.
 
 ### Tools and integration guides
 

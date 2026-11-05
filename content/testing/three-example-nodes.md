@@ -1,7 +1,7 @@
 ---
 title: "Three.js example loading and isolation"
 slug: "three-example-nodes"
-order: 1033
+order: 1034
 section: "Testing"
 parent: "test-suite"
 template: doc

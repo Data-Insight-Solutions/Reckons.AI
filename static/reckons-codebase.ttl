@@ -17,6 +17,13 @@
 @prefix kpred:  <urn:kbase:predicate/> .
 @prefix code:   <urn:reckons:code/> .
 
+code:room-benchmark
+    rdf:type ktype:Concept ;
+    rdfs:label "Synthetic room quality benchmark" ;
+    skos:definition "Seeded Blender room renders with known poses and disjoint training/evaluation views, a bounded Brush training run, image fidelity metrics, compressed size, runtime and a local visual report. No automatic replacement of the bundled room." ;
+    kpred:has-file "scripts/content/scan-synthetic-room.py", "scripts/content/room-bench.ts", "scripts/content/room-bench-lib.ts" ;
+    kpred:tested-by "scripts/content/__tests__/room-bench.test.ts" .
+
 code:generation
     rdf:type ktype:Concept ;
     rdfs:label "Local generation story and workspace queue" ;
@@ -653,7 +660,7 @@ code:extension  rdf:type     ktype:Concept ;
 
 code:mcp-server  rdf:type     ktype:Concept ;
                  rdfs:label   "MCP Server" ;
-                 skos:definition "Standalone Node.js MCP server. 20 tools over JSON-RPC stdio, including the local Ollama bridge (kb_local_extract, kb_local_summarize) and markdown/page generation (kb_generate_page, kb_entity_markdown)." ;
+                 skos:definition "Standalone Node.js MCP server. 28 tools over JSON-RPC stdio (counted 2026-10-27), including the local Ollama bridge (kb_local_extract, kb_local_summarize), markdown/page generation (kb_generate_page, kb_entity_markdown) and the local job queue (kb_job_list, kb_job_enqueue, kb_job_status)." ;
                  skos:broader code:repo ;
                  kpred:has-file "mcp-server/src/index.ts" ;
                  kpred:has-file "mcp-server/src/kb-reader.ts" ;
@@ -665,6 +672,8 @@ code:mcp-server  rdf:type     ktype:Concept ;
                  kpred:has-file "mcp-server/src/entity-markdown.ts" ;
                  kpred:has-file "mcp-server/src/generate-page.ts" ;
                  kpred:has-file "mcp-server/src/ethics-preamble.ts" ;
+                 kpred:has-file "mcp-server/src/local-jobs.ts" ;
+                 kpred:tested-by "mcp-server/src/__tests__/local-jobs.test.ts" ;
                  kpred:has-file "mcp-server/package.json" ;
                  kpred:has-file "mcp-server/tsconfig.json" ;
                  kpred:has-file "mcp-server/vitest.config.ts" ;
