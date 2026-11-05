@@ -11576,7 +11576,7 @@ kb:demo-step-narration rdf:type ktype:Phase ;
     rdfs:label "F275.1 — narration lines on test-workflow steps, read by the one step reader" ;
     kpred:part-of      kb:demo-videos ;
     kpred:tested-by    "scripts/__tests__/test-workflow.test.ts" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:description  "A demo is a test workflow with narration, not a second list of steps. Each ktype:TestStep may carry kpred:narration (the line spoken while the step plays); the ktype:TestWorkflow may carry kpred:narrator (a Hume voice name or id). scripts/lib/test-workflow.ts reads both, so the page, the diagram, the test and the demo all come from the same triples." ;
     kpred:done-test    "unit test: the reader returns narration and narrator when present and null when absent; a workflow without narration is unchanged on its page; graph-lint and the test-workflow check pass." ;
     kpred:touches-file "scripts/lib/test-workflow.ts" .
@@ -11584,7 +11584,9 @@ kb:demo-step-narration rdf:type ktype:Phase ;
 kb:demo-narration-audio rdf:type ktype:Phase ;
     rdfs:label "F275.2 — narration audio: Hume lines cached by voice and text, Matt's recordings override, durations measured" ;
     kpred:part-of      kb:demo-videos ;
-    kpred:has-status   "planned" ;
+    kpred:has-file     "scripts/demo/narration-plan.ts" ;
+    kpred:tested-by    "scripts/demo/__tests__/narration-plan.test.ts" ;
+    kpred:has-status   "functional" ;
     kpred:depends-on   kb:demo-step-narration ;
     kpred:description  "For each narrated step, one audio clip: Matt's own recording if <override dir>/<workflow>/<step-id>.wav exists, else a cached Hume synthesis keyed by SHA-256 of voice and text (so a re-render pays only for changed lines), else a new synthesis through src/lib/integrations/hume/tts.ts. Each clip's duration is measured with ffprobe. Cache and recordings live under the user's XDG directories, never in the repository." ;
     kpred:done-test    "unit tests with injected synth and probe functions: a cached line is not synthesized again; a changed line or voice is; an override wins over cache and synthesis and is reported as Matt's voice; a step without narration gets no clip and a minimum hold; a synthesis failure names the step and stops the render (no silent gap)." ;
@@ -11598,7 +11600,7 @@ kb:demo-recorder rdf:type ktype:Phase ;
     kpred:has-file     "tests/e2e/demo-recorder.ts" ;
     kpred:has-file     "playwright.demo.config.ts" ;
     kpred:tested-by    "scripts/demo/__tests__/demo-recorder.test.ts" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:depends-on   kb:demo-narration-audio ;
     kpred:description  "A demo Playwright config records video at 1920x1080. A shared helper in the workflow test's step loop is a no-op unless the render passes a timings file; then it marks each step's start, and after the step's action waits until the narration has finished plus a short pause. It writes the marks (step id, start and end offsets) for the mux. The test's assertions still run, so a demo cannot be recorded of an app that fails its own test." ;
     kpred:done-test    "the generated-assets workflow test passes unchanged without demo mode; in demo mode it writes a 1920x1080 video and a marks file with one entry per step, each step lasting at least its narration; the hold computation has unit tests." .
@@ -11607,7 +11609,9 @@ kb:demo-mux rdf:type ktype:Phase ;
     rdfs:label "F275.4 — picture and sound joined, captions from the same text, a receipt for rebuilding" ;
     kpred:part-of      kb:demo-videos ;
     kpred:has-file     "scripts/demo/render.ts" ;
-    kpred:has-status   "planned" ;
+    kpred:has-file     "scripts/demo/mux.ts" ;
+    kpred:tested-by    "scripts/demo/__tests__/mux.test.ts" ;
+    kpred:has-status   "functional" ;
     kpred:depends-on   kb:demo-recorder ;
     kpred:description  "ffmpeg places each clip at its step's start offset over the recorded video and writes an H.264/AAC MP4; captions are a WebVTT file from the narration text at the same offsets (and optionally burned in). The receipt records commit, SHA-256 of the graph file, voices per step (Hume voice or Matt), clip hashes, offsets, tool versions and the output's SHA-256. One command: npm run demo:render -- --workflow=<id>. The credits line says the narration was made with Hume when any line was (the F275 constraint)." ;
     kpred:done-test    "unit tests: the ffmpeg arguments place each clip at its offset; the VTT has one cue per narrated step with correct timestamps; the receipt has every field. Live check on this machine: the generated-assets demo renders, ffprobe reports video and audio streams of matching length, and the receipt's output hash matches the file." ;
@@ -11618,7 +11622,7 @@ kb:demo-mux rdf:type ktype:Phase ;
 kb:demo-first-render rdf:type ktype:Phase ;
     rdfs:label "F275.5 — the first demo: generated assets, narrated in Hume, reviewed by Matt" ;
     kpred:part-of      kb:demo-videos ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:depends-on   kb:demo-mux ;
     kpred:done-test    "test:Workflow-GeneratedAssets has narration on every step; the rendered MP4 and its receipt exist outside the repository; Matt has watched it and his verdict is recorded on this entity." .
 
@@ -11874,3 +11878,6 @@ kb:demo-narration-provider rdf:type ktype:Phase ;
     kpred:relates-to   kb:capability-awareness ;
     kpred:description  "Hume's TTS ends 2026-11-13. Candidates are rendered on the SAME narration lines as the Hume clips and played to Matt side by side (the F117 rule: measured on our content, not a vendor's claim). Local candidates first (NVIDIA NeMo MagpieTTS, kb:nemo-speech; other open models with a commercial-use license), then cloud ones where Matt has an account. Each candidate records its license and commercial-use terms." ;
     kpred:done-test    "the first demo's lines exist as clips from at least two candidates beside the Hume clips; each candidate's license and commercial terms are recorded; Matt's choice is recorded on this entity; the narration plan accepts the chosen provider's voice string." .
+
+kb:demo-first-render kpred:measured "2026-11-05, FIRST RENDER, THIS MACHINE: npm run demo:render -- --workflow=generated-assets made a 63.4 s MP4 (1920x1080 H.264, AAC 62.8 s), WebVTT captions and a receipt whose output hash matches the file. Six Hume lines of 9.1-10.2 s, synthesized once and now cached; each step held 9.7-10.8 s. The workflow test passed in demo mode and, separately, unchanged without it (2 passed, 44 s). NOT YET: Matt's verdict on the video and on the six DRAFT lines (drafted by a Sonnet subagent, claims checked against the receipts)." ;
+    kpred:honest-note "The six narration lines are DRAFTS until Matt approves them. Hume's TTS ends 2026-11-13 (kb:int-hume): any line he changes must be re-synthesized before then, or wait for F275.8." .
