@@ -1044,8 +1044,8 @@ kb:capability-awareness kpred:decided "MATT, 2026-11-05: 'A key new feature woul
     kpred:relates-to kb:story-narration-voice ;
     kpred:relates-to kb:optional-dependency-plugins ;
     kpred:constraint "SUGGEST, NEVER ROUTE. A suggestion names a service; it does not send anything to it. Crossing from local to a third-party service stays an explicit user step under F74.6 (kb:model-routing-ledger: no silent local-to-cloud fallback). A request with no local route is a visible answer that lists the options, not a quiet hand-off." ;
-    kpred:open-question "MATT DECIDES: may referral status ever affect which service is listed first? Proposed: no. Order comes from measured fit and what the user already has connected; referral status is not an input to ordering, and a deterministic test holds that, so the claim can be checked rather than trusted." ;
-    kpred:open-question "MATT DECIDES: are suggestions offered only at a gap (no local route) or a complaint (the user says the local result is not good enough), or also unprompted? Proposed: only at a gap or a complaint, plus a settings view of what is connected, so a working local path is never interrupted by an offer." .
+    kpred:decided "MATT, 2026-11-05: REFERRAL NEVER AFFECTS ORDER (chosen over 'tie-breaker only' and 'allowed, disclosed'). Order comes from measured fit and what the user already has connected; referral status is not an input to ordering, and a deterministic test holds that, so the claim can be checked rather than trusted." ;
+    kpred:decided "MATT, 2026-11-05: SUGGEST ONLY AT A GAP OR A COMPLAINT (chosen over also suggesting unprompted). A suggestion appears when a request has no local route or the user says a local result is not good enough, plus a settings view of what is connected. A working local path is never interrupted by an offer." .
 
 kb:service-catalog rdf:type ktype:Phase ;
     rdfs:label "F117.1 — a service catalog by purpose: what each service does, where it runs, what it costs, whether we earn from it" ;
@@ -1062,7 +1062,7 @@ kb:no-local-route-suggestion rdf:type ktype:Phase ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:service-catalog ;
     kpred:description  "When a request has no eligible local route (no generation runner connected, too little GPU memory for the stage, the model not installed), the answer says which of those it is and what would make it run locally, then lists the catalog's services for that purpose, each marked connected or not, with any referral disclosed in the same line. First surface: Shelly's LOCAL JOBS context (src/lib/integrations/llm/turtle-chat.ts), which today only says the local runner is not connected." ;
-    kpred:done-test    "unit tests: a splat request with no runner names the missing runner first and then the catalog's splat services; a connected service is marked connected; a service with an active referral carries its disclosure in the suggestion itself; nothing is queued or sent to a service by the suggestion; a muted purpose produces no suggestion and still produces the local explanation." ;
+    kpred:done-test    "unit tests: suggestion order is identical with every referral status flipped (referral is not an ordering input); a splat request with no runner names the missing runner first and then the catalog's splat services; a connected service is marked connected; a service with an active referral carries its disclosure in the suggestion itself; nothing is queued or sent to a service by the suggestion; a muted purpose produces no suggestion and still produces the local explanation." ;
     kpred:touches-file "src/lib/integrations/llm/turtle-chat.ts" .
 
 kb:quality-complaint-suggestion rdf:type ktype:Phase ;
