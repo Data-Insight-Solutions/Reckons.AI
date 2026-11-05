@@ -13,7 +13,7 @@ they were resolved are in #587's description.
 **The 12:39 CST crash was Ollama, not Chrome**: llama-server started without CUDA and loaded ~17 GB into RAM
 (evidence on `kb:queue-ram-guard`, F74.11). The queue is RESUMED and guarded.
 
-- **Matt:** the systemd-oomd / MemoryMax drop-in for ollama.service (command in chat 2026-11-04); not applied as of then.
+- **Done:** the systemd-oomd / MemoryMax drop-in for ollama.service, applied by Matt and verified 2026-11-04 evening (details on `kb:queue-ram-guard`).
 - **Matt, numbering:** collisions renumbered — taxonomy-current F263->F280, bench review F183.3->F183.5,
   local-overseer-model F268->F282.
 - **#527 removed the session-heartbeat gate** (Matt, 2026-10-23): the queue worker now runs jobs without an active
