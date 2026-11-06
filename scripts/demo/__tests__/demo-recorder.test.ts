@@ -8,7 +8,13 @@ import { demoRecorder, remainingHoldMs, type DemoMarksFile } from '../../../test
 /** F275.3 — the recorder in a workflow test's step loop, without a browser. */
 const fakePage = () => {
   const waits: number[] = [];
-  return { page: { waitForTimeout: async (ms: number) => { waits.push(ms); } } as unknown as Page, waits };
+  const page = {
+    waitForTimeout: async (ms: number) => { waits.push(ms); },
+    addInitScript: async () => {},
+    evaluate: async () => {},
+    locator: () => ({}),
+  };
+  return { page: page as unknown as Page, waits };
 };
 
 describe('remainingHoldMs', () => {
@@ -77,5 +83,29 @@ describe('demoRecorder.hold', () => {
     const { page, waits } = fakePage();
     await demoRecorder(page, {}).hold();
     expect(waits).toEqual([]);
+  });
+});
+
+import { glideSteps } from '../../../tests/e2e/demo-recorder';
+describe('glideSteps', () => {
+  it('is slow enough to follow and bounded both ways', () => {
+    expect(glideSteps(0)).toBe(8);
+    expect(glideSteps(300)).toBe(12);
+    expect(glideSteps(5000)).toBe(24);
+  });
+});
+
+describe('the line starts at the key moment', () => {
+  it('records speakMs when hold() runs inside a step, and none for a step without one', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'demo-rec-'));
+    const timings = join(dir, 't.json'); const marks = join(dir, 'm.json');
+    writeFileSync(timings, JSON.stringify({ holds: { a: 1000, b: 1000 } }));
+    const r = demoRecorder(fakePage().page, { DEMO_TIMINGS: timings, DEMO_MARKS: marks });
+    await r.step('a', async () => { await r.hold(); });
+    await r.step('b', async () => {});
+    r.finish();
+    const out = JSON.parse(readFileSync(marks, 'utf8')) as DemoMarksFile;
+    expect(typeof out.marks[0].speakMs).toBe('number');
+    expect(out.marks[1].speakMs).toBeUndefined();
   });
 });

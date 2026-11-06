@@ -53,6 +53,8 @@ export const P = {
   narration: `${KPRED}narration`,
   /** F275.1: the Hume voice (name or id) a workflow's demo is narrated in. */
   narrator: `${KPRED}narrator`,
+  /** F275: a short question or bridge spoken as the step begins, before the screen changes. */
+  narrationLead: `${KPRED}narration-lead`,
 } as const;
 
 export interface WorkflowStep {
@@ -79,6 +81,8 @@ export interface WorkflowStep {
   screenshot: string | null;
   /** F275.1: what the demo narrator says during this step, or null when the step plays silent. */
   narration: string | null;
+  /** F275: spoken at the step's start, before its pause; null when the step has none. */
+  narrationLead: string | null;
 }
 
 export interface Workflow {
@@ -141,6 +145,7 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
         pageName: need(sIri, P.pageName, 'kpred:page-name'),
         screenshot: lit(sIri, P.screenshot),
         narration: lit(sIri, P.narration)?.trim() || null,
+        narrationLead: lit(sIri, P.narrationLead)?.trim() || null,
       });
     }
     steps.sort((a, b) => a.order - b.order);
