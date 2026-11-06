@@ -109,11 +109,20 @@ export function gpuVerdict(gpus: Gpu[] | null, apps: ComputeApp[] | null, limits
 const smi = (args: string[]): Promise<string | null> =>
   new Promise((resolve) => execFile('nvidia-smi', args, { timeout: 5000, encoding: 'utf8' }, (err, out) => resolve(err ? null : out)));
 
+/**
+ * F58.9.17: on macOS there is no nvidia-smi BY DESIGN (Apple Silicon GPUs have no such tool), so its
+ * absence is not "unknown" there: without this, a Mac runner held every generation job forever.
+ * Jobs still run one at a time. Everywhere else a missing nvidia-smi still fails closed. Pure.
+ */
+export function missingTelemetryVerdict(platform: NodeJS.Platform): GpuVerdict {
+  return platform === 'darwin' ? { ok: true } : gpuVerdict(null, null);
+}
+
 /** Reads nvidia-smi (execFile, no shell) and decides. Never throws. */
-export async function readGpuVerdict(limits: GpuLimits = loadGpuLimits()): Promise<GpuVerdict> {
+export async function readGpuVerdict(limits: GpuLimits = loadGpuLimits(), platform: NodeJS.Platform = process.platform): Promise<GpuVerdict> {
   const g = await smi(GPU_QUERY);
   const gpus = g === null ? null : parseGpus(g);
-  if (!gpus) return gpuVerdict(null, null, limits);
+  if (!gpus) return platform === 'darwin' ? missingTelemetryVerdict(platform) : gpuVerdict(null, null, limits);
   const a = await smi(APPS_QUERY);
   return gpuVerdict(gpus, a === null ? null : parseApps(a), limits);
 }
