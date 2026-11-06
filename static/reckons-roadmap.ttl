@@ -10361,7 +10361,7 @@ kb:release-0-2-7-docs rdf:type ktype:Phase ;
 kb:release-0-2-7 rdf:type ktype:Release ;
     rdfs:label "v0.2.7" ;
     kpred:version "0.2.7" ;
-    kpred:has-status "functional" ;
+    kpred:has-status "production" ;
     kpred:description "The agents release: the local deputy, agent monitoring on This Device, grouped review links, question-answer proposals grounded in earlier decisions, queue integrity, and job briefs with tracked Git hooks. Local host mode and LAN HTTPS moved to v0.2.8 at the cut." ;
     kpred:decided "MATT, 2026-10-07: F243-F245 go to 'a later 0.2.7 reach release' rather than v0.2.6." ;
     kpred:decided "MATT, 2026-10-30, THE CUT: 'Lets make a clear cut for agents updates for 0.2.7, maybe we already have a lot of 0.2.8 overflow, doesn't matter too much if there are some minor versions that are not cohesive on one feature/topic.' So 0.2.7 is the agents release. Local host mode (F243) and LAN HTTPS (F244) had not started and move to v0.2.8 with everything that arrived from 0.2.6 on 2026-10-13; the agents dashboard (F245) stays." ;
@@ -10373,7 +10373,7 @@ kb:release-0-2-7 rdf:type ktype:Release ;
 kb:release-0-2-7 kpred:progress "2026-10-30, AT THE CUT: dev was 44 commits past staging and every merge in them is agent work: #535 the local deputy, #541 review links grouped by producer run, #542 queue integrity, #545 the npm guard fix, #546 the overseer bench, #543 F273 phase 0 and A, plus #529 (a zod advisory) and #526 (a handoff). OPEN AND IN SCOPE, not yet merged: #550 agent watch page (F245), #549 question presettle, #548 overseer rates, #539 MCP local job tools (F267, CI failing at the cut), #551 F274.1 agents in another repository. F267 and F274.1 join has-part when their entities reach dev; naming them here first would leave a dangling link. NOT IN SCOPE: Triple Check (F100, #537) goes to 0.2.8 unless Matt says otherwise." .
 
 kb:release-0-2-7 kpred:progress "2026-10-30, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.7; release notes at content/releases/v0-2-7.md. Merged for the release: #535, #541, #542, #543, #545, #546, #547, #548, #549, #550, #551, #553, plus #529 (a zod advisory) and #526 (a handoff). Not in it: #539 MCP local job tools (F267, CI failing at the cut), Triple Check (#537, v0.2.8), the web engine (F274.4, v0.2.8)." ;
-    kpred:honest-note "FUNCTIONAL HERE MEANS built on dev, not yet promoted to staging or production. Verified 2026-11-01: promotion PR #556 (dev to staging) is open at aa4bd10b with failing script-tier and production smoke-test checks; staging and main still declare 0.2.6. The five missing docs entities are supplied by the reviewed local-deputy closeout work, which must land before promotion. F245 remains in-progress: This Device and agent watch are built; per-space agent settings are not." .
+    kpred:honest-note "PRODUCTION VERIFIED 2026-11-05: PR #556 merged dev to staging on 2026-11-04; Matt merged #576 staging to main on 2026-11-05 at 21:54 UTC; main package.json declares 0.2.7 and main CI passed. This corrects the earlier note that it was not yet promoted. NOT DONE: no v0.2.7 GitHub release exists yet (v0.2.6's was created by hand), and the Extension Build & Sign job failed on main because the extension manifest is still 0.1.0, a version AMO has already signed ('Submission failed (2): Conflict'). F245 remains in-progress: This Device and agent watch are built; per-space agent settings are not." .
 
 kb:release-0-2-8 rdf:type ktype:Release ;
     rdfs:label "v0.2.8" ;
@@ -11813,3 +11813,55 @@ kb:gen-video-quality rdf:type ktype:Phase ;
 
 kb:gen-setup-by-os kpred:measured "2026-11-05, before the first Mac tester: the runner's GPU gate FAILED CLOSED without nvidia-smi, so on a Mac (which never has it) gen:serve would have held every generation job forever. Fixed: on macOS a missing nvidia-smi lets a job start (missingTelemetryVerdict), still one job at a time; Linux and others still fail closed. Also added: ffmpeg and ffprobe as prerequisites (the video check needs them), and --no-recurring in the documented runner command so a tester's machine runs only what they ask for." .
 
+# -- F283: Open in — an entity's file opens in the person's own desktop app (Matt, 2026-11-05) --------
+kb:open-in-app rdf:type ktype:Feature ;
+    rdfs:label "Open in — an entity's file opens in the person's own desktop app, with a default per entity type" ;
+    kpred:feature-id   "F283" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:depends-on   kb:generated-assets-story ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:relates-to   kb:integration-purposes ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:decided      "MATT, 2026-11-05: 'We also need to integrate with Artcraft, similar to inkscape. With 'open in' defaults configured for entity types.'" ;
+    kpred:description  "A node whose entity carries a file (an Image, Video, 3D model, Gaussian splat, SVG or PDF document) gets an 'Open in' control where the asset is already shown (the node panel and asset viewer; no new navigation). Each entity type has a default app, set per person in settings, and the control lists the other apps that can open that type. Apps known at the start: Inkscape (SVG, PDF), GIMP (images), Blender (3D models), and ArtCraft (images, video and 3D scenes; storytold/artcraft)." ;
+    kpred:principle    "THE BROWSER ASKS; THE LOCAL RUNNER LAUNCHES. A static web app cannot start a desktop program, and Reckons.AI has no backend. The local generation runner already talks to the app through files in the workspace folder (src/lib/generation/protocol.ts); an open request is one more file there, and the runner on the person's own machine starts the app." ;
+    kpred:constraint   "AN IMPORTED GRAPH CANNOT LAUNCH A PROGRAM. The request names an app id and a file, never a command. The runner maps app ids to commands from its own local config, opens only files inside the linked workspace folder, and refuses anything else visibly. Same rule as the enclosure alerts: data never becomes an arbitrary command." ;
+    kpred:constraint   "OFFER ONLY WHAT IS INSTALLED. The runner reports which apps it found (the same capabilities file that declares generation stages); the app never shows an 'Open in' choice that would fail. With no runner connected, the control says what it needs instead of failing." ;
+    kpred:evidence     "On this machine (checked 2026-11-05): Inkscape 1.4.4, Blender and GIMP are installed (snap); ArtCraft is not. A directory listing says ArtCraft's Linux build is from source only (unverified until the repository is checked)." ;
+    kpred:decided      "MATT, 2026-11-05: DEFAULTS ARE ARTCRAFT-FIRST (chosen over classic tools first). SVG and PDF -> Inkscape; Image -> ArtCraft when installed, else GIMP; Video -> ArtCraft when installed; 3D model -> Blender; Gaussian splat -> ArtCraft when installed, else the in-app viewer only. A default applies only when its app is installed, and each person can override it." ;
+    kpred:decided      "MATT, 2026-11-05: INSTALLED APPS FIRST (chosen over building ArtCraft from source now). F283.1-.3 are built with Inkscape, GIMP and Blender; the ArtCraft repository is checked in parallel (F283.4) and ArtCraft is added once its license, Linux build and file-open method are known." .
+
+kb:open-in-defaults rdf:type ktype:Phase ;
+    rdfs:label "F283.1 — Open in defaults per entity type, in settings" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A per-person settings map from entity type to app id, with the proposed defaults applied only when that app is reported installed. Shown in the integrations settings, grouped by purpose (F116) where it exists." ;
+    kpred:done-test    "unit tests: the default for a type is the first installed app in its preference list; a missing app is skipped, not offered; a person's own choice overrides the default and survives reload; a type with no installed app offers none." .
+
+kb:open-in-bridge rdf:type ktype:Phase ;
+    rdfs:label "F283.2 — the open request: the app writes it, the local runner launches the app" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-defaults ;
+    kpred:description  "The browser writes an open request (app id, workspace-relative file path) into the generation folder; the runner checks the app id against its own config and the path against the workspace, launches the app detached, and writes a result (opened, refused with a reason, app missing). The runner's capabilities file lists the apps it found." ;
+    kpred:done-test    "unit tests on the runner: a known app and a workspace file launch the configured command; an unknown app id, a path outside the workspace, '..' segments and a symlink out of the workspace are refused with a reason; a missing binary reports 'app missing'; the request never carries a command string. Browser test: the control appears only for installed apps and shows the refusal text." .
+
+kb:open-in-return rdf:type ktype:Phase ;
+    rdfs:label "F283.3 — what the app saves comes back as a new version for review" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-bridge ;
+    kpred:description  "When the opened file is saved in the external app, the runner notices the change and the app offers the edited file as a new version of the asset, pending in review with its hash, beside the old one. Nothing replaces the original without a person accepting it." ;
+    kpred:done-test    "an edited file appears as a pending new version with its own hash; rejecting it keeps the original; accepting it keeps the old version in the asset's history." .
+
+kb:open-in-artcraft rdf:type ktype:Phase ;
+    rdfs:label "F283.4 — ArtCraft as an Open in target, checked first" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-bridge ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:description  "Read the storytold/artcraft repository before relying on it: its license file (directory listings disagree), whether a Linux build exists or must be compiled, and how it accepts a file to open (command-line argument or import folder). Then add it to the runner's app config. Its bring-your-own-key cloud providers (for example WorldLabs for 3D scenes) also make it an F117 catalog entry for requests that cannot run locally." ;
+    kpred:done-test    "the license, Linux install path and file-open method are recorded on this entity with the date checked; on a machine with ArtCraft installed, an Image opens in it through F283.2." ;
+    kpred:honest-note  "NOTHING CHECKED in the repository yet (2026-11-05); the description of ArtCraft comes from directory listings and the developers' own posts." .
