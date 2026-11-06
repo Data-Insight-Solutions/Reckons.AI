@@ -11609,6 +11609,7 @@ kb:demo-mux rdf:type ktype:Phase ;
     rdfs:label "F275.4 — picture and sound joined, captions from the same text, a receipt for rebuilding" ;
     kpred:part-of      kb:demo-videos ;
     kpred:has-file     "scripts/demo/render.ts" ;
+    kpred:has-file     "scripts/demo/cards.ts" ;
     kpred:has-file     "scripts/demo/mux.ts" ;
     kpred:tested-by    "scripts/demo/__tests__/mux.test.ts" ;
     kpred:has-status   "functional" ;

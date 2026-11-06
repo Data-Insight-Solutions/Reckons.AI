@@ -57,3 +57,35 @@ describe('buildReceipt', () => {
     expect(r.credits).toEqual([RECORDED_CREDIT]);
   });
 });
+
+import { assembleArgs, shiftCues } from '../mux';
+import { cardHtml, endCardLines } from '../cards';
+import { resolve } from 'node:path';
+
+describe('title, body and end assembly', () => {
+  it('shifts captions by the title card', () => {
+    expect(shiftCues([{ startMs: 1000, endMs: 2000, text: 'x' }], 3500)).toEqual([{ startMs: 4500, endMs: 5500, text: 'x' }]);
+  });
+  it('joins card, body, card over silence for the cards, with captions as a subtitle track', () => {
+    const a = assembleArgs({ title: { png: 't.png', ms: 3500 }, body: 'b.mp4', end: { png: 'e.png', ms: 6000 }, vtt: 'c.vtt', out: 'o.mp4' });
+    expect(a.slice(0, 7)).toEqual(['-y', '-loop', '1', '-t', '3.500', '-i', 't.png']);
+    expect(a).toEqual(expect.arrayContaining(['-i', 'b.mp4', '-i', 'e.png', '-i', 'c.vtt', '-c:s', 'mov_text', '-map', '5:s']));
+    expect(a[a.indexOf('-filter_complex') + 1]).toMatch(/\[v0\]\[3:a\]\[v1\]\[a1\]\[v2\]\[4:a\]concat=n=3:v=1:a=1\[v\]\[a\]$/);
+    expect(a.slice(-1)).toEqual(['o.mp4']);
+  });
+  it('without captions maps no subtitle stream', () => {
+    const a = assembleArgs({ title: { png: 't', ms: 1000 }, body: 'b', end: { png: 'e', ms: 1000 }, out: 'o' });
+    expect(a).not.toContain('mov_text');
+  });
+});
+
+describe('cards', () => {
+  it('the end card carries every credit it is given, and the card escapes text', () => {
+    const lines = endCardLines(['Narration voice made with Hume (hume.ai).']);
+    expect(lines).toContain('Narration voice made with Hume (hume.ai).');
+    const html = cardHtml({ heading: 'A <b> & C', lines }, resolve(import.meta.dirname, '../../..'));
+    expect(html).toContain('A &lt;b&gt; &amp; C');
+    expect(html).toContain('Narration voice made with Hume (hume.ai).');
+    expect(html).toContain('<svg');
+  });
+});

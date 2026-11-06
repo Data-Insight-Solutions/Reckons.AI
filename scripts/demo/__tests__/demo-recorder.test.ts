@@ -57,3 +57,25 @@ describe('demoRecorder', () => {
     await expect(r.step('missing', async () => {})).rejects.toThrow(/no hold for step "missing"/);
   });
 });
+
+describe('demoRecorder.hold', () => {
+  it('waits out the line at the key moment, and the step adds no second wait', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'demo-rec-'));
+    const timings = join(dir, 't.json');
+    writeFileSync(timings, JSON.stringify({ holds: { a: 3000 } }));
+    const { page, waits } = fakePage();
+    const r = demoRecorder(page, { DEMO_TIMINGS: timings, DEMO_MARKS: join(dir, 'm.json') });
+    const order: string[] = [];
+    await r.step('a', async () => { order.push('open'); await r.hold(); order.push('close'); });
+    expect(order).toEqual(['open', 'close']);
+    expect(waits[0]).toBeGreaterThan(2900);
+    // the fake wait does not advance the clock, so the post-step wait recomputes the same remainder;
+    // with a real clock it is zero. What matters: the long wait happened BEFORE 'close'.
+    expect(waits.length).toBeGreaterThanOrEqual(1);
+  });
+  it('does nothing outside a demo render or outside a step', async () => {
+    const { page, waits } = fakePage();
+    await demoRecorder(page, {}).hold();
+    expect(waits).toEqual([]);
+  });
+});

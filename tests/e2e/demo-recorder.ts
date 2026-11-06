@@ -27,6 +27,13 @@ export function remainingHoldMs(elapsedMs: number, holdMs: number): number {
 export interface DemoRecorder {
   readonly active: boolean;
   step(stepId: string, run: () => Promise<void>): Promise<void>;
+  /**
+   * Call at the step's key moment (where the test takes its screenshot): the narration hold happens
+   * HERE, while the subject is on screen, not after the step has closed a viewer or moved on.
+   * Found 2026-11-05: the splat step opened the viewer, closed it, then held, so the line about the
+   * 3D scene played over the graph. Outside a demo render, or outside a step, it does nothing.
+   */
+  hold(): Promise<void>;
   finish(): void;
 }
 
@@ -39,21 +46,28 @@ export function demoRecorder(page: Page, env: NodeJS.ProcessEnv = process.env): 
   const timingsPath = env.DEMO_TIMINGS;
   const marksPath = env.DEMO_MARKS;
   if (!timingsPath || !marksPath) {
-    return { active: false, step: async (_id, run) => run(), finish: () => {} };
+    return { active: false, step: async (_id, run) => run(), hold: async () => {}, finish: () => {} };
   }
   const { holds } = JSON.parse(readFileSync(timingsPath, 'utf8')) as DemoTimingsFile;
   const t0 = Date.now();
   const marks: DemoMark[] = [];
+  let current: { startMs: number; hold: number } | null = null;
+  const waitOut = async () => {
+    if (current) await page.waitForTimeout(remainingHoldMs(Date.now() - t0 - current.startMs, current.hold));
+  };
   return {
     active: true,
     async step(stepId, run) {
       const hold = holds[stepId];
       if (hold === undefined) throw new Error(`demo timings have no hold for step "${stepId}"`);
       const startMs = Date.now() - t0;
+      current = { startMs, hold };
       await run();
-      await page.waitForTimeout(remainingHoldMs(Date.now() - t0 - startMs, hold));
+      await waitOut(); // a step that never called hold() still lasts as long as its line
+      current = null;
       marks.push({ stepId, startMs, endMs: Date.now() - t0 });
     },
+    hold: waitOut,
     finish() {
       const file: DemoMarksFile = { marks, endedAtMs: Date.now() - t0 };
       writeFileSync(marksPath, JSON.stringify(file, null, 2));

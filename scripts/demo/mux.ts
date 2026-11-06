@@ -66,6 +66,45 @@ export function ffmpegArgs(o: {
   return args;
 }
 
+/** Shift every cue later by `ms` (the title card's length), so captions stay on their lines. */
+export function shiftCues(cues: Cue[], ms: number): Cue[] {
+  return cues.map((c) => ({ ...c, startMs: c.startMs + ms, endMs: c.endMs + ms }));
+}
+
+/**
+ * The final assembly: title card, the narrated recording, end card, joined into one MP4, with the
+ * captions as a subtitle track inside it (a separate .vtt does not travel through a chat app).
+ * Cards are still images held for their length over silence. 25 fps, 48 kHz mono, H.264/AAC.
+ */
+export function assembleArgs(o: {
+  title: { png: string; ms: number };
+  body: string;
+  end: { png: string; ms: number };
+  vtt?: string;
+  out: string;
+}): string[] {
+  const s = (ms: number) => (Math.max(0, ms) / 1000).toFixed(3);
+  const v = 'scale=1920:1080,setsar=1,fps=25,format=yuv420p';
+  const args = [
+    '-y',
+    '-loop', '1', '-t', s(o.title.ms), '-i', o.title.png,
+    '-i', o.body,
+    '-loop', '1', '-t', s(o.end.ms), '-i', o.end.png,
+    '-f', 'lavfi', '-t', s(o.title.ms), '-i', 'anullsrc=r=48000:cl=mono',
+    '-f', 'lavfi', '-t', s(o.end.ms), '-i', 'anullsrc=r=48000:cl=mono',
+  ];
+  if (o.vtt) args.push('-i', o.vtt);
+  args.push(
+    '-filter_complex',
+    `[0:v]${v}[v0];[1:v]${v}[v1];[2:v]${v}[v2];[1:a]aresample=48000,aformat=channel_layouts=mono[a1];` +
+      '[v0][3:a][v1][a1][v2][4:a]concat=n=3:v=1:a=1[v][a]',
+    '-map', '[v]', '-map', '[a]',
+  );
+  if (o.vtt) args.push('-map', '5:s', '-c:s', 'mov_text', '-metadata:s:s:0', 'language=eng');
+  args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', o.out);
+  return args;
+}
+
 export type Receipt = {
   workflow: string;
   commit: string;

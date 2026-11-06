@@ -983,7 +983,7 @@ test:Workflow-GeneratedAssets-Step1
     kpred:part-of       test:Workflow-GeneratedAssets ;
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "open-example" ;
-    kpred:narration     "Welcome. From the list of examples, we open Generated assets. It arrives as its own space on the map of spaces, so nothing touches your other work." ;
+    kpred:narration     "Welcome. We open the Generated assets example, and it arrives as a space of its own, so nothing touches your other work." ;
     kpred:short-label   "Open the example" ;
     kpred:box-label     "Generated assets" ;
     kpred:box-target    "the Generated assets card under example data" ;
