@@ -10381,10 +10381,6 @@ kb:release-0-2-8 rdf:type ktype:Release ;
     kpred:has-status "planned" ;
     kpred:description "The overflow release, by decision not cohesive on one theme (Matt, 2026-10-30): reach (local host mode, LAN HTTPS) and the canvas and analysis work that moved out of 0.2.6 on 2026-10-13 and out of 0.2.7 on 2026-10-30. Moved because none had started, not because they were dropped." ;
     kpred:decided "MATT, 2026-10-30: received from v0.2.7 at the agents cut (see kb:release-0-2-7)." ;
-    kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:time-series-planning ;
-    kpred:has-part kb:enclosure-monitoring ;
     kpred:has-part kb:shelly-generation-jobs ;
     kpred:proposed "2026-10-16: F259 enclosure monitoring and F166.1 Shelly generation dispatch are additional proposed near-term slices, targeting this reach release before v0.3.0. F259 builds the private policy space, live Currents, local alert execution and capacity warnings in order. This allocation is planning, not a claim of implementation or an approved hardware deployment." ;
     kpred:proposed "2026-10-16: allocate F258's four phases to this near-term release in dependency order: temporal contract and timelines, Timestral/baseline evaluation, optional local provider, then forecast-informed scheduling suggestions. Matt requested delivery before v0.3.0; this working v0.2.7 allocation may be refined within 0.2.x without representing the feature as already built." .
@@ -10422,7 +10418,7 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
 
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped. MOVED AGAIN to v0.2.8 at the agents cut, 2026-10-30." .
 
-kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
+kb:release-0-2-9 kpred:has-part kb:meta-graph-view ;
     kpred:has-part kb:one-graph-canvas ;
     kpred:has-part kb:set-layout ;
     kpred:has-part kb:integration-plugin-sdk ;
@@ -10610,7 +10606,7 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
+kb:release-0-2-9 kpred:has-part kb:test-workflow-stories .
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped. Moved on to v0.2.8 at the agents cut, 2026-10-30." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
@@ -11468,7 +11464,7 @@ kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for p
     kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
     kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
 
-kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
+kb:release-0-2-9 kpred:has-part kb:downstream-site-engine ;
     kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
 
 kb:downstream-site-build rdf:type ktype:Phase ;
@@ -11556,7 +11552,7 @@ kb:downstream-site-landing rdf:type ktype:Phase ;
 kb:demo-videos rdf:type ktype:Feature ;
     rdfs:label "Demo videos as code — narrated walkthroughs rendered reproducibly from the graph" ;
     kpred:feature-id   "F275" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:decided      "MATT, 2026-10-29: 'The talk is not Reckons.AI roadmap, but very compelling demo videos are. Is there a way to automate the video generation, such that the whole video is reproducable? I have mostly run manual demos, but it might be nice to mass produce with TTS tools. I could speak personally about the company or other elements, adding a second voice. The TTS would need to be good. Hume quality not kokoro.' Then: 'I want indico and n8n demos for sure also.' And: 'I have a low cost Hume subscription that includes rights to use commercially. lets test full Hume integration.'" ;
     kpred:description  "A demo is a graph entity with ordered steps, like a TestWorkflow: each step names an app action, a narration line, a voice (a Hume narrator, or Matt) and a caption. One command renders it: Playwright drives the app at 1920x1080 on a seeded synthetic space and records; Hume speaks each line (cached by text and voice, so a re-render only pays for changed lines); each step holds until its narration ends; ffmpeg joins picture and sound; captions come from the same text; a receipt records the commit, graph hash, voices and timings, so any video can be rebuilt. Matt's own voice: recorded lines dropped in as <demo>/<step>.wav replace synthesis for those steps. Slow local generation (14-50 s an asset) runs for real and is trimmed to a fixed hold, with its receipt shown." ;
     kpred:measured     "2026-10-29, HUME LIVE, first time: synthesizeHumeSpeech (src/lib/integrations/hume/tts.ts) returned 6.7 s of 128 kbps MP3 in 2.9 s from api.hume.ai/v0/tts with the X-Hume-Api-Key header; the client-credentials token exchange answered 200 with a 30-minute token (the EVI path); the configured EVI config exists, version 1, voice 'Shelly V1'; the TTS voice library listed. Not yet exercised: a live EVI conversation in the browser." ;
@@ -11565,6 +11561,81 @@ kb:demo-videos rdf:type ktype:Feature ;
     kpred:open-question "First demos and their order: asset generation (prompt to image, video and splat, all local), Indico, n8n, the review loop. Recommended: asset generation first, after per-type nodes (kb:entity-appearance-resolver) and Shelly's generation tool (kb:shelly-generation-jobs)." ;
     kpred:relates-to   kb:test-workflow-stories, kb:story-narration-voice, kb:int-hume, kb:int-indico, kb:int-n8n, kb:generated-assets-story, kb:downstream-site ;
     kpred:honest-note  "PLANNED, NOTHING BUILT (2026-10-29). What exists: Playwright test workflows with steps and screenshots (F34.2), narrated in-app stories (F5.1), a Hume TTS client now verified live, local generation (F58.9.1, functional)." .
+
+# 2026-11-05 — F275 is next (Matt: "We need F275 ASAP"). Phases, built in this order.
+kb:demo-videos kpred:decided "MATT, 2026-11-05: 'We need F275 ASAP.' And: 'remember to assign overseers for local agents!' So the self-contained libraries (F275.2 narration plan, F275.4 mux and captions) go to the local deputy with done-tests, a Sonnet overseer reviews each branch against them, and Opus builds the recorder and the render command." ;
+    kpred:priority "high" ;
+    kpred:proposed "2026-11-05 (agent, not decided): the FIRST DEMO is the generated-assets test workflow (test:Workflow-GeneratedAssets), because it already runs on committed, checked assets with no GPU, so it needs neither per-type nodes (F137.1) nor Shelly's generation tool (F166.1). Running slow local generation for real comes later (F275.6). Indico and n8n follow (F275.7)." ;
+    kpred:proposed "2026-11-05 (agent, not decided): the default narrator is the account's custom Hume voice 'Shelly V1' (the voice Shelly already uses in conversation). One triple on the workflow (kpred:narrator) changes it." .
+
+kb:demo-step-narration rdf:type ktype:Phase ;
+    rdfs:label "F275.1 — narration lines on test-workflow steps, read by the one step reader" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:tested-by    "scripts/__tests__/test-workflow.test.ts" ;
+    kpred:has-status   "functional" ;
+    kpred:description  "A demo is a test workflow with narration, not a second list of steps. Each ktype:TestStep may carry kpred:narration (the line spoken while the step plays); the ktype:TestWorkflow may carry kpred:narrator (a Hume voice name or id). scripts/lib/test-workflow.ts reads both, so the page, the diagram, the test and the demo all come from the same triples." ;
+    kpred:done-test    "unit test: the reader returns narration and narrator when present and null when absent; a workflow without narration is unchanged on its page; graph-lint and the test-workflow check pass." ;
+    kpred:touches-file "scripts/lib/test-workflow.ts" .
+
+kb:demo-narration-audio rdf:type ktype:Phase ;
+    rdfs:label "F275.2 — narration audio: Hume lines cached by voice and text, Matt's recordings override, durations measured" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-file     "scripts/demo/narration-plan.ts" ;
+    kpred:tested-by    "scripts/demo/__tests__/narration-plan.test.ts" ;
+    kpred:has-status   "functional" ;
+    kpred:depends-on   kb:demo-step-narration ;
+    kpred:description  "For each narrated step, one audio clip: Matt's own recording if <override dir>/<workflow>/<step-id>.wav exists, else a cached Hume synthesis keyed by SHA-256 of voice and text (so a re-render pays only for changed lines), else a new synthesis through src/lib/integrations/hume/tts.ts. Each clip's duration is measured with ffprobe. Cache and recordings live under the user's XDG directories, never in the repository." ;
+    kpred:done-test    "unit tests with injected synth and probe functions: a cached line is not synthesized again; a changed line or voice is; an override wins over cache and synthesis and is reported as Matt's voice; a step without narration gets no clip and a minimum hold; a synthesis failure names the step and stops the render (no silent gap)." ;
+    kpred:evidence     "Matt, 2026-10-29: 'The TTS would need to be good. Hume quality not kokoro.' Hume synthesis is verified live (2.9 s for 6.7 s of audio), but nothing plans a demo's clips, caches them, or lets Matt's own recordings replace a line, so every re-render would pay for every line again." ;
+    kpred:extends      "src/lib/integrations/hume/tts.ts (synthesizeHumeSpeech, resolveHumeTtsAuth; reuse them, do not write a second Hume client) and scripts/lib/test-workflow.ts (the step list)." ;
+    kpred:non-goal     "No network or ffprobe calls in the library or its tests: synthesis, probing and file access are injected. No recorder, no mux, no npm script. Nothing written inside the repository at run time." .
+
+kb:demo-recorder rdf:type ktype:Phase ;
+    rdfs:label "F275.3 — demo recording: the workflow test runs at 1920x1080 and each step holds until its line ends" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-file     "tests/e2e/demo-recorder.ts" ;
+    kpred:has-file     "playwright.demo.config.ts" ;
+    kpred:tested-by    "scripts/demo/__tests__/demo-recorder.test.ts" ;
+    kpred:has-status   "functional" ;
+    kpred:depends-on   kb:demo-narration-audio ;
+    kpred:description  "A demo Playwright config records video at 1920x1080. A shared helper in the workflow test's step loop is a no-op unless the render passes a timings file; then it marks each step's start, and after the step's action waits until the narration has finished plus a short pause. It writes the marks (step id, start and end offsets) for the mux. The test's assertions still run, so a demo cannot be recorded of an app that fails its own test." ;
+    kpred:done-test    "the generated-assets workflow test passes unchanged without demo mode; in demo mode it writes a 1920x1080 video and a marks file with one entry per step, each step lasting at least its narration; the hold computation has unit tests." .
+
+kb:demo-mux rdf:type ktype:Phase ;
+    rdfs:label "F275.4 — picture and sound joined, captions from the same text, a receipt for rebuilding" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-file     "scripts/demo/render.ts" ;
+    kpred:has-file     "scripts/demo/cards.ts" ;
+    kpred:has-file     "scripts/demo/mux.ts" ;
+    kpred:tested-by    "scripts/demo/__tests__/mux.test.ts" ;
+    kpred:has-status   "functional" ;
+    kpred:depends-on   kb:demo-recorder ;
+    kpred:description  "ffmpeg places each clip at its step's start offset over the recorded video and writes an H.264/AAC MP4; captions are a WebVTT file from the narration text at the same offsets (and optionally burned in). The receipt records commit, SHA-256 of the graph file, voices per step (Hume voice or Matt), clip hashes, offsets, tool versions and the output's SHA-256. One command: npm run demo:render -- --workflow=<id>. The credits line says the narration was made with Hume when any line was (the F275 constraint)." ;
+    kpred:done-test    "unit tests: the ffmpeg arguments place each clip at its offset; the VTT has one cue per narrated step with correct timestamps; the receipt has every field. Live check on this machine: the generated-assets demo renders, ffprobe reports video and audio streams of matching length, and the receipt's output hash matches the file." ;
+    kpred:evidence     "F275's description promises picture and sound joined by ffmpeg, captions from the same text and a receipt for rebuilding; none of it exists (honest-note 2026-10-29: planned, nothing built)." ;
+    kpred:extends      "The F275.2 clip plan (scripts/demo/narration-plan.ts) and the F275.3 marks file. ffmpeg and ffprobe as installed on the machine; no new npm dependency." ;
+    kpred:non-goal     "The library only BUILDS arguments, cues and receipts; it does not spawn ffmpeg (the render command does). No video editing beyond placing clips and captions. No new dependency." .
+
+kb:demo-first-render rdf:type ktype:Phase ;
+    rdfs:label "F275.5 — the first demo: generated assets, narrated in Hume, reviewed by Matt" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "in-progress" ;
+    kpred:depends-on   kb:demo-mux ;
+    kpred:done-test    "test:Workflow-GeneratedAssets has narration on every step; the rendered MP4 and its receipt exist outside the repository; Matt has watched it and his verdict is recorded on this entity." .
+
+kb:demo-live-generation rdf:type ktype:Phase ;
+    rdfs:label "F275.6 — slow local generation run for real in a demo, trimmed to a fixed hold with its receipt shown" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-first-render ;
+    kpred:done-test    "a demo step that runs real local generation records the whole wait, the render cuts it to a fixed hold, and the cut is said on screen with the measured generation time." .
+
+kb:demo-integrations rdf:type ktype:Phase ;
+    rdfs:label "F275.7 — Indico and n8n demos" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-first-render ;
+    kpred:done-test    "an Indico and an n8n test workflow exist with narration, each renders with the F275.4 command on synthetic data only." .
 
 kb:squash-trailer-provenance kpred:progress "2026-11-01: built on the closeout branch. Seven new regression cases failed before implementation; the trailer and hook suites then passed 33 tests. The historical origin/main..HEAD check reads 660962c from its retained original blocks and passes; no history rewrite or exemption." .
 
@@ -11785,6 +11856,80 @@ kb:work-tiering kpred:decided "MATT, 2026-11-04: 'local upgrades versus service 
     kpred:principle "NO SIDE UPGRADES ITSELF. A broken upgrade must leave a working side to diagnose it and roll it back. LOCAL STACK, upgraded by Claude: Ollama, local model tags and their defaults, GPU drivers and CUDA, sd-cli and the other generation tools, the deputy harness (scripts/agent/local-claude.sh, queue worker). CLAUDE SIDE, upgraded by the local deputy: Claude Code, the Anthropic SDK (@anthropic-ai/sdk), model IDs in code and config, MCP connector and plugin versions. Each upgrade records the version before and after, a check that passed on the new version, and the rollback command. The deputy's work stays a proposal on a branch that a person merges, as for any deputy job." ;
     kpred:evidence "WHY, 2026-11-04: Ollama 0.40.11 intermittently started llama-server without its CUDA backend, and the resulting RAM spill took the desktop down (kb:queue-ram-guard). A local model could not have diagnosed that, because its own runtime was the broken part; Claude did, from the journal. The reverse holds for a broken Claude Code or SDK upgrade: the local side still runs." .
 
+# 2026-11-05 — HUME ENDS ITS TTS AND EVI APIS ON 2026-11-13 (Matt, in chat with Claude Code).
+kb:int-hume kpred:known-issue "SUNSET, 2026-11-13. Matt, 2026-11-05, quoting a notice he saw from Hume: 'Hume is sunsetting the TTS and EVI APIs. Access ends November 13, 2026 at 12:01 a.m. EST, and both APIs remain fully supported until then. Any data in your account is permanently deleted after that date.' NOT CONFIRMED from Hume's public docs: the linked page (dev.hume.ai/audio-decisions/docs/overview, read 2026-11-05) describes only the Audio Decisions API, which scores audio and does not synthesize it. After the date, every Hume path in the app fails: Shelly's conversational voice (ShellyVoice, EVI), Hume narration (src/lib/integrations/hume/tts.ts), and the custom voice 'Shelly V1', which is deleted with the account data." ;
+    kpred:remaining "Before 2026-11-13: render and keep every narration line the first demos need (the F275.2 cache keeps clips locally, so a cached line still plays after the date). Then: the app must say Hume is gone and fall back to the local voice audibly, never fail silent (the F5.1 fallback rule), and a replacement narration provider is chosen by a listening comparison on the same lines (kb:demo-narration-provider)." .
+
+kb:voice-interface kpred:known-issue "Hume's EVI API ends 2026-11-13 (see kb:int-hume). Shelly's conversational voice stops working on that date unless it is moved to another provider; until then it works as before." .
+
+kb:demo-videos kpred:decided "MATT, 2026-11-05: 'Warm Female Assistant Voice is a great start.' The first demos are narrated in Hume's library voice 'Warm Female Assistant Voice' (id a623d3ed-612c-413b-b09f-e0a379a317f0), not the custom 'Shelly V1' proposed earlier the same day." ;
+    kpred:constraint "HUME ENDS 2026-11-13 (kb:int-hume). Narration clips are cached by provider, voice and text outside the repository, so a line synthesized before the date still renders after it; a NEW or changed line after the date needs another provider. Voice strings are provider-qualified (hume:<id>) so a later provider cannot collide with a cached Hume clip." .
+
+kb:demo-narration-provider rdf:type ktype:Phase ;
+    rdfs:label "F275.8 — narration after Hume: a listening comparison on the same lines, then a provider chosen" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-narration-audio ;
+    kpred:relates-to   kb:nemo-speech ;
+    kpred:relates-to   kb:kokoro-tts ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:description  "Hume's TTS ends 2026-11-13. Candidates are rendered on the SAME narration lines as the Hume clips and played to Matt side by side (the F117 rule: measured on our content, not a vendor's claim). Local candidates first (NVIDIA NeMo MagpieTTS, kb:nemo-speech; other open models with a commercial-use license), then cloud ones where Matt has an account. Each candidate records its license and commercial-use terms." ;
+    kpred:done-test    "the first demo's lines exist as clips from at least two candidates beside the Hume clips; each candidate's license and commercial terms are recorded; Matt's choice is recorded on this entity; the narration plan accepts the chosen provider's voice string." .
+
+kb:demo-first-render kpred:measured "2026-11-05, FIRST RENDER, THIS MACHINE: npm run demo:render -- --workflow=generated-assets made a 63.4 s MP4 (1920x1080 H.264, AAC 62.8 s), WebVTT captions and a receipt whose output hash matches the file. Six Hume lines of 9.1-10.2 s, synthesized once and now cached; each step held 9.7-10.8 s. The workflow test passed in demo mode and, separately, unchanged without it (2 passed, 44 s). NOT YET: Matt's verdict on the video and on the six DRAFT lines (drafted by a Sonnet subagent, claims checked against the receipts)." ;
+    kpred:honest-note "The six narration lines are DRAFTS until Matt approves them. Hume's TTS ends 2026-11-13 (kb:int-hume): any line he changes must be re-synthesized before then, or wait for F275.8." .
+
+# 2026-11-05 — Matt reviews the first demo; three follow-ups (in chat with Claude Code).
+kb:demo-first-render kpred:evidence "MATT, 2026-11-05, after watching it: 'That demo video was pretty good. The receipt comments are a bit ambigious, but more importantly the first steps loading the graph did not visually match the description of going to the about page.' Causes found the same day: step 1 passes through loading, the example list (about 2 s), the map of spaces and loading again, so a line about the About page played mostly over other screens; and the test's own 1280x800 viewport overrode the demo's 1920x1080, leaving grey margins in every frame (not reported by Matt; seen in sampled frames). Fixed: the line now follows the screens, 'receipt' became 'a saved record of how it was made', and a demo render keeps 1920x1080." .
+
+kb:demo-composite-asset rdf:type ktype:Phase ;
+    rdfs:label "F275.9 — a rendered demo is a composite asset in the graph: transcript, narration audio, screen capture, and the finished video" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-mux ;
+    kpred:relates-to   kb:media-entity-types ;
+    kpred:relates-to   kb:generation-composition ;
+    kpred:decided      "MATT, 2026-11-05: 'the demo video should be an available multi-part composite asset, it has a transcript, audio, video screen capture.'" ;
+    kpred:description  "A render writes entities, not only files: one composite asset (the finished demo) with kpred:has-part links to its Transcript (the narration text with its timings, the WebVTT), its narration Audio (the mixed track, and each line's clip with its voice and source), and its screen-capture Video; each part carries its hash, and the composite carries the receipt's provenance (commit, graph hash, voices, tools). Transcript and Audio join the built-in media types beside Prompt, Image, Video, Model3D, GaussianSplat and License (F58.9.5). The parts are what F167.1 edits at the cheapest layer: change a line in the transcript, re-voice that line, re-mux, without recording again." ;
+    kpred:done-test    "unit tests: the render's receipt converts to a composite entity with exactly one transcript, one mixed audio, one screen capture and one finished video, each with a hash that matches its file, and per-line audio parts with voice and source; Transcript and Audio are built-in types with their attributes listed; importing the composite into a space shows the parts as linked nodes." .
+
+kb:demo-visual-qa rdf:type ktype:Phase ;
+    rdfs:label "F275.10 — demo QA in the visual testing suite: frames sampled at every step, checked, and compared with the narration" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:video-frame-sampling ;
+    kpred:relates-to   kb:visual-testing ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:decided      "MATT, 2026-11-05: 'Visual testing suite should be re-used and video sampling should be a working part of the visual testing suite.'" ;
+    kpred:description  "After the mux, frames are sampled at each step's start, middle and end (the marks say where). Deterministic checks fail the render: the app fills the frame (no uniform margins, the defect of the first render), no frame at a step's middle is a loading screen or blank. Then the visual suite's local vision model (tests/visual/vision-vlm.ts, qwen2.5vl) answers per step whether the middle frame shows what the narration line says; that answer is advice written into the receipt, never a pass. The same tiers as F281: rules decide, the model names suspected mismatches for a person." ;
+    kpred:done-test    "on the first render's video (grey margins) the margin check fails and names the steps; on a fixed render it passes; a synthetic frame sequence with a loading screen mid-step fails; the vision answer for each step is stored in the receipt as advice with the model name, and an unparseable answer is marked invalid rather than as a match." .
+
+kb:video-frame-sampling rdf:type ktype:Phase ;
+    rdfs:label "F93.1 — frame sampling as a working part of the visual testing suite" ;
+    kpred:part-of      kb:video-asset-analysis ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:visual-testing ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:decided      "MATT, 2026-11-05: 'Visual testing suite should be re-used and video sampling should be a working part of the visual testing suite.'" ;
+    kpred:description  "One sampler for every video the project checks: frames at given times or at a fixed cadence, via ffmpeg, as PNG files and as small greyscale buffers for rules. Used by generated-asset QA (F281, which today compares only the first and last frame for motion), by demo QA (F275.10), and by the visual suite's vision-model checks. Its own frame rules (blank, uniform margins, near-duplicate of the previous sample) live beside it. Sampling is a rule (script tier); reasoning about a frame is the vision model's (agent tier, advice)." ;
+    kpred:done-test    "unit tests on synthetic videos made with ffmpeg: frames come back at the asked times within one frame; a padded video is found to have margins and an unpadded one is not; a black video is blank; asset-checks' motion measure uses the shared sampler and gives the same numbers as before on the committed generated clips." ;
+    kpred:evidence     "2026-11-05: the first demo render had grey margins around the app in every frame (a 1280x800 viewport inside 1920x1080), and step 1's narration did not match its screens. Both were found only by Opus extracting a contact sheet by hand with ffmpeg; asset-checks.ts samples only the first and last frame of a clip, for motion." ;
+    kpred:extends      "scripts/content/asset-checks.ts (its ffmpeg frame read and judgeVideo motion measure: move the frame read into the shared sampler, keep judgeVideo's results identical) and the visual suite in tests/visual/ (vision-vlm.ts is the vision-model caller F275.10 uses later; do not change it here)." ;
+    kpred:non-goal     "No vision-model calls in this phase; no demo QA wiring (that is F275.10); no new npm dependency (ffmpeg and ffprobe as installed); no change to judgeVideo's thresholds or results." .
+
+kb:proposal-outcome-assets rdf:type ktype:Phase ;
+    rdfs:label "F223.5 — a proposal names its outcome as a list of assets, and closes when they exist" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:proposal-shape ;
+    kpred:relates-to   kb:demo-composite-asset ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:decided      "MATT, 2026-11-05: 'Reckoning needs the asset list as an outcome for the proposal.'" ;
+    kpred:description  "Each option of a reckoning's proposal lists the assets it will produce (for example: a demo video, with its transcript, narration audio and screen capture; a poster as SVG and PDF; a splat), each with its type and how it would be made (local job, Open in app, or an outside service, F117). The list is part of the proposal's target shape: the proposal is complete when every listed asset exists in the graph with a passing check, which is a rule, not a model's opinion (the F223.1 lifecycle)." ;
+    kpred:done-test    "unit tests: a proposal option with an asset list validates against the proposal shape; the target shape requires each listed asset type with a passing receipt; the proposal moves to completed only when all exist, and an asset that failed its check keeps it active; the reckoning page lists the assets under each option." .
+
+kb:demo-narration-provider kpred:evidence "2026-11-05, HUGGING FACE, trending text-to-speech models (huggingface.co/api/models, pipeline_tag=text-to-speech; license tags as listed there, NOT yet read from each model's license file). Permissive-license candidates for commercial narration: Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign (apache-2.0; a voice from a written description, which could approximate the chosen Hume voice without copying it), Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice and 0.6B-Base (apache-2.0), ResembleAI/chatterbox (MIT), microsoft/VibeVoice-1.5B (MIT; long-form and multi-speaker, fits a second voice for Matt), openbmb/VoxCPM2 (apache-2.0), sesame/csm-1b (apache-2.0), canopylabs/orpheus-3b-0.1-ft (apache-2.0), inclusionAI/Ming-3.0-tts-0.5B (MIT), and the current local voice hexgrad/Kokoro-82M (apache-2.0). EXCLUDED for commercial use by their tags: cc-by-nc models (gradium/phonon-40m-en and others) and 'other' licenses until read (fishaudio drama-3 and s2-pro, coqui/XTTS-v2, bosonai higgs-tts-3, nvidia/magpie_tts_multilingual_357m). The first comparison: Qwen3-TTS VoiceDesign, Chatterbox and VibeVoice on the six demo lines, beside the cached Hume clips. Next time use tests/visual/hf-model-query.ts, the existing query script." .
+
 # 2026-11-05 — asset generation on a Mac, and better video (Matt, in chat with Claude Code).
 kb:gen-setup-by-os rdf:type ktype:Phase ;
     rdfs:label "F58.9.17 — asset generation setup by operating system: Linux tested, Mac on Apple Silicon prepared" ;
@@ -11869,3 +12014,177 @@ kb:open-in-artcraft rdf:type ktype:Phase ;
 # 2026-11-05 (night) — the RAM guard tells a load-time transient from a spill (Claude Code).
 kb:queue-ram-guard kpred:evidence "2026-11-05 23:58 UTC, A FALSE STOP: the guard stopped the local deputy job f93-frames at 6.1 GiB of anonymous RAM in ollama.service while Ollama was on CUDA. The journal shows why: 'disabling mmap for llama-server load due to host memory pressure' (demo renders and browsers were running), then 'offloaded 66/66 layers to GPU', CUDA0 model buffer 15,339 MiB, CUDA_Host 682 MiB. With mmap off, loading passes through anonymous RAM even when every layer ends on the GPU." ;
     kpred:decided "SPILL RULE REFINED (Claude Code, 2026-11-05, local stack, per the opposite-side rule): above ramSpillAnonMiB (6 GiB) a running job stops only when Ollama's /api/ps reports a model partly in system RAM (size_vram < size), or when no model is reported for 60 s; above ramHardAnonMiB (12 GiB, new) it stops at once whatever Ollama reports. The 2026-11-04 crash (about 17 GB at about 0.45 GB/s) still trips the hard limit within about 15 s. Called without residency, the old rule holds. Unit tests in scripts/agent/__tests__/session-ram.test.ts." .
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# 2026-11-06 — v0.2.8 job plan: demo videos good enough for LinkedIn, better example spaces, and
+# reckoning an asset (Matt, in chat with Claude Code, after v0.2.7.1 shipped and the first demo was
+# sent to a tester).
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+kb:release-0-2-8 kpred:decided "MATT, 2026-11-06: 'That was good enough to share with my friend, good improvements on the demo video generation today. We need to refine that, and example spaces, and make a compelling enough demo video for a LinkedIn post. There is a lot of work to do, so please define many jobs, for 0.2.8, and further refinements on demo video generation, reckoning an asset or composite asset, etc.'" ;
+    kpred:decided "MATT, 2026-11-06, answering 'Re-cut v0.2.8 as the assets and demos release?': 'Re-cut as proposed' (chosen over keeping both, and over a smaller cut). RE-CUT v0.2.8 as THE ASSETS AND DEMOS RELEASE. Headline: a LinkedIn-ready demo video made by the app's own pipeline from a showcase example space, every asset in it checked and every edit reckoned. In it: F275 demo videos (F275.8-.21 below), F93.1 frame sampling, F58.9.18-.20 video quality and showcase spaces, F283 Open in, F223.5-.8 reckoning assets, F166.1 Shelly generation, and Triple Check (F100, already on dev). Moved to v0.2.9 because none has started: F243, F244, F258, F259, F218, F92, F256, F61, F255, F246, F108.4, F34.3, F274.4." .
+
+# ── F275: the demo pipeline, from good to LinkedIn-ready ─────────────────────────────────────────
+kb:demo-hume-bank rdf:type ktype:Phase ;
+    rdfs:label "F275.8.1 — bank every Hume line the 0.2.8 demos need before 2026-11-13" ;
+    kpred:part-of      kb:demo-narration-provider ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "Hume's TTS ends 2026-11-13 (kb:int-hume). Every narration and lead-in line of every demo script planned for 0.2.8 (the generated-assets workflow, the LinkedIn script F275.14, the one-prompt story F58.9.20) is written, approved by Matt, and synthesized into the local cache before then; a line approved later uses the F275.8 replacement." ;
+    kpred:done-test    "npm run demo:render -- --workflow=<id> --narrate-only reports 'cache' for every line of every 0.2.8 script, run on or before 2026-11-12; the list of cached lines with their hashes is recorded on this entity." .
+
+kb:demo-tts-bench rdf:type ktype:Phase ;
+    rdfs:label "F275.8.2 — local voices on the same lines: Qwen3-TTS VoiceDesign, Chatterbox, VibeVoice" ;
+    kpred:part-of      kb:demo-narration-provider ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Install the three candidates outside the repository (the local stack, upgraded by Claude per the opposite-side rule), add each as a provider-qualified voice (qwen3tts:<voice description>, chatterbox:<ref>, vibevoice:<speaker>) to the narration synthesizer, and render the generated-assets lines with each. Matt listens to them beside the Hume clips. Each records license, time per line, peak memory and GPU." ;
+    kpred:done-test    "for each candidate: the six main lines and five lead-ins exist as clips under the cache with the provider-qualified key; a comparison page or folder plays them side by side with Hume's; license and commercial terms recorded from the model's own license file; Hume Audio Decisions scores recorded for every clip beside Matt's ranking (F275.21); Matt's ranking recorded on kb:demo-narration-provider." .
+
+kb:demo-linkedin-cut rdf:type ktype:Phase ;
+    rdfs:label "F275.11 — a LinkedIn cut: square or 4:5, under 90 s, captions burned in, a hook in the first 3 s" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-subject-zoom ;
+    kpred:description  "LinkedIn autoplays muted in the feed and favors square or 4:5 video. npm run demo:render -- --format=linkedin renders 1080x1080 (or 1080x1350 with --format=linkedin-tall): the recording reframed around the subject (F275.12), captions burned in large enough to read on a phone, a 2 to 3 s opening card that asks the script's hook question, and the end card. The receipt records the format." ;
+    kpred:done-test    "the LinkedIn render is 1080x1080 or 1080x1350, at most 90 s, its captions visible in sampled frames (F93.1), the first 3 s carry the hook text, and the 16:9 render of the same script is unchanged." .
+
+kb:demo-subject-zoom rdf:type ktype:Phase ;
+    rdfs:label "F275.12 — the camera follows the subject: smooth zoom onto what each line is about" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "hold(target) already knows the subject's box. It writes it to the marks; the mux zooms smoothly onto that box while the line plays and back out between steps (ffmpeg zoompan or crop with eased keyframes). A 1280x720 recording then reads well at 1080x1080, and a small control is legible on a phone." ;
+    kpred:done-test    "marks carry the subject box per step; unit tests on the keyframe function (eased, inside the frame, never upscaled past 2x); in a render, the subject fills at least half the frame at the middle of each line (checked by F93.1 sampling against the box)." .
+
+kb:demo-cut-loading rdf:type ktype:Phase ;
+    rdfs:label "F275.13 — loading screens and blank frames are cut, not shown" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:video-frame-sampling ;
+    kpred:description  "The app's loading screen and blank frames are found by the F93.1 sampler (near-duplicate of a loading-screen reference, or blank) and cut from silent stretches; never from under a spoken line. The receipt lists every cut with its length." ;
+    kpred:done-test    "on the current generated-assets render, the opening 'Loading' stretch is cut; a synthetic video with a blank stretch under a line keeps it and reports it instead; cut list in the receipt." .
+
+kb:demo-script rdf:type ktype:Phase ;
+    rdfs:label "F275.14 — a demo script as a graph entity: one workflow, several scripts (walkthrough, LinkedIn, release)" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Narration lives on the workflow's steps today, so one workflow has one script. A ktype:DemoScript names its workflow, its audience, its format, a hook question, an optional subset and order of steps, and its own lines per step (falling back to the step's). The LinkedIn script and the docs walkthrough then share the recording but not the words. Lines are drafted by the local deputy as proposals; Matt approves them before any audio." ;
+    kpred:done-test    "the step reader returns scripts for a workflow; render --script=<id> uses its lines, steps and format; the generated-assets workflow has a 'walkthrough' and a 'linkedin' script; a script with an unknown step fails loudly." .
+
+kb:demo-fast-forward-badge rdf:type ktype:Phase ;
+    rdfs:label "F275.15 — a fast-forward badge on every sped-up stretch" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A stretch played faster than real time shows a small badge with its speed (for example '4x') in a corner, so the edit is honest: a viewer can tell the wait was real and was shortened." ;
+    kpred:done-test    "unit test: the overlay filter is built for exactly the sped-up segments with their speeds; in a render, a sampled frame inside a sped-up stretch differs from the same frame without the badge only in the badge's corner." ;
+    kpred:evidence     "2026-11-05: the demo fast-forwards silences longer than 5 s (up to 4x for the background step's 20 s of loading), and nothing on screen says so; the receipt lists the stretches, but a viewer never sees the receipt." ;
+    kpred:extends      "scripts/demo/mux.ts (compressQuiet segments, compressFilter) and scripts/demo/cards.ts (render the badge as a PNG with the app's fonts, like the cards)." ;
+    kpred:non-goal     "No change to which stretches are sped up or by how much; no new dependency; no drawtext font files from the system." .
+
+kb:demo-music-bed rdf:type ktype:Phase ;
+    rdfs:label "F275.16 — an optional music bed, ducked under the narration" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "--music=<file> mixes a track under the whole video at low level, ducked further while a line plays (ffmpeg sidechaincompress), faded in and out. Only tracks whose license allows commercial use and modification; the license and source are recorded in the receipt and named on the end card when it requires attribution." ;
+    kpred:done-test    "unit tests on the filter graph; a render with a CC0 test track has the music audible in silences and at least 12 dB under each line (measured with ffmpeg astats); the receipt names the track and license." .
+
+kb:demo-loudness rdf:type ktype:Phase ;
+    rdfs:label "F275.17 — loudness normalized for social platforms (-14 LUFS, true peak -1 dB)" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "The final mix is measured and normalized in two passes with ffmpeg loudnorm, so a Hume line, a local voice and Matt's own recording sit at one level and the video is not quieter or louder than others in a feed. The receipt records the measured loudness before and after." ;
+    kpred:done-test    "unit tests on the two-pass argument builder (parsing loudnorm's JSON from the first pass); a render measures between -15 and -13 LUFS integrated and true peak at or below -1 dBTP; the receipt has both measurements." ;
+    kpred:evidence     "2026-11-05: Hume lines, Matt's planned recordings (F275.2 overrides) and the coming local voices (F275.8.2) are mixed as they come; nothing levels them, and social platforms normalize to about -14 LUFS, which changes how a too-quiet video sounds." ;
+    kpred:extends      "scripts/demo/mux.ts (assembleArgs builds the final pass; add the loudnorm stage there) and scripts/demo/render.ts (run the measuring pass, then the final pass)." ;
+    kpred:non-goal     "No per-line equalization or compression; no change to clip timing; no new dependency." .
+
+kb:demo-thumbnail rdf:type ktype:Phase ;
+    rdfs:label "F275.18 — a poster frame and thumbnail for the post" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:video-frame-sampling ;
+    kpred:description  "From frames sampled at each line's middle, the local vision model scores which shows its subject best (advice only); the chosen frame plus the script's title becomes a 1200x627 link image and a 1080x1080 thumbnail, drawn like the cards." ;
+    kpred:done-test    "two images at the stated sizes next to the video; the receipt records which frame was chosen and the model's score; with the vision model unavailable, the middle of the longest line is used and the receipt says so." .
+
+kb:demo-second-voice rdf:type ktype:Phase ;
+    rdfs:label "F275.19 — Matt's own voice for the opening and closing, with a recording guide" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Recorded lines already override synthesis (F275.2). What is missing is the human side: a command that lists which lines to record for a script, with their text and target length, writes a folder of empty slots, and checks each recording (level, clipping, silence at the ends, sample rate) before a render uses it." ;
+    kpred:done-test    "npm run demo:record-guide -- --script=<id> prints and writes the slots; a clipped or silent recording is rejected with the reason; a good one is used and credited as the author's voice." .
+
+kb:demo-blockers rdf:type ktype:Phase ;
+    rdfs:label "F275.20 — two app bugs the demos hit: wide-window search re-navigation, and the flaky Shelly chain test" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "(1) At a 1920x1080 viewport, clicking a search result for gen-carved-turtle-video re-navigated to /? three times and never finished (found by a demo render 2026-11-05; a person on a wide monitor may hit it). (2) tests/e2e/generated-assets-story.test.ts:220 ('Shelly queues a chain as ONE approval') fails locally on every branch and in CI about half the time (#592: 3 of 5 runs failed; 'queue 4' stays disabled)." ;
+    kpred:done-test    "a Playwright test at 1920x1080 clicks a search result and lands on the node once; the Shelly chain test passes 10 runs in a row in CI and locally, with the cause written on this entity." .
+
+kb:demo-audio-judge rdf:type ktype:Phase ;
+    rdfs:label "F275.21 — narration judged by measured listeners: Hume Audio Decisions scores each line" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:relates-to   kb:demo-visual-qa ;
+    kpred:decided      "MATT, 2026-11-06, shared https://dev.hume.ai/audio-decisions/docs/for-coding-agents in the planning conversation." ;
+    kpred:description  "Hume's Audio Decisions API (POST https://api.cloud.hume.ai/v0/decisions/file, X-Hume-Api-Key, multipart: a JSON request with questions, then an MP3 or WAV of 5 s to 5 min) answers plain-language questions about audio with numbers: the estimated share of human raters giving each answer, no transcript or explanation. Ask it, per narration clip and per finished demo: how natural the voice sounds (score), whether any word is mispronounced, whether the voice is clipped or cut off (noul). Uses: the TTS bench (F275.8.2) gets measured naturalness instead of Opus's opinion or a vendor's claim, which is F117's rule applied to choosing our own voice; demo QA (F275.10) gets an audio half. Advice, never a gate: a person still decides. Opt in, one call per clip, under the API's 60 requests a minute; only our own synthetic narration is sent." ;
+    kpred:done-test    "unit tests on the request builder and the response parser (answers keyed by question id; a missing answer is 'invalid', not 'good'); a live run on the six generated-assets lines stores each line's naturalness score in the receipt with the run_id; the bench page shows the scores beside each candidate's clips; with no key or the API unreachable the render still completes and the receipt says the judge did not run." ;
+    kpred:honest-note  "NOT BUILT; pricing not stated in the docs read 2026-11-06. The shutdown notice Matt quoted names only Hume's TTS and EVI APIs; Audio Decisions is a separate product with current quickstarts and SDKs (Matt shared its TypeScript quickstart the same day), so it is treated as continuing past 2026-11-13. No page states that outright." ;
+    kpred:extends      "The TypeScript SDK @humeai/audio-decisions (github.com/HumeAI/hume-audio-decisions-typescript-sdk): new DecisionsClient(), client.decisions.create({ file: { path, contentType }, request: { questions } }), answers keyed by question id with a type (noul, choice, score, span) and the run's runId; createChunked for long recordings. It reads HUME_API_KEY, while this repository's .env names the key VITE_HUME_API_KEY: map one to the other in the caller, never print it." .
+
+# ── Example spaces worth showing ─────────────────────────────────────────────────────────────────
+kb:showcase-assets-refresh rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19 — the Generated assets example remade at showcase quality" ;
+    kpred:feature-id   "F58.9.19" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:gen-video-quality ;
+    kpred:description  "The example's pictures, clips and splats were made at the first settings that worked. Remake them with prompts chosen to look good together (one consistent style, objects that read well in 3D), the image at 1024 px, video at the settings F58.9.18 picks, the showcase splat settings, every stage through the F281 QA loop. Keep the receipts; replace the files in static/generated/." ;
+    kpred:done-test    "every asset in the example has a receipt with the new settings and a passing QA report; the generated-assets workflow test passes with the new hashes; Matt has picked the set from at least two candidate sets." .
+
+kb:one-prompt-every-asset rdf:type ktype:Phase ;
+    rdfs:label "F58.9.20 — 'one prompt, every asset': the LinkedIn story as an example space" ;
+    kpred:feature-id   "F58.9.20" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:showcase-assets-refresh ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:demo-composite-asset ;
+    kpred:description  "One written idea becomes a picture, a clip, a 3D scene and a poster (the F277 asset matrix), each a node with its receipt, all parts of one composite asset; then a reckoning changes one of them (F223.6) and the change returns for review. This is the story the LinkedIn demo tells, and it is an example anyone can open." ;
+    kpred:done-test    "the example opens as its own space with the prompt, four assets and the composite; a test workflow walks it with narration and renders with the F275 command; the reckoning step produces a pending new version." .
+
+# ── Reckoning an asset, and a composite asset ────────────────────────────────────────────────────
+kb:reckon-an-asset rdf:type ktype:Phase ;
+    rdfs:label "F223.6 — reckon an asset: the asset is the situation, a described change is the target" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:proposal-outcome-assets ;
+    kpred:relates-to   kb:open-in-app ;
+    kpred:description  "From an asset's node, 'Reckon this' opens a reckoning whose situation is the asset with its receipt (prompt, model, seed, settings, QA report) and whose target is a change in words ('warmer light', 'the turtle facing left', 'a longer clip'). Options are concrete jobs: regenerate the stage with a changed prompt or seed, a different model or setting, an edit in an Open in app (F283), or an outside service where none runs locally (F117). Each option lists its outcome assets (F223.5). Accepting one queues its jobs; the result returns as a pending new version beside the old." ;
+    kpred:done-test    "on the Generated assets example: reckoning the turtle picture with 'warmer light' yields two to four options, each with its jobs and outcome assets and the receipt fields it changes; accepting one writes the job requests (no model runs in the test) and the proposal stays active until a new version with a passing check arrives." .
+
+kb:reckon-composite-asset rdf:type ktype:Phase ;
+    rdfs:label "F223.7 — reckon a composite asset at its cheapest layer: change the words, not the pixels" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:reckon-an-asset ;
+    kpred:depends-on   kb:demo-composite-asset ;
+    kpred:relates-to   kb:generation-composition ;
+    kpred:description  "For a composite (a demo video with transcript, narration audio, screen capture and finished video), the reckoning sees the parts, and options prefer the cheapest layer that carries the change (F167.1: text, then audio, then video). 'Shorter, square, for LinkedIn' becomes a re-cut of the same capture with another script; 'say receipt differently' becomes one transcript edit, one re-voiced line and a re-mux, with no new recording." ;
+    kpred:done-test    "reckoning the generated-assets demo with 'change line 3' proposes a transcript edit plus re-voice plus re-mux and lists exactly the parts that change; with 'square cut for LinkedIn' it proposes a re-cut with the F275.11 format and no re-recording; each option states which parts are reused unchanged." .
+
+kb:reckoning-outcome-review rdf:type ktype:Phase ;
+    rdfs:label "F223.8 — a reckoned asset comes back for review: old and new side by side, with what changed and the checks" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:reckon-an-asset ;
+    kpred:depends-on   kb:asset-qa-in-review ;
+    kpred:description  "The new version of a reckoned asset waits in review beside the old one: both previews, the receipt fields that differ, the QA report (F281.5), and the reckoning it answers. Accepting it closes the proposal (F223.1 lifecycle); rejecting it keeps the old version and the proposal open." ;
+    kpred:done-test    "a pending new version shows both previews and the differing receipt fields in the existing review flow (no new navigation); accept closes the proposal; reject keeps it open with the reason." .
+
+# The re-cut (Matt, 2026-11-06): four more parts move to v0.2.9; the assets-and-demos scope joins v0.2.8.
+kb:release-0-2-9 kpred:has-part kb:local-host-mode, kb:lan-https, kb:time-series-planning, kb:enclosure-monitoring .
+kb:release-0-2-8 kpred:has-part kb:demo-videos, kb:video-frame-sampling, kb:gen-video-quality, kb:showcase-assets-refresh,
+        kb:one-prompt-every-asset, kb:open-in-app, kb:proposal-outcome-assets, kb:reckon-an-asset, kb:reckon-composite-asset,
+        kb:reckoning-outcome-review, kb:triple-check ;
+    kpred:headline "A LinkedIn-ready demo video made by the app's own pipeline from a showcase example space: every asset in it checked, every edit reckoned." .
+
