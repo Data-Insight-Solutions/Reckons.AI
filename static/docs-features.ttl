@@ -775,6 +775,7 @@ feat:GenerationSetup rdf:type ktype:Concept ;
     skos:exactMatch kb:generated-assets-story ;
     kpred:relates-to kb:generated-assets-story ;
     kpred:relates-to kb:shelly-generation-jobs ;
+    kpred:relates-to kb:gen-setup-by-os ;
     skos:broader feat:StorySystem ;
     skos:definition """The Generated assets story works in two layers. Viewing existing assets is included. Creating new files uses optional tools on your own generation machine.
 
