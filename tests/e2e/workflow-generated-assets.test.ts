@@ -4,6 +4,7 @@ import { execFileSync } from 'child_process';
 import { join } from 'path';
 import { clearStorage, waitForApp } from './helpers';
 import { boxTarget } from '../visual/workflow-harness';
+import { demoRecorder, isDemoRender } from './demo-recorder';
 import type { Workflow } from '../../scripts/lib/test-workflow';
 
 /**
@@ -174,7 +175,8 @@ const impls: Record<string, StepImpl> = {
 };
 
 test.beforeEach(async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // The screenshots are 1280x800; a demo render keeps its own 1280x720 at 1.5x (playwright.demo.config.ts).
+  if (!isDemoRender()) await page.setViewportSize({ width: 1280, height: 800 });
   await clearStorage(page);
   await waitForApp(page);
 });
@@ -186,11 +188,13 @@ test('the steps in the graph and the steps this test runs are the same list', ()
 });
 
 test(`${workflow.title}`, async ({ page }) => {
-  test.setTimeout(180_000);
+  const demo = demoRecorder(page); // F275.3: a no-op unless npm run demo:render is recording
+  test.setTimeout(demo.active ? 600_000 : 180_000);
   if (CAPTURE_DIR) mkdirSync(CAPTURE_DIR, { recursive: true });
   for (const step of workflow.steps) {
     await test.step(`${step.order}. ${step.title} (${step.page})`, async () => {
       const snap: Snap = async (target) => {
+        await demo.hold(target); // F275: a demo scrolls to the step's subject, points at it, and holds while its line plays
         if (!CAPTURE_DIR) return;
         await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
         await page.waitForTimeout(900);
@@ -199,7 +203,8 @@ test(`${workflow.title}`, async ({ page }) => {
         await cleanup();
         writeFileSync(join(CAPTURE_DIR, `${String(step.order).padStart(2, '0')}-${step.id}.png`), png);
       };
-      await impls[step.id](page, snap);
+      await demo.step(step.id, () => impls[step.id](page, snap));
     });
   }
+  demo.finish();
 });

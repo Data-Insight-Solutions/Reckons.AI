@@ -32,6 +32,18 @@ test:W-${id}
 const parse = (ttl: string) => new Parser().parse(ttl);
 
 describe('loadWorkflows', () => {
+  it('reads demo narration and narrator when present, null when absent (F275.1)', () => {
+    const plain = loadWorkflows(parse(PRE + step(1, 'a')));
+    expect(plain[0].narrator).toBeNull();
+    expect(plain[0].steps[0].narration).toBeNull();
+    const narrated = PRE.replace('kpred:test-file "tests/e2e/sample.test.ts" .', 'kpred:test-file "tests/e2e/sample.test.ts" ; kpred:narrator "Shelly V1" .')
+      + step(1, 'a', '; kpred:narration "  Here is the first step.  "') + step(2, 'b', '; kpred:narration "   "');
+    const w = loadWorkflows(parse(narrated))[0];
+    expect(w.narrator).toBe('Shelly V1');
+    expect(w.steps[0].narration).toBe('Here is the first step.');
+    expect(w.steps[1].narration).toBeNull();
+  });
+
   it('returns steps in kpred:step-order, not file order', () => {
     const w = loadWorkflows(parse(PRE + step(2, 'second') + step(1, 'first')));
     expect(w).toHaveLength(1);
