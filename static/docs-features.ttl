@@ -814,7 +814,7 @@ This takes about an hour, most of it waiting for downloads. You need a terminal 
 | Intel Mac | no | no | no | no | not supported |
 | Windows | no | no | no | no | not supported; Linux inside WSL2 has never been tried |
 
-**On a Mac, read this first.** The Mac steps are prepared but nobody has run them on a Mac yet, so expect rough edges and please report what happens. Video needs a lot of memory: on an NVIDIA card a clip used about 17 GB, and on a Mac that memory is shared with everything else, so a Mac with 16 GB is very likely too small for video. 32 GB or more is the safer starting point. These Mac numbers are estimates, not measurements.
+**On a Mac, read this first.** The Mac steps are prepared but nobody has run them on a Mac yet, so expect rough edges and please report what happens. Video needs a lot of memory: on an NVIDIA card a clip used about 17 GB, and on a Mac the same memory also serves every other app, so a Mac with 16 GB is very likely too small for video. 32 GB or more is the safer starting point. These Mac numbers are estimates, not measurements.
 
 #### Step 1. Install the basics
 
@@ -861,6 +861,30 @@ Open Reckons.AI in desktop Chrome or Edge, open the Generated assets example, ch
 - *A stage says files are missing*: run the setup script again; a download may have been interrupted.
 - *A video fails part-way on a Mac*: the computer probably ran out of memory. Close other apps and try again; if it still fails, video needs a Mac with more memory.
 - *The app cannot connect the folder*: use desktop Chrome or Edge, not Safari or Firefox.
+
+#### Step 6. Test it and tell us what happened
+
+If you are trying this for us, these four checks are the test. Write down the time each one takes.
+
+1. **A picture.** Ask for something simple, for example *a ceramic teapot on a wooden table, soft daylight*. It should appear within a minute or two.
+2. **A video from that picture.** Choose the video option and describe a small movement, for example *the camera slowly circles the teapot*. On a Mac this is the slow, memory-hungry step; let it run.
+3. **The splat choice.** On a Mac it should not be offered at all, and the app should say why. On Linux, make one.
+4. **Look at the results.** Open each one. Does the picture match the prompt? Does the clip move?
+
+Then send back:
+
+- your computer: chip and memory (on a Mac: Apple menu, About This Mac) and the operating system version;
+- which of the four checks worked, and how long each took;
+- for anything that failed: which step, and the last 30 or so lines of the terminal window where it failed (the setup script, or the one running `npm run gen:serve`).
+
+Send it to whoever invited you, or open an issue at [github.com/Data-Insight-Solutions/Reckons.AI/issues](https://github.com/Data-Insight-Solutions/Reckons.AI/issues). Nothing you generate leaves your computer unless you choose to send it.
+
+#### Remove everything afterwards
+
+1. Stop the runner: press Ctrl+C in its terminal, or close it.
+2. Delete the tools and models, about 25 to 30 GB: `rm -rf ~/.local/share/reckons/gen` (or the folder you chose with `RECKONS_GEN_HOME`).
+3. Delete the Reckons.AI folder and your generated-files folder if you no longer want them.
+4. Optional, on a Mac: `brew uninstall ffmpeg uv` removes the tools Homebrew installed for this. Leave them if other software uses them.
 
 The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C or by closing its terminal. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. If a runner was killed without stopping cleanly, the next one to start takes over its lock once it finds that runner is gone; it refuses while another runner is still running on the same workspace.
 
