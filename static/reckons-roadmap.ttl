@@ -11785,6 +11785,34 @@ kb:work-tiering kpred:decided "MATT, 2026-11-04: 'local upgrades versus service 
     kpred:principle "NO SIDE UPGRADES ITSELF. A broken upgrade must leave a working side to diagnose it and roll it back. LOCAL STACK, upgraded by Claude: Ollama, local model tags and their defaults, GPU drivers and CUDA, sd-cli and the other generation tools, the deputy harness (scripts/agent/local-claude.sh, queue worker). CLAUDE SIDE, upgraded by the local deputy: Claude Code, the Anthropic SDK (@anthropic-ai/sdk), model IDs in code and config, MCP connector and plugin versions. Each upgrade records the version before and after, a check that passed on the new version, and the rollback command. The deputy's work stays a proposal on a branch that a person merges, as for any deputy job." ;
     kpred:evidence "WHY, 2026-11-04: Ollama 0.40.11 intermittently started llama-server without its CUDA backend, and the resulting RAM spill took the desktop down (kb:queue-ram-guard). A local model could not have diagnosed that, because its own runtime was the broken part; Claude did, from the journal. The reverse holds for a broken Claude Code or SDK upgrade: the local side still runs." .
 
+# 2026-11-05 — asset generation on a Mac, and better video (Matt, in chat with Claude Code).
+kb:gen-setup-by-os rdf:type ktype:Phase ;
+    rdfs:label "F58.9.17 — asset generation setup by operating system: Linux tested, Mac on Apple Silicon prepared" ;
+    kpred:feature-id   "F58.9.17" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "scaffolded" ;
+    kpred:decided      "MATT, 2026-11-05: 'We need detailed documentation of all setup required to do the asset generation space, locally on your own machine. I have a potential test user that is using Mac, so we need to make sure we have instructions based on OS.'" ;
+    kpred:description  "The setup page (feat:GenerationSetup in docs-features.ttl) walks a first-time reader through each operating system: install the basics, get the code, run the setup script, start the runner, make something, and what to do when it fails, with a table of what each system can make. gen-setup.sh checks the system first (Linux x86-64, or macOS on Apple Silicon; anything else stops with a reason) and names missing commands with the install line for that system. On a Mac it installs stable-diffusion.cpp's Metal build and Brush's Apple Silicon build, both pinned by SHA-256, and skips TripoSplat; the runner never offers splats on macOS (generationAvailability), with the reason in plain words." ;
+    kpred:has-file     "scripts/content/gen-setup.sh" ;
+    kpred:tested-by    "scripts/content/__tests__/gen-availability.test.ts" ;
+    kpred:tested-by    "scripts/agent/__tests__/session-gpu-platform.test.ts" ;
+    kpred:done-test    "a Mac user follows the page from a clean Mac and makes a picture and a video, or the first failure is recorded on this entity with the machine's chip and memory; the runner on macOS reports splats unavailable with the CUDA reason; on Linux the script re-runs without changing an installed setup." ;
+    kpred:measured     "2026-11-05, LINUX ONLY: on this Ubuntu machine with everything installed, the changed script re-ran to exit 0, skipping every tool and resuming every weight file. The two macOS archives were downloaded here, listed (sd-cli with libstable-diffusion.dylib; brush_app) and hashed; GitHub's published digests match. Unit tests: generationAvailability refuses splats on darwin." ;
+    kpred:honest-note  "NOT RUN ON A MAC. Nothing in the Mac path has executed on macOS: not the script, not the Metal binary, not the runner. The first Mac test user is the verification; until then the page says so. Mac memory needs are estimates from the NVIDIA measurements, not measurements. Model weights from Hugging Face are still downloaded without a checksum." .
+
+kb:gen-video-quality rdf:type ktype:Phase ;
+    rdfs:label "F58.9.18 — better generated video: native resolution, longer clips, a larger model, measured by the bench" ;
+    kpred:feature-id   "F58.9.18" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:gen-model-bench ;
+    kpred:decided      "MATT, 2026-11-05: 'The quality of the videos produced in the asset generation space are low, we could do better on that video generation right?'" ;
+    kpred:description  "The video stage runs Wan2.2 TI2V-5B at 512 px, 49 frames and 20 steps (about 17 GB of GPU memory, 59 s). That model was made for 1280x704 at 24 frames a second, so the first step is the same model at its own resolution and a longer clip, then a larger model: Wan2.2 I2V-A14B (two 14B experts, high-noise and low-noise; GGUF quantizations exist and stable-diffusion.cpp loads Wan2.2 A14B), which needs a bench recipe because its architecture differs. Every arm runs through the F183.1 bench (same briefs and seeds; motion, flicker, first-frame fidelity, time, peak memory), and Matt ranks the finalists by eye, which also calibrates the bench's video score." ;
+    kpred:done-test    "the bench has run the incumbent at 512 px/49 frames, the incumbent at its native size with a longer clip, and Wan2.2 I2V-A14B, each on the same briefs and seeds, with time and peak GPU memory; Matt's ranking of the finalists is recorded here; gen-assets.ts changes only after that, in its own commit." ;
+    kpred:open-question "MATT DECIDES after the bench: how long may one clip take? A larger model at full size may take several minutes a clip on one RTX 3090, against about a minute today." .
+
+kb:gen-setup-by-os kpred:measured "2026-11-05, before the first Mac tester: the runner's GPU gate FAILED CLOSED without nvidia-smi, so on a Mac (which never has it) gen:serve would have held every generation job forever. Fixed: on macOS a missing nvidia-smi lets a job start (missingTelemetryVerdict), still one job at a time; Linux and others still fail closed. Also added: ffmpeg and ffprobe as prerequisites (the video check needs them), and --no-recurring in the documented runner command so a tester's machine runs only what they ask for." .
+
 # -- F283: Open in — an entity's file opens in the person's own desktop app (Matt, 2026-11-05) --------
 kb:open-in-app rdf:type ktype:Feature ;
     rdfs:label "Open in — an entity's file opens in the person's own desktop app, with a default per entity type" ;
