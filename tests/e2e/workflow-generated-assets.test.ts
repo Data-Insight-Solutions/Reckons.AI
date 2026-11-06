@@ -194,7 +194,7 @@ test(`${workflow.title}`, async ({ page }) => {
   for (const step of workflow.steps) {
     await test.step(`${step.order}. ${step.title} (${step.page})`, async () => {
       const snap: Snap = async (target) => {
-        await demo.hold(); // F275: a demo holds on the step's subject while its line plays
+        await demo.hold(target); // F275: a demo scrolls to the step's subject, points at it, and holds while its line plays
         if (!CAPTURE_DIR) return;
         await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
         await page.waitForTimeout(900);

@@ -89,3 +89,28 @@ describe('cards', () => {
     expect(html).toContain('<svg');
   });
 });
+
+import { compressFilter, compressQuiet, mapTime } from '../mux';
+describe('long silences play faster', () => {
+  it('leaves a short pause alone and squeezes a long one to the cap', () => {
+    const seg = compressQuiet(60_000, [{ fromMs: 10_000, toMs: 13_000 }, { fromMs: 20_000, toMs: 40_000 }], 5_000);
+    expect(seg).toEqual([
+      { fromMs: 0, toMs: 20_000, speed: 1 },
+      { fromMs: 20_000, toMs: 40_000, speed: 4 },
+      { fromMs: 40_000, toMs: 60_000, speed: 1 },
+    ]);
+    expect(mapTime(seg, 15_000)).toBe(15_000);
+    expect(mapTime(seg, 40_000)).toBe(25_000);
+    expect(mapTime(seg, 50_000)).toBe(35_000);
+  });
+  it('never plays faster than the maximum, even if the pause then runs past the cap', () => {
+    const seg = compressQuiet(100_000, [{ fromMs: 0, toMs: 90_000 }], 5_000, 6);
+    expect(seg[0].speed).toBe(6);
+    expect(mapTime(seg, 90_000)).toBe(15_000);
+  });
+  it('builds a trim-and-retime filter per segment', () => {
+    const f = compressFilter([{ fromMs: 0, toMs: 1000, speed: 1 }, { fromMs: 1000, toMs: 9000, speed: 4 }]);
+    expect(f).toContain('trim=start=1.000:end=9.000,setpts=(PTS-STARTPTS)/4.0000[s1]');
+    expect(f).toMatch(/\[s0\]\[s1\]concat=n=2:v=1:a=0\[vc\]$/);
+  });
+});

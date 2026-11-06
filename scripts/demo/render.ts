@@ -33,10 +33,12 @@ import { dirname, join, relative } from 'node:path';
 import { loadWorkflowsFromFile, ROOT, TESTING_TTL } from '../lib/test-workflow';
 import { synthesizeHumeSpeech } from '../../src/lib/integrations/hume/tts';
 import { holdMs, planNarration, type NarrationDeps } from './narration-plan';
-import { assembleArgs, buildCues, buildReceipt, ffmpegArgs, shiftCues, toVtt } from './mux';
+import { assembleArgs, buildCues, buildReceipt, compressFilter, compressQuiet, ffmpegArgs, mapTime, shiftCues, toVtt, type Segment } from './mux';
 import { cardHtml, endCardLines, renderCards } from './cards';
 import type { DemoMarksFile } from '../../tests/e2e/demo-recorder';
 
+const QUIET_CAP_MS = 5000; // a silence longer than this plays faster (at most 6x), see compressQuiet
+const LEAD = '~lead';     // clip id suffix for a step's lead-in question
 const TITLE_MS = 3500; // title card
 const END_MS = 6000;   // end card with the credits
 const DEFAULT_VOICE = 'hume:a623d3ed-612c-413b-b09f-e0a379a317f0'; // 'Warm Female Assistant Voice' (Matt, 2026-11-05)
@@ -112,7 +114,9 @@ async function main() {
   const workflowId = arg('workflow') ?? fail('--workflow=<id> is required');
   const workflow = loadWorkflowsFromFile().find((w) => w.id === workflowId) ?? fail(`no workflow "${workflowId}" in ${relative(ROOT, TESTING_TTL)}`);
   const voice = arg('voice') ?? workflow.narrator ?? DEFAULT_VOICE;
-  const steps = workflow.steps.map((s) => ({ id: s.id, narration: s.narration }));
+  const steps = workflow.steps.map((s) => ({ id: s.id, narration: s.narration, lead: s.narrationLead }));
+  // Each step may speak twice: a lead-in question as it begins, then its line at the key moment.
+  const lines = steps.flatMap((s) => [...(s.lead ? [{ id: s.id + LEAD, narration: s.lead }] : []), { id: s.id, narration: s.narration }]);
   if (steps.every((s) => !s.narration)) fail(`workflow "${workflowId}" has no kpred:narration on any step; nothing to narrate`);
 
   // 1. NARRATE
@@ -125,7 +129,7 @@ async function main() {
     synth,
     probeDurationMs: async (p) => probeMs(p),
   };
-  const { clips, silent } = await planNarration(workflowId, steps, voice, deps);
+  const { clips, silent } = await planNarration(workflowId, lines, voice, deps);
   for (const c of clips) console.log(`  ${c.stepId.padEnd(18)} ${c.source.padEnd(11)} ${(c.durationMs / 1000).toFixed(1)} s`);
   if (silent.length) console.log(`  silent steps (minimum hold): ${silent.join(', ')}`);
   if (has('narrate-only')) { console.log(`narrated ${clips.length} line(s); cache ${CACHE_DIR}`); return; }
@@ -136,10 +140,15 @@ async function main() {
   const pwOut = join(out, 'playwright');
   mkdirSync(pwOut, { recursive: true });
   const holds: Record<string, number> = {};
-  for (const s of steps) holds[s.id] = holdMs(clips.find((c) => c.stepId === s.id)?.durationMs ?? null);
+  const leads: Record<string, number> = {};
+  for (const s of steps) {
+    holds[s.id] = holdMs(clips.find((c) => c.stepId === s.id)?.durationMs ?? null);
+    const lead = clips.find((c) => c.stepId === s.id + LEAD);
+    if (lead) leads[s.id] = lead.durationMs;
+  }
   const timings = join(out, 'timings.json');
   const marksPath = join(out, 'marks.json');
-  writeFileSync(timings, JSON.stringify({ holds }, null, 2));
+  writeFileSync(timings, JSON.stringify({ holds, leads }, null, 2));
   const pw = spawnSync('npx', ['playwright', 'test', '--config=playwright.demo.config.ts', workflow.testFile], {
     cwd: ROOT, stdio: 'inherit', env: { ...process.env, DEMO_OUT: pwOut, DEMO_TIMINGS: timings, DEMO_MARKS: marksPath },
   });
@@ -150,10 +159,31 @@ async function main() {
   // The video starts when the page opens, a little before the test body's clock; shift by that gap.
   const lead = Math.max(0, probeMs(video) - endedAtMs);
   const shifted = marks.map((m) => ({ ...m, startMs: m.startMs + lead, endMs: m.endMs + lead }));
+  // Each line (and its caption) starts when the step's subject came on screen, not at the step's start.
+  const rawSpoken = shifted.flatMap((m) => [
+    ...(leads[m.stepId] ? [{ stepId: m.stepId + LEAD, startMs: m.startMs, endMs: m.startMs + leads[m.stepId] }] : []),
+    { stepId: m.stepId, startMs: (m.speakMs ?? m.startMs - lead) + lead, endMs: m.endMs },
+  ]);
+  // Silences longer than the cap play faster: the pause stays, the clicking is fast-forwarded.
+  const videoMs = probeMs(video);
+  const talk = rawSpoken.map((x) => ({ fromMs: x.startMs, toMs: x.startMs + (clips.find((c) => c.stepId === x.stepId)?.durationMs ?? 0) }))
+    .sort((a, b) => a.fromMs - b.fromMs);
+  const quiet: { fromMs: number; toMs: number }[] = [];
+  let cursor = 0;
+  for (const t of talk) { if (t.fromMs > cursor) quiet.push({ fromMs: cursor, toMs: t.fromMs }); cursor = Math.max(cursor, t.toMs); }
+  if (cursor < videoMs) quiet.push({ fromMs: cursor, toMs: videoMs });
+  const segments: Segment[] = compressQuiet(videoMs, quiet, QUIET_CAP_MS);
+  let picture = video;
+  if (segments.some((g) => g.speed > 1)) {
+    picture = join(out, 'compressed.mp4');
+    const cp = spawnSync('ffmpeg', ['-y', '-i', video, '-filter_complex', compressFilter(segments), '-map', '[vc]', '-an', '-c:v', 'libx264', '-crf', '16', '-pix_fmt', 'yuv420p', picture], { stdio: ['ignore', 'ignore', 'inherit'] });
+    if (cp.status !== 0) fail(`ffmpeg (fast-forward of long silences) failed (exit ${cp.status})`);
+  }
+  const spoken = rawSpoken.map((x) => ({ ...x, startMs: Math.round(mapTime(segments, x.startMs)), endMs: Math.round(mapTime(segments, x.endMs)) }));
 
   // 3. MUX
-  const textByStep = Object.fromEntries(steps.filter((s) => s.narration).map((s) => [s.id, s.narration as string]));
-  const cues = buildCues(shifted, clips, textByStep);
+  const textByStep = Object.fromEntries(lines.filter((s) => s.narration).map((s) => [s.id, s.narration as string]));
+  const cues = buildCues(spoken, clips, textByStep);
   const bodyVtt = join(out, 'body.vtt');
   writeFileSync(bodyVtt, toVtt(cues));
   const vtt = join(out, `${workflowId}.vtt`);
@@ -161,10 +191,10 @@ async function main() {
   const body = join(out, 'body.mp4');
   const mp4 = join(out, `${workflowId}.mp4`);
   const placed = clips.flatMap((c) => {
-    const m = shifted.find((x) => x.stepId === c.stepId);
+    const m = spoken.find((x) => x.stepId === c.stepId);
     return m ? [{ path: c.path, offsetMs: m.startMs }] : [];
   });
-  const ff = spawnSync('ffmpeg', ffmpegArgs({ video, clips: placed, out: body, ...(has('burn-captions') ? { burnVtt: bodyVtt } : {}) }), { stdio: ['ignore', 'ignore', 'inherit'] });
+  const ff = spawnSync('ffmpeg', ffmpegArgs({ video: picture, clips: placed, out: body, ...(has('burn-captions') ? { burnVtt: bodyVtt } : {}) }), { stdio: ['ignore', 'ignore', 'inherit'] });
   if (ff.status !== 0) fail(`ffmpeg failed (exit ${ff.status})`);
 
   // Title and end cards; the end card carries every credit (F275: Hume narration is said on screen).
@@ -184,12 +214,12 @@ async function main() {
     commit: dirty ? `${commit} (uncommitted changes)` : commit,
     graphSha256: sha256(new Uint8Array(readFileSync(TESTING_TTL))),
     renderedAt: new Date().toISOString(),
-    marks: shifted.map((m) => ({ ...m, startMs: m.startMs + TITLE_MS, endMs: m.endMs + TITLE_MS })),
+    marks: shifted.map((m) => ({ ...m, startMs: Math.round(mapTime(segments, m.startMs)) + TITLE_MS, endMs: Math.round(mapTime(segments, m.endMs)) + TITLE_MS })),
     clips: clips.map((c) => ({ stepId: c.stepId, voice: c.voice, source: c.source, sha256: c.sha256 })),
     tools: { ffmpeg: version('ffmpeg', ['-version']), playwright: version('npx', ['playwright', '--version']), node: process.version },
     output: { file: mp4, sha256: sha256(new Uint8Array(readFileSync(mp4))), durationMs: probeMs(mp4) },
   });
-  writeFileSync(join(out, 'receipt.json'), JSON.stringify({ ...receipt, cards: { title: { ...titleCard, ms: TITLE_MS }, end: { ...endCard, ms: END_MS } } }, null, 2));
+  writeFileSync(join(out, 'receipt.json'), JSON.stringify({ ...receipt, fastForward: segments.filter((g) => g.speed > 1).map((g) => ({ ...g, speed: Number(g.speed.toFixed(2)) })), cards: { title: { ...titleCard, ms: TITLE_MS }, end: { ...endCard, ms: END_MS } } }, null, 2));
   console.log(`\ndemo: ${mp4}\ncaptions: ${vtt}\nreceipt: ${join(out, 'receipt.json')}`);
   for (const c of receipt.credits) console.log(`credits: ${c}`);
 }

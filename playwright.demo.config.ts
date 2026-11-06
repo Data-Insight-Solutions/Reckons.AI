@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * F275.3 — records ONE test workflow as a demo video (1280x720 layout at 1.5x = 1920x1080 frames), desktop Chrome, mock backends.
+ * F275.3 — records ONE test workflow as a demo video (1280x720, scaled to 1920x1080 when assembled), desktop Chrome, mock backends.
  * Run by `npm run demo:render -- --workflow=<id>` (scripts/demo/render.ts), which sets:
  *
  *   DEMO_OUT       where Playwright writes the recording (outside the repository)
@@ -13,11 +13,13 @@ import { defineConfig, devices } from '@playwright/test';
  *   CHROME_PATH         use this Chrome binary instead of Playwright's own download
  */
 const base = process.env.WORKFLOW_BASE_URL ?? 'http://localhost:5174';
-// The page is laid out at 1280x720 CSS pixels and drawn at 1.5x, so the recording is a sharp 1920x1080
-// with text at a readable size. Laying it out at 1920x1080 made text small in the video AND hit a bug:
-// clicking a search result at that width re-navigated to /? and never finished (2026-11-05).
+// The page is laid out at 1280x720 and recorded at exactly that size; scripts/demo/mux.ts scales it to
+// 1920x1080 (lanczos). Playwright's recorder never scales UP: asking it for 1920x1080 padded the
+// 1280x720 picture with grey margins, which Matt saw as the video 'shrinking' after the title card
+// (2026-11-05). Laying the page out at 1920x1080 instead made text small AND hit a bug: clicking a
+// search result at that width re-navigated to /? and never finished.
 const viewport = { width: 1280, height: 720 };
-const size = { width: 1920, height: 1080 };
+const size = viewport;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -36,7 +38,7 @@ export default defineConfig({
     use: {
       ...devices['Desktop Chrome'],
       viewport,
-      deviceScaleFactor: 1.5,
+      deviceScaleFactor: 1,
       launchOptions: {
         args: ['--no-sandbox', '--disable-dev-shm-usage'],
         ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),

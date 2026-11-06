@@ -84,7 +84,7 @@ export function assembleArgs(o: {
   out: string;
 }): string[] {
   const s = (ms: number) => (Math.max(0, ms) / 1000).toFixed(3);
-  const v = 'scale=1920:1080,setsar=1,fps=25,format=yuv420p';
+  const v = 'scale=1920:1080:flags=lanczos,setsar=1,fps=25,format=yuv420p'; // the recording is 1280x720; never pad
   const args = [
     '-y',
     '-loop', '1', '-t', s(o.title.ms), '-i', o.title.png,
@@ -138,4 +138,49 @@ export function buildReceipt(i: {
   if (i.clips.some((c) => c.source !== 'recorded' && c.voice.startsWith('hume:'))) credits.push(HUME_CREDIT);
   if (i.clips.some((c) => c.source === 'recorded')) credits.push(RECORDED_CREDIT);
   return { workflow: i.workflow, commit: i.commit, graphSha256: i.graphSha256, renderedAt: i.renderedAt, steps, tools: i.tools, output: i.output, credits };
+}
+
+// ── F275: silences that run long play faster ─────────────────────────────────────────────────────
+// Matt, 2026-11-05: 'silence isn't always bad, a mental break before something new. We often would
+// propose thought provoking questions right before a decent delay.' So a pause stays; only the part
+// of a silent stretch beyond CAP plays faster, the fast-forward a presenter does through clicking.
+
+/** A stretch of the recording and how fast it plays (1 = real time). */
+export type Segment = { fromMs: number; toMs: number; speed: number };
+
+/**
+ * Split [0, totalMs) into segments: each `quiet` interval (no narration playing) longer than `capMs`
+ * is squeezed to last `capMs`, at most `maxSpeed` times faster; everything else plays at 1x. Pure.
+ */
+export function compressQuiet(totalMs: number, quiet: { fromMs: number; toMs: number }[], capMs: number, maxSpeed = 6): Segment[] {
+  const out: Segment[] = [];
+  let at = 0;
+  for (const q of [...quiet].sort((a, b) => a.fromMs - b.fromMs)) {
+    const from = Math.max(at, q.fromMs), to = Math.min(totalMs, q.toMs);
+    if (to - from <= capMs) continue;
+    if (from > at) out.push({ fromMs: at, toMs: from, speed: 1 });
+    out.push({ fromMs: from, toMs: to, speed: Math.min(maxSpeed, (to - from) / capMs) });
+    at = to;
+  }
+  if (at < totalMs) out.push({ fromMs: at, toMs: totalMs, speed: 1 });
+  return out;
+}
+
+/** Where a moment of the recording lands in the compressed video. Pure. */
+export function mapTime(segments: Segment[], ms: number): number {
+  let t = 0;
+  for (const s of segments) {
+    if (ms <= s.fromMs) return t;
+    const end = Math.min(ms, s.toMs);
+    t += (end - s.fromMs) / s.speed;
+    if (ms <= s.toMs) return t;
+  }
+  return t;
+}
+
+/** ffmpeg filter for the video only: each segment trimmed, retimed, and joined. Pure. */
+export function compressFilter(segments: Segment[]): string {
+  const parts = segments.map((s, i) =>
+    `[0:v]trim=start=${(s.fromMs / 1000).toFixed(3)}:end=${(s.toMs / 1000).toFixed(3)},setpts=(PTS-STARTPTS)/${s.speed.toFixed(4)}[s${i}]`);
+  return `${parts.join(';')};${segments.map((_, i) => `[s${i}]`).join('')}concat=n=${segments.length}:v=1:a=0[vc]`;
 }

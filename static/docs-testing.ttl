@@ -1000,6 +1000,7 @@ test:Workflow-GeneratedAssets-Step2
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "see-pipeline" ;
     kpred:narration     "Here is the whole chain on one graph: each prompt links to its picture, and each picture links to the clip and the 3D scene made from it." ;
+    kpred:narration-lead "Where did each of these files come from, and could you prove it?" ;
     kpred:short-label   "See the pipeline" ;
     kpred:box-label     "Prompt → picture → clip and splat" ;
     kpred:box-target    "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
@@ -1016,6 +1017,7 @@ test:Workflow-GeneratedAssets-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "picture" ;
     kpred:narration     "This picture came from a written prompt, made earlier on this computer with an open model. The app checks it against a saved record of how it was made." ;
+    kpred:narration-lead "What would it take to make a picture without sending your words to anyone?" ;
     kpred:short-label   "Picture from a prompt" ;
     kpred:box-label     "Made by Z-Image-Turbo" ;
     kpred:box-target    "the enlarged picture" ;
@@ -1032,6 +1034,7 @@ test:Workflow-GeneratedAssets-Step4
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "video" ;
     kpred:narration     "Next, a short clip made from that same picture. Its record measures how much it moves, so a clip where nothing happens would be flagged, not called fine." ;
+    kpred:narration-lead "Can one still picture learn to move?" ;
     kpred:short-label   "Clip from the picture" ;
     kpred:box-label     "Made by Wan2.2" ;
     kpred:box-target    "the clip, paused part way through" ;
@@ -1048,6 +1051,7 @@ test:Workflow-GeneratedAssets-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "splat" ;
     kpred:narration     "Now a 3D scene, also made from the picture. Drag it to look from any side, but remember the far side is only a guess from one picture." ;
+    kpred:narration-lead "And what about the side of the turtle the picture never showed?" ;
     kpred:short-label   "Splat from the picture" ;
     kpred:box-label     "Made by TripoSplat" ;
     kpred:box-target    "the splat viewer, which turns the splat slowly and can be dragged" ;
@@ -1064,6 +1068,7 @@ test:Workflow-GeneratedAssets-Step6
     kpred:step-order    "6"^^xsd:integer ;
     kpred:step-id       "background" ;
     kpred:narration     "Finally, the scene can sit behind the whole graph as a slowly turning backdrop. All of it was made on one computer, and every file is checked against its record." ;
+    kpred:narration-lead "What if a scene could become the room your ideas live in?" ;
     kpred:short-label   "Splat as the background" ;
     kpred:box-label     "The island behind the graph" ;
     kpred:box-target    "the graph with the lighthouse island splat drawn behind it" ;
