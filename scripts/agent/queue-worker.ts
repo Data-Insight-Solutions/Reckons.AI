@@ -52,7 +52,7 @@ import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
 import { addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
-import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readRamSample, unloadOllamaModels, type RamLimits } from './session-ram.js';
+import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readOllamaResidency, readRamSample, unloadOllamaModels, type RamLimits } from './session-ram.js';
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 import { loadDeviceConfig } from './device-config.js';
 import { GenerationRunner } from '../content/generation-runner.js';
@@ -103,9 +103,16 @@ function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
     });
     activeGroup = child.pid;
     let guard: string | undefined;
-    const tick = setInterval(() => {
+    let overSoftSince: number | null = null;
+    const tick = setInterval(async () => {
       if (guard || child.pid === undefined) return;
-      const v = ramWatchVerdict(readRamSample(), limits, job.ramSpill === true);
+      const sample = readRamSample();
+      const over = sample.anonMiB !== null && sample.anonMiB > limits.spillAnonMiB;
+      overSoftSince = over ? (overSoftSince ?? Date.now()) : null;
+      // Ask Ollama where its models live only when it matters (above the soft limit).
+      const ctx = over ? { residency: await readOllamaResidency(OLLAMA), overSoftForMs: Date.now() - (overSoftSince as number) } : undefined;
+      if (guard) return;
+      const v = ramWatchVerdict(sample, limits, job.ramSpill === true, ctx);
       if (v.ok) return;
       guard = v.reason;
       console.error(`queue-worker: RAM GUARD: ${v.reason}. Stopping ${job.name}.`);
