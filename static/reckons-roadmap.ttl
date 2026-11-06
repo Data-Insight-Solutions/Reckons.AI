@@ -11784,3 +11784,56 @@ kb:asset-qa-in-review rdf:type ktype:Phase ;
 kb:work-tiering kpred:decided "MATT, 2026-11-04: 'local upgrades versus service upgrades (Claude), should be handled by the opposite side.' Confirmed reading, the same day: Claude in the cloud plans, runs and verifies upgrades to the LOCAL stack, and the local deputy runs and verifies upgrades to the CLAUDE side." ;
     kpred:principle "NO SIDE UPGRADES ITSELF. A broken upgrade must leave a working side to diagnose it and roll it back. LOCAL STACK, upgraded by Claude: Ollama, local model tags and their defaults, GPU drivers and CUDA, sd-cli and the other generation tools, the deputy harness (scripts/agent/local-claude.sh, queue worker). CLAUDE SIDE, upgraded by the local deputy: Claude Code, the Anthropic SDK (@anthropic-ai/sdk), model IDs in code and config, MCP connector and plugin versions. Each upgrade records the version before and after, a check that passed on the new version, and the rollback command. The deputy's work stays a proposal on a branch that a person merges, as for any deputy job." ;
     kpred:evidence "WHY, 2026-11-04: Ollama 0.40.11 intermittently started llama-server without its CUDA backend, and the resulting RAM spill took the desktop down (kb:queue-ram-guard). A local model could not have diagnosed that, because its own runtime was the broken part; Claude did, from the journal. The reverse holds for a broken Claude Code or SDK upgrade: the local side still runs." .
+
+# -- F283: Open in — an entity's file opens in the person's own desktop app (Matt, 2026-11-05) --------
+kb:open-in-app rdf:type ktype:Feature ;
+    rdfs:label "Open in — an entity's file opens in the person's own desktop app, with a default per entity type" ;
+    kpred:feature-id   "F283" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:depends-on   kb:generated-assets-story ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:relates-to   kb:integration-purposes ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:decided      "MATT, 2026-11-05: 'We also need to integrate with Artcraft, similar to inkscape. With 'open in' defaults configured for entity types.'" ;
+    kpred:description  "A node whose entity carries a file (an Image, Video, 3D model, Gaussian splat, SVG or PDF document) gets an 'Open in' control where the asset is already shown (the node panel and asset viewer; no new navigation). Each entity type has a default app, set per person in settings, and the control lists the other apps that can open that type. Apps known at the start: Inkscape (SVG, PDF), GIMP (images), Blender (3D models), and ArtCraft (images, video and 3D scenes; storytold/artcraft)." ;
+    kpred:principle    "THE BROWSER ASKS; THE LOCAL RUNNER LAUNCHES. A static web app cannot start a desktop program, and Reckons.AI has no backend. The local generation runner already talks to the app through files in the workspace folder (src/lib/generation/protocol.ts); an open request is one more file there, and the runner on the person's own machine starts the app." ;
+    kpred:constraint   "AN IMPORTED GRAPH CANNOT LAUNCH A PROGRAM. The request names an app id and a file, never a command. The runner maps app ids to commands from its own local config, opens only files inside the linked workspace folder, and refuses anything else visibly. Same rule as the enclosure alerts: data never becomes an arbitrary command." ;
+    kpred:constraint   "OFFER ONLY WHAT IS INSTALLED. The runner reports which apps it found (the same capabilities file that declares generation stages); the app never shows an 'Open in' choice that would fail. With no runner connected, the control says what it needs instead of failing." ;
+    kpred:evidence     "On this machine (checked 2026-11-05): Inkscape 1.4.4, Blender and GIMP are installed (snap); ArtCraft is not. A directory listing says ArtCraft's Linux build is from source only (unverified until the repository is checked)." ;
+    kpred:decided      "MATT, 2026-11-05: DEFAULTS ARE ARTCRAFT-FIRST (chosen over classic tools first). SVG and PDF -> Inkscape; Image -> ArtCraft when installed, else GIMP; Video -> ArtCraft when installed; 3D model -> Blender; Gaussian splat -> ArtCraft when installed, else the in-app viewer only. A default applies only when its app is installed, and each person can override it." ;
+    kpred:decided      "MATT, 2026-11-05: INSTALLED APPS FIRST (chosen over building ArtCraft from source now). F283.1-.3 are built with Inkscape, GIMP and Blender; the ArtCraft repository is checked in parallel (F283.4) and ArtCraft is added once its license, Linux build and file-open method are known." .
+
+kb:open-in-defaults rdf:type ktype:Phase ;
+    rdfs:label "F283.1 — Open in defaults per entity type, in settings" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A per-person settings map from entity type to app id, with the proposed defaults applied only when that app is reported installed. Shown in the integrations settings, grouped by purpose (F116) where it exists." ;
+    kpred:done-test    "unit tests: the default for a type is the first installed app in its preference list; a missing app is skipped, not offered; a person's own choice overrides the default and survives reload; a type with no installed app offers none." .
+
+kb:open-in-bridge rdf:type ktype:Phase ;
+    rdfs:label "F283.2 — the open request: the app writes it, the local runner launches the app" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-defaults ;
+    kpred:description  "The browser writes an open request (app id, workspace-relative file path) into the generation folder; the runner checks the app id against its own config and the path against the workspace, launches the app detached, and writes a result (opened, refused with a reason, app missing). The runner's capabilities file lists the apps it found." ;
+    kpred:done-test    "unit tests on the runner: a known app and a workspace file launch the configured command; an unknown app id, a path outside the workspace, '..' segments and a symlink out of the workspace are refused with a reason; a missing binary reports 'app missing'; the request never carries a command string. Browser test: the control appears only for installed apps and shows the refusal text." .
+
+kb:open-in-return rdf:type ktype:Phase ;
+    rdfs:label "F283.3 — what the app saves comes back as a new version for review" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-bridge ;
+    kpred:description  "When the opened file is saved in the external app, the runner notices the change and the app offers the edited file as a new version of the asset, pending in review with its hash, beside the old one. Nothing replaces the original without a person accepting it." ;
+    kpred:done-test    "an edited file appears as a pending new version with its own hash; rejecting it keeps the original; accepting it keeps the old version in the asset's history." .
+
+kb:open-in-artcraft rdf:type ktype:Phase ;
+    rdfs:label "F283.4 — ArtCraft as an Open in target, checked first" ;
+    kpred:part-of      kb:open-in-app ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:open-in-bridge ;
+    kpred:relates-to   kb:capability-awareness ;
+    kpred:description  "Read the storytold/artcraft repository before relying on it: its license file (directory listings disagree), whether a Linux build exists or must be compiled, and how it accepts a file to open (command-line argument or import folder). Then add it to the runner's app config. Its bring-your-own-key cloud providers (for example WorldLabs for 3D scenes) also make it an F117 catalog entry for requests that cannot run locally." ;
+    kpred:done-test    "the license, Linux install path and file-open method are recorded on this entity with the date checked; on a machine with ArtCraft installed, an Image opens in it through F283.2." ;
+    kpred:honest-note  "NOTHING CHECKED in the repository yet (2026-11-05); the description of ArtCraft comes from directory listings and the developers' own posts." .
