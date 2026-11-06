@@ -35,14 +35,14 @@
 import { readFileSync } from 'node:fs';
 import { loadDeviceConfig, type ThresholdOverride } from './device-config.js';
 
-export type RamLimits = { startAvailMiB: number; floorAvailMiB: number; spillAnonMiB: number };
-export const DEFAULT_RAM_LIMITS: RamLimits = { startAvailMiB: 6144, floorAvailMiB: 2048, spillAnonMiB: 6144 };
+export type RamLimits = { startAvailMiB: number; floorAvailMiB: number; spillAnonMiB: number; hardAnonMiB: number };
+export const DEFAULT_RAM_LIMITS: RamLimits = { startAvailMiB: 6144, floorAvailMiB: 2048, spillAnonMiB: 6144, hardAnonMiB: 12288 };
 
 export type MemInfo = { totalMiB: number; availMiB: number };
 export type RamSample = { mem: MemInfo | null; anonMiB: number | null };
 export type RamVerdict = { ok: true } | { ok: false; kind: 'low' | 'spill' | 'floor'; reason: string };
 
-const LIMIT_METRIC: Record<keyof RamLimits, string> = { startAvailMiB: 'ramStartAvailMiB', floorAvailMiB: 'ramFloorAvailMiB', spillAnonMiB: 'ramSpillAnonMiB' };
+const LIMIT_METRIC: Record<keyof RamLimits, string> = { startAvailMiB: 'ramStartAvailMiB', floorAvailMiB: 'ramFloorAvailMiB', spillAnonMiB: 'ramSpillAnonMiB', hardAnonMiB: 'ramHardAnonMiB' };
 
 /** /proc/meminfo text -> total and available MiB; null when either line is missing. Pure. */
 export function parseMeminfo(text: string): MemInfo | null {
@@ -85,13 +85,58 @@ export function ramStartVerdict(mem: MemInfo | null, limits: RamLimits = DEFAULT
   return { ok: true };
 }
 
-/** Must the RUNNING job stop? The floor applies to every job; the spill check is skipped for a job that opted in. Pure. */
-export function ramWatchVerdict(s: RamSample, limits: RamLimits = DEFAULT_RAM_LIMITS, allowSpill = false): RamVerdict {
+/**
+ * Where Ollama's loaded models live, from its own /api/ps: 'all-gpu' when every model's size_vram
+ * covers its size, 'spilled' when any model holds part of itself in system RAM, 'unknown' when no
+ * model is listed yet (still loading) or the answer is unreadable. Pure.
+ */
+export type GpuResidency = 'all-gpu' | 'spilled' | 'unknown';
+export function residencyFromPs(ps: unknown): GpuResidency {
+  const models = (ps as { models?: { size?: number; size_vram?: number }[] } | null)?.models;
+  if (!Array.isArray(models) || models.length === 0) return 'unknown';
+  if (models.some((m) => typeof m.size !== 'number' || typeof m.size_vram !== 'number')) return 'unknown';
+  return models.every((m) => (m.size_vram as number) >= (m.size as number) * 0.98) ? 'all-gpu' : 'spilled';
+}
+
+/** Asks Ollama where its models live. Never throws; 'unknown' on any failure. */
+export async function readOllamaResidency(base: string): Promise<GpuResidency> {
+  try {
+    return residencyFromPs(await (await fetch(`${base}/api/ps`, { signal: AbortSignal.timeout(2500) })).json());
+  } catch { return 'unknown'; }
+}
+
+/** How long anonymous RAM may sit above the soft limit with residency unknown (a model loading). */
+export const SPILL_GRACE_MS = 60_000;
+
+/**
+ * Must the RUNNING job stop? The floor applies to every job; the spill check is skipped for a job that
+ * opted in. Pure.
+ *
+ * SPILL, refined 2026-11-05: a model loading with mmap disabled (Ollama does that under host memory
+ * pressure) passes through anonymous RAM even when every layer ends on the GPU. That tripped the
+ * 6 GiB limit at 6.1 GiB on a load that put 66/66 layers on CUDA. So above the soft limit the job
+ * stops only when Ollama says a model IS in system RAM, or when residency stays unknown longer than
+ * the grace; above the hard limit it stops at once. Without `ctx` the old rule holds (stop at soft).
+ */
+export function ramWatchVerdict(
+  s: RamSample, limits: RamLimits = DEFAULT_RAM_LIMITS, allowSpill = false,
+  ctx?: { residency: GpuResidency; overSoftForMs: number },
+): RamVerdict {
   if (s.mem && s.mem.availMiB < limits.floorAvailMiB) {
     return { ok: false, kind: 'floor', reason: `system RAM available fell to ${gib(s.mem.availMiB)} (floor ${gib(limits.floorAvailMiB)})` };
   }
-  if (!allowSpill && s.anonMiB !== null && s.anonMiB > limits.spillAnonMiB) {
-    return { ok: false, kind: 'spill', reason: `Ollama holds ${gib(s.anonMiB)} of anonymous system RAM (limit ${gib(limits.spillAnonMiB)}): a model is loading into RAM instead of the GPU` };
+  if (allowSpill || s.anonMiB === null || s.anonMiB <= limits.spillAnonMiB) return { ok: true };
+  const held = `Ollama holds ${gib(s.anonMiB)} of anonymous system RAM`;
+  if (s.anonMiB > limits.hardAnonMiB) {
+    return { ok: false, kind: 'spill', reason: `${held} (hard limit ${gib(limits.hardAnonMiB)}): a model is loading into RAM instead of the GPU` };
+  }
+  if (!ctx) return { ok: false, kind: 'spill', reason: `${held} (limit ${gib(limits.spillAnonMiB)}): a model is loading into RAM instead of the GPU` };
+  if (ctx.residency === 'all-gpu') return { ok: true };
+  if (ctx.residency === 'spilled') {
+    return { ok: false, kind: 'spill', reason: `${held} (limit ${gib(limits.spillAnonMiB)}) and Ollama reports a model only partly on the GPU` };
+  }
+  if (ctx.overSoftForMs > SPILL_GRACE_MS) {
+    return { ok: false, kind: 'spill', reason: `${held} (limit ${gib(limits.spillAnonMiB)}) for ${Math.round(ctx.overSoftForMs / 1000)} s with no model reported on the GPU` };
   }
   return { ok: true };
 }

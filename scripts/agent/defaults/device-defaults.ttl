@@ -83,11 +83,19 @@
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 2048 .
 
-# A running job is stopped when the Ollama service holds more than this many MiB of anonymous RAM (a model loading into RAM, not the GPU)
+# Above this many MiB of anonymous RAM in the Ollama service, a running job is stopped if Ollama reports a model only partly on
+# the GPU, or if no model is reported for 60 s (a load that never lands). A load that ends fully on the GPU passes (2026-11-05).
 <urn:reckons:threshold/ramSpillAnonMiB> a ktype:Threshold ;
     rdfs:label "ramSpillAnonMiB" ;
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 6144 .
+
+# Above this many MiB of anonymous RAM in the Ollama service, a running job is stopped at once, whatever Ollama reports
+# (the 2026-11-04 crash reached about 17 GB at roughly 0.45 GB/s)
+<urn:reckons:threshold/ramHardAnonMiB> a ktype:Threshold ;
+    rdfs:label "ramHardAnonMiB" ;
+    kpred:device <urn:reckons:device/default> ;
+    kpred:limit 12288 .
 
 # Back-pressure (F74.9): an agent-tier schedule is held while this many of its own proposals are unreviewed
 <urn:reckons:threshold/holdUnreviewed> a ktype:Threshold ;
