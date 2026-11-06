@@ -3,53 +3,6 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-06 — F93.1 frame sampling, delegated (local deputy, qwen3.8-160k — PROPOSAL, not yet reviewed)
-
-**Worktree `.claude/worktrees/f275-libs`, branch `agent/local-f93-frames` (based on feat/f275-demo-videos).**
-This is the F93.1 deputy job the 2026-11-06 entry says retries itself — it ran and finished 2026-11-06
-(2026-11-06 by local time). Committed on the branch, **not pushed**; the commit is a PROPOSAL for the
-Sonnet overseer + Opus triage, per the ladder.
-
-**Done (all four done-tests green on this branch):**
-- New `tests/visual/vision-frames.ts` — the shared sampler: `probeDurationMs`, `cadence`,
-  `sampleFrames` (one `-ss` seek per time, 96-wide grey rawvideo by default, exact `width`/`height`
-  when asked, optional full-size PNG per time), and the frame rules `isBlank`, `uniformMargins`,
-  `hasMargins`, `meanAbsDiff`. A seek past the last frame re-seeks with a DOUBLING step, which provably
-  lands on the last frame for any frame rate (a fixed 100 ms step failed on a 5 fps clip — that was the
-  one test that fought me).
-- `tests/visual/vision-frames.test.ts` — 19 tests, all the F93.1 done-tests: frames at the asked times
-  within one frame, padded video has margins / unpadded doesn't, black is blank, and asset-checks'
-  motion rebuilt on the sampler gives the SAME numbers on the committed clips
-  (carved-turtle 0.2061, lighthouse-island 0.0543).
-- `scripts/content/asset-checks.ts` — `checkVideo` now reads first/last frame via
-  `sampleFrames` + `meanAbsDiff` (64x64); its private ffmpeg read is gone; `judgeVideo` and its
-  thresholds are untouched; results identical (pinned by the test above).
-- `static/reckons-roadmap.ttl` — `kb:video-frame-sampling` → `scaffolded` (NOT `functional` — the brief
-  says Opus verifies the promotion), plus `kpred:has-file` and `kpred:tested-by`.
-
-**Done-test output (2026-11-06, on this branch):**
-- `npx vitest run tests/visual/vision-frames.test.ts scripts/content` → 14 files, **238 passed**.
-- `npx svelte-check --threshold error` → **0 errors**, 4462 files.
-- `npx tsx scripts/offline/graph-lint.ts` → **0 errors**, 15 warnings (all pre-existing: prefix-drift,
-  reinvented-term, predicate-economy, 3 missing descriptions — none on kb:video-frame-sampling).
-- `npx tsx scripts/offline/run-all.ts --blocking --ci` → **9/9 clean** (published-graph-guard,
-  commit-trailers, version-align, test-workflow-check, release-review-space, codebase-coverage,
-  branch-ancestry, term-ratchet, ui-terms).
-
-**Unverified / for the reviewer:**
-- Status is `scaffolded`, not `functional` — deliberately, per the brief.
-- `checkVideo` import direction is script → `tests/visual/`: the brief put the shared sampler in
-  tests/ and required asset-checks to use it; flag if you want the sampler moved to `src/lib/` or
-  `scripts/content/` instead.
-- The clamp re-seek costs extra ffmpeg calls only when the asked time is in the gap after the last
-  frame (≤ log₂(duration/100 ms) attempts); never on a normal seek.
-- I did not run the full e2e suite or a demo render — that is outside the brief's non-goals.
-- Scratch dir `.f93-tmp/` was removed; nothing else was touched (git status: the 4 files above only).
-
-**Decisions (none were Matt's to make here):** the brief was fully specified; the only judgment call I
-took was the doubling-step clamp (any alternative — probing fps, stepping by a guessed frame interval —
-was strictly more fragile). If you disagree, it is one function to change.
-
 ## 2026-11-06 — START HERE: v0.2.7.1 shipped; v0.2.8 re-cut as the assets and demos release (Claude Code, Opus)
 
 **Shipped.** v0.2.7.1 reached production 2026-11-06 03:15 UTC (#597 → staging, #599 docs gate, #598
