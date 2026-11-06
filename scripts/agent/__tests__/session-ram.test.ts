@@ -63,10 +63,10 @@ describe('limits', () => {
     const l = mergeRamLimits({ ramSpillAnonMiB: { limit: 8192 }, ramFloorAvailMiB: { limit: Number.NaN }, ramStartAvailMiB: { limit: -1 } });
     expect(l).toEqual({ ...DEFAULT_RAM_LIMITS, spillAnonMiB: 8192 });
   });
-  it('the shipped device defaults carry all three limits at the coded defaults', () => {
+  it('the shipped device defaults carry all four limits at the coded defaults', () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const ttl = readFileSync(path.join(here, '..', 'defaults', 'device-defaults.ttl'), 'utf8');
-    expect(mergeRamLimits(resolveThresholds([ttl], 'any-host'), { startAvailMiB: 1, floorAvailMiB: 1, spillAnonMiB: 1 })).toEqual(DEFAULT_RAM_LIMITS);
+    expect(mergeRamLimits(resolveThresholds([ttl], 'any-host'), { startAvailMiB: 1, floorAvailMiB: 1, spillAnonMiB: 1, hardAnonMiB: 1 })).toEqual(DEFAULT_RAM_LIMITS);
   });
 });
 
@@ -77,5 +77,37 @@ describe('ramSpill on a queued job', () => {
     const back = parseQueue([a, b].map((j) => JSON.stringify(j)).join('\n'));
     expect(back[0].ramSpill).toBe(true);
     expect('ramSpill' in back[1]).toBe(false);
+  });
+});
+
+import { residencyFromPs, SPILL_GRACE_MS } from '../session-ram';
+
+describe('spill guard with GPU residency (2026-11-05)', () => {
+  const sample = (anonMiB: number) => ({ mem: { totalMiB: 31_000, availMiB: 20_000 }, anonMiB });
+  it('reads residency from /api/ps', () => {
+    expect(residencyFromPs({ models: [{ size: 100, size_vram: 100 }] })).toBe('all-gpu');
+    expect(residencyFromPs({ models: [{ size: 100, size_vram: 60 }] })).toBe('spilled');
+    expect(residencyFromPs({ models: [] })).toBe('unknown');
+    expect(residencyFromPs(null)).toBe('unknown');
+    expect(residencyFromPs({ models: [{ size: 100 }] })).toBe('unknown');
+  });
+  it('lets a load whose model ends fully on the GPU pass the soft limit (the 6.1 GiB false stop)', () => {
+    expect(ramWatchVerdict(sample(6_250), undefined, false, { residency: 'all-gpu', overSoftForMs: 10_000 }).ok).toBe(true);
+  });
+  it('stops when Ollama reports a model partly in system RAM', () => {
+    const v = ramWatchVerdict(sample(6_250), undefined, false, { residency: 'spilled', overSoftForMs: 1_000 });
+    expect(v.ok).toBe(false);
+  });
+  it('waits out an unknown residency only for the grace, then stops', () => {
+    expect(ramWatchVerdict(sample(6_250), undefined, false, { residency: 'unknown', overSoftForMs: SPILL_GRACE_MS - 1 }).ok).toBe(true);
+    expect(ramWatchVerdict(sample(6_250), undefined, false, { residency: 'unknown', overSoftForMs: SPILL_GRACE_MS + 1 }).ok).toBe(false);
+  });
+  it('stops at once above the hard limit, whatever Ollama says (the 2026-11-04 crash reached 17 GB)', () => {
+    const v = ramWatchVerdict(sample(12_500), undefined, false, { residency: 'all-gpu', overSoftForMs: 0 });
+    expect(v.ok).toBe(false);
+    if (!v.ok) expect(v.reason).toMatch(/hard limit/);
+  });
+  it('keeps the old rule when called without residency (fail-safe)', () => {
+    expect(ramWatchVerdict(sample(6_250)).ok).toBe(false);
   });
 });
