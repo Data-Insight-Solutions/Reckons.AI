@@ -33,9 +33,12 @@ import { dirname, join, relative } from 'node:path';
 import { loadWorkflowsFromFile, ROOT, TESTING_TTL } from '../lib/test-workflow';
 import { synthesizeHumeSpeech } from '../../src/lib/integrations/hume/tts';
 import { holdMs, planNarration, type NarrationDeps } from './narration-plan';
-import { buildCues, buildReceipt, ffmpegArgs, toVtt } from './mux';
+import { assembleArgs, buildCues, buildReceipt, ffmpegArgs, shiftCues, toVtt } from './mux';
+import { cardHtml, endCardLines, renderCards } from './cards';
 import type { DemoMarksFile } from '../../tests/e2e/demo-recorder';
 
+const TITLE_MS = 3500; // title card
+const END_MS = 6000;   // end card with the credits
 const DEFAULT_VOICE = 'hume:a623d3ed-612c-413b-b09f-e0a379a317f0'; // 'Warm Female Assistant Voice' (Matt, 2026-11-05)
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -151,15 +154,28 @@ async function main() {
   // 3. MUX
   const textByStep = Object.fromEntries(steps.filter((s) => s.narration).map((s) => [s.id, s.narration as string]));
   const cues = buildCues(shifted, clips, textByStep);
+  const bodyVtt = join(out, 'body.vtt');
+  writeFileSync(bodyVtt, toVtt(cues));
   const vtt = join(out, `${workflowId}.vtt`);
-  writeFileSync(vtt, toVtt(cues));
+  writeFileSync(vtt, toVtt(shiftCues(cues, TITLE_MS)));
+  const body = join(out, 'body.mp4');
   const mp4 = join(out, `${workflowId}.mp4`);
   const placed = clips.flatMap((c) => {
     const m = shifted.find((x) => x.stepId === c.stepId);
     return m ? [{ path: c.path, offsetMs: m.startMs }] : [];
   });
-  const ff = spawnSync('ffmpeg', ffmpegArgs({ video, clips: placed, out: mp4, ...(has('burn-captions') ? { burnVtt: vtt } : {}) }), { stdio: ['ignore', 'ignore', 'inherit'] });
+  const ff = spawnSync('ffmpeg', ffmpegArgs({ video, clips: placed, out: body, ...(has('burn-captions') ? { burnVtt: bodyVtt } : {}) }), { stdio: ['ignore', 'ignore', 'inherit'] });
   if (ff.status !== 0) fail(`ffmpeg failed (exit ${ff.status})`);
+
+  // Title and end cards; the end card carries every credit (F275: Hume narration is said on screen).
+  const credits = buildReceipt({ workflow: workflowId, commit: '', graphSha256: '', renderedAt: '', marks: [], clips: clips.map((c) => ({ stepId: c.stepId, voice: c.voice, source: c.source, sha256: c.sha256 })), tools: {}, output: { file: '', sha256: '', durationMs: 0 } }).credits;
+  const titleCard = { heading: workflow.title, lines: ['A Reckons.AI walkthrough, recorded from the app on made-up example data.'] };
+  const endCard = { heading: 'Made on your own computer', lines: endCardLines(credits) };
+  const titlePng = join(out, 'title.png');
+  const endPng = join(out, 'end.png');
+  await renderCards([{ html: cardHtml(titleCard, ROOT), out: titlePng }, { html: cardHtml(endCard, ROOT), out: endPng }]);
+  const fin = spawnSync('ffmpeg', assembleArgs({ title: { png: titlePng, ms: TITLE_MS }, body, end: { png: endPng, ms: END_MS }, vtt, out: mp4 }), { stdio: ['ignore', 'ignore', 'inherit'] });
+  if (fin.status !== 0) fail(`ffmpeg (title, body, end) failed (exit ${fin.status})`);
 
   const commit = version('git', ['-C', ROOT, 'rev-parse', 'HEAD']);
   const dirty = version('git', ['-C', ROOT, 'status', '--porcelain', '--', 'static', 'src', 'tests', 'scripts']) !== '';
@@ -168,12 +184,12 @@ async function main() {
     commit: dirty ? `${commit} (uncommitted changes)` : commit,
     graphSha256: sha256(new Uint8Array(readFileSync(TESTING_TTL))),
     renderedAt: new Date().toISOString(),
-    marks: shifted,
+    marks: shifted.map((m) => ({ ...m, startMs: m.startMs + TITLE_MS, endMs: m.endMs + TITLE_MS })),
     clips: clips.map((c) => ({ stepId: c.stepId, voice: c.voice, source: c.source, sha256: c.sha256 })),
     tools: { ffmpeg: version('ffmpeg', ['-version']), playwright: version('npx', ['playwright', '--version']), node: process.version },
     output: { file: mp4, sha256: sha256(new Uint8Array(readFileSync(mp4))), durationMs: probeMs(mp4) },
   });
-  writeFileSync(join(out, 'receipt.json'), JSON.stringify(receipt, null, 2));
+  writeFileSync(join(out, 'receipt.json'), JSON.stringify({ ...receipt, cards: { title: { ...titleCard, ms: TITLE_MS }, end: { ...endCard, ms: END_MS } } }, null, 2));
   console.log(`\ndemo: ${mp4}\ncaptions: ${vtt}\nreceipt: ${join(out, 'receipt.json')}`);
   for (const c of receipt.credits) console.log(`credits: ${c}`);
 }
