@@ -10816,3 +10816,41 @@ kb:squash-trailer-provenance kpred:progress "2026-11-01: built on the closeout b
 kb:starter-asset-smoke-focus kpred:progress "2026-11-01: built on the closeout branch. The affected minified-build case passed three consecutive runs without retries (23.7 seconds total), with normal pointer clicks and unchanged decoded-media and GLB pixel assertions." .
 
 kb:release-0-2-7-docs kpred:progress "2026-11-01: reviewed the five entities from local deputy commit 210d7d9d; corrected sandbox and question-settlement overclaims, dated measurements, regenerated pages and reconciled the release state. The release docs gate reports zero undocumented shipped features. This branch still needs PR review and CI; it does not itself promote a release." .
+
+# 2026-11-05 — asset generation on a Mac, and better video (Matt, in chat with Claude Code).
+kb:gen-setup-by-os rdf:type ktype:Phase ;
+    rdfs:label "F58.9.17 — asset generation setup by operating system: Linux tested, Mac on Apple Silicon prepared" ;
+    kpred:feature-id   "F58.9.17" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "scaffolded" ;
+    kpred:decided      "MATT, 2026-11-05: 'We need detailed documentation of all setup required to do the asset generation space, locally on your own machine. I have a potential test user that is using Mac, so we need to make sure we have instructions based on OS.'" ;
+    kpred:description  "The setup page (feat:GenerationSetup in docs-features.ttl) walks a first-time reader through each operating system: install the basics, get the code, run the setup script, start the runner, make something, and what to do when it fails, with a table of what each system can make. gen-setup.sh checks the system first (Linux x86-64, or macOS on Apple Silicon; anything else stops with a reason) and names missing commands with the install line for that system. On a Mac it installs stable-diffusion.cpp's Metal build and Brush's Apple Silicon build, both pinned by SHA-256, and skips TripoSplat; the runner never offers splats on macOS (generationAvailability), with the reason in plain words." ;
+    kpred:has-file     "scripts/content/gen-setup.sh" ;
+    kpred:tested-by    "scripts/content/__tests__/gen-availability.test.ts" ;
+    kpred:tested-by    "scripts/agent/__tests__/session-gpu-platform.test.ts" ;
+    kpred:done-test    "a Mac user follows the page from a clean Mac and makes a picture and a video, or the first failure is recorded on this entity with the machine's chip and memory; the runner on macOS reports splats unavailable with the CUDA reason; on Linux the script re-runs without changing an installed setup." ;
+    kpred:measured     "2026-11-05, LINUX ONLY: on this Ubuntu machine with everything installed, the changed script re-ran to exit 0, skipping every tool and resuming every weight file. The two macOS archives were downloaded here, listed (sd-cli with libstable-diffusion.dylib; brush_app) and hashed; GitHub's published digests match. Unit tests: generationAvailability refuses splats on darwin." ;
+    kpred:honest-note  "NOT RUN ON A MAC. Nothing in the Mac path has executed on macOS: not the script, not the Metal binary, not the runner. The first Mac test user is the verification; until then the page says so. Mac memory needs are estimates from the NVIDIA measurements, not measurements. Model weights from Hugging Face are still downloaded without a checksum." .
+
+kb:gen-video-quality rdf:type ktype:Phase ;
+    rdfs:label "F58.9.18 — better generated video: native resolution, longer clips, a larger model, measured by the bench" ;
+    kpred:feature-id   "F58.9.18" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:gen-model-bench ;
+    kpred:decided      "MATT, 2026-11-05: 'The quality of the videos produced in the asset generation space are low, we could do better on that video generation right?'" ;
+    kpred:description  "The video stage runs Wan2.2 TI2V-5B at 512 px, 49 frames and 20 steps (about 17 GB of GPU memory, 59 s). That model was made for 1280x704 at 24 frames a second, so the first step is the same model at its own resolution and a longer clip, then a larger model: Wan2.2 I2V-A14B (two 14B experts, high-noise and low-noise; GGUF quantizations exist and stable-diffusion.cpp loads Wan2.2 A14B), which needs a bench recipe because its architecture differs. Every arm runs through the F183.1 bench (same briefs and seeds; motion, flicker, first-frame fidelity, time, peak memory), and Matt ranks the finalists by eye, which also calibrates the bench's video score." ;
+    kpred:done-test    "the bench has run the incumbent at 512 px/49 frames, the incumbent at its native size with a longer clip, and Wan2.2 I2V-A14B, each on the same briefs and seeds, with time and peak GPU memory; Matt's ranking of the finalists is recorded here; gen-assets.ts changes only after that, in its own commit." ;
+    kpred:open-question "MATT DECIDES after the bench: how long may one clip take? A larger model at full size may take several minutes a clip on one RTX 3090, against about a minute today." .
+
+kb:gen-setup-by-os kpred:measured "2026-11-05, before the first Mac tester: the runner's GPU gate FAILED CLOSED without nvidia-smi, so on a Mac (which never has it) gen:serve would have held every generation job forever. Fixed: on macOS a missing nvidia-smi lets a job start (missingTelemetryVerdict), still one job at a time; Linux and others still fail closed. Also added: ffmpeg and ffprobe as prerequisites (the video check needs them), and --no-recurring in the documented runner command so a tester's machine runs only what they ask for." .
+
+# 2026-11-05 — v0.2.7.1, a patch release: asset generation setup on a Mac (Matt, in chat with Claude Code).
+kb:release-0-2-7-1 rdf:type ktype:Release ;
+    rdfs:label "v0.2.7.1" ;
+    kpred:version "0.2.7.1" ;
+    kpred:has-status "functional" ;
+    kpred:has-part kb:gen-setup-by-os ;
+    kpred:decided "MATT, 2026-11-05: 'I'd prefer to send him production, and he could test as an end user. I could ask him to contribute on dev at some point later.' And: 'Make sure there is a clear setup and test docs instructions page with that patch.' So a patch release from main carries only the Mac setup work (F58.9.17), not the 187 commits dev holds past staging; 0.2.8 stays a separate, reviewed cut." ;
+    kpred:description "The asset generation setup page, rewritten per operating system with a test checklist and removal steps; gen-setup.sh learns macOS on Apple Silicon (pinned Metal and Brush builds, no splat model); the runner offers no splats on macOS and no longer holds every job on a Mac for want of nvidia-smi." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built on a hotfix branch from main and checked on Linux, not yet promoted. Nothing in it has run on a Mac; the first Mac tester is the verification. The same changes reach dev through PR #595." .

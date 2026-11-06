@@ -39,7 +39,10 @@ import { validateReceipt, type ScanReceipt } from './scan-room-lib.js';
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT_ROOT = join(ROOT, 'static/generated');
 const GEN = process.env.RECKONS_GEN_HOME ?? join(homedir(), '.local/share/reckons/gen');
-const SD_DIR = join(GEN, 'bin/sd-vulkan');
+// F58.9.17: macOS (Apple Silicon) gets stable-diffusion.cpp's Metal build in bin/sd-metal; Linux keeps
+// the Vulkan build. TripoSplat needs NVIDIA CUDA, so the splat stage is not offered on macOS at all.
+const IS_MAC = process.platform === 'darwin';
+const SD_DIR = join(GEN, IS_MAC ? 'bin/sd-metal' : 'bin/sd-vulkan');
 const VK_LIB = join(GEN, 'lib/vk/usr/lib/x86_64-linux-gnu');
 const PY = join(GEN, 'venv/bin/python');
 const TRIPO_SRC = join(GEN, 'src/TripoSplat');
@@ -93,7 +96,10 @@ export const OUTPUTS = { image: 'image.webp', video: 'video.webm', splat: 'splat
 export type Stage = keyof typeof OUTPUTS;
 
 /** Capability discovery for the optional workspace runner; no model download or GPU work. */
-export function generationAvailability(stage: Stage): { available: boolean; reason?: string } {
+export function generationAvailability(stage: Stage, platform: NodeJS.Platform = process.platform): { available: boolean; reason?: string } {
+  if (stage === 'splat' && platform === 'darwin') {
+    return { available: false, reason: 'splat: TripoSplat needs an NVIDIA GPU with CUDA, which macOS does not have. Pictures and videos still work.' };
+  }
   const required = [
     ...(stage === 'splat' ? [PY, join(TRIPO_SRC, '.git')] : [join(SD_DIR, 'sd-cli')]),
     ...MODELS[stage].map(m => modelPath(m.path)),
@@ -150,9 +156,14 @@ async function modelEntries(stage: Stage, models: ModelFile[] = MODELS[stage]) {
 
 function sdVersion(): string {
   const out = execFileSync(join(SD_DIR, 'sd-cli'), ['--version'], { encoding: 'utf8', env: sdEnv() }).trim();
-  return /commit\s+(\w+)/.exec(out)?.[1] ? `commit ${/commit\s+(\w+)/.exec(out)![1]} (Vulkan build)` : out.split('\n')[0];
+  return /commit\s+(\w+)/.exec(out)?.[1] ? `commit ${/commit\s+(\w+)/.exec(out)![1]} (${IS_MAC ? 'Metal' : 'Vulkan'} build)` : out.split('\n')[0];
 }
-function sdEnv(extra: Record<string, string> = {}) { return { ...process.env, LD_LIBRARY_PATH: `${VK_LIB}:${SD_DIR}`, ...extra }; }
+function sdEnv(extra: Record<string, string> = {}) {
+  // macOS finds libstable-diffusion.dylib through DYLD_LIBRARY_PATH; Linux through LD_LIBRARY_PATH.
+  return IS_MAC
+    ? { ...process.env, DYLD_LIBRARY_PATH: `${SD_DIR}:${process.env.DYLD_LIBRARY_PATH ?? ''}`, ...extra }
+    : { ...process.env, LD_LIBRARY_PATH: `${VK_LIB}:${SD_DIR}`, ...extra };
+}
 function sd(args: string[], extra: Record<string, string> = {}) { execFileSync(join(SD_DIR, 'sd-cli'), args, { env: sdEnv(extra), stdio: ['ignore', 'ignore', 'pipe'], maxBuffer: 64 << 20 }); }
 
 // ── Stages ────────────────────────────────────────────────────────────────────
