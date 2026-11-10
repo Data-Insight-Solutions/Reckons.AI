@@ -14,6 +14,9 @@
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef, type GeometryName } from '$lib/rdf/entity-types';
   import { leapNodeKeys } from '$lib/rdf/kb-leap';
   import { buildHierarchyAnchors } from '$lib/rdf/hierarchy';
+  import { isQuestionEnd, questionEndKey } from '$lib/rdf/graph-view';
+  import { standingOf, nodeStanding, type Standing } from '$lib/rdf/statement-standing';
+  import { standingStyle, nodeStyle } from '$lib/rdf/standing-style';
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
@@ -135,8 +138,12 @@
     degree: number;
     /** Full text for hover display (literals: full value; IRIs: label only) */
     fullText?: string;
+    /** F223.9: the standing of the statements touching this node; a question's own end is 'question'. */
+    standing?: Standing;
+    /** F223.9: this node is one question's missing end (drawn hollow, marked '?'). */
+    questionEnd?: boolean;
   };
-  type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; };
+  type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; standing?: Standing; };
   type Marker = { key: string; label: string; color: string; x: number; y: number; };
 
   // ── Graph data ───────────────────────────────────────────────────────────────
@@ -240,6 +247,7 @@
 
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
+    const touching = new Map<string, Statement[]>();
     const topologyIds = topologyStatements === null
       ? null
       : new Set((topologyStatements as Statement[]).map((st) => st.id));
@@ -295,30 +303,35 @@
         }
         continue;
       }
+      const qEnd = isQuestionEnd(st);
       for (const term of [st.s, st.o]) {
-        const k = termKey(term);
+        const isQ = qEnd && term === st.o;
+        const k = isQ ? questionEndKey(st.id) : termKey(term);
         if (!nodeMap.has(k)) {
           const isLiteral = isLit(term);
           // Guard against a missing value (e.g. a partial/placeholder fact from
           // F32) so one malformed statement can't crash the whole graph render.
           const val = term.value ?? '';
           const fullVal = isLiteral ? val : undefined;
-          const label = isIRI(term) ? val.split('/').pop() ?? val
+          const label = isQ ? '?' : isIRI(term) ? val.split('/').pop() ?? val
             : isLiteral ? displayLiteralLabel(val)
             : `_:${val}`;
           const c = nodePositionCache.get(k);
           const x = c?.x ?? (spawnCenter?.x ?? 0) + (Math.random() - 0.5) * 8;
           const y = c?.y ?? (spawnCenter?.y ?? 0) + (Math.random() - 0.5) * 8;
-          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', x, y, vx: 0, vy: 0, degree: 0, fullText: fullVal });
+          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', x, y, vx: 0, vy: 0, degree: 0, fullText: fullVal, questionEnd: isQ || undefined });
         }
       }
       const a = nodeMap.get(termKey(st.s))!;
-      const b = nodeMap.get(termKey(st.o))!;
+      const b = nodeMap.get(qEnd ? questionEndKey(st.id) : termKey(st.o))!;
       a.degree++; b.degree++;
       const pred = st.p.value.split('/').pop() ?? st.p.value;
+      const sd = standingOf(st);
       e.push({ a, b, predicate: pred, confidence: st.confidence,
-        semanticDist: edgeDist(!isIRI(st.o), pred, st.confidence) });
+        semanticDist: edgeDist(!isIRI(st.o), pred, st.confidence), standing: sd });
+      for (const n of [a, b]) { const l = touching.get(n.key); if (l) l.push(st); else touching.set(n.key, [st]); }
     }
+    for (const [k, sts] of touching) { const n = nodeMap.get(k); if (n) n.standing = n.questionEnd ? 'question' : nodeStanding(sts); }
     // ── Inject source document nodes + edges ──────────────────────────────────
     const entitySources = new Map<string, Set<string>>();
     for (const st of statements as Statement[]) {
@@ -1067,6 +1080,24 @@
    * below 4x. Keeping a fixed screen radius while fitting a 100-level tree turned its overview into
    * one opaque pile even though every anchor was technically in frame.
    */
+  /** House colour tokens (docs/STYLE_GUIDE.md) for the canvas, read once and cached; the canvas cannot use var(). */
+  const cssVarCache = new Map<string, string>();
+  function houseColor(name: string, fallback: string): string {
+    let v = cssVarCache.get(name);
+    if (v === undefined) {
+      try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch { v = ''; }
+      v = v || fallback;
+      cssVarCache.set(name, v);
+    }
+    return v;
+  }
+  const STANDING_FALLBACK = { '--data': '#6b4399', '--ink-2': '#b8c5d4' } as const;
+  /** The standing a node is DRAWN with: only a question's own end is hollow-question; a subject keeps its other standing. */
+  function drawnNodeStanding(n: Node): Standing {
+    if (n.questionEnd) return 'question';
+    return n.standing === 'question' || !n.standing ? 'held' : n.standing;
+  }
+
   function nodeWorldRadius(n: Node): number {
     return nodeRadius(n) * Math.min(4, camScale) / camScale;
   }
@@ -1238,8 +1269,19 @@
         !dimMode ||
         (highlightSet.has(e.a.key) && highlightSet.has(e.b.key)) ||
         isSel || isHov;
-      ctx2d.globalAlpha = isEdgeHL ? 1 : edgeLive ? baseAlpha : GHOST_ALPHA * baseAlpha;
+      // F223.10: a proposed edge is dashed in the house secondary colour; a question's edge is dashed
+      // at half strength. Dimming multiplies on top, so a question never looks like a dimmed fact.
+      const eSt = e.standing && !e.isSourceEdge && !isEdgeHL ? standingStyle(e.standing) : null;
+      let strength = 1;
+      if (eSt && (eSt.dashed || eSt.colorVar)) {
+        if (eSt.colorVar) ctx2d.strokeStyle = houseColor(eSt.colorVar, STANDING_FALLBACK[eSt.colorVar]);
+        if (eSt.dashed) ctx2d.setLineDash([0.45, 0.3]);
+        ctx2d.lineWidth = Math.max(ctx2d.lineWidth, 0.05 / camScale * 40);
+        strength = eSt.strength;
+      }
+      ctx2d.globalAlpha = (isEdgeHL ? 1 : edgeLive ? baseAlpha : GHOST_ALPHA * baseAlpha) * (eSt && eSt.colorVar ? Math.max(strength, 0.85) : strength);
       ctx2d.stroke();
+      ctx2d.setLineDash([]);
     }
 
     // Ghost graph preview — target KB rendered in the distance, fades in smoothly
@@ -1399,7 +1441,14 @@
       }
 
       // Node body — shape from entity type geometry
-      const fillAlpha = (isDimmed ? 0.22 * baseAlpha : (isHL ? 1.0 : 0.82) * baseAlpha) * podAlphaScale;
+      // F223.10: a node that exists only in a proposal, or a question's own end, is HOLLOW: a light fill and
+      // a dashed outline at full strength (dimming still multiplies on top, as for every node).
+      const dSt = drawnNodeStanding(n);
+      const sSty = dSt === 'held' || dSt === 'pending' ? null : nodeStyle(dSt);
+      const dimMul = isDimmed ? GHOST_ALPHA : 1;
+      const fillAlpha = (sSty?.hollow
+        ? (dSt === 'question' ? 0.5 : 0.25) * dimMul * baseAlpha
+        : (isDimmed ? 0.22 * baseAlpha : (isHL ? 1.0 : 0.82) * baseAlpha)) * podAlphaScale;
       ctx2d.globalAlpha = fillAlpha;
       ctx2d.fillStyle = baseColor;
       if (geom === 'torus') {
@@ -1411,6 +1460,22 @@
       } else {
         applyShape(ctx2d, n.x, n.y, drawR, geom);
         ctx2d.fill();
+      }
+
+      // F223.10: dashed outline (full strength) for hollow standings, and the '?' mark in a question's end.
+      if (sSty?.hollow) {
+        const ring = houseColor(sSty.colorVar ?? '--ink-2', STANDING_FALLBACK[sSty.colorVar ?? '--ink-2']);
+        applyShape(ctx2d, n.x, n.y, drawR, geom);
+        ctx2d.setLineDash([drawR * 0.45, drawR * 0.3]);
+        ctx2d.strokeStyle = ring; ctx2d.lineWidth = drawR * 0.16;
+        ctx2d.globalAlpha = dimMul * baseAlpha * podAlphaScale; ctx2d.stroke();
+        ctx2d.setLineDash([]);
+        if (sSty.mark) {
+          ctx2d.globalAlpha = dimMul * baseAlpha;
+          ctx2d.fillStyle = ring; ctx2d.font = `bold ${drawR * 1.3}px sans-serif`;
+          ctx2d.textAlign = 'center'; ctx2d.textBaseline = 'middle';
+          ctx2d.fillText(sSty.mark, n.x, n.y);
+        }
       }
 
       // Entity icon — per-entity image URL takes priority, then type emoji

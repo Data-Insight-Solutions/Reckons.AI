@@ -65,6 +65,7 @@
     tripleRank = null,
     isLeapNode = false,
     hideShape = false,
+    standing = null,
     onclick = () => {},
     onhover = () => {}
   } = $props<{
@@ -92,6 +93,12 @@
      * exactly as before.
      */
     hideShape?: boolean;
+    /**
+     * F223.10: how the node is DRAWN for what it stands on. 'question' (a question's own end) and
+     * 'proposed' (touched only by proposals) are hollow: a wireframe at reduced opacity. Dimming still
+     * takes the colour to grey as for every node, so a question in view is not mistaken for a dimmed fact.
+     */
+    standing?: 'held' | 'pending' | 'proposed' | 'question' | null;
     onclick?: (e: { stopPropagation: () => void; ctrlKey?: boolean }) => void;
     onhover?: (key: string | null) => void;
   }>();
@@ -189,10 +196,15 @@
 
   const focusDimmed = $derived(focusHop !== null && focusHop > 1);
 
+  const hollow = $derived(standing === 'question' || standing === 'proposed');
+  /** House tokens from docs/STYLE_GUIDE.md: --data (proposed) and --ink-2 (question). */
+  const standingColor = $derived(standing === 'question' ? '#b8c5d4' : standing === 'proposed' ? '#6b4399' : null);
+
   const color = $derived.by(() => {
     if (focusDimmed) return mutedVariant(baseColor);
     if (dimMode && !highlighted) return '#444444';
     if (highlighted) return vibrantVariant(baseColor);
+    if (standingColor) return standingColor;
     if (focusHop !== null && focusHop > 0) return focusHopColor(focusHop);
     if (colorOverride) return colorOverride;
     if (typeDef) return typeDef.color;
@@ -266,8 +278,9 @@
     roughness={0.20}
     metalness={0.45}
     flatShading={true}
-    transparent={hideShape || focusHop === null || focusHop <= 3}
-    opacity={hideShape ? 0 : focusHop !== null && focusHop > 3 ? 0.35 : 1.0}
+    transparent={hideShape || hollow || focusHop === null || focusHop <= 3}
+    opacity={hideShape ? 0 : hollow ? (dimMode && !highlighted ? 0.18 : standing === 'question' ? 0.5 : 0.65) : focusHop !== null && focusHop > 3 ? 0.35 : 1.0}
+    wireframe={hollow}
     colorWrite={!hideShape}
     depthWrite={!hideShape}
   />

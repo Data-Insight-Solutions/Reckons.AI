@@ -88,6 +88,7 @@
   import { replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
+  import { standingOf } from '$lib/rdf/statement-standing';
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
@@ -1002,6 +1003,13 @@
       (s.status === 'confirmed' || s.status === 'refined') &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     ).length
+  );
+  // F223.9: counts by standing, for the legend and the proposed / questions chips.
+  const visibleProposedCount = $derived(
+    statements().filter(s => standingOf(s) === 'proposed' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
+  );
+  const visibleQuestionCount = $derived(
+    statements().filter(s => standingOf(s) === 'question' && s.status !== 'rejected' && s.status !== 'superseded' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
   );
   const visiblePendingCount = $derived(
     statements().filter(s =>
@@ -2636,6 +2644,14 @@
         </Popover.Root>
       {/if}
     </div>
+    <!-- F223.10: names how the canvas draws a statement's standing. Shape and line carry it, never colour alone. -->
+    {#if visibleProposedCount + visibleQuestionCount > 0}
+      <ul class="standing-legend mono" aria-label="How statements are drawn">
+        <li><span class="sw sw-held"></span>held: solid line</li>
+        {#if visibleProposedCount > 0}<li><span class="sw sw-proposed"></span>proposed: dashed, hollow</li>{/if}
+        {#if visibleQuestionCount > 0}<li><span class="sw sw-question">?</span>question: dashed, hollow, half strength</li>{/if}
+      </ul>
+    {/if}
   </div>
 
   {@render graphTools()}
@@ -3682,6 +3698,11 @@
     opacity: 0.7;
   }
 
+  .standing-legend { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.8rem; font-size: 0.65rem; color: var(--muted); }
+  .standing-legend li { display: flex; align-items: center; gap: 0.35rem; }
+  .standing-legend .sw { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--ink-2); }
+  .standing-legend .sw-proposed { border-top: 2px dashed var(--data); }
+  .standing-legend .sw-question { border: 1.5px dashed var(--ink-2); border-radius: 50%; width: 0.9rem; height: 0.9rem; line-height: 0.75rem; text-align: center; font-size: 0.6rem; color: var(--ink-2); opacity: 0.8; }
   .chip-row {
     display: flex;
     flex-wrap: wrap;

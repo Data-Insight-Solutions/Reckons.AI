@@ -19,6 +19,8 @@
   import { cameraPosition, CAMERA_PRESETS, type CameraSpec } from './camera-presets';
   import { resolveOverlaps, previewWorldRadius, SELECTED_NODE_SCALE, markerWorldRadius, glbWorldRadius, focusRingRadius } from './preview-collage';
   import GraphNode, { loadGltfTemplate } from '$lib/components/GraphNode.svelte';
+  import { isQuestionEnd, questionEndKey } from '$lib/rdf/graph-view';
+  import { standingOf, nodeStanding, type Standing } from '$lib/rdf/statement-standing';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { RDF_TYPE, RDFS_LABEL, type EntityTypeDef } from '$lib/rdf/entity-types';
   import { glbOverrides } from '$lib/stores/glb-overrides.svelte';
@@ -279,6 +281,9 @@
     degree: number;
     /** Full text for hover display (literals: full value; IRIs: label only) */
     fullText?: string;
+    /** F223.9/F223.10: standing of the statements touching this node; a question's own end is 'question'. */
+    standing?: Standing;
+    questionEnd?: boolean;
   };
   type Edge = {
     a: Node; b: Node;
@@ -286,6 +291,7 @@
     confidence: number;
     /** Multiplier on spring REST length: < 1 = tighter, > 1 = looser */
     semanticDist: number;
+    standing?: Standing;
   };
   type LayoutMarker = {
     key: string; pos: THREE.Vector3; label: string; color: string;
@@ -447,6 +453,7 @@
   $effect(() => {
     const nodeMap = new Map<string, Node>();
     const e: Edge[] = [];
+    const touching = new Map<string, Statement[]>();
     const topologyIds = topologyStatements === null
       ? null
       : new Set((topologyStatements as Statement[]).map((st) => st.id));
@@ -507,12 +514,14 @@
         }
         continue;
       }
+      const qEnd = isQuestionEnd(st);
       for (const term of [st.s, st.o]) {
-        const k = termKey(term);
+        const isQ = qEnd && term === st.o;
+        const k = isQ ? questionEndKey(st.id) : termKey(term);
         if (!nodeMap.has(k)) {
           const isLiteral = isLit(term);
           const fullVal = isLiteral ? term.value : undefined;
-          const label = isIRI(term)
+          const label = isQ ? '?' : isIRI(term)
             ? term.value.split('/').pop() ?? term.value
             : isLiteral
               ? displayLiteralLabel(term.value)
@@ -521,19 +530,22 @@
           // fall back to a random spawn only for genuinely new nodes.
           const pos = nodePositionCache.get(k)
             ?? new THREE.Vector3((Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT, (Math.random() - 0.5) * SPAWN_EXTENT);
-          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0, fullText: fullVal });
+          nodeMap.set(k, { key: k, label, kind: isIRI(term) ? 'concept' : 'literal', pos, vel: new THREE.Vector3(), degree: 0, fullText: fullVal, questionEnd: isQ || undefined });
           nodePositionCache.set(k, pos); // ensure new nodes are cached
         }
       }
       const a = nodeMap.get(termKey(st.s))!;
-      const b = nodeMap.get(termKey(st.o))!;
+      const b = nodeMap.get(qEnd ? questionEndKey(st.id) : termKey(st.o))!;
       a.degree++; b.degree++;
       const pred = st.p.value.split('/').pop() ?? st.p.value;
       e.push({
         a, b, predicate: pred, confidence: st.confidence,
-        semanticDist: edgeSemanticDist(!isIRI(st.o), pred, st.confidence)
+        semanticDist: edgeSemanticDist(!isIRI(st.o), pred, st.confidence),
+        standing: standingOf(st)
       });
+      for (const n of [a, b]) { const l = touching.get(n.key); if (l) l.push(st); else touching.set(n.key, [st]); }
     }
+    for (const [k, sts] of touching) { const n = nodeMap.get(k); if (n) n.standing = n.questionEnd ? 'question' : nodeStanding(sts); }
     nodes = [...nodeMap.values()];
     edges = e;
     reheat(); // new topology is a new layout problem
@@ -1295,6 +1307,13 @@
   const linePositions = new Float32Array(MAX_EDGES * 6);
   const hlLinePositions = new Float32Array(MAX_EDGES * 6); // highlighted edges (selected node)
   let lineGeomHl: THREE.BufferGeometry | undefined = $state();
+  // F223.10: proposed and question edges are drawn dashed, apart from the solid base lines.
+  const propLinePositions = new Float32Array(MAX_EDGES * 6);
+  const qLinePositions = new Float32Array(MAX_EDGES * 6);
+  let lineGeomProp: THREE.BufferGeometry | undefined = $state();
+  let lineGeomQ: THREE.BufferGeometry | undefined = $state();
+  let lineSegProp: THREE.LineSegments | undefined = $state();
+  let lineSegQ: THREE.LineSegments | undefined = $state();
   let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
@@ -1303,6 +1322,8 @@
     if (lineGeom && !lineGeom.getAttribute('position')) {
       lineGeom.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
     }
+    if (lineGeomProp && !lineGeomProp.getAttribute('position')) lineGeomProp.setAttribute('position', new THREE.BufferAttribute(propLinePositions, 3));
+    if (lineGeomQ && !lineGeomQ.getAttribute('position')) lineGeomQ.setAttribute('position', new THREE.BufferAttribute(qLinePositions, 3));
     if (lineGeomHl && !lineGeomHl.getAttribute('position')) {
       lineGeomHl.setAttribute('position', new THREE.BufferAttribute(hlLinePositions, 3));
     }
@@ -1582,11 +1603,14 @@
 
     if (lineGeom) {
       const limit = Math.min(edges.length, MAX_EDGES);
-      let hlCount = 0;
+      let hlCount = 0, baseCount = 0, propCount = 0, qCount = 0;
       for (let i = 0; i < limit; i++) {
         const e = edges[i];
-        linePositions[i * 6]     = e.a.pos.x; linePositions[i * 6 + 1] = e.a.pos.y; linePositions[i * 6 + 2] = e.a.pos.z;
-        linePositions[i * 6 + 3] = e.b.pos.x; linePositions[i * 6 + 4] = e.b.pos.y; linePositions[i * 6 + 5] = e.b.pos.z;
+        // Proposed and question edges go to their own dashed buffers; everything else stays solid.
+        const buf = e.standing === 'proposed' ? propLinePositions : e.standing === 'question' ? qLinePositions : linePositions;
+        const slot = e.standing === 'proposed' ? propCount++ : e.standing === 'question' ? qCount++ : baseCount++;
+        buf[slot * 6]     = e.a.pos.x; buf[slot * 6 + 1] = e.a.pos.y; buf[slot * 6 + 2] = e.a.pos.z;
+        buf[slot * 6 + 3] = e.b.pos.x; buf[slot * 6 + 4] = e.b.pos.y; buf[slot * 6 + 5] = e.b.pos.z;
         // Collect edges connected to the selected node
         if (selected && (e.a.key === selected || e.b.key === selected) && hlCount < MAX_EDGES) {
           hlLinePositions[hlCount * 6]     = e.a.pos.x; hlLinePositions[hlCount * 6 + 1] = e.a.pos.y; hlLinePositions[hlCount * 6 + 2] = e.a.pos.z;
@@ -1595,7 +1619,12 @@
         }
       }
       const attr = lineGeom.getAttribute('position') as THREE.BufferAttribute | undefined;
-      if (attr) { attr.needsUpdate = true; lineGeom.setDrawRange(0, limit * 2); }
+      if (attr) { attr.needsUpdate = true; lineGeom.setDrawRange(0, baseCount * 2); }
+      lineSegProp?.computeLineDistances(); lineSegQ?.computeLineDistances();
+      for (const [g, n] of [[lineGeomProp, propCount], [lineGeomQ, qCount]] as const) {
+        const pa = g?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (g && pa) { pa.needsUpdate = true; g.setDrawRange(0, n * 2); }
+      }
       if (lineGeomHl) {
         const hlAttr = lineGeomHl.getAttribute('position') as THREE.BufferAttribute | undefined;
         if (hlAttr) { hlAttr.needsUpdate = true; lineGeomHl.setDrawRange(0, hlCount * 2); }
@@ -1998,6 +2027,17 @@
   <T.LineBasicMaterial color="#ff6b35" transparent opacity={selected ? 0.12 : 0.35} />
 </T.LineSegments>
 
+<!-- F223.10: proposed edges (dashed, --data) and question edges (dashed, --ink-2, half strength).
+     Dash distances are computed on the fly in the frame loop (computeLineDistances). -->
+<T.LineSegments bind:ref={lineSegProp}>
+  <T.BufferGeometry bind:ref={lineGeomProp} />
+  <T.LineDashedMaterial color="#6b4399" transparent opacity={dimMode ? 0.18 : 1} dashSize={0.45} gapSize={0.3} />
+</T.LineSegments>
+<T.LineSegments bind:ref={lineSegQ}>
+  <T.BufferGeometry bind:ref={lineGeomQ} />
+  <T.LineDashedMaterial color="#b8c5d4" transparent opacity={dimMode ? 0.09 : 0.5} dashSize={0.45} gapSize={0.3} />
+</T.LineSegments>
+
 <!-- Highlighted edges (connected to selected node) -->
 <T.LineSegments>
   <T.BufferGeometry bind:ref={lineGeomHl} />
@@ -2017,6 +2057,7 @@
     colorOverride={nodeColorMap.get(n.key) ?? null}
     tripleRank={nodeTypeRankMap.get(n.key) ?? 0.5}
     isLeapNode={leapKeys.has(n.key)}
+    standing={n.questionEnd ? 'question' : n.standing === 'proposed' ? 'proposed' : null}
     hideShape={splatDrawnKeys.has(n.key)}
     onhover={(k) => (isHistoryMode ? onhover(null) : onhover(k))}
     onclick={(e) => {
