@@ -43,7 +43,7 @@ export interface GraphViewOptions {
   categoryNodes?: boolean;
   /** Only these predicates become edges. Empty/undefined = all. */
   predicates?: Set<string>;
-  /** Only statements created within this window (ms epoch). */
+  /** Only facts created within this window (ms epoch). */
   since?: number;
   until?: number;
   /**

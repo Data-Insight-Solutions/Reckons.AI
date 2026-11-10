@@ -92,10 +92,13 @@ describe('marker standing — the standing of the facts that touch a marker', ()
   });
 });
 
+// The kind argument both portable-metadata functions require.
+const KIND = 'statement';
+
 describe('proposalOption survives a round trip through the portable record', () => {
   it('round-trips through the portable record, like findingClass', () => {
     const source = st('a', 'pending', { proposalOption: 'option-b', findingClass: 'drift' });
-    const decoded = decodePortableMetadata(encodePortableMetadata(source, 'statement'), 'statement');
+    const decoded = decodePortableMetadata(encodePortableMetadata(source, KIND), KIND);
     expect(decoded.proposalOption).toBe('option-b');
     // It travels beside the fields it sits next to, not in place of them.
     expect(decoded.findingClass).toBe('drift');
@@ -103,7 +106,7 @@ describe('proposalOption survives a round trip through the portable record', () 
 
   it('stays absent when the fact names no option — import never invents one', () => {
     const source = st('a', 'pending');
-    const decoded = decodePortableMetadata(encodePortableMetadata(source, 'statement'), 'statement');
+    const decoded = decodePortableMetadata(encodePortableMetadata(source, KIND), KIND);
     expect('proposalOption' in decoded).toBe(false);
   });
 });
