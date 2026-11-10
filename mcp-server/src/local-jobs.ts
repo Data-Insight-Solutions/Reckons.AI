@@ -104,6 +104,30 @@ export function loadJobDefs(c: JobCtx): JobDef[] {
   return defs;
 }
 
+/**
+ * The lane each job declares it emits (`kpred:emits`, F89.4.3), keyed by job name, for the review
+ * lane router. 'nothing' is left out: such a job has no rows to route. A missing file gives an empty
+ * map and the router falls back to its first-pass rule.
+ */
+export function jobLanes(c: JobCtx): Map<string, 'claim' | 'question' | 'finding'> {
+  const out = new Map<string, 'claim' | 'question' | 'finding'>();
+  try {
+    const jobs = new Map<string, Record<string, string>>();
+    for (const q of new Parser().parse(readFileSync(path.join(c.root, 'static', 'reckons-jobs.ttl'), 'utf8'))) {
+      const p = q.predicate.value;
+      const key = p === RDF_TYPE ? 'type' : p === RDFS_LABEL ? 'label' : p === KPRED + 'emits' ? 'emits' : '';
+      if (!key) continue;
+      const o = jobs.get(q.subject.value) ?? {};
+      o[key] = q.object.value;
+      jobs.set(q.subject.value, o);
+    }
+    for (const o of jobs.values()) {
+      if (o.type === OFFLINE_JOB && o.label && (o.emits === 'claim' || o.emits === 'question' || o.emits === 'finding')) out.set(o.label, o.emits);
+    }
+  } catch { /* no jobs graph */ }
+  return out;
+}
+
 // ── queue files ────────────────────────────────────────────────────────────
 
 type QJob = { id: string; name: string; cwd: string; argv: string[]; addedAt: string; priority?: number; gpu?: boolean };

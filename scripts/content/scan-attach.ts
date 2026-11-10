@@ -33,6 +33,8 @@ export class AttachError extends Error {}
 export interface AttachRow {
   subject: string; predicate: string; object?: string; objectKind?: 'literal' | 'iri'; question?: string;
   kb: string; type: 'suggestion' | 'question'; agent: 'scan-room'; priority: 'normal'; note: string;
+  /** What a verdict does (F89.4.3): claim for the attach and link rows, question for the capture question. */
+  lane: 'claim' | 'question';
 }
 
 /** prov:wasDerivedFrom, the predicate the app already uses for provenance (serialize.ts, personal-notes.ts). */
@@ -70,9 +72,9 @@ export function linkRows(slug: string, id: string, links: Links, withQuestion: b
   const splat = scanEntityIri(`asset:splat/${id}`);
   const base = { kb: slug, agent: 'scan-room' as const, priority: 'normal' as const };
   const rows: AttachRow[] = [];
-  for (const iri of links.derivedFrom ?? []) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, object: iri, objectKind: 'iri', type: 'suggestion', note: 'scan reconstructed from this node, stated by the person running scan:room' });
-  for (const [subject, predicate] of links.linkFrom ?? []) rows.push({ ...base, subject, predicate, object: splat, objectKind: 'iri', type: 'suggestion', note: 'relation to the attached scan, stated by the person running scan:room' });
-  if (!rows.length && withQuestion) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, question: CAPTURE_QUESTION, type: 'question', note: 'scan:room attached this splat with no link to a capture' });
+  for (const iri of links.derivedFrom ?? []) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, object: iri, objectKind: 'iri', type: 'suggestion', lane: 'claim', note: 'scan reconstructed from this node, stated by the person running scan:room' });
+  for (const [subject, predicate] of links.linkFrom ?? []) rows.push({ ...base, subject, predicate, object: splat, objectKind: 'iri', type: 'suggestion', lane: 'claim', note: 'relation to the attached scan, stated by the person running scan:room' });
+  if (!rows.length && withQuestion) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, question: CAPTURE_QUESTION, type: 'question', lane: 'question', note: 'scan:room attached this splat with no link to a capture' });
   return rows;
 }
 
@@ -125,6 +127,7 @@ export function attachRows(slug: string, id: string, label: string, origin: Spla
     objectKind: st.o.kind === 'iri' ? 'iri' as const : 'literal' as const,
     kb: slug,
     type: 'suggestion' as const,
+    lane: 'claim' as const,
     agent: 'scan-room' as const,
     priority: 'normal' as const,
     note: st.p.value === SPLAT_PREDICATE ? `${origin} scan attached by scan:room; its file is in this space's folder` : `${origin} scan attached by scan:room`,
@@ -140,8 +143,15 @@ export function assertTargeted(rows: readonly { kb?: unknown; subject?: unknown 
 /** Append the rows under the queue lock, skipping any line already queued. Returns [appended, skipped]. */
 export function appendAttachRows(queuePath: string, rows: readonly AttachRow[]): [number, number] {
   assertTargeted(rows);
-  const have = new Set(existsSync(queuePath) ? readFileSync(queuePath, 'utf8').split('\n') : []);
-  const lines = rows.map((r) => JSON.stringify(r)).filter((l) => !have.has(l));
+  // Idempotent on WHAT the row says, not its bytes: the append function stamps run, origin and time,
+  // so a re-attach produces different bytes for the same row.
+  const key = (r: Record<string, unknown>) => JSON.stringify([r.kb, r.subject, r.predicate, r.object ?? null, r.question ?? null]);
+  const have = new Set<string>();
+  for (const l of existsSync(queuePath) ? readFileSync(queuePath, 'utf8').split('\n') : []) {
+    try { have.add(key(JSON.parse(l))); } catch { /* not a row */ }
+  }
+  const fresh = rows.filter((r) => !have.has(key(r as unknown as Record<string, unknown>)));
+  const lines = fresh.map((r) => JSON.stringify(r));
   if (lines.length) appendQueueText(queuePath, lines.join('\n') + '\n');
   return [lines.length, rows.length - lines.length];
 }

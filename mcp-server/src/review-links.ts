@@ -40,6 +40,8 @@ export interface PendingRow {
   /** The decision id of the open question this row answers (kb:question-presettle); the row joins
    *  that decision as a claim instead of becoming a decision of its own. */
   answers?: string;
+  /** What a verdict on the row would do (F89.4.3): claim, question or finding. */
+  lane?: string;
 }
 
 export interface ReviewGroup {

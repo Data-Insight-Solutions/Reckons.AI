@@ -20,7 +20,7 @@
  * Usage:
  *   npx tsx scripts/offline/dead-weight.ts            # report
  *   npx tsx scripts/offline/dead-weight.ts --json     # machine-readable
- *   npx tsx scripts/offline/dead-weight.ts --pending  # queue findings for human review
+ *   npx tsx scripts/offline/dead-weight.ts --pending  # queue ONE question per directory with unimported files (F89.4.3)
  *   npx tsx scripts/offline/dead-weight.ts --min-mb=50
  *
  * ADVISORY, NEVER BLOCKING, AND IT DELETES NOTHING. Every finding is a QUESTION for a
@@ -36,6 +36,7 @@ import { loadGraphQuads, ownerOfFile } from './lib/graph-grounding.js';
 import { buildImportMap, deadModules } from './lib/import-graph.js';
 import { readTextOr } from '../lib/read-file.js';
 import { readJobs } from '../lib/jobs-graph-read.js';
+import { directoryQuestion, groupByDirectory, isKept, keptDirectories, dirOf } from './lib/dead-weight-groups.js';
 
 const KPRED = 'urn:kbase:predicate/';
 const KB = 'urn:kbase:concept/';
@@ -72,6 +73,11 @@ for (const q of quads) {
   else if (FILE_PREDS.has(p)) (filesOf.get(s) ?? filesOf.set(s, []).get(s)!).push(o);
 }
 const name = (iri: string) => label.get(iri) ?? short(iri);
+// Directories a person answered "kept whole on purpose" (F89.4.3). Read every run, so an answer
+// takes effect on the next one and no file under such a directory is ever listed again.
+const keptDirs = keptDirectories(quads);
+let keptSuppressed = 0;
+const deadFiles: string[] = [];
 
 // ── 1. ORPHANED ARTIFACT — bulk on disk whose producing job is disabled or gone.
 // The bytes are the symptom; a producer nobody runs is the finding.
@@ -202,6 +208,8 @@ for (const [iri, files] of filesOf) {
   // a fixture test drives it against a temp dir, never this repo).
   const dead = new Set(deadModules(buildImportMap(process.cwd())));
   for (const f of [...dead].sort()) {
+    if (isKept(dirOf(f), keptDirs)) { keptSuppressed++; continue; }
+    deadFiles.push(f);
     const owner = ownerOfFile(f, quads);
     const who = owner
       ? `Owned by "${name(owner.iri)}"${status.get(owner.iri) ? ` (${status.get(owner.iri)})` : ''}.`
@@ -345,30 +353,26 @@ for (const check of ORDER) {
 if (!findings.length) console.log(`${G}No dead weight found.${X}\n`);
 else console.log(`${B}${findings.length} finding(s).${X} ${D}Read as "is this feature orphaned or superseded?", not "delete this".${X}\n`);
 
-if (PENDING_OUT && findings.length) {
+if (keptSuppressed) console.log(`${D}${keptSuppressed} unimported file(s) not listed: their directory is recorded kpred:kept-on-purpose.${X}\n`);
+
+// WHERE FINDINGS GO (F89.4.3, Matt 2026-11-10: findings leave Review). Everything above is this
+// check's REPORT. The only thing that reaches a person is what the check cannot know, which is
+// INTENT, asked once per DIRECTORY: "is this directory kept whole on purpose?". The answer is a
+// kpred:kept-on-purpose fact read at the top of the next run. NOT BUILT: a ratchet on the report.
+if (PENDING_OUT) {
   const now = new Date().toISOString();
   const existing = readTextOr(PENDING, '');
+  const { groups } = groupByDirectory(deadFiles, keptDirs);
   let queued = 0;
-  for (const f of findings) {
-    if (f.check === 'over-exported') continue; // never worth a human's review slot
-    const question = `[dead-weight/${f.check}] ${f.subject} — ${f.msg} ${f.action}`;
-    if (existing.includes(JSON.stringify(question).slice(1, -1))) continue; // idempotent re-runs
-    appendQueueText(PENDING, JSON.stringify({
-      subject: f.subject,
-      predicate: `urn:sweep:pred/dead-weight`,
-      question,
-      type: 'question',
-      // Its subjects are code modules and files, described in the codebase space. An unscoped row
-      // is retained by the drain rather than imported, so omitting this silently delivers nothing.
-      kb: 'codebase',
-      agent: 'offline:dead-weight',
-      priority: ['orphaned-artifact', 'ghost-feature', 'dead-module'].includes(f.check) ? 'high' : 'medium',
-      addedAt: now,
-      addedByMcp: true,
-    }) + '\n');
+  for (const g of groups) {
+    const owner = ownerOfFile(g.files[0], quads)?.iri;
+    const row = directoryQuestion(g, { now, ...(owner ? { owner } : {}) });
+    // Idempotent: the same open question for the same directory is not asked twice.
+    if (existing.includes(JSON.stringify(`Is ${g.dir}/ kept whole on purpose?`).slice(1, -1))) continue;
+    appendQueueText(PENDING, JSON.stringify(row) + '\n');
     queued++;
   }
-  console.log(`${queued} finding(s) queued → ${PENDING} (review in Reckons.AI).\n`);
+  console.log(`${queued} directory question(s) queued (${groups.length} director${groups.length === 1 ? 'y' : 'ies'} with unimported files) → ${PENDING}. Other findings stay in this report.\n`);
 }
 
 // Advisory: a maintenance flag that fails the build would get switched off, and then it protects nothing.

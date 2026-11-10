@@ -256,6 +256,8 @@ export interface PendingQueuePartition {
   /** Original text of rows not consumed, including malformed and invalid rows. */
   retainedLines: string[];
   issues: PendingQueueIssue[];
+  /** Valid rows addressed to a destination other than the active one, kept until it is open (F89.4.1). */
+  heldForOtherTargets: number;
 }
 
 /**
@@ -278,6 +280,7 @@ export function partitionPendingJsonl(
   const consumedLines: string[] = [];
   const retainedLines: string[] = [];
   const issues: PendingQueueIssue[] = [];
+  let heldForOtherTargets = 0;
   const active = new Set(
     (typeof activeKb === 'string' ? [activeKb] : activeKb)
       .filter((alias) => typeof alias === 'string' && alias.trim())
@@ -297,13 +300,14 @@ export function partitionPendingJsonl(
 
     if (!active.has(normalizePendingGraphName(parsed.entry.kb!))) {
       retainedLines.push(line);
+      heldForOtherTargets++;
       continue;
     }
     entries.push(parsed.entry);
     consumedLines.push(line);
   }
 
-  return { entries, consumedLines, retainedLines, issues };
+  return { entries, consumedLines, retainedLines, issues, heldForOtherTargets };
 }
 
 /**
