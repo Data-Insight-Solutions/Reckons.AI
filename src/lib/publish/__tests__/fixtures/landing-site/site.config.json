@@ -20,7 +20,7 @@
     "webhook": "https://hooks.example.test/webhook/studio-contact",
     "email": "hello@example.test",
     "topics": ["A project", "A question"],
-    "source": "example-landing"
+    "tag": "example-landing"
   },
   "themeKey": "example-theme"
 }

@@ -24,7 +24,7 @@
  * Banner: `@date`, the heading, a paragraph and a link button. Contact: the heading and paragraphs,
  * and the form (or a mailto link when no webhook is configured — see site-config.ts).
  *
- * Every page of a configured site shares this shell (header, navigation, footer) so the whole site
+ * Every page of a configured site uses this one shell (header, navigation, footer) so the whole site
  * reads as one; ordinary pages render their markdown inside a panel (renderShellPage). The page's
  * CSP allows scripts and styles from the site itself only — there is no inline script or style — and
  * the contact webhook's origin as the only connection and form target.
@@ -62,7 +62,7 @@ function heading(md: string): string {
   return md.split(/(==.+?==)/g).map((part) => {
     const m = /^==(.+)==$/.exec(part);
     if (m) return '<span class="grad">' + inline(m[1]) + '</span>';
-    // inline() trims; keep the spaces that separate this text from the highlighted words
+    // inline() trims; keep the blanks that separate this text from the highlighted words
     return (/^\s/.test(part) ? ' ' : '') + inline(part) + (/\s$/.test(part) && part.trim() ? ' ' : '');
   }).join('');
 }
@@ -276,7 +276,7 @@ function contactBlock(config: SiteConfig): string {
   const c = config.contact;
   if (c.webhook) {
     const topics = c.topics.map((t) => '<option>' + esc(t) + '</option>').join('');
-    return '<form class="panel reveal d1" id="contact-form" method="post" action="' + esc(c.webhook) + '" data-source="' + esc(c.source) + '"'
+    return '<form class="panel reveal d1" id="contact-form" method="post" action="' + esc(c.webhook) + '" data-tag="' + esc(c.tag) + '"'
       + ' data-missing="' + esc(FORM_TEXT.missing) + '" data-sending="' + esc(FORM_TEXT.sending) + '" data-sent="' + esc(FORM_TEXT.sent) + '" data-failed="' + esc(FORM_TEXT.failed) + '" novalidate>'
       + '<label>' + FORM_TEXT.name + '<input name="name" autocomplete="name" required></label>'
       + '<label>' + FORM_TEXT.email + '<input name="email" type="email" autocomplete="email" required></label>'
@@ -376,7 +376,7 @@ export function renderLandingPage(page: SitePage, ctx: ShellContext): string {
   return documentHtml(ctx, page.title + ' · ' + ctx.config.title, page.excerpt, main);
 }
 
-/** Any other page of a configured site: its markdown in a panel, inside the shared shell. */
+/** Any other page of a configured site: its markdown in a panel, inside the common shell. */
 export function renderShellPage(page: SitePage, ctx: ShellContext): string {
   const body = page.body?.trim() ? block(page.body) : '<p>' + esc(page.excerpt) + '</p>';
   const date = page.date ? '<time class="date">' + esc(page.date) + '</time>' : '';
@@ -555,7 +555,8 @@ section.tight { padding-top: 0; }
 .chip a:hover { color: var(--accent-bright); }
 
 /* Banner */
-.speaking { display: flex; gap: 24px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 26px 30px; }
+.speaking { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; padding: 26px 30px; }
+.speaking > .btn { margin-left: auto; }
 .speaking .date { font: 500 13px/1.5 var(--mono); color: var(--accent-bright); }
 .speaking strong { font-size: 20px; }
 .speaking p { margin: 4px 0 0; color: var(--text-soft); max-width: 46em; }
@@ -595,7 +596,8 @@ section.page { padding-top: clamp(24px, 4vw, 56px); }
 .page-contact form.panel { grid-template-columns: 1fr 1fr; }
 
 footer { padding: 40px 0 56px; color: var(--text-mute); font-size: 14px; }
-footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+footer .wrap { display: flex; gap: 16px; flex-wrap: wrap; }
+footer .wrap span:last-child { margin-left: auto; }
 footer a { color: var(--text-soft); }
 
 /* Scroll reveals: gentle, once, and off for reduced motion */
@@ -631,21 +633,21 @@ export function landingJs(): string {
   var root = document.documentElement;
   var key = document.body.getAttribute('data-theme-key') || 'site-theme';
   document.body.classList.remove('no-js');
-  try { var saved = localStorage.getItem(key); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  try { var saved = localStorage.getItem(key); if (saved) root.dataset.theme = saved; } catch (e) {}
 
   var themeBtn = document.getElementById('theme-btn');
   if (themeBtn) themeBtn.addEventListener('click', function () {
-    var cur = root.getAttribute('data-theme');
+    var cur = root.dataset.theme;
     var dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
     var next = dark ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
+    root.dataset.theme = next;
     try { localStorage.setItem(key, next); } catch (e) {}
   });
 
   var nav = document.getElementById('nav'), menu = document.getElementById('menu-btn');
   if (nav && menu) {
-    menu.addEventListener('click', function () { var open = nav.classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); });
-    nav.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'A') { nav.classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); } });
+    menu.addEventListener('click', function () { var open = nav.classList.toggle('open'); menu.ariaExpanded = String(open); });
+    nav.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'A') { nav.classList.remove('open'); menu.ariaExpanded = 'false'; } });
   }
 
   var hdr = document.getElementById('hdr'), mark = document.getElementById('mark');
@@ -672,7 +674,7 @@ export function landingJs(): string {
     new FormData(form).forEach(function (v, k) { data[k] = v; });
     var say = function (cls, msg) { status.className = cls; status.textContent = msg; };
     if (!data.name || !data.email || !data.message) { say('err', form.getAttribute('data-missing')); return; }
-    data.source = form.getAttribute('data-source') || 'site';
+    data.source = form.getAttribute('data-tag') || 'site';
     say('', form.getAttribute('data-sending'));
     fetch(form.action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
       .then(function (res) { return res.json().catch(function () { return {}; }).then(function (out) { return { ok: res.ok, out: out }; }); })

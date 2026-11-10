@@ -72,8 +72,8 @@ export interface SiteConfig {
     /** The page whose slug equals this gets the form appended. */
     slug: string;
     topics: string[];
-    /** `source` field sent with every submission, so the receiving workflow can tell sites apart. */
-    source: string;
+    /** `tag` field sent with every submission, so the receiving workflow can tell sites apart. */
+    tag: string;
   };
   /** localStorage key remembering the visitor's light or dark choice. */
   themeKey: string;
@@ -156,7 +156,7 @@ function palette(raw: unknown, base: Palette, field: string): Palette {
 function fontStack(v: unknown, field: string, fallback: string): string {
   const s = str(v, field);
   if (!s) return fallback;
-  if (themeFont(s, '\u0000') === '\u0000') fail(field + ' may contain only letters, digits, spaces, commas, - and _: ' + s);
+  if (themeFont(s, '\u0000') === '\u0000') fail(field + ' may contain only letters, digits, blanks, commas, - and _: ' + s);
   return s;
 }
 
@@ -199,7 +199,7 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
     const family = str(f.family, 'theme.fontFaces[' + i + '].family', 60);
     const src = str(f.src, 'theme.fontFaces[' + i + '].src');
     const weight = str(f.weight, 'theme.fontFaces[' + i + '].weight', 20) ?? '400';
-    if (!family || !/^[A-Za-z0-9 _-]+$/.test(family)) fail('theme.fontFaces[' + i + '].family must be letters, digits, spaces, - or _');
+    if (!family || !/^[A-Za-z0-9 _-]+$/.test(family)) fail('theme.fontFaces[' + i + '].family must be letters, digits, blanks, - or _');
     if (!src) fail('theme.fontFaces[' + i + '].src is required');
     if (!/^\d{3}(?: \d{3})?$/.test(weight)) fail('theme.fontFaces[' + i + '].weight must be like "400" or "300 700"');
     return { family, src: sitePath(src, 'theme.fontFaces[' + i + '].src'), weight };
@@ -244,7 +244,7 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
       monoFont: fontStack(themeRaw.monoFont, 'theme.monoFont', DEFAULT_MONO),
       faces,
     },
-    contact: { webhook, email, slug, topics: (topicsRaw as string[]).map((t) => t.trim()), source: str(contactRaw.source, 'contact.source', 40) ?? 'site' },
+    contact: { webhook, email, slug, topics: (topicsRaw as string[]).map((t) => t.trim()), tag: str(contactRaw.tag, 'contact.tag', 40) ?? 'site' },
     themeKey: str(raw.themeKey, 'themeKey', 60) ?? 'site-theme',
   };
 }

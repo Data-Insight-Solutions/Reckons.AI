@@ -72,7 +72,7 @@ describe('landing layout (F274.4.3)', () => {
     const out = build();
     const html = read(out, 'index.html');
     expect(html).toContain('action="https://hooks.example.test/webhook/studio-contact"');
-    expect(html).toContain('data-source="example-landing"');
+    expect(html).toContain('data-tag="example-landing"');
     expect(html).toContain('<option>A project</option>');
     expect(html).toContain("connect-src https://hooks.example.test; form-action https://hooks.example.test");
     expect(html).toContain("script-src 'self'");
@@ -128,7 +128,7 @@ describe('landing layout (F274.4.3)', () => {
     const js = landingJs();
     expect(css).not.toMatch(/n8n|webhook|hstgr/i);
     expect(js).not.toMatch(/https?:\/\//);
-    expect(css).not.toMatch(/Space Grotesk|IBM Plex/);
+    expect(css).not.toMatch(/Grotesk|Plex/);
   });
 });
 

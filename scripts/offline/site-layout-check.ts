@@ -63,7 +63,7 @@ async function main(): Promise<void> {
         // The approved preview loads web fonts from a font host; a sandbox with no network is not a layout error.
         await page.goto('http://127.0.0.1:' + port + path, { waitUntil: 'load' });
         await page.evaluate(async () => {
-          // 'instant': the pages set scroll-behavior: smooth, which would make these steps never arrive
+          // 'instant': the pages declare scroll-behavior: smooth, which would make these steps never arrive
           for (let y = 0; y < document.body.scrollHeight; y += 500) { window.scrollTo({ top: y, behavior: 'instant' }); await new Promise((r) => setTimeout(r, 150)); }
           window.scrollTo({ top: 0, behavior: 'instant' });
         });

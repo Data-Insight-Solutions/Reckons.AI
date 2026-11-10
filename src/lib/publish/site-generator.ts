@@ -24,7 +24,7 @@ marked.setOptions({ gfm: true, breaks: false });
 export interface GenerateSiteOptions {
   siteTitle?: string;
   siteDescription?: string;
-  /** F274.4.3: from <site>/site.config.json. When set, every page uses the configured shell
+  /** F274.4.3: from <site>/site.config.json. When present, every page uses the configured shell
    *  (header, navigation, footer, palettes) and `landing` pages the landing layout. */
   siteConfig?: SiteConfig;
 }
