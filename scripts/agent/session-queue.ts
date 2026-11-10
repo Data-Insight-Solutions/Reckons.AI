@@ -12,10 +12,11 @@
  *
  * JOB CHAINS (Matt 2026-11-03: "craft local job chains"): a job may name predecessors with
  * `after: string[]` (`queue.ts add --after=<name>`, repeatable). It starts only when every
- * predecessor has at least one PASSED run in the done log; while a predecessor is still queued it
- * waits; a predecessor that finished without passing (failed, refused, dropped, no-commit) blocks
- * the waiting job — the worker records it once as 'blocked' with the reason and never runs it,
- * because re-running the predecessor is the user's call. A cycle (each waiting on the other) is
+ * predecessor has at least one PASSED run in the done log; while a predecessor is currently queued it
+ * waits (re-queueing a predecessor IS the user re-running it, so an older failed/blocked run in the
+ * done log does not block); a predecessor whose last finished run did not pass (failed, refused,
+ * dropped, no-commit) and that is not queued blocks the waiting job — the worker records it once as
+ * 'blocked' with the reason and never runs it, because re-running the predecessor is the user's call. A cycle (each waiting on the other) is
  * reported as paused-broken-chain, not spun on.
  *
  * 'passed' must mean the work happened (requirement 3): the worker records the head of a deputy
@@ -42,6 +43,13 @@ export const queueLockPath = (): string => path.join(queueDir(), 'queue.lock');
 export type QueueJob = { id: string; name: string; cwd: string; argv: string[]; addedAt: string; priority?: number;
   /** false = script tier, never touches the GPU, so the GPU gates do not apply. Absent = GPU (fail safe). */
   gpu?: boolean;
+  /**
+   * Which physical GPU to run on (0-based). The GPU gate judges that GPU only, and the worker pins
+   * CUDA_VISIBLE_DEVICES / GGML_VK_VISIBLE_DEVICES to it at spawn (gen-bench.ts's pin pattern).
+   * Absent = any GPU, judged on all of them (fail safe). E.g. a scan on GPU1 while the deputy's own
+   * Ollama runtime legitimately heats GPU0 (Matt, 2026-11-10).
+   */
+  gpuIndex?: number;
   /** false = neither the job nor its job-watch verdict uses Ollama (generation), so it runs while Ollama
    *  is down. Absent = needs Ollama (fail safe). */
   ollama?: boolean;
@@ -68,7 +76,7 @@ export function parseQueue(text: string): QueueJob[] {
       if (typeof j.id === 'string' && typeof j.name === 'string' && typeof j.cwd === 'string' && typeof j.addedAt === 'string'
         && Array.isArray(j.argv) && j.argv.length > 0 && j.argv.every((a) => typeof a === 'string')) {
         const after = Array.isArray(j.after) ? j.after.filter((a) => typeof a === 'string' && a.length > 0) : undefined;
-        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}) });
+        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(typeof j.gpuIndex === 'number' ? { gpuIndex: j.gpuIndex } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}) });
       }
     } catch { /* skip */ }
   }
@@ -94,8 +102,8 @@ export function dedupeAdd(existing: QueueJob[], candidates: QueueJob[]): { add: 
   return { add, skipped };
 }
 
-export const newJob = (name: string, cwd: string, argv: string[], priority?: number, gpu?: boolean, after?: string[], ramSpill?: boolean, ollama?: boolean): QueueJob =>
-  ({ id: randomUUID().slice(0, 8), name, cwd, argv, addedAt: new Date().toISOString(), ...(priority !== undefined ? { priority } : {}), ...(gpu === false ? { gpu: false } : {}), ...(after?.length ? { after: [...after] } : {}), ...(ramSpill ? { ramSpill: true } : {}), ...(ollama === false ? { ollama: false } : {}) });
+export const newJob = (name: string, cwd: string, argv: string[], priority?: number, gpu?: boolean, after?: string[], ramSpill?: boolean, ollama?: boolean, gpuIndex?: number): QueueJob =>
+  ({ id: randomUUID().slice(0, 8), name, cwd, argv, addedAt: new Date().toISOString(), ...(priority !== undefined ? { priority } : {}), ...(gpu === false ? { gpu: false } : {}), ...(typeof gpuIndex === 'number' ? { gpuIndex } : {}), ...(after?.length ? { after: [...after] } : {}), ...(ramSpill ? { ramSpill: true } : {}), ...(ollama === false ? { ollama: false } : {}) });
 
 export const isGpuJob = (j: Pick<QueueJob, 'gpu'>): boolean => j.gpu !== false;
 export const needsOllama = (j: Pick<QueueJob, 'ollama'>): boolean => j.ollama !== false;
@@ -166,10 +174,11 @@ export type ChainStatus =
 /**
  * Job chains, per link (Matt 2026-11-03). A link is satisfied by ONE passed run of a job whose
  * name OR id is the link (the queue shows names; ids are accepted so a copy from `list` works).
- * While no run exists but the job is still queued, the link is WAITING; a finished run that is not
- * passed (failed, refused, dropped, no-commit) BLOCKS — the predecessor did not do its work, and
- * re-running it is the user's act, not the worker's; a link to a job that is nowhere is broken
- * too. Blocked wins over waiting. Pure.
+ * Order: a passed run -> satisfied; else the dep is currently queued -> WAITING (re-queueing a
+ * predecessor IS the user re-running it, so an older unpassed run in the done log is stale); else its
+ * last finished run did not pass (failed, refused, dropped, no-commit) -> BLOCKED — the predecessor
+ * did not do its work, and re-running it is the user's act, not the worker's; a link to a job that is
+ * nowhere is broken too. Blocked wins over waiting across links. Pure.
  */
 export function afterChain(job: Pick<QueueJob, 'after'>, queue: QueueJob[], done: DoneJob[]): ChainStatus {
   const deps = job.after ?? [];
@@ -181,12 +190,12 @@ export function afterChain(job: Pick<QueueJob, 'after'>, queue: QueueJob[], done
   for (const dep of deps) {
     const runs = done.filter((d) => d.name === dep || d.id === dep);
     if (runs.some((r) => r.outcome === 'passed')) continue; // the work happened once; a later failure does not un-happen it
+    if (inQueue.has(dep)) { on.push(inQueue.get(dep)!); continue; } // a fresh run is queued: wait for it, whatever older runs did
     if (runs.length > 0) {
       const last = runs.slice().sort((a, b) => a.finishedAt.localeCompare(b.finishedAt)).at(-1)!;
-      reasons.push(`after "${inQueue.get(dep) ?? dep}" finished "${last.outcome}"${last.reason ? ` (${last.reason})` : ''}`);
+      reasons.push(`after "${dep}" finished "${last.outcome}"${last.reason ? ` (${last.reason})` : ''}`);
       continue;
     }
-    if (inQueue.has(dep)) { on.push(inQueue.get(dep)!); continue; }
     reasons.push(`after "${dep}" never ran (not in the queue, not in the done log)`);
   }
   if (reasons.length) return { status: 'blocked', reasons };

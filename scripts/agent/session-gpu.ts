@@ -82,11 +82,18 @@ export type GpuVerdict = { ok: true } | { ok: false; kind: 'unknown' | 'full' | 
 /**
  * May a GPU job start? `gpus` null = nvidia-smi missing or unreadable -> unknown -> no. `apps` null
  * (the process list failed) is treated as "cannot show the load is Ollama's", so high utilization
- * blocks. Pure.
+ * blocks. `pinIndex` = the job is bound to one physical GPU (its spawn sets CUDA_VISIBLE_DEVICES /
+ * GGML_VK_VISIBLE_DEVICES): the per-GPU checks then judge THAT GPU only, so a co-tenant legitimately
+ * heating another one (e.g. the deputy's own Ollama runtime on GPU0 while a scan runs on GPU1) does
+ * not hold it. The foreign-VRAM check stays global — nvidia-smi's process list names no GPU, so the
+ * summed figure is the only attribution available, and relaxing it would loosen the 2026-10-01 guard.
+ * A pin to a GPU that is not present is unknown, not empty: fail closed. Pure.
  */
-export function gpuVerdict(gpus: Gpu[] | null, apps: ComputeApp[] | null, limits: GpuLimits = DEFAULT_GPU_LIMITS): GpuVerdict {
+export function gpuVerdict(gpus: Gpu[] | null, apps: ComputeApp[] | null, limits: GpuLimits = DEFAULT_GPU_LIMITS, pinIndex?: number): GpuVerdict {
   if (!gpus) return { ok: false, kind: 'unknown', reason: 'GPU state unknown (nvidia-smi missing or failed) — GPU jobs held' };
-  for (const g of gpus) {
+  const scope = pinIndex === undefined ? gpus : gpus.filter((g) => g.index === pinIndex);
+  if (pinIndex !== undefined && scope.length === 0) return { ok: false, kind: 'unknown', reason: `GPU ${pinIndex} not present — GPU job held` };
+  for (const g of scope) {
     const pct = (g.usedMiB / g.totalMiB) * 100;
     if (pct >= limits.vramPct) return { ok: false, kind: 'full', reason: `GPU ${g.index} VRAM ${Math.round(pct)}% >= ${limits.vramPct}%` };
     if (g.tempC >= limits.tempC) return { ok: false, kind: 'hot', reason: `GPU ${g.index} at ${g.tempC} C >= ${limits.tempC} C` };
@@ -94,11 +101,12 @@ export function gpuVerdict(gpus: Gpu[] | null, apps: ComputeApp[] | null, limits
   // Memory held by non-Ollama compute processes (e.g. a WebODM container). The per-GPU percent check
   // misses this when the load is spread over several GPUs (2026-10-01: ~23 GB of 48 GB held, each GPU
   // under 90%, then a 24 GB model was loaded and Ollama crashed with "CUDA illegal memory access").
-  // The process list names no GPU, so this sums across GPUs. An unreadable list (apps null) is not
-  // blocked here: raw VRAM above still covers the full case, and unknown-list + load blocks below.
+  // The process list names no GPU, so this sums across GPUs — for a pinned job too (see above). An
+  // unreadable list (apps null) is not blocked here: raw VRAM above still covers the full case, and
+  // unknown-list + load blocks below.
   const foreignMiB = (apps ?? []).filter((a) => !isOllamaProcess(a)).reduce((n, a) => n + a.usedMiB, 0);
   if (foreignMiB >= limits.foreignVramMiB) return { ok: false, kind: 'busy', reason: `non-Ollama GPU processes hold ${Math.round(foreignMiB)} MiB >= ${limits.foreignVramMiB} MiB` };
-  const loaded = gpus.find((g) => g.util >= limits.otherUtilPct);
+  const loaded = scope.find((g) => g.util >= limits.otherUtilPct);
   if (loaded) {
     const onlyOllama = apps !== null && apps.length > 0 && apps.every(isOllamaProcess);
     if (!onlyOllama) return { ok: false, kind: 'busy', reason: `GPU ${loaded.index} ${loaded.util}% busy and not only Ollama's` };
@@ -118,11 +126,11 @@ export function missingTelemetryVerdict(platform: NodeJS.Platform): GpuVerdict {
   return platform === 'darwin' ? { ok: true } : gpuVerdict(null, null);
 }
 
-/** Reads nvidia-smi (execFile, no shell) and decides. Never throws. */
-export async function readGpuVerdict(limits: GpuLimits = loadGpuLimits(), platform: NodeJS.Platform = process.platform): Promise<GpuVerdict> {
+/** Reads nvidia-smi (execFile, no shell) and decides. `pinIndex` judges only that GPU (see gpuVerdict). Never throws. */
+export async function readGpuVerdict(limits: GpuLimits = loadGpuLimits(), platform: NodeJS.Platform = process.platform, pinIndex?: number): Promise<GpuVerdict> {
   const g = await smi(GPU_QUERY);
   const gpus = g === null ? null : parseGpus(g);
-  if (!gpus) return platform === 'darwin' ? missingTelemetryVerdict(platform) : gpuVerdict(null, null, limits);
+  if (!gpus) return platform === 'darwin' ? missingTelemetryVerdict(platform) : gpuVerdict(null, null, limits, pinIndex);
   const a = await smi(APPS_QUERY);
-  return gpuVerdict(gpus, a === null ? null : parseApps(a), limits);
+  return gpuVerdict(gpus, a === null ? null : parseApps(a), limits, pinIndex);
 }

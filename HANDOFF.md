@@ -3,6 +3,22 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-10 — GPU pin and chain fix landed; scan-fusion approach decided (Claude Code, Opus + Sonnet overseer)
+
+**This PR (branch `agent/local-gpu-pin`):** (1) the deputy env sanitizer drops a `GIT_CONFIG_*` group whole;
+(2) F74.7 GPU pin: `queue.ts add --gpu=<n>` runs a job on one card and the gate judges only that card;
+(3) chain fix in `afterChain`: a predecessor that is currently queued is WAITING even if an older run of it
+is blocked in the done log (re-queueing it is the user re-running it). After merge, restart the queue worker
+from the main checkout. Details of the private multi-capture scan trial live in the private workspace
+HANDOFF (outside git), not here.
+
+**Decisions Matt made today in chat:** (a) the deputy's 6 attach rows for one finished scan named no space and
+were deleted (Matt approved); Matt drag-drops finished splats through the scan-import UI until automatic
+attach is built. (b) Fusion approach: one COLMAP layout over pooled frames with cross-session matching, then
+a fused splat for preview and a mesh from depth maps for Blender (not built; plan in the graph first).
+(c) The GPU-contention question is answered by the pin. (d) "Auto mode not working" is in the local deputy
+(`npm run claude:local`), under investigation.
+
 ## 2026-11-04 (evening) — START HERE: everything open merged; asset QA loop in (Claude Code, Opus)
 
 **Merged into dev today (verified as one tree, #587, CI 16/16 green at 4ce0a5f7, dev a1a46707):** #585 queue

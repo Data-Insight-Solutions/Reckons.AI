@@ -52,7 +52,16 @@ set -euo pipefail
 # A deputy needs none of them (its one token, ANTHROPIC_AUTH_TOKEN, is set further down), and anything it
 # can read it can echo into a log or a commit. Done first, so no early exit below can skip it.
 for v in $(compgen -e); do
-  case "$v" in *KEY*|*TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*) unset "$v" ;; esac
+  case "$v" in *KEY*|*TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*)
+    unset "$v"
+    # A git config group (GIT_CONFIG_KEY_N / GIT_CONFIG_VALUE_N / GIT_CONFIG_COUNT) is one unit. The *KEY*
+    # glob unsets the key side and orphans the value: every git call then dies with "missing config key"
+    # (measured 2026-11-10: the two F274.1 --repo tests fail this way under a harness environment that
+    # passes git config this way — the mechanism this script itself uses below to clear the credential
+    # helper). Drop the whole group instead.
+    if [[ "$v" =~ ^GIT_CONFIG_KEY_([0-9]+)$ ]]; then unset "GIT_CONFIG_VALUE_${BASH_REMATCH[1]}" GIT_CONFIG_COUNT; fi
+    ;;
+  esac
 done
 if [ "${RECKONS_DEPUTY_PRINT_ENV:-}" = 1 ]; then compgen -e; exit 0; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -119,12 +128,22 @@ CFG="${XDG_CONFIG_HOME:-$HOME/.config}/reckons/local-claude"
 mkdir -p "$CFG/gh-none"
 [ -f "$CFG/.claude.json" ] || echo '{"hasCompletedOnboarding":true}' >"$CFG/.claude.json"
 # Rewritten every launch: this file is the policy, so a deputy that edits it gains nothing.
+# Allowlist + acceptEdits (Matt, 2026-11-10: "read + test + commit"; the deputy still cannot push).
+# Not auto mode: its classifier call goes to ANTHROPIC_BASE_URL (Ollama here) and Claude Code's docs
+# list only Claude models for it, so the deputy fell back to a prompt on every Bash command.
+# The deny list below still wins over these allow rules. No Bash cat/grep/rg: the deny rules guard the
+# Read tool, not a shell `cat ~/.config/gh/hosts.yml`; the deputy's own Read/Grep tools need no prompt.
+# Residual risk, said out loud: npm run / npx tsx execute code, and code can read any file this user can.
 cat >"$CFG/settings.json" <<'JSON'
 {
   "enabledMcpjsonServers": ["reckons"],
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["mcp__reckons__kb_add_note"],
+    "defaultMode": "acceptEdits",
+    "allow": ["mcp__reckons__kb_add_note",
+              "Bash(npm run:*)", "Bash(npx tsx:*)", "Bash(npx vitest:*)",
+              "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)",
+              "Bash(ls:*)"],
     "deny": ["Bash(git push:*)", "Bash(gh pr merge:*)", "Bash(gh pr create:*)", "Bash(gh auth:*)", "Bash(git checkout dev:*)", "Bash(git checkout main:*)", "Bash(git switch dev:*)", "Bash(git switch main:*)",
              "Read(~/.git-credentials)", "Read(~/.config/gh/**)", "Read(~/.local/share/keyrings/**)", "Bash(cat ~/.git-credentials:*)",
              "Read(**/.env)", "Read(**/.env.*)", "Bash(cat .env:*)", "Bash(cat .env.*:*)"]
