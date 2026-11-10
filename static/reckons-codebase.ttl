@@ -393,6 +393,17 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/website-alignment.ts" ;
               kpred:has-file "src/lib/publish/site-build.ts" ;
               kpred:has-file "scripts/site-build.ts" ;
+              kpred:has-file "src/lib/publish/site-config.ts" ;
+              kpred:has-file "src/lib/publish/site-landing.ts" ;
+              kpred:has-file "src/lib/publish/__tests__/site-landing.test.ts" ;
+              kpred:has-file "scripts/offline/site-layout-check.ts" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/site.config.json" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/assets/mark.svg" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/content/index.md" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/content/services.md" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/content/about.md" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/content/contact.md" ;
+              kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/content/draft.md" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 

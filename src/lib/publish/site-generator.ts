@@ -16,12 +16,29 @@ import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf
 import { buildGraphJson } from './site-export';
 import { assertSitePath } from './output-path';
 import { localImageUrl, sanitizePageHtml, STATIC_SITE_CSP, themeColor, themeFont } from './output-policy';
+import type { SiteConfig } from './site-config';
+import { landingCss, landingJs, renderLandingPage, renderShellPage } from './site-landing';
 
 marked.setOptions({ gfm: true, breaks: false });
 
 export interface GenerateSiteOptions {
   siteTitle?: string;
   siteDescription?: string;
+  /** F274.4.3: from <site>/site.config.json. When set, every page uses the configured shell
+   *  (header, navigation, footer, palettes) and `landing` pages the landing layout. */
+  siteConfig?: SiteConfig;
+}
+
+/** F274.4.3 registration point: a configured site renders through site-landing.ts, others through renderPage. */
+function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions): string {
+  if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts);
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri) };
+  return page.template === 'landing' ? renderLandingPage(page, ctx) : renderShellPage(page, ctx);
+}
+
+/** The configured site's extra files (stylesheet and script shared by every page). */
+function configuredSiteFiles(opts: GenerateSiteOptions): Record<string, string> {
+  return opts.siteConfig ? { 'landing.css': landingCss(opts.siteConfig), 'landing.js': landingJs() } : {};
 }
 
 const SITE = 'urn:reckons:site/';
@@ -214,13 +231,14 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
   for (const page of pages) {
     const output = pagePath(page, homeIri);
     if (Object.hasOwn(files, output)) throw new Error('Duplicate site output path');
-    files[output] = renderPage(page, pages, homeIri, theme, opts);
+    files[output] = renderForSite(page, pages, homeIri, theme, opts);
   }
   // If there is no landing page at all, still guarantee an index.html so the site has a root.
   if (!files['index.html'] && pages.length > 0) {
-    files['index.html'] = renderPage(pages[0], pages, pages[0].iri, theme, opts);
+    files['index.html'] = renderForSite(pages[0], pages, pages[0].iri, theme, opts);
   }
   files['styles.css'] = stylesFor(theme);
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
 
   return { files, pageCount: pages.length, homeIri };
@@ -266,10 +284,11 @@ export function regenerateChangedPages(
   for (const page of pages) {
     if (!changed.has(page.iri)) continue;
     const path = pagePath(page, homeIri);
-    files[path] = renderPage(page, pages, homeIri, theme, opts);
+    files[path] = renderForSite(page, pages, homeIri, theme, opts);
     regenerated.push(path);
   }
   // graph.json describes the whole site's pages — keep it current whenever anything is republished.
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
   return { files, regenerated };
 }

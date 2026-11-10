@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { importSiteFiles } from './site-import';
 import { generateStaticSite } from './site-generator';
+import { loadSiteConfig } from './site-config';
 
 export interface SiteBuildOptions {
   /** Site repository directory — must contain a content/ folder of markdown pages. */
@@ -183,7 +184,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   }
 
   const content = readSiteContent(site);
-  const generated = generateStaticSite(importSiteFiles(content), { siteTitle: opts.siteTitle });
+  const generated = generateStaticSite(importSiteFiles(content), { siteTitle: opts.siteTitle, siteConfig: loadSiteConfig(site) ?? undefined });
   if (generated.pageCount === 0) {
     fail('no published pages in ' + site + ' (every content page is draft?) — nothing to build');
   }
