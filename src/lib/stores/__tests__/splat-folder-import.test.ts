@@ -91,3 +91,48 @@ describe('a folder import that holds an unnamed splat', () => {
     expect(synthesizeSplatFacts([mk('rejected')], [`assets/splats/${ID}`], 's', id).length).toBeGreaterThan(0);
   });
 });
+
+describe('backfill: a fact whose bytes are missing gets them from the folder', () => {
+  const fact = (status: Statement['status'], url = URL): Statement => ({
+    id: 'f' + status, s: { kind: 'iri', value: 'urn:kbase:concept/scan-x' }, p: { kind: 'iri', value: SPLAT_P }, o: { kind: 'literal', value: url },
+    g: { kind: 'iri', value: 'urn:kbase:source/s' }, sourceId: 's', confidence: 1, status, createdAt: 1, updatedAt: 1,
+  });
+
+  it('missing bytes and file present: stored once, read once, across repeated polls', async () => {
+    const { backfillSplatFiles } = await import('../../storage/splat-folder');
+    const database = new FakeDB();
+    const read = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    expect(await backfillSplatFiles([fact('pending'), fact('confirmed')], ['demo-folder'], read, database as any)).toEqual([ID]);
+    expect(await backfillSplatFiles([fact('pending')], ['demo-folder'], read, database as any)).toEqual([]);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(database.splatFiles.rows.get(ID).size).toBe(3);
+  });
+
+  it('bytes present: no read, and the stored bytes are not overwritten', async () => {
+    const { backfillSplatFiles } = await import('../../storage/splat-folder');
+    const database = new FakeDB();
+    await database.splatFiles.put({ id: ID, blob: new Blob([new Uint8Array([9])]), filename: ID, size: 1, importedAt: 1 });
+    const read = vi.fn(async () => new Uint8Array([1, 2, 3]));
+    expect(await backfillSplatFiles([fact('confirmed')], ['demo-folder'], read, database as any)).toEqual([]);
+    expect(read).not.toHaveBeenCalled();
+    expect(database.splatFiles.rows.get(ID).size).toBe(1);
+  });
+
+  it('file absent: nothing stored and no error; the next folder candidate is tried', async () => {
+    const { backfillSplatFiles } = await import('../../storage/splat-folder');
+    const database = new FakeDB();
+    expect(await backfillSplatFiles([fact('pending')], ['a'], async () => null, database as any)).toEqual([]);
+    expect(await backfillSplatFiles([fact('pending')], ['a'], async () => { throw new Error('boom'); }, database as any)).toEqual([]);
+    expect(database.splatFiles.rows.size).toBe(0);
+    const read = vi.fn(async (kb: string) => (kb === 'b' ? new Uint8Array([4]) : null));
+    expect(await backfillSplatFiles([fact('pending')], ['a', 'b'], read, database as any)).toEqual([ID]);
+  });
+
+  it('a rejected fact is ignored, and so is a non-local url', async () => {
+    const { backfillSplatFiles } = await import('../../storage/splat-folder');
+    const database = new FakeDB();
+    const read = vi.fn(async () => new Uint8Array([1]));
+    expect(await backfillSplatFiles([fact('rejected'), fact('superseded'), fact('pending', '/generated/x/splat.spz')], ['f'], read, database as any)).toEqual([]);
+    expect(read).not.toHaveBeenCalled();
+  });
+});

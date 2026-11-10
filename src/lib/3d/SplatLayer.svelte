@@ -37,11 +37,11 @@
    */
   import * as THREE from 'three';
   import { useTask, useThrelte } from '@threlte/core';
-  import { onDestroy } from 'svelte';
-  import { loadSplatLib, createNormalizedSplat } from './splat';
+  import { onDestroy, untrack } from 'svelte';
+  import { loadSplatLib, createNormalizedSplat, isLocalSplatUrl } from './splat';
   import { occluderRadius } from './splat-occlusion';
   import { overStartupBudget, readSplatGaussianCount } from './splat-budget';
-  import { splatDemand } from '$lib/stores/splat-demand.svelte';
+  import { splatDemand, splatArrivals } from '$lib/stores/splat-demand.svelte';
 
   let { items, onstatus, onloadedkeys }: {
     items: SplatItem[];
@@ -67,6 +67,7 @@
   let destroyed = false;
   let loaded = $state(0);
   let failed = $state(0);
+  let seenArrivals = 0;
 
   $effect(() => onstatus?.(loaded, failed));
 
@@ -96,6 +97,17 @@
 
   $effect(() => {
     const wanted = new Map(items.map((i) => [i.key, i]));
+    // A browser-stored file that was missing when its splat first tried to load may have arrived since
+    // (the folder backfill): forget the failure so the loop below tries it again.
+    const arrivals = splatArrivals.n;
+    if (arrivals !== seenArrivals) {
+      seenArrivals = arrivals;
+      untrack(() => {
+        for (const [key, l] of live) {
+          if (l.failed && isLocalSplatUrl(l.url)) { live.delete(key); failed = Math.max(0, failed - 1); }
+        }
+      });
+    }
     for (const [key, l] of live) {
       const w = wanted.get(key);
       if (!w || w.url !== l.url || w.radius !== l.radius || w.orientation !== l.orientation || w.keepScale !== l.keepScale) {

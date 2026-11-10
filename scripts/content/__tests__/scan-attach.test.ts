@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  CAPTURE_QUESTION, DERIVED_FROM, linkRows, parseLinkFrom,
   AttachError, appendAttachRows, assertTargeted, attachFinishedScan, attachRows, attachSplat, contentId, copySplatToSpace, requireSpace,
 } from '../scan-attach';
 import type { ScanReceipt } from '../scan-room-lib';
@@ -90,11 +91,11 @@ describe('content-addressed copy', () => {
     writeFileSync(src, FAKE);
     const one = attachSplat({ splat: src, workspace, space: 'demo-space' });
     const two = attachSplat({ splat: src, workspace, space: 'demo-space' });
-    expect(one).toMatchObject({ copied: true, rows: 4, rowsAlreadyQueued: 0 });
-    expect(two).toMatchObject({ copied: false, rows: 0, rowsAlreadyQueued: 4 });
+    expect(one).toMatchObject({ copied: true, rows: 5, rowsAlreadyQueued: 0 }); // four base rows plus the capture question
+    expect(two).toMatchObject({ copied: false, rows: 0, rowsAlreadyQueued: 0 });
     const lines = readFileSync(queue, 'utf8').trim().split('\n');
-    expect(lines).toHaveLength(4);
-    expect(lines.map((l) => JSON.parse(l).kb)).toEqual(Array(4).fill('demo-space'));
+    expect(lines).toHaveLength(5);
+    expect(lines.map((l) => JSON.parse(l).kb)).toEqual(Array(5).fill('demo-space'));
   });
 });
 
@@ -116,7 +117,7 @@ describe('space lookup', () => {
 describe('attach-only mode', () => {
   it('attaches a finished scan whose receipt passed', () => {
     const r = attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space' });
-    expect(r.rows).toBe(4);
+    expect(r.rows).toBe(5);
     expect(existsSync(r.file)).toBe(true);
   });
   it('refuses a scan whose receipt did not pass', () => {
@@ -131,5 +132,64 @@ describe('attach-only mode', () => {
     const dir = makeScan();
     writeFileSync(join(dir, 'splat.spz'), 'tampered');
     expect(() => attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space' })).toThrow(/does not match its receipt hash/);
+  });
+});
+
+describe('links (Defect 2): a splat does not arrive as a silent island', () => {
+  const CAPTURE = 'urn:test:capture/one';
+  const FOLDER = 'urn:test:set/siblings';
+  const REL = 'urn:test:rel/contains';
+  const rowsOf = () => readFileSync(queue, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  const splatIri = (id: string) => `urn:kbase:concept/scan-${id.slice(0, 12)}`;
+
+  it('--derived-from emits <splat> prov:wasDerivedFrom <iri>, targeted and pending-shaped', () => {
+    const r = attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space', links: { derivedFrom: [CAPTURE] } });
+    const row = rowsOf().find((x) => x.predicate === DERIVED_FROM);
+    expect(row).toMatchObject({ subject: splatIri(r.id), object: CAPTURE, objectKind: 'iri', kb: 'demo-space', type: 'suggestion' });
+    expect(rowsOf().some((x) => x.type === 'question')).toBe(false);
+    expect(r.rows).toBe(5);
+  });
+
+  it('--link-from emits <subject> <predicate> <splat>', () => {
+    const r = attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space', links: { linkFrom: [[FOLDER, REL]] } });
+    expect(rowsOf().find((x) => x.subject === FOLDER)).toMatchObject({ predicate: REL, object: splatIri(r.id), objectKind: 'iri', kb: 'demo-space' });
+  });
+
+  it('refuses a value that is not an absolute IRI, before copying anything', () => {
+    expect(() => attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space', links: { derivedFrom: ['capture one'] } })).toThrow(/not an absolute IRI/);
+    expect(() => attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space', links: { linkFrom: [[FOLDER, 'rel']] } })).toThrow(/not an absolute IRI/);
+    expect(() => parseLinkFrom(['only-one'])).toThrow(/needs/);
+    expect(existsSync(join(workspace, 'kbs', 'demo-space', 'assets'))).toBe(false);
+    expect(existsSync(queue)).toBe(false);
+  });
+
+  it('with no link, emits exactly one question row shaped as a partial fact', () => {
+    const rows = linkRows('demo-space', 'abc.spz', {}, true);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ predicate: DERIVED_FROM, type: 'question', question: CAPTURE_QUESTION, kb: 'demo-space' });
+    expect(rows[0].object).toBeUndefined();
+    expect(linkRows('demo-space', 'abc.spz', { derivedFrom: [CAPTURE] }, true).some((r) => r.type === 'question')).toBe(false);
+  });
+
+  it('adds links to an already-attached scan: only the new link rows, no second copy, no base rows', () => {
+    const dir = makeScan();
+    const first = attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space' });
+    writeFileSync(queue, ''); // the app drained the queue
+    const again = attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links: { derivedFrom: [CAPTURE] } });
+    expect(again).toMatchObject({ id: first.id, copied: false, rows: 1 });
+    const rows = rowsOf();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ predicate: DERIVED_FROM, object: CAPTURE });
+  });
+
+  it('--links-only emits just the link rows and refuses a scan that is not attached, or no link', () => {
+    const dir = makeScan();
+    expect(() => attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links: { derivedFrom: [CAPTURE] }, linksOnly: true })).toThrow(/not attached/);
+    attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links: { derivedFrom: [CAPTURE] } });
+    writeFileSync(queue, '');
+    const r = attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links: { linkFrom: [[FOLDER, REL]] }, linksOnly: true });
+    expect(r.rows).toBe(1);
+    expect(rowsOf()).toHaveLength(1);
+    expect(() => attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', linksOnly: true })).toThrow(/at least one/);
   });
 });

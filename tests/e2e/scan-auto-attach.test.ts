@@ -82,3 +82,45 @@ test('a drained scan row stores its splat from the folder and the viewer mounts 
   await page.goto('/');
   await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '1/0', { timeout: 90_000 });
 });
+
+test('a splat fact imported WITHOUT its file gets the file on the next backfill and loads without a reload', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await clearStorage(page);
+  await waitForApp(page);
+  await expect(page.locator('main canvas').first()).toBeVisible({ timeout: 30_000 });
+
+  const bytes = plyBytes();
+  const id = contentId(bytes, 'ply');
+  const space = await page.evaluate(async ({ id, rowsFor }) => {
+    const imp = (path: string) => import(/* @vite-ignore */ path);
+    const ws = await imp('/src/lib/stores/workspace.svelte.ts');
+    const { getCurrentKbId } = await imp('/src/lib/storage/kb-registry.ts');
+    const space = getCurrentKbId() as string;
+    const root = await navigator.storage.getDirectory();
+    ws.__linkHandleForTest(root);
+    // The rows arrive, but the folder has no file (a drain by older code, or the copy came later).
+    const queue = await root.getFileHandle('knowledge.pending.jsonl', { create: true });
+    const qw = await queue.createWritable();
+    await qw.write(rowsFor.map((r: object) => JSON.stringify({ ...r, kb: space })).join('\n') + '\n'); await qw.close();
+    await ws.drainAndImportPending();
+    return space;
+  }, { id, rowsFor: attachRows('placeholder', id, 'room scan') });
+
+  const canvas = page.locator('main canvas[data-splats]').first();
+  await expect(canvas).toHaveAttribute('data-splats', '0/1', { timeout: 60_000 }); // the statement exists, the bytes do not
+
+  // Nothing stored yet, so a backfill with no file is a quiet no-op.
+  expect(await page.evaluate(async () => (window as any).__reckonsWorkspace.backfillOpenSplats())).toEqual([]);
+
+  await page.evaluate(async ({ bytes, id, space }) => {
+    const root = await navigator.storage.getDirectory();
+    let dir = await root.getDirectoryHandle('kbs', { create: true });
+    for (const seg of [space, 'assets', 'splats']) dir = await dir.getDirectoryHandle(seg, { create: true });
+    const w = await (await dir.getFileHandle(id, { create: true })).createWritable();
+    await w.write(new Uint8Array(bytes)); await w.close();
+  }, { bytes: [...bytes], id, space });
+
+  expect(await page.evaluate(async () => (window as any).__reckonsWorkspace.backfillOpenSplats())).toEqual([id]);
+  await expect(canvas).toHaveAttribute('data-splats', '1/0', { timeout: 60_000 });
+});

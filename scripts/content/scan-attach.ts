@@ -21,7 +21,8 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'nod
 import { join, resolve } from 'node:path';
 import { appendQueueText } from '../offline/pending-queue.js';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { scanStatements, SPLAT_PREDICATE, type SplatOrigin } from '../../src/lib/3d/splat.js';
+import { scanStatements, scanEntityIri, SPLAT_PREDICATE, type SplatOrigin } from '../../src/lib/3d/splat.js';
+import { isAbsoluteRdfIri } from '../../src/lib/rdf/pending-entry.js';
 import { validateReceipt, type ScanReceipt } from './scan-room-lib.js';
 
 /** A space name safe to use as a folder and as a row's `kb`: no separators, no traversal. */
@@ -30,8 +31,49 @@ const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export class AttachError extends Error {}
 
 export interface AttachRow {
-  subject: string; predicate: string; object: string; objectKind: 'literal' | 'iri';
-  kb: string; type: 'suggestion'; agent: 'scan-room'; priority: 'normal'; note: string;
+  subject: string; predicate: string; object?: string; objectKind?: 'literal' | 'iri'; question?: string;
+  kb: string; type: 'suggestion' | 'question'; agent: 'scan-room'; priority: 'normal'; note: string;
+}
+
+/** prov:wasDerivedFrom, the predicate the app already uses for provenance (serialize.ts, personal-notes.ts). */
+export const DERIVED_FROM = 'http://www.w3.org/ns/prov#wasDerivedFrom';
+export const CAPTURE_QUESTION = 'Which capture is this a scan of?';
+
+export interface Links {
+  /** Nodes this splat was reconstructed from: `<splat> prov:wasDerivedFrom <iri>`. */
+  derivedFrom?: readonly string[];
+  /** `[subject, predicate]`: `<subject> <predicate> <splat>`, a relation the space already has. */
+  linkFrom?: readonly (readonly [string, string])[];
+}
+
+/** Parse the CLI's `--link-from=<subject IRI>,<predicate IRI>` values. Refuses anything that is not two absolute IRIs. */
+export function parseLinkFrom(values: readonly string[]): [string, string][] {
+  return values.map((v) => {
+    const parts = v.split(',').map((x) => x.trim());
+    if (parts.length !== 2) throw new AttachError(`--link-from needs "<subject IRI>,<predicate IRI>", got "${v}"`);
+    return [parts[0], parts[1]] as [string, string];
+  });
+}
+
+/** Refuse a link value that is not an absolute IRI, before anything is copied or written. */
+export function assertLinkIris(links: Links): void {
+  const bad = [...(links.derivedFrom ?? []), ...(links.linkFrom ?? []).flat()].filter((v) => !isAbsoluteRdfIri(v));
+  if (bad.length) throw new AttachError(`not an absolute IRI: ${bad.map((b) => `"${b}"`).join(', ')}`);
+}
+
+/**
+ * The rows that join the splat node to the rest of the space. With no link at all, ONE question row
+ * (a partial fact, no object) so the splat does not arrive as a silent island. Pure.
+ */
+export function linkRows(slug: string, id: string, links: Links, withQuestion: boolean): AttachRow[] {
+  assertLinkIris(links);
+  const splat = scanEntityIri(`asset:splat/${id}`);
+  const base = { kb: slug, agent: 'scan-room' as const, priority: 'normal' as const };
+  const rows: AttachRow[] = [];
+  for (const iri of links.derivedFrom ?? []) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, object: iri, objectKind: 'iri', type: 'suggestion', note: 'scan reconstructed from this node, stated by the person running scan:room' });
+  for (const [subject, predicate] of links.linkFrom ?? []) rows.push({ ...base, subject, predicate, object: splat, objectKind: 'iri', type: 'suggestion', note: 'relation to the attached scan, stated by the person running scan:room' });
+  if (!rows.length && withQuestion) rows.push({ ...base, subject: splat, predicate: DERIVED_FROM, question: CAPTURE_QUESTION, type: 'question', note: 'scan:room attached this splat with no link to a capture' });
+  return rows;
 }
 
 export interface AttachResult {
@@ -104,13 +146,32 @@ export function appendAttachRows(queuePath: string, rows: readonly AttachRow[]):
   return [lines.length, rows.length - lines.length];
 }
 
-/** Attach a splat file (already verified by the caller) to a space. */
-export function attachSplat(opts: { splat: string; workspace: string; space: string; label?: string; queuePath?: string }): AttachResult {
+/**
+ * Attach a splat file (already verified by the caller) to a space. A first attach copies the file
+ * and queues the four base rows plus the link rows (or the one question). When the file is ALREADY in
+ * the space's folder the base rows are not queued again (they were, and re-queuing them after a
+ * drain would overwrite a review verdict); only the link rows are. `linksOnly` makes that explicit
+ * and refuses when the file is not there yet.
+ */
+export function attachSplat(opts: { splat: string; workspace: string; space: string; label?: string; queuePath?: string; links?: Links; linksOnly?: boolean }): AttachResult {
+  const links = opts.links ?? {};
+  assertLinkIris(links);
   const spaceDir = requireSpace(opts.workspace, opts.space);
+  const queuePath = opts.queuePath ?? join(opts.workspace, 'knowledge.pending.jsonl');
+  const hasLinks = !!(links.derivedFrom?.length || links.linkFrom?.length);
+  if (opts.linksOnly) {
+    if (!hasLinks) throw new AttachError('--links-only needs at least one --derived-from or --link-from');
+    const ext = /\.(ply|spz|sog)$/i.exec(opts.splat)?.[1].toLowerCase() ?? 'spz';
+    const id = contentId(readFileSync(opts.splat), ext);
+    if (!existsSync(join(spaceDir, 'assets', 'splats', id))) throw new AttachError(`--links-only: this scan is not attached to "${opts.space}" yet (no ${id} in its folder); attach it first`);
+    const rows = linkRows(opts.space, id, links, false);
+    const [added, skipped] = appendAttachRows(queuePath, rows);
+    return { space: opts.space, id, url: `asset:splat/${id}`, file: join(spaceDir, 'assets', 'splats', id), copied: false, rows: added, rowsAlreadyQueued: skipped, entity: scanEntityIri(`asset:splat/${id}`) };
+  }
   const { id, copied } = copySplatToSpace(opts.splat, spaceDir);
-  const rows = attachRows(opts.space, id, opts.label ?? 'room scan');
-  const [added, skipped] = appendAttachRows(opts.queuePath ?? join(opts.workspace, 'knowledge.pending.jsonl'), rows);
-  return { space: opts.space, id, url: `asset:splat/${id}`, file: join(spaceDir, 'assets', 'splats', id), copied, rows: added, rowsAlreadyQueued: skipped, entity: rows[0].subject };
+  const rows = [...(copied ? attachRows(opts.space, id, opts.label ?? 'room scan') : []), ...linkRows(opts.space, id, links, copied)];
+  const [added, skipped] = appendAttachRows(queuePath, rows);
+  return { space: opts.space, id, url: `asset:splat/${id}`, file: join(spaceDir, 'assets', 'splats', id), copied, rows: added, rowsAlreadyQueued: skipped, entity: scanEntityIri(`asset:splat/${id}`) };
 }
 
 /**
@@ -118,7 +179,8 @@ export function attachSplat(opts: { splat: string; workspace: string; space: str
  * scan whose receipt did not pass or whose compressed file no longer matches it. (This checks the
  * receipt and the file's hash; `scan:room --check <dir>` additionally decodes the file.)
  */
-export function attachFinishedScan(opts: { scanDir: string; workspace: string; space: string; label?: string; queuePath?: string }): AttachResult {
+export function attachFinishedScan(opts: { scanDir: string; workspace: string; space: string; label?: string; queuePath?: string; links?: Links; linksOnly?: boolean }): AttachResult {
+  assertLinkIris(opts.links ?? {});
   const dir = resolve(opts.scanDir);
   const rf = join(dir, 'receipt.json');
   if (!existsSync(rf)) throw new AttachError(`no receipt.json in ${dir}: only a finished scan can be attached`);
@@ -130,7 +192,7 @@ export function attachFinishedScan(opts: { scanDir: string; workspace: string; s
   const file = join(dir, receipt.compressed.file);
   if (!existsSync(file)) throw new AttachError(`${file} is missing`);
   if (createHash('sha256').update(readFileSync(file)).digest('hex') !== receipt.compressed.sha256) throw new AttachError(`${receipt.compressed.file} does not match its receipt hash`);
-  return attachSplat({ splat: file, workspace: opts.workspace, space: opts.space, label: opts.label, queuePath: opts.queuePath });
+  return attachSplat({ splat: file, workspace: opts.workspace, space: opts.space, label: opts.label, queuePath: opts.queuePath, links: opts.links, linksOnly: opts.linksOnly });
 }
 
 /** The job's result for the local queue: which asset, in which space. Written where RECKONS_JOB_RESULT points. */

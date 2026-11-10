@@ -16,3 +16,9 @@ export const splatDemand = {
   request(key: string) { this.requested.add(key); },
   reset() { this.deferred.clear(); this.counts.clear(); this.requested.clear(); },
 };
+
+/**
+ * Bumped when a splat file lands in this browser's storage AFTER a fact named it (the folder
+ * backfill, F58.9.20). A splat whose load failed because the bytes were missing retries on the bump.
+ */
+export const splatArrivals = $state({ n: 0 });

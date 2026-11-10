@@ -231,6 +231,7 @@ function onWorkspaceConnected(): void {
   _initialLoading = true;
   void pullFromWorkspace()
     .then(() => drainAndImportPending())
+    .then(() => backfillOpenSplats())
     .catch(() => { /* both paths report their own failures; never break connection on this */ })
     .finally(() => { _initialLoading = false; startWorkspacePolling(); });
 }
@@ -1027,6 +1028,35 @@ async function bringRowSplats(entries: readonly PendingEntry[]): Promise<void> {
   }
 }
 
+/**
+ * Store the folder's splat files for the open folder's splat facts that lack bytes (F58.9.20).
+ * Runs on connect and on every poll; a no-op (key lookups only) when nothing is missing. A splat whose
+ * load had failed retries by itself (splatArrivals), so no reload is needed.
+ */
+export async function backfillOpenSplats(): Promise<string[]> {
+  if (!_handle) return [];
+  try {
+    const { statements } = await import('./kb.svelte');
+    const facts = statements();
+    if (!facts.some((s) => s.p.value === SPLAT_PREDICATE)) return [];
+    const entry = getRegistry().find((k) => k.id === getCurrentKbId());
+    const folders = [...new Set([
+      entry?.folderPath?.split('/').filter(Boolean).pop(),
+      getCurrentKbId(), getCurrentKbName(), normalizePendingGraphName(getCurrentKbName()),
+    ].filter((f): f is string => !!f))];
+    const { backfillSplatFiles } = await import('../storage/splat-folder');
+    const stored = await backfillSplatFiles(facts, folders, readSplatFromSpaceFolder);
+    if (stored.length) {
+      const { splatArrivals } = await import('./splat-demand.svelte');
+      splatArrivals.n++;
+    }
+    return stored;
+  } catch (e) {
+    console.warn('[workspace] splat backfill failed:', e);
+    return [];
+  }
+}
+
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
@@ -1622,6 +1652,7 @@ export function startWorkspacePolling(ms: number = POLL_INTERVAL_MS): void {
   pollTimer = setInterval(() => {
     void pullFromWorkspace()
       .then(() => drainAndImportPending())
+      .then(() => backfillOpenSplats())
       .catch((e) => console.warn('[workspace] poll cycle failed:', e));
   }, ms);
 }
@@ -1657,7 +1688,7 @@ if (typeof window !== 'undefined' && import.meta.env?.DEV) {
     // a graph-target mismatch returns 0 and still looks like a successful drain. Exposed so a
     // browser test can assert rows actually arrive, per graph, rather than trusting unit tests
     // over a path whose real inputs are a directory handle and a `?kb=` id.
-    drainWorkspacePending, drainAndImportPending, drainWorkspaceDecisions,
+    drainWorkspacePending, drainAndImportPending, drainWorkspaceDecisions, backfillOpenSplats,
   };
 }
 
