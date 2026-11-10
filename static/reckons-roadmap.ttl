@@ -11869,3 +11869,73 @@ kb:open-in-artcraft rdf:type ktype:Phase ;
 # 2026-11-05 (night) — the RAM guard tells a load-time transient from a spill (Claude Code).
 kb:queue-ram-guard kpred:evidence "2026-11-05 23:58 UTC, A FALSE STOP: the guard stopped the local deputy job f93-frames at 6.1 GiB of anonymous RAM in ollama.service while Ollama was on CUDA. The journal shows why: 'disabling mmap for llama-server load due to host memory pressure' (demo renders and browsers were running), then 'offloaded 66/66 layers to GPU', CUDA0 model buffer 15,339 MiB, CUDA_Host 682 MiB. With mmap off, loading passes through anonymous RAM even when every layer ends on the GPU." ;
     kpred:decided "SPILL RULE REFINED (Claude Code, 2026-11-05, local stack, per the opposite-side rule): above ramSpillAnonMiB (6 GiB) a running job stops only when Ollama's /api/ps reports a model partly in system RAM (size_vram < size), or when no model is reported for 60 s; above ramHardAnonMiB (12 GiB, new) it stops at once whatever Ollama reports. The 2026-11-04 crash (about 17 GB at about 0.45 GB/s) still trips the hard limit within about 15 s. Called without residency, the old rule holds. Unit tests in scripts/agent/__tests__/session-ram.test.ts." .
+
+# 2026-11-08 — multi-scan reconstruction of one place (Matt, in chat with the local deputy).
+# PROPOSAL: status "planned" is honest — only variant 1 (the existing F58.9.6 pipeline) has run.
+# The trial data is a private four-capture garden trial; nothing from it is committed.
+kb:multi-scan-reconstruction rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19 — multi-scan reconstruction: a splat of one place from several captures of it" ;
+    kpred:feature-id   "F58.9.19" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:room-scan-capture ;
+    kpred:decided      "MATT, 2026-11-08: make a new space and attempt multi-scan reconstruction — one scan to generate a splat, more than one scan, slices of different scans, images and scans together. The same day, the longer downstream pipeline he wants after the splat: Blender to editable shapes, a playable game (add/remove dirt, reshape land, add retaining walls), then a realistic mock-up image generated from the edited 3D against the original images — proposed separately as kb:terrain-mockup-pipeline." ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): fusion approach = one COLMAP layout over the pooled frames of all captures with cross-session matching, so every capture shares one coordinate frame; from it, one fused splat for preview and a mesh from the phone's depth maps for Blender — the end goal is one place as an editable, playable Blender object (.blend/.glb). Multi-scan fusion is a DIFFERENT feature from in-app shape overlap / node placement." ;
+    kpred:description  "The F58.9.6 pipeline reconstructs ONE capture; this makes one PLACE from several captures of it, tried in four ordered variants. (1) One scan, one splat — the pipeline as-is. (2) Slices: frame ranges of different captures (the pipeline takes a --frames count but not a range, so a small extension). (3) Fusion: one COLMAP layout over the pooled frames of all captures, matched across sessions so they share one coordinate frame; one fused splat for preview plus a mesh from the phone's depth maps for Blender. (4) Photos plus scans: still photographs added to the same layout as the scan frames. The trial input is a private four-capture garden trial, four separate ARKit coordinate frames; nothing in the captures records where one frame is relative to another." ;
+    kpred:progress     "2026-11-10: variant 1 has passing receipts on three of the four captures; the fourth is queued. Fusion, slices, and photos plus scans are NOT built." ;
+    kpred:has-file     "scripts/content/scan-room.ts" ;
+    kpred:has-file     "scripts/content/scan-room-lib.ts" ;
+    kpred:done-test    "each of the four variants ends in a passing receipt OR its failure recorded on this entity with the failing stage and the receipt's numbers. Fusion or slices must also record the measured effect on registration, per F58.9.6's deferral of phone poses to a measured comparison." ;
+    kpred:open-question "Receipt consistency: top-level frames.registered says 0 while the stage log and checks report the real count — which field is the truth, and should receipt self-consistency be a script-tier check?" ;
+    kpred:honest-note  "UNVERIFIED BEYOND THE RECEIPT: the deputy read the receipt and the stage logs but never opened the splat in a viewer, so 'the garden is in there' is the checks' claim, not the deputy's. The trial data is private and machine-local; nothing from it may be committed." .
+
+# 2026-11-10 — scan jobs attach their own result to the space (Matt, 2026-11-09/10).
+kb:scan-auto-attach rdf:type ktype:Phase ;
+    rdfs:label "F58.9.20 — a finished scan job attaches its splat to the space and records it as the job result" ;
+    kpred:feature-id   "F58.9.20" ;
+    kpred:part-of      kb:gen-video-to-splat ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:splat-file-import ;
+    kpred:decided      "MATT, 2026-11-09/10: 'Scan job must attach the splat to the space on completion, mark completion in the space, and record the output asset as the job's result.'" ;
+    kpred:description  "Design: scan-room.ts gains --space=<space slug>. On success it copies splat.spz into <workspace>/kbs/<slug>/assets/splats/<content id>.spz and appends pending rows that carry a kb target (the scanStatements set, src/lib/3d/splat.ts). The app's workspace drain stores the referenced blob from the folder when the space lacks it, so a pending row can bring its file. A scan row without a kb target is refused (2026-11-10 incident: 6 untargeted attach rows would have landed in whichever space was open). Also folded in: a space imported from a folder that has assets/splats/<id> but no live pred:splat statement gets that statement synthesized as PENDING." ;
+    kpred:has-file     "scripts/content/scan-room.ts" ;
+    kpred:has-file     "src/lib/3d/splat.ts" ;
+    kpred:has-file     "src/lib/stores/workspace.svelte.ts" ;
+    kpred:done-test    "unit tests for the refused untargeted row and for blob-from-folder on drain, plus one e2e where a drained row mounts the splat viewer." ;
+    kpred:honest-note  "NOTHING IS BUILT (2026-11-10). Today a scan job leaves its splat in the scans folder and the attach is by hand." .
+
+# 2026-11-10 — job chains and stage resume (Matt).
+kb:job-dependencies-stage-resume rdf:type ktype:Phase ;
+    rdfs:label "F74.12 — job dependencies shown in the space, and regeneration that resumes from the last completed stage" ;
+    kpred:feature-id   "F74.12" ;
+    kpred:part-of      kb:local-panel ;
+    kpred:has-status   "planned" ;
+    kpred:decided      "MATT, 2026-11-10: 'Job dependencies tracked in the space UI; regeneration either full-from-start OR resume from the last completed stage and rerun only the remaining step(s).'" ;
+    kpred:description  "Prior art: scan-room.ts --resume and the queue's --after chains. New: resume within the training stage (not confirmed that it exists today) and showing the chain of dependent jobs in the space UI, with the choice at regeneration time of full-from-start or resume-from-last-stage." ;
+    kpred:has-file     "scripts/content/scan-room.ts" ;
+    kpred:done-test    "a unit test that a job interrupted after stage N reruns only the stages after N and a full rerun reruns all; a unit test that the chain view lists a job's upstream jobs and their states." ;
+    kpred:honest-note  "NOT BUILT (2026-11-10): only the existing --resume and --after are real." .
+
+kb:inapp-job-indicators rdf:type ktype:Phase ;
+    rdfs:label "F74.13 — in-app worker and job indicators in the notification style" ;
+    kpred:feature-id   "F74.13" ;
+    kpred:part-of      kb:local-panel ;
+    kpred:has-status   "planned" ;
+    kpred:decided      "MATT, 2026-11-10: 'in-app worker/job indicators in the app's notification style: workers active, count, jobs done, held reasons.'" ;
+    kpred:constraint   "Must NOT add a top-level navigation tab (AGENTS.md rule 2); it appears where the user already goes, in the notification style." ;
+    kpred:description  "Show workers active, how many, jobs done, and why a job is held. The data already exists (worker.json, queue.done.jsonl, what npm run agent:watch reads); the in-app channel that shows it is new." ;
+    kpred:has-file     "scripts/agent/watch.ts" ;
+    kpred:done-test    "a unit test that the indicator model built from fixture worker.json and queue.done.jsonl reports the active count, done count and held reasons; a visual check that it renders in the notification style with no new navigation tab." ;
+    kpred:honest-note  "NOT BUILT (2026-11-10). The data exists; no in-app surface reads it." .
+
+# 2026-11-10 — bottom bar reorganisation (Matt).
+kb:bottom-bar-reorg rdf:type ktype:Phase ;
+    rdfs:label "F36.1 — bottom bar: Shelly, view settings and view mode on the left, cohesive across desktop and mobile" ;
+    kpred:feature-id   "F36.1" ;
+    kpred:part-of      kb:mobile-uiux ;
+    kpred:has-status   "planned" ;
+    kpred:decided      "MATT, 2026-11-09: Shelly, view settings, and view mode (statements/sources) all LEFT of the bottom bar near the graph-view icon, mirroring settings/info on the right; cohesive show/hide across desktop and mobile; minimize/close for the Shelly search bar." ;
+    kpred:description  "Move the three controls to the left of the bottom bar beside the graph-view icon, mirroring settings and info on the right, with one show/hide behavior on desktop and mobile, and a minimize and a close for Shelly's search bar. Rearranges existing controls; adds no top-level tab." ;
+    kpred:has-file     "src/lib/components/NavBar.svelte" ;
+    kpred:done-test    "a visual check on desktop and at a 390px viewport, plus a unit or e2e test that Shelly's search bar can be minimized and closed." ;
+    kpred:honest-note  "NOT BUILT (2026-11-10). Component named from the roadmap's own NavBar references; confirm before building." .
