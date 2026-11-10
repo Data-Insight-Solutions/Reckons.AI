@@ -37,6 +37,18 @@ export interface StampContext {
   now?: Date;
   /** Declared lane per job name (static/reckons-jobs.ttl kpred:emits); see review-lane.ts. */
   jobLanes?: ReadonlyMap<string, Lane>;
+  /**
+   * Called with the job's name when a machine row has no run and the environment gives none (a hand
+   * run, outside the queue worker). Returns the run id to stamp. Without it such a row is refused:
+   * that is a caller that bypassed the stamping step and has no way to name its run.
+   */
+  mintRun?: (jobName: string) => string;
+}
+
+/** The id a hand run is given: `hand:<job name>:<UTC timestamp>`. Contains no space or path. */
+export function handRunId(jobName: string, now: Date): string {
+  const name = jobName.trim().replace(/^(offline|script|job):/i, '').replace(/[^A-Za-z0-9._-]+/g, '-') || 'unknown';
+  return `hand:${name}:${now.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z')}`;
 }
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
@@ -65,6 +77,7 @@ export function stampRow<T extends Record<string, unknown>>(row: T, ctx: StampCo
   if (origin === 'job') {
     if (!text(out.run) && !text(out.runId) && text(env.RECKONS_RUN_ID)) out.run = text(env.RECKONS_RUN_ID);
     if (!text(out.agent) && text(env.RECKONS_JOB_NAME)) out.agent = text(env.RECKONS_JOB_NAME);
+    if (!text(out.run) && !text(out.runId) && ctx.mintRun) out.run = ctx.mintRun(text(env.RECKONS_JOB_NAME) || text(out.agent));
     if (!text(out.model) && text(env.RECKONS_JOB_MODEL)) out.model = text(env.RECKONS_JOB_MODEL);
     if (out.lane !== undefined && !isLane(out.lane)) {
       throw new RowContractError('lane', `row refused: lane "${String(out.lane)}" is not claim, question or finding`);
@@ -75,7 +88,7 @@ export function stampRow<T extends Record<string, unknown>>(row: T, ctx: StampCo
   const missing = missingField(out, origin);
   if (missing) {
     const hint = missing === 'run'
-      ? ' (run the job through the queue worker so job-watch sets RECKONS_RUN_ID, or set it for a hand run)'
+      ? ' (the append function mints a hand run id when RECKONS_RUN_ID is unset; a caller that bypasses it must supply one)'
       : missing === 'kb' ? ' (a row must name the space it is for; it is never guessed)' : '';
     throw new RowContractError(missing, `row refused: missing ${missing} on ${origin === 'job' ? 'a machine row' : 'a note'} about "${text(out.subject) || '?'}"${hint}`);
   }

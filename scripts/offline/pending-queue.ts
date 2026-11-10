@@ -36,7 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { atomicWriteFile, withFileLock } from '../agent/state-file.js';
 import { readTextOr } from '../lib/read-file.js';
 import { readJobs } from '../lib/jobs-graph-read.js';
-import { stampRow, type RowOrigin } from '../../mcp-server/src/row-contract.js';
+import { handRunId, stampRow, type RowOrigin } from '../../mcp-server/src/row-contract.js';
 import type { Lane } from '../../mcp-server/src/review-lane.js';
 
 const repositoryUrl = new URL('../..', import.meta.url);
@@ -130,6 +130,23 @@ export function appendQueueText(queuePath: string, text: string, opts?: string |
   });
 }
 
+/**
+ * A HAND RUN has no JobRun (nobody went through the queue worker), and a person must not be refused
+ * for running a command. So the stamping step MINTS `hand:<job name>:<UTC timestamp>`, once per
+ * process and name so every row of that run shares it, and says so in one line.
+ */
+const handRuns = new Map<string, string>();
+export function mintHandRun(jobName: string, now = new Date()): string {
+  const key = jobName.trim() || process.argv[1]?.split('/').pop()?.replace(/\.[a-z]+$/, '') || 'unknown';
+  let id = handRuns.get(key);
+  if (!id) {
+    id = handRunId(key, now);
+    handRuns.set(key, id);
+    console.error(`pending-queue: no RECKONS_RUN_ID (not run by the queue worker); minted run ${id} for this process's rows`);
+  }
+  return id;
+}
+
 let jobLaneCache: Map<string, Lane> | undefined;
 /** Lane per job name from static/reckons-jobs.ttl (kpred:emits), read once. Empty if unreadable. */
 export function declaredJobLanes(): Map<string, Lane> {
@@ -152,7 +169,7 @@ export function stampLines(text: string, ctx: { origin?: RowOrigin; env?: Record
     let row: unknown;
     try { row = JSON.parse(line); } catch { return line; }
     if (row === null || typeof row !== 'object' || Array.isArray(row)) return line;
-    return JSON.stringify(stampRow(row as Record<string, unknown>, { ...ctx, jobLanes }));
+    return JSON.stringify(stampRow(row as Record<string, unknown>, { mintRun: (n) => mintHandRun(n, ctx.now), ...ctx, jobLanes }));
   }).join('\n');
 }
 
@@ -264,7 +281,7 @@ function queueFindingsLocked(
     agent,
     addedAt: now,
     addedByMcp: true,
-  } as Record<string, unknown>, { origin: opts.origin ?? 'job', jobLanes: declaredJobLanes() }) as typeof findings[number] & { kb: string });
+  } as Record<string, unknown>, { origin: opts.origin ?? 'job', jobLanes: declaredJobLanes(), mintRun: (n) => mintHandRun(n) }) as typeof findings[number] & { kb: string });
 
   let skipped = 0;
   const incoming = new Set<string>();

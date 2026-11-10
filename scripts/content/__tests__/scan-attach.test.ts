@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,8 +9,10 @@ import {
 } from '../scan-attach';
 import type { ScanReceipt } from '../scan-room-lib';
 
-// These producers run as jobs, and the queue worker's job-watch gives every job its JobRun id (F89.4.1).
-process.env.RECKONS_RUN_ID ??= 'jobrun:test-run-20261110T000000Z';
+// Run as a person runs `npm run scan:room -- --attach=...` by hand: no queue worker, no RECKONS_RUN_ID.
+// The append function mints `hand:<job>:<time>` for such a run (F89.4.1).
+beforeEach(() => { vi.stubEnv('RECKONS_RUN_ID', ''); });
+afterEach(() => { vi.unstubAllEnvs(); });
 
 // Synthetic fixtures only: a temp workspace and a few fake bytes. Nothing here is a real scan or space.
 let root: string;
@@ -194,5 +196,40 @@ describe('links (Defect 2): a splat does not arrive as a silent island', () => {
     expect(r.rows).toBe(1);
     expect(rowsOf()).toHaveLength(1);
     expect(() => attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', linksOnly: true })).toThrow(/at least one/);
+  });
+});
+
+describe('a hand run of the attach passes the row contract (F89.4.1)', () => {
+  const rowsOf = () => readFileSync(queue, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+
+  it('with no RECKONS_RUN_ID the attach succeeds and its rows share one minted run id, with the right lanes', () => {
+    const r = attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space' });
+    expect(r.rows).toBe(5);
+    const rows = rowsOf();
+    expect(new Set(rows.map((x) => x.run)).size).toBe(1);
+    expect(rows[0].run).toMatch(/^hand:[A-Za-z0-9._-]+:\d{8}T\d{6}Z$/);
+    expect(rows.every((x) => x.origin === 'job' && x.kb === 'demo-space' && typeof x.addedAt === 'string')).toBe(true);
+    const lane = (q: boolean) => rows.filter((x) => (x.question ? 1 : 0) === (q ? 1 : 0)).map((x) => x.lane);
+    expect(lane(false)).toEqual(Array(4).fill('claim'));
+    expect(lane(true)).toEqual(['question']);
+    expect(rows.find((x) => x.question).question).toBe(CAPTURE_QUESTION);
+  });
+
+  it('the link rows are claims in the same run, and a re-attach does not queue them twice', () => {
+    const links = { derivedFrom: ['urn:kbase:concept/capture-one'], linkFrom: [['urn:kbase:concept/folder-one', 'urn:kbase:predicate/has-scan']] as [string, string][] };
+    const dir = makeScan();
+    attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links });
+    const rows = rowsOf();
+    expect(rows).toHaveLength(6); // four base rows and two link rows, no capture question
+    expect(rows.every((x) => x.lane === 'claim')).toBe(true);
+    expect(new Set(rows.map((x) => x.run)).size).toBe(1);
+    attachFinishedScan({ scanDir: dir, workspace, space: 'demo-space', links });
+    expect(rowsOf()).toHaveLength(6);
+  });
+
+  it('a run under the queue worker keeps the run id the worker gave it', () => {
+    vi.stubEnv('RECKONS_RUN_ID', 'jobrun:scan-room-20261111T000000Z');
+    attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space' });
+    expect(new Set(rowsOf().map((x) => x.run))).toEqual(new Set(['jobrun:scan-room-20261111T000000Z']));
   });
 });

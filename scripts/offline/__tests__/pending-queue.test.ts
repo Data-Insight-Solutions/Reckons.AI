@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queueFindings, findingIdentity, RECOMPUTABLE_AGENTS, appendQueueText } from '../pending-queue';
-import { RowContractError } from '../../../mcp-server/src/row-contract';
+import { RowContractError, stampRow } from '../../../mcp-server/src/row-contract';
 
 // These producers run as jobs, and the queue worker's job-watch gives every job its JobRun id (F89.4.1).
 process.env.RECKONS_RUN_ID ??= 'jobrun:test-run-20261110T000000Z';
@@ -23,14 +23,28 @@ describe('the row contract on append (F89.4.1)', () => {
     expect(Date.parse(r.addedAt)).toBeGreaterThan(0);
     rmSync(d, { recursive: true, force: true });
   });
-  it('refuses a machine row without kb, without run and with an invented lane, naming the field', () => {
+  it('refuses a machine row without kb and with an invented lane, naming the field', () => {
     const { d, q } = fresh();
     expect(refused(() => appendQueueText(q, row({ kb: undefined }), { env: { RECKONS_RUN_ID: 'r' } })).field).toBe('kb');
-    expect(refused(() => appendQueueText(q, row(), { env: {} })).field).toBe('run');
     expect(refused(() => appendQueueText(q, row({ lane: 'report' }), { env: { RECKONS_RUN_ID: 'r' } })).field).toBe('lane');
     expect(refused(() => appendQueueText(q, row({ kb: '  ' }), { env: { RECKONS_RUN_ID: 'r' } })).message).toMatch(/missing kb/);
     expect(existsSync(q)).toBe(false);
     rmSync(d, { recursive: true, force: true });
+  });
+  it('a hand run (no RECKONS_RUN_ID) mints hand:<job>:<time> once, and every row of the run shares it', () => {
+    const { d, q } = fresh();
+    appendQueueText(q, row({ subject: 'a' }) + row({ subject: 'b' }), { env: {} });
+    appendQueueText(q, row({ subject: 'c' }), { env: {} });
+    const rows = readFileSync(q, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+    expect(new Set(rows.map((r) => r.run)).size).toBe(1);
+    expect(rows[0].run).toMatch(/^hand:fixture:\d{8}T\d{6}Z$/);
+    expect(rows.every((r) => r.origin === 'job')).toBe(true);
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('a caller that bypasses the stamping step, with no way to mint a run, is refused naming run', () => {
+    const err = refused(() => stampRow({ subject: 's', predicate: 'p', kb: 'roadmap', agent: 'offline:x' }, { env: {} }));
+    expect(err.field).toBe('run');
+    expect(stampRow({ subject: 's', predicate: 'p', kb: 'roadmap', agent: 'offline:x' }, { env: {}, mintRun: () => 'hand:x:20261111T000000Z' }).run).toBe('hand:x:20261111T000000Z');
   });
   it('one refused row refuses the whole append and leaves the queue as it was', () => {
     const { d, q } = fresh();
