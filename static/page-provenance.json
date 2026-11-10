@@ -1229,8 +1229,8 @@
       "path": "testing/workflow-generated-assets",
       "entity": "urn:reckons:test/Workflow-GeneratedAssets",
       "graph": "docs-testing.ttl",
-      "factHash": "c94569e3615714cb",
-      "factCount": 7,
+      "factHash": "11fcfafc0e010c5e",
+      "factCount": 8,
       "floor": "evidence",
       "pageHash": "5149ad34272204ba"
     },
