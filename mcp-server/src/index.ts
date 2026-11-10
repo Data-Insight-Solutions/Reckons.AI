@@ -30,7 +30,8 @@ import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
 import { appendPendingLines } from './pending-file.js';
-import { defaultCtx, jobEnqueue, jobList, jobStatus } from './local-jobs.js';
+import { defaultCtx, jobEnqueue, jobLanes, jobList, jobStatus } from './local-jobs.js';
+import { routeLanes } from './review-lane.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -927,7 +928,8 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
 function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
   const base = resolveBase(params.base);
   const files = pendingQueueFiles();
-  const rows = files.flatMap((f) => readPendingRows(f));
+  // Findings are a check's report, not a person's task (F89.4.3), so they get no review link.
+  const rows = routeLanes(files.flatMap((f) => readPendingRows(f)), jobLanes(defaultCtx())).review;
   const groups = reviewGroups(rows, base)
     .filter((g) => !params.agent || g.agent.toLowerCase().includes(params.agent.toLowerCase()));
 
@@ -1011,14 +1013,14 @@ function legacySiblingTriples(): { subject: string; predicate: string; object: s
  * with already-settled ones removed. A settled decision is not DELETED from the queue — the app
  * owns that, and a tool that quietly shrank the queue would make the two disagree.
  */
-function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number } {
+function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number; findings: number } {
   const sources = buildSources(pendingQueueFiles(kbFilter), queueWorkspace);
-  const state = loadReviewState(sources, workspaceArity(), kbFilter);
-  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled };
+  const state = loadReviewState(sources, workspaceArity(), kbFilter, jobLanes(defaultCtx()));
+  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled, findings: state.findings };
 }
 
 function handleKbReviewNext(params: ReviewNextParams): object {
-  const { decisions, files, totalRows, settled } = loadDecisions(params.kb);
+  const { decisions, files, totalRows, settled, findings } = loadDecisions(params.kb);
   if (files.length === 0) {
     return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
   }
@@ -1028,7 +1030,8 @@ function handleKbReviewNext(params: ReviewNextParams): object {
   const body = [
     renderQueue(shown, decisions.length, params.limit ?? 10, settled),
     '',
-    `From ${totalRows} queue row(s) across ${files.length} file(s).`,
+    `From ${totalRows} queue row(s) across ${files.length} file(s).` +
+      (findings > 0 ? ` ${findings} of them are FINDINGS (a check's observations that ask for an action, not a fact): they are not listed here and belong to the checks' reports (F89.4.3).` : ''),
     'kb_review_show(decision) reads one in full; kb_review_decide(decision, verdict) records a verdict.',
   ].join('\n');
   return { content: [{ type: 'text', text: body }] };

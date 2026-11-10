@@ -591,6 +591,15 @@ kpred:network a rdf:Property ;
     rdfs:domain ktype:Schedule ;
     rdfs:comment "\"true\" when the scheduled command talks to the internet (e.g. an advisory lookup), so the person can see which recurring jobs leave the machine." .
 
+kpred:emits a rdf:Property ;
+    rdfs:label "emits" ;
+    rdfs:domain ktype:OfflineJob ;
+    rdfs:comment "What a job puts in front of the review queue (F89.4.3): claim (subject, predicate and object), question (object open), finding (an observation that asks for an action and goes to the check's report, not to a person) or nothing. The jobs lint fails a job that does not declare one." .
+
+kpred:kept-on-purpose a rdf:Property ;
+    rdfs:label "kept on purpose" ;
+    rdfs:comment "The object is a repository-relative directory path that is deliberately kept whole (a scaffold, a vendored tree, a published API). The dead-weight sweep (F89.4.3) asks 'is this directory kept whole on purpose?' once per directory, and reads this fact on its next run so it never lists the files under a directory so recorded. Put it on the module that owns the directory when one exists." .
+
 # 2026-10-08 — LAYERS APPROVED BY MATT in a Claude Code chat review of the layer-classify job's proposals
 # (qwen3:32b drafted them; 475 queued rows over 355 predicates). claim is the fail-safe default above, so the 331
 # predicates classified only as claim are NOT written: an unclassified predicate already lands there. Rejected as
