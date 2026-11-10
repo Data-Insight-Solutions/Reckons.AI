@@ -99,7 +99,10 @@ function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
     const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, '--', ...job.argv], {
       // A job that does not use Ollama gets no model verdict either: loading a reader model between
       // two generation stages would only compete with the next stage for VRAM.
-      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '' }, detached: true,
+      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '',
+        // Pin the job to its physical GPU (gen-bench.ts's pin pattern; job-watch passes env through to the
+        // real command, so both CUDA and the ggml/Vulkan path see it).
+        ...(job.gpuIndex !== undefined ? { CUDA_VISIBLE_DEVICES: String(job.gpuIndex), GGML_VK_VISIBLE_DEVICES: String(job.gpuIndex) } : {}) }, detached: true,
     });
     activeGroup = child.pid;
     let guard: string | undefined;
@@ -218,9 +221,14 @@ async function main(): Promise<void> {
     }
     const queue = orderQueue(readQueue());
     // Only ask nvidia-smi when a GPU job could actually start (not paused, and Ollama up if it needs it).
-    const checkGpu = !isPaused() && queue.some((j) => isGpuJob(j) && (up || !needsOllama(j)));
+    const couldStart = queue.find((j) => isGpuJob(j) && (up || !needsOllama(j)));
+    const checkGpu = !isPaused() && couldStart !== undefined;
     const ramLimits = loadRamLimits();
-    const gate = checkGpu ? await readGpuVerdict() : { ok: true as const };
+    // A job pinned to a physical GPU (gpuIndex) is judged on that GPU only, so a co-tenant on another
+    // one (the deputy's own Ollama runtime on GPU0) does not hold it; unpinned jobs keep the all-GPU
+    // check. Chain-waiting jobs are drained to 'blocked' above each pass, so the first GPU job in
+    // order is the one a start would take.
+    const gate = checkGpu ? await readGpuVerdict(undefined, undefined, couldStart?.gpuIndex) : { ok: true as const };
     // F74.11: an idle GPU is not enough; a GPU job also needs system RAM free in case the model lands there.
     const ram = checkGpu && gate.ok ? ramStartVerdict(readRamSample().mem, ramLimits) : { ok: true as const };
     const gpuBlocked = !gate.ok ? gate.reason : !ram.ok ? ram.reason : undefined;

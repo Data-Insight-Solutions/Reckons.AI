@@ -42,6 +42,13 @@ export const queueLockPath = (): string => path.join(queueDir(), 'queue.lock');
 export type QueueJob = { id: string; name: string; cwd: string; argv: string[]; addedAt: string; priority?: number;
   /** false = script tier, never touches the GPU, so the GPU gates do not apply. Absent = GPU (fail safe). */
   gpu?: boolean;
+  /**
+   * Which physical GPU to run on (0-based). The GPU gate judges that GPU only, and the worker pins
+   * CUDA_VISIBLE_DEVICES / GGML_VK_VISIBLE_DEVICES to it at spawn (gen-bench.ts's pin pattern).
+   * Absent = any GPU, judged on all of them (fail safe). E.g. a scan on GPU1 while the deputy's own
+   * Ollama runtime legitimately heats GPU0 (Matt, 2026-11-10).
+   */
+  gpuIndex?: number;
   /** false = neither the job nor its job-watch verdict uses Ollama (generation), so it runs while Ollama
    *  is down. Absent = needs Ollama (fail safe). */
   ollama?: boolean;
@@ -68,7 +75,7 @@ export function parseQueue(text: string): QueueJob[] {
       if (typeof j.id === 'string' && typeof j.name === 'string' && typeof j.cwd === 'string' && typeof j.addedAt === 'string'
         && Array.isArray(j.argv) && j.argv.length > 0 && j.argv.every((a) => typeof a === 'string')) {
         const after = Array.isArray(j.after) ? j.after.filter((a) => typeof a === 'string' && a.length > 0) : undefined;
-        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}) });
+        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(typeof j.gpuIndex === 'number' ? { gpuIndex: j.gpuIndex } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}) });
       }
     } catch { /* skip */ }
   }
@@ -94,8 +101,8 @@ export function dedupeAdd(existing: QueueJob[], candidates: QueueJob[]): { add: 
   return { add, skipped };
 }
 
-export const newJob = (name: string, cwd: string, argv: string[], priority?: number, gpu?: boolean, after?: string[], ramSpill?: boolean, ollama?: boolean): QueueJob =>
-  ({ id: randomUUID().slice(0, 8), name, cwd, argv, addedAt: new Date().toISOString(), ...(priority !== undefined ? { priority } : {}), ...(gpu === false ? { gpu: false } : {}), ...(after?.length ? { after: [...after] } : {}), ...(ramSpill ? { ramSpill: true } : {}), ...(ollama === false ? { ollama: false } : {}) });
+export const newJob = (name: string, cwd: string, argv: string[], priority?: number, gpu?: boolean, after?: string[], ramSpill?: boolean, ollama?: boolean, gpuIndex?: number): QueueJob =>
+  ({ id: randomUUID().slice(0, 8), name, cwd, argv, addedAt: new Date().toISOString(), ...(priority !== undefined ? { priority } : {}), ...(gpu === false ? { gpu: false } : {}), ...(typeof gpuIndex === 'number' ? { gpuIndex } : {}), ...(after?.length ? { after: [...after] } : {}), ...(ramSpill ? { ramSpill: true } : {}), ...(ollama === false ? { ollama: false } : {}) });
 
 export const isGpuJob = (j: Pick<QueueJob, 'gpu'>): boolean => j.gpu !== false;
 export const needsOllama = (j: Pick<QueueJob, 'ollama'>): boolean => j.ollama !== false;
