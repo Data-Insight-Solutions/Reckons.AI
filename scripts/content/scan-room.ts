@@ -18,7 +18,16 @@
  * or quaternion convention, so COLMAP recomputes poses from the video. odometry.csv is parsed only to
  * cross-check the frame count and report the path length.
  *
- * Usage:   npm run scan:room -- <input> [--out dir] [--steps 30000] [--frames 200]
+ * Attach (F58.9.20): --space=<slug> [--workspace=<dir>] [--label=<text>] copies the finished splat to
+ *          <workspace>/kbs/<slug>/assets/splats/<content id>.spz and queues PENDING rows addressed to that
+ *          space (never confirmed). The space is checked BEFORE the half-hour reconstruction starts.
+ *          --attach=<finished scan dir> --space=<slug> does only that, for a scan that already finished.
+ *          --derived-from=<node IRI> (repeatable) states <splat> prov:wasDerivedFrom <IRI>; --link-from=<subject IRI>,<predicate IRI>
+ *          (repeatable) states <subject> <predicate> <splat>. With neither, ONE question row asks which capture it is a scan of.
+ *          --links-only adds just those link rows to a splat that is already attached.
+ *
+ * Usage:   npm run scan:room -- <input> [--out dir] [--steps 30000] [--frames 200] [--space slug]
+ *          npm run scan:room -- --attach=<scan dir> --space=<slug> [--workspace dir]
  *          npm run scan:room -- --check <out dir>      verify a finished scan's receipt, hash and splat
  * Tools:   scripts/content/gen-setup.sh installs them into RECKONS_GEN_HOME (~/.local/share/reckons/gen).
  * Output stays out of git: the default out dir is ~/.local/share/reckons/scans/<input-hash>.
@@ -29,6 +38,7 @@ import { copyFileSync, createReadStream, existsSync, mkdirSync, readdirSync, rea
 import { homedir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import sharp from 'sharp';
+import { assertLinkIris, attachFinishedScan, attachSplat, jobResult, parseLinkFrom, requireSpace, resolveWorkspace, type AttachResult, type Links } from './scan-attach.js';
 import { checkSplat } from './asset-checks.js';
 import { compressSplat, cropPly, reducePly, verifyCompressed, type CompressFormat } from './splat-compress.js';
 import { plyCentres } from '../../src/lib/3d/splat-check.js';
@@ -85,7 +95,7 @@ function run(stage: string, cmd: string, args: string[], env: NodeJS.ProcessEnv 
 }
 
 export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree|max-scale-fraction)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree|max-scale-fraction|space|workspace|attach|label|derived-from|link-from)$/.test(argv[i - 1])));
   const inputArg = positional[0];
   if (!inputArg) throw new Error('usage: npm run scan:room -- <Stray Scanner folder | video file> [--out dir] [--steps N] [--frames N]');
   const inputPath = resolve(inputArg);
@@ -306,12 +316,36 @@ export async function exportScan(dir: string, dest: string, syntheticNote?: stri
   console.log(`published ${r.compressed.file} and receipt.json to ${dest}`);
 }
 
+/** When run by the local queue, record what the job produced where the worker will read it (DoneJob.result). */
+function reportResult(r: AttachResult): void {
+  console.log(`attached ${r.url} to space "${r.space}": ${r.copied ? 'copied' : 'already there'}, ${r.rows} row(s) queued as pending, ${r.rowsAlreadyQueued} already queued`);
+  const out = process.env.RECKONS_JOB_RESULT;
+  if (out) writeFileSync(out, JSON.stringify(jobResult(r)) + '\n');
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const a = process.argv.slice(2);
+  const space = arg(a, 'space');
+  const finished = arg(a, 'attach');
+  const label = arg(a, 'label');
+  const workspace = () => resolveWorkspace(arg(a, 'workspace'));
+  const many = (name: string) => a.filter((x) => x.startsWith(`--${name}=`)).map((x) => x.slice(name.length + 3));
+  const links = (): Links => { const l = { derivedFrom: many('derived-from'), linkFrom: parseLinkFrom(many('link-from')) }; assertLinkIris(l); return l; };
+  const linksOnly = a.includes('--links-only');
   const run = a[0] === '--export'
     ? exportScan(a[1], a[2], arg(a, 'synthetic')).then(() => undefined)
     : a[0] === '--check'
     ? checkScan(a[1] ?? '.').then((p) => { if (p.length) throw new Error(p.join('\n')); console.log('scan receipt and splat verified'); })
-    : scanRoom(a);
+    : finished !== undefined
+    ? Promise.resolve().then(() => {
+        if (!space) throw new Error('--attach needs --space=<space slug>');
+        reportResult(attachFinishedScan({ scanDir: finished, workspace: workspace(), space, label, links: links(), linksOnly }));
+      })
+    : Promise.resolve().then(() => { if (space) { requireSpace(workspace(), space); links(); } }).then(() => scanRoom(a)).then((receipt) => {
+        if (!space) return;
+        const out = resolve(arg(a, 'out') ?? join(homedir(), '.local/share/reckons/scans', receipt.input.sha256.slice(0, 12)));
+        if (!receipt.compressed) throw new Error('the scan finished but has no compressed copy to attach');
+        reportResult(attachSplat({ splat: join(out, receipt.compressed.file), workspace: workspace(), space, label, links: links() }));
+      });
   run.catch((e) => { console.error(`\nFAILED ${e.message}`); process.exit(1); });
 }
