@@ -140,6 +140,9 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([
   // printing them again as "Details" bullets would show the plumbing beside the finished page.
   `${KPRED}workflow-id`, `${KPRED}test-file`, `${KPRED}step-id`, `${KPRED}short-label`,
   `${KPRED}box-label`, `${KPRED}box-target`, `${KPRED}page-name`, `${KPRED}shots-note`, `${KPRED}screenshot`,
+  // F275 demo videos: the narrator's voice id and each step's spoken line feed npm run demo:render,
+  // not the page; a raw provider id under "Detail" means nothing to a reader.
+  `${KPRED}narrator`, `${KPRED}narration`, `${KPRED}narration-lead`, `${KPRED}narration-status`,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
   // Where the page LIVES is routing too. Without these, the first page to use the override
