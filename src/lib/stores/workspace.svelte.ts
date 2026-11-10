@@ -56,6 +56,7 @@ import {
 import { pushNotification } from './notifications.svelte';
 import { conflictNotice, separateConflictCopies } from '../storage/sync-conflicts';
 import { CORPUS_DIR } from '../ingest/source-corpus';
+import { SPLAT_PREDICATE } from '../3d/splat';
 
 /**
  * Where a handle from BEFORE the app-level store might still be sitting: this graph's own
@@ -998,6 +999,34 @@ export async function pendingWaitingElsewhere(): Promise<{ byGraph: Array<{ kb: 
   };
 }
 
+/**
+ * Read `kbs/<kb>/assets/splats/<id>` from the linked folder (F58.9.20). Both names are checked
+ * against a strict pattern first: `kb` comes from a queue row any local process can write, and must
+ * not walk out of `kbs/`.
+ */
+export async function readSplatFromSpaceFolder(kb: string, id: string): Promise<Uint8Array | null> {
+  if (!_handle || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(kb) || kb.includes('..') || !/^[A-Za-z0-9_-]+\.(ply|spz|sog)$/.test(id)) return null;
+  try {
+    let dir = await _handle.getDirectoryHandle('kbs');
+    for (const seg of [kb, 'assets', 'splats']) dir = await dir.getDirectoryHandle(seg);
+    return new Uint8Array(await (await (await dir.getFileHandle(id)).getFile()).arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+/** A pending row that names a splat brings its file: store it from the folder when this browser lacks it. */
+async function bringRowSplats(entries: readonly PendingEntry[]): Promise<void> {
+  if (!entries.some((e) => e.predicate === SPLAT_PREDICATE)) return;
+  try {
+    const { bringSplatFiles } = await import('../storage/splat-folder');
+    const r = await bringSplatFiles(entries, readSplatFromSpaceFolder);
+    if (r.missing.length) console.warn(`[workspace] splat file(s) named by a pending row are not in the folder: ${r.missing.join(', ')}`);
+  } catch (e) {
+    console.warn('[workspace] could not store a splat from the folder:', e);
+  }
+}
+
 export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   const text = await readFromWorkspace(WORKSPACE_PENDING_FILE);
   if (!text?.trim()) return [];
@@ -1020,6 +1049,7 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   // Consume ONLY what we took. Other-target, unscoped, malformed, and invalid rows are written
   // back byte-for-line so a drain can never erase evidence it could not safely deliver.
   if (entries.length > 0) {
+    await bringRowSplats(entries);
     await writeToWorkspace(
       WORKSPACE_PENDING_FILE,
       retainedLines.length ? retainedLines.join('\n') + '\n' : '',
@@ -1176,6 +1206,7 @@ async function drainAndImportPendingOnce(): Promise<number> {
   const partition = partitionPendingJsonl(snapshot, active);
   const pending = partition.entries;
   if (pending.length === 0) return captures.written;
+  await bringRowSplats(pending);
 
   const { prepareStatementsForWrite, persistSourceBatch } = await import('./kb.svelte');
   const { v5: uuidv5 } = await import('uuid');

@@ -46,10 +46,11 @@
  * (notes-pull) is still held while Ollama is down until it is queued with --no-ollama.
  */
 import { spawn, spawnSync } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
+import { jobResultPath, resultsDir, takeJobResult, addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readOllamaResidency, readRamSample, unloadOllamaModels, type RamLimits } from './session-ram.js';
@@ -99,7 +100,7 @@ function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
     const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, '--', ...job.argv], {
       // A job that does not use Ollama gets no model verdict either: loading a reader model between
       // two generation stages would only compete with the next stage for VRAM.
-      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '',
+      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '', RECKONS_JOB_RESULT: jobResultPath(job.id),
         // Pin the job to its physical GPU (gen-bench.ts's pin pattern; job-watch passes env through to the
         // real command, so both CUDA and the ggml/Vulkan path see it).
         ...(job.gpuIndex !== undefined ? { CUDA_VISIBLE_DEVICES: String(job.gpuIndex), GGML_VK_VISIBLE_DEVICES: String(job.gpuIndex) } : {}) }, detached: true,
@@ -252,6 +253,7 @@ async function main(): Promise<void> {
     // the head unchanged is a stalled deputy (exit 0 was its failure mode), recorded no-commit.
     const deputy = isDeputy(job);
     const headBefore = deputy ? gitHead(job.cwd) : '';
+    mkdirSync(resultsDir(), { recursive: true });
     const { code, guard } = await runJob(job, ramLimits);
     finished++;
     let outcome: DoneJob['outcome'] = code === 0 ? 'passed' : code === 3 ? 'refused' : 'failed';
@@ -272,9 +274,10 @@ async function main(): Promise<void> {
         reason = `deputy exited clean but no new commit: head ${headBefore.slice(0, 8)} unchanged in ${job.cwd}`;
       }
     }
+    const result = takeJobResult(job.id);
     mutateQueue((jobs) => ({
       jobs: jobs.filter((j) => j.id !== job.id),
-      done: [{ ...job, finishedAt: new Date().toISOString(), outcome, exitCode: code, ...(reason ? { reason } : {}), ...(headBefore ? { headBefore } : {}), ...(headAfter ? { headAfter } : {}) }],
+      done: [{ ...job, finishedAt: new Date().toISOString(), outcome, exitCode: code, ...(result ? { result } : {}), ...(reason ? { reason } : {}), ...(headBefore ? { headBefore } : {}), ...(headAfter ? { headAfter } : {}) }],
       result: undefined,
     }));
     if (reason) console.log(`queue-worker: ${job.name} ${outcome} — ${reason}`);

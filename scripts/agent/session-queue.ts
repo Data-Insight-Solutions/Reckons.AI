@@ -34,6 +34,18 @@ const reckonsDir = (): string => path.join(process.env.XDG_STATE_HOME || path.jo
 export const queueDir = (): string => path.join(reckonsDir(), 'jobs');
 export const queuePath = (): string => path.join(queueDir(), 'queue.jsonl');
 export const donePath = (): string => path.join(queueDir(), 'queue.done.jsonl');
+export const resultsDir = (): string => path.join(queueDir(), 'results');
+/** Where a running job writes its result; the worker passes this path in RECKONS_JOB_RESULT. */
+export const jobResultPath = (id: string): string => path.join(resultsDir(), `${id.replace(/[^A-Za-z0-9_-]/g, '_')}.json`);
+/** Read and remove a job's result file. A missing or malformed file is no result, never an error: the job's outcome stands on its exit code. */
+export function takeJobResult(id: string): Record<string, unknown> | undefined {
+  const f = jobResultPath(id);
+  try {
+    if (!existsSync(f)) return undefined;
+    const v = JSON.parse(readFileSync(f, 'utf8'));
+    return v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : undefined;
+  } catch { return undefined; } finally { try { rmSync(f, { force: true }); } catch { /* nothing to remove */ } }
+}
 export const workerPath = (): string => path.join(queueDir(), 'worker.json');
 export const pausePath = (): string => path.join(queueDir(), 'PAUSE');
 export const queueLockPath = (): string => path.join(queueDir(), 'queue.lock');
@@ -61,7 +73,9 @@ export type DoneJob = QueueJob & { finishedAt: string; outcome: 'passed' | 'fail
   /** In words: which link blocked a job, or what 'no-commit' checked and found. */
   reason?: string;
   /** Deputy jobs in a git worktree: the head before and after the run; equal = no-commit. */
-  headBefore?: string; headAfter?: string };
+  headBefore?: string; headAfter?: string;
+  /** What the job says it produced (F58.9.20): the job writes JSON to the path in RECKONS_JOB_RESULT, the worker records it here (e.g. the attached asset's content id and target space). */
+  result?: Record<string, unknown> };
 
 /** Dedupe key: the same named job in the same directory. */
 export const jobKey = (j: Pick<QueueJob, 'name' | 'cwd'>): string => `${j.name}\u0000${j.cwd}`;
