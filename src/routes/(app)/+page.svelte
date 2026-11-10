@@ -88,6 +88,8 @@
   import { replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
+  import { standingOf } from '$lib/rdf/statement-standing';
+  import { passesStandingFilters, statementNodeKeys, focusOption, type OptionFocus } from '$lib/rdf/standing-filter';
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
@@ -376,6 +378,9 @@
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
   let activeFilters = $state<Set<GraphFilter>>(new Set());
+  /** F223.11: the proposal option shown on the canvas, and the fact ids it cites (quiet strength). */
+  let focusOptionId = $state<string | null>(null);
+  let focusCited = $state<string[]>([]);
   let selectedSources = $state<Set<string>>(new Set());
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
@@ -424,6 +429,9 @@
     if (sel) selected = sel;
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
+    // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
+    focusOptionId = params.get('focus');
+    focusCited = (params.get('cite') ?? '').split(',').filter(Boolean);
     const src = params.get('src');
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
@@ -533,6 +541,7 @@
     // cleared would reapply it on the next load.
     if (selected) params.set('sel', selected); else params.delete('sel');
     if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
+    if (focusOptionId) { params.set('focus', focusOptionId); if (focusCited.length) params.set('cite', focusCited.join(',')); else params.delete('cite'); } else { params.delete('focus'); params.delete('cite'); }
     if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
@@ -740,6 +749,28 @@
     if (showingLanding || use2D || !webglAvailable) graph3DReady = false;
   });
 
+  /** The option shown on the canvas (F223.11), or null. Computed from the same facts the canvas draws. */
+  const optionFocus = $derived<OptionFocus | null>(
+    focusOptionId ? focusOption(visible, focusOptionId, { citations: focusCited }) : null,
+  );
+  /**
+   * Fact ids that pass every fact-level filter, so the canvas lights an EDGE only when its own
+   * fact matches (F223.11). null = no fact-level filter: nothing is dimmed on that account.
+   */
+  const litStatementIds = $derived.by(() => {
+    const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
+    if (!status && !optionFocus) return null;
+    const ids = new Set<string>();
+    for (const s of visible) {
+      if (status && !passesStandingFilters(s, activeFilters)) continue;
+      if (optionFocus && !optionFocus.lit.has(s.id)) continue;
+      if (nodeSetMatch) { const [a, b] = statementNodeKeys(s); if (!nodeSetMatch.has(a) || !nodeSetMatch.has(b)) continue; }
+      ids.add(s.id);
+    }
+    return ids;
+  });
+  const quietStatementIds = $derived(optionFocus ? optionFocus.quiet : null);
+
   /**
    * Statement-level filters (status · source · entity type · no-source · no-type), resolved
    * to the node keys they keep. A node is kept if ANY statement touching it passes every
@@ -748,21 +779,18 @@
    * null = no statement-level filter is active (everything matches; nothing to dim).
    */
   const filterMatch = $derived.by(() => {
-    const wantStatus = activeFilters.has('confirmed') || activeFilters.has('pending');
+    const wantStatus = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
+    const wantFocus = optionFocus !== null;
     const wantSource = selectedSources.size > 0;
     const wantType = typedSubjects !== null;
     const wantNoSource = activeFilters.has('no-source');
     const wantNoType = activeFilters.has('no-type');
-    if (!wantStatus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
+    if (!wantStatus && !wantFocus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
 
     const keys = new Set<string>();
     for (const s of visible) {
-      if (wantStatus) {
-        const ok =
-          (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) ||
-          (activeFilters.has('pending') && s.status === 'pending');
-        if (!ok) continue;
-      }
+      if (wantStatus && !passesStandingFilters(s, activeFilters)) continue;
+      if (wantFocus && !optionFocus!.lit.has(s.id) && !optionFocus!.quiet.has(s.id)) continue;
       if (wantSource && !selectedSources.has(s.sourceId)) continue;
       if (wantNoSource && s.sourceId !== 'manual') continue;
       if (wantType && !(typedSubjects!.has(s.s.value) || typedSubjects!.has(s.o.value))) continue;
@@ -774,8 +802,8 @@
         )
       )
         continue;
-      keys.add(termKey(s.s));
-      keys.add(termKey(s.o));
+      // A question's missing end is its own marker (F223.9), so it is matched under its own key.
+      for (const k of statementNodeKeys(s)) keys.add(k);
     }
     return keys;
   });
@@ -1002,6 +1030,13 @@
       (s.status === 'confirmed' || s.status === 'refined') &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     ).length
+  );
+  // F223.9: counts by standing, for the legend and the proposed / questions chips.
+  const visibleProposedCount = $derived(
+    statements().filter(s => standingOf(s) === 'proposed' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
+  );
+  const visibleQuestionCount = $derived(
+    statements().filter(s => standingOf(s) === 'question' && s.status !== 'rejected' && s.status !== 'superseded' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
   );
   const visiblePendingCount = $derived(
     statements().filter(s =>
@@ -2186,6 +2221,8 @@
     onreorder: (order) => { nodeOrder = order; },
     get highlighted() { return graphHighlighted; },
     get dimMode() { return perspective === 'statements' && dimMode; },
+    get litStatementIds() { return litStatementIds; },
+    get quietStatementIds() { return quietStatementIds; },
     get podMode() { return podMode; },
     get ghostGraph() { return ghostGraph; },
     get ghostAnchorKey() { return ghostAnchorKey; },
@@ -2549,6 +2586,24 @@
         <span class="num">{visiblePendingCount}</span>
         <span class="lbl mono">pending</span>
       </button>
+      <!-- F223.11: proposals and questions, beside confirmed and pending. Shown only when the space holds one. -->
+      {#if visibleProposedCount > 0 || activeFilters.has('proposed')}
+        <button class="chip" class:active={activeFilters.has('proposed')} onclick={() => toggleFilter('proposed')} title="Show only facts that belong to a proposal's options">
+          <span class="num">{visibleProposedCount}</span>
+          <span class="lbl mono">proposed</span>
+        </button>
+      {/if}
+      {#if visibleQuestionCount > 0 || activeFilters.has('questions')}
+        <button class="chip" class:active={activeFilters.has('questions')} onclick={() => toggleFilter('questions')} title="Show only open questions: facts whose answer is not known yet">
+          <span class="num">{visibleQuestionCount}</span>
+          <span class="lbl mono">questions</span>
+        </button>
+      {/if}
+      {#if focusOptionId}
+        <button class="chip active" onclick={() => { focusOptionId = null; focusCited = []; }} title="Stop showing one proposal option">
+          <span class="lbl mono">option {focusOptionId} ✕</span>
+        </button>
+      {/if}
       <!-- Sources filter chip -->
       <Popover.Root bind:open={showSourceFilter} onOpenChange={(o) => { if (o) showTypeFilter = false; }}>
         <Popover.Trigger>
@@ -2636,6 +2691,14 @@
         </Popover.Root>
       {/if}
     </div>
+    <!-- F223.10: names how the canvas draws a fact's standing. Shape and line carry it, never colour alone. -->
+    {#if visibleProposedCount + visibleQuestionCount > 0}
+      <ul class="standing-legend mono" aria-label="How facts are drawn">
+        <li><span class="sw sw-held"></span>held: solid line</li>
+        {#if visibleProposedCount > 0}<li><span class="sw sw-proposed"></span>proposed: dashed, hollow</li>{/if}
+        {#if visibleQuestionCount > 0}<li><span class="sw sw-question">?</span>question: dashed, hollow, half strength</li>{/if}
+      </ul>
+    {/if}
   </div>
 
   {@render graphTools()}
@@ -3682,6 +3745,11 @@
     opacity: 0.7;
   }
 
+  .standing-legend { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.8rem; font-size: 0.65rem; color: var(--muted); }
+  .standing-legend li { display: flex; align-items: center; gap: 0.35rem; }
+  .standing-legend .sw { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--ink-2); }
+  .standing-legend .sw-proposed { border-top: 2px dashed var(--data); }
+  .standing-legend .sw-question { border: 1.5px dashed var(--ink-2); border-radius: 50%; width: 0.9rem; height: 0.9rem; line-height: 0.75rem; text-align: center; font-size: 0.6rem; color: var(--ink-2); opacity: 0.8; }
   .chip-row {
     display: flex;
     flex-wrap: wrap;

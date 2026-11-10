@@ -283,6 +283,16 @@ export type Statement = {
    */
   findingClass?: 'form' | 'drift' | 'defect';
   /**
+   * Which option of a reckoning's proposal this fact belongs to (F223.9 / kb:fact-standing).
+   *
+   * Stamped when the fact is `pending` AND part of a proposed option — that is what separates
+   * PROPOSED from PENDING, with no new review status. Recorded the same way F89.4.4 records its
+   * run: a stamp on the portable record, so an option is a group whose members are DERIVED
+   * (`standingOf` in rdf/fact-standing.ts), not listed — no membership edges to keep in sync.
+   * Survives a round trip through the portable record, via portable metadata (rdf/portable-metadata.ts).
+   */
+  proposalOption?: string;
+  /**
    * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
    *
    * `code` | `test` a script or a suite settles it; the user need not be asked at all.

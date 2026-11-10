@@ -14,6 +14,7 @@ const object = (v: unknown): v is Record<string, unknown> => v !== null && typeo
 const STATEMENT_FIELDS = {
   sourceId: text, updatedAt: number, grounded: bool, needsObject: bool, question: text,
   blocks: strings, verifiedBy: text, findingClass: oneOf('form', 'drift', 'defect'),
+  proposalOption: text,
   verifiableBy: oneOf('code', 'test', 'source', 'user', 'unknown', 'external-graph'),
   answeredByGraph: text, hopChain: strings, settledByDecision: text,
   settledBy: (v: unknown) => object(v) && text(v.actor) && text(v.channel) && number(v.at)
