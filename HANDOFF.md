@@ -26,10 +26,12 @@ reconstruction and scan auto-attach; graph-lint's duplicate-id will fail otherwi
 (the `has-part` moves) is still the only place the decided 0.2.8 scope exists as edges; until it lands,
 `release:burndown` for 0.2.8 measures the replaced list (0 of 14 on 2026-11-10).
 
-**Matt's to decide (each is an open question on the entity named):** findings leave Review
-(`kb:review-lanes`); run grouping now or after the canvas move (`kb:loop-job-grouping`); hold or cut 0.2.8
-(`kb:release-0-2-8`); walk first or reckon first (`kb:asset-run-review-loop`); what closes a gap
-(`kb:asset-data-model`); which rendering of the plan first (`kb:landscaping-plan-space`).
+**Decided by Matt 2026-11-10 (each recorded as `kpred:decided` on the entity named):** findings leave Review
+(`kb:review-lanes`); run grouping now, in the current Review page, as the default (`kb:loop-job-grouping`);
+hold 0.2.8 for its headline, no end date yet (`kb:release-0-2-8`); walk the scanned place first
+(`kb:asset-run-review-loop`); a gap closes by measure, with a recorded waiver (`kb:asset-data-model`); the
+plan's first rendering is a top-down drawing (`kb:landscaping-plan-space`). **Still only proposed:** where the
+four unfinished 0.2.7 parts go, F286 as a part of 0.2.9, and the yield and decidability thresholds.
 
 **Checked 2026-11-10 in the branch's worktree:** graph-lint 0 errors; blocking script tier 9 of 9 after
 regenerating `static/review-0.2.7.ttl` (the new F89.4 id changed one generated name); md-align aligned; the
