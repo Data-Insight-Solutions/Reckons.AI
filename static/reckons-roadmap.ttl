@@ -11869,3 +11869,12 @@ kb:open-in-artcraft rdf:type ktype:Phase ;
 # 2026-11-05 (night) — the RAM guard tells a load-time transient from a spill (Claude Code).
 kb:queue-ram-guard kpred:evidence "2026-11-05 23:58 UTC, A FALSE STOP: the guard stopped the local deputy job f93-frames at 6.1 GiB of anonymous RAM in ollama.service while Ollama was on CUDA. The journal shows why: 'disabling mmap for llama-server load due to host memory pressure' (demo renders and browsers were running), then 'offloaded 66/66 layers to GPU', CUDA0 model buffer 15,339 MiB, CUDA_Host 682 MiB. With mmap off, loading passes through anonymous RAM even when every layer ends on the GPU." ;
     kpred:decided "SPILL RULE REFINED (Claude Code, 2026-11-05, local stack, per the opposite-side rule): above ramSpillAnonMiB (6 GiB) a running job stops only when Ollama's /api/ps reports a model partly in system RAM (size_vram < size), or when no model is reported for 60 s; above ramHardAnonMiB (12 GiB, new) it stops at once whatever Ollama reports. The 2026-11-04 crash (about 17 GB at about 0.45 GB/s) still trips the hard limit within about 15 s. Called without residency, the old rule holds. Unit tests in scripts/agent/__tests__/session-ram.test.ts." .
+# 2026-11-05 — v0.2.7.1, a patch release: asset generation setup on a Mac (Matt, in chat with Claude Code).
+kb:release-0-2-7-1 rdf:type ktype:Release ;
+    rdfs:label "v0.2.7.1" ;
+    kpred:version "0.2.7.1" ;
+    kpred:has-status "functional" ;
+    kpred:has-part kb:gen-setup-by-os ;
+    kpred:decided "MATT, 2026-11-05: 'I'd prefer to send him production, and he could test as an end user. I could ask him to contribute on dev at some point later.' And: 'Make sure there is a clear setup and test docs instructions page with that patch.' So a patch release from main carries only the Mac setup work (F58.9.17), not the 187 commits dev holds past staging; 0.2.8 stays a separate, reviewed cut." ;
+    kpred:description "The asset generation setup page, rewritten per operating system with a test checklist and removal steps; gen-setup.sh learns macOS on Apple Silicon (pinned Metal and Brush builds, no splat model); the runner offers no splats on macOS and no longer holds every job on a Mac for want of nvidia-smi." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built on a hotfix branch from main and checked on Linux, not yet promoted. Nothing in it has run on a Mac; the first Mac tester is the verification. The same changes reach dev through PR #595." .
