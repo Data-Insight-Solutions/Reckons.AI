@@ -12,10 +12,11 @@
  *
  * JOB CHAINS (Matt 2026-11-03: "craft local job chains"): a job may name predecessors with
  * `after: string[]` (`queue.ts add --after=<name>`, repeatable). It starts only when every
- * predecessor has at least one PASSED run in the done log; while a predecessor is still queued it
- * waits; a predecessor that finished without passing (failed, refused, dropped, no-commit) blocks
- * the waiting job — the worker records it once as 'blocked' with the reason and never runs it,
- * because re-running the predecessor is the user's call. A cycle (each waiting on the other) is
+ * predecessor has at least one PASSED run in the done log; while a predecessor is currently queued it
+ * waits (re-queueing a predecessor IS the user re-running it, so an older failed/blocked run in the
+ * done log does not block); a predecessor whose last finished run did not pass (failed, refused,
+ * dropped, no-commit) and that is not queued blocks the waiting job — the worker records it once as
+ * 'blocked' with the reason and never runs it, because re-running the predecessor is the user's call. A cycle (each waiting on the other) is
  * reported as paused-broken-chain, not spun on.
  *
  * 'passed' must mean the work happened (requirement 3): the worker records the head of a deputy
@@ -173,10 +174,11 @@ export type ChainStatus =
 /**
  * Job chains, per link (Matt 2026-11-03). A link is satisfied by ONE passed run of a job whose
  * name OR id is the link (the queue shows names; ids are accepted so a copy from `list` works).
- * While no run exists but the job is still queued, the link is WAITING; a finished run that is not
- * passed (failed, refused, dropped, no-commit) BLOCKS — the predecessor did not do its work, and
- * re-running it is the user's act, not the worker's; a link to a job that is nowhere is broken
- * too. Blocked wins over waiting. Pure.
+ * Order: a passed run -> satisfied; else the dep is currently queued -> WAITING (re-queueing a
+ * predecessor IS the user re-running it, so an older unpassed run in the done log is stale); else its
+ * last finished run did not pass (failed, refused, dropped, no-commit) -> BLOCKED — the predecessor
+ * did not do its work, and re-running it is the user's act, not the worker's; a link to a job that is
+ * nowhere is broken too. Blocked wins over waiting across links. Pure.
  */
 export function afterChain(job: Pick<QueueJob, 'after'>, queue: QueueJob[], done: DoneJob[]): ChainStatus {
   const deps = job.after ?? [];
@@ -188,12 +190,12 @@ export function afterChain(job: Pick<QueueJob, 'after'>, queue: QueueJob[], done
   for (const dep of deps) {
     const runs = done.filter((d) => d.name === dep || d.id === dep);
     if (runs.some((r) => r.outcome === 'passed')) continue; // the work happened once; a later failure does not un-happen it
+    if (inQueue.has(dep)) { on.push(inQueue.get(dep)!); continue; } // a fresh run is queued: wait for it, whatever older runs did
     if (runs.length > 0) {
       const last = runs.slice().sort((a, b) => a.finishedAt.localeCompare(b.finishedAt)).at(-1)!;
-      reasons.push(`after "${inQueue.get(dep) ?? dep}" finished "${last.outcome}"${last.reason ? ` (${last.reason})` : ''}`);
+      reasons.push(`after "${dep}" finished "${last.outcome}"${last.reason ? ` (${last.reason})` : ''}`);
       continue;
     }
-    if (inQueue.has(dep)) { on.push(inQueue.get(dep)!); continue; }
     reasons.push(`after "${dep}" never ran (not in the queue, not in the done log)`);
   }
   if (reasons.length) return { status: 'blocked', reasons };

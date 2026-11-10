@@ -58,6 +58,19 @@ describe('worker state machine', () => {
 describe('job chains (--after)', () => {
   const done = (name: string, over: Partial<DoneJob> = {}): DoneJob => ({ ...job(name), finishedAt: '2026-09-30T01:00:00Z', outcome: 'passed' as const, ...over });
 
+  it('a re-queued predecessor WAITS even when an old run of it was blocked (2026-11-10 incident)', () => {
+    // scan-b was --after=scan-a. An OLD done record of scan-a is 'blocked', a NEW run of scan-a is queued.
+    // Re-queueing the predecessor is the user re-running it: waiting, not blocked.
+    const b = job('scan-b', { id: 'bbbb0001', after: ['scan-a'] });
+    const newA = job('scan-a', { id: '56d70f26' });
+    const oldA = done('scan-a', { id: 'aaaa0000', outcome: 'blocked', reason: 'old chain block' });
+    expect(afterChain(b, [newA, b], [oldA])).toEqual({ status: 'waiting', on: ['scan-a'] });
+    expect(chainBlocked([newA, b], [oldA])).toEqual([]);
+    // Once that run finishes unpassed (and nothing is queued), it blocks again.
+    expect(afterChain(b, [b], [oldA]).status).toBe('blocked');
+    // A passed run still satisfies it.
+    expect(afterChain(b, [newA, b], [oldA, done('scan-a', { finishedAt: '2026-09-30T03:00:00Z' })])).toEqual({ status: 'ready' });
+  });
   it('a job with no after links is ready', () => {
     expect(afterChain(job('b'), [job('a')], [])).toEqual({ status: 'ready' });
   });

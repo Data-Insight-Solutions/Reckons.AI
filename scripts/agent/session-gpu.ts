@@ -82,11 +82,6 @@ export type GpuVerdict = { ok: true } | { ok: false; kind: 'unknown' | 'full' | 
 /**
  * May a GPU job start? `gpus` null = nvidia-smi missing or unreadable -> unknown -> no. `apps` null
  * (the process list failed) is treated as "cannot show the load is Ollama's", so high utilization
- * blocks. Pure.
- */
-/**
- * May a GPU job start? `gpus` null = nvidia-smi missing or unreadable -> unknown -> no. `apps` null
- * (the process list failed) is treated as "cannot show the load is Ollama's", so high utilization
  * blocks. `pinIndex` = the job is bound to one physical GPU (its spawn sets CUDA_VISIBLE_DEVICES /
  * GGML_VK_VISIBLE_DEVICES): the per-GPU checks then judge THAT GPU only, so a co-tenant legitimately
  * heating another one (e.g. the deputy's own Ollama runtime on GPU0 while a scan runs on GPU1) does
