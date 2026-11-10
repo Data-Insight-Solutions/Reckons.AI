@@ -3,6 +3,44 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-10 (later) — architecture pass: review overhaul, asset goal, job channel, fusion, trust contract, release (Fable 5.2)
+
+**This PR (branch `chore/architecture-pass-2026-11-10`, roadmap only, NOTHING BUILT):** plans written into
+`static/reckons-roadmap.ttl` as `planned` entities with done-tests. Recommendations are `kpred:proposed`;
+what only Matt can decide is a `kpred:open-question` starting `FOR MATT`. Query by id:
+- **Review overhaul** `kb:loop-job-grouping` (now F89.4), phases F89.4.1–.7 in build order: row contract
+  (space + run + lane), one ledger per workspace, lanes (findings leave the person's queue), run as a set,
+  sample gate, producer states by yield and decidability, inline answers.
+- **Asset goal** `kb:asset-run-review-loop` (the loop and the build order), F284.0 data model, F285.0 free
+  layout. F284, F285, F223.5/.6/.8 were copied to dev from `agent/local-v028-jobs`.
+- **Job-to-space channel** F74.14 and the run receipt F74.15 (F58.9.20, F74.12, F74.13 now depend on them).
+- **Fusion** F58.9.19.1–.5. **Offline trust contract** F286 (.1–.9). **Release** notes on 0.2.7 and 0.2.8.
+- **Proposals and questions drawn apart** F223.9–.11 (Matt, 2026-11-10): a statement's standing, the canvas drawing by it, and filters exact to the statement with a focus on one proposal's option.
+- **Jobs in This device** F269.1–.2 (Matt, 2026-11-10): every job detailed in the device space; the space a job runs for holds its definition with a leap that names no device.
+
+**When `agent/local-v028-jobs` is rebased:** (1) drop its own copies of `kb:guided-asset-refine` and its four
+phases, `kb:interactive-space` and its three phases, `kb:proposal-outcome-assets`, `kb:reckon-an-asset`,
+`kb:reckoning-outcome-review`; dev's are the same text. Then restore the two links this PR left out because
+their targets live only on that branch (`guided-how-to-generate → generation-catalog`,
+`proposal-outcome-assets → demo-composite-asset`). (2) Renumber its two entities that claim F58.9.19 and
+F58.9.20 (`showcase-assets-refresh`, `one-prompt-every-asset`): dev gave those ids to multi-scan
+reconstruction and scan auto-attach; graph-lint's duplicate-id will fail otherwise. (3) Its 0.2.8 re-cut
+(the `has-part` moves) is still the only place the decided 0.2.8 scope exists as edges; until it lands,
+`release:burndown` for 0.2.8 measures the replaced list (0 of 14 on 2026-11-10).
+
+**Decided by Matt 2026-11-10 (each recorded as `kpred:decided` on the entity named):** findings leave Review
+(`kb:review-lanes`); run grouping now, in the current Review page, as the default (`kb:loop-job-grouping`);
+hold 0.2.8 for its headline, no end date yet (`kb:release-0-2-8`); walk the scanned place first
+(`kb:asset-run-review-loop`); a gap closes by measure, with a recorded waiver (`kb:asset-data-model`); the
+plan's first rendering is a top-down drawing (`kb:landscaping-plan-space`). **Still only proposed:** where the
+four unfinished 0.2.7 parts go, F286 as a part of 0.2.9, and the yield and decidability thresholds.
+
+**Checked 2026-11-10 in the branch's worktree:** graph-lint 0 errors; blocking script tier 9 of 9 after
+regenerating `static/review-0.2.7.ttl` (the new F89.4 id changed one generated name); md-align aligned; the
+8 unit files that read the roadmap pass (84 tests). NOT run: the full unit suite, e2e, build. Failing on dev
+before this branch and unchanged by it: repo-hygiene, naming-ratchet, taxonomy-current, safety-attestation
+(#604 is its fix), perf-crawl.
+
 ## 2026-11-10 — GPU pin and chain fix landed; scan-fusion approach decided (Claude Code, Opus + Sonnet overseer)
 
 **This PR (branch `agent/local-gpu-pin`):** (1) the deputy env sanitizer drops a `GIT_CONFIG_*` group whole;

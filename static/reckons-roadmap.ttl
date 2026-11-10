@@ -11952,3 +11952,611 @@ kb:bottom-bar-reorg rdf:type ktype:Phase ;
     kpred:has-file     "src/lib/components/NavBar.svelte" ;
     kpred:done-test    "a visual check on desktop and at a 390px viewport, plus a unit or e2e test that Shelly's search bar can be minimized and closed." ;
     kpred:honest-note  "NOT BUILT (2026-11-10). Component named from the roadmap's own NavBar references; confirm before building." .
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# 2026-11-10 — ARCHITECTURE PASS (Fable 5.2, at Matt's direction: "have it review plan and architect
+# critical features like review overhaul"). PLANS ONLY: nothing in this block is built, every new
+# entity is "planned", and every recommendation is kpred:proposed, not kpred:decided. The six
+# questions only Matt could decide were put to him the same day; his answers are the kpred:decided
+# lines dated 2026-11-10 (AskUserQuestion), each naming what it was chosen over.
+# Six parts: A the review overhaul, B the asset goal (F284, F285, F223.5-.8 brought to dev from the
+# unmerged branch agent/local-v028-jobs, plus the model that joins them), C the job-to-space channel,
+# D multi-scan fusion, E the offline trust contract, F the release plan.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+
+# ── A. THE REVIEW OVERHAUL ───────────────────────────────────────────────────────────────────────
+kb:loop-job-grouping kpred:feature-id "F89.4" ;
+    kpred:measured "2026-11-10 (script, the repository workspace's queue): 1,934 rows. 868 have no object. 2 carry a run id. 474 carry no addedAt, so no run can be derived for them. 67 name no space. The journal holds 658 verdicts: 531 reject, 94 defer, 33 accept. Sorted by a first-pass rule into what a verdict would DO: 1,066 claims, 572 findings (no object, from a check or a retired reviewer), 278 fixed-choice questions (term-senses), 18 open questions. Grouped by space, producer and day: 237 groups." ;
+    kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — THE DESIGN IN ONE PARAGRAPH. The unit that enters review is a RUN, not a row. Every machine row says which space it is for, which run made it, and which LANE it is in, meaning what a verdict on it would do. Claims are judged in run groups with the odd rows first. Findings never wait for a person row by row: a check's findings are a report with a ratchet, and what a check cannot know (is this file a deliberate scaffold?) is asked ONCE per group and stored as a fact the check reads next time. Questions are settled from the graph first, then answered where they are asked. Every verdict from every surface lands in one ledger per workspace, and what is open is the queue minus the ledger, computed by one function. A producer's measured yield and decidability move it between sampling, open, held and paused without a person; only retiring it is Matt's. Phases F89.4.1 to F89.4.7 below, in build order." ;
+    kpred:proposed "FABLE 5.2, 2026-11-10 — WHICH TIER DOES WHAT. SCRIPT: stamps and validates rows, routes lanes, dedupes, compacts, picks samples, computes outliers, yield and decidability, moves producer states, runs the first presettle stage. LOCAL MODEL (panel or deputy): the cited-decision presettle stage, and a vote on sampled rows that is attached as a RECOMMENDATION, never a verdict (local code review was retired at 0 true findings in 49; the panel agreed with a hand check on 8 and 9 of 10 docs judgments, 2026-10-13). SONNET OVERSEER (the local-work-reviewer, 10 rows a batch): judges each run's sample, and its row verdicts are the run's measured precision; it may reject or defer machine rows and accept only what it checked against the repository. OPUS: paused producers (fix, demote, retire recommendation), contested choices, designing what a producer cannot tell. MATT: one decision per run with its measured precision stated; claims about his own intent and product shape; the questions nothing could settle; retiring a producer." ;
+    kpred:proposed "FABLE 5.2, 2026-11-10 — WHERE REVIEW LIVES IS ALREADY DECIDED, cited rather than asked again: kb:one-graph-canvas holds the 2026-07-15 principle 'review is a mode and not a page' and Matt's 2026-10-08 decision that Add, Reckoning and Spaces become overlays on the one canvas 'as Explore and Review are', Review keeping its simpler node views where they serve. So this design puts all grouping logic in pure modules that the app, the MCP tools and the CLI share, and it survives the move onto the shared canvas unchanged." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'When does grouping by producer run reach the screen?'): 'Now, current page'. 'By run' becomes a fourth value of the existing group-by control (by entity, by source, flat) and the default, reusing the existing group card, with the logic in shared modules that survive the canvas move. Chosen over waiting for the shared canvas (F92). The cost he accepted: the card's layout is touched again at that move." .
+
+kb:review-row-contract rdf:type ktype:Phase ;
+    rdfs:label "F89.4.1 — every machine row names its space, its run and its lane, and one function writes it" ;
+    kpred:feature-id   "F89.4.1" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:order        1 ;
+    kpred:relates-to   kb:job-backpressure ;
+    kpred:relates-to   kb:scan-auto-attach ;
+    kpred:description  "TIER: script. One append function stamps and validates every row a job writes: kb (the space), run (the id of the JobRun the worker already records for each run, passed to the job as RECKONS_RUN_ID), agent (the job's name), model, lane (claim, question or finding; F89.4.3) and addedAt. A machine row missing any of them is refused at write time with the missing field named. A person's own note (from a chat, the app, a phone shortcut) needs only its space. The app's drain already keeps back a row that names no space instead of guessing; what changes there is that it SAYS how many rows it is keeping back and why." ;
+    kpred:extends      "scripts/offline/pending-queue.ts appendQueueText and mcp-server/src/pending-file.ts appendPendingLines (one shared validator), scripts/offline/queue-integrity.ts, src/lib/rdf/pending-entry.ts, scripts/agent/job-watch.ts (mints the run id)." ;
+    kpred:evidence     "2026-11-10: rows carry no run (2 of 1,934), so 'group by producer run' (Matt, 2026-10-28) is today a guess from the producer's name and the UTC day, and 474 rows cannot even be guessed. The same day a local deputy queued six rows attaching a scan to no named space; a person noticed, no check did." ;
+    kpred:done-test    "Unit: the append function refuses a machine row without kb, without run, and without lane, naming the field each time; it accepts a person's note with kb only. queue-integrity reports existing rows per missing field and exits 0 on them (report only), and exits 1 on a fixture row dated after the contract. A synthetic producer in the unit suite writes through the function. The counts on the live queue before and after are recorded here with their date." .
+
+kb:review-one-ledger rdf:type ktype:Phase ;
+    rdfs:label "F89.4.2 — one queue and one ledger of verdicts per workspace; what is open is computed once" ;
+    kpred:feature-id   "F89.4.2" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:order        2 ;
+    kpred:depends-on   kb:review-row-contract ;
+    kpred:relates-to   kb:job-backpressure ;
+    kpred:description  "A WORKSPACE IS THE PRIVACY BOUNDARY, so each workspace (the repository's, and each private one) has exactly one queue and one ledger, and the machine as a whole has none. A producer addresses a SPACE; the workspace holding that space is looked up, never taken from the directory the job happened to run in, and a row for a space in another workspace is refused. The per-space files kbs/<space>/pending.jsonl stop being written (40 rows in 2 files on 2026-11-10) and their rows move into the workspace queue. VERDICTS: the ledger is the union of two append-only files beside the queue, one per writer, because a browser and a host process appending to one file is how torn lines happened: knowledge.decisions.jsonl (the MCP tools, the CLI, agents) and a second file the app alone appends when a person accepts or rejects in Review. Today a verdict made in the app only changes a statement's status in the browser, which is why yield has to read two sources. OPEN is defined once: a row is open when no ledger line covers its row id, and the app, the MCP tools and the back-pressure tally import the same pure function. COMPACTION (script): rows covered by a reject, and rows covered by an accept that the space's file already holds, move from the queue to a dated archive beside it, and --undo puts them back. A reject therefore no longer waits for the browser to open that space." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — OPTIONS WEIGHED. (A, recommended) one queue and one ledger per workspace, target required. (B) one queue for the machine under ~/.local/state: one place to read, but the app can read only the workspace folder a person linked, and rows for a private space would sit in the same file as rows for public ones. (C) keep both queues as they are and rely on care: the 2026-11-10 untargeted rows were caught by a person, which is what C already was." ;
+    kpred:extends      "mcp-server/src/review-session.ts (groupDecisions, settledIds) and mcp-server/src/review-sources.ts, src/lib/rdf/decision-journal.ts, src/lib/stores/workspace.svelte.ts (drainWorkspacePending, drainWorkspaceDecisions), scripts/offline/lib/proposal-tally.ts, scripts/offline/lib/workspace-space.ts." ;
+    kpred:honest-note  "The ledger is a record, not a credential. It shows whether an agent was in the loop; it cannot stop an agent that runs as the person from writing a line (mcp-server/src/review-session.ts says the same). This design does not change that." ;
+    kpred:done-test    "On a fixture workspace: the app's reader, the MCP reader and the tally report the same open count. A verdict made in the app appends one line to the app's file with the observed actor. Compaction moves the rows covered by a reject into the archive, leaves a row covered by an accept whose statement the space's file does not hold, and --undo restores the queue byte for byte. A row naming a space that lives in another workspace is refused with that workspace named." .
+
+kb:review-lanes rdf:type ktype:Phase ;
+    rdfs:label "F89.4.3 — a row says what a verdict on it would do: claim, question or finding; findings leave the person's queue" ;
+    kpred:feature-id   "F89.4.3" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:order        3 ;
+    kpred:depends-on   kb:review-row-contract ;
+    kpred:relates-to   kb:question-presettle ;
+    kpred:relates-to   kb:work-tiering ;
+    kpred:description  "CLAIM: subject, predicate and object; accepting it writes a fact. QUESTION: the object is open; the verdict is an answer (F89.4.7). FINDING: a machine's observation about a file, a page or a commit that asks for an ACTION; accepting it writes nothing, which is why such rows can be rejected or deferred but never settled. Each job declares what it emits in static/reckons-jobs.ttl, and the integrity check fails a row in a lane its job did not declare. WHERE FINDINGS GO: (a) a SCRIPT-tier check's findings are true by construction, so they are a REPORT with a ratchet (the count may not rise; graph-lint is the model), not rows. (b) What a check cannot know is INTENT, and intent is asked once per GROUP as a question whose answer is a fact the check reads on its next run: the dead-weight sweep asks 'is this directory kept whole on purpose?' once per directory, the answer is recorded on that module in the codebase graph, and the files under it are never listed again. (c) An AGENT-tier job's findings pass the sample gate (F89.4.5) and, if the sample holds, become tasks in the task queue, not facts." ;
+    kpred:evidence     "2026-10-29, kb:question-presettle: yield 3 of 232, 'most question-only rows are machine findings (lint, dead-weight, visual diffs) that want an action, not a fact'. 2026-11-10: a reviewer batch deferred 10 of 10 dead-weight rows, each one accurate and none decidable, because the sweep cannot tell a deliberate scaffold from dead code." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'Should findings leave the Review queue?'): 'Leave Review'. A check's findings live in its report with a ratchet; only the one question per group that needs his intent reaches him, and the answer is stored so the check stops listing those files. Chosen over a separate findings tab inside Review and over keeping findings as rows. The cost he accepted: 'what did the checks notice?' is answered by the reports and agent:watch, not by Review." ;
+    kpred:done-test    "Unit: the lane router over a fixture of 3 claims, 2 questions and 4 findings sends the findings to the report, and kb_review_next returns none of them. The dead-weight sweep over a fixture tree with 12 unimported files in 2 directories emits 2 questions; after one is answered 'kept on purpose' the next run emits 1 and lists no file of that directory. A job with no declared lane fails the jobs lint. Measured and recorded here: the number of decisions facing a person on the live queue before and after." .
+
+kb:review-run-sets rdf:type ktype:Phase ;
+    rdfs:label "F89.4.4 — a run is a set: the group is a node, with run, then subject, then predicate inside it" ;
+    kpred:feature-id   "F89.4.4" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:order        4 ;
+    kpred:depends-on   kb:review-row-contract ;
+    kpred:depends-on   kb:review-one-ledger ;
+    kpred:relates-to   kb:set-substrate ;
+    kpred:relates-to   kb:entity-sets ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:description  "The JobRun the worker already records, one per run, becomes the review group. When the app drains rows it keeps each row's run on the pending statement (in the statement's portable record, beside the finding class and blocks it already carries) and writes ONE node for the run into the space: typed as a JobRun and a skos:Collection, with its job, its model, when it started, how many rows it emitted, and the name of the record field that carries membership. Membership is DERIVED: the members are the statements whose run is this node, so a run of 1,200 rows costs a handful of facts, not 1,200 more. Inside a run the tree is subject, then predicate; those two levels are selectors over the run's members, not nodes of their own. One pure module builds the tree for the app, the MCP tools and the CLI. In the app, 'by run' is one more value of the existing group-by control, and selecting a run's node on the canvas spotlights the subjects its rows are about." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — WHY MEMBERSHIP IS DERIVED, cited: kb:set-substrate records that a derived set costs two quads rather than N+2, and that membership rows were measured displacing real results in 5 of 25 searches. Writing one member edge per pending row would repeat that at the scale of the queue. This meets the standing constraint on kb:loop-job-grouping (a job group is a set, queryable, exportable, spotlighted for free) with the same primitive kb:entity-sets uses." ;
+    kpred:extends      "mcp-server/src/review-links.ts reviewGroups (already groups by run for links; it gains the two inner levels and moves to where the app can import it), src/lib/rdf/entity-sets.ts, src/lib/rdf/portable-metadata.ts, src/lib/rdf/fact-aggregation.ts, src/routes/(app)/review/+page.svelte (the group-by control)." ;
+    kpred:honest-note  "474 of the 1,934 rows queued on 2026-11-10 carry no time at all, so no run can be derived for them. They stay reviewable by producer under the label 'run not recorded'. This phase does not invent a run for an old row." ;
+    kpred:done-test    "Unit: 40 fixture rows from one run about 3 subjects give 1 group with 3 subject groups inside it. Export the space and import it again: the run's node and every statement's run survive, and the members-of-run query returns 40. A row with no run falls into a group named by producer and day and labeled 'run not recorded'. End to end: Review grouped by run shows one card for the run whose accept control states its count, and kb_review_next grouped by run returns the same groups." .
+
+kb:review-sample-gate rdf:type ktype:Phase ;
+    rdfs:label "F89.4.5 — a run enters review as a sample; the odd rows come first; accepting a group states its count" ;
+    kpred:feature-id   "F89.4.5" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:order        5 ;
+    kpred:depends-on   kb:review-run-sets ;
+    kpred:relates-to   kb:review-attention ;
+    kpred:description  "A run writes all its rows to its own file in the workspace, and only a SAMPLE enters the queue: up to 10 rows, picked by a rule that takes one row per predicate before it repeats any, seeded by the run's id so the same run always yields the same sample. The group says so: 'showing 10 of 1,200'. The overseer tier judges the sample first, and the result is printed on the group as a measurement: 'sampled 10: 9 right, 1 wrong'. Then ONE decision reaches the person for the whole run: bring in the rest for a group accept with the odd rows held back, bring in the rest for row-by-row review by the overseer, or discard the run with the measured reason. THE ODD ROWS, shown before any group control and skipped by it, are the four kinds built 2026-10-27 (needs an answer; disagrees with or refines a held fact; confidence under 0.5; a rival pending value from another source) plus two that only a run can show: a predicate used by fewer than 1 in 20 of the run's rows, and a subject outside the scope the job declares. A group accept acts on the filtered group only and states the number it is about to confirm, as the standing constraint requires." ;
+    kpred:principle    "A SAMPLE NOBODY JUDGED IS NOT A MEASUREMENT. A group never prints a precision that the ledger cannot back with row verdicts." ;
+    kpred:non-goal     "Making the person click through a sample before the accept control appears. That is rubber-stamping with extra steps; the sample is judged by a tier that reads it, and the person sees the result." ;
+    kpred:done-test    "Unit: the sampler over a 1,200-row fixture with 5 predicates returns 10 rows covering all 5, and the same 10 on a second call. The queue holds 10 and the run's file 1,200. A discard verdict writes one ledger line naming the run and its count, and the other 1,190 never enter the queue. A bring-in verdict moves them with their run intact. A row with a rare predicate is listed first and is not counted in the group accept. The existing review end-to-end tests cover the card." .
+
+kb:review-producer-state rdf:type ktype:Phase ;
+    rdfs:label "F89.4.6 — measured yield and decidability move a producer between sampling, open, held and paused; retiring it is Matt's" ;
+    kpred:feature-id   "F89.4.6" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:order        6 ;
+    kpred:depends-on   kb:review-one-ledger ;
+    kpred:relates-to   kb:job-backpressure ;
+    kpred:relates-to   kb:proposal-yield ;
+    kpred:description  "TIER: script. Two numbers per producer over the rows that have been ruled on, with a minimum of 10: YIELD is accepted over ruled, which the yield report already prints. DECIDABILITY is accepted plus rejected, over ruled: the share a reviewer could settle at all, which is what catches a producer whose rows are accurate and undecidable. STATES: SAMPLING for a new or changed job, or one with fewer than 10 rows ruled on (only samples enter the queue). OPEN. HELD at 50 or more unreviewed rows (built 2026-10-07). PAUSED when yield is under 0.3 or decidability is under 0.5: its schedule is skipped, agent:watch and the session-start note show the reason with both numbers, and one question is raised naming the three ways out: give the job the fact it cannot tell, demote it to a report, or retire it. RETIRED is set only by a verdict from Matt." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — STOP BY YIELD OR ONLY FLAG? ALREADY DECIDED, cited rather than asked again: on 2026-10-13 (D2 and D3 on kb:job-backpressure) Matt paused the code-review job on its numbers, had each low-yield job sampled 10 rows, and kept the final call for himself. So pausing is automatic and reversible and retiring stays his. The thresholds are proposed here: 0.3 is his own retire bar that day ('under about 3 of 10'), and 0.5 for decidability is a starting value to be corrected by the first month of use." ;
+    kpred:measured     "2026-11-10, the yield report: dead-weight 76 proposed, 5 ruled on, 0 accepted. script-inventory 77, 7, 0. The eight term-senses producers 278 proposed, 0 accepted. docs-review 27% of 124 ruled on. branch-align 91% of 186. graph-lint 87% of 46. The report does not yet print decidability." ;
+    kpred:extends      "scripts/offline/lib/proposal-tally.ts, scripts/offline/proposal-yield.ts, scripts/agent/session-schedule.ts (backlogHolds), scripts/agent/watch.ts." ;
+    kpred:done-test    "Unit, the state function over fixtures: 9 rows ruled on gives sampling; 10 with 2 accepted and 8 rejected gives paused for yield 0.2; 10 with 1 accepted, 1 rejected and 8 deferred gives paused for decidability 0.2; 60 unreviewed gives held. A paused job's schedule is skipped and agent:watch prints the reason. Nothing but a ledger line from a person sets retired." .
+
+kb:review-inline-answers rdf:type ktype:Phase ;
+    rdfs:label "F89.4.7 — a question is settled from the graph first, then answered where it is asked" ;
+    kpred:feature-id   "F89.4.7" ;
+    kpred:part-of      kb:loop-job-grouping ;
+    kpred:has-status   "planned" ;
+    kpred:order        7 ;
+    kpred:depends-on   kb:review-lanes ;
+    kpred:depends-on   kb:question-presettle ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:description  "Once findings have their own lane the question lane is small: by the first-pass count of 2026-11-10, 18 open questions and 278 with a fixed set of answers. A fixed-choice question carries its choices on the row (the senses a term-senses run offers) and Review shows them as options; an open question gets a one-line answer box in place. Before either reaches a person, presettle (functional) runs its script stage and its cited-decision stage and attaches any answer it can defend as a claim on the question. An answer a person gives is written as a fact and, where it decides something, as a decision on the entity it is about, which is exactly what presettle cites the next time. Each answer makes the next question less likely to need asking." ;
+    kpred:decided      "MATT, 2026-10-28: a question with no proposed answer is answered inline, and an agent should first try to settle it from existing decisions in the graph, citing them, before asking him." ;
+    kpred:done-test    "Unit: a row with choices is shown as options, and the chosen one is written to the ledger as an accept of that claim. A typed answer becomes a claim on the same decision and the decision count does not rise (the join kb:question-presettle already tests). Presettle is measured again on the question lane alone and its counts per stage are recorded here, since its 3 of 232 was measured with findings still mixed in." .
+
+# ── B. THE ASSET GOAL: one loop across F284, F285 and F223.5-.8 ──────────────────────────────────
+# The F284, F285 and F223.5/.6/.8 entities directly below were planned on 2026-11-05/07 on the
+# local branch agent/local-v028-jobs and are brought to dev here so that builders can find them.
+# Matt's quoted decisions are unchanged. Two links to entities that exist only on that branch
+# were left out and return when it lands; F223.7 (composite assets) stays on the branch with the
+# demo work it depends on.
+kb:guided-asset-refine rdf:type ktype:Feature ;
+    rdfs:label "Guided asset refinement — refine one 3D asset from a set of captured assets, its unknowns flagged not filled, with a guided how-to in the Reckoning" ;
+    kpred:feature-id   "F284" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:description  "A generation job whose brief is a SET of assets in a space (photos, phone LiDAR scans, video) refining ONE named 3D target (a Gaussian splat or a blender/Meshy GLB), re-run as the person gathers more context. Every run reports the gaps it could not fill — the captures, measurements or facts still missing, each named for what it blocks — and never invents them. A guided flow in the Reckoning answers 'how do I generate it?': the required inputs, what the space already holds, the flagged gaps, and the next capture or generation step. Flagship application: a landscaping plan in a private space." ;
+    kpred:decided      "MATT, 2026-11-07 (chat): '0.2.9 will include a way to use multiple assets to refine the same 3d asset generation, maybe splat maybe blender mcp glb... we need some images and some lidar scans from my phone to be used, to generate a landscaping plan in a private space... I am tasked with gathering the right context for that generation job. We need unknowns flagged not filled with assumptions, we need a guided how to generate x in Reckoning.'" ;
+    kpred:principle    "UNKNOWN IS FLAGGED, NEVER FILLED. A gap is a first-class output of the job — a named absence saying what it blocks — not a silent assumption. This is the Reckoning's 'it can tell you it does not have enough to go on' and the asset-matrix's 'an open question names the variants it blocks', carried into GENERATING: the job does not invent what the captures do not record." ;
+    kpred:principle    "RECONSTRUCTION RECORDS; PROPOSAL IS LABELED. A splat or geometry reconstructed from the person's captures records what was there and is labeled reconstructed; anything the plan adds (proposed plantings, features) is labeled proposed, never measured. (Carries the F58.9 principle.)" ;
+    kpred:part-of      kb:meta-visual-generation ;
+    kpred:relates-to   kb:gen-video-to-splat ;
+    kpred:relates-to   kb:mvg-3d-gen ;
+    kpred:relates-to   kb:room-scan-capture ;
+    kpred:relates-to   kb:wf-reckon ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:decided      "MATT, 2026-11-07 (chat): BOTH, splat-then-GLB. Build the splat path first (the reconstructed backyard — the F58.9 machinery is already functional); add the blender-mcp / Meshy GLB path (F58.3) once the multi-capture brief and gaps manifest exist. F284.1 (brief) and F284.2 (gaps) stay format-agnostic, so neither choice blocks the other." ;
+    kpred:decided      "MATT, 2026-11-07 (chat): A MODE IN THE RECKONING. kb_reckoning gains a 'generate' target; the guided steps are proposals and the person captures. No new top-level navigation tab — the product shape stays." ;
+    kpred:evidence     "2026-11-07 (deputy): the machinery this builds on already exists and is grounded — room-scan-capture (F58.9.6, functional, Stray Scanner phone LiDAR to splat), splat-refine (F58.9.12, planned), scan-quality (F58.9.14, scaffolded), mvg-3d-gen (F58.3, GLB via Meshy / blender-mcp). What is NOT yet true: today's scan:room is SINGLE-capture; multi-capture refinement and the guided how-to are not built. This is a plan, verified only by graph-lint, not run." .
+
+kb:asset-refine-brief rdf:type ktype:Phase ;
+    rdfs:label "F284.1 — the brief is a SET of captured assets refining one named 3D target" ;
+    kpred:part-of      kb:guided-asset-refine ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:room-scan-capture ;
+    kpred:depends-on   kb:splat-refine ;
+    kpred:relates-to   kb:mvg-asset-assembly ;
+    kpred:description  "A generation brief names one 3D target (splat or GLB) and the SET of assets that feed it (photos, LiDAR scans, video), each recorded with its capture provenance. Re-running with more assets refines the same target instead of forking a new one." ;
+    kpred:done-test    "a fixture space with three captured assets (two LiDAR scans, one photo) and one named target parses; the brief lists all three as input and names the target; a second run with a fourth asset refines the same target; graph-lint passes" .
+
+kb:asset-refine-gaps rdf:type ktype:Phase ;
+    rdfs:label "F284.2 — the job reports its gaps and waits on them, never invents" ;
+    kpred:part-of      kb:guided-asset-refine ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-refine-brief ;
+    kpred:relates-to   kb:wf-reckon ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:description  "Every refine run emits a first-class gaps manifest: the captures, measurements or facts still needed to reach the target, each named for what it blocks. The job produces no geometry or content for a gap, and re-runs cleanly when the gap is filled." ;
+    kpred:done-test    "on a brief missing one capture, the run lists that gap by name and what it blocks, emits no invented geometry, and re-runs with the gap filled; the manifest is a readable list, not a guess" ;
+    kpred:open-question "What closes a gap — a person's rating, or a measured threshold (the scan-quality metrics)? The completeness criterion is not yet defined." .
+
+kb:guided-how-to-generate rdf:type ktype:Phase ;
+    rdfs:label "F284.3 — the guided 'how to generate it' in the Reckoning" ;
+    kpred:part-of      kb:guided-asset-refine ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:asset-refine-gaps ;
+    kpred:relates-to   kb:wf-reckon ;
+    kpred:relates-to   kb:scan-quality ;
+    kpred:relates-to   kb:room-scene-space ;
+    kpred:constraint   "IT PROPOSES THE STEPS, THE PERSON CAPTURES. The guided flow names the next capture and the command, but never captures, generates or edits on the person's behalf (the Reckoning's 'IT PROPOSES. YOU DECIDE.')." ;
+    kpred:description  "In the Reckoning surface, a named target asset yields a guided plan: the required inputs (from the generation-catalog and the stage's declared capability), what the space already holds, the flagged gaps, and the next capture or generation step as a named action (for example, 'take a LiDAR pass of the fence line — Stray Scanner', 'run scan:quality on the last pass')." ;
+    kpred:done-test    "a Reckoning with target 'a landscaping plan' over a space holding one LiDAR scan shows the required inputs, the one present asset, the named gaps, and one next-step action naming the capture tool and command; it invents no content" .
+
+kb:landscaping-plan-space rdf:type ktype:Phase ;
+    rdfs:label "F284.4 — the flagship use: a landscaping plan in a private space" ;
+    kpred:part-of      kb:guided-asset-refine ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:guided-how-to-generate ;
+    kpred:relates-to   kb:room-scan-capture ;
+    kpred:relates-to   kb:splat-refine ;
+    kpred:constraint   "PRIVATE, AND IT RECORDS. The space is a private space; reconstructed geometry is labeled reconstructed, and the plan's proposed plantings and features are labeled proposed, never measured." ;
+    kpred:description  "A person's own outdoor place as a private space, reconstructed and refined from their phone captures (LiDAR scans, photos), producing a landscaping plan — what goes where — grounded in the reconstructed geometry and the confirmed facts, with its unknowns flagged." ;
+    kpred:open-question "What IS the end-goal 'landscaping plan' asset — a top-down 2D plan, plantings placed in the 3D splat, a rendered plan image, or a PDF? Matt named it as the end goal but not the form; the form is his call." ;
+    kpred:open-question "Does the flagship space live in this repository's example spaces, or in a private space kept outside it (as F277 keeps its first use)? Personal landscape data likely belongs outside the public repo." .
+
+kb:interactive-space rdf:type ktype:Feature ;
+    rdfs:label "Interactive space — a mode where the graph's edges go away, node previews show, and only previewable or interactable nodes remain; the graph becomes a place you move in and act on" ;
+    kpred:feature-id   "F285" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:part-of      kb:meta-graph-view ;
+    kpred:relates-to   kb:guided-asset-refine ;
+    kpred:relates-to   kb:room-scene-space ;
+    kpred:relates-to   kb:own-space-walkthrough ;
+    kpred:relates-to   kb:game-development ;
+    kpred:relates-to   kb:threlte ;
+    kpred:relates-to   kb:release-0-3-0 ;
+    kpred:decided      "MATT, 2026-11-07: 'For the big release on 0.3 I think interactive mode should be the highlight and core.'" ;
+    kpred:decided      "MATT, 2026-11-07: 'I think we will need some way to setup the locations of nodes in free layout, then switch to an interactive mode while still in free layout. Interactive mode should only show nodes preview not lines between them, and only show nodes with previews or certain interactable actions, like click in interactive mode.'" ;
+    kpred:decided      "MATT, 2026-11-07: 'The same playable 3d space should be done for testing new furniture in your apartment/house.'" ;
+    kpred:decided      "MATT, 2026-11-07: 'We do not want to become Rapier or a game engine, plug in that and other open source code tools / plugins into Reckons.AI for an integrated experience. The 3d space is our domain, not necessarily gaming, thats where I see the line personally.'" ;
+    kpred:principle    "THE SPACE IS THE DOMAIN, NOT A GAME ENGINE. Reckons.AI plugs in open-source tools (three.js/threlte is already in the stack; physics, terrain and flow libraries are optional per-use, behind settings.*) and does not adopt or become an engine. This carries the existing honest-note 'WE SHIP NO ENGINE, NO RENDERER AND NO ASSET GENERATOR ... a LAYER over other people's engines', and the game-development line that a position becomes a fact only when a person deliberately pins it." ;
+    kpred:principle    "PREVIEW, THEN ACT, THEN RECORD. In interactive mode the edges are hidden and the nodes render as their previews (the existing AssetGlbViewer / nodePreviewSize machinery); a person clicks a node to act on it, and any action that would change a fact surfaces as a proposal through the existing review path, never a silent write." ;
+    kpred:evidence     "BUILT: the graph/space view with node arrangement; node previews (AssetGlbViewer.svelte, the nodePreviewSize setting, Draco/GLB and GIF/video decoding); threlte; and free-layout position work in flight on branch feat/free-layout-positions (src/lib/rdf/node-positions.ts, unmerged, no open PR). NOT BUILT (2026-11-07): the interactive-mode toggle (edges off, previews on, interactable-node filter), the click-to-act surface, and the 3D scanned-world fidelity (walk / sculpt / place) as one mode of the same space." ;
+    kpred:description  "A mode of the space view, entered while a space is in free layout and staying in that same free layout. The edges between the nodes are hidden; each remaining node renders as its preview (GLB, video or image); and the field keeps only the nodes that have a preview or a declared interactable action (for example a click). The graph becomes a place you move in and act on — at 2D free-layout fidelity now, and at 3D scanned-world fidelity (the backyard through F284, the apartment through the room-scene-space line) as the scans and the asset refinement land." ;
+    kpred:decided      "MATT, 2026-11-07: 'I think one initial interaction feature, but maybe there will be many distinct types of interactivity.' Framing retired from open-question: the 2D free-layout mode and the 3D scanned world are ONE capability at two fidelities, not two features; the action surface stays open to many interactivity types (F285.2)." ;
+    kpred:decided      "MATT, 2026-11-07: 'a single toggle off/on for now should work. Definition of what can be interacted with how would likely be nodes in the space's graph.' Retired from open-question: F285.1 is a single on/off toggle (not a multi-mode selector), and the interactable set in interactive mode is the nodes in the space's graph, each with a preview or a declared action." ;
+    kpred:decided "MATT, 2026-11-07 (AskUserQuestion): 'Interactive = core' — the interactive space (F285) is the v0.3.0 headline and core; the sharing release (registry root, in-app registry, listing policy, signed manifests) stays as kpred:has-part, the story being 'share a space you can move in on.' One cohesive release (F33 'ONE cohesive version'); the sharing parts remain agent-proposed (2026-10-21) and are not the headline. (Related: the F143 'thin runtime vs opt-in integration' call leans the same way — the plug-in layer — but remains F143's own open question.)" .
+
+kb:interactive-mode-toggle rdf:type ktype:Phase ;
+    rdfs:label "F285.1 — the interactive-mode toggle: from a free layout, edges off, previews on, interactable-node filter" ;
+    kpred:part-of      kb:interactive-space ;
+    kpred:has-status   "planned" ;
+    kpred:constraint   "ENTERS FROM FREE LAYOUT AND STAYS IN IT. The mode is a view of the same free-layout node positions, not a new layout: toggling it changes what is shown, not where the nodes are. Node positions remain view state until a person deliberately pins one (the game-development principle)." ;
+    kpred:description  "From a space's free layout, a person flips a single on/off toggle (for now) into interactive mode: the edges between nodes are hidden, each remaining node renders as its preview (reusing AssetGlbViewer and nodePreviewSize), and the field keeps only the nodes in the space's graph that have a preview or a declared interactable action. Clicking such a node is the entry point to acting on it." ;
+    kpred:open-question "Which preview does a node show when it has more than one (image, GLB, video) — the most recent, a person's pick, or the kind matching the action? Reuse the existing nodePreviewSize setting and the AssetGlbViewer kind resolution, or extend them." .
+
+kb:interactive-actions rdf:type ktype:Phase ;
+    rdfs:label "F285.2 — the interactable-action surface: what a click does, and how an action's result records a proposal" ;
+    kpred:part-of      kb:interactive-space ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:interactive-mode-toggle ;
+    kpred:constraint   "ACTIONS RECORD PROPOSALS, NEVER SILENT WRITES. Whatever a click does, a result that would change a fact goes through the existing review path (a pending statement a person confirms); a pure view action (open the preview, run a read-only simulation) changes nothing, and the mode never mutates the graph on its own." ;
+    kpred:description  "Each node type declares the interactable actions it offers in interactive mode (open, click, place, and so on). Matt expects many distinct types of interactivity to be added over time, so this is an open surface, not a closed list: adding a type is an extension of a node type, not a new feature. Selecting one action runs it in the app; a placement or an edit that would change a fact surfaces as a proposal, and a read-only action stays read-only." .
+
+kb:interactive-3d-world rdf:type ktype:Phase ;
+    rdfs:label "F285.3 — the 3D scanned-world fidelity: walk the backyard, test furniture in the apartment, on the plug-in open-source stack (not an engine)" ;
+    kpred:part-of      kb:interactive-space ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:interactive-actions ;
+    kpred:relates-to   kb:guided-asset-refine ;
+    kpred:relates-to   kb:room-scene-space ;
+    kpred:relates-to   kb:own-space-walkthrough ;
+    kpred:constraint   "PLUG IN, DO NOT ADOPT. three.js/threlte render; optional open-source physics, terrain and flow libraries serve the use (a drainage simulation, a heightfield brush) behind settings.*; Reckons.AI never ships or becomes an engine (the 'WE SHIP NO ENGINE' honest-note and the F143 open-question on a thin runtime)." ;
+    kpred:description  "Interactive mode at 3D fidelity over a scanned world instead of the 2D free layout: the reconstructed backyard (F284.4) a person walks and, in later slices, sculpts and drains before digging with the tractor; the apartment (room-scene-space, mvg-asset-assembly) a person places furniture in to test a design. The same mode, the same click-to-act surface, at 3D fidelity." ;
+    kpred:open-question "The honest bridge is scan to heightfield/mesh before any sculpt or drainage — a splat is a view, not a diggable surface. The room scan already exports depth PNGs, but whether the current scan:room keeps them is unverified (2026-11-07). Flag, not fill." .
+
+kb:proposal-outcome-assets rdf:type ktype:Phase ;
+    rdfs:label "F223.5 — a proposal names its outcome as a list of assets, and closes when they exist" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:proposal-shape ;
+    kpred:relates-to   kb:asset-matrix ;
+    kpred:decided      "MATT, 2026-11-05: 'Reckoning needs the asset list as an outcome for the proposal.'" ;
+    kpred:description  "Each option of a reckoning's proposal lists the assets it will produce (for example: a demo video, with its transcript, narration audio and screen capture; a poster as SVG and PDF; a splat), each with its type and how it would be made (local job, Open in app, or an outside service, F117). The list is part of the proposal's target shape: the proposal is complete when every listed asset exists in the graph with a passing check, which is a rule, not a model's opinion (the F223.1 lifecycle)." ;
+    kpred:done-test    "unit tests: a proposal option with an asset list validates against the proposal shape; the target shape requires each listed asset type with a passing receipt; the proposal moves to completed only when all exist, and an asset that failed its check keeps it active; the reckoning page lists the assets under each option." .
+
+kb:reckon-an-asset rdf:type ktype:Phase ;
+    rdfs:label "F223.6 — reckon an asset: the asset is the situation, a described change is the target" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:proposal-outcome-assets ;
+    kpred:relates-to   kb:open-in-app ;
+    kpred:description  "From an asset's node, 'Reckon this' opens a reckoning whose situation is the asset with its receipt (prompt, model, seed, settings, QA report) and whose target is a change in words ('warmer light', 'the turtle facing left', 'a longer clip'). Options are concrete jobs: regenerate the stage with a changed prompt or seed, a different model or setting, an edit in an Open in app (F283), or an outside service where none runs locally (F117). Each option lists its outcome assets (F223.5). Accepting one queues its jobs; the result returns as a pending new version beside the old." ;
+    kpred:done-test    "on the Generated assets example: reckoning the turtle picture with 'warmer light' yields two to four options, each with its jobs and outcome assets and the receipt fields it changes; accepting one writes the job requests (no model runs in the test) and the proposal stays active until a new version with a passing check arrives." .
+
+kb:reckoning-outcome-review rdf:type ktype:Phase ;
+    rdfs:label "F223.8 — a reckoned asset comes back for review: old and new side by side, with what changed and the checks" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:reckon-an-asset ;
+    kpred:depends-on   kb:asset-qa-in-review ;
+    kpred:description  "The new version of a reckoned asset waits in review beside the old one: both previews, the receipt fields that differ, the QA report (F281.5), and the reckoning it answers. Accepting it closes the proposal (F223.1 lifecycle); rejecting it keeps the old version and the proposal open." ;
+    kpred:done-test    "a pending new version shows both previews and the differing receipt fields in the existing review flow (no new navigation); accept closes the proposal; reject keeps it open with the reason." .
+kb:release-0-2-9 kpred:has-part kb:guided-asset-refine .
+kb:release-0-3-0 kpred:has-part kb:interactive-space ;
+    kpred:decided "MATT, 2026-11-07: 'For the big release on 0.3 I think interactive mode should be the highlight and core.' + MATT 2026-11-07 (AskUserQuestion) 'Interactive = core': F285 the interactive space is the v0.3.0 headline and core, and the sharing release (the has-part list below) is a part of it — the story is 'share a space you can move in on.' One cohesive release (F33); the sharing parts remain agent-proposed (2026-10-21) and ride along as parts, not the headline." .
+
+kb:asset-run-review-loop rdf:type ktype:Concept ;
+    rdfs:label "One loop for assets — reckon, run, review, and the gaps that remain" ;
+    kpred:relates-to   kb:guided-asset-refine ;
+    kpred:relates-to   kb:interactive-space ;
+    kpred:relates-to   kb:reckon-an-asset ;
+    kpred:relates-to   kb:reckoning-outcome-review ;
+    kpred:relates-to   kb:reckoning-gaps ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:loop-job-grouping ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:multi-scan-reconstruction ;
+    kpred:description  "ONE FORM IN THREE PLACES. A gap a generation run could not fill (F284.2), a gap between a situation and a target (F268.1, computed by src/lib/rdf/reckoning-gaps.ts) and an open question in review (F32) are the same thing: a fact whose subject and predicate are known and whose object is open, naming what it blocks. So refining an asset, reckoning a change to one, and reviewing the result are one loop, not three features that hand files to each other. A RECKONING over an asset or a target lists its gaps and offers options. An accepted option queues a RUN, or names a capture the person makes. The run returns ONE group to REVIEW (F89.4.4): the new version beside the old, its receipt, and the gaps it could not fill. The verdict moves the proposal through its lifecycle (F223.1). The gaps that remain are the next reckoning's situation." ;
+    kpred:principle    "THE GUIDED HOW-TO IS NOT A SEPARATE FLOW. F284.3 is a reckoning whose target is an asset: its options close gaps, and some of their steps are captures only the person can make. It lists what the target needs, what the space holds, and the next step, from the same gap list every other reckoning uses." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — THE ORDER THAT SHOWS 'MOVE IN A SCANNED PLACE AND RECKON A CHANGE TO IT' SOONEST. (1) The channel and the receipt (F74.14, F74.15) with scan auto-attach (F58.9.20): a finished scan arrives in its space by itself. (2) F285.0 free layout, then F285.1 the toggle: a space of previews you move around in, in 2D. (3) FIRST MILESTONE, 'walk it': open a scanned place's splat from interactive mode with its open gaps shown as things to click ('no coverage of this corner: a pass is needed'). It needs only what steps 1 and 2 build plus the existing splat viewer. (4) F284.0 to F284.2: the brief as a set, versions, gaps from receipts. (5) F223.5, F223.6 and F223.8 on a generated example asset first (their 0.2.8 scope), then on the place. (6) SECOND MILESTONE, 'reckon a change to it': reckon the place, accept 'capture and refine', and the new version returns beside the old in review. (7) Fusion (F58.9.19.1 to .5) becomes the engine behind 'refine' when its measurements pass; until then refine means a better single capture. (8) The mesh, placements and F285.3." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — WHAT IS HONESTLY WHICH RELEASE. v0.2.8 (re-cut by Matt 2026-11-06): reckoning a GENERATED asset and reviewing its new version (F223.5, .6, .8), which needs the channel (F74.14, F74.15, F58.9.20) and the first three review phases (F89.4.1 to .3) so the returning version is not buried. v0.2.9 (his 2026-11-07 words: multiple assets refining one 3D asset, unknowns flagged, a guided how-to in the Reckoning): F284.0 to F284.3 on the splat path, F285.0 free layout, the fused splat if its measurements pass, review phases F89.4.4 to .7, and the offline trust contract. v0.3.0: interactive mode (F285.1 to F285.3) as the headline, the mesh and placements, the GLB path of F284, and sharing as a part. NOT HONEST TO PROMISE BEFORE IT IS MEASURED: a Blender-editable mesh from fusion (nothing of it is built), and any sculpting or drainage in a scanned place." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'What is the first thing demonstrated on a scanned place?'): 'Walk it first'. Open the scanned place in interactive mode with its open gaps shown as things to click; reckoning a change to it comes second. Chosen over reckoning a change first." .
+
+kb:asset-data-model rdf:type ktype:Phase ;
+    rdfs:label "F284.0 — the data model: capture, target, brief, version and gap, named in the vocabulary" ;
+    kpred:feature-id   "F284.0" ;
+    kpred:part-of      kb:guided-asset-refine ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:asset-run-review-loop ;
+    kpred:relates-to   kb:proposal-shape ;
+    kpred:relates-to   kb:entity-sets ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:description  "Types and predicates added to static/reckons-vocabulary.ttl and nowhere else. ASSET: a node with a stored file (kbs/<space>/assets/<slot>/<content id>) and a receipt (F74.15). Its KIND is stated and never inferred: CAPTURED (recorded from the world: a photo, a phone depth scan, a video; with its device and time), RECONSTRUCTED (computed from captures and claiming to record what was there: a splat, a mesh), or PROPOSED (anything a plan or a generator adds). TARGET: a named asset that does not fully exist yet, with a target shape in the F223.1 form: the kinds of input it needs and the checks its result must pass. BRIEF: a skos:Collection whose members are the captures feeding one target, pointing at that target; adding a member and running again makes a new version instead of a new target. VERSION: every run's output is its own asset node, a version of the target and a revision of the version before it. The target's CURRENT version is the newest ACCEPTED one, so a pending or rejected version never replaces what a person approved. GAP: a partial fact on the target (the requirement is the predicate, the object is open) with what it blocks, emitted by the run in its receipt and never written as geometry or content." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — WHAT CLOSES A GAP (the open question on F284.2). Two kinds of gap, two ways to close. A MEASURABLE requirement (frames registered, overlap between captures, a scan-quality figure) closes when the measure passes, by script; a person's rating never closes it. A requirement nothing can measure (is this the right boundary, what is this plant) closes by the person's answer. A person may also WAIVE a measurable gap ('good enough for now'), and that is recorded as a waiver beside the failing number, not as the measure passing. This keeps 'unknown is flagged, never filled' true of ratings as well as of geometry." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'What closes a gap?'): 'Measure, with waiver'. A measurable gap closes only when its measure passes; he may waive it, and the waiver is recorded beside the failing number; a gap nothing can measure closes by his answer. Chosen over his rating closing any gap, and over measurement with no waiver. Not yet set: the passing bar for each measure." ;
+    kpred:done-test    "A synthetic fixture space (two depth scans, one photo, one target) parses and graph-lint passes; the vocabulary names every type and predicate above. Unit, over the fixture: the brief lists three members; a second run's output becomes version 2 while the current version stays 1 until version 2 is accepted; a gap validates as a partial fact with what it blocks; an asset with no kind fails its shape; a waived gap keeps its failing measure and carries the waiver." .
+
+kb:asset-refine-brief kpred:depends-on kb:asset-data-model .
+
+kb:free-layout-positions rdf:type ktype:Phase ;
+    rdfs:label "F285.0 — free layout: a person places the nodes, and the positions are kept" ;
+    kpred:feature-id   "F285.0" ;
+    kpred:part-of      kb:interactive-space ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:game-development ;
+    kpred:description  "The layout interactive mode is entered from. A person drags nodes to where they belong and each position is stored on its node as hnav:x and hnav:y: kept in export, hidden from the list of facts, like hnav:order. Dragging in free layout IS the deliberate act that pins a position; an automatic layout (force, tree) never writes one. The storage half exists, unmerged, on branch feat/free-layout-positions (a positions module with tests, 121 lines, cut from a dev that is now far behind, so it needs a rebase). NOT BUILT: the layout mode that reads and writes the positions." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — NUMBERING. A local deputy's notes call this work 'F284'; F284 is guided asset refinement. It is F285.0 because it exists as what interactive mode starts from (Matt, 2026-11-07: 'some way to setup the locations of nodes in free layout, then switch to an interactive mode while still in free layout'). A third coordinate is added by F285.3, when a node is placed in a scanned place's frame in meters, and not before. The z-dome slider a deputy built for this was archived on 2026-11-10 as the wrong shape." ;
+    kpred:done-test    "Unit: positions survive export and import and are hidden as meta (the tests on the branch). New: a node dragged in free layout is where it was left after a reload; switching to a force or tree layout and back writes no position; one end-to-end test at desktop width." .
+
+kb:interactive-mode-toggle kpred:depends-on kb:free-layout-positions .
+
+kb:interactive-3d-world kpred:relates-to kb:multi-scan-reconstruction ;
+    kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — A PLACE HAS TWO BODIES IN ONE FRAME. The splat is what you SEE; the mesh is what you ACT ON (stand on, measure, place things against, edit). Both come out of the fusion work in the same frame, in meters, with gravity down (F58.9.19.2), so the mesh can sit unseen under the splat. This is the bridge the open question on this entity asks for: nothing is sculpted or drained on a splat. In this mode a node's position is a position in that frame, and placing something is a proposed fact that goes to review, never a silent write." .
+
+kb:landscaping-plan-space kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — WHAT THE PLAN IS (answering this entity's first open question with a recommendation). The plan is not a file. It is the set of PLACEMENT FACTS in the space: each planting or feature as a node, labeled proposed, with its position in the place's frame in meters. A top-down drawing, a view inside the splat, a rendered image and a PDF are all RENDERINGS of those facts, regenerated when the facts change (the F277 rule: generation reads only confirmed facts). So the choice is which rendering comes first, and none of them is lost by choosing." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'Which rendering of the plan first?'): 'Top-down drawing', a to-scale 2D plan. Chosen over placements shown in the 3D splat, a realistic image, and a PDF. The question stated the proposal above, that the plan itself is the set of placement facts and every drawing or image is a rendering of them, and he answered within it." .
+
+# ── C. THE JOB-TO-SPACE CHANNEL: one design under F58.9.20, F74.12 and F74.13 ─────────────────────
+kb:job-space-channel rdf:type ktype:Phase ;
+    rdfs:label "F74.14 — one channel between a local job and a space: the workspace folder, one writer per file" ;
+    kpred:feature-id   "F74.14" ;
+    kpred:part-of      kb:local-panel ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:review-row-contract ;
+    kpred:relates-to   kb:review-run-sets ;
+    kpred:description  "The app keeps a space in the browser and can see the machine only through the workspace folder a person linked, which it reads every 10 seconds; a job's state lives outside that folder, under ~/.local/state/reckons/jobs. Scan auto-attach (F58.9.20), job indicators (F74.13) and job chains with resume (F74.12) each have to cross that gap, so they share this one design. FOUR KINDS OF FILE, EACH WITH ONE WRITER (the rule scripts/agent/space-watch.ts already follows). (1) FILES OF ASSETS at kbs/<space>/assets/<slot>/<content id>, written by the job; the name is the content's hash, so writing the same result twice changes nothing. (2) PROPOSALS, the review queue, written only through the one append function (F89.4.1): the rows that attach an asset to its node carry their space, run and lane, and the drain stores the file from the folder, as F58.9.20 already plans. (3) STATUS, one small file the queue worker rewrites whole when something changes: the workers alive, and for each run whose target space is IN THIS WORKSPACE its job, its state (queued, running, held with the reason, done, failed), its stage, what it waits on, and its result. It is a VIEW rebuilt from the worker's own records; deleting it loses nothing. (4) REQUESTS, one file per request, written by the app when a person asks for a job (regenerate from the start, resume from a stage) and answered by the host in a status file beside it. A request names a job from the defined list and its arguments, never a command." ;
+    kpred:principle    "STATE IS NEVER A PROPOSAL; RESULTS ARE. Running, held and percent done are never put in front of a person to review; nobody should be asked to accept that a job is 40% done. In the space a job runs for, state is shown from the status file. In This device it is kept in full as derived records (F269.1; Matt, 2026-11-10: jobs are detailed in the device space at minimum). A finished run that produced an asset records exactly its receipt facts in its target space, as proposals: the asset, the run that produced it, and the run's node. Their arrival is what 'completion marked in the space' means." ;
+    kpred:constraint   "A status file shows only runs whose target space is in its own workspace. A job for a private space never appears in the repository workspace's file." ;
+    kpred:extends      "scripts/agent/queue-worker.ts and scripts/agent/job-state.ts (write the status view), scripts/agent/space-watch.ts (the request files and the one-writer rule), src/lib/stores/workspace.svelte.ts (the poll and the drain), scripts/agent/watch.ts (the same model agent:watch prints)." ;
+    kpred:done-test    "Unit: the status model built from fixture worker and done records reports the active count, the done count and each held reason (the F74.13 test), and leaves out a run that targets a space in another workspace. A request naming a job that is not defined is refused, and no test can make request text reach a shell string. Draining an attach row stores the file from the folder, and a row with no target space is refused (the F58.9.20 tests). A failed run writes status and no proposal." .
+
+kb:scan-auto-attach kpred:depends-on kb:job-space-channel .
+kb:inapp-job-indicators kpred:depends-on kb:job-space-channel .
+kb:job-dependencies-stage-resume kpred:depends-on kb:job-space-channel ;
+    kpred:depends-on kb:run-receipt ;
+    kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — WHERE THE CHAIN IS SHOWN. On the asset's own node panel, where a person already looks: 'made by' lists the stages with their states, and regenerate offers 'from the start' or 'from <stage>'. No new tab and no jobs page. The request goes out through the request files of F74.14." .
+
+kb:run-receipt rdf:type ktype:Phase ;
+    rdfs:label "F74.15 — one receipt for every run that makes an asset, checked against itself" ;
+    kpred:feature-id   "F74.15" ;
+    kpred:part-of      kb:local-panel ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:multi-scan-reconstruction ;
+    kpred:relates-to   kb:asset-qa-loop ;
+    kpred:description  "A scan writes a receipt and a generation writes one, in different forms, and the queue's record of a finished job points at neither. One envelope for both, with the part that differs by kind inside it: the run's id, the job, the target space, the inputs by content id, the stages (name, state, seconds, a hash of its inputs, its outputs), the checks (pass or fail, and what was measured), the outputs (content id, kind, slot) and the gaps. The queue's done record points at it, kb_job_status returns it, and the status file carries its outputs: that is how a job records its output asset as its result. STAGE RESUME (F74.12) reads the same record: a stage is skipped when its record says done and the hash of its inputs is unchanged, and 'from the start' ignores the records. ONE MEASURE, ONE FIELD: a number written in two places will come to disagree. On 2026-11-10 a scan receipt's summary said 0 frames registered while its own registration check had measured 193 of 200. The check's measured value is the truth; the summary figure is derived from it when the receipt is written; validation fails when they differ." ;
+    kpred:extends      "scripts/content/scan-room-lib.ts (ScanReceipt, validateReceipt), scripts/content/scan-room.ts (--resume), scripts/agent/queue.ts (the done record, --after), mcp-server/src/local-jobs.ts (kb_job_status)." ;
+    kpred:done-test    "Unit: a receipt whose summary disagrees with its check fails validation naming both values; a fixture reproducing 0 against 193 fails before the fix and passes after. A run interrupted after stage N reruns only the later stages and a full rerun reruns all (the F74.12 test); a changed input reruns from the stage that reads it. kb_job_status on a finished scan fixture returns the output asset's content id. A script-tier check validates every receipt it finds and runs with the other offline checks." .
+
+kb:multi-scan-reconstruction kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — THIS ENTITY'S OPEN QUESTION, ANSWERED: the registration check's measured value is the truth, the top-level figure is derived from it, and receipt self-consistency becomes a script-tier check (F74.15)." ;
+    kpred:proposed "FABLE 5.2, 2026-11-10 — SPLAT AND MESH, cited rather than asked again: Matt chose BOTH, splat first then GLB (2026-11-07, on F284), and on 2026-11-10 named the fused splat for preview and the mesh from depth maps for Blender. Their roles differ, so neither is 'the' deliverable: the splat is seen, the mesh is acted on, and what they share is ONE FRAME in meters with gravity down. The stages are F58.9.19.1 to .5 below. Every stage is its own queued job chained after the one before; the layout, splat and mesh stages take the scan card (--gpu=1), one at a time; the per-capture stages need no card; a failed stage reruns alone (F74.12). Of the four asset scripts still without jobs: scan:room and scan:quality become jobs in this chain, splat:compress is a stage of it, and blender:render becomes a job when the mesh exists." .
+
+# ── D. MULTI-SCAN FUSION, stage by stage (F58.9.19) ──────────────────────────────────────────────
+kb:fusion-pooled-layout rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.1 — one layout over the pooled frames, with the links between captures measured" ;
+    kpred:feature-id   "F58.9.19.1" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        1 ;
+    kpred:depends-on   kb:run-receipt ;
+    kpred:relates-to   kb:asset-refine-gaps ;
+    kpred:description  "STAGES, each writing its part of the receipt. INGEST, per capture: the files a phone depth scan must have, whether depth and confidence frames are present, the length of the path walked. FRAMES, per capture: the existing sharpest-frame selection, now keeping for every kept frame its time and its row in the phone's own motion record, because the later stages need that index. FEATURES and MATCH over all captures in one COLMAP database, one camera per capture seeded from that capture's camera file, matching in sequence inside a capture and ACROSS captures. MAP: one reconstruction. THE RECEIPT RECORDS: the verified matches between every pair of captures (the link table), the frames registered per capture, how many separate models came out, and the mean reprojection error. PASSING needs ONE model that holds every capture. When two captures share fewer verified links than the bar, the stage does not force them together: it stops and emits a GAP in the F284.2 form, 'these two captures do not overlap enough to join; a pass that sees both areas is needed', blocking the fused target." ;
+    kpred:honest-note  "NOT BUILT AND NOT MEASURED (2026-11-10). Whether matching every frame against every other across four captures fits this machine's time and memory is unknown until it is run; matching only against retrieved look-alike frames is the fallback, and the choice is made by measurement." ;
+    kpred:done-test    "On a SYNTHETIC fixture of two captures rendered from one scene with known overlap: one model, both captures registered above the single-capture bar. With the overlap removed: two models, the named gap, a non-zero exit, and no later stage runs. Unit tests for the link table and the gap rule. No private capture is used in any test." .
+
+kb:fusion-metric-frame rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.2 — scale and up: the fused layout in meters with gravity down, and the phone's poses measured at last" ;
+    kpred:feature-id   "F58.9.19.2" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        2 ;
+    kpred:depends-on   kb:fusion-pooled-layout ;
+    kpred:relates-to   kb:room-scan-capture ;
+    kpred:description  "The fused layout has no scale and no up. The phone's motion record has both, per capture, each in its own frame. For each capture, fit the one transform (a scale, a rotation, a shift) that best lays the layout's camera positions onto the phone's, ignoring outliers. THE RECEIPT RECORDS per capture: the scale, the leftover error in centimeters, the share of frames that agree; and across captures: how far the scale estimates spread. The fused frame takes the median scale and the phone's direction of gravity, and its origin and axes are written in the receipt so that every export shares them. THIS IS THE COMPARISON F58.9.6 PUT OFF: the leftover error says how far the phone's poses sit from the reconstruction's, capture by capture, and the pose convention the code calls undocumented is settled by which reading makes the fit close." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10: use the phone for the seven numbers of this fit only (scale, up, placement), not as the pose of each frame, until these errors have been read. That is the smallest trust in the phone that still gives meters." ;
+    kpred:done-test    "Synthetic fixture with a known scale of 2.5 and a known tilt: the scale is recovered within 1% and up within 1 degree. A capture whose motion record is corrupted is reported as an outlier and left out of the median, not averaged in. On the real trial the numbers are recorded on kb:multi-scan-reconstruction, whatever they are." .
+
+kb:fusion-splat rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.3 — the fused splat, for looking" ;
+    kpred:feature-id   "F58.9.19.3" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        3 ;
+    kpred:depends-on   kb:fusion-metric-frame ;
+    kpred:description  "Train one splat on the fused layout in meters with the existing trainer, holding back every tenth frame of every capture from training. The receipt records the existing training checks and, per capture, how well the held-back frames are rendered. The splat is compressed and attached to its space through the channel (F74.14) as a new version of the place (F284.0)." ;
+    kpred:done-test    "On the synthetic two-capture fixture the stage ends in a passing receipt with a held-back score per capture; the output is attached as a pending new version, not as a replacement." .
+
+kb:fusion-mesh rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.4 — the mesh from the phone's depth, for acting: stand on, measure, place against, edit in Blender" ;
+    kpred:feature-id   "F58.9.19.4" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        4 ;
+    kpred:depends-on   kb:fusion-metric-frame ;
+    kpred:relates-to   kb:interactive-3d-world ;
+    kpred:description  "Fuse the phone's depth frames, masked by its confidence frames, into one surface using the fused poses in meters; simplify it; export it as a GLB in the SAME frame as the splat. The receipt records the depth frames used and dropped, the cell size, the triangle count, and the median difference in centimeters between the phone's depth and the layout's own points, which is a second and independent check on the scale. Blender opens the GLB; a .blend file is Blender's own save, made by a person or by a later render job, not by this stage." ;
+    kpred:honest-note  "NOT BUILT (2026-11-10). Whether scan:room keeps the depth frames at all is recorded as unverified (2026-11-07, on F285.3); this stage begins by checking, and if they are dropped the FRAMES stage keeps them. A phone's depth reaches a few meters, so ground farther than that will be holes. Holes are reported as gaps and never filled." ;
+    kpred:done-test    "Synthetic fixture with depth frames of a known box: the mesh's dimensions are within 2% of the box, in the splat's frame; a region with no depth is a hole and a named gap, not a surface. The GLB loads in the app's existing viewer." .
+
+kb:fusion-better-test rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.5 — what is measured to call fusion better than one scan at a time" ;
+    kpred:feature-id   "F58.9.19.5" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        5 ;
+    kpred:depends-on   kb:fusion-splat ;
+    kpred:relates-to   kb:scan-quality ;
+    kpred:description  "Against each capture's own single-scan receipt. (1) JOINED: one model holds every capture. (2) NOTHING LOST: each capture's registered share is no more than 5 points under its single-scan share. (3) SEES AT LEAST AS WELL: each capture's held-back frames, rendered by the fused splat, score no worse than the same frames rendered by that capture's own splat. (4) SEES FURTHER, measured once on the trial and not on every job: with one capture left out of training, the fused splat still renders that capture's frames, which no single scan can do at all. (5) ONE SCALE: the scale estimates across captures agree within 2%, and the phone's depth is within 5 cm of the layout's points at 2 m." ;
+    kpred:honest-note  "The numbers 5 points, 2% and 5 cm are PROPOSED STARTING VALUES, not measurements. The first real run records what it finds and the bars are then set from it." ;
+    kpred:done-test    "A script reads the fused receipt and the single-scan receipts and prints the five results with their numbers, exiting non-zero when any fails. It is run on the trial and its output is recorded on kb:multi-scan-reconstruction." .
+
+# ── E. THE OFFLINE TRUST CONTRACT (proposed as a part of v0.2.9) ─────────────────────────────────
+kb:offline-trust-contract rdf:type ktype:Feature ;
+    rdfs:label "Offline trust contract — what 'trustworthy enough to run offline' means, as properties a script can check" ;
+    kpred:feature-id   "F286" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:release-0-2-9 ;
+    kpred:relates-to   kb:loop-local-deputy ;
+    kpred:relates-to   kb:local-dev-integration ;
+    kpred:relates-to   kb:loop-safety ;
+    kpred:relates-to   kb:queue-ram-guard ;
+    kpred:description  "v0.2.9 is described as 'what makes the local deputy and its queue trustworthy enough to run offline'. Here that sentence becomes nine properties, each with one check that passes or fails, run together by one script-tier command and by the worker before it starts an unattended batch. 'Trustworthy enough' then means two things that can be dated: all nine checks pass, and one measured unattended night ran with none of them broken, recorded on this entity. Resource safety (the RAM guard F74.11, the GPU pin, one model resident at a time) is already built; the command reports those tests' results beside the nine." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10: proposed as a part of v0.2.9; adding it to the release's parts is Matt's call. ROUTING THAT FOLLOWS FROM 2026-11-10: the deputy, one model on one card, is for unattended batches and never for work a person is waiting on; work a person is waiting on goes to a Sonnet overseer with a tight brief and done-tests, which is what worked that day." ;
+    kpred:honest-note  "NOTHING HERE IS BUILT AS A CONTRACT (2026-11-10). Several of the mechanisms exist and are named on each property; what does not exist is the one command that checks them together, and the measured night." .
+
+kb:trust-evidence-on-claims rdf:type ktype:Phase ;
+    rdfs:label "F286.1 — a report's claims carry evidence a script reads again" ;
+    kpred:feature-id   "F286.1" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Every claim in a deputy's report that something works, passed or exists names the command, its exit code and the log line. A script reads them again and marks a claim with no evidence UNVERIFIED, and a branch carrying an unverified claim is not offered for merge. scripts/agent/verify-run-report.ts does this today for three kinds of report; this extends it to the deputy's branch reports." ;
+    kpred:evidence     "2026-11-10: a deputy report said a re-import brings the splat file in; it did not. 2026-11-03 (on kb:local-dev-integration): the queue marked exit 0 as passed while the deputy's own report said BLOCKED." ;
+    kpred:done-test    "Fixtures: a report claiming 'tests pass' with no command fails; one whose named command logged exit 1 fails; a report saying BLOCKED beside exit 0 is recorded as blocked." .
+
+kb:trust-every-write-targeted rdf:type ktype:Phase ;
+    rdfs:label "F286.2 — every write names where it goes" ;
+    kpred:feature-id   "F286.2" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:review-row-contract ;
+    kpred:description  "No machine row enters a queue without its space and its run. This property is F89.4.1 seen from the trust side; its check is that phase's done-test plus a scan of each workspace's queue for rows written after the contract date." ;
+    kpred:done-test    "The check exits non-zero on a fixture queue holding one untargeted row dated after the contract, and names the producer." .
+
+kb:trust-nothing-private-leaves rdf:type ktype:Phase ;
+    rdfs:label "F286.3 — nothing private leaves the machine in a branch" ;
+    kpred:feature-id   "F286.3" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Before a branch merges into the local integration repository, a script scans its diff, its commit messages and its branch name against a list of private terms kept outside any repository, in the person's config folder. It prints counts and where, never the terms." ;
+    kpred:evidence     "2026-11-10: two unpushed deputy branches carried a private location in public-bound text, one of them in a commit message." ;
+    kpred:done-test    "With a synthetic terms list: a fixture branch with a listed term in a commit message is refused, and the output contains no listed term. With no list configured the check says 'not configured' and exits 2, because unknown is not a pass." .
+
+kb:trust-worker-outlives-session rdf:type ktype:Phase ;
+    rdfs:label "F286.4 — the queue worker outlives the session that started it" ;
+    kpred:feature-id   "F286.4" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:description  "The worker runs as a user service that restarts on failure and writes a heartbeat. The property is that the heartbeat is younger than twice its interval, and a stale one is shown in agent:watch and in the app's indicators (F74.13)." ;
+    kpred:evidence     "2026-11-10: the worker died with the session that launched it and was restarted detached by hand." ;
+    kpred:done-test    "Start the worker from a shell and end the shell: the heartbeat keeps advancing. Kill the worker: it is back within a minute. A fixture heartbeat older than twice the interval fails the check." .
+
+kb:trust-green-before-push rdf:type ktype:Phase ;
+    rdfs:label "F286.5 — what is pushed was checked as one tree on this machine" ;
+    kpred:feature-id   "F286.5" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:local-dev-integration ;
+    kpred:description  "The property F276 exists to give: the commit that leaves this machine has a local record of the blocking checks passing on its exact tree, the COMBINED tree of the batch. Each branch passing alone is not the batch passing; dev went red that way on 2026-11-04." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — THE OPEN QUESTION ON F276 ('does the local merge replace merge-queue.ts or feed it?'): FEED IT. The checked batch is pushed as ONE branch and opened as ONE pull request to dev, and merge-queue.ts lands it. Work still lands through a pull request and CI still runs, once per batch instead of once per branch. A push straight to dev would skip both." ;
+    kpred:done-test    "The push script refuses a head with no ledger line for its tree. A fixture of two branches, each passing, whose merge fails a ratchet, is refused with the failing check named." .
+
+kb:trust-watching-costs-less rdf:type ktype:Phase ;
+    rdfs:label "F286.6 — watching a job costs less than the job" ;
+    kpred:feature-id   "F286.6" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:work-tiering ;
+    kpred:description  "A script-tier job is summarized by rule: its exit code, its duration and its pass and fail lines, which job-watch already extracts before any model reads the log. A model reads a log only for an agent-tier job or a failure." ;
+    kpred:evidence     "2026-11-10: job-watch spent 17 to 100 seconds of a local model summarizing every job, including a 2-second script job that runs every 10 minutes." ;
+    kpred:done-test    "A passing script-tier fixture job produces a run record that names no model and carries the same headline fields. The check fails if any passed script-tier run of the last day names a model." .
+
+kb:trust-no-self-settlement rdf:type ktype:Phase ;
+    rdfs:label "F286.7 — no agent settles its own proposals" ;
+    kpred:feature-id   "F286.7" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:review-one-ledger ;
+    kpred:description  "A verdict never settles a row the same agent proposed, and every verdict shows whether an agent was in the loop. The rule exists (sameAgent in src/lib/rdf/decision-journal.ts, and the review procedure refuses it); this pass did not re-run its tests. The contract adds a scan of each ledger for a verdict whose actor is the proposer of a row it covers; the count must be zero." ;
+    kpred:done-test    "A fixture ledger with one self-settled row fails the check and names the agent; the live ledgers are scanned and the count is recorded here with its date." .
+
+kb:trust-holds-are-visible rdf:type ktype:Phase ;
+    rdfs:label "F286.8 — nothing waits silently" ;
+    kpred:feature-id   "F286.8" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:description  "Every job that is held, paused, blocked or has given up states its reason and since when, in agent:watch, in the session-start note and in the status file (F74.14). A job that gave up after its attempts stays listed until a person or a rule clears it." ;
+    kpred:done-test    "A fixture queue with one job in each state: each appears with its reason and its age. A job waiting longer than its limit with no stated reason fails the check." .
+
+kb:trust-only-reversible-unattended rdf:type ktype:Phase ;
+    rdfs:label "F286.9 — unattended work is limited to what can be undone" ;
+    kpred:feature-id   "F286.9" ;
+    kpred:part-of      kb:offline-trust-contract ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Unattended, a deputy may append to a queue, commit to its own branch, and queue proposals. It may not delete, force-push, publish, push to GitHub, change settings or install anything. The allowlist added for the deputy on 2026-11-10 is the enforcement, since its auto-mode classifier cannot run against a local model." ;
+    kpred:done-test    "A list of forbidden commands kept beside the allowlist is refused one by one, and a list of allowed ones passes. The two lists are the test data." .
+
+# ── F. THE RELEASE PLAN, reviewed ────────────────────────────────────────────────────────────────
+kb:release-0-2-8 kpred:decided "MATT, 2026-11-06, answering 'Re-cut v0.2.8 as the assets and demos release?': 'Re-cut as proposed' (chosen over keeping both, and over a smaller cut). RE-CUT v0.2.8 as THE ASSETS AND DEMOS RELEASE. Headline: a LinkedIn-ready demo video made by the app's own pipeline from a showcase example space, every asset in it checked and every edit reckoned. In it: F275 demo videos (F275.8-.21 below), F93.1 frame sampling, F58.9.18-.20 video quality and showcase spaces, F283 Open in, F223.5-.8 reckoning assets, F166.1 Shelly generation, and Triple Check (F100, already on dev). Moved to v0.2.9 because none has started: F243, F244, F258, F259, F218, F92, F256, F61, F255, F246, F108.4, F34.3, F274.4." ;
+    kpred:honest-note "2026-11-10 (Fable 5.2, architecture pass): THE PARTS LISTED ON THIS ENTITY ARE NOT THE DECIDED ONES. The re-cut above was recorded only on the local branch agent/local-v028-jobs; its decision is copied here, but the has-part edges on dev are still the list it replaced, and the 'below' in its text refers to entities that are still on that branch. Measured against the list still here, release:burndown reported 0 of 14 parts functional or better on 2026-11-10: a number about a scope Matt replaced four days earlier. Two further things to fix when the branch lands: it numbers two of its own entities F58.9.19 and F58.9.20, which dev gave on 2026-11-10 to multi-scan reconstruction and scan auto-attach, so the branch's two must be renumbered; and the release has no end date, so it cannot be burned down against time." ;
+    kpred:proposed "FABLE 5.2 (architecture pass), 2026-11-10 — WHAT 0.2.8 SHOULD SHIP, AND WHEN. Do not cut it from what dev holds today: none of the headline's parts that needed building is functional (F223.5 to .8 are planned; the F275 demo pipeline is in an open pull request). THE MINIMUM THAT EARNS THE NAME: the F275 demo pipeline merged; F223.5, F223.6 and F223.8 working on the Generated assets example (one asset reckoned, its new version reviewed beside the old); the channel that brings that version back (F74.14, F74.15, F58.9.20); and review phases F89.4.1 to .3 so it is not buried. Everything else on the re-cut list rides along if it is ready and moves to 0.2.9 if it is not; the asset matrix (F277) is the likeliest to move. Give the release an end date, and on that date cut what of the minimum is functional or move the date in the graph on purpose." ;
+    kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'Hold or cut v0.2.8?'): 'Hold for headline'. v0.2.8 keeps its name for the assets-and-demos headline, with the minimum set proposed on this entity (the F275 demo pipeline merged; F223.5, .6 and .8 working on the Generated assets example; the job-to-space channel; review phases F89.4.1 to .3). Chosen over cutting now from dev. Asked the same day for an end date, he chose 'No date yet', so the release still cannot be burned down against time." .
+
+kb:release-0-2-7 kpred:honest-note "2026-11-10 (Fable 5.2, architecture pass): v0.2.7 shipped, yet release:burndown on that date reports 1 of its 5 graph parts functional or better. The four below functional (F245, the local deputy, the review grouping now numbered F89.4, F273) were not moved to a later release when 0.2.7 was cut, so the graph still says 0.2.7 owes them. Proposed, for Matt to confirm: the review grouping's phases F89.4.1 to .3 go to 0.2.8 and F89.4.4 to .7 to 0.2.9; the other three are his to place." .
+
+kb:asset-refine-gaps kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'What closes a gap?'): 'Measure, with waiver'. This answers the open question on this entity; the full rule is on kb:asset-data-model. Not yet set: the passing bar for each measure." .
+
+# ── G. PROPOSALS AND QUESTIONS DRAWN APART ON THE CANVAS (Matt, 2026-11-10, for the reckoning work) ──
+# F223.4 left 'drawing proposals as nodes on the shared canvas' until after the citation chain.
+# This is that work, planned. Nothing is built.
+kb:graph-proposals kpred:decided "MATT, 2026-11-10 (chat with Claude Code): 'I think we need to show nodes and edges differently for a proposal, such that visibly and with filters we can focus in on the proposed details. Also, for questions, the same visible and filter seperation from other statements, and questions could be ghostly or semi transparent to note they are not full defined statements. This is all in regards to the reckoning enhancements.'" ;
+    kpred:evidence "2026-11-10, read from the code, not observed in the running app: (1) the 2D renderer colours an edge by selection, hover and source view only; nothing in its edge loop reads a statement's status, so a proposed edge and a held one look the same (src/lib/3d/KnowledgeGraph2D.svelte). (2) A filter resolves to NODE keys and an edge is lit when both of its ends match (the 'edgeLive' rule), so the 'pending' filter also lights every held edge between two matched nodes; a filter cannot isolate statements. (3) The filter list has 'confirmed' and 'pending' and no entry for a proposal or a question (src/lib/types/turtle-chat.ts GraphFilter). (4) A question's missing object is the literal '?', and a short literal shared by two or more statements becomes a node (categoryLiterals in src/lib/rdf/graph-view.ts), so two questions in one space would both point at ONE shared '?' node. The first test of F223.9 settles whether (4) happens." .
+
+kb:statement-standing rdf:type ktype:Phase ;
+    rdfs:label "F223.9 — a statement's standing (held, pending, proposed, question), worked out once and carried to the canvas" ;
+    kpred:feature-id   "F223.9" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:depends-on   kb:proposal-shape ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:reckoning-gaps ;
+    kpred:relates-to   kb:review-run-sets ;
+    kpred:description  "One pure function gives every statement a STANDING from fields it already has, with no new status: HELD (confirmed or refined), PENDING (awaiting review, part of no proposal), PROPOSED (awaiting review AND belonging to an option of a reckoning's proposal), QUESTION (a partial fact: its object is open). A pending statement records which option it belongs to in its portable record, the same way F89.4.4 records its run, so an option is a set whose members are derived, not listed. The graph view passes the standing with every edge, and gives every node the standing of the statements that touch it: a node touched only by proposed statements is a proposed node. A QUESTION'S MISSING END is its own node, one per question, never the shared '?' literal." ;
+    kpred:extends      "src/lib/rdf/graph-view.ts (buildGraphView, categoryLiterals), src/lib/rdf/partial-facts.ts, src/lib/rdf/proposal.ts, src/lib/rdf/portable-metadata.ts." ;
+    kpred:done-test    "Unit: the standing function over one fixture statement of each kind. A graph view of two questions has two question-end nodes and no node for the literal '?'; this test is written FIRST and its result on today's code is recorded here, because the shared '?' node was read from the code and not seen. A node touched by one held and one proposed statement is held; a node touched only by proposed statements is proposed. A statement's option survives export and import." .
+
+kb:standing-drawn rdf:type ktype:Phase ;
+    rdfs:label "F223.10 — the canvas draws by standing: proposals dashed, questions hollow and half-strength, in 2D and 3D" ;
+    kpred:feature-id   "F223.10" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:statement-standing ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:description  "HELD is drawn as now. PROPOSED: a dashed edge in the proposal's own color, and a node that exists only in a proposal is hollow with a dashed ring. QUESTION: the edge is drawn at about half strength and ends at a hollow, half-strength node marked '?', the absence drawn as a thing. PENDING outside a proposal keeps today's look. Standing is never shown by color alone: line style and node shape carry it, so it reads in a screenshot printed in grey. The legend names the four. The style lives in the renderers, so Explore, Review and the Reckoning all show it." ;
+    kpred:constraint   "A QUESTION MUST NOT LOOK FILTERED OUT. The canvas already uses faintness to mean 'not what you asked for': a filter dims everything else to 0.18. If a question were simply faint, a question in view and a held fact dimmed by a filter would look alike. So a question is hollow with a full-strength dashed outline and about 0.5 fill, and dimming multiplies on top of that. When the questions filter is on, questions are shown at their full question look and everything else dims." ;
+    kpred:extends      "src/lib/3d/KnowledgeGraph2D.svelte (the edge and node loops), src/lib/3d/KnowledgeGraph.svelte, src/lib/components/GraphCanvas.svelte." ;
+    kpred:done-test    "Unit: the style function maps each standing to a style token (dash, hollow, strength), and an undimmed question's strength is at least twice a dimmed held fact's. Visual, on a synthetic space holding all four standings: npm run visual:local at desktop width and at 390px, 2D and 3D, with the four distinguishable in a greyscale copy of the screenshot. No private space is used." .
+
+kb:standing-filters rdf:type ktype:Phase ;
+    rdfs:label "F223.11 — filters for proposed and for questions, exact to the statement; focus one proposal and switch its options" ;
+    kpred:feature-id   "F223.11" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:standing-drawn ;
+    kpred:relates-to   kb:proposal-options-ui ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:description  "The filter list gains PROPOSED and QUESTIONS, beside confirmed and pending, in the same control, the same link parameter, and the same list Shelly can set. FILTERS BECOME EXACT TO THE STATEMENT: a status filter resolves to the matching statements as well as their nodes, and an edge is lit only when its own statement matches, so a held edge between two nodes of a proposal stays quiet. Nothing is removed from the layout, as now: what does not match dims and keeps its place. FOCUS ONE PROPOSAL: from an option card in the Reckoning, or from a proposal's node, 'show in the graph' lights that option's statements; the held statements the option cites (F223.2) stay readable at a second, quieter strength; the rest dims. Switching to another option swaps what is lit and moves no node, so two options can be compared by flipping between them. The gaps that block the proposal (F268.1) are its questions and light with it." ;
+    kpred:extends      "src/routes/(app)/+page.svelte (filterMatch and the filter chips), src/lib/types/turtle-chat.ts (GraphFilter), src/lib/3d/KnowledgeGraph2D.svelte (the edgeLive rule), src/routes/(app)/reckoning/+page.svelte." ;
+    kpred:done-test    "Unit: on a fixture with a held edge and a proposed edge between the same two nodes, the proposed filter lights only the proposed edge; the questions filter lights only question edges and their ends. End to end, on a synthetic space with one proposal of two options and two questions: each filter chip isolates its kind; focusing option B changes which statements are lit; node positions before and after the switch are equal; the link parameter restores the same view after a reload." .
+
+# ── H. JOBS DETAILED IN 'THIS DEVICE', WITH A LEAP FROM THE SPACE A JOB RUNS FOR (Matt, 2026-11-10) ──
+kb:device-space kpred:decided "MATT, 2026-11-10 (chat with Claude Code): 'Jobs also need to be detailed within the my device space at minimum, I would also like leaps from the main job definition in whatever space the job is running for.'" .
+
+kb:device-space-jobs rdf:type ktype:Phase ;
+    rdfs:label "F269.1 — every local job is detailed in This device: its definition, state, runs and chain" ;
+    kpred:feature-id   "F269.1" ;
+    kpred:part-of      kb:device-space ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:run-receipt ;
+    kpred:relates-to   kb:inapp-job-indicators ;
+    kpred:description  "The device space is where a job can be read in full: what it is (by name from the defined list, its tier, its schedule, its card), its state (queued, running, held with the reason, given up), the jobs it waits on, and its recent runs, each with when, how it ended, its receipt (F74.15) and, for a run made for a space, a leap to that space. These are DERIVED RECORDS written by a script from the worker's own files, as confirmed facts from one named source, never proposals: nothing here asks to be reviewed. scripts/agent/queue-to-space.ts already writes the queue this way into a separate job-plan space in a private workspace; that output becomes part of the device space. Only the most recent runs of each job are kept as nodes (20 proposed); older ones are a count and the logs." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — HOW THIS FITS F74.14. The status file stays: it is the small view a space's own workspace can read, limited to that workspace's runs, and it feeds the indicators (F74.13). The device space is the full record, private to the device. ONE WRITER PER FILE still holds: the script's job records go in their own file in the device space's folder, apart from the settings a person edits there. Whether the app loads two files as one space or takes the script's file in as a source is the builder's first check against kb:space-file-layout." ;
+    kpred:constraint   "The device space is device-only (F269): never shared, published, synced or placed in the repository's workspace. Job records for a private space therefore stay private with it." ;
+    kpred:extends      "scripts/agent/queue-to-space.ts, scripts/agent/job-watch.ts (job-runs), scripts/agent/device-config.ts, scripts/agent/queue-worker.ts." ;
+    kpred:done-test    "Unit, over fixture worker and done records: every defined job that is queued, running, held or recently run has a node with its state and reason; a job with 30 runs keeps 20 run nodes and a count; a run made for a space carries a leap to it; two runs over the same records give the same file apart from its generated line. The file is written with mode 0600 outside any Git checkout, and a test fails if its path is inside one." .
+
+kb:job-definition-leap rdf:type ktype:Phase ;
+    rdfs:label "F269.2 — the space a job runs for holds its main definition, with a leap to its detail in This device" ;
+    kpred:feature-id   "F269.2" ;
+    kpred:part-of      kb:device-space ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:device-space-jobs ;
+    kpred:relates-to   kb:agents-in-app ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:job-dependencies-stage-resume ;
+    kpred:description  "A space that a job runs for holds that job's MAIN DEFINITION as a node: which defined job it is, what it makes for this space, how often. That is the space level of kb:agents-in-app (2026-10-07), and it travels with the space. The node carries a LEAP to the same job in This device, where its state, runs and chain are. The definition arrives in the space as one proposal the first time the job is queued for it, through the queue like any other row (F89.4.1), so no job writes into a space silently. The repository's own jobs graph gets the same leap on each of its definitions, by script." ;
+    kpred:constraint   "THE LEAP NAMES NO DEVICE. A space can be shared and opened elsewhere, so the leap's target is a reserved name meaning 'the device space here', resolved when it is followed; it is never a particular device's id. Followed on a device with no device space, it says so plainly and goes nowhere." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10: the leap uses the existing leap predicate and its in-app form (a path), with the reserved name in it and the job's id as the thing to select on arrival. A leap is one per node today, which fits: one definition, one leap. How the app resolves a space by name from a path is the builder's first check (src/lib/db.ts)." ;
+    kpred:extends      "src/lib/rdf/kb-leap.ts (classifyLeap), src/lib/db.ts, scripts/agent/queue.ts (the first queueing for a space)." ;
+    kpred:done-test    "Unit: the leap on a definition contains no device id and no stable id; resolving it with a device space registered selects that job there; with none registered it returns a named 'no device space here' result. Exporting the space and importing it under another browser profile keeps the definition and the leap, and following it there reaches that profile's device space or the plain message. Queueing a job for a space for the first time writes exactly one proposal for its definition, and a second queueing writes none." .
