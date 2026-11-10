@@ -82,7 +82,13 @@ export function assembleArgs(o: {
   end: { png: string; ms: number };
   vtt?: string;
   out: string;
+  /** False when body.mp4 has no audio stream (a render with no narration clip): a silent track of bodyMs is made instead of mapping [1:a]. */
+  bodyHasAudio?: boolean;
+  bodyMs?: number;
 }): string[] {
+  const hasAudio = o.bodyHasAudio !== false;
+  if (!hasAudio && !(o.bodyMs && o.bodyMs > 0)) throw new Error('assembleArgs: a body without audio needs bodyMs');
+  const bodyAudio = hasAudio ? '1:a' : `${o.vtt ? 6 : 5}:a`;
   const s = (ms: number) => (Math.max(0, ms) / 1000).toFixed(3);
   const v = 'scale=1920:1080:flags=lanczos,setsar=1,fps=25,format=yuv420p'; // the recording is 1280x720; never pad
   const args = [
@@ -94,9 +100,10 @@ export function assembleArgs(o: {
     '-f', 'lavfi', '-t', s(o.end.ms), '-i', 'anullsrc=r=48000:cl=mono',
   ];
   if (o.vtt) args.push('-i', o.vtt);
+  if (!hasAudio) args.push('-f', 'lavfi', '-t', s(o.bodyMs as number), '-i', 'anullsrc=r=48000:cl=mono');
   args.push(
     '-filter_complex',
-    `[0:v]${v}[v0];[1:v]${v}[v1];[2:v]${v}[v2];[1:a]aresample=48000,aformat=channel_layouts=mono[a1];` +
+    `[0:v]${v}[v0];[1:v]${v}[v1];[2:v]${v}[v2];[${bodyAudio}]aresample=48000,aformat=channel_layouts=mono[a1];` +
       '[v0][3:a][v1][a1][v2][4:a]concat=n=3:v=1:a=1[v][a]',
     '-map', '[v]', '-map', '[a]',
   );
@@ -116,7 +123,7 @@ export type Receipt = {
   credits: string[];
 };
 
-export const HUME_CREDIT = 'Narration voice made with Hume (hume.ai).';
+export const HUME_CREDIT = 'Narration voiced by Hume (hume.ai), a cloud service: the narration text was sent to it.';
 export const RECORDED_CREDIT = 'Narration recorded by the author.';
 
 export function buildReceipt(i: {

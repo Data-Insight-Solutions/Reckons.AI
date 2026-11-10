@@ -73,6 +73,17 @@ describe('title, body and end assembly', () => {
     expect(a[a.indexOf('-filter_complex') + 1]).toMatch(/\[v0\]\[3:a\]\[v1\]\[a1\]\[v2\]\[4:a\]concat=n=3:v=1:a=1\[v\]\[a\]$/);
     expect(a.slice(-1)).toEqual(['o.mp4']);
   });
+  it('a body with no audio stream gets a silent track instead of mapping [1:a]', () => {
+    const a = assembleArgs({ title: { png: 't', ms: 1000 }, body: 'b', end: { png: 'e', ms: 1000 }, vtt: 'c.vtt', out: 'o', bodyHasAudio: false, bodyMs: 4000 });
+    const graph = a[a.indexOf('-filter_complex') + 1];
+    expect(graph).not.toContain('[1:a]');
+    expect(graph).toContain('[6:a]aresample=48000');
+    expect(a).toEqual(expect.arrayContaining(['-f', 'lavfi', '-t', '4.000', '-i', 'anullsrc=r=48000:cl=mono']));
+    // Without captions the silent input moves up one index.
+    const b = assembleArgs({ title: { png: 't', ms: 1000 }, body: 'b', end: { png: 'e', ms: 1000 }, out: 'o', bodyHasAudio: false, bodyMs: 4000 });
+    expect(b[b.indexOf('-filter_complex') + 1]).toContain('[5:a]aresample=48000');
+    expect(() => assembleArgs({ title: { png: 't', ms: 1 }, body: 'b', end: { png: 'e', ms: 1 }, out: 'o', bodyHasAudio: false })).toThrow();
+  });
   it('without captions maps no subtitle stream', () => {
     const a = assembleArgs({ title: { png: 't', ms: 1000 }, body: 'b', end: { png: 'e', ms: 1000 }, out: 'o' });
     expect(a).not.toContain('mov_text');
@@ -80,6 +91,11 @@ describe('title, body and end assembly', () => {
 });
 
 describe('cards', () => {
+  it('the end card makes no claim about where pictures were made and names Hume as a cloud service', () => {
+    const text = [...endCardLines([HUME_CREDIT])].join(' ');
+    expect(text).not.toMatch(/your own computer|Nothing was sent|open models/i);
+    expect(text).toContain('a cloud service');
+  });
   it('the end card carries every credit it is given, and the card escapes text', () => {
     const lines = endCardLines(['Narration voice made with Hume (hume.ai).']);
     expect(lines).toContain('Narration voice made with Hume (hume.ai).');

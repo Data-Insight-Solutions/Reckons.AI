@@ -36,7 +36,8 @@ ${card.lines.map((l) => `<p>${esc(l)}</p>`).join('\n')}
 
 /** The end card's lines: what the video showed, then every credit the receipt carries. Pure. */
 export function endCardLines(credits: string[]): string[] {
-  return ['Pictures, clips and 3D scenes made on one computer with open models. Nothing was sent to a cloud service to make them.', ...credits, 'reckons.ai'];
+  // No claim about where the pictures were made: that is per-workflow, and no workflow data states it for the card.
+  return [...credits, 'reckons.ai'];
 }
 
 /** Photograph each card at 1920x1080 (a 1280x720 layout at 1.5x, like the recording). */

@@ -4,7 +4,7 @@
  *
  *   1. NARRATE  each step's kpred:narration becomes a clip: Matt's recording if one exists, else a
  *               cached synthesis, else a new one (scripts/demo/narration-plan.ts). Durations measured.
- *   2. RECORD   the workflow's own e2e test runs at 1920x1080 with video on; each step holds until its
+ *   2. RECORD   the workflow's own e2e test runs at 1280x720 with video on (scaled to 1920x1080 in mux.ts); each step holds until its
  *               line ends (tests/e2e/demo-recorder.ts). Its assertions still run.
  *   3. MUX      clips placed at their steps' offsets, captions from the same text, H.264/AAC MP4
  *               (scripts/demo/mux.ts), and a receipt that says how to rebuild it.
@@ -200,11 +200,11 @@ async function main() {
   // Title and end cards; the end card carries every credit (F275: Hume narration is said on screen).
   const credits = buildReceipt({ workflow: workflowId, commit: '', graphSha256: '', renderedAt: '', marks: [], clips: clips.map((c) => ({ stepId: c.stepId, voice: c.voice, source: c.source, sha256: c.sha256 })), tools: {}, output: { file: '', sha256: '', durationMs: 0 } }).credits;
   const titleCard = { heading: workflow.title, lines: ['A Reckons.AI walkthrough, recorded from the app on made-up example data.'] };
-  const endCard = { heading: 'Made on your own computer', lines: endCardLines(credits) };
+  const endCard = { heading: 'Made with Reckons.AI', lines: endCardLines(credits) };
   const titlePng = join(out, 'title.png');
   const endPng = join(out, 'end.png');
   await renderCards([{ html: cardHtml(titleCard, ROOT), out: titlePng }, { html: cardHtml(endCard, ROOT), out: endPng }]);
-  const fin = spawnSync('ffmpeg', assembleArgs({ title: { png: titlePng, ms: TITLE_MS }, body, end: { png: endPng, ms: END_MS }, vtt, out: mp4 }), { stdio: ['ignore', 'ignore', 'inherit'] });
+  const fin = spawnSync('ffmpeg', assembleArgs({ title: { png: titlePng, ms: TITLE_MS }, body, end: { png: endPng, ms: END_MS }, vtt, out: mp4, bodyHasAudio: placed.length > 0, bodyMs: probeMs(body) }), { stdio: ['ignore', 'ignore', 'inherit'] });
   if (fin.status !== 0) fail(`ffmpeg (title, body, end) failed (exit ${fin.status})`);
 
   const commit = version('git', ['-C', ROOT, 'rev-parse', 'HEAD']);

@@ -970,6 +970,7 @@ TripoSplat guesses the far side of an object from one picture. A splat made this
 **What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again.""" ;
     kpred:workflow-id   "generated-assets" ;
     kpred:narrator      "hume:a623d3ed-612c-413b-b09f-e0a379a317f0" ;
+    kpred:narration-status "DRAFT: the six narration lines and their lead-in questions were drafted by a Sonnet subagent and await Matt's approval; none is approved copy." ;
     kpred:relates-to    kb:splat-e2e-workflow ;
     kpred:relates-to    kb:splat-local-pipeline ;
     kpred:test-file     "tests/e2e/workflow-generated-assets.test.ts" ;
