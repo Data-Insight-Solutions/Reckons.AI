@@ -128,12 +128,22 @@ CFG="${XDG_CONFIG_HOME:-$HOME/.config}/reckons/local-claude"
 mkdir -p "$CFG/gh-none"
 [ -f "$CFG/.claude.json" ] || echo '{"hasCompletedOnboarding":true}' >"$CFG/.claude.json"
 # Rewritten every launch: this file is the policy, so a deputy that edits it gains nothing.
+# Allowlist + acceptEdits (Matt, 2026-11-10: "read + test + commit"; the deputy still cannot push).
+# Not auto mode: its classifier call goes to ANTHROPIC_BASE_URL (Ollama here) and Claude Code's docs
+# list only Claude models for it, so the deputy fell back to a prompt on every Bash command.
+# The deny list below still wins over these allow rules. No Bash cat/grep/rg: the deny rules guard the
+# Read tool, not a shell `cat ~/.config/gh/hosts.yml`; the deputy's own Read/Grep tools need no prompt.
+# Residual risk, said out loud: npm run / npx tsx execute code, and code can read any file this user can.
 cat >"$CFG/settings.json" <<'JSON'
 {
   "enabledMcpjsonServers": ["reckons"],
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": ["mcp__reckons__kb_add_note"],
+    "defaultMode": "acceptEdits",
+    "allow": ["mcp__reckons__kb_add_note",
+              "Bash(npm run:*)", "Bash(npx tsx:*)", "Bash(npx vitest:*)",
+              "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git add:*)", "Bash(git commit:*)",
+              "Bash(ls:*)"],
     "deny": ["Bash(git push:*)", "Bash(gh pr merge:*)", "Bash(gh pr create:*)", "Bash(gh auth:*)", "Bash(git checkout dev:*)", "Bash(git checkout main:*)", "Bash(git switch dev:*)", "Bash(git switch main:*)",
              "Read(~/.git-credentials)", "Read(~/.config/gh/**)", "Read(~/.local/share/keyrings/**)", "Bash(cat ~/.git-credentials:*)",
              "Read(**/.env)", "Read(**/.env.*)", "Bash(cat .env:*)", "Bash(cat .env.*:*)"]
