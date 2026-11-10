@@ -393,8 +393,9 @@ export type DeviceJobState = 'running' | 'given-up' | 'held' | 'queued' | 'idle'
 export type JobDef = { key: string; name: string; tier?: string; enabled?: boolean; description?: string; schedule?: string };
 export type RawRun = {
   id: string; name: string; finishedAt: string; startedAt?: string; outcome: string; exitCode?: number; reason?: string;
-  /** Optional pointers, read when the done record carries them (F74.14 / F74.15 are not built yet). */
-  receipt?: string; forSpace?: string;
+  /** From the done record's `result` (what the job wrote to RECKONS_JOB_RESULT, F58.9.20), when it has one:
+   *  the output asset's content id and the space it was made for (a stable id leaps; a folder name stays a label). */
+  output?: string; forSpace?: string;
 };
 export type RawQueued = { id: string; name: string; after?: string[]; gpu?: boolean; gpuIndex?: number; addedAt?: string };
 export type DeviceInput = {
@@ -522,9 +523,12 @@ export function buildDeviceSpaceText(input: DeviceInput, nowMs: number): string 
       R(`${P}run-outcome`, r.outcome);
       if (typeof r.exitCode === 'number') R(`${P}exit-code`, String(r.exitCode));
       if (r.reason) R(`${P}outcome-reason`, r.reason);
-      if (r.receipt) R(`${P}receipt`, r.receipt);
-      // A run made for a space leaps to it by stable id; a value that is not one is dropped, not guessed.
-      if (r.forSpace && UUID_RE.test(r.forSpace)) { R(LEAP_PRED, r.forSpace.toLowerCase()); R(LEAP_LABEL_PRED, 'The space this run was made for'); }
+      if (r.output) R(`${P}output`, r.output);
+      // A run made for a space leaps to it only by stable id; a plain folder name is kept as a label, never guessed into a leap.
+      if (r.forSpace) {
+        if (UUID_RE.test(r.forSpace)) { R(LEAP_PRED, r.forSpace.toLowerCase()); R(LEAP_LABEL_PRED, 'The space this run was made for'); }
+        else R(`${P}for-space`, r.forSpace);
+      }
       F(`${P}has-run`, rIri);
     }
   }
@@ -563,9 +567,10 @@ export function readDeviceInput(dir: string, opts: { jobsTtl?: string; schedules
   for (const line of readLines(path.join(dir, 'queue.done.jsonl'))) {
     const j = asJob(line);
     if (!j || !str(j.id) || !str(j.name) || !str(j.finishedAt)) continue;
+    const res = j.result && typeof j.result === 'object' ? (j.result as Record<string, unknown>) : undefined;
     done.push({ id: str(j.id)!, name: str(j.name)!, finishedAt: str(j.finishedAt)!, outcome: str(j.outcome) ?? 'failed',
       ...(str(j.startedAt) ? { startedAt: str(j.startedAt) } : {}), ...(typeof j.exitCode === 'number' ? { exitCode: j.exitCode } : {}),
-      ...(str(j.reason) ? { reason: str(j.reason) } : {}), ...(str(j.receipt) ? { receipt: str(j.receipt) } : {}), ...(str(j.forSpace) ? { forSpace: str(j.forSpace) } : {}) });
+      ...(str(j.reason) ? { reason: str(j.reason) } : {}), ...(res && str(res.contentId) ? { output: str(res.contentId) } : {}), ...(res && str(res.space) ? { forSpace: str(res.space) } : {}) });
   }
   const defs = parseDefinitions(opts.jobsTtl ?? '', opts.schedulesTtl ?? '');
   return { defs, queued, running, held, circuits, done };

@@ -46,7 +46,7 @@ beforeAll(() => {
   for (let i = 0; i < 30; i++) {
     const day = String(1 + Math.floor(i / 3)).padStart(2, '0');
     done.push(L({ id: `r${String(i).padStart(2, '0')}`, name: 'sched:beta', cwd: '/x', argv: [], addedAt: '2026-10-01T00:00:00.000Z', finishedAt: `2026-10-${day}T0${i % 3}:00:00.000Z`, outcome: i % 5 === 0 ? 'failed' : 'passed', exitCode: i % 5 === 0 ? 1 : 0,
-      ...(i === 29 ? { forSpace: SPACE_ID, receipt: 'receipts/r29.json' } : {}), ...(i === 28 ? { forSpace: 'not-a-uuid' } : {}) }));
+      ...(i === 29 ? { result: { kind: 'scan-attach', space: SPACE_ID, contentId: 'abc123.spz' } } : {}), ...(i === 28 ? { result: { space: 'demo-space' } } : {}) }));
   }
   done.push(L({ id: 'd1', name: 'delta', cwd: '/x', finishedAt: '2026-11-09T00:00:00.000Z', outcome: 'refused', exitCode: 3, reason: 'blocked by a link' }));
   writeFileSync(path.join(dir, 'queue.done.jsonl'), done.join('\n'));
@@ -100,13 +100,14 @@ describe('runs', () => {
     expect(val(r, 'urn:kbase:concept/device-run-r00', `${P}run-of`)).toEqual([]);
     expect(val(r, 'urn:kbase:concept/device-run-r29', `${P}run-of`)).toEqual([j]);
   });
-  it('carries outcome, a receipt pointer and a leap to the space a run was made for', async () => {
+  it('carries outcome, an output content id and a leap to the space a run was made for', async () => {
     const r = await imported();
     const run = 'urn:kbase:concept/device-run-r29';
     expect(val(r, run, `${P}run-outcome`)).toEqual(['passed']);
-    expect(val(r, run, `${P}receipt`)).toEqual(['receipts/r29.json']);
+    expect(val(r, run, `${P}output`)).toEqual(['abc123.spz']);
     expect(val(r, run, 'urn:reckons:leap')).toEqual([SPACE_ID]);
-    expect(val(r, 'urn:kbase:concept/device-run-r28', 'urn:reckons:leap')).toEqual([]); // not a stable id: dropped
+    expect(val(r, 'urn:kbase:concept/device-run-r28', 'urn:reckons:leap')).toEqual([]); // a folder name, not a stable id: no leap
+    expect(val(r, 'urn:kbase:concept/device-run-r28', `${P}for-space`)).toEqual(['demo-space']);
     expect(val(r, 'urn:kbase:concept/device-run-r27', 'urn:reckons:leap')).toEqual([]);
     expect(val(r, 'urn:kbase:concept/device-run-d1', `${P}outcome-reason`)).toEqual(['blocked by a link']);
   });
