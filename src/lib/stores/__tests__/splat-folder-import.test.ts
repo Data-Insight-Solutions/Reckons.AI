@@ -1,6 +1,6 @@
 /**
- * F58.9.20 (kb:scan-auto-attach), the app side: a pending row brings its splat file from the space's
- * folder, and a space imported from a folder that holds a splat nothing names gets a PENDING statement
+ * F58.9.20 (kb:scan-auto-attach), the app side: a pending row brings its splat file from the
+ * folder, and a folder import that holds a splat nothing names gets a PENDING fact
  * for it. Synthetic bytes only; the fake DB stands in for IndexedDB (jsdom has none).
  */
 import { describe, it, expect, vi } from 'vitest';
@@ -26,21 +26,21 @@ class FakeDB {
 const ID = '0123456789abcdef0123456789abcdef.spz';
 const URL = `asset:splat/${ID}`;
 const SPLAT_P = 'urn:kbase:predicate/splat';
-const row = { predicate: SPLAT_P, object: URL, kb: 'demo-space' };
+const row = { predicate: SPLAT_P, object: URL, kb: 'demo-folder' };
 
 describe('a pending row brings its file', () => {
-  it('stores the blob from the folder when the space lacks it', async () => {
+  it('stores the blob from the folder when the browser lacks it', async () => {
     const { bringSplatFiles } = await import('../../storage/splat-folder');
     const database = new FakeDB();
     const read = vi.fn(async () => new Uint8Array([1, 2, 3, 4]));
-    const r = await bringSplatFiles([row, { predicate: 'urn:x:other', object: 'v', kb: 'demo-space' }], read, database as any);
+    const r = await bringSplatFiles([row, { predicate: 'urn:x:other', object: 'v', kb: 'demo-folder' }], read, database as any);
     expect(r).toEqual({ stored: [ID], present: [], missing: [] });
-    expect(read).toHaveBeenCalledWith('demo-space', ID);
+    expect(read).toHaveBeenCalledWith('demo-folder', ID);
     const stored = database.splatFiles.rows.get(ID);
     expect(stored.size).toBe(4);
   });
 
-  it('does nothing when the space already has it', async () => {
+  it('does nothing when the browser already has it', async () => {
     const { bringSplatFiles } = await import('../../storage/splat-folder');
     const database = new FakeDB();
     await database.splatFiles.put({ id: ID, blob: new Blob([new Uint8Array([9])]), filename: ID, size: 1, importedAt: 1 });
@@ -60,8 +60,8 @@ describe('a pending row brings its file', () => {
   });
 });
 
-describe('a space imported from a folder that holds an unnamed splat', () => {
-  it('synthesizes the splat statement as PENDING, never confirmed', async () => {
+describe('a folder import that holds an unnamed splat', () => {
+  it('synthesizes the splat fact as PENDING, never confirmed', async () => {
     const { populateKbFromTtl } = await import('../kb-import');
     const target = new FakeDB();
     const ttl = '<urn:kbase:concept/x> <urn:kbase:predicate/rel> <urn:kbase:concept/y> .';
@@ -72,22 +72,22 @@ describe('a space imported from a folder that holds an unnamed splat', () => {
     expect(splat?.o.value).toBe(URL);
     expect(splat?.status).toBe('pending');
     expect(out.filter((s) => s.s.value === splat!.s.value).every((s) => s.status === 'pending')).toBe(true);
-    expect(out.find((s) => s.p.value === 'urn:kbase:predicate/rel')?.status).toBe('confirmed'); // the rest of the space is untouched
+    expect(out.find((s) => s.p.value === 'urn:kbase:predicate/rel')?.status).toBe('confirmed'); // the rest of the import is untouched
     expect(target.splatFiles.rows.has(ID)).toBe(true);
     const source = (await target.sources.toArray()).map((s: { id: string }) => s.id);
     expect(source).toContain(splat!.sourceId);
   });
 
-  it('adds nothing when a live statement already names the file, but does when only a rejected one does', async () => {
-    const { synthesizeSplatStatements } = await import('../../storage/splat-folder');
+  it('adds nothing when a live fact already names the file, but does when only a rejected one does', async () => {
+    const { synthesizeSplatFacts } = await import('../../storage/splat-folder');
     const mk = (status: Statement['status']): Statement => ({
       id: 'a', s: { kind: 'iri', value: 'urn:kbase:concept/scan-x' }, p: { kind: 'iri', value: SPLAT_P }, o: { kind: 'literal', value: URL },
       g: { kind: 'iri', value: 'urn:kbase:source/s' }, sourceId: 's', confidence: 1, status, createdAt: 1, updatedAt: 1,
     });
     let n = 0;
     const id = () => `n${n++}`;
-    expect(synthesizeSplatStatements([mk('confirmed')], [`assets/splats/${ID}`], 's', id)).toEqual([]);
-    expect(synthesizeSplatStatements([mk('pending')], [`assets/splats/${ID}`], 's', id)).toEqual([]);
-    expect(synthesizeSplatStatements([mk('rejected')], [`assets/splats/${ID}`], 's', id).length).toBeGreaterThan(0);
+    expect(synthesizeSplatFacts([mk('confirmed')], [`assets/splats/${ID}`], 's', id)).toEqual([]);
+    expect(synthesizeSplatFacts([mk('pending')], [`assets/splats/${ID}`], 's', id)).toEqual([]);
+    expect(synthesizeSplatFacts([mk('rejected')], [`assets/splats/${ID}`], 's', id).length).toBeGreaterThan(0);
   });
 });

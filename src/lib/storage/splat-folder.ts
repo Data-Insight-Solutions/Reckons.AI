@@ -1,14 +1,14 @@
 /**
- * Splat files that arrive in a space's FOLDER rather than through the file picker (F58.9.20 /
+ * Splat files that arrive in a FOLDER rather than through the file picker (F58.9.20 /
  * kb:scan-auto-attach). Two entry points, both about the folder `kbs/<slug>/assets/splats/<id>`:
  *
  *   bringSplatFiles       a pending row names `asset:splat/<id>`; if this browser lacks the file it is
  *                         read from the folder and stored, so a proposed row brings its file with it.
- *   synthesizeSplatStatements   a space imported from a folder that HAS the file but no live statement
- *                         naming it gets that statement as PENDING (a proposal, never confirmed).
+ *   synthesizeSplatFacts   a folder import that HAS the file but no live fact naming it gets
+ *                         that fact as PENDING (a proposal, never confirmed).
  *
  * The file is NOT re-checked here: the producer (scan-room) verified it against its receipt, and a
- * stored file is inert until a person confirms a statement that points at it. A size cap still applies.
+ * stored file is inert until a person confirms a fact that points at it. A size cap still applies.
  */
 import { db as defaultDb, type KBaseDB } from './db';
 import { MAX_SPLAT_BYTES, localSplatId, storeSplatBytes } from './splat-files';
@@ -52,12 +52,12 @@ const SPLAT_PATH = /^assets\/splats\/([A-Za-z0-9_-]+\.(?:ply|spz|sog))$/;
 const live = (s: Statement) => s.status !== 'rejected' && s.status !== 'superseded' && s.status !== 'pending-removal';
 
 /**
- * The pending statements for each `assets/splats/<id>` in a folder import that no live statement
- * names. A space exported by this app always names its files; one assembled by hand (or by a scan
+ * The pending facts for each `assets/splats/<id>` in a folder import that no live fact
+ * names. A folder exported by this app always names its files; one assembled by hand (or by a scan
  * job that copied the file but whose rows were never drained) may not, and its splat would sit in
  * the folder unseen.
  */
-export function synthesizeSplatStatements(
+export function synthesizeSplatFacts(
   statements: readonly Statement[],
   assetPaths: Iterable<string>,
   sourceId: string,
@@ -75,7 +75,7 @@ export function synthesizeSplatStatements(
     const url = LOCAL_SPLAT_PREFIX + m[1];
     if (named.has(url)) continue;
     const entity = scanEntityIri(url);
-    // An entity that already exists with other statements still gets the splat reference, but is not retyped.
+    // An entity that already exists with other facts still gets the splat reference, but is not retyped.
     const existing = statements.some((s) => s.s.kind === 'iri' && s.s.value === entity && live(s));
     for (const st of scanStatements(url, `scan ${m[1].slice(0, 8)}`, 'reconstructed', newId, now)) {
       if (existing && st.p.value !== SPLAT_PREDICATE) continue;
