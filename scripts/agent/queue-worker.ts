@@ -53,7 +53,8 @@ import { addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused,
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readOllamaResidency, readRamSample, unloadOllamaModels, type RamLimits } from './session-ram.js';
-import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
+import { pausedProducers, DEFAULT_STATE_LIMITS, type StateLimits } from '../offline/lib/proposal-tally.js';
+import { backlogHolds, pausedHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 import { loadDeviceConfig } from './device-config.js';
 import { GenerationRunner } from '../content/generation-runner.js';
 import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
@@ -131,13 +132,25 @@ function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
 }
 
 /** Open proposals per producer, recounted at most every 10 minutes: it parses every workspace graph. */
-let backlogCache: { at: number; open: Map<string, number> } | undefined;
-function backlog(root: string, now = Date.now()): Map<string, number> {
+let backlogCache: { at: number; open: Map<string, number>; paused: Map<string, string> } | undefined;
+function readBacklog(root: string, now = Date.now()): NonNullable<typeof backlogCache> {
   if (!backlogCache || now - backlogCache.at > 10 * 60_000) {
-    try { backlogCache = { at: now, open: openByProducer(tallyWorkspace(root).tallies) }; }
-    catch { backlogCache = { at: now, open: new Map() }; } // an unreadable workspace holds nothing, never everything
+    try {
+      const { tallies } = tallyWorkspace(root);
+      backlogCache = { at: now, open: openByProducer(tallies), paused: pausedProducers(tallies, stateLimits()) };
+    } catch { backlogCache = { at: now, open: new Map(), paused: new Map() }; } // an unreadable workspace holds nothing, never everything
   }
-  return backlogCache.open;
+  return backlogCache;
+}
+const backlog = (root: string): Map<string, number> => readBacklog(root).open;
+/** Producer-state limits (F89.4.6) from the device config, defaulting to 10 ruled, 0.3 yield, 0.5 decidability. */
+function stateLimits(): StateLimits {
+  const out = { ...DEFAULT_STATE_LIMITS, holdUnreviewed: holdLimit() };
+  try {
+    const th = loadDeviceConfig().thresholds;
+    const pick = (name: string, d: number): number => { const v = th[name]?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : d; };
+    return { ...out, minRuled: pick('producerMinRuled', out.minRuled), minYield: pick('producerMinYield', out.minYield), minDecidability: pick('producerMinDecidability', out.minDecidability) };
+  } catch { return out; }
 }
 const holdLimit = (): number => {
   try { const v = loadDeviceConfig().thresholds.holdUnreviewed?.limit; return typeof v === 'number' && Number.isFinite(v) ? v : DEFAULT_HOLD_UNREVIEWED; }
@@ -188,8 +201,8 @@ async function main(): Promise<void> {
       const { jobs, successes } = loadRecurring(root);
       const done = readDone();
       const statuses = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(done)), Date.now());
-      // Back-pressure first, then breaker and backoff holds (their reasons win for the same job).
-      const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...heldSchedules(done, readCircuitCache(), Date.now())]);
+      // Back-pressure, then paused producers (F89.4.6), then breaker and backoff holds (their reasons win for the same job).
+      const held = new Map([...backlogHolds(jobs, backlog(root), holdLimit()), ...pausedHolds(jobs, readBacklog(root).paused), ...heldSchedules(done, readCircuitCache(), Date.now())]);
       heldList = [...held].map(([n, why]) => `${n.replace(/^sched:/, '')}: ${why}`);
       const heldNow = [...held].map(([n, why]) => `${n} (${why})`).join('; ');
       if (heldNow !== lastHeld) { if (heldNow) console.log(`queue-worker: holding ${heldNow}`); lastHeld = heldNow; }

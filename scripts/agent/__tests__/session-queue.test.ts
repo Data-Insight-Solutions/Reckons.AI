@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { afterChain, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
-import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
+import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, pausedHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
 
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
@@ -313,5 +313,22 @@ describe('catch-up schedules', () => {
     const r = parseSchedules(ttl, '/root', 'h');
     expect(r.map((x) => [x.name, x.everyMs, x.gpu, !!x.network])).toEqual([['sched:pull-notes', 900_000, false, false], ['sched:llm', 7 * every, true, true]]);
     expect(r[0].argv).toEqual(['/bin/bash', '-c', 'npx tsx scripts/notes-pull.ts']);
+  });
+});
+
+describe('pausedHolds (F89.4.6)', () => {
+  const rec = (name: string): Recurring => ({ name, label: name, argv: ['/bin/bash', '-c', 'true'], cwd: '/r', every: '1d', everyMs: 86_400_000, gpu: false });
+  const agent = (name: string): Recurring => ({ ...rec(name), tier: 'agent' });
+  it('skips an agent schedule whose producer is paused, with the reason, and never a script schedule', () => {
+    const paused = new Map([['docs-review', 'yield 0.20 is under 0.3 (yield 0.20, decidability 1.00, 10 ruled on)'], ['graph-lint', 'x']]);
+    const held = pausedHolds([agent('sched:docs-review'), agent('sched:layer-classify'), { ...rec('sched:graph-lint'), tier: 'script' }], paused);
+    expect([...held.keys()]).toEqual(['sched:docs-review']);
+    expect(held.get('sched:docs-review')).toMatch(/^PAUSED: yield 0\.20.*decidability 1\.00/);
+  });
+  it('agent:watch prints the reason on the held line', () => {
+    const reason = [...pausedHolds([agent('sched:docs-review')], new Map([['docs-review', 'decidability 0.20 is under 0.5 (yield 0.50, decidability 0.20, 10 ruled on)']])).values()][0];
+    const out = renderQueue({ kind: 'ready', queued: 0, held: [`docs-review: ${reason}`] } as never, undefined, (_l, t) => t).join('\n');
+    expect(out).toContain('PAUSED');
+    expect(out).toContain('decidability 0.20');
   });
 });

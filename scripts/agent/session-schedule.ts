@@ -211,6 +211,22 @@ export function backlogHolds(jobs: Recurring[], openByProducer: ReadonlyMap<stri
   return held;
 }
 
+/**
+ * PAUSED PRODUCERS (F89.4.6). An agent-tier schedule whose own producer is paused (yield or
+ * decidability under its limit, from pausedProducers in scripts/offline/lib/proposal-tally.ts) is
+ * skipped, with that reason, which already carries both numbers. Same matching and same gap as
+ * backlogHolds: by schedule name, script tier never paused, a many-producer schedule matches none. Pure.
+ */
+export function pausedHolds(jobs: Recurring[], paused: ReadonlyMap<string, string>): Map<string, string> {
+  const held = new Map<string, string>();
+  for (const j of jobs) {
+    if (j.tier === 'script') continue;
+    const why = paused.get(j.name.replace(/^sched:/, ''));
+    if (why) held.set(j.name, `PAUSED: ${why}`);
+  }
+  return held;
+}
+
 const fmt = (ms: number): string => (ms >= 86_400_000 * 2 ? `${Math.round(ms / 86_400_000)}d` : ms >= 3_600_000 ? `${Math.round(ms / 3_600_000)}h` : `${Math.max(1, Math.round(ms / 60_000))}m`);
 
 /** "notes-pull (overdue 2d)" / "describe (in 3h)" / "x (never run)". Pure. */

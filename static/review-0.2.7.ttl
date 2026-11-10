@@ -35,7 +35,7 @@ rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthro
 
 rev:gap-f89-4 rdf:type ktype:Concept ;
     rdfs:label "F89.4 Phase 4 — group the queue so it can be judged in one pass" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/presettle.test.ts)." .
+    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/presettle.test.ts, scripts/offline/lib/__tests__/proposal-tally.test.ts, scripts/agent/__tests__/session-queue.test.ts)." .
 
 rev:gap-f273 rdf:type ktype:Concept ;
     rdfs:label "F273 Procedure over prose — define the job, then let the harness run the process, so speed cannot skip a step" ;

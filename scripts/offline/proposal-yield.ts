@@ -16,6 +16,10 @@
  * TWO NUMBERS, AND THE SECOND IS THE HONEST ONE:
  *   YIELD    accepted / (accepted + rejected)  — of the proposals a human has RULED ON, how
  *            many were right. This is the quality signal.
+ *   DECIDABILITY (accepted + rejected) / (accepted + rejected + deferred) — the share a reviewer
+ *            could settle at all (F89.4.6). Catches a producer whose rows are accurate and undecidable.
+ *            The `ruled` column counts a defer too: it is a row somebody looked at.
+ *   STATE    sampling / open / held / paused from those numbers (lib/proposal-tally.ts producerState).
  *   TRIAGED  (accepted + rejected) / proposed  — how much of what an agent produced has been
  *            looked at. A brilliant yield over 3 of 273 proposals is not evidence of anything,
  *            so yield is never reported without it.
@@ -28,7 +32,7 @@
  * Run: npx tsx scripts/offline/proposal-yield.ts
  */
 
-import { tallyWorkspace } from './lib/proposal-tally.js';
+import { measureOf, producerState, tallyWorkspace } from './lib/proposal-tally.js';
 
 const ROOT = new URL('../..', import.meta.url).pathname;
 
@@ -44,11 +48,13 @@ const pct = (n: number, d: number) => (d === 0 ? '  —  ' : `${Math.round((100 
 console.log('proposal yield \x1b[2m— accepted over ruled-on, per agent\x1b[0m');
 console.log(`\x1b[2m  ${queuedTotal} still queued · ${annotatedFiles} graph file(s) carry attribution\x1b[0m\n`);
 
-console.log('  proposed  ruled  yield  triaged  agent');
+console.log('  proposed  ruled  yield  decid.  triaged  state     agent');
 for (const [agentName, t] of rows) {
-  const ruled = t.accepted + t.rejected;
+  const settled = t.accepted + t.rejected;
+  const ruled = settled + t.deferred;
+  const st = producerState(measureOf(t)).state; // per agent label; the schedule gate sums labels per producer
   console.log(
-    `  ${String(t.proposed).padStart(8)}  ${String(ruled).padStart(5)}  ${pct(t.accepted, ruled)}  ${pct(ruled, t.proposed)}  ${agentName}`,
+    `  ${String(t.proposed).padStart(8)}  ${String(ruled).padStart(5)}  ${pct(t.accepted, settled)}  ${pct(settled, ruled)}  ${pct(ruled, t.proposed)}  ${st.padEnd(8)}  ${agentName}`,
   );
 }
 
