@@ -393,6 +393,8 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/website-alignment.ts" ;
               kpred:has-file "src/lib/publish/site-build.ts" ;
               kpred:has-file "scripts/site-build.ts" ;
+              kpred:has-file "src/lib/publish/site-blog.ts" ;
+              kpred:has-file "src/lib/publish/__tests__/site-blog.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-export.test.ts" ;
               kpred:tested-by "src/lib/publish/__tests__/site-import.test.ts" .
 
