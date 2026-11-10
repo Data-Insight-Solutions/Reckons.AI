@@ -12436,11 +12436,14 @@ kb:trust-watching-costs-less rdf:type ktype:Phase ;
     rdfs:label "F286.6 — watching a job costs less than the job" ;
     kpred:feature-id   "F286.6" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:relates-to   kb:work-tiering ;
     kpred:description  "A script-tier job is summarized by rule: its exit code, its duration and its pass and fail lines, which job-watch already extracts before any model reads the log. A model reads a log only for an agent-tier job or a failure." ;
     kpred:evidence     "2026-11-10: job-watch spent 17 to 100 seconds of a local model summarizing every job, including a 2-second script job that runs every 10 minutes." ;
-    kpred:done-test    "A passing script-tier fixture job produces a run record that names no model and carries the same headline fields. The check fails if any passed script-tier run of the last day names a model." .
+    kpred:done-test    "A passing script-tier fixture job produces a run record that names no model and carries the same headline fields. The check fails if any passed script-tier run of the last day names a model."  ;
+    kpred:has-file     "scripts/offline/script-tier-model-check.ts" ;
+    kpred:tested-by    "scripts/offline/__tests__/script-tier-model-check.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: job-watch takes --tier=script and then never calls a model for a passed run (a failure or an agent-tier job still does), and the queue worker passes it for jobs that do not use Ollama; scripts/offline/script-tier-model-check.ts fails when a passed script-tier run of the last day names a model. NOT BUILT: the check is not yet a job in reckons-jobs.ttl and so does not run on its own; schedulers other than the queue worker must pass --tier=script themselves, and one that does not is still watched by a model. It trusts the read-by field job-watch writes.".
 
 kb:trust-no-self-settlement rdf:type ktype:Phase ;
     rdfs:label "F286.7 — no agent settles its own proposals" ;

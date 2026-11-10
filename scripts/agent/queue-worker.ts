@@ -96,7 +96,7 @@ function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
     // detached = the job gets its own process group. job-watch passes SIGTERM only to its direct child, and a
     // `bash -c "npx tsx …"` chain can leave the grandchild holding the Ollama request alive; a group kill reaches it,
     // and closing that request is what makes Ollama abort a load in progress (journal, 2026-11-04 12:39:07).
-    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, '--', ...job.argv], {
+    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, ...(needsOllama(job) ? [] : ['--tier=script']), '--', ...job.argv], {
       // A job that does not use Ollama gets no model verdict either: loading a reader model between
       // two generation stages would only compete with the next stage for VRAM.
       cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '',
