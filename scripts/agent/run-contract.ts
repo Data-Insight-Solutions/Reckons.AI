@@ -364,3 +364,54 @@ export function validateRunReport(
 
   return errors;
 }
+
+// ── F286.1: a deputy's BRANCH REPORT carries evidence a script reads again ─────────────────────────
+//
+// A line that claims something works, passed or exists must carry, on the same line, the command,
+// its exit code and the log line that shows it:
+//   Tests pass (cmd: `npx vitest run x` exit 0 log: "Tests  4 passed")
+// No evidence = UNVERIFIED. A stated non-zero exit = CONTRADICTED. The word BLOCKED anywhere = the
+// run is recorded as blocked, even when the command exited 0 (2026-11-03: the queue called exit 0
+// "passed" while the deputy's own report said BLOCKED).
+// WEAKNESS: this proves a claim NAMES evidence, and with a log file that the quoted line exists
+// there; it does not prove the command was the right one or that the line means what the claim says.
+export type ClaimVerdict = 'verified' | 'unverified' | 'contradicted';
+export interface BranchClaim { line: number; text: string; verdict: ClaimVerdict; reason: string }
+export interface BranchReportResult {
+  claims: BranchClaim[];
+  blocked: boolean;
+  /** 0 ok, 1 an unverified or contradicted claim, 3 blocked (blocked wins over the others). */
+  exitCode: 0 | 1 | 3;
+  problems: string[];
+}
+
+const CLAIM_RE = /\b(works?|working|pass(?:es|ed|ing)?|exists?|green|succe(?:eds|eded)|fixed|verified|imports?)\b/i;
+const CMD_RE = /\bcmd:\s*`([^`]+)`/i;
+const EXIT_RE = /\bexit(?:\s+code)?[:=\s]\s*(-?\d+)/i;
+const LOG_RE = /\blog:\s*"([^"]+)"/i;
+
+export function validateBranchReport(text: string, opts: { logText?: string; commandExit?: number } = {}): BranchReportResult {
+  const claims: BranchClaim[] = [];
+  const problems: string[] = [];
+  const lines = text.split('\n');
+  lines.forEach((raw, i) => {
+    const t = raw.trim();
+    if (!t || t.startsWith('#') || !CLAIM_RE.test(t)) return;
+    const cmd = CMD_RE.exec(t)?.[1]?.trim();
+    const exit = EXIT_RE.exec(t)?.[1];
+    const log = LOG_RE.exec(t)?.[1]?.trim();
+    const claim = (verdict: ClaimVerdict, reason: string) => { claims.push({ line: i + 1, text: t.slice(0, 160), verdict, reason }); };
+    if (!cmd || exit === undefined || !log) {
+      const missing = [!cmd && 'command', exit === undefined && 'exit code', !log && 'log line'].filter(Boolean).join(', ');
+      return claim('unverified', `UNVERIFIED: names no ${missing}`);
+    }
+    if (Number(exit) !== 0) return claim('contradicted', `its own command logged exit ${exit}`);
+    if (opts.logText !== undefined && !opts.logText.includes(log)) return claim('unverified', 'UNVERIFIED: the quoted log line is not in the log');
+    claim('verified', 'names command, exit 0 and log line');
+  });
+  const blocked = /\bBLOCKED\b/.test(text);
+  for (const c of claims) if (c.verdict !== 'verified') problems.push(`line ${c.line}: ${c.reason}`);
+  if (blocked) problems.unshift(opts.commandExit === 0 ? 'report says BLOCKED although the command exited 0: recorded as blocked' : 'report says BLOCKED: recorded as blocked');
+  const exitCode = blocked ? 3 : claims.some((c) => c.verdict !== 'verified') ? 1 : 0;
+  return { claims, blocked, exitCode, problems };
+}

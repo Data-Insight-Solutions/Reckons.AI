@@ -12396,10 +12396,14 @@ kb:trust-evidence-on-claims rdf:type ktype:Phase ;
     rdfs:label "F286.1 — a report's claims carry evidence a script reads again" ;
     kpred:feature-id   "F286.1" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:description  "Every claim in a deputy's report that something works, passed or exists names the command, its exit code and the log line. A script reads them again and marks a claim with no evidence UNVERIFIED, and a branch carrying an unverified claim is not offered for merge. scripts/agent/verify-run-report.ts does this today for three kinds of report; this extends it to the deputy's branch reports." ;
     kpred:evidence     "2026-11-10: a deputy report said a re-import brings the splat file in; it did not. 2026-11-03 (on kb:local-dev-integration): the queue marked exit 0 as passed while the deputy's own report said BLOCKED." ;
-    kpred:done-test    "Fixtures: a report claiming 'tests pass' with no command fails; one whose named command logged exit 1 fails; a report saying BLOCKED beside exit 0 is recorded as blocked." .
+    kpred:done-test    "Fixtures: a report claiming 'tests pass' with no command fails; one whose named command logged exit 1 fails; a report saying BLOCKED beside exit 0 is recorded as blocked."  ;
+    kpred:has-file     "scripts/agent/run-contract.ts" ;
+    kpred:has-file     "scripts/agent/verify-run-report.ts" ;
+    kpred:tested-by    "scripts/agent/__tests__/branch-report.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: validateBranchReport in run-contract.ts and verify-run-report.ts --kind=branch-report --file=<report> [--log=<log>] [--exit=<n>] (exit 0 ok, 1 unverified or contradicted claim, 3 blocked). A claim line (works, passed, exists, green, fixed...) must carry cmd: `...`, exit N and log: \"...\" on the same line. NOT BUILT: no deputy brief yet asks for that line format, and the merge step does not call the check, so a branch with an unverified claim is not yet kept from merge. WEAKNESS: it proves a claim names evidence (and, with --log, that the quoted line exists), not that the command was the right one; the claim words are a fixed list, so a claim phrased otherwise is not seen.".
 
 kb:trust-every-write-targeted rdf:type ktype:Phase ;
     rdfs:label "F286.2 — every write names where it goes" ;
@@ -12414,10 +12418,13 @@ kb:trust-nothing-private-leaves rdf:type ktype:Phase ;
     rdfs:label "F286.3 — nothing private leaves the machine in a branch" ;
     kpred:feature-id   "F286.3" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:description  "Before a branch merges into the local integration repository, a script scans its diff, its commit messages and its branch name against a list of private terms kept outside any repository, in the person's config folder. It prints counts and where, never the terms." ;
     kpred:evidence     "2026-11-10: two unpushed deputy branches carried a private location in public-bound text, one of them in a commit message." ;
-    kpred:done-test    "With a synthetic terms list: a fixture branch with a listed term in a commit message is refused, and the output contains no listed term. With no list configured the check says 'not configured' and exits 2, because unknown is not a pass." .
+    kpred:done-test    "With a synthetic terms list: a fixture branch with a listed term in a commit message is refused, and the output contains no listed term. With no list configured the check says 'not configured' and exits 2, because unknown is not a pass." ;
+    kpred:has-file     "scripts/offline/private-terms-check.ts" ;
+    kpred:tested-by    "scripts/offline/__tests__/private-terms-check.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: scripts/offline/private-terms-check.ts <base> <head> reads the list from the config folder (private-terms.txt), scans added diff lines, commit messages and the branch name, prints counts and positions only, exits 1 on a match and 2 when not configured. NOT BUILT: the call from the local merge step (F276) does not exist yet, so nothing runs it automatically; it has not been run against the real list. WEAKNESS: it is a literal case-insensitive substring match, so a misspelling, a paraphrase or an image is not caught." .
 
 kb:trust-worker-outlives-session rdf:type ktype:Phase ;
     rdfs:label "F286.4 — the queue worker outlives the session that started it" ;
@@ -12442,11 +12449,14 @@ kb:trust-watching-costs-less rdf:type ktype:Phase ;
     rdfs:label "F286.6 — watching a job costs less than the job" ;
     kpred:feature-id   "F286.6" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:relates-to   kb:work-tiering ;
     kpred:description  "A script-tier job is summarized by rule: its exit code, its duration and its pass and fail lines, which job-watch already extracts before any model reads the log. A model reads a log only for an agent-tier job or a failure." ;
     kpred:evidence     "2026-11-10: job-watch spent 17 to 100 seconds of a local model summarizing every job, including a 2-second script job that runs every 10 minutes." ;
-    kpred:done-test    "A passing script-tier fixture job produces a run record that names no model and carries the same headline fields. The check fails if any passed script-tier run of the last day names a model." .
+    kpred:done-test    "A passing script-tier fixture job produces a run record that names no model and carries the same headline fields. The check fails if any passed script-tier run of the last day names a model."  ;
+    kpred:has-file     "scripts/offline/script-tier-model-check.ts" ;
+    kpred:tested-by    "scripts/offline/__tests__/script-tier-model-check.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: job-watch takes --tier=script and then never calls a model for a passed run (a failure or an agent-tier job still does), and the queue worker passes it for jobs that do not use Ollama; scripts/offline/script-tier-model-check.ts fails when a passed script-tier run of the last day names a model. NOT BUILT: the check is not yet a job in reckons-jobs.ttl and so does not run on its own; schedulers other than the queue worker must pass --tier=script themselves, and one that does not is still watched by a model. It trusts the read-by field job-watch writes.".
 
 kb:trust-no-self-settlement rdf:type ktype:Phase ;
     rdfs:label "F286.7 — no agent settles its own proposals" ;

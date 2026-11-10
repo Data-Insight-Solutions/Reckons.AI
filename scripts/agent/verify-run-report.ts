@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 import { readFileSync, statSync } from 'node:fs';
-import { validateRunReport, type RunReportKind } from './run-contract.js';
+import { validateBranchReport, validateRunReport, type RunReportKind } from './run-contract.js';
 import { consumeStoredMcpContext } from './mcp-context.js';
 
 const raw = process.argv.slice(2);
@@ -9,6 +9,15 @@ const kind = flag('kind') as RunReportKind | undefined;
 const file = flag('file');
 const requireMcp = raw.includes('--require-mcp');
 const since = Number(flag('since') ?? process.env.TASK_RUN_EPOCH ?? 0);
+
+if (kind === ('branch-report' as string) && file) {
+  // F286.1: a deputy's branch report is text, not JSON. Exit 0 ok, 1 unverified/contradicted claim, 3 blocked.
+  const logFile = flag('log');
+  const r = validateBranchReport(readFileSync(file, 'utf8'), { logText: logFile ? readFileSync(logFile, 'utf8') : undefined, commandExit: flag('exit') === undefined ? undefined : Number(flag('exit')) });
+  console.log(`branch report: ${r.claims.length} claim(s), ${r.claims.filter((c) => c.verdict === 'verified').length} verified${r.blocked ? ', BLOCKED' : ''}`);
+  for (const p of r.problems) console.error(`  ${p}`);
+  process.exit(r.exitCode);
+}
 
 if (!kind || !['local-code-review', 'button-crawl', 'visual-diff'].includes(kind) || !file) {
   console.error('Usage: verify-run-report.ts --kind=<local-code-review|button-crawl|visual-diff> --file=<json> [--require-mcp] [--since=<epoch-seconds>]');

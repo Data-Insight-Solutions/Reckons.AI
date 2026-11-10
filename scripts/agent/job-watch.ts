@@ -44,6 +44,9 @@ export type Verdict = { status: Status; headline: string; findings: Finding[] };
 export type Facts = { exitCode: number; durationMs: number; lines: string[]; counts: Record<string, number> };
 
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
+/** F286.6: a model reads a log only for an agent-tier job or a failure. A passed script-tier job is summarized by rule. */
+export const modelMayRead = (tier: string | undefined, exitCode: number): boolean => tier !== 'script' || exitCode !== 0;
+
 export const stripAnsi = (s: string): string => s.replace(ANSI, '');
 
 /** Patterns that make a log line worth showing the model. */
@@ -302,7 +305,7 @@ async function main(): Promise<void> {
   const flag = (k: string) => flags.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
   const name = flag('name');
   const reset = flags.includes('--reset');
-  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--reset] -- <command…>'); process.exit(2); }
+  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--tier=script|agent] [--reset] -- <command…>'); process.exit(2); }
   const num = (k: string, d: number) => { const v = Number(flag(k)); return Number.isFinite(v) && v > 0 ? Math.trunc(v) : d; };
   const maxAttempts = num('max-attempts', DEFAULT_MAX_ATTEMPTS);
   const maxPerHour = num('max-per-hour', DEFAULT_MAX_PER_HOUR);
@@ -351,6 +354,7 @@ async function main(): Promise<void> {
     return { status: exitCode === 0 ? 'passed' : 'failed', headline: `${bits.join(', ')} (script facts only: ${why})`.slice(0, 120), findings: [] };
   };
   if (!base) verdict = scriptOnly('OLLAMA_BASE_URL not set');
+  else if (!modelMayRead(flag('tier'), exitCode)) verdict = scriptOnly('script-tier job passed, summarized by rule');
   else {
     const t0 = Date.now();
     try {
