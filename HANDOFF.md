@@ -10,6 +10,14 @@ on GitHub; it contains the commits of #608 and #609). Matt, 2026-11-10: dev inte
 gets one batched PR. How it was done: each stream pushed a branch with no PR, one integrator merged them into
 `integration/2026-11-10`, ran the checks on the COMBINED tree, then fast-forwarded local dev.
 
+**Local deputy first drafts queued 2026-11-10 (evening), for sub-agents to pick up:** seven unchained jobs, each
+on its own local branch `agent/local-*` cut from local dev (not pushed), each told to commit (a subject starting
+`WIP:` means a check failed): F74.15 receipt check, F89.4.5 sampler, F89.4.4 run tree, F58.9.19.2 similarity fit,
+F58.9.19.1 capture links, F269.2 device leap helpers, F286.7 self-settlement check. `git branch --list 'agent/local-f*'`
+and `npx tsx scripts/agent/queue.ts list` show them. Judge each by its diff against its entity's done-test, never by
+the queue's "passed". The queue worker was restarted from the main checkout the same evening: it had been running
+from a worktree that was removed, and scheduled jobs failed for about two hours.
+
 **In the batch (statuses are on the entities; read their dated honest-notes):** F58.9.20 scan auto-attach
 (scaffolded: attach-only mode, backfill of a missing splat file on poll, explicit link flags, a question when no
 link is given); the architecture plan and Matt's decisions (#608); F286.1/.3/.6 trust checks (built, wired into
