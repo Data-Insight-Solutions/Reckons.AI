@@ -3,6 +3,36 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-10 (night) — START HERE: build wave merged into LOCAL dev; one batch PR open (Fable 5.2 + Sonnet overseers)
+
+**Local `dev` is AHEAD of `origin/dev`.** It equals branch `integration/2026-11-10` (PR #610, base dev, NOT merged
+on GitHub; it contains the commits of #608 and #609). Matt, 2026-11-10: dev integrates through local git; GitHub
+gets one batched PR. How it was done: each stream pushed a branch with no PR, one integrator merged them into
+`integration/2026-11-10`, ran the checks on the COMBINED tree, then fast-forwarded local dev.
+
+**In the batch (statuses are on the entities; read their dated honest-notes):** F58.9.20 scan auto-attach
+(scaffolded: attach-only mode, backfill of a missing splat file on poll, explicit link flags, a question when no
+link is given); the architecture plan and Matt's decisions (#608); F286.1/.3/.6 trust checks (built, wired into
+nothing yet); F269.1 device job records (scaffolded; the device space itself does not exist); F89.4.3 lanes and
+F89.4.1 row contract (hand runs mint `hand:<job>:<time>`; contract date 2026-11-11); F223.9/.10 standing drawn,
+F223.11 filters partly built (no link from a Reckoning option, no 3D exact filtering).
+
+**Checked on the combined tree 2026-11-10:** svelte-check 0 errors; scoped vitest (scripts, rdf, stores, storage,
+3d, mcp-server, cli) 3,924 passed; graph-lint 0 errors; blocking script tier 9 of 9; md-align aligned. NOT run:
+the full unit suite, the e2e suite, the build.
+
+**HELD, do not merge without Matt:** `feat/f89-4-6-producer-state` (F89.4.6). Merged, the worker would skip 15
+producers' schedules on thresholds that are only proposed (yield 0.3, decidability 0.5).
+
+**Not done:** the queue worker still runs the code it started with; restart it from the main checkout to pick up
+the job-watch and worker changes. A finished job records its space as a folder name, so a run's leap to its space
+cannot be made yet (record the space's stable id too). The local deputy queue blocks a job chained `--after` a
+job that ends without a commit; queue deputy drafts unchained.
+
+**Rules learned today:** never `git stash` in a worktree (the stash is shared; one stream took another's work);
+never raise a ratchet baseline to pass (reword prose, or stop and report); ratchets do not compose, so re-run
+`term-usage --check` on the combined tree.
+
 ## 2026-11-10 (later) — architecture pass: review overhaul, asset goal, job channel, fusion, trust contract, release (Fable 5.2)
 
 **This PR (branch `chore/architecture-pass-2026-11-10`, roadmap only, NOTHING BUILT):** plans written into
