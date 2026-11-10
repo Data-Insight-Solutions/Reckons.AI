@@ -275,11 +275,19 @@ export async function askModel(base: string, model: string, prompt: string): Pro
 
 let activeChild: ReturnType<typeof spawn> | undefined;
 
-function run(argv: string[], logPath: string): Promise<{ exitCode: number; durationMs: number }> {
+/**
+ * The environment a watched job runs in: its own JobRun id and name, so every queue row it writes can
+ * name the run that made it (F89.4.1). The id is the SAME one this run's TTL entity gets.
+ */
+export function jobEnv(name: string, startedAt: Date, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...base, RECKONS_RUN_ID: runEntityId(name, startedAt), RECKONS_JOB_NAME: name };
+}
+
+function run(argv: string[], logPath: string, env: NodeJS.ProcessEnv = process.env): Promise<{ exitCode: number; durationMs: number }> {
   return new Promise((resolve) => {
     const out = createWriteStream(logPath);
     const t0 = Date.now();
-    const child = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'pipe', 'pipe'], env });
     activeChild = child;
     child.stdout.pipe(out, { end: false });
     child.stderr.pipe(out, { end: false });
@@ -335,7 +343,7 @@ async function main(): Promise<void> {
   const cleanup = (code: number) => () => { activeChild?.kill(); try { updateCurrent({ removePid: process.pid }); } catch { /* best effort */ } process.exit(code); };
   process.on('SIGINT', cleanup(130));
   process.on('SIGTERM', cleanup(143));
-  const { exitCode, durationMs } = await run(cmd, logPath);
+  const { exitCode, durationMs } = await run(cmd, logPath, jobEnv(name, startedAt));
   updateCurrent({ removePid: process.pid });
   const endedAt = new Date();
   const log = readFileSync(logPath, 'utf8');

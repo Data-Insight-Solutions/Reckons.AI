@@ -1065,7 +1065,7 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
   // absent from the registry resolves to the 'Default Graph' NAME, so matching on name alone made
   // a correctly targeted row import nowhere while still reporting a successful drain.
   const active = [getCurrentKbName(), getCurrentKbId()];
-  const { entries, retainedLines, issues } = partitionPendingJsonl(text, active);
+  const { entries, retainedLines, issues, heldForOtherTargets } = partitionPendingJsonl(text, active);
 
   if (issues.length > 0) {
     const counts = new Map<string, number>();
@@ -1074,6 +1074,12 @@ export async function drainWorkspacePending(): Promise<PendingEntry[]> {
       `[workspace] retained ${issues.length} pending row(s) that are not safe to import: ` +
       [...counts].map(([code, count]) => `${code}=${count}`).join(', '),
     );
+  }
+
+  // SAY how many rows are kept back and why (F89.4.1): a row that names no destination is never
+  // guessed into this one, and a row for another destination waits for it. Silence here once read as "drained".
+  if (heldForOtherTargets > 0) {
+    console.info(`[workspace] holding ${heldForOtherTargets} pending row(s) addressed to other destinations until one of them is open`);
   }
 
   // Consume ONLY what we took. Other-target, unscoped, malformed, and invalid rows are written

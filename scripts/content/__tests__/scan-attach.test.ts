@@ -9,6 +9,9 @@ import {
 } from '../scan-attach';
 import type { ScanReceipt } from '../scan-room-lib';
 
+// These producers run as jobs, and the queue worker's job-watch gives every job its JobRun id (F89.4.1).
+process.env.RECKONS_RUN_ID ??= 'jobrun:test-run-20261110T000000Z';
+
 // Synthetic fixtures only: a temp workspace and a few fake bytes. Nothing here is a real scan or space.
 let root: string;
 let workspace: string;

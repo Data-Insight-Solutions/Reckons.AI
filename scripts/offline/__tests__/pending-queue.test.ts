@@ -5,14 +5,72 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { queueFindings, findingIdentity, RECOMPUTABLE_AGENTS, appendQueueText } from '../pending-queue';
+import { RowContractError } from '../../../mcp-server/src/row-contract';
+
+// These producers run as jobs, and the queue worker's job-watch gives every job its JobRun id (F89.4.1).
+process.env.RECKONS_RUN_ID ??= 'jobrun:test-run-20261110T000000Z';
+
+describe('the row contract on append (F89.4.1)', () => {
+  const fresh = () => { const d = mkdtempSync(join(tmpdir(), 'row-contract-')); return { d, q: join(d, 'knowledge.pending.jsonl') }; };
+  const row = (over: Record<string, unknown> = {}) => JSON.stringify({ subject: 's', predicate: 'p', object: 'o', kb: 'roadmap', agent: 'offline:fixture', ...over }) + '\n';
+  const refused = (fn: () => void): RowContractError => { try { fn(); } catch (e) { return e as RowContractError; } throw new Error('expected a refusal'); };
+
+  it('stamps run, lane, model, addedAt and origin on a machine row from the worker env', () => {
+    const { d, q } = fresh();
+    appendQueueText(q, row(), { env: { RECKONS_RUN_ID: 'jobrun:x-1', RECKONS_JOB_MODEL: 'm1' } });
+    const r = JSON.parse(readFileSync(q, 'utf8'));
+    expect(r).toMatchObject({ run: 'jobrun:x-1', lane: 'claim', model: 'm1', origin: 'job', kb: 'roadmap', agent: 'offline:fixture' });
+    expect(Date.parse(r.addedAt)).toBeGreaterThan(0);
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('refuses a machine row without kb, without run and with an invented lane, naming the field', () => {
+    const { d, q } = fresh();
+    expect(refused(() => appendQueueText(q, row({ kb: undefined }), { env: { RECKONS_RUN_ID: 'r' } })).field).toBe('kb');
+    expect(refused(() => appendQueueText(q, row(), { env: {} })).field).toBe('run');
+    expect(refused(() => appendQueueText(q, row({ lane: 'report' }), { env: { RECKONS_RUN_ID: 'r' } })).field).toBe('lane');
+    expect(refused(() => appendQueueText(q, row({ kb: '  ' }), { env: { RECKONS_RUN_ID: 'r' } })).message).toMatch(/missing kb/);
+    expect(existsSync(q)).toBe(false);
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('one refused row refuses the whole append and leaves the queue as it was', () => {
+    const { d, q } = fresh();
+    writeFileSync(q, '{"subject":"old","predicate":"p"}\n');
+    expect(() => appendQueueText(q, row() + row({ kb: undefined }), { env: { RECKONS_RUN_ID: 'r' } })).toThrow(/missing kb/);
+    expect(readFileSync(q, 'utf8')).toBe('{"subject":"old","predicate":"p"}\n');
+    rmSync(d, { recursive: true, force: true });
+  });
+  it("accepts a person's note with only its space, and refuses one without", () => {
+    const { d, q } = fresh();
+    appendQueueText(q, JSON.stringify({ subject: 's', predicate: 'p', object: 'o', kb: 'roadmap' }) + '\n', { origin: 'note', env: {} });
+    expect(JSON.parse(readFileSync(q, 'utf8'))).toMatchObject({ origin: 'note', kb: 'roadmap' });
+    expect(refused(() => appendQueueText(q, JSON.stringify({ subject: 's', predicate: 'p' }) + '\n', { origin: 'note', env: {} })).field).toBe('kb');
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('a synthetic producer writing through queueFindings gets the same stamps', () => {
+    const { d, q } = fresh();
+    const saved = process.env.RECKONS_RUN_ID;
+    process.env.RECKONS_RUN_ID = 'jobrun:synthetic-1';
+    try {
+      queueFindings([{ subject: 's', predicate: 'urn:sweep:pred/x', question: 'q', type: 'question' }], { agent: 'offline:synthetic', path: q, recomputes: false });
+    } finally { process.env.RECKONS_RUN_ID = saved; }
+    expect(JSON.parse(readFileSync(q, 'utf8'))).toMatchObject({ run: 'jobrun:synthetic-1', lane: 'finding', origin: 'job', kb: 'roadmap' });
+    rmSync(d, { recursive: true, force: true });
+  });
+  it('lines that do not parse pass through untouched for queue-integrity to report', () => {
+    const { d, q } = fresh();
+    appendQueueText(q, 'not json at all\n', { env: {} });
+    expect(readFileSync(q, 'utf8')).toBe('not json at all\n');
+    rmSync(d, { recursive: true, force: true });
+  });
+});
 
 describe('appendQueueText', () => {
   it('appends under the lock and repairs a missing trailing newline', () => {
     const d = mkdtempSync(join(tmpdir(), 'append-text-'));
     const q = join(d, 'knowledge.pending.jsonl');
     writeFileSync(q, '{"subject":"a","predicate":"p"}');
-    appendQueueText(q, '{"subject":"b","predicate":"p"}\n', 'utf8');
-    appendQueueText(q, '{"subject":"c","predicate":"p"}');
+    appendQueueText(q, '{"subject":"b","predicate":"p","kb":"roadmap"}\n', 'utf8');
+    appendQueueText(q, '{"subject":"c","predicate":"p","kb":"roadmap"}');
     const rows = readFileSync(q, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).subject);
     expect(rows).toEqual(['a', 'b', 'c']);
     expect(readFileSync(q, 'utf8').endsWith('\n')).toBe(true);

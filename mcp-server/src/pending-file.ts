@@ -12,6 +12,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, basename, join } from 'node:path';
+import { stampRow } from './row-contract.js';
 
 export const FILE_LOCK_ACTIVE_SUFFIX = '.active';
 export const FILE_LOCK_ACTIVE_LEASE_MS = 60_000;
@@ -78,6 +79,17 @@ export function appendPendingLines(file: string, lines: string[]): void {
     const separator = current && !current.endsWith('\n') ? '\n' : '';
     return { content: current + separator + lines.join('\n') + '\n', result: undefined };
   });
+}
+
+/**
+ * Append ROWS (not journal lines) under the row contract (F89.4.1). MCP tools write a person's or an
+ * agent's own note, which needs only its space, so every row is stamped as a note and refused,
+ * naming `kb`, if it names none. `kb` is the destination space the caller already knows (the
+ * graph's own folder); it fills a row that did not say, and is never guessed from anything else.
+ */
+export function appendPendingRows(file: string, rows: Record<string, unknown>[], opts: { kb?: string } = {}): void {
+  const stamped = rows.map((r) => JSON.stringify(stampRow({ ...r, ...(r.kb ? {} : opts.kb ? { kb: opts.kb } : {}) }, { origin: 'note' })));
+  appendPendingLines(file, stamped);
 }
 
 function atomicReplace(file: string, content: string): void {

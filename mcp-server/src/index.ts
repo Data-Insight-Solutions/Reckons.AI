@@ -20,7 +20,7 @@
 import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { mergeGraphs, mergeToPending } from './merge.js';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { KBReader, MultiKBReader, type Triple } from './kb-reader.js';
 import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
@@ -29,7 +29,7 @@ import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-c
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
-import { appendPendingLines } from './pending-file.js';
+import { appendPendingRows } from './pending-file.js';
 import { defaultCtx, jobEnqueue, jobLanes, jobList, jobStatus } from './local-jobs.js';
 import { routeLanes } from './review-lane.js';
 
@@ -628,7 +628,7 @@ function handleKbMerge(params: { source: string; target: string; write_pending?:
     const pendingPath = kbFolder
       ? join(kbFolder, 'pending.jsonl')
       : kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, entries);
+    appendPendingRows(pendingPath, entries.map((l: string) => JSON.parse(l) as Record<string, unknown>), { kb: params.target });
     lines.push(`${entries.length} proposal(s) queued → ${pendingPath}`);
     lines.push(`Nothing was written to a graph. Accept or reject them in the Reckons.AI review queue.`);
   } else {
@@ -683,7 +683,7 @@ type AddNoteParams = {
 };
 
 function handleKbAddNote(params: AddNoteParams): object {
-  const entry = JSON.stringify({
+  const entry = {
     subject: `urn:kbase:${params.subject.replace(/\s+/g, '-').toLowerCase()}`,
     predicate: `urn:kbase:predicate/${params.predicate.replace(/\s+/g, '-').toLowerCase()}`,
     object: params.object,
@@ -694,17 +694,17 @@ function handleKbAddNote(params: AddNoteParams): object {
     priority: params.priority ?? 'normal',
     addedByMcp: true,
     addedAt: new Date().toISOString()
-  });
+  };
 
   // Try workspace kbs/{name}/ folder first, fall back to legacy sidecar file
   const kbFolder = kb.getKbFolderPath(params.kb);
   if (kbFolder) {
     const pendingPath = join(kbFolder, 'pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: basename(kbFolder) });
   } else {
     // Legacy: write next to the .ttl file
     const pendingPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: params.kb });
   }
 
   return {

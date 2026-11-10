@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   activeFileLockPath,
   FILE_LOCK_ACTIVE_LEASE_MS,
+  appendPendingRows,
   transactPendingFile,
 } from '../pending-file.js';
 
@@ -52,5 +53,19 @@ describe('pending-file active lock marker', () => {
     })).toThrow('MCP transaction failed');
 
     expect(existsSync(markerPath)).toBe(false);
+  });
+});
+
+describe('appendPendingRows: the row contract for MCP notes (F89.4.1)', () => {
+  it("stamps a note with its space, origin and time, and takes the space from the caller's destination", () => {
+    appendPendingRows(pendingFile, [{ subject: 's', predicate: 'p', object: 'o', agent: 'claude-code' }], { kb: 'roadmap' });
+    const row = JSON.parse(readFileSync(pendingFile, 'utf8'));
+    expect(row).toMatchObject({ kb: 'roadmap', origin: 'note', agent: 'claude-code' });
+    expect(Date.parse(row.addedAt)).toBeGreaterThan(0);
+    expect(row.run).toBeUndefined();
+  });
+  it('refuses a note that names no space, naming the field, and writes nothing', () => {
+    expect(() => appendPendingRows(pendingFile, [{ subject: 's', predicate: 'p' }])).toThrow(/missing kb/);
+    expect(existsSync(pendingFile)).toBe(false);
   });
 });
