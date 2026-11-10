@@ -458,7 +458,7 @@ describe("the container's own record is drawn only at 'all' (Matt, 2026-10-21)",
 //
 // the proposals entry in the roadmap, evidence (4), 2026-11-10, read from the code and not observed in the
 // running app: a question's missing object is the literal "?", and a short literal shared by
-// two or more facts becomes a category marker — so two questions in one space would both
+// two or more facts becomes a category marker — so two questions in the same place would both
 // point at ONE shared "?" marker. This test is written FIRST, and its result on the unchanged
 // code is recorded in DEPUTY-NOTES.md (the roadmap's done-test says the same).
 describe('F223.9 — a question\'s missing end is its own marker, never the shared "?"', () => {
