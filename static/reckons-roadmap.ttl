@@ -12282,7 +12282,7 @@ kb:job-space-channel rdf:type ktype:Phase ;
     kpred:relates-to   kb:review-row-contract ;
     kpred:relates-to   kb:review-run-sets ;
     kpred:description  "The app keeps a space in the browser and can see the machine only through the workspace folder a person linked, which it reads every 10 seconds; a job's state lives outside that folder, under ~/.local/state/reckons/jobs. Scan auto-attach (F58.9.20), job indicators (F74.13) and job chains with resume (F74.12) each have to cross that gap, so they share this one design. FOUR KINDS OF FILE, EACH WITH ONE WRITER (the rule scripts/agent/space-watch.ts already follows). (1) FILES OF ASSETS at kbs/<space>/assets/<slot>/<content id>, written by the job; the name is the content's hash, so writing the same result twice changes nothing. (2) PROPOSALS, the review queue, written only through the one append function (F89.4.1): the rows that attach an asset to its node carry their space, run and lane, and the drain stores the file from the folder, as F58.9.20 already plans. (3) STATUS, one small file the queue worker rewrites whole when something changes: the workers alive, and for each run whose target space is IN THIS WORKSPACE its job, its state (queued, running, held with the reason, done, failed), its stage, what it waits on, and its result. It is a VIEW rebuilt from the worker's own records; deleting it loses nothing. (4) REQUESTS, one file per request, written by the app when a person asks for a job (regenerate from the start, resume from a stage) and answered by the host in a status file beside it. A request names a job from the defined list and its arguments, never a command." ;
-    kpred:principle    "STATE IS SHOWN, RESULTS ARE RECORDED. Running, held and percent done are status and never become statements; nobody should be asked to review that a job is 40% done. A finished run that produced an asset records exactly its receipt facts, as proposals: the asset, the run that produced it, and the run's node. Their arrival is what 'completion marked in the space' means." ;
+    kpred:principle    "STATE IS NEVER A PROPOSAL; RESULTS ARE. Running, held and percent done are never put in front of a person to review; nobody should be asked to accept that a job is 40% done. In the space a job runs for, state is shown from the status file. In This device it is kept in full as derived records (F269.1; Matt, 2026-11-10: jobs are detailed in the device space at minimum). A finished run that produced an asset records exactly its receipt facts in its target space, as proposals: the asset, the run that produced it, and the run's node. Their arrival is what 'completion marked in the space' means." ;
     kpred:constraint   "A status file shows only runs whose target space is in its own workspace. A job for a private space never appears in the repository workspace's file." ;
     kpred:extends      "scripts/agent/queue-worker.ts and scripts/agent/job-state.ts (write the status view), scripts/agent/space-watch.ts (the request files and the one-writer rule), src/lib/stores/workspace.svelte.ts (the poll and the drain), scripts/agent/watch.ts (the same model agent:watch prints)." ;
     kpred:done-test    "Unit: the status model built from fixture worker and done records reports the active count, the done count and each held reason (the F74.13 test), and leaves out a run that targets a space in another workspace. A request naming a job that is not defined is refused, and no test can make request text reach a shell string. Draining an attach row stores the file from the folder, and a row with no target space is refused (the F58.9.20 tests). A failed run writes status and no proposal." .
@@ -12474,3 +12474,80 @@ kb:release-0-2-8 kpred:decided "MATT, 2026-11-06, answering 'Re-cut v0.2.8 as th
 kb:release-0-2-7 kpred:honest-note "2026-11-10 (Fable 5.2, architecture pass): v0.2.7 shipped, yet release:burndown on that date reports 1 of its 5 graph parts functional or better. The four below functional (F245, the local deputy, the review grouping now numbered F89.4, F273) were not moved to a later release when 0.2.7 was cut, so the graph still says 0.2.7 owes them. Proposed, for Matt to confirm: the review grouping's phases F89.4.1 to .3 go to 0.2.8 and F89.4.4 to .7 to 0.2.9; the other three are his to place." .
 
 kb:asset-refine-gaps kpred:decided "MATT, 2026-11-10 (AskUserQuestion, 'What closes a gap?'): 'Measure, with waiver'. This answers the open question on this entity; the full rule is on kb:asset-data-model. Not yet set: the passing bar for each measure." .
+
+# ── G. PROPOSALS AND QUESTIONS DRAWN APART ON THE CANVAS (Matt, 2026-11-10, for the reckoning work) ──
+# F223.4 left 'drawing proposals as nodes on the shared canvas' until after the citation chain.
+# This is that work, planned. Nothing is built.
+kb:graph-proposals kpred:decided "MATT, 2026-11-10 (chat with Claude Code): 'I think we need to show nodes and edges differently for a proposal, such that visibly and with filters we can focus in on the proposed details. Also, for questions, the same visible and filter seperation from other statements, and questions could be ghostly or semi transparent to note they are not full defined statements. This is all in regards to the reckoning enhancements.'" ;
+    kpred:evidence "2026-11-10, read from the code, not observed in the running app: (1) the 2D renderer colours an edge by selection, hover and source view only; nothing in its edge loop reads a statement's status, so a proposed edge and a held one look the same (src/lib/3d/KnowledgeGraph2D.svelte). (2) A filter resolves to NODE keys and an edge is lit when both of its ends match (the 'edgeLive' rule), so the 'pending' filter also lights every held edge between two matched nodes; a filter cannot isolate statements. (3) The filter list has 'confirmed' and 'pending' and no entry for a proposal or a question (src/lib/types/turtle-chat.ts GraphFilter). (4) A question's missing object is the literal '?', and a short literal shared by two or more statements becomes a node (categoryLiterals in src/lib/rdf/graph-view.ts), so two questions in one space would both point at ONE shared '?' node. The first test of F223.9 settles whether (4) happens." .
+
+kb:statement-standing rdf:type ktype:Phase ;
+    rdfs:label "F223.9 — a statement's standing (held, pending, proposed, question), worked out once and carried to the canvas" ;
+    kpred:feature-id   "F223.9" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:depends-on   kb:proposal-shape ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:reckoning-gaps ;
+    kpred:relates-to   kb:review-run-sets ;
+    kpred:description  "One pure function gives every statement a STANDING from fields it already has, with no new status: HELD (confirmed or refined), PENDING (awaiting review, part of no proposal), PROPOSED (awaiting review AND belonging to an option of a reckoning's proposal), QUESTION (a partial fact: its object is open). A pending statement records which option it belongs to in its portable record, the same way F89.4.4 records its run, so an option is a set whose members are derived, not listed. The graph view passes the standing with every edge, and gives every node the standing of the statements that touch it: a node touched only by proposed statements is a proposed node. A QUESTION'S MISSING END is its own node, one per question, never the shared '?' literal." ;
+    kpred:extends      "src/lib/rdf/graph-view.ts (buildGraphView, categoryLiterals), src/lib/rdf/partial-facts.ts, src/lib/rdf/proposal.ts, src/lib/rdf/portable-metadata.ts." ;
+    kpred:done-test    "Unit: the standing function over one fixture statement of each kind. A graph view of two questions has two question-end nodes and no node for the literal '?'; this test is written FIRST and its result on today's code is recorded here, because the shared '?' node was read from the code and not seen. A node touched by one held and one proposed statement is held; a node touched only by proposed statements is proposed. A statement's option survives export and import." .
+
+kb:standing-drawn rdf:type ktype:Phase ;
+    rdfs:label "F223.10 — the canvas draws by standing: proposals dashed, questions hollow and half-strength, in 2D and 3D" ;
+    kpred:feature-id   "F223.10" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:statement-standing ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:description  "HELD is drawn as now. PROPOSED: a dashed edge in the proposal's own color, and a node that exists only in a proposal is hollow with a dashed ring. QUESTION: the edge is drawn at about half strength and ends at a hollow, half-strength node marked '?', the absence drawn as a thing. PENDING outside a proposal keeps today's look. Standing is never shown by color alone: line style and node shape carry it, so it reads in a screenshot printed in grey. The legend names the four. The style lives in the renderers, so Explore, Review and the Reckoning all show it." ;
+    kpred:constraint   "A QUESTION MUST NOT LOOK FILTERED OUT. The canvas already uses faintness to mean 'not what you asked for': a filter dims everything else to 0.18. If a question were simply faint, a question in view and a held fact dimmed by a filter would look alike. So a question is hollow with a full-strength dashed outline and about 0.5 fill, and dimming multiplies on top of that. When the questions filter is on, questions are shown at their full question look and everything else dims." ;
+    kpred:extends      "src/lib/3d/KnowledgeGraph2D.svelte (the edge and node loops), src/lib/3d/KnowledgeGraph.svelte, src/lib/components/GraphCanvas.svelte." ;
+    kpred:done-test    "Unit: the style function maps each standing to a style token (dash, hollow, strength), and an undimmed question's strength is at least twice a dimmed held fact's. Visual, on a synthetic space holding all four standings: npm run visual:local at desktop width and at 390px, 2D and 3D, with the four distinguishable in a greyscale copy of the screenshot. No private space is used." .
+
+kb:standing-filters rdf:type ktype:Phase ;
+    rdfs:label "F223.11 — filters for proposed and for questions, exact to the statement; focus one proposal and switch its options" ;
+    kpred:feature-id   "F223.11" ;
+    kpred:part-of      kb:graph-proposals ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:standing-drawn ;
+    kpred:relates-to   kb:proposal-options-ui ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:description  "The filter list gains PROPOSED and QUESTIONS, beside confirmed and pending, in the same control, the same link parameter, and the same list Shelly can set. FILTERS BECOME EXACT TO THE STATEMENT: a status filter resolves to the matching statements as well as their nodes, and an edge is lit only when its own statement matches, so a held edge between two nodes of a proposal stays quiet. Nothing is removed from the layout, as now: what does not match dims and keeps its place. FOCUS ONE PROPOSAL: from an option card in the Reckoning, or from a proposal's node, 'show in the graph' lights that option's statements; the held statements the option cites (F223.2) stay readable at a second, quieter strength; the rest dims. Switching to another option swaps what is lit and moves no node, so two options can be compared by flipping between them. The gaps that block the proposal (F268.1) are its questions and light with it." ;
+    kpred:extends      "src/routes/(app)/+page.svelte (filterMatch and the filter chips), src/lib/types/turtle-chat.ts (GraphFilter), src/lib/3d/KnowledgeGraph2D.svelte (the edgeLive rule), src/routes/(app)/reckoning/+page.svelte." ;
+    kpred:done-test    "Unit: on a fixture with a held edge and a proposed edge between the same two nodes, the proposed filter lights only the proposed edge; the questions filter lights only question edges and their ends. End to end, on a synthetic space with one proposal of two options and two questions: each filter chip isolates its kind; focusing option B changes which statements are lit; node positions before and after the switch are equal; the link parameter restores the same view after a reload." .
+
+# ── H. JOBS DETAILED IN 'THIS DEVICE', WITH A LEAP FROM THE SPACE A JOB RUNS FOR (Matt, 2026-11-10) ──
+kb:device-space kpred:decided "MATT, 2026-11-10 (chat with Claude Code): 'Jobs also need to be detailed within the my device space at minimum, I would also like leaps from the main job definition in whatever space the job is running for.'" .
+
+kb:device-space-jobs rdf:type ktype:Phase ;
+    rdfs:label "F269.1 — every local job is detailed in This device: its definition, state, runs and chain" ;
+    kpred:feature-id   "F269.1" ;
+    kpred:part-of      kb:device-space ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:run-receipt ;
+    kpred:relates-to   kb:inapp-job-indicators ;
+    kpred:description  "The device space is where a job can be read in full: what it is (by name from the defined list, its tier, its schedule, its card), its state (queued, running, held with the reason, given up), the jobs it waits on, and its recent runs, each with when, how it ended, its receipt (F74.15) and, for a run made for a space, a leap to that space. These are DERIVED RECORDS written by a script from the worker's own files, as confirmed facts from one named source, never proposals: nothing here asks to be reviewed. scripts/agent/queue-to-space.ts already writes the queue this way into a separate job-plan space in a private workspace; that output becomes part of the device space. Only the most recent runs of each job are kept as nodes (20 proposed); older ones are a count and the logs." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — HOW THIS FITS F74.14. The status file stays: it is the small view a space's own workspace can read, limited to that workspace's runs, and it feeds the indicators (F74.13). The device space is the full record, private to the device. ONE WRITER PER FILE still holds: the script's job records go in their own file in the device space's folder, apart from the settings a person edits there. Whether the app loads two files as one space or takes the script's file in as a source is the builder's first check against kb:space-file-layout." ;
+    kpred:constraint   "The device space is device-only (F269): never shared, published, synced or placed in the repository's workspace. Job records for a private space therefore stay private with it." ;
+    kpred:extends      "scripts/agent/queue-to-space.ts, scripts/agent/job-watch.ts (job-runs), scripts/agent/device-config.ts, scripts/agent/queue-worker.ts." ;
+    kpred:done-test    "Unit, over fixture worker and done records: every defined job that is queued, running, held or recently run has a node with its state and reason; a job with 30 runs keeps 20 run nodes and a count; a run made for a space carries a leap to it; two runs over the same records give the same file apart from its generated line. The file is written with mode 0600 outside any Git checkout, and a test fails if its path is inside one." .
+
+kb:job-definition-leap rdf:type ktype:Phase ;
+    rdfs:label "F269.2 — the space a job runs for holds its main definition, with a leap to its detail in This device" ;
+    kpred:feature-id   "F269.2" ;
+    kpred:part-of      kb:device-space ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:device-space-jobs ;
+    kpred:relates-to   kb:agents-in-app ;
+    kpred:relates-to   kb:job-space-channel ;
+    kpred:relates-to   kb:job-dependencies-stage-resume ;
+    kpred:description  "A space that a job runs for holds that job's MAIN DEFINITION as a node: which defined job it is, what it makes for this space, how often. That is the space level of kb:agents-in-app (2026-10-07), and it travels with the space. The node carries a LEAP to the same job in This device, where its state, runs and chain are. The definition arrives in the space as one proposal the first time the job is queued for it, through the queue like any other row (F89.4.1), so no job writes into a space silently. The repository's own jobs graph gets the same leap on each of its definitions, by script." ;
+    kpred:constraint   "THE LEAP NAMES NO DEVICE. A space can be shared and opened elsewhere, so the leap's target is a reserved name meaning 'the device space here', resolved when it is followed; it is never a particular device's id. Followed on a device with no device space, it says so plainly and goes nowhere." ;
+    kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10: the leap uses the existing leap predicate and its in-app form (a path), with the reserved name in it and the job's id as the thing to select on arrival. A leap is one per node today, which fits: one definition, one leap. How the app resolves a space by name from a path is the builder's first check (src/lib/db.ts)." ;
+    kpred:extends      "src/lib/rdf/kb-leap.ts (classifyLeap), src/lib/db.ts, scripts/agent/queue.ts (the first queueing for a space)." ;
+    kpred:done-test    "Unit: the leap on a definition contains no device id and no stable id; resolving it with a device space registered selects that job there; with none registered it returns a named 'no device space here' result. Exporting the space and importing it under another browser profile keeps the definition and the leap, and following it there reaches that profile's device space or the plain message. Queueing a job for a space for the first time writes exactly one proposal for its definition, and a second queueing writes none." .
