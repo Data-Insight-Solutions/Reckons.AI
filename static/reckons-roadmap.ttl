@@ -12387,10 +12387,14 @@ kb:trust-evidence-on-claims rdf:type ktype:Phase ;
     rdfs:label "F286.1 — a report's claims carry evidence a script reads again" ;
     kpred:feature-id   "F286.1" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:description  "Every claim in a deputy's report that something works, passed or exists names the command, its exit code and the log line. A script reads them again and marks a claim with no evidence UNVERIFIED, and a branch carrying an unverified claim is not offered for merge. scripts/agent/verify-run-report.ts does this today for three kinds of report; this extends it to the deputy's branch reports." ;
     kpred:evidence     "2026-11-10: a deputy report said a re-import brings the splat file in; it did not. 2026-11-03 (on kb:local-dev-integration): the queue marked exit 0 as passed while the deputy's own report said BLOCKED." ;
-    kpred:done-test    "Fixtures: a report claiming 'tests pass' with no command fails; one whose named command logged exit 1 fails; a report saying BLOCKED beside exit 0 is recorded as blocked." .
+    kpred:done-test    "Fixtures: a report claiming 'tests pass' with no command fails; one whose named command logged exit 1 fails; a report saying BLOCKED beside exit 0 is recorded as blocked."  ;
+    kpred:has-file     "scripts/agent/run-contract.ts" ;
+    kpred:has-file     "scripts/agent/verify-run-report.ts" ;
+    kpred:tested-by    "scripts/agent/__tests__/branch-report.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: validateBranchReport in run-contract.ts and verify-run-report.ts --kind=branch-report --file=<report> [--log=<log>] [--exit=<n>] (exit 0 ok, 1 unverified or contradicted claim, 3 blocked). A claim line (works, passed, exists, green, fixed...) must carry cmd: `...`, exit N and log: \"...\" on the same line. NOT BUILT: no deputy brief yet asks for that line format, and the merge step does not call the check, so a branch with an unverified claim is not yet kept from merge. WEAKNESS: it proves a claim names evidence (and, with --log, that the quoted line exists), not that the command was the right one; the claim words are a fixed list, so a claim phrased otherwise is not seen.".
 
 kb:trust-every-write-targeted rdf:type ktype:Phase ;
     rdfs:label "F286.2 — every write names where it goes" ;
