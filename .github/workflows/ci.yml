@@ -68,6 +68,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      # F93.1: tests/visual/vision-frames.test.ts skips itself without ffmpeg/ffprobe (9 of its 19 tests
+      # skipped in CI on 2026-11-06), which would leave the asset-checks motion regression unrun.
+      - name: Install ffmpeg for the frame-sampling tests
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: npm run test:run
       # F107.5: fail if a provider secret is set to inline into the public bundle at build.
       - run: npm run secret:scan

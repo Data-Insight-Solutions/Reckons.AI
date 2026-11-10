@@ -157,6 +157,9 @@ export function uniformMargins(f: GrayFrame, tolerance = 6): { left: number; rig
   const right = run(Array.from({ length: w }, (_, i) => col(w - 1 - i)), meanOf(col(w - 1)), tolerance) / w;
   const top = run(Array.from({ length: h }, (_, y) => row(y)), meanOf(row(0)), tolerance) / h;
   const bottom = run(Array.from({ length: h }, (_, i) => row(h - 1 - i)), meanOf(row(h - 1)), tolerance) / h;
+  // A frame that is solid all the way across (or down) has no content between margins, so it is a
+  // blank frame (isBlank's job), not a margined one: report no margins rather than 1.0 on every side.
+  if (left >= 1 || top >= 1) return { left: 0, right: 0, top: 0, bottom: 0 };
   return { left, right, top, bottom };
 }
 

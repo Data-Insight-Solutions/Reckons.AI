@@ -25,6 +25,8 @@ import {
 } from './vision-frames';
 import { checkVideo } from '../../scripts/content/asset-checks';
 
+/** Repository root, from this file's own location, so the tests do not depend on the working directory. */
+const REPO = join(import.meta.dirname, '../..');
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0 && spawnSync('ffprobe', ['-version']).status === 0;
 
 let dir: string;
@@ -103,6 +105,14 @@ describe('uniformMargins / hasMargins (pure frames)', () => {
     expect(m.right).toBeCloseTo(80 / 480, 5);
     expect(m.top).toBeCloseTo(45 / 270, 5);
     expect(m.bottom).toBeCloseTo(45 / 270, 5);
+  });
+  it('does not call a uniform (blank) frame margined', () => {
+    for (const v of [0, 128, 255]) {
+      const f = frame(64, 36, v);
+      expect(uniformMargins(f)).toEqual({ left: 0, right: 0, top: 0, bottom: 0 });
+      expect(hasMargins(f)).toBe(false);
+      expect(isBlank(f)).toBe(true);
+    }
   });
   it('does not call a varied frame margined', () => {
     const f = frame(64, 36, (x, y) => (x + y * 7) % 256);
@@ -199,8 +209,8 @@ describe.skipIf(!hasFfmpeg)('asset-checks motion on the committed clips', () => 
   // Recorded 2026-11-05 from the pre-refactor reads (select=eq(n,0) / select=eq(n,frames-1),
   // scale=64:64, 512x512 49-frame 3 s clips). The refactor must reproduce these exactly.
   const baselines: [string, number][] = [
-    ['static/generated/carved-turtle/video.webm', 0.2061],
-    ['static/generated/lighthouse-island/video.webm', 0.0543],
+    [join(REPO, 'static/generated/carved-turtle/video.webm'), 0.2061],
+    [join(REPO, 'static/generated/lighthouse-island/video.webm'), 0.0543],
   ];
 
   it('gives the same numbers as before on every committed clip', () => {
