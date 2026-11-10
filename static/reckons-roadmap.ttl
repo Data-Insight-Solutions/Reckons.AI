@@ -12526,7 +12526,7 @@ kb:device-space-jobs rdf:type ktype:Phase ;
     rdfs:label "F269.1 — every local job is detailed in This device: its definition, state, runs and chain" ;
     kpred:feature-id   "F269.1" ;
     kpred:part-of      kb:device-space ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "scaffolded" ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:job-space-channel ;
     kpred:relates-to   kb:run-receipt ;
@@ -12535,6 +12535,9 @@ kb:device-space-jobs rdf:type ktype:Phase ;
     kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10 — HOW THIS FITS F74.14. The status file stays: it is the small view a space's own workspace can read, limited to that workspace's runs, and it feeds the indicators (F74.13). The device space is the full record, private to the device. ONE WRITER PER FILE still holds: the script's job records go in their own file in the device space's folder, apart from the settings a person edits there. Whether the app loads two files as one space or takes the script's file in as a source is the builder's first check against kb:space-file-layout." ;
     kpred:constraint   "The device space is device-only (F269): never shared, published, synced or placed in the repository's workspace. Job records for a private space therefore stay private with it." ;
     kpred:extends      "scripts/agent/queue-to-space.ts, scripts/agent/job-watch.ts (job-runs), scripts/agent/device-config.ts, scripts/agent/queue-worker.ts." ;
+    kpred:has-file     "scripts/agent/queue-to-space.ts" ;
+    kpred:tested-by    "scripts/agent/__tests__/queue-to-space-device.test.ts" ;
+    kpred:honest-note  "2026-11-10 (Sonnet overseer): BUILT, behind the --device flag of scripts/agent/queue-to-space.ts: a pure buildDeviceSpaceText and a reader of the worker's own files (queue.jsonl, current.json, worker.json held list, circuits.json, queue.done.jsonl) plus static/reckons-jobs.ttl and schedules.ttl. Per job: state (running, given-up, held with the reason, queued), tier, schedule, card, what it waits on, run count, and the 20 newest runs as nodes with outcome, a receipt pointer and a leap by stable id to the space the run was made for; older runs are a count. Every fact is confirmed and derived, never a proposal. The writer refuses a path inside a Git checkout and writes mode 0600; the done-test unit cases pass (14 tests, 2026-11-10). NOT BUILT: (1) the device space itself does not exist (F269), so the default output path, <data home>/reckons/device-space/kbs/this-device/job-records.ttl, and the file's stable id are placeholders awaiting kb:space-file-layout; (2) nothing schedules --device yet, so the running job-plan schedule is unchanged; (3) the done record carries no receipt or forSpace field today (F74.14 and F74.15 are unbuilt, and queue.ts drops unknown fields when it rewrites a record), so run nodes show those only once the queue writes them; (4) the per-device overrides in device.ttl are not read." ;
     kpred:done-test    "Unit, over fixture worker and done records: every defined job that is queued, running, held or recently run has a node with its state and reason; a job with 30 runs keeps 20 run nodes and a count; a run made for a space carries a leap to it; two runs over the same records give the same file apart from its generated line. The file is written with mode 0600 outside any Git checkout, and a test fails if its path is inside one." .
 
 kb:job-definition-leap rdf:type ktype:Phase ;

@@ -1073,7 +1073,8 @@ code:job-plan-space rdf:type ktype:Concept ;
     rdfs:label "Local job queue as a Reckons.AI space" ;
     kpred:description "queue-to-space.ts reads the local job queue (queue.jsonl, current.json, and the last 48 h of queue.done.jsonl) and writes the annotated job-plan space the app renders as a graph — one node per job (urn:kbase:concept/job-<id>) with status, priority, cwd, branch, head, log, started, finished, outcome-reason and job-after edges; the Job entity type (icon box, colour #5b2a86) is declared in the same file. Pure core plus thin IO: buildSpaceText is deterministic — statement ids are the sha1 of the fact, so two runs over the same queue are byte-identical apart from the generated-at line. Script tier, zero tokens." ;
     kpred:has-file "scripts/agent/queue-to-space.ts" ;
-    kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" .
+    kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/queue-to-space-device.test.ts" .
 
 # Triple Check and focused research views (2026-10-26).
 code:rdf kpred:has-file "src/lib/rdf/triple-check.ts", "src/lib/rdf/statement-chunks.ts", "src/lib/rdf/space-view.ts", "src/lib/rdf/repository-comparison.ts", "src/lib/rdf/purpose-organization.ts" .
