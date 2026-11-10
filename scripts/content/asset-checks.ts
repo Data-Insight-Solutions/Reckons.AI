@@ -16,6 +16,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
+import { sampleFrames, meanAbsDiff } from '../../tests/visual/vision-frames';
 
 export interface Check {
   pass: boolean;
@@ -83,23 +84,22 @@ export function judgeVideo(s: VideoStats, expect?: { frames?: number }): Check {
   };
 }
 
-function grayFrame(file: string, select: string): Buffer {
-  return execFileSync('ffmpeg', ['-v', 'error', '-i', file, '-vf', `${select},scale=64:64,format=gray`,
-    '-frames:v', '1', '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 });
-}
-
+// Frame reads run on the shared sampler (tests/visual/vision-frames.ts, F93.1): the same 64x64
+// greyscale frames, but one that also serves the visual suite, so the two can never drift apart in
+// what a frame at a named time is. The numbers must stay identical to the old select=eq(n,…) reads
+// (pinned in tests/visual/vision-frames.test.ts: carved-turtle 0.2061, lighthouse-island 0.0543).
 export function checkVideo(file: string, expect?: { frames?: number }): Check {
   try {
     const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-count_frames', '-select_streams', 'v:0',
       '-show_entries', 'stream=width,height,nb_read_frames:format=duration', '-of', 'json', file], { encoding: 'utf8' }));
     const st = probe.streams?.[0] ?? {};
     const frames = Number(st.nb_read_frames ?? 0);
-    const first = grayFrame(file, 'select=eq(n\\,0)');
-    const last = grayFrame(file, `select=eq(n\\,${Math.max(0, frames - 1)})`);
-    let sum = 0;
-    for (let i = 0; i < Math.min(first.length, last.length); i++) sum += Math.abs(first[i] - last[i]);
-    const motion = first.length ? sum / first.length / 255 : 0;
-    return judgeVideo({ width: Number(st.width ?? 0), height: Number(st.height ?? 0), frames, durationS: Number(probe.format?.duration ?? 0), motion }, expect);
+    const durationS = Number(probe.format?.duration ?? 0);
+    // 0 and the duration: the duration lands in the gap after the last frame's timestamp, and the
+    // sampler's clamp re-seeks to the last frame — the same two frames the old first/last reads took.
+    const [first, last] = sampleFrames(file, [0, Math.round(durationS * 1000)], { width: 64, height: 64 });
+    const motion = meanAbsDiff(first, last);
+    return judgeVideo({ width: Number(st.width ?? 0), height: Number(st.height ?? 0), frames, durationS, motion }, expect);
   } catch (e) {
     return { pass: false, problems: [`not a decodable video: ${(e as Error).message.split('\n')[0]}`], notes: [], measured: {} };
   }

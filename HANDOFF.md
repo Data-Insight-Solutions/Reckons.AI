@@ -3,6 +3,53 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-06 — START HERE: v0.2.7.1 shipped; v0.2.8 re-cut as the assets and demos release (Claude Code, Opus)
+
+**Shipped.** v0.2.7.1 reached production 2026-11-06 03:15 UTC (#597 → staging, #599 docs gate, #598
+staging → main, merged by Matt). It carries only F58.9.17: the asset generation setup-and-test page per
+operating system (reckons.ai/docs/features/generation-setup, checked live), gen-setup.sh for Apple
+Silicon (Metal sd.cpp and Brush, SHA-256 pinned; no TripoSplat), and the runner fix that would have held
+every job on a Mac for want of nvidia-smi. **Nothing has run on a Mac**; Matt's friend is the first tester.
+The same changes reached dev through #595 (merged).
+
+**Matt decided (2026-11-06):** v0.2.8 is re-cut as THE ASSETS AND DEMOS RELEASE; the 14 unstarted
+0.2.8 features moved to v0.2.9. The job plan is in the roadmap (planning PR): F275.8.1 bank Hume lines
+before 2026-11-13 (Hume TTS/EVI end that day), F275.8.2 local TTS bench (Qwen3-TTS VoiceDesign,
+Chatterbox, VibeVoice), F275.11-.20 (LinkedIn cut, subject zoom, cut loading screens, demo scripts,
+fast-forward badge, music bed, loudness, thumbnail, Matt's voice, two blocking app bugs), F58.9.19-.20
+(showcase assets, "one prompt, every asset" example), F223.6-.8 (reckon an asset, a composite at its
+cheapest layer, review of the new version). F275.21 asks Hume Audio Decisions for measured voice naturalness (Matt shared its coding-agent page; it says
+nothing about the TTS/EVI shutdown, so check it continues). Also planned earlier the same day: F275.9 composite asset,
+F275.10 demo QA, F93.1 frame sampling, F223.5 proposal outcome assets, F283 Open in (ArtCraft), F117.1-.4
+service suggestions, F58.9.18 better video.
+
+**Demo pipeline (F275, #592):** `npm run demo:render -- --workflow=generated-assets` renders a narrated
+1920x1080 MP4 with title and end cards (Hume credit on screen), captions inside the MP4, a drawn cursor
+that scrolls and glides to each click, lead-in questions (Matt: "propose thought provoking questions
+right before a decent delay"), each line held on its subject, silences over 5 s fast-forwarded (listed in
+the receipt). Output goes to ~/Videos/reckons-demos/ (snap VLC cannot read hidden folders). Latest:
+~/Videos/reckons-demos/generated-assets/2026-11-06T01-59-14-255Z/ (128 s), sent to the tester.
+
+**Next actions, in order:**
+1. Merged into dev 2026-11-06: #593 (F283 plan), #594 (v0.2.7 production), #595 (Mac setup), #600 (RAM guard).
+   #592 (F275 demos + this 0.2.8 plan) waits on CI; its E2E can fail on the flaky Shelly chain test (F275.20); re-run, then merge.
+2. **Before 2026-11-13:** write and get Matt's approval for every 0.2.8 demo line, then
+   `--narrate-only` to bank them in the Hume cache (F275.8.1).
+3. The queue worker is Matt's `npm run agent:watch` terminal (started 2026-11-05 ~21:50 CST, old RAM guard).
+   Matt restarts it; then `queue.ts resume`. The failed F93.1 deputy job retries by itself (brief in the planning PR; worktree .claude/worktrees/f275-libs,
+   branch agent/local-f93-frames). A Sonnet overseer reviews every deputy branch (Matt, 2026-11-05).
+4. Deputy-ready jobs with full job specs (`npm run brief -- --entity=kb:<slug>`): kb:demo-fast-forward-badge,
+   kb:demo-loudness, kb:video-frame-sampling.
+
+**Found today, not fixed:**
+- Search re-navigation loop at a 1920x1080 viewport (F275.20; filed as a known issue on search-bar).
+- The RAM guard stopped a healthy load (mmap disabled under host memory pressure); fixed in #600 (merged),
+  not yet verified live: it needs the worker restarted.
+- Ollama's CUDA discovery can time out at service start and fall back to Vulkan (2026-11-05 12:47 CST);
+  restart and check `library=CUDA` in the journal.
+- The naming ratchet is over baseline on dev (interfaces +41 from the #587 batch); filed for Matt
+  (interface vs type is undecided).
+
 ## 2026-11-04 (evening) — START HERE: everything open merged; asset QA loop in (Claude Code, Opus)
 
 **Merged into dev today (verified as one tree, #587, CI 16/16 green at 4ce0a5f7, dev a1a46707):** #585 queue
