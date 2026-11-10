@@ -12485,7 +12485,7 @@ kb:statement-standing rdf:type ktype:Phase ;
     rdfs:label "F223.9 — a statement's standing (held, pending, proposed, question), worked out once and carried to the canvas" ;
     kpred:feature-id   "F223.9" ;
     kpred:part-of      kb:graph-proposals ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:priority     "high" ;
     kpred:depends-on   kb:proposal-shape ;
     kpred:relates-to   kb:partial-facts ;
@@ -12493,7 +12493,12 @@ kb:statement-standing rdf:type ktype:Phase ;
     kpred:relates-to   kb:review-run-sets ;
     kpred:description  "One pure function gives every statement a STANDING from fields it already has, with no new status: HELD (confirmed or refined), PENDING (awaiting review, part of no proposal), PROPOSED (awaiting review AND belonging to an option of a reckoning's proposal), QUESTION (a partial fact: its object is open). A pending statement records which option it belongs to in its portable record, the same way F89.4.4 records its run, so an option is a set whose members are derived, not listed. The graph view passes the standing with every edge, and gives every node the standing of the statements that touch it: a node touched only by proposed statements is a proposed node. A QUESTION'S MISSING END is its own node, one per question, never the shared '?' literal." ;
     kpred:extends      "src/lib/rdf/graph-view.ts (buildGraphView, categoryLiterals), src/lib/rdf/partial-facts.ts, src/lib/rdf/proposal.ts, src/lib/rdf/portable-metadata.ts." ;
-    kpred:done-test    "Unit: the standing function over one fixture statement of each kind. A graph view of two questions has two question-end nodes and no node for the literal '?'; this test is written FIRST and its result on today's code is recorded here, because the shared '?' node was read from the code and not seen. A node touched by one held and one proposed statement is held; a node touched only by proposed statements is proposed. A statement's option survives export and import." .
+    kpred:done-test    "Unit: the standing function over one fixture statement of each kind. A graph view of two questions has two question-end nodes and no node for the literal '?'; this test is written FIRST and its result on today's code is recorded here, because the shared '?' node was read from the code and not seen. A node touched by one held and one proposed statement is held; a node touched only by proposed statements is proposed. A statement's option survives export and import." ;
+    kpred:evidence     "2026-11-10: the first test was written and run on the UNCHANGED code and FAILED, as evidence (4) on kb:graph-proposals predicted: two question statements (object '?', needsObject) in one buildGraphView made the literal '?' a shared category node, so both questions ended at the one node 'l:?||' (vitest: 'expected true to be false' on view.categories.has('?')). The reading from the code was confirmed as behavior. After the fix the same test passes: '?' is not a category and each question ends at its own node keyed by its statement id ('q:' + id, exposed as view.questionEnds)." ;
+    kpred:progress     "2026-11-10: BUILT: standingOf and nodeStanding (src/lib/rdf/statement-standing.ts); proposalOption on Statement, carried in the portable record; buildGraphView returns standing per edge, nodeStandings per node and questionEnds. First draft by the local deputy (qwen3.8-160k), reviewed and extended by Sonnet (view.standing and nodeStandings added). NOT BUILT: nothing yet SETS proposalOption (the Reckoning stores no proposal options, so no real statement is 'proposed' today); the renderers do not yet use questionEnds (F223.10). Edge case left as written: standingOf maps pending-removal, rejected and superseded to pending; topByDegree and hubNodeKeys still key a question's end as the literal '?'." ;
+    kpred:tested-by    "src/lib/rdf/__tests__/statement-standing.test.ts" ;
+    kpred:tested-by    "src/lib/rdf/__tests__/graph-view.test.ts" ;
+    kpred:has-file     "src/lib/rdf/statement-standing.ts" .
 
 kb:standing-drawn rdf:type ktype:Phase ;
     rdfs:label "F223.10 — the canvas draws by standing: proposals dashed, questions hollow and half-strength, in 2D and 3D" ;

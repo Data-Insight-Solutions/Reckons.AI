@@ -26,6 +26,8 @@
 import type { Statement, Term } from './types';
 import { termKey, isIRI, isLit } from './types';
 import { ALTITUDE_RANK, altitudeOf, liftedAltitudes, type Altitude } from './fact-altitude';
+import { UNKNOWN_OBJECT } from './partial-facts';
+import { standingOf, nodeStanding, type Standing } from './statement-standing';
 
 /**
  * A literal must be at least this short to be a category. Long strings are prose — even
@@ -123,6 +125,19 @@ export interface GraphView {
   categories: Set<string>;
   /** What `minAltitude` removed. All zeroes when no floor is set. */
   hidden: HiddenByAltitude;
+  /**
+   * Each question's missing end (F223.9 / kb:statement-standing): statement id → node key.
+   *
+   * A question's open object is a PLACEHOLDER, not a value two statements share, so it never
+   * earns a shared category node — every question ends at its OWN node, one per question.
+   * The `q:` prefix is disjoint from termKey's `i:`/`b:`/`l:` keys, so a question end can
+   * never be confused with an entity or a literal. Empty when the view holds no question.
+   */
+  questionEnds: Map<string, string>;
+  /** Standing of every drawn edge, by statement id (F223.9). */
+  standing: Map<string, Standing>;
+  /** Standing of every node, from the statements that touch it. A question's end node is a question. */
+  nodeStandings: Map<string, Standing>;
 }
 
 const NO_ALTITUDE_HIDDEN: HiddenByAltitude = {
@@ -143,12 +158,34 @@ function nodeKeysOf(edges: Statement[]): Set<string> {
 }
 
 /**
+ * A question's missing end (F223.9): its object is the placeholder UNKNOWN_OBJECT and the
+ * statement is marked as a question. Such a statement draws an edge to its OWN end node —
+ * one per question — rather than to a shared "?" node.
+ *
+ * The check reads the two fields partial-facts defines (needsObject and the "?" object), so
+ * graph-view and partial-facts cannot drift apart over what a question is.
+ */
+export function isQuestionEnd(st: Statement): boolean {
+  return st.needsObject === true && isLit(st.o) && st.o.value === UNKNOWN_OBJECT;
+}
+
+/** Node key of a question's end. `q:` is disjoint from termKey's `i:`/`b:`/`l:` keys. */
+export function questionEndKey(statementId: string): string {
+  return `q:${statementId}`;
+}
+
+/**
  * Which literal values are shared often enough, and short enough, to be categories?
  * Everything else is an attribute.
+ *
+ * A question's placeholder object never counts: shared by definition (every question writes
+ * the same "?") it would otherwise become exactly the shared node questions must not have
+ * (F223.9: one end node per question).
  */
 export function categoryLiterals(statements: Statement[]): Set<string> {
   const counts = new Map<string, number>();
   for (const st of statements) {
+    if (isQuestionEnd(st)) continue; // the "?" is an open end, not a shared value
     if (!isLit(st.o)) continue;
     if (st.o.value.length > MAX_CATEGORY_LITERAL_LENGTH) continue; // prose is never a category
     counts.set(st.o.value, (counts.get(st.o.value) ?? 0) + 1);
@@ -207,14 +244,21 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
 
   const edges: Statement[] = [];
   const attributes = new Map<string, Statement[]>();
+  const questionEnds = new Map<string, string>();
 
   // Iterate the FULL windowed set, not `drawable`. Anything the floor removed falls through to
   // `attributes`, so opening the node still shows it. Hidden from the picture, not from the
   // record — which is the same distinction the review tree draws when it collapses logs into a
   // drawer instead of dropping them.
+  //
+  // A question's end is its own node (F223.9): it draws an edge like any other drawable fact,
+  // but to a node keyed by the statement, never to a shared "?" — so `questionEnds` records
+  // the mapping the renderers (F223.10) read when they key that end.
   for (const st of filtered) {
-    if (drawableFact(st) && isNodeTerm(st.o, categories)) {
+    const question = isQuestionEnd(st);
+    if (drawableFact(st) && (question || isNodeTerm(st.o, categories))) {
       edges.push(st);
+      if (question) questionEnds.set(st.id, questionEndKey(st.id));
     } else {
       const key = termKey(st.s);
       const list = attributes.get(key) ?? [];
@@ -223,7 +267,18 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
     }
   }
 
-  return { edges, attributes, categories, hidden: summarizeHidden() };
+  const standing = new Map<string, Standing>();
+  const touching = new Map<string, Statement[]>();
+  const touch = (k: string, st: Statement) => { const l = touching.get(k); if (l) l.push(st); else touching.set(k, [st]); };
+  for (const st of edges) {
+    standing.set(st.id, standingOf(st));
+    touch(termKey(st.s), st);
+    touch(questionEnds.get(st.id) ?? termKey(st.o), st);
+  }
+  const nodeStandings = new Map<string, Standing>();
+  for (const [k, sts] of touching) nodeStandings.set(k, nodeStanding(sts));
+
+  return { edges, attributes, categories, hidden: summarizeHidden(), questionEnds, standing, nodeStandings };
 
   function summarizeHidden(): HiddenByAltitude {
     if (!lifted && spaceMetadata) return NO_ALTITUDE_HIDDEN;
