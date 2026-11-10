@@ -28,6 +28,8 @@
     selected = null,
     highlighted = [],
     dimMode = false,
+    litStatementIds = null,
+    quietStatementIds = null,
     targetKey = null,
     historyTimestamp = null,
     sources = [],
@@ -68,6 +70,13 @@
     selected?: string | null;
     highlighted?: string[];
     dimMode?: boolean;
+    /**
+     * F223.11: ids of the statements a filter lights. When set, an edge is lit only if ITS statement is in it
+     * (not merely because both ends matched). null = edges follow their ends, as before.
+     */
+    litStatementIds?: Set<string> | null;
+    /** F223.11: statements shown at a second, quieter strength (what a focused proposal option cites). */
+    quietStatementIds?: Set<string> | null;
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
@@ -143,7 +152,7 @@
     /** F223.9: this node is one question's missing end (drawn hollow, marked '?'). */
     questionEnd?: boolean;
   };
-  type Edge = { a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; standing?: Standing; };
+  type Edge = { id?: string; a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; standing?: Standing; };
   type Marker = { key: string; label: string; color: string; x: number; y: number; };
 
   // ── Graph data ───────────────────────────────────────────────────────────────
@@ -327,7 +336,7 @@
       a.degree++; b.degree++;
       const pred = st.p.value.split('/').pop() ?? st.p.value;
       const sd = standingOf(st);
-      e.push({ a, b, predicate: pred, confidence: st.confidence,
+      e.push({ id: st.id, a, b, predicate: pred, confidence: st.confidence,
         semanticDist: edgeDist(!isIRI(st.o), pred, st.confidence), standing: sd });
       for (const n of [a, b]) { const l = touching.get(n.key); if (l) l.push(st); else touching.set(n.key, [st]); }
     }
