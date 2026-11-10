@@ -12405,10 +12405,13 @@ kb:trust-nothing-private-leaves rdf:type ktype:Phase ;
     rdfs:label "F286.3 — nothing private leaves the machine in a branch" ;
     kpred:feature-id   "F286.3" ;
     kpred:part-of      kb:offline-trust-contract ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:description  "Before a branch merges into the local integration repository, a script scans its diff, its commit messages and its branch name against a list of private terms kept outside any repository, in the person's config folder. It prints counts and where, never the terms." ;
     kpred:evidence     "2026-11-10: two unpushed deputy branches carried a private location in public-bound text, one of them in a commit message." ;
-    kpred:done-test    "With a synthetic terms list: a fixture branch with a listed term in a commit message is refused, and the output contains no listed term. With no list configured the check says 'not configured' and exits 2, because unknown is not a pass." .
+    kpred:done-test    "With a synthetic terms list: a fixture branch with a listed term in a commit message is refused, and the output contains no listed term. With no list configured the check says 'not configured' and exits 2, because unknown is not a pass." ;
+    kpred:has-file     "scripts/offline/private-terms-check.ts" ;
+    kpred:tested-by    "scripts/offline/__tests__/private-terms-check.test.ts" ;
+    kpred:honest-note  "2026-11-10: BUILT AND TESTED ON FIXTURES: scripts/offline/private-terms-check.ts <base> <head> reads the list from the config folder (private-terms.txt), scans added diff lines, commit messages and the branch name, prints counts and positions only, exits 1 on a match and 2 when not configured. NOT BUILT: the call from the local merge step (F276) does not exist yet, so nothing runs it automatically; it has not been run against the real list. WEAKNESS: it is a literal case-insensitive substring match, so a misspelling, a paraphrase or an image is not caught." .
 
 kb:trust-worker-outlives-session rdf:type ktype:Phase ;
     rdfs:label "F286.4 — the queue worker outlives the session that started it" ;
