@@ -52,7 +52,16 @@ set -euo pipefail
 # A deputy needs none of them (its one token, ANTHROPIC_AUTH_TOKEN, is set further down), and anything it
 # can read it can echo into a log or a commit. Done first, so no early exit below can skip it.
 for v in $(compgen -e); do
-  case "$v" in *KEY*|*TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*) unset "$v" ;; esac
+  case "$v" in *KEY*|*TOKEN*|*SECRET*|*PASSWORD*|*CREDENTIAL*)
+    unset "$v"
+    # A git config group (GIT_CONFIG_KEY_N / GIT_CONFIG_VALUE_N / GIT_CONFIG_COUNT) is one unit. The *KEY*
+    # glob unsets the key side and orphans the value: every git call then dies with "missing config key"
+    # (measured 2026-11-10: the two F274.1 --repo tests fail this way under a harness environment that
+    # passes git config this way — the mechanism this script itself uses below to clear the credential
+    # helper). Drop the whole group instead.
+    if [[ "$v" =~ ^GIT_CONFIG_KEY_([0-9]+)$ ]]; then unset "GIT_CONFIG_VALUE_${BASH_REMATCH[1]}" GIT_CONFIG_COUNT; fi
+    ;;
+  esac
 done
 if [ "${RECKONS_DEPUTY_PRINT_ENV:-}" = 1 ]; then compgen -e; exit 0; fi
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
