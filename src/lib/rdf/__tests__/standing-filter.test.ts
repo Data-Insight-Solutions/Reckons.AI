@@ -11,18 +11,18 @@ function st(s: string, o: string | null, extra: Partial<Statement> = {}): Statem
   } as Statement;
 }
 
-describe('standing filters are exact to the statement (F223.11)', () => {
+describe('standing filters are exact to the fact (F223.11)', () => {
   const held = st('a', 'b');
   const proposed = st('a', 'b', { status: 'pending', proposalOption: 'opt-1' });
   const q1 = st('a', null, { status: 'pending', needsObject: true });
   const q2 = st('b', null, { status: 'pending', needsObject: true });
 
-  it('the proposed filter lights only the proposed edge, though a held edge joins the same two nodes', () => {
+  it('the proposed filter lights only the proposed edge, though a held edge joins the same two markers', () => {
     const on = new Set(['proposed']);
     expect(passesStandingFilters(proposed, on)).toBe(true);
     expect(passesStandingFilters(held, on)).toBe(false);
   });
-  it('the questions filter lights only question edges, and their ends are their own nodes', () => {
+  it('the questions filter lights only question edges, and their ends are their own markers', () => {
     const on = new Set(['questions']);
     expect([held, proposed, q1, q2].filter((s) => passesStandingFilters(s, on))).toEqual([q1, q2]);
     expect(statementNodeKeys(q1)[1]).not.toBe(statementNodeKeys(q2)[1]);

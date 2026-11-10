@@ -378,7 +378,7 @@
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
   let activeFilters = $state<Set<GraphFilter>>(new Set());
-  /** F223.11: the proposal option shown in the graph, and the statement ids it cites (quiet strength). */
+  /** F223.11: the proposal option shown on the canvas, and the fact ids it cites (quiet strength). */
   let focusOptionId = $state<string | null>(null);
   let focusCited = $state<string[]>([]);
   let selectedSources = $state<Set<string>>(new Set());
@@ -429,7 +429,7 @@
     if (sel) selected = sel;
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
-    // F223.11: ?focus=<option id>&cite=<statement ids> lights one proposal option (see focusOption).
+    // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
     focusOptionId = params.get('focus');
     focusCited = (params.get('cite') ?? '').split(',').filter(Boolean);
     const src = params.get('src');
@@ -749,13 +749,13 @@
     if (showingLanding || use2D || !webglAvailable) graph3DReady = false;
   });
 
-  /** The option shown in the graph (F223.11), or null. Computed from the same statements the canvas draws. */
+  /** The option shown on the canvas (F223.11), or null. Computed from the same facts the canvas draws. */
   const optionFocus = $derived<OptionFocus | null>(
     focusOptionId ? focusOption(visible, focusOptionId, { citations: focusCited }) : null,
   );
   /**
-   * Statement ids that pass every statement-level filter, so the canvas lights an EDGE only when its own
-   * statement matches (F223.11). null = no statement-level filter: nothing is dimmed on that account.
+   * Fact ids that pass every fact-level filter, so the canvas lights an EDGE only when its own
+   * fact matches (F223.11). null = no fact-level filter: nothing is dimmed on that account.
    */
   const litStatementIds = $derived.by(() => {
     const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
@@ -802,7 +802,7 @@
         )
       )
         continue;
-      // A question's missing end is its own node (F223.9), so it is matched under its own key.
+      // A question's missing end is its own marker (F223.9), so it is matched under its own key.
       for (const k of statementNodeKeys(s)) keys.add(k);
     }
     return keys;
@@ -2221,8 +2221,8 @@
     onreorder: (order) => { nodeOrder = order; },
     get highlighted() { return graphHighlighted; },
     get dimMode() { return perspective === 'statements' && dimMode; },
-    get litStatementIds() { return perspective === 'statements' ? litStatementIds : null; },
-    get quietStatementIds() { return perspective === 'statements' ? quietStatementIds : null; },
+    get litStatementIds() { return litStatementIds; },
+    get quietStatementIds() { return quietStatementIds; },
     get podMode() { return podMode; },
     get ghostGraph() { return ghostGraph; },
     get ghostAnchorKey() { return ghostAnchorKey; },
@@ -2588,13 +2588,13 @@
       </button>
       <!-- F223.11: proposals and questions, beside confirmed and pending. Shown only when the space holds one. -->
       {#if visibleProposedCount > 0 || activeFilters.has('proposed')}
-        <button class="chip" class:active={activeFilters.has('proposed')} onclick={() => toggleFilter('proposed')} title="Show only statements that belong to a proposal's options">
+        <button class="chip" class:active={activeFilters.has('proposed')} onclick={() => toggleFilter('proposed')} title="Show only facts that belong to a proposal's options">
           <span class="num">{visibleProposedCount}</span>
           <span class="lbl mono">proposed</span>
         </button>
       {/if}
       {#if visibleQuestionCount > 0 || activeFilters.has('questions')}
-        <button class="chip" class:active={activeFilters.has('questions')} onclick={() => toggleFilter('questions')} title="Show only open questions: statements whose object is not known yet">
+        <button class="chip" class:active={activeFilters.has('questions')} onclick={() => toggleFilter('questions')} title="Show only open questions: facts whose answer is not known yet">
           <span class="num">{visibleQuestionCount}</span>
           <span class="lbl mono">questions</span>
         </button>
@@ -2691,9 +2691,9 @@
         </Popover.Root>
       {/if}
     </div>
-    <!-- F223.10: names how the canvas draws a statement's standing. Shape and line carry it, never colour alone. -->
+    <!-- F223.10: names how the canvas draws a fact's standing. Shape and line carry it, never colour alone. -->
     {#if visibleProposedCount + visibleQuestionCount > 0}
-      <ul class="standing-legend mono" aria-label="How statements are drawn">
+      <ul class="standing-legend mono" aria-label="How facts are drawn">
         <li><span class="sw sw-held"></span>held: solid line</li>
         {#if visibleProposedCount > 0}<li><span class="sw sw-proposed"></span>proposed: dashed, hollow</li>{/if}
         {#if visibleQuestionCount > 0}<li><span class="sw sw-question">?</span>question: dashed, hollow, half strength</li>{/if}

@@ -94,9 +94,9 @@
      */
     hideShape?: boolean;
     /**
-     * F223.10: how the node is DRAWN for what it stands on. 'question' (a question's own end) and
+     * F223.10: how the marker is DRAWN for what it stands on. 'question' (a question's own end) and
      * 'proposed' (touched only by proposals) are hollow: a wireframe at reduced opacity. Dimming still
-     * takes the colour to grey as for every node, so a question in view is not mistaken for a dimmed fact.
+     * takes the colour to grey as for every marker, so a question in view is not mistaken for a dimmed fact.
      */
     standing?: 'held' | 'pending' | 'proposed' | 'question' | null;
     onclick?: (e: { stopPropagation: () => void; ctrlKey?: boolean }) => void;

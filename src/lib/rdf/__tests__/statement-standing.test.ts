@@ -1,9 +1,9 @@
 /**
- * A statement's standing (F223.9 / kb:statement-standing).
+ * A fact's standing (F223.9 / kb:fact-standing).
  *
- * One pure function gives every statement a standing from fields it already has, with no new
- * review status: held, pending, proposed, question. And a node's standing is the standing
- * of the statements that touch it, with held winning.
+ * One pure function gives every fact a standing from fields it already has, with no new
+ * review status: held, pending, proposed, question. And a marker's standing is the standing
+ * of the facts that touch it, with held winning.
  *
  * Synthetic data only: the subjects and options below are invented names, not real ones.
  */
@@ -58,8 +58,8 @@ describe('standingOf — one rule per kind', () => {
   });
 });
 
-describe('nodeStanding — the standing of the statements that touch a node', () => {
-  it('a node touched by one held and one proposed statement is held', () => {
+describe('marker standing — the standing of the facts that touch a marker', () => {
+  it('a marker touched by one held and one proposed fact is held', () => {
     const touched = [
       st('a', 'confirmed'),
       st('b', 'pending', { proposalOption: 'option-b' }),
@@ -67,7 +67,7 @@ describe('nodeStanding — the standing of the statements that touch a node', ()
     expect(nodeStanding(touched)).toBe('held');
   });
 
-  it('a node touched only by questions is a question', () => {
+  it('a marker touched only by questions is a question', () => {
     const touched = [
       st('a', 'pending', { needsObject: true, o: lit('?') }),
       st('b', 'pending', { needsObject: true, o: lit('?') }),
@@ -75,7 +75,7 @@ describe('nodeStanding — the standing of the statements that touch a node', ()
     expect(nodeStanding(touched)).toBe('question');
   });
 
-  it('a node touched only by proposed statements is proposed', () => {
+  it('a marker touched only by proposed facts is proposed', () => {
     const touched = [
       st('a', 'pending', { proposalOption: 'option-a' }),
       st('b', 'pending', { proposalOption: 'option-a' }),
@@ -83,7 +83,7 @@ describe('nodeStanding — the standing of the statements that touch a node', ()
     expect(nodeStanding(touched)).toBe('proposed');
   });
 
-  it('a proposed statement beside a plain pending one leaves the node pending', () => {
+  it('a proposed fact beside a plain pending one leaves the marker pending', () => {
     const touched = [
       st('a', 'pending', { proposalOption: 'option-a' }),
       st('b', 'pending'),
@@ -92,7 +92,7 @@ describe('nodeStanding — the standing of the statements that touch a node', ()
   });
 });
 
-describe('proposalOption survives export and import (portable metadata)', () => {
+describe('proposalOption survives a round trip through the portable record', () => {
   it('round-trips through the portable record, like findingClass', () => {
     const source = st('a', 'pending', { proposalOption: 'option-b', findingClass: 'drift' });
     const decoded = decodePortableMetadata(encodePortableMetadata(source, 'statement'), 'statement');
@@ -101,7 +101,7 @@ describe('proposalOption survives export and import (portable metadata)', () => 
     expect(decoded.findingClass).toBe('drift');
   });
 
-  it('stays absent when the statement names no option — import never invents one', () => {
+  it('stays absent when the fact names no option — import never invents one', () => {
     const source = st('a', 'pending');
     const decoded = decodePortableMetadata(encodePortableMetadata(source, 'statement'), 'statement');
     expect('proposalOption' in decoded).toBe(false);

@@ -126,17 +126,17 @@ export interface GraphView {
   /** What `minAltitude` removed. All zeroes when no floor is set. */
   hidden: HiddenByAltitude;
   /**
-   * Each question's missing end (F223.9 / kb:statement-standing): statement id → node key.
+   * Each question's missing end (F223.9 / kb:fact-standing): fact id → marker key.
    *
-   * A question's open object is a PLACEHOLDER, not a value two statements share, so it never
-   * earns a shared category node — every question ends at its OWN node, one per question.
+   * A question's open object is a PLACEHOLDER, not a value two facts have in common, so it never
+   * earns a shared category marker — every question ends at its OWN marker, one per question.
    * The `q:` prefix is disjoint from termKey's `i:`/`b:`/`l:` keys, so a question end can
    * never be confused with an entity or a literal. Empty when the view holds no question.
    */
   questionEnds: Map<string, string>;
-  /** Standing of every drawn edge, by statement id (F223.9). */
+  /** Standing of every drawn edge, by fact id (F223.9). */
   standing: Map<string, Standing>;
-  /** Standing of every node, from the statements that touch it. A question's end node is a question. */
+  /** Standing of every marker, from the facts that touch it. A question's end marker is a question. */
   nodeStandings: Map<string, Standing>;
 }
 
@@ -159,17 +159,17 @@ function nodeKeysOf(edges: Statement[]): Set<string> {
 
 /**
  * A question's missing end (F223.9): its object is the placeholder UNKNOWN_OBJECT and the
- * statement is marked as a question. Such a statement draws an edge to its OWN end node —
- * one per question — rather than to a shared "?" node.
+ * fact is marked as a question. Such a fact draws an edge to its OWN end marker —
+ * one per question — rather than to a shared "?" marker.
  *
  * The check reads the two fields partial-facts defines (needsObject and the "?" object), so
- * graph-view and partial-facts cannot drift apart over what a question is.
+ * this module and partial-facts cannot drift apart over what a question is.
  */
 export function isQuestionEnd(st: Statement): boolean {
   return st.needsObject === true && isLit(st.o) && st.o.value === UNKNOWN_OBJECT;
 }
 
-/** Node key of a question's end. `q:` is disjoint from termKey's `i:`/`b:`/`l:` keys. */
+/** Marker key of a question's end. `q:` is disjoint from termKey's `i:`/`b:`/`l:` keys. */
 export function questionEndKey(statementId: string): string {
   return `q:${statementId}`;
 }
@@ -179,8 +179,8 @@ export function questionEndKey(statementId: string): string {
  * Everything else is an attribute.
  *
  * A question's placeholder object never counts: shared by definition (every question writes
- * the same "?") it would otherwise become exactly the shared node questions must not have
- * (F223.9: one end node per question).
+ * the same "?") it would otherwise become exactly the shared marker questions must not have
+ * (F223.9: one end marker per question).
  */
 export function categoryLiterals(statements: Statement[]): Set<string> {
   const counts = new Map<string, number>();
@@ -251,8 +251,8 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   // record — which is the same distinction the review tree draws when it collapses logs into a
   // drawer instead of dropping them.
   //
-  // A question's end is its own node (F223.9): it draws an edge like any other drawable fact,
-  // but to a node keyed by the statement, never to a shared "?" — so `questionEnds` records
+  // A question's end is its own marker (F223.9): it draws an edge like any other drawable fact,
+  // but to a marker keyed by the fact, never to a shared "?" — so `questionEnds` records
   // the mapping the renderers (F223.10) read when they key that end.
   for (const st of filtered) {
     const question = isQuestionEnd(st);

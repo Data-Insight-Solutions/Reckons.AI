@@ -71,11 +71,11 @@
     highlighted?: string[];
     dimMode?: boolean;
     /**
-     * F223.11: ids of the statements a filter lights. When set, an edge is lit only if ITS statement is in it
+     * F223.11: ids of the facts a filter lights. When given, an edge is lit only if ITS fact is in it
      * (not merely because both ends matched). null = edges follow their ends, as before.
      */
     litStatementIds?: Set<string> | null;
-    /** F223.11: statements shown at a second, quieter strength (what a focused proposal option cites). */
+    /** F223.11: facts shown at a second, quieter strength (what a focused proposal option cites). */
     quietStatementIds?: Set<string> | null;
     targetKey?: string | null;
     historyTimestamp?: number | null;
@@ -147,9 +147,9 @@
     degree: number;
     /** Full text for hover display (literals: full value; IRIs: label only) */
     fullText?: string;
-    /** F223.9: the standing of the statements touching this node; a question's own end is 'question'. */
+    /** F223.9: the standing of the facts touching this marker; a question's own end is 'question'. */
     standing?: Standing;
-    /** F223.9: this node is one question's missing end (drawn hollow, marked '?'). */
+    /** F223.9: this marker is one question's missing end (drawn hollow, marked '?'). */
     questionEnd?: boolean;
   };
   type Edge = { id?: string; a: Node; b: Node; predicate: string; confidence: number; semanticDist: number; isSourceEdge?: boolean; standing?: Standing; };
@@ -1101,7 +1101,7 @@
     return v;
   }
   const STANDING_FALLBACK = { '--data': '#6b4399', '--ink-2': '#b8c5d4' } as const;
-  /** The standing a node is DRAWN with: only a question's own end is hollow-question; a subject keeps its other standing. */
+  /** The standing a marker is DRAWN with: only a question's own end is hollow-question; a subject keeps its other standing. */
   function drawnNodeStanding(n: Node): Standing {
     if (n.questionEnd) return 'question';
     return n.standing === 'question' || !n.standing ? 'held' : n.standing;
@@ -1450,8 +1450,8 @@
       }
 
       // Node body — shape from entity type geometry
-      // F223.10: a node that exists only in a proposal, or a question's own end, is HOLLOW: a light fill and
-      // a dashed outline at full strength (dimming still multiplies on top, as for every node).
+      // F223.10: a marker that exists only in a proposal, or a question's own end, is HOLLOW: a light fill and
+      // a dashed outline at full strength (dimming still multiplies on top, as for every marker).
       const dSt = drawnNodeStanding(n);
       const sSty = dSt === 'held' || dSt === 'pending' ? null : nodeStyle(dSt);
       const dimMul = isDimmed ? GHOST_ALPHA : 1;

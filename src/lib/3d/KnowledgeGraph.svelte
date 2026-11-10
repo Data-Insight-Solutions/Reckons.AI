@@ -281,7 +281,7 @@
     degree: number;
     /** Full text for hover display (literals: full value; IRIs: label only) */
     fullText?: string;
-    /** F223.9/F223.10: standing of the statements touching this node; a question's own end is 'question'. */
+    /** F223.9/F223.10: standing of the facts touching this marker; a question's own end is 'question'. */
     standing?: Standing;
     questionEnd?: boolean;
   };

@@ -1,10 +1,10 @@
 /**
- * Filters by standing, exact to the statement (F223.11 / kb:standing-filters), and focus on one
+ * Filters by standing, exact to the fact (F223.11 / kb:standing-filters), and focus on one
  * option of a proposal.
  *
- * A status filter used to resolve to NODE keys and an edge was lit when both its ends matched, so
- * 'pending' also lit every held edge between two pending nodes. Here a filter resolves to the
- * matching STATEMENTS as well as their nodes, and an edge is lit only when its own statement
+ * A status filter used to resolve to marker keys and an edge was lit when both its ends matched, so
+ * 'pending' also lit every held edge between two pending markers. Here a filter resolves to the
+ * matching FACTS as well as their markers, and an edge is lit only when its own fact
  * matches. Nothing is removed from the layout: what does not match dims and keeps its place.
  */
 import type { Statement } from './types';
@@ -15,16 +15,16 @@ import { isQuestionEnd, questionEndKey } from './graph-view';
 export type StandingFilter = 'confirmed' | 'pending' | 'proposed' | 'questions';
 export const STANDING_FILTERS: readonly StandingFilter[] = ['confirmed', 'pending', 'proposed', 'questions'];
 
-/** Is this filter one of the status filters (as opposed to hubs, sources, types...)? */
+/** Is this filter one of the status filters (as opposed to hubs, origins or types)? */
 export function isStandingFilter(f: string): f is StandingFilter {
   return (STANDING_FILTERS as readonly string[]).includes(f);
 }
 
 /**
- * Does one statement pass the active status filters? They UNION ("confirmed + questions" asks for
- * both kinds); no status filter active means every statement passes.
+ * Does one fact pass the active status filters? They UNION ("confirmed + questions" asks for
+ * both kinds); no status filter active means every fact passes.
  *
- * 'confirmed' = held (confirmed or refined). 'pending' = every statement still awaiting review by
+ * 'confirmed' = held (confirmed or refined). 'pending' = every fact still awaiting review by
  * status, which includes proposed ones and questions, as the chip has always counted. 'proposed' and
  * 'questions' are the narrower standings.
  */
@@ -39,28 +39,28 @@ export function passesStandingFilters(st: Statement, active: ReadonlySet<string>
       : standing === 'question');
 }
 
-/** The node keys one statement puts on the canvas: its subject and its object (a question's own end). */
+/** The marker keys one fact puts on the canvas: its subject and its object (a question's own end). */
 export function statementNodeKeys(st: Statement): [string, string] {
   return [termKey(st.s), isQuestionEnd(st) ? questionEndKey(st.id) : termKey(st.o)];
 }
 
 export interface OptionFocus {
-  /** The option's own statements: lit at full strength. */
+  /** The option's own facts: lit at full strength. */
   lit: Set<string>;
-  /** Held statements the option cites: readable at a second, quieter strength. */
+  /** Held facts the option cites: readable at a second, quieter strength. */
   quiet: Set<string>;
-  /** Nodes of both sets, so labels and nodes of what is lit are not dimmed. */
+  /** Markers of both groups, so labels and markers of what is lit are not dimmed. */
   nodeKeys: Set<string>;
 }
 
 /**
- * FOCUS ONE OPTION: which statements light when one option of a proposal is shown in the graph.
+ * FOCUS ONE OPTION: which facts light when one option of a proposal is shown on the canvas.
  *
- * `optionId` matches `Statement.proposalOption`. `citations` are the ids the option rests on
+ * `optionId` matches `proposalOption` on a fact. `citations` are the ids the option rests on
  * (ProposalOption.citations); those not already in the option light quietly. Open questions whose
  * `blocks` names an entity the option is about, plus any ids given in `blockers`, light with it at full strength.
  * Switching to another option is another call with another id: the layout never reads this, so no
- * node moves and two options compare by flipping between them.
+ * marker moves and two options compare by flipping between them.
  */
 export function focusOption(
   statements: readonly Statement[],
@@ -73,7 +73,7 @@ export function focusOption(
   const quiet = new Set<string>();
   const nodeKeys = new Set<string>();
   // The gaps that block the proposal (F268.1) are its questions: an open question whose `blocks` names
-  // an entity the option's own statements are about lights with the option.
+  // an entity the option's own facts are about lights with the option.
   const optionEntities = new Set<string>();
   for (const st of statements) {
     if (st.proposalOption !== optionId) continue;

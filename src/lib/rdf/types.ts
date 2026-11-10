@@ -283,13 +283,13 @@ export type Statement = {
    */
   findingClass?: 'form' | 'drift' | 'defect';
   /**
-   * Which option of a reckoning's proposal this statement belongs to (F223.9 / kb:statement-standing).
+   * Which option of a reckoning's proposal this fact belongs to (F223.9 / kb:fact-standing).
    *
-   * Set when the statement is `pending` AND part of a proposed option — that is what separates
+   * Stamped when the fact is `pending` AND part of a proposed option — that is what separates
    * PROPOSED from PENDING, with no new review status. Recorded the same way F89.4.4 records its
-   * run: a stamp on the portable record, so an option is a set whose members are DERIVED
-   * (`standingOf` in rdf/statement-standing.ts), not listed — no membership edges to keep in sync.
-   * Survives export and import via portable metadata (rdf/portable-metadata.ts).
+   * run: a stamp on the portable record, so an option is a group whose members are DERIVED
+   * (`standingOf` in rdf/fact-standing.ts), not listed — no membership edges to keep in sync.
+   * Survives a round trip through the portable record, via portable metadata (rdf/portable-metadata.ts).
    */
   proposalOption?: string;
   /**

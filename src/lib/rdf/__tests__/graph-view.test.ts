@@ -454,26 +454,26 @@ describe("the container's own record is drawn only at 'all' (Matt, 2026-10-21)",
   });
 });
 
-// ── F223.9 — a question's missing end (kb:statement-standing) ───────────────
+// ── F223.9 — a question's missing end (kb:fact-standing) ───────────────
 //
-// kb:graph-proposals, evidence (4), 2026-11-10, read from the code and not observed in the
+// the proposals entry in the roadmap, evidence (4), 2026-11-10, read from the code and not observed in the
 // running app: a question's missing object is the literal "?", and a short literal shared by
-// two or more statements becomes a category node — so two questions in one space would both
-// point at ONE shared "?" node. This test is written FIRST, and its result on the unchanged
+// two or more facts becomes a category marker — so two questions in one space would both
+// point at ONE shared "?" marker. This test is written FIRST, and its result on the unchanged
 // code is recorded in DEPUTY-NOTES.md (the roadmap's done-test says the same).
-describe('F223.9 — a question\'s missing end is its own node, never the shared "?"', () => {
-  it('two questions end at two DISTINCT nodes, and the literal "?" is not a category', () => {
+describe('F223.9 — a question\'s missing end is its own marker, never the shared "?"', () => {
+  it('two questions end at two DISTINCT markers, and the literal "?" is not a category', () => {
     // Two open questions about two different things. Both ask for an object; the placeholder
-    // object is UNKNOWN_OBJECT ("?") and needsObject marks the statement as a question.
+    // object is UNKNOWN_OBJECT ("?") and needsObject marks the fact as a question.
     const q1 = { ...st('topic-a', 'open-question', { literal: UNKNOWN_OBJECT }), needsObject: true };
     const q2 = { ...st('topic-b', 'open-question', { literal: UNKNOWN_OBJECT }), needsObject: true };
     const view = buildGraphView([q1, q2]);
 
-    // The placeholder is not a value two statements share: it must not earn a category node.
+    // The placeholder is not a value two facts have in common: it must not earn a category marker.
     expect(view.categories.has(UNKNOWN_OBJECT)).toBe(false);
 
-    // And the two questions must end at two different nodes — one per question, keyed by the
-    // statement — not at one shared node.
+    // And the two questions must end at two different markers — one per question, keyed by the
+    // fact — not at one shared marker.
     const questionEdges = view.edges.filter((e) => e.id === q1.id || e.id === q2.id);
     const ends = questionEdges.map((e) => view.questionEnds.get(e.id));
     expect(ends).toHaveLength(2);
@@ -482,7 +482,7 @@ describe('F223.9 — a question\'s missing end is its own node, never the shared
 });
 
 describe('F223.9 — the view carries standing', () => {
-  it('passes a standing with every edge and every node', () => {
+  it('passes a standing with every edge and every marker', () => {
     const held = st('a', 'rel', 'b');
     const prop = { ...st('c', 'rel', 'd'), status: 'pending' as const, proposalOption: 'opt-1' };
     const heldToC = st('a', 'rel', 'c');

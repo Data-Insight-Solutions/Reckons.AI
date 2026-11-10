@@ -1,8 +1,8 @@
 /**
- * How the canvas draws a statement's standing (F223.10 / kb:standing-drawn).
+ * How the canvas draws a fact's standing (F223.10 / kb:standing-drawn).
  *
  * One pure mapping from standing to style TOKENS, shared by the 2D and 3D renderers so they
- * cannot drift. Standing is carried by line style and node shape, never by colour alone: it
+ * cannot drift. Standing is carried by line style and marker shape, never by colour alone: it
  * must read in a screenshot printed in grey.
  *
  * A QUESTION MUST NOT LOOK FILTERED OUT. The canvas already uses faintness for "not what you
@@ -12,19 +12,19 @@
  */
 export type DrawnStanding = 'held' | 'pending' | 'proposed' | 'question';
 
-/** The alpha a filter dims non-matching things to. The renderers share this value. */
+/** The alpha a filter dims non-matching things to. Both renderers read this one value. */
 export const DIM_ALPHA = 0.18;
 
 export interface StandingStyle {
-  /** Edge drawn dashed; node outline dashed. */
+  /** Edge drawn dashed; marker outline dashed. */
   dashed: boolean;
-  /** Node drawn as an outline with a light fill instead of a solid body. */
+  /** Marker drawn as an outline with a light fill instead of a solid body. */
   hollow: boolean;
   /** Overall strength multiplier in (0,1]. Dimming multiplies on top. */
   strength: number;
   /** Which house CSS variable colours it, or null to keep the usual colour. */
   colorVar: '--data' | '--ink-2' | null;
-  /** Glyph drawn in a hollow node, so the absence is a marked thing. */
+  /** Glyph drawn in a hollow marker, so the absence is a marked thing. */
   mark: string | null;
 }
 
@@ -35,12 +35,12 @@ const STYLES: Record<DrawnStanding, StandingStyle> = {
   question: { dashed: true, hollow: true, strength: 0.5, colorVar: '--ink-2', mark: '?' },
 };
 
-/** Edge style for a standing. A node touched only by proposals is also drawn hollow (see nodeStyle). */
+/** Edge style for a standing. A marker touched only by proposals is also drawn hollow (see the marker style below). */
 export function standingStyle(standing: DrawnStanding): StandingStyle {
   return STYLES[standing];
 }
 
-/** A node that exists only in a proposal is hollow with a dashed ring; its edges stay proposed. */
+/** A marker that exists only in a proposal is hollow with a dashed ring; its edges stay proposed. */
 export function nodeStyle(standing: DrawnStanding): StandingStyle {
   return standing === 'proposed' ? { ...STYLES.proposed, hollow: true } : STYLES[standing];
 }
