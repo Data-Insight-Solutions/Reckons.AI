@@ -59,4 +59,16 @@ describe('sampleRun (F89.4.5 run sampler)', () => {
     const rows = fixture(5, 240);
     expect(sampleRun(rows, 'run-alpha')).not.toEqual(sampleRun(rows, 'run-beta'));
   });
+
+  it('does not mutate its input, and run ids that differ only outside Latin-1 are told apart', () => {
+    const rows = fixture(5, 240);
+    const copy = rows.map((r) => ({ ...r }));
+    sampleRun(rows, 'run-x');
+    expect(rows).toEqual(copy);
+    const seen = new Set<string>();
+    for (const id of ['\u0100', '\u0200', '\u0300', '\u0400', '\u0500', '\u0600']) {
+      seen.add(sampleRun(rows, id).map((r) => r.seq).join(','));
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
 });

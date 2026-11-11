@@ -32,7 +32,7 @@ const FNV_PRIME = 16777619;
 function seedFromRunId(runId: string): number {
   let h = FNV_OFFSET;
   for (let i = 0; i < runId.length; i++) {
-    h ^= runId.charCodeAt(i) & 0xff;
+    h ^= runId.charCodeAt(i); // full 16-bit unit: masking to 8 bits made ids that differ only past Latin-1 collide
     h = Math.imul(h, FNV_PRIME) >>> 0;
   }
   return h >>> 0;
