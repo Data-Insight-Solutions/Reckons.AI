@@ -32,7 +32,7 @@ describe('F269.2 device leap helpers (kb-leap)', () => {
     expect(parseDeviceLeap(deviceLeapTarget(JOB_ID))).toEqual({ jobId: JOB_ID });
   });
 
-  it('resolveDeviceLeap with a device space opens that space selecting the job', () => {
+  it('resolveDeviceLeap with a device knowledge base opens that knowledge base selecting the job', () => {
     expect(resolveDeviceLeap(deviceLeapTarget(JOB_ID), DEVICE_SPACE_ID)).toEqual({
       kind: 'open',
       spaceId: DEVICE_SPACE_ID,
@@ -40,27 +40,27 @@ describe('F269.2 device leap helpers (kb-leap)', () => {
     });
   });
 
-  it('resolveDeviceLeap with no device space says so plainly and goes nowhere', () => {
-    expect(resolveDeviceLeap(deviceLeapTarget(JOB_ID), null)).toEqual({ kind: 'no-device-space' });
+  it('resolveDeviceLeap with no device knowledge base says so plainly and goes nowhere', () => {
+    expect(resolveDeviceLeap(deviceLeapTarget(JOB_ID), null)).toEqual({ kind: 'no-device-kb' });
   });
 
   it('an ordinary leap target parses as null, so a device leap stays distinct from the rest', () => {
-    // a space's stable id — a kb leap, not an in-app path
+    // a knowledge base's stable id — a kb leap, not an in-app path
     expect(parseDeviceLeap('a1b2c3d4-e5f6-4a0a-b00a-000000000010')).toBeNull();
     // an external URL
     expect(parseDeviceLeap('https://example.org/reckons')).toBeNull();
-    // an app path that names a real space, not the reserved device name
+    // an app path that names a real knowledge base, not the reserved device name
     expect(parseDeviceLeap('/?kb=roadmap&f=proposed')).toBeNull();
-    // an app path that names the reserved space but selects no job
+    // an app path that names the reserved knowledge base but selects no job
     expect(parseDeviceLeap('/?kb=this-device')).toBeNull();
   });
 
-  it('a target that is not a device leap is told apart from a device with no device space', () => {
+  it('a target that is not a device leap is told apart from a device with no device knowledge base', () => {
     expect(resolveDeviceLeap('/?kb=roadmap', DEVICE_SPACE_ID)).toEqual({ kind: 'not-a-device-leap' });
     expect(resolveDeviceLeap('https://example.org/x', null)).toEqual({ kind: 'not-a-device-leap' });
   });
 
-  it('the reserved name lands on the space the app lists as "This device" (resolveKbParam, by name)', () => {
+  it('the reserved name lands on the knowledge base the app lists as "This device" (resolveKbParam, by name)', () => {
     const reg = [
       { id: 'kbase', name: 'Default' },
       { id: DEVICE_SPACE_ID, name: 'This device' },
