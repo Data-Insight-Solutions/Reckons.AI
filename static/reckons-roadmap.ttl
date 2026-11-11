@@ -12602,3 +12602,146 @@ kb:job-definition-leap rdf:type ktype:Phase ;
     kpred:proposed     "FABLE 5.2 (architecture pass), 2026-11-10: the leap uses the existing leap predicate and its in-app form (a path), with the reserved name in it and the job's id as the thing to select on arrival. A leap is one per node today, which fits: one definition, one leap. How the app resolves a space by name from a path is the builder's first check (src/lib/db.ts)." ;
     kpred:extends      "src/lib/rdf/kb-leap.ts (classifyLeap), src/lib/db.ts, scripts/agent/queue.ts (the first queueing for a space)." ;
     kpred:done-test    "Unit: the leap on a definition contains no device id and no stable id; resolving it with a device space registered selects that job there; with none registered it returns a named 'no device space here' result. Exporting the space and importing it under another browser profile keeps the definition and the leap, and following it there reaches that profile's device space or the plain message. Queueing a job for a space for the first time writes exactly one proposal for its definition, and a second queueing writes none." .
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# 2026-11-10 (evening) — Matt's directions in chat with Claude Code, recorded and planned by Fable 5.2.
+# PLANS ONLY. Recommendations are kpred:proposed; the quotes are his.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+kb:layouts-work-by-default rdf:type ktype:Feature ;
+    rdfs:label "Layouts that work by default — time, tree and arrange get their data on ingest and creation, and say what they are missing" ;
+    kpred:feature-id   "F287" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:one-graph-canvas ;
+    kpred:relates-to   kb:staged-extraction ;
+    kpred:relates-to   kb:timeline-undated-lane ;
+    kpred:relates-to   kb:free-layout-positions ;
+    kpred:relates-to   kb:arrange-layout-builder ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): 'Arrange Tree Time, should be more consistently usable layouts, the data isn't being populated for those by default on ingest/creation.'" ;
+    kpred:evidence     "2026-11-10, read from the code, not observed in the app: in src/routes/(app)/+page.svelte the layouts 'time', 'arrange' and 'tree' are ALWAYS offered, while 'source', 'type' and 'map' are offered only when the space holds what they need (the comment there: 'a map layout that opens empty reads as a broken feature rather than as an absent fact'). Tree reads only skos:broader and kpred:depends-on, plus hnav:order for siblings (src/lib/rdf/hierarchy.ts). Arrange keeps a person's order in page state (nodeOrder), so it is gone after a reload. Ingest runs type, group and archive stages; none proposes a date, a parent or an order." ;
+    kpred:description  "Three layouts are offered on every space and work on few, because nothing produces what they read. Two changes, in this order. (1) EVERY LAYOUT SAYS WHAT IT CAN PLACE: a count, 'time: 12 of 80 have a date', computed by rule; a layout that can place almost nothing says what is missing and offers to propose it, instead of opening as a heap. (2) THE DATA ARRIVES BY DEFAULT: tree reads the containment a space already states in its own words (part-of, has-part, has-phase, depends-on, and the grouping predicates the group stage already recognises), so no new facts are needed for most spaces; time reads stated dates first, then dates found by rule in a thing's own values, and never treats the moment a fact was added as the date of the thing; arrange starts from a stated order when there is one and KEEPS the order a person drags. What still has to be proposed (a date found in the source text, a parent) arrives from ingest as pending facts like any other." ;
+    kpred:principle    "ADDED IS NOT DATED. The time a fact entered the space is not when the thing happened (src/lib/rdf/archive-sweep.ts already says an undated entity 'is not old, it is undated'). Sorting by when things were added is offered as its own labeled choice, never as a silent fallback inside the time layout." .
+
+kb:layout-readiness rdf:type ktype:Phase ;
+    rdfs:label "F287.1 — each layout reports how much of the space it can place, and what is missing" ;
+    kpred:feature-id   "F287.1" ;
+    kpred:part-of      kb:layouts-work-by-default ;
+    kpred:has-status   "planned" ;
+    kpred:order        1 ;
+    kpred:description  "TIER: script. One pure function over a space's facts returns, for time, tree and arrange: how many things the layout can place, out of how many, and the reason for the rest (no date, no parent, no order). The layout picker shows the count; a layout under a low bar is still offered, with its count and one action: 'propose what is missing'. Shelly's view suggestions read the same numbers." ;
+    kpred:done-test    "Unit, on synthetic fixtures: a space with 3 dated things of 10 reports time 3 of 10 with 7 undated; a space with one broader edge reports tree 2 of N; no stated order reports arrange 0. The picker shows the counts in one end-to-end test at desktop and 390px width." .
+
+kb:tree-reads-own-containment rdf:type ktype:Phase ;
+    rdfs:label "F287.2 — tree reads the containment a space already states, in its own words" ;
+    kpred:feature-id   "F287.2" ;
+    kpred:part-of      kb:layouts-work-by-default ;
+    kpred:has-status   "planned" ;
+    kpred:order        2 ;
+    kpred:depends-on   kb:layout-readiness ;
+    kpred:relates-to   kb:set-substrate ;
+    kpred:description  "The tree layout's edges come from a list of containment predicates per space: skos:broader and depends-on as now, plus part-of, has-part, has-phase, and any grouping predicate the ingest group stage recognised in that space. Direction is recorded per predicate (part-of points up, has-part points down). A cycle is broken at the weakest edge and reported, never drawn as a tangle. No fact is written to make a tree." ;
+    kpred:done-test    "Unit: a fixture stating only part-of and has-phase builds one tree with the right parents; a has-part edge gives the same tree as its part-of mirror; a cycle of three is reported and the tree still builds. On static/reckons-roadmap.ttl the share of entities the tree can place is measured before and after and recorded here." .
+
+kb:time-date-ladder rdf:type ktype:Phase ;
+    rdfs:label "F287.3 — time places a thing by a stated date, then by a date found in its own values; 'when added' is a separate labeled choice" ;
+    kpred:feature-id   "F287.3" ;
+    kpred:part-of      kb:layouts-work-by-default ;
+    kpred:has-status   "planned" ;
+    kpred:order        3 ;
+    kpred:depends-on   kb:layout-readiness ;
+    kpred:description  "A ladder, by rule: a stated temporal fact on the thing; else a date parsed from one of its own literal values (an ISO date, a year in a label such as 'Q3 2026 launch'), marked as found, not stated; else the undated lane (F59.2). A second axis choice, 'by when added', uses the time each fact entered the space and is labeled as that." ;
+    kpred:done-test    "Unit: stated date wins over a parsed one; a parsed date is flagged as found; a thing with neither is undated and never placed by its added time; 'by when added' places everything and its axis label says so." .
+
+kb:arrange-keeps-order rdf:type ktype:Phase ;
+    rdfs:label "F287.4 — arrange starts from a stated order and keeps the one a person drags" ;
+    kpred:feature-id   "F287.4" ;
+    kpred:part-of      kb:layouts-work-by-default ;
+    kpred:has-status   "planned" ;
+    kpred:order        4 ;
+    kpred:depends-on   kb:layout-readiness ;
+    kpred:relates-to   kb:free-layout-positions ;
+    kpred:description  "Arrange opens in the stated order (hnav:order) when the space has one, else in a stable default (by type, then by connections, then by name). Dragging writes hnav:order on the things moved, as meta facts hidden from the fact list and kept in export, the same way F285.0 keeps free-layout positions. An automatic layout never writes an order." ;
+    kpred:done-test    "Unit: the default order is the same on two runs; a drag writes hnav:order only for the moved things; the order survives export and import. End to end: drag, reload, the order is as left." .
+
+kb:ingest-structure-stage rdf:type ktype:Phase ;
+    rdfs:label "F287.5 — ingest proposes the dates and parents it can find, as pending facts" ;
+    kpred:feature-id   "F287.5" ;
+    kpred:part-of      kb:layouts-work-by-default ;
+    kpred:has-status   "planned" ;
+    kpred:order        5 ;
+    kpred:depends-on   kb:time-date-ladder ;
+    kpred:depends-on   kb:tree-reads-own-containment ;
+    kpred:relates-to   kb:staged-extraction ;
+    kpred:description  "A 'structure' stage after the group stage. By RULE first: a date stated beside a thing in the source text becomes a pending temporal fact citing its passage; a heading that contains other headings becomes a pending part-of. A model is used only where the rule finds nothing and the readiness count is still low, and its proposals pass the same review. Creating a thing by hand offers the same two fields, date and belongs-to, and leaves them empty when unknown: an open question, not a guess." ;
+    kpred:done-test    "On the synthetic notes corpus: the rule stage proposes the dates and parents listed in the fixture's expectations and nothing else; every proposal cites its passage; none is confirmed automatically. Readiness for time and tree is measured before and after on the corpus and recorded here." .
+
+kb:release-0-3-1 rdf:type ktype:Release ;
+    rdfs:label "v0.3.1" ;
+    kpred:version "0.3.1" ;
+    kpred:has-status "planned" ;
+    kpred:description "A sharing update after v0.3.0, carrying the first part of collaborative space building. Scope not yet cut; see kb:collaborative-space-building." ;
+    kpred:has-part kb:collaborative-space-building .
+
+kb:release-0-3-2 rdf:type ktype:Release ;
+    rdfs:label "v0.3.2" ;
+    kpred:version "0.3.2" ;
+    kpred:has-status "planned" ;
+    kpred:description "A sharing update after v0.3.1, carrying the rest of collaborative space building. Scope not yet cut; see kb:collaborative-space-building." ;
+    kpred:has-part kb:collaborative-space-building .
+
+kb:collaborative-space-building rdf:type ktype:Feature ;
+    rdfs:label "Collaborative space building — ask another team's space, and receive the answer inside your own graph" ;
+    kpred:feature-id   "F288" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:release-0-3-0 ;
+    kpred:relates-to   kb:cross-kb-alignment ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:graph-proposals ;
+    kpred:relates-to   kb:loop-job-grouping ;
+    kpred:relates-to   kb:agents-in-app ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): '0.3.1 and 0.3.2 should include sharing updates, we need collaborative space building mode. It asynchronously requests experts opinion, and then receives it within the space graph, connected even though it might not be understood by every space user. The concept here is Sales team defines a request series made by multiple prospects, then engineers define current stat and scope by gleaning from their spaces, then helps sales define a demo plan, enhancement documentation, and other demonstrable resource outputs. A series or chain of space splits and merges, but we need a smooth collaboration interface. Add, Analyze, Reckons and existing screens should help with this collaboration. Add questions and add teams, and add other familiar starting points, and through reckons.AI analyze and reckoning processes graph yourself into effective collaboration without needing to know specifics. LLM chat from sales can explain the technical features, ad-hoc and validated with real space data.'" ;
+    kpred:description  "People in different roles build one understanding without sharing one space. A team asks; another team answers from its own space, later and without a meeting; the answer arrives in the asker's graph as facts connected to the question, kept even where the asker does not yet understand them. Worked through one case: sales records what several prospects asked for; engineering states what exists and what is in scope from its own spaces; the result is a demo plan, enhancement documents and other things that can be shown. Under the surface it is a chain of space splits and merges; on the surface it is the screens people already use: Add, Analyze, the Reckoning." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — A FIRST FRAMING, NOT YET AN ARCHITECTURE (it needs its own pass before any builder starts). (1) THE UNIT IS A REQUEST: a question in the F32 form, addressed to a team, travelling with only the facts it cites. (2) AN ANSWER IS ONE REVIEWABLE GROUP: it returns as pending facts from one run of the answering side, carrying which space answered and when, reviewed by the asker in one pass (F89.4.4), with a leap back to the source. (3) UNDERSTOOD LATER: an answer the asker cannot read is kept and connected; Shelly explains it on request from the facts in both spaces and cites them, which is the 'validated with real space data' in Matt's words. (4) STARTING POINTS, in Add: 'ask a question', 'add a team'. (5) NO NEW TOP-LEVEL TAB. PRIOR ART IN THE REPOSITORY: scripts/agent/space-watch.ts (F239) already watches a shared space folder, with a consent file, request files and its own proposals file, one writer per file; the cross-space merge already exists; the job-to-space channel (F74.14) uses the same request files." ;
+    kpred:open-question "FOR MATT, when this is architected: who may ask whom (teams as entities with members, or any space that consented); whether an answer may be given by an agent on the expert's behalf or only proposed to the expert first; and which of the worked case's outputs (demo plan, enhancement document) is the first one shown." ;
+    kpred:honest-note  "NOTHING IS BUILT FOR THIS FEATURE AND IT IS NOT ARCHITECTED (2026-11-10). The two releases above have no scope beyond this entity." .
+
+kb:deputy-harness-bench rdf:type ktype:Feature ;
+    rdfs:label "Which local model works best inside the Claude Code harness — a benchmark for the deputy" ;
+    kpred:feature-id   "F289" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:loop-local-deputy ;
+    kpred:relates-to   kb:local-overseer-model ;
+    kpred:relates-to   kb:model-routing-ledger ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): 'I am not particularly happy with the local qwen code performance, but at least its mostly functional now. I may want to try other models, and benchmark upon what model best performs within claude code?' The same day: 'I removed gpt-oss-120b, it was too big for my machine and other jobs running in the background.'" ;
+    kpred:description  "The deputy's work is not chat, it is a tool-using loop: read, edit, run a check, read the result, fix, commit. So the benchmark runs each candidate model THROUGH the real launcher (scripts/agent/local-claude.sh) on the same small set of replayed tasks with known answers, each in a throwaway worktree, and scores what a reviewer would: did the done-test pass, how much of the draft was kept, how many turns and minutes, how many times it stalled on a permission prompt, whether it stayed inside the files it was given, and whether its report claimed something that was not true. One model is resident at a time and the run goes through the queue." ;
+    kpred:measured     "2026-11-10, one data point: the deputy (qwen3.8, 160k context) took about 50 minutes for a pure function with tests (F223.9); the reviewing overseer kept about 90 percent of it. Installed and able to be candidates that day without a download: qwen3.8, qwen3-coder, devstral-small-2, command-r:35b, gemma3:27b, mistral-small3.2:24b, phi4:14b. On 2026-10-28 a harness run of four replayed overseer cases already exists (kb:local-overseer-model)." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10: the seven first drafts queued this evening are the first task set. Each has a brief, a done-test and files named; when overseers have judged them, the same seven briefs replayed on each candidate are the benchmark, with the judged result as the known answer. By the rule that each side upgrades the other, changing the deputy's model is Claude's side to do and record." ;
+    kpred:done-test    "A script runs N briefs against M models through the launcher in throwaway worktrees and writes one row per pair with the measures above; a fixture run with a stub model proves the scoring; the first real run's table is recorded here with its date." .
+
+kb:process-weight-by-stage rdf:type ktype:Feature ;
+    rdfs:label "Process weight by project stage — which checks and records are worth their cost, and when" ;
+    kpred:feature-id   "F290" ;
+    kpred:has-status   "speculative" ;
+    kpred:relates-to   kb:graph-economics ;
+    kpred:relates-to   kb:work-tiering ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): 'I think a later concept we need to nail down is the token and other system cost of doing all of the documentation, etc. what is worth it at what point in a project cycle? New features will be slower, but alignment and execution may be improved so new features for a new project don't do all things, for an established repo, do all the checks and balances.'" ;
+    kpred:description  "A later question, recorded so it is not lost: the plan-in-the-graph, the done-tests, the ratchets and the handoffs cost tokens and time on every change. A new project should carry few of them and an established one all of them. What is needed first is the measurement: per practice, what it costs per change and what rework it prevented, by project age and size." ;
+    kpred:honest-note  "NOT DESIGNED (2026-11-10). One measurement exists from that day: of the build wave's defects found before merge (a raised ratchet, a refused hand run, a double-queued row, a wrong field name), each was caught by a check or a review step, not by a person in the app; the two found in the app (a splat with no file, splats arriving as islands) had no check." .
+
+kb:own-trained-models rdf:type ktype:Feature ;
+    rdfs:label "Our own trained models — measured against the stock ones before anything is trained" ;
+    kpred:feature-id   "F291" ;
+    kpred:has-status   "speculative" ;
+    kpred:relates-to   kb:deputy-harness-bench ;
+    kpred:relates-to   kb:model-routing-ledger ;
+    kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): 'I think we want Shelly and other behind the scenes model needs to be benchmarked against our own custom trained models? How far are we from that? Can't we generate a lot of spaces with good data, and then train on our tools and example data? I think there would be a bit more than that but...' He named Qwen3-30B-A3B-Base as a trainable candidate." ;
+    kpred:description  "Train a model on Reckons.AI's own tasks (extraction into facts, choosing a tool, answering only from cited facts) and compare it with the stock local models on the same benchmarks. The order matters: the benchmark and the held-out test set come first, because without them a trained model cannot be shown to be better." ;
+    kpred:proposed     "FABLE 5.2, 2026-11-10 — HOW FAR, HONESTLY. EXISTS: task benchmarks with scoring (extraction, embedding, visual gate, coding, agentic), a synthetic notes corpus with expectations, and a review journal of accepted and rejected proposals, which is labeled data nobody has used for training. MISSING: (a) a training set per task built from REVIEWED facts only, with a test split that never enters training; (b) a way to make many spaces with known-correct facts, where the risk is training a model on another model's unreviewed output; (c) the training run itself and its cost on this machine, unmeasured; (d) the licence and terms of each base model, unread. FIRST STEP THAT COSTS LITTLE: one narrow task (text to facts) on a small base model, scored on the existing extraction benchmark against the stock model. A 30-billion-parameter base comes after that works." ;
+    kpred:honest-note  "NOTHING IS BUILT AND NO MODEL HAS BEEN TRAINED (2026-11-10). The named base model's card, licence and memory needs were not read for this entry." .
+
+kb:offline-trust-contract kpred:evidence "2026-11-10: the queue worker had been started from an agent worktree. That worktree was removed as merged and clean without checking for a process running from it, and scheduled jobs failed for about two hours until the worker was restarted from the main checkout. A worktree is removed only after checking that nothing runs from it; the worker should refuse to start outside the main checkout." ;
+    kpred:evidence "2026-11-10 (Matt): worktrees take a lot of local disk; each holds its own dependencies, about 2.3 GB. The disk reached 100 percent that afternoon and one job failed on it. Proposed: a script-tier job that lists worktrees that are merged, clean and idle and proposes their removal, and a free-space floor below which the worker starts no job that needs a new worktree." .
+
+kb:loop-local-deputy kpred:evidence "2026-11-10 (Matt): the deputy uses Bash a lot, and because auto mode cannot run its safety check against a local model, each such command stops for approval; a pasted session shows it stopped on a patch command against its own memory folder. Proposed: tally which commands it was stopped on from its own session records, add the read-only ones to its allowlist, and say in every deputy brief to use the Read and search tools in place of shell commands." .
