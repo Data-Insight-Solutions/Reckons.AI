@@ -255,7 +255,12 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   const receipt: ScanReceipt = {
     origin: 'reconstructed',
     input: { kind: input.kind, name: basename(inputPath), sha256: inputHash, bytes: statSync(input.video).size },
-    frames: { extracted, kept, registered, fps },
+    // ONE MEASURE, ONE FIELD (F74.15): the summary figure IS the check's measured value, taken
+    // from the check at write time — there is no second copy to drift from. (Before this, the
+    // receipt read the outer variable that the fresh-run branch's own `registered` shadows, so fresh runs wrote 0 here
+    // while the check had measured the true count.) A resumed receipt written before
+    // checks carried a measured count falls back to the count it already recorded.
+    frames: { extracted, kept, registered: Number(registration.measured?.registered ?? registered), fps },
     tools: {
       ffmpeg: run('frames', 'ffmpeg', ['-version']).split('\n')[0],
       pycolmap,

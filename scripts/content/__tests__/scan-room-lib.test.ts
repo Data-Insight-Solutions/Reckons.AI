@@ -106,6 +106,23 @@ describe('receipt shape', () => {
     const r = receipt(); r.frames.registered = 201;
     expect(validateReceipt(r).join()).toMatch(/inconsistent/);
   });
+  describe('self-consistency (F74.15)', () => {
+    it('fails a summary that disagrees with the check, naming both values', () => {
+      // The 2026-11-10 incident as a fixture: the summary said 0 while the check measured 193 of 200.
+      const r = receipt();
+      r.frames.registered = 0;
+      r.checks.registration = { pass: true, problems: [], notes: [], measured: { registered: 193, total: 200, fraction: 0.965 } };
+      const p = validateReceipt(r).join('\n');
+      expect(p).toMatch(/frames\.registered is 0/);
+      expect(p).toMatch(/measured 193/);
+    });
+    it('passes a summary that is the check\'s measured value', () => {
+      const r = receipt();
+      r.frames.registered = 193;
+      r.checks.registration = { pass: true, problems: [], notes: [], measured: { registered: 193, total: 200, fraction: 0.965 } };
+      expect(validateReceipt(r)).toEqual([]);
+    });
+  });
   describe('compressed copy (F58.9.11)', () => {
     const withCopy = (): ScanReceipt => ({
       ...receipt(),
