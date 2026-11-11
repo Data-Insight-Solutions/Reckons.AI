@@ -181,11 +181,11 @@ export function buildScan(): string {
   b.add(splatB, DERIVED_FROM, lit('?'), 'pending', { needsObject: true, question: 'Which capture is this a scan of?' });
   const check = b.node('rx-what-to-check', 'Concept', 'What to check',
     'Demonstrates F58.9.20 (a finished scan attaches its splat to the space). Everything here is made up. '
-    + '1) Select "Scan: bench (linked to its capture)": its node should show a splat viewer that loads (a flat grid of orange points). '
-    + '2) Look for a line from that scan to "Capture: slow walk through the workshop"; that is the link scan:room --derived-from adds (prov:wasDerivedFrom in this checkout). '
-    + '3) Select "Scan: bench (arrived with no link)": its viewer should load a ring of blue points, and the graph should show an open question, "Which capture is this a scan of?". '
-    + '4) All scan facts are PENDING, as the feature writes them: nothing is confirmed until a person decides. '
-    + '5) Weakness to know: this is a seeded example, not a real scan job run; nothing links a splat automatically.');
+    + '1) Switch to 3D: two splats should load and float in the scene, a flat tan grid of points (linked to its capture) and a blue ring (arrived with no link). '
+    + '2) Switch to 2D and look for a line from "Scan: bench (linked to its capture)" to the capture. The space stores that link as scan:room --derived-from writes it (prov:wasDerivedFrom in this checkout), but that predicate is a provenance link the canvas does not draw, so expect NO line and "1 fact hidden" in view settings: a known gap, another change is moving the link to a visible relation. '
+    + '3) The view settings should count 1 question: "Which capture is this a scan of?", asked about "Scan: bench (arrived with no link)". It is stored but not drawn on the canvas either, for the same reason. '
+    + '4) Every scan fact is PENDING, as the feature writes it: nothing is confirmed until a person decides (the Review button counts them). '
+    + '5) Weakness to know: this is a seeded example, not the output of a real scan job; nothing links a splat automatically.');
   b.add(check, KP + 'demonstrates', lit('F58.9.20'), 'confirmed');
   b.add(place, KP + 'review-guide', iri(check), 'confirmed');
   return render(b, [
