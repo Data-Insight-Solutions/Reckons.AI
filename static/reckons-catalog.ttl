@@ -88,7 +88,6 @@ graph:catalog a dcat:Catalog ;
         graph:reckons-ci ,
         graph:review-0-2-6 ,
         graph:review-0-2-7 ,
-        graph:review-2026-11-10 ,
         graph:reckons-jobs ,
         graph:reckons-production ,
         graph:reckons-roadmap ,
@@ -104,9 +103,6 @@ graph:catalog a dcat:Catalog ;
         graph:starter-generated-assets ,
         graph:starter-guide ,
         graph:starter-quickstart ,
-        graph:starter-review-jobs ,
-        graph:starter-review-proposals ,
-        graph:starter-review-scan ,
         graph:starter-sim-ramp-cup ,
         graph:starter-triple-check ,
         graph:starter-triple-check-reference ,
@@ -268,11 +264,6 @@ graph:review-0-2-7 a void:Dataset ;
     dcterms:source "static/review-0.2.7.ttl" ;
     prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
 
-graph:review-2026-11-10 a void:Dataset ;
-    dcterms:title "Review 2026-11-10: example spaces hub" ;
-    dcterms:type role:starter ;
-    dcterms:source "static/review-2026-11-10.ttl" .
-
 graph:starter-assets a void:Dataset ;
     dcterms:title "Starter: assets" ;
     dcterms:type role:starter ;
@@ -332,21 +323,6 @@ graph:starter-visual-review a void:Dataset ;
     dcterms:title "Starter: visual review" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-visual-review.ttl" .
-
-graph:starter-review-proposals a void:Dataset ;
-    dcterms:title "Starter: review example, proposals and questions (synthetic, F223.9 to F223.11)" ;
-    dcterms:type role:starter ;
-    dcterms:source "static/starter-review-proposals.ttl" .
-
-graph:starter-review-scan a void:Dataset ;
-    dcterms:title "Starter: review example, a scan arrives (synthetic, F58.9.20)" ;
-    dcterms:type role:starter ;
-    dcterms:source "static/starter-review-scan.ttl" .
-
-graph:starter-review-jobs a void:Dataset ;
-    dcterms:title "Starter: review example, job records (fixture, F269.1)" ;
-    dcterms:type role:starter ;
-    dcterms:source "static/starter-review-jobs.ttl" .
 
 graph:website a void:Dataset ;
     dcterms:title "Website design" ;
