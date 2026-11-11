@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { resolveKbParam, type KbEntry } from '../../storage/kb-registry';
 import {
   classifyLeap,
   deviceLeapTarget,
@@ -52,5 +53,18 @@ describe('F269.2 device leap helpers (kb-leap)', () => {
     expect(parseDeviceLeap('/?kb=roadmap&f=proposed')).toBeNull();
     // an app path that names the reserved space but selects no job
     expect(parseDeviceLeap('/?kb=this-device')).toBeNull();
+  });
+
+  it('a target that is not a device leap is told apart from a device with no device space', () => {
+    expect(resolveDeviceLeap('/?kb=roadmap', DEVICE_SPACE_ID)).toEqual({ kind: 'not-a-device-leap' });
+    expect(resolveDeviceLeap('https://example.org/x', null)).toEqual({ kind: 'not-a-device-leap' });
+  });
+
+  it('the reserved name lands on the space the app lists as "This device" (resolveKbParam, by name)', () => {
+    const reg = [
+      { id: 'kbase', name: 'Default' },
+      { id: DEVICE_SPACE_ID, name: 'This device' },
+    ] as KbEntry[];
+    expect(resolveKbParam(DEVICE_SPACE_RESERVED, reg)).toBe(DEVICE_SPACE_ID);
   });
 });

@@ -131,10 +131,14 @@ export function parseDeviceLeap(target: string): DeviceLeapJob | null {
  */
 export type DeviceLeapResolution =
   | { kind: 'open'; spaceId: string; select: string }
-  | { kind: 'no-device-space' };
+  | { kind: 'no-device-space' }
+  | { kind: 'not-a-device-leap' };
 
 export function resolveDeviceLeap(target: string, deviceSpaceId: string | null): DeviceLeapResolution {
   const job = parseDeviceLeap(target);
-  if (!deviceSpaceId || !job) return { kind: 'no-device-space' };
+  // Not a device leap at all is a different answer from "this device has no device space": the
+  // caller must not tell the person to create one for a link that never asked for one.
+  if (!job) return { kind: 'not-a-device-leap' };
+  if (!deviceSpaceId) return { kind: 'no-device-space' };
   return { kind: 'open', spaceId: deviceSpaceId, select: job.jobId };
 }
