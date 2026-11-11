@@ -35,6 +35,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { generateStaticSite } from './site-generator';
 import { createBlogExtension, importSiteWithBlog } from './site-blog';
+import { loadSiteConfig } from './site-config';
 
 export interface SiteBuildOptions {
   /** Site repository directory — must contain a content/ folder of markdown pages. */
@@ -209,7 +210,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   const drafts = opts.includeDrafts === true;
   let generated: ReturnType<typeof generateStaticSite>;
   try {
-    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts });
+    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts, siteConfig: loadSiteConfig(site) ?? undefined });
   } catch (err) {
     fail((err as Error).message);
   }

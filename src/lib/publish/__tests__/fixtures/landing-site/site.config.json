@@ -1,0 +1,26 @@
+{
+  "title": "Example Studio",
+  "description": "A made-up studio used to test the landing layout.",
+  "logo": "/assets/mark.svg",
+  "favicon": "/assets/mark.svg",
+  "nav": [
+    { "label": "Home", "href": "/" },
+    { "label": "Services", "href": "/services/" },
+    { "label": "About", "href": "/about/" },
+    { "label": "Blog", "href": "/blog/" },
+    { "label": "Contact", "href": "/contact/" }
+  ],
+  "cta": { "label": "Start a project", "href": "/contact/" },
+  "footer": { "text": "© Example Studio, Anytown", "attribution": true },
+  "theme": {
+    "dark": { "accent": "#e0662f", "accentBright": "#ff8a57", "blobA": "rgba(224, 102, 47, .40)" },
+    "displayFont": "system-ui, sans-serif"
+  },
+  "contact": {
+    "webhook": "https://hooks.example.test/webhook/studio-contact",
+    "email": "hello@example.test",
+    "topics": ["A project", "A question"],
+    "tag": "example-landing"
+  },
+  "themeKey": "example-theme"
+}

@@ -16,6 +16,8 @@ import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf
 import { buildGraphJson } from './site-export';
 import { assertSitePath } from './output-path';
 import { localImageUrl, sanitizePageHtml, STATIC_SITE_CSP, themeColor, themeFont } from './output-policy';
+import type { SiteConfig } from './site-config';
+import { landingCss, landingJs, renderLandingPage, renderShellPage } from './site-landing';
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -30,6 +32,9 @@ export interface GenerateSiteOptions {
    * output so the publish paths can refuse it.
    */
   includeDrafts?: boolean;
+  /** F274.4.3: from <site>/site.config.json. When present, every page uses the configured shell
+   *  (header, navigation, footer, palettes) and `landing` pages the landing layout. */
+  siteConfig?: SiteConfig;
 }
 
 /** A page the extension adds that is not a WebPage (the blog index, a category page). */
@@ -64,6 +69,26 @@ export interface SiteExtension {
   css?(): string;
   /** URL the root redirects to when no non-post page can be the home (e.g. '/blog/'). */
   rootRedirect?(): string | null;
+}
+
+/** F274.4.3 registration point: a configured site renders through site-landing.ts, others through renderPage.
+ *  F274.4.2 blog hooks and the draft marker are carried into the configured shell as well. */
+function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions, extra?: { html: string }): string {
+  if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts, extra);
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri) };
+  const ext = opts.extension;
+  const shellExtra = {
+    html: extra?.html,
+    before: (page.status === 'draft' && opts.includeDrafts ? '<p class="draft-banner">Draft: local preview only, not published.</p>' : '') + (extra ? '' : ext?.beforeBody?.(page) ?? ''),
+    after: extra ? '' : ext?.afterBody?.(page) ?? '',
+  };
+  const html = page.template === 'landing' ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
+  return opts.includeDrafts ? html.replace('<head>\n', '<head>\n<meta name="robots" content="noindex, nofollow">\n') : html;
+}
+
+/** The configured site's extra files (stylesheet and script shared by every page). */
+function configuredSiteFiles(opts: GenerateSiteOptions): Record<string, string> {
+  return opts.siteConfig ? { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() } : {};
 }
 
 const SITE = 'urn:reckons:site/';
@@ -305,7 +330,7 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
   for (const page of pages) {
     const output = pagePath(page, homeIri);
     if (Object.hasOwn(files, output)) throw new Error('Duplicate site output path');
-    files[output] = renderPage(page, pages, homeIri, theme, opts);
+    files[output] = renderForSite(page, pages, homeIri, theme, opts);
   }
   for (const x of ext?.extraPages?.(pages) ?? []) {
     if (Object.hasOwn(files, x.path)) throw new Error('Duplicate site output path');
@@ -314,7 +339,7 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
       section: '', order: 0, parent: null, template: 'full', status: 'published', nav: 'hidden',
       excerpt: x.description ?? '', body: '', related: [], next: null, prev: null, date: null,
     };
-    files[x.path] = renderPage(synthetic, pages, homeIri, theme, opts, { html: x.html });
+    files[x.path] = renderForSite(synthetic, pages, homeIri, theme, opts, { html: x.html });
   }
   // No home (a site of only posts): '/' is never a post. Send it to the blog index when there is
   // one, else to a plain list, so the site still has a root.
@@ -322,6 +347,7 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
     files['index.html'] = rootStub(pages, ext?.rootRedirect?.() ?? null, theme, opts);
   }
   files['styles.css'] = stylesFor(theme, ext?.css?.());
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
 
   return { files, pageCount: pages.length, homeIri };
@@ -367,10 +393,11 @@ export function regenerateChangedPages(
   for (const page of pages) {
     if (!changed.has(page.iri)) continue;
     const path = pagePath(page, homeIri);
-    files[path] = renderPage(page, pages, homeIri, theme, opts);
+    files[path] = renderForSite(page, pages, homeIri, theme, opts);
     regenerated.push(path);
   }
   // graph.json describes the whole site's pages — keep it current whenever anything is republished.
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
   return { files, regenerated };
 }
