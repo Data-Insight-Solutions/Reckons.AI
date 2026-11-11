@@ -108,7 +108,9 @@ function toGroup(slot: Slot): RunGroup {
   const bySubject = new Map<string, PendingRow[]>();
   for (const row of slot.rows) {
     const subject = (row.subject ?? '').trim() || NO_SUBJECT;
-    bySubject.set(subject, [...(bySubject.get(subject) ?? []), row]);
+    const list = bySubject.get(subject);
+    if (list) list.push(row);
+    else bySubject.set(subject, [row]);
   }
   const subjects: RunSubjectGroup[] = [...bySubject.entries()]
     .map(([subject, list]) => ({
@@ -133,7 +135,9 @@ function predicateGroups(rows: PendingRow[]): RunPredicateGroup[] {
   const byPredicate = new Map<string, PendingRow[]>();
   for (const row of rows) {
     const predicate = (row.predicate ?? '').trim() || NO_PREDICATE;
-    byPredicate.set(predicate, [...(byPredicate.get(predicate) ?? []), row]);
+    const list = byPredicate.get(predicate);
+    if (list) list.push(row);
+    else byPredicate.set(predicate, [row]);
   }
   return [...byPredicate.entries()]
     .map(([predicate, list]) => ({ predicate, count: list.length, rowIds: list.map(rowId) }))
