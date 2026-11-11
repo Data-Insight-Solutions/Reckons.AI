@@ -70,3 +70,71 @@ export function leapNodeKeys(stmts: Statement[]): Set<string> {
   }
   return keys;
 }
+
+// ── F269.2 device leaps — "This device", reached from a space a job runs for ──────
+//
+// A space a job runs for holds that job's MAIN DEFINITION as a node, and that node carries a
+// leap to the same job's detail in "This device" (kb:job-definition-leap, static/reckons-roadmap.ttl).
+//
+// THE LEAP NAMES NO DEVICE. A space can be shared and opened on another machine, so the target
+// is a RESERVED NAME meaning "the device space on the device you are on now", resolved only when
+// it is followed — never a particular device's id. The reserved name travels with the space, so
+// it survives export to, and import on, another browser profile and still means the same thing
+// there (the done-test). We keep the constant local rather than importing from
+// src/lib/storage: kb-leap.ts is a pure RDF helper and the storage layer (Dexie, localStorage)
+// must not flow into it. The space-naming param here is `kb`, the same param resolveDbName()
+// (src/lib/storage/db.ts) and kbUrl() (src/lib/storage/kb-registry.ts) read — so the reserved
+// name lands in the exact slot the app already understands.
+export const DEVICE_SPACE_RESERVED = 'this-device'; // the reserved name; never a device id
+const DEVICE_JOB_PARAM = 'select';                   // the job id to select on arrival
+const SPACE_PARAM = 'kb';                            // the param that names a space (see above)
+
+/**
+ * The in-app leap target a job's definition node carries to "This device". Shapes like the
+ * `kb`/`view` app links kbUrl() already builds: it names the device space by its reserved name
+ * (the `kb` param) and carries the job id to select on arrival. Contains no device id and no
+ * stable id — classifyLeap() reads it as an 'app' leap, and it resolves to the real device
+ * space on whatever device follows it.
+ */
+export function deviceLeapTarget(jobId: string): string {
+  return `/?${SPACE_PARAM}=${DEVICE_SPACE_RESERVED}&${DEVICE_JOB_PARAM}=${encodeURIComponent(jobId)}`;
+}
+
+/** The job a device-leap target selects. */
+export interface DeviceLeapJob {
+  jobId: string;
+}
+
+/**
+ * Recognise a device-leap target and read the job it selects. Returns null for every other
+ * kind of leap target — a space's stable id, an external URL, an app path that does not name
+ * the reserved device space, or one that names it without selecting a job — so callers can
+ * tell a device leap from an ordinary leap without special-casing the rest.
+ */
+export function parseDeviceLeap(target: string): DeviceLeapJob | null {
+  if (classifyLeap(target) !== 'app') return null; // a device leap is an in-app path
+  let url: URL;
+  try {
+    url = new URL(target, 'http://device.leap'); // a base so the relative search params parse
+  } catch {
+    return null;
+  }
+  if (url.searchParams.get(SPACE_PARAM) !== DEVICE_SPACE_RESERVED) return null;
+  const jobId = url.searchParams.get(DEVICE_JOB_PARAM);
+  return jobId ? { jobId } : null;
+}
+
+/**
+ * What to do on a device when a device-leap target is followed: open the registered device
+ * space and select the job there, or say plainly that this device has no device space and go
+ * nowhere. Never falls back to an ordinary space, and never invents a job.
+ */
+export type DeviceLeapResolution =
+  | { kind: 'open'; spaceId: string; select: string }
+  | { kind: 'no-device-space' };
+
+export function resolveDeviceLeap(target: string, deviceSpaceId: string | null): DeviceLeapResolution {
+  const job = parseDeviceLeap(target);
+  if (!deviceSpaceId || !job) return { kind: 'no-device-space' };
+  return { kind: 'open', spaceId: deviceSpaceId, select: job.jobId };
+}
