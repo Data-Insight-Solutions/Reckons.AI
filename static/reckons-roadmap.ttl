@@ -12759,3 +12759,17 @@ kb:offline-trust-contract kpred:evidence "2026-11-10: the queue worker had been 
     kpred:evidence "2026-11-10 (Matt): worktrees take a lot of local disk; each holds its own dependencies, about 2.3 GB. The disk reached 100 percent that afternoon and one job failed on it. Proposed: a script-tier job that lists worktrees that are merged, clean and idle and proposes their removal, and a free-space floor below which the worker starts no job that needs a new worktree." .
 
 kb:loop-local-deputy kpred:evidence "2026-11-10 (Matt): the deputy uses Bash a lot, and because auto mode cannot run its safety check against a local model, each such command stops for approval; a pasted session shows it stopped on a patch command against its own memory folder. Proposed: tally which commands it was stopped on from its own session records, add the read-only ones to its allowlist, and say in every deputy brief to use the Read and search tools in place of shell commands." .
+
+# 2026-11-11 — the crafted review story (Matt: review spaces are not public examples; one story, several features, a community garden).
+kb:graph-proposals kpred:progress "2026-11-11: a crafted review space, Maple Row Community Garden (invented), exercises this feature with a reckoning in progress: a proposal in the vocabulary's form with two options (raised cedar beds on the north lawn, recommended; timber terraces on the south slope), each option's facts pending and carrying that option, resting on confirmed facts that quote three sources, and three open questions that name the option they block. It is kept in the dev workspace and not shipped; the generator and its readable story are scripts/review-spaces/build-garden.ts and garden-story.ts (npx tsx scripts/review-spaces/build-garden.ts --workspace=<dir>). It replaces the review example spaces that were briefly shipped in static/." .
+
+kb:scan-auto-attach kpred:progress "2026-11-11: the same crafted review space (scripts/review-spaces/build-garden.ts, kept in the dev workspace, not shipped) attaches scans with this feature's own attach code (copySplatToSpace, attachRows, linkRows): two scans linked to their phone captures by reconstructed-from and one with no link, so 'Which capture is this a scan of?' is open. The splats are made by TripoSplat from generated pictures (scripts/review-spaces/generate-assets.ts, queued as garden-scan-* jobs), so they are labelled origin generated, not reconstructed from the video. A slot whose job has not produced its file is left empty, never filled with a placeholder." .
+
+kb:demo-videos kpred:decided "MATT, 2026-11-11: 'We need to prepare a space for key features, and then be able to make a tutorial video or marketing video content for docs pages like the asset generation video.'" .
+
+kb:demo-videos kpred:progress "2026-11-11: the Maple Row review story space is the stage for such a video. Its eight-step walk with a first-draft narration line per step is in scripts/review-spaces/garden-story.ts (WALK), every line marked DRAFT awaiting Matt's approval; no audio was synthesized and nothing was rendered. The demo-video pipeline itself (F275) is not on dev yet (open PR #592), so the walk is plain data, ready to become a TestWorkflow when it lands." .
+
+kb:graph-proposals kpred:has-file "scripts/review-spaces/garden-story.ts" ;
+    kpred:has-file "scripts/review-spaces/build-garden.ts" ;
+    kpred:has-file "scripts/review-spaces/generate-assets.ts" ;
+    kpred:tested-by "scripts/review-spaces/__tests__/build-garden.test.ts" .

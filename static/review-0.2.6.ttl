@@ -88,7 +88,7 @@ rev:gap-f107-10 rdf:type ktype:Concept ;
 
 rev:gap-f223 rdf:type ktype:Concept ;
     rdfs:label "F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/statement-standing.test.ts, src/lib/rdf/__tests__/graph-view.test.ts, src/lib/rdf/__tests__/standing-style.test.ts, src/lib/rdf/__tests__/standing-filter.test.ts)." .
+    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/review-spaces/__tests__/build-garden.test.ts, src/lib/rdf/__tests__/statement-standing.test.ts, src/lib/rdf/__tests__/graph-view.test.ts, src/lib/rdf/__tests__/standing-style.test.ts, src/lib/rdf/__tests__/standing-filter.test.ts)." .
 
 rev:gap-f122-1 rdf:type ktype:Concept ;
     rdfs:label "F122.1 Document evidence anchors — page, block, span and geometry provenance" ;
