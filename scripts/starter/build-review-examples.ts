@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { importTurtleFull } from '../../src/lib/rdf/import-ttl.js';
 import { toTurtleFull } from '../../src/lib/rdf/serialize.js';
+import { DERIVED_FROM } from '../content/scan-attach.js';
 import { iri, lit, type Source, type Statement, type Term } from '../../src/lib/rdf/types.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -36,7 +37,6 @@ const TYPE = 'urn:kbase:type/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const RDFS_COMMENT = 'http://www.w3.org/2000/01/rdf-schema#comment';
-const DERIVED_FROM = 'http://www.w3.org/ns/prov#wasDerivedFrom';
 const AT = Date.parse('2026-11-10T09:00:00Z');
 
 // ── a small statement builder ─────────────────────────────────────────────────
@@ -182,8 +182,8 @@ export function buildScan(): string {
   const check = b.node('rx-what-to-check', 'Concept', 'What to check',
     'Demonstrates F58.9.20 (a finished scan attaches its splat to the space). Everything here is made up. '
     + '1) Switch to 3D: two splats should load and float in the scene, a flat tan grid of points (linked to its capture) and a blue ring (arrived with no link). '
-    + '2) Switch to 2D and look for a line from "Scan: bench (linked to its capture)" to the capture. The space stores that link as scan:room --derived-from writes it (prov:wasDerivedFrom in this checkout), but that predicate is a provenance link the canvas does not draw, so expect NO line and "1 fact hidden" in view settings: a known gap, another change is moving the link to a visible relation. '
-    + '3) The view settings should count 1 question: "Which capture is this a scan of?", asked about "Scan: bench (arrived with no link)". It is stored but not drawn on the canvas either, for the same reason. '
+    + '2) Switch to 2D: a line should join "Scan: bench (linked to its capture)" to "Capture: slow walk through the workshop". That is the link scan:room --derived-from writes, stored as reconstructed-from. '
+    + '3) "Scan: bench (arrived with no link)" should end in a hollow "?" node, the open question "Which capture is this a scan of?", and view settings should count 1 question. '
     + '4) Every scan fact is PENDING, as the feature writes it: nothing is confirmed until a person decides (the Review button counts them). '
     + '5) Weakness to know: this is a seeded example, not the output of a real scan job; nothing links a splat automatically.');
   b.add(check, KP + 'demonstrates', lit('F58.9.20'), 'confirmed');

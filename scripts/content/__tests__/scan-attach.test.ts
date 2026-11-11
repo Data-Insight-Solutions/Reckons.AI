@@ -8,6 +8,7 @@ import {
   AttachError, appendAttachRows, assertTargeted, attachFinishedScan, attachRows, attachSplat, contentId, copySplatToSpace, requireSpace,
 } from '../scan-attach';
 import type { ScanReceipt } from '../scan-room-lib';
+import { isMetaPredicate } from '../../../src/lib/rdf/types';
 
 // Run as a person runs `npm run scan:room -- --attach=...` by hand: no queue worker, no RECKONS_RUN_ID.
 // The append function mints `hand:<job>:<time>` for such a run (F89.4.1).
@@ -147,9 +148,11 @@ describe('links (Defect 2): a splat does not arrive as a silent island', () => {
   const rowsOf = () => readFileSync(queue, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
   const splatIri = (id: string) => `urn:kbase:concept/scan-${id.slice(0, 12)}`;
 
-  it('--derived-from emits <splat> prov:wasDerivedFrom <iri>, targeted and pending-shaped', () => {
+  it('--derived-from emits <splat> reconstructed-from <iri>, a visible domain relation, targeted and pending-shaped', () => {
     const r = attachFinishedScan({ scanDir: makeScan(), workspace, space: 'demo-space', links: { derivedFrom: [CAPTURE] } });
     const row = rowsOf().find((x) => x.predicate === DERIVED_FROM);
+    expect(DERIVED_FROM).toBe('urn:kbase:predicate/reconstructed-from');
+    expect(isMetaPredicate(DERIVED_FROM)).toBe(false); // drawn on the canvas, unlike prov:*
     expect(row).toMatchObject({ subject: splatIri(r.id), object: CAPTURE, objectKind: 'iri', kb: 'demo-space', type: 'suggestion' });
     expect(rowsOf().some((x) => x.type === 'question')).toBe(false);
     expect(r.rows).toBe(5);

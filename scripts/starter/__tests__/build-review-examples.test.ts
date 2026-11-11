@@ -21,7 +21,7 @@ describe('review example spaces', () => {
   it('the scan file is current, links one splat to its capture and leaves one as an open question', async () => {
     expect(file('starter-review-scan.ttl')).toBe(buildScan());
     const { statements } = await importTurtleFull(file('starter-review-scan.ttl'));
-    expect(statements.filter((s) => s.p.value === 'http://www.w3.org/ns/prov#wasDerivedFrom' && !s.needsObject)).toHaveLength(1);
+    expect(statements.filter((s) => s.p.value === 'urn:kbase:predicate/reconstructed-from' && !s.needsObject)).toHaveLength(1);
     expect(statements.filter((s) => s.needsObject && s.question === 'Which capture is this a scan of?')).toHaveLength(1);
     expect(statements.filter((s) => s.p.value === 'urn:kbase:predicate/splat')).toHaveLength(2);
   });
