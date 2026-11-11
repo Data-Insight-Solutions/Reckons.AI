@@ -58,7 +58,7 @@ code:sim
 ## =============================================================================
 
 code:repo  rdf:type     ktype:Concept ;
-             kpred:coverage-ratchet "unlinked/203" ;
+             kpred:coverage-ratchet "unlinked/181" ;
            rdfs:label   "tripleNotes Repository" ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;
@@ -173,6 +173,12 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/type-shapes.ts" ;
           kpred:has-file "src/lib/rdf/vocabulary-context.ts" ;
           kpred:has-file "src/lib/rdf/vocabulary-repair.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/kb-leap-device.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/layout-readiness.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/predicate-arity.test.ts" ;
+          kpred:has-file "src/lib/rdf/cut-notice.ts" ;
+          kpred:has-file "src/lib/rdf/layout-readiness.ts" ;
+          kpred:has-file "src/lib/rdf/predicate-arity.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/currents-persist.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/current-ranking.test.ts" ;
@@ -516,6 +522,9 @@ code:n8n  rdf:type     ktype:Concept ;
           skos:definition "Currents sync against the n8n Currents Monitor workflow: register currents, pull new items (with a direct in-browser RSS/Atom fallback), and process arrivals into pending statements." ;
           skos:broader code:integrations ;
           kpred:has-file "src/lib/integrations/n8n/currents-sync.ts" ;
+          kpred:has-file "src/lib/integrations/n8n/__tests__/currents-sync-tasks.test.ts" ;
+          kpred:has-file "src/lib/integrations/n8n/contact.ts" ;
+          kpred:has-file "src/lib/integrations/n8n/notify.ts" ;
           kpred:tested-by "src/lib/integrations/n8n/__tests__/currents-sync.test.ts" .
 
 ## =============================================================================
@@ -688,6 +697,8 @@ code:mcp-server  rdf:type     ktype:Concept ;
                  kpred:has-file "mcp-server/src/review-sources.ts" ;
                  kpred:has-file "mcp-server/src/__tests__/review-sources.test.ts" ;
                  kpred:has-file "mcp-server/src/validate-args.ts" ;
+                 kpred:has-file "mcp-server/src/__tests__/review-run-tree.test.ts" ;
+                 kpred:has-file "mcp-server/src/review-run-tree.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/ollama-client.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/local-llm.test.ts" ;
                  kpred:tested-by "mcp-server/src/__tests__/page-markdown.test.ts" ;
@@ -733,7 +744,8 @@ code:cli  rdf:type     ktype:Concept ;
           kpred:has-file "cli/src/pending-file.ts" ;
           kpred:has-file "cli/src/review-links.ts" ;
           kpred:has-file "cli/src/review-session.ts" ;
-          kpred:has-file "cli/src/voice-commands.ts" .
+          kpred:has-file "cli/src/voice-commands.ts" ;
+          kpred:has-file "cli/src/review-lane.ts" .
 
 ## =============================================================================
 ## tests — Test Infrastructure
@@ -1073,6 +1085,30 @@ code:job-plan-space rdf:type ktype:Concept ;
     rdfs:label "Local job queue as a Reckons.AI space" ;
     kpred:description "queue-to-space.ts reads the local job queue (queue.jsonl, current.json, and the last 48 h of queue.done.jsonl) and writes the annotated job-plan space the app renders as a graph — one node per job (urn:kbase:concept/job-<id>) with status, priority, cwd, branch, head, log, started, finished, outcome-reason and job-after edges; the Job entity type (icon box, colour #5b2a86) is declared in the same file. Pure core plus thin IO: buildSpaceText is deterministic — statement ids are the sha1 of the fact, so two runs over the same queue are byte-identical apart from the generated-at line. Script tier, zero tokens." ;
     kpred:has-file "scripts/agent/queue-to-space.ts" ;
+    kpred:has-file "scripts/agent/__tests__/job-entity.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/job-state.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/mcp-context.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/run-contract.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/runner-integration.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/schedule-cwd.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/space-watch.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/state-file.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/task-templates.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/verify-run-report.test.ts" ;
+    kpred:has-file "scripts/agent/digest-graph.ts" ;
+    kpred:has-file "scripts/agent/idea.ts" ;
+    kpred:has-file "scripts/agent/job-state.ts" ;
+    kpred:has-file "scripts/agent/job-watch.ts" ;
+    kpred:has-file "scripts/agent/mcp-context.ts" ;
+    kpred:has-file "scripts/agent/orchestrate.ts" ;
+    kpred:has-file "scripts/agent/queue.ts" ;
+    kpred:has-file "scripts/agent/reconcile.ts" ;
+    kpred:has-file "scripts/agent/session-heartbeat.sh" ;
+    kpred:has-file "scripts/agent/session-schedule.ts" ;
+    kpred:has-file "scripts/agent/space-watch.ts" ;
+    kpred:has-file "scripts/agent/split.ts" ;
+    kpred:has-file "scripts/agent/state-file.ts" ;
+    kpred:has-file "scripts/agent/task-templates.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space-device.test.ts" .
 
