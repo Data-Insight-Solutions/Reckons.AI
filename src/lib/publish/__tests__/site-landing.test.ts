@@ -157,4 +157,22 @@ describe('site config validation', () => {
     expect(c.nav.map((n) => n.label)).toEqual(['Home', 'Services', 'About', 'Blog', 'Contact']);
     expect(c.contact.webhook).toBeNull();
   });
+
+  it('merges a build-time override file over the config, and the webhook reaches the form without the file path', () => {
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const outDir = mkdtempSync(join(tmpdir(), 'landing-out-'));
+    tmp.push(site, outDir);
+    cpSync(FIXTURE, site, { recursive: true });
+    const cfgFile = join(site, 'site.config.json');
+    const cfg = JSON.parse(readFileSync(cfgFile, 'utf8'));
+    cfg.contact.webhook = '';
+    writeFileSync(cfgFile, JSON.stringify(cfg));
+    const overrideFile = join(outDir, 'private-override-name.json');
+    writeFileSync(overrideFile, JSON.stringify({ webhook: 'https://hooks.example.test/webhook/override-test' }));
+    buildSite({ site, out: join(outDir, 'site'), configOverride: overrideFile });
+    const html = read(join(outDir, 'site'), 'index.html');
+    expect(html).toContain('action="https://hooks.example.test/webhook/override-test"');
+    const everything = [html, read(join(outDir, 'site'), 'landing.js'), read(join(outDir, 'site'), '_headers')].join('\n');
+    expect(everything).not.toContain('private-override-name');
+  });
 });

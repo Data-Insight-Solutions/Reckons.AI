@@ -317,11 +317,24 @@ ${refresh}
  * Build the finished static site from the graph. `home` picks the landing page; every published
  * WebPage becomes a clean-URL HTML file; one stylesheet and graph.json round it out.
  */
+/**
+ * A page shows its title as the one h1, so a body that opens with its own h1 would show a second.
+ * A leading h1 equal to the title is dropped; a different one is kept as an h2 (nothing is lost).
+ */
+export function normalizeLeadingHeading(body: string, title: string): string {
+  const m = /^\s*#[ \t]+(.+?)[ \t]*#*[ \t]*(?:\r?\n|$)/.exec(body);
+  if (!m) return body;
+  const same = m[1].trim().toLowerCase() === title.trim().toLowerCase();
+  const rest = body.slice(m[0].length);
+  return same ? rest.replace(/^\s*\n/, '') : '## ' + m[1].trim() + '\n' + rest;
+}
+
 export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions = {}): GeneratedSite {
   const all = buildSitePages(stmts);
   const ext = opts.extension;
   const selected = opts.includeDrafts ? all : publishablePages(all);
-  const pages = ext?.preparePages ? ext.preparePages(selected) : selected;
+  const prepared = ext?.preparePages ? ext.preparePages(selected) : selected;
+  const pages = prepared.map((p) => (p.template === 'landing' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
   const home = pickHome(pages);
   const homeIri = home?.iri ?? null;
   const theme = extractTheme(stmts);

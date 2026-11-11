@@ -164,3 +164,13 @@ describe('targeted regeneration (do not rebuild the whole site)', () => {
     expect(siteShellSignature(titleEdited)).not.toBe(sig0);
   });
 });
+
+import { normalizeLeadingHeading } from '../site-generator';
+describe('normalizeLeadingHeading', () => {
+  it('drops a leading h1 equal to the title, keeps a different one as h2, leaves other bodies alone', () => {
+    expect(normalizeLeadingHeading('# My Post\n\nText', 'My Post')).toBe('Text');
+    expect(normalizeLeadingHeading('# Other\n\nText', 'My Post')).toBe('## Other\n\nText');
+    expect(normalizeLeadingHeading('Text\n# Later', 'My Post')).toBe('Text\n# Later');
+    expect(normalizeLeadingHeading('## Sub\nText', 'My Post')).toBe('## Sub\nText');
+  });
+});

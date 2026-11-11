@@ -3,6 +3,10 @@
  * site:build (F274.4.1) — a site repository's content/ into static HTML with the Reckons.AI engine.
  *
  *   npm run site:build -- --site=path/to/site-repo --out=dist [--title="My Site"] [--drafts]
+ *     [--config-override=<json file>]
+ *
+ * --config-override merges the top-level keys of a JSON file over site.config.json at build time (shallow;
+ * `webhook` is shorthand for contact.webhook). Keep a private address in such a file outside the repository.
  *
  * --drafts is LOCAL PREVIEW ONLY: draft pages are built with a visible "Draft" marker and a noindex
  * meta; the output is stamped so no deploy path accepts it, and this command refuses --drafts in CI.
@@ -16,7 +20,7 @@ import { existsSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { buildSite } from '../src/lib/publish/site-build.js';
 
-const USAGE = 'Usage: npm run site:build -- --site=<site repository> --out=<dir> [--title=<site title>] [--drafts]';
+const USAGE = 'Usage: npm run site:build -- --site=<site repository> --out=<dir> [--title=<site title>] [--drafts] [--config-override=<json file>]';
 const MISSING = 'site:build: --site=<site repository> and --out=<output directory> are required';
 const NOTFOUND = 'site:build: site directory not found: ';
 
@@ -53,7 +57,7 @@ if (!existsSync(siteDir) || !statSync(siteDir).isDirectory()) {
 }
 
 try {
-  const result = buildSite({ site: siteDir, out: resolve(out), siteTitle: title || undefined, includeDrafts: drafts });
+  const result = buildSite({ site: siteDir, out: resolve(out), siteTitle: title || undefined, includeDrafts: drafts, configOverride: flag('config-override') });
   if (drafts) console.log('site:build: DRAFT PREVIEW (drafts included, noindex, not deployable) - ' + result.out);
   console.log('site:build: ' + result.pageCount + ' page(s) built into ' + result.out);
   console.log('  ' + result.files.length + ' files total; assets copied: ' + result.copiedAssets + ', admin copied: ' + result.copiedAdmin);

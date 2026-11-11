@@ -130,7 +130,7 @@ const BLOG_CSS = [
   '.post-card{display:flex;gap:1rem;padding:1rem;border:1px solid var(--line);border-radius:10px;background:var(--surface)}',
   '.post-card img{width:160px;height:110px;object-fit:cover;border-radius:6px;flex:0 0 160px}',
   '.post-card h2{margin:.1rem 0 .25rem;font-size:1.15rem}.post-card p{margin:.25rem 0}',
-  '.post-cover{width:100%;max-height:360px;object-fit:cover}',
+  '.post-cover{display:block;width:100%;height:auto;max-height:420px;object-fit:contain}',
   '.post-categories{list-style:none;display:flex;flex-wrap:wrap;gap:.4rem;margin:.25rem 0;padding:0}',
   '.post-categories a{border:1px solid var(--line);border-radius:999px;padding:0 .6rem;font-size:.8rem;color:var(--muted)}',
   '.references-note{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--muted);font-size:.92rem}',

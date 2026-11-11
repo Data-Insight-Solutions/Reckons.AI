@@ -250,10 +250,18 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
 }
 
 /** Read <site>/site.config.json. Null when the site has none (the plain generator layout is used). */
-export function loadSiteConfig(site: string): SiteConfig | null {
+export function loadSiteConfig(site: string, override?: Record<string, unknown>): SiteConfig | null {
   const file = join(site, SITE_CONFIG_FILE);
   if (!existsSync(file)) return null;
   let raw: unknown;
   try { raw = JSON.parse(readFileSync(file, 'utf8')); } catch (e) { fail(SITE_CONFIG_FILE + ' is not valid JSON: ' + (e as Error).message); }
+  if (override && raw && typeof raw === 'object') {
+    // Build-time override: top-level keys replace the file's. `webhook` is shorthand for contact.webhook,
+    // so a private file can hold an address that is never committed.
+    const { webhook, ...rest } = override;
+    const merged: Record<string, unknown> = { ...(raw as Record<string, unknown>), ...rest };
+    if (typeof webhook === 'string') merged.contact = { ...((merged.contact as Record<string, unknown>) ?? {}), webhook };
+    raw = merged;
+  }
   return parseSiteConfig(raw);
 }

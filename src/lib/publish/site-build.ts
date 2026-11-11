@@ -50,6 +50,8 @@ export interface SiteBuildOptions {
    * it; assertNotDraftPreview() refuses such a directory in any deploy path. Default false.
    */
   includeDrafts?: boolean;
+  /** Path to a JSON file whose top-level keys are merged over site.config.json at build time (`webhook` is shorthand for contact.webhook). Only the merged values reach the output, never the path. */
+  configOverride?: string;
 }
 
 /** Present in the output of an includeDrafts build; a deploy path must refuse a directory holding it. */
@@ -191,6 +193,14 @@ function verifyOwned(dir: string, manifest: SiteBuildManifest): void {
   }
 }
 
+function readOverride(path?: string): Record<string, unknown> | undefined {
+  if (!path) return undefined;
+  let v: unknown;
+  try { v = JSON.parse(readFileSync(path, 'utf8')); } catch { fail('config override is not readable JSON'); }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) fail('config override must be a JSON object');
+  return v as Record<string, unknown>;
+}
+
 export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   const site = resolve(opts.site);
   const out = resolve(opts.out);
@@ -210,7 +220,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   const drafts = opts.includeDrafts === true;
   let generated: ReturnType<typeof generateStaticSite>;
   try {
-    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts, siteConfig: loadSiteConfig(site) ?? undefined });
+    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts, siteConfig: loadSiteConfig(site, readOverride(opts.configOverride)) ?? undefined });
   } catch (err) {
     fail((err as Error).message);
   }
