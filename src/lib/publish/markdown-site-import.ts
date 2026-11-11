@@ -50,6 +50,8 @@ interface RawPostFrontmatter {
   coverImage?: string;
   image?: string;
   cover?: string;
+  /** F274.4.2: the note rendered under a post (text, or a `|`/`>` block scalar). */
+  referencesNote?: string;
 }
 
 /** Strip matching surrounding quotes — double (JSON-style escapes) or single (YAML `''`). */
@@ -79,11 +81,26 @@ function unquote(raw: string): string {
  * single-key object (`  - categoryName: Technology`), flattened to its value. Any other key
  * is ignored — forward-compatible with hand-edits, like `parseFrontmatterBlock` does.
  */
-function parsePostFrontmatter(header: string): RawPostFrontmatter {
+export function parsePostFrontmatter(header: string): RawPostFrontmatter {
   const fm: RawPostFrontmatter = {};
   let listKey: 'categories' | 'tags' | null = null;
+  // `references-note: |` (or `>`): the indented lines that follow are the note.
+  let block: { fold: boolean; lines: string[] } | null = null;
+  const closeBlock = (): void => {
+    if (!block) return;
+    const text = block.lines.map((l) => l.replace(/^ {1,}/, '')).join(block.fold ? ' ' : '\n').trim();
+    if (text) fm.referencesNote = text;
+    block = null;
+  };
 
   for (const rawLine of header.split(/\r?\n/)) {
+    if (block) {
+      if (rawLine.trim() === '' || /^\s/.test(rawLine)) {
+        block.lines.push(rawLine);
+        continue;
+      }
+      closeBlock();
+    }
     // A list item belongs to the most recent `key:` that opened a list.
     const listItem = /^ {2,}-\s*(.*)$/.exec(rawLine);
     if (listItem && listKey) {
@@ -101,6 +118,11 @@ function parsePostFrontmatter(header: string): RawPostFrontmatter {
     if (!kv) continue;
     const key = kv[1];
     const rawVal = kv[2].trim();
+
+    if (key === 'references-note' && /^[|>][+-]?$/.test(rawVal)) {
+      block = { fold: rawVal.startsWith('>'), lines: [] };
+      continue;
+    }
 
     // `key:` with nothing after opens a list block (categories/tags only).
     if (rawVal === '') {
@@ -120,6 +142,7 @@ function parsePostFrontmatter(header: string): RawPostFrontmatter {
       case 'coverImage': fm.coverImage = val; break;
       case 'image': fm.image = val; break;
       case 'cover': fm.cover = val; break;
+      case 'references-note': fm.referencesNote = val; break;
       case 'categories':
       case 'tags':
         (fm[key] ??= []).push(val);
@@ -129,7 +152,25 @@ function parsePostFrontmatter(header: string): RawPostFrontmatter {
     }
   }
 
+  closeBlock();
   return fm;
+}
+
+/**
+ * The blog-specific frontmatter of one post file (F274.4.2): categories (or tags), cover
+ * image path and references-note. Reuses this module's parser, so the generic site build
+ * reads exactly the keys the old-site importer reads. Returns empty values for a file
+ * without frontmatter.
+ */
+export function parsePostMeta(source: string): { categories: string[]; coverImage: string | null; referencesNote: string | null } {
+  const split = splitPostFile(source);
+  const fm = split ? parsePostFrontmatter(split.header) : {};
+  const cover = (fm.coverImage ?? fm.image ?? fm.cover ?? '').trim();
+  return {
+    categories: (fm.categories ?? fm.tags ?? []).map((c) => c.trim()).filter((c) => c !== ''),
+    coverImage: cover === '' ? null : cover,
+    referencesNote: fm.referencesNote ?? null,
+  };
 }
 
 /**
