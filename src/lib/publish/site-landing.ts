@@ -424,7 +424,7 @@ h1, h2, h3 { letter-spacing: -.02em; }
 header.site { position: sticky; top: 0; z-index: 30; transition: background .3s, box-shadow .3s, border-color .3s; border-bottom: 1px solid transparent; }
 header.site.scrolled { background: var(--panel-strong); backdrop-filter: blur(16px) saturate(1.3); -webkit-backdrop-filter: blur(16px) saturate(1.3); border-bottom-color: var(--panel-line); }
 header.site .wrap { display: flex; align-items: center; gap: 24px; height: 72px; }
-.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 600; text-wrap: nowrap; }
 .brand img { width: 42px; height: auto; }
 nav.links { display: flex; gap: 28px; margin-left: auto; font-size: 15px; }
 nav.links a { color: var(--text-soft); text-decoration: none; }

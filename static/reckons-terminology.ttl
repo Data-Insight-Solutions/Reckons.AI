@@ -545,7 +545,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 <urn:kbase:vocabulary/terminology>
     kpred:term-ratchet "graph/prose/3292" ;
     kpred:term-ratchet "statement/prose/1016" ;
-    kpred:term-ratchet "source/prose/1521" ;
+    kpred:term-ratchet "source/prose/1520" ;
     kpred:term-ratchet "space/prose/632" ;
     kpred:term-ratchet "node/prose/1258" ;
     kpred:term-ratchet "export/prose/252" ;
