@@ -94,6 +94,21 @@
       entities: 7,
       triples: 31
     },
+    {
+      // 2026-11-10 review: a hub of three small synthetic examples, one per feature merged that day. Each leap in the hub
+      // is /about?example=<id>, which this page opens (see the onMount below).
+      id: 'review-2026-11-10',
+      icon: '✓',
+      title: 'Review 2026-11-10',
+      body: 'A hub with a leap to each of three small examples made for reviewing the features merged on 2026-11-10: proposals and questions, a scan arriving, and job records. Opens on its own, apart from your data.',
+      file: '/review-2026-11-10.ttl',
+      space: 'Review 2026-11-10',
+      entities: 4,
+      triples: 33
+    },
+    { id: 'review-proposals', icon: '?', title: 'Review: proposals and questions', body: 'A made-up garden club with confirmed facts, pending facts, the two options of one proposal and three open questions, to see a fact\'s standing drawn and filtered (F223.9 to F223.11).', file: '/starter-review-proposals.ttl', space: 'Review: proposals and questions', entities: 9, triples: 45 },
+    { id: 'review-scan', icon: '◎', title: 'Review: a scan arrives', body: 'A made-up workshop with a capture and two tiny synthetic splats, one linked to its capture and one that arrived with no link and a question (F58.9.20).', file: '/starter-review-scan.ttl', space: 'Review: a scan arrives', entities: 5, triples: 22 },
+    { id: 'review-jobs', icon: '⚙', title: 'Review: job records', body: 'Fixture job records written by queue-to-space --device: jobs in several states and one with more than 20 runs. Not this machine (F269.1).', file: '/starter-review-jobs.ttl', space: 'Review: job records', entities: 33, triples: 226 },
   ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 
   let loadingKb = $state<string | null>(null);
@@ -143,6 +158,13 @@
 
   let exIdx = $state(0);
   let fading = $state(false);
+
+  // A leap in an example hub points here: /about?example=<id> opens that example on its own.
+  onMount(() => {
+    const id = new URL(window.location.href).searchParams.get('example');
+    const kb = id ? EXAMPLE_KBS.find((k) => k.id === id) : undefined;
+    if (kb) void importStarterKB(kb);
+  });
 
   onMount(() => {
     const iv = setInterval(() => {

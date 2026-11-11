@@ -103,6 +103,9 @@ graph:catalog a dcat:Catalog ;
         graph:starter-generated-assets ,
         graph:starter-guide ,
         graph:starter-quickstart ,
+        graph:starter-review-jobs ,
+        graph:starter-review-proposals ,
+        graph:starter-review-scan ,
         graph:starter-sim-ramp-cup ,
         graph:starter-triple-check ,
         graph:starter-triple-check-reference ,
@@ -323,6 +326,21 @@ graph:starter-visual-review a void:Dataset ;
     dcterms:title "Starter: visual review" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-visual-review.ttl" .
+
+graph:starter-review-proposals a void:Dataset ;
+    dcterms:title "Starter: review example, proposals and questions (synthetic, F223.9 to F223.11)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-review-proposals.ttl" .
+
+graph:starter-review-scan a void:Dataset ;
+    dcterms:title "Starter: review example, a scan arrives (synthetic, F58.9.20)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-review-scan.ttl" .
+
+graph:starter-review-jobs a void:Dataset ;
+    dcterms:title "Starter: review example, job records (fixture, F269.1)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-review-jobs.ttl" .
 
 graph:website a void:Dataset ;
     dcterms:title "Website design" ;
