@@ -37,12 +37,16 @@ export interface AttachRow {
   lane: 'claim' | 'question';
 }
 
-/** prov:wasDerivedFrom, the predicate the app already uses for provenance (serialize.ts, personal-notes.ts). */
-export const DERIVED_FROM = 'http://www.w3.org/ns/prov#wasDerivedFrom';
+/**
+ * `<splat> reconstructed-from <capture>`. NOT prov:wasDerivedFrom: the app hides every prov: predicate
+ * from the canvas as accountability metadata (isMetaPredicate), so a splat linked that way stayed a
+ * visible island (found in real use, 2026-11-10). Declared in static/reckons-vocabulary.ttl.
+ */
+export const DERIVED_FROM = 'urn:kbase:predicate/reconstructed-from';
 export const CAPTURE_QUESTION = 'Which capture is this a scan of?';
 
 export interface Links {
-  /** Nodes this splat was reconstructed from: `<splat> prov:wasDerivedFrom <iri>`. */
+  /** Nodes this splat was reconstructed from: `<splat> reconstructed-from <iri>`. */
   derivedFrom?: readonly string[];
   /** `[subject, predicate]`: `<subject> <predicate> <splat>`, a relation the space already has. */
   linkFrom?: readonly (readonly [string, string])[];

@@ -22,7 +22,7 @@
  *          <workspace>/kbs/<slug>/assets/splats/<content id>.spz and queues PENDING rows addressed to that
  *          space (never confirmed). The space is checked BEFORE the half-hour reconstruction starts.
  *          --attach=<finished scan dir> --space=<slug> does only that, for a scan that already finished.
- *          --derived-from=<node IRI> (repeatable) states <splat> prov:wasDerivedFrom <IRI>; --link-from=<subject IRI>,<predicate IRI>
+ *          --derived-from=<node IRI> (repeatable) states <splat> urn:kbase:predicate/reconstructed-from <IRI>; --link-from=<subject IRI>,<predicate IRI>
  *          (repeatable) states <subject> <predicate> <splat>. With neither, ONE question row asks which capture it is a scan of.
  *          --links-only adds just those link rows to a splat that is already attached.
  *

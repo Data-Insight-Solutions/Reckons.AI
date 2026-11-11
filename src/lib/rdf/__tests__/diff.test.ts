@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { computeDiff } from '../diff';
+import { computeDiff as measuredDiff } from '../diff';
+import type { Arity } from '../predicate-arity';
 import type { Statement } from '../types';
 import { iri, lit } from '../types';
+
+// The classification tests below describe SINGLE-VALUED predicates (a different object is a conflict),
+// so they state that arity explicitly; the measured behavior has its own describe at the end.
+const ALL_FUNCTIONAL = { get: () => 'functional' } as unknown as ReadonlyMap<string, Arity>;
+const computeDiff = (inc: Statement[], ex: Statement[], opts = { arity: ALL_FUNCTIONAL }) => measuredDiff(inc, ex, opts);
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -268,5 +274,54 @@ describe('computeDiff — empty inputs', () => {
   it('treats all incoming as new when existing is empty', () => {
     const diff = computeDiff([makeStatement(), makeStatement()], []);
     expect(diff.summary.new).toBe(2);
+  });
+});
+
+// ── Arity (2026-11-10): accepting a second value must not replace the first on an accumulating predicate ──
+
+describe('computeDiff — arity decides whether a different object is a conflict', () => {
+  const HAS = iri('urn:kbase:predicate/has');
+  const NODE = iri('urn:kbase:concept/tree-node');
+  const splat = (n: string) => iri(`urn:kbase:concept/scan-${n}`);
+  const fact = (o: ReturnType<typeof iri>, status: Statement['status'] = 'confirmed') => makeStatement({ s: NODE, p: HAS, o, status });
+
+  it('a different object on an unmeasured predicate is NEW (with its siblings), never a conflict', () => {
+    const a = fact(splat('a'));
+    const diff = measuredDiff([fact(splat('b'), 'pending')], [a]);
+    expect(diff.entries[0].kind).toBe('new');
+    expect((diff.entries[0] as { siblings?: Statement[] }).siblings).toEqual([a]);
+    expect(diff.summary.conflicts).toBe(0);
+  });
+
+  it('a predicate seen plural stays multi even over many subjects', () => {
+    const existing: Statement[] = [];
+    for (let i = 0; i < 10; i++) existing.push(makeStatement({ s: iri(`urn:kbase:concept/n${i}`), p: HAS, o: splat(`x${i}`) }));
+    existing.push(makeStatement({ s: iri('urn:kbase:concept/n0'), p: HAS, o: splat('y') }));
+    expect(measuredDiff([fact(splat('z'), 'pending')], [...existing, fact(splat('a'))]).entries[0].kind).toBe('new');
+  });
+
+  it('a predicate measured single-valued over enough subjects still conflicts, so replacement stays possible', () => {
+    const STATUS = iri('urn:kbase:predicate/has-status');
+    const existing: Statement[] = [];
+    for (let i = 0; i < 8; i++) existing.push(makeStatement({ s: iri(`urn:kbase:concept/n${i}`), p: STATUS, o: lit('planned') }));
+    const inc = makeStatement({ s: iri('urn:kbase:concept/n0'), p: STATUS, o: lit('functional'), status: 'pending' });
+    expect(measuredDiff([inc], existing).entries[0].kind).toBe('conflicts');
+  });
+
+  it('thin evidence is not evidence: seven subjects is still multi', () => {
+    const STATUS = iri('urn:kbase:predicate/has-status');
+    const existing: Statement[] = [];
+    for (let i = 0; i < 7; i++) existing.push(makeStatement({ s: iri(`urn:kbase:concept/n${i}`), p: STATUS, o: lit('planned') }));
+    const inc = makeStatement({ s: iri('urn:kbase:concept/n0'), p: STATUS, o: lit('functional'), status: 'pending' });
+    expect(measuredDiff([inc], existing).entries[0].kind).toBe('new');
+  });
+
+  it('repair: re-proposing the identical fact of a superseded one comes back as "returned", which Review offers to accept after all', () => {
+    const a = fact(splat('a'), 'superseded');
+    const b = fact(splat('b'), 'superseded');
+    const d = fact(splat('d'), 'refined');
+    const diff = measuredDiff([fact(splat('a'), 'pending'), fact(splat('b'), 'pending')], [a, b, d]);
+    expect(diff.entries.map((e) => e.kind)).toEqual(['returned', 'returned']);
+    expect(diff.entries.every((e) => (e as { priorStatus?: string }).priorStatus === 'superseded')).toBe(true);
   });
 });

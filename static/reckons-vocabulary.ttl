@@ -389,6 +389,10 @@ kpred:set-relates-to a rdf:Property ;
     rdfs:domain skos:Collection ;
     rdfs:comment "A relation between two SETS, or a set and one entity. LOCAL: SKOS has no Collection-to-Collection relation — its mapping properties relate Concepts, and skos:related is domain and range skos:Concept, so reusing it here would be a range violation." .
 
+kpred:reconstructed-from a rdf:Property ;
+    rdfs:label "reconstructed from" ;
+    rdfs:comment "A scan (a Gaussian splat) was reconstructed from this capture. A DOMAIN relation between two entities, drawn as an edge. It is deliberately not prov:wasDerivedFrom: every prov: predicate is treated as accountability metadata about a statement and hidden from the canvas (isMetaPredicate), so a splat linked that way still looks like an island. MULTI-VALUED: a capture may yield several splats, so accepting one never replaces another." .
+
 
 ## =============================================================================
 ## RELATION LAYER — claim, provenance, or question.
