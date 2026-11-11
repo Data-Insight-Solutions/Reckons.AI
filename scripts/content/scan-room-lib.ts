@@ -136,6 +136,14 @@ export function validateReceipt(r: ScanReceipt): string[] {
   if (!SHA.test(r.output?.sha256 ?? '')) p.push('output sha256 missing or malformed');
   if (!(r.gaussians > 0)) p.push('no Gaussians recorded');
   if (!(r.frames?.registered >= 0) || r.frames.registered > r.frames.kept) p.push('registered count is inconsistent with kept frames');
+  // ONE MEASURE, ONE FIELD (F74.15): when the check measured a registered count, the top-level
+  // summary figure may not have drifted from it (2026-11-10: the summary said 0 while the check
+  // had measured 193 of 200). The check's measured value is the truth; receipts written before it
+  // carried no measured count and are not contradicted by their own summary.
+  const measuredRegistered = r.checks?.registration?.measured?.registered;
+  if (typeof measuredRegistered === 'number' && measuredRegistered !== r.frames.registered) {
+    p.push(`frames.registered is ${r.frames.registered}, but the registration check measured ${measuredRegistered} (the check's value is the truth)`);
+  }
   for (const k of ['ffmpeg', 'pycolmap', 'brush']) if (!r.tools?.[k]) p.push(`tool version missing: ${k}`);
   for (const k of ['frames', 'poses', 'train']) if (!(r.stagesS?.[k] >= 0)) p.push(`stage duration missing: ${k}`);
   if (!r.checks?.registration?.pass) p.push('registration check did not pass');
