@@ -3,7 +3,7 @@
  * that any static host serves with no framework and no build step (Matt, 2026-07-16: pre-built HTML).
  *
  * Distinct from site-export.ts, which emits the CONTENT SOURCE (content/*.md + Sveltia admin) that
- * the main app's SvelteKit build renders at /docs. That source is not viewable on its own. This
+ * the main app's SvelteKit build renders at /docs. Those files are not viewable on their own. This
  * produces the finished site: one HTML file per page (marked-rendered body + nav + prev/next), one
  * stylesheet, and graph.json — droppable onto Cloudflare Pages, Netlify, GitHub/GitLab Pages, or a
  * folder, and reachable by the `reckons publish` CLI which then runs the host's deploy tool.
