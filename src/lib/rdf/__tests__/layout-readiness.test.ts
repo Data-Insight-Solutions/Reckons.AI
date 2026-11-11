@@ -51,7 +51,7 @@ function edge(
 }
 
 describe('layoutReadiness — time', () => {
-  it('a space with 3 dated things of 10 reports time 3 of 10 with 7 undated', () => {
+  it('a knowledge base with 3 dated things of 10 reports time 3 of 10 with 7 undated', () => {
     const things = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10'].map(
       (t) => `urn:kbase:concept/${t}`,
     );
@@ -150,5 +150,23 @@ describe('layoutReadiness — review state and emptiness', () => {
       tree: { placeable: 0, total: 0, missing: 0, reason: 'no-parent' },
       arrange: { placeable: 0, total: 0, missing: 0, reason: 'no-order' },
     });
+  });
+
+  it('a superseded fact is not about anything and places nothing, as the renderers treat it', () => {
+    const a = 'urn:kbase:concept/a';
+    const b = 'urn:kbase:concept/b';
+    const old = 'urn:kbase:concept/only-superseded';
+    const r = layoutReadiness([
+      fact(a, LABEL, 'a'),
+      fact(b, LABEL, 'b'),
+      fact(old, LABEL, 'replaced', { status: 'superseded' }),
+      fact(a, DUE_AT, '2026-01-01', { status: 'superseded' }),
+      edge(a, BROADER, b, { status: 'superseded' }),
+      fact(b, ORDER, '1', { status: 'superseded' }),
+    ]);
+    expect(r.total).toBe(2);
+    expect(r.time.placeable).toBe(0);
+    expect(r.tree.placeable).toBe(0);
+    expect(r.arrange.placeable).toBe(0);
   });
 });
