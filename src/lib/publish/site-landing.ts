@@ -319,7 +319,13 @@ function renderBlocks(s: LandingSection, ctx: ShellContext): string {
     const tall = seg.find((x) => x.tall);
     if (tall && seg.length > 1) {
       // fill the two columns to similar heights: each remaining block goes to the lighter column (text length as the weight)
-      const weight = (h: string): number => h.replace(/<[^>]*>/g, '').length + 120;
+      // A length estimate only (never output as HTML): count characters outside tags with a scan,
+      // not a tag-stripping regex, so nothing here reads as (or is mistaken for) a sanitizer.
+      const weight = (h: string): number => {
+        let n = 0, inTag = false;
+        for (const ch of h) { if (ch === '<') inTag = true; else if (ch === '>') inTag = false; else if (!inTag) n++; }
+        return n + 120;
+      };
       const cols: { w: number; h: string[] }[] = [{ w: weight(tall.html), h: [tall.html] }, { w: 0, h: [] }];
       for (const x of seg) { if (x === tall) continue; const c = cols[0].w < cols[1].w ? cols[0] : cols[1]; c.h.push(x.html); c.w += weight(x.html); }
       out.push('<div class="split">' + cols.map((c) => '<div class="col">' + c.h.join('\n') + '</div>').join('') + '</div>');
