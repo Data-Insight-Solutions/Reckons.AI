@@ -94,7 +94,7 @@ rev:gap rdf:type ktype:Concept ;
 
 rev:gap-f274-4-3 rdf:type ktype:Concept ;
     rdfs:label "F274.4.3 F274.4.3 — the landing layout: the approved mock-up as a generic template" ;
-    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/publish/__tests__/site-landing.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/publish/__tests__/site-landing.test.ts, src/lib/publish/__tests__/grid-balance.test.ts)." .
 
 rev:gap-f274-7 rdf:type ktype:Concept ;
     rdfs:label "F274.7 F274.7 — the Data Insight Solutions website as a space, shown as a Reckons.AI example" ;
@@ -190,7 +190,7 @@ rev:gap-f293 rdf:type ktype:Concept ;
 
 rev:gap-f58-9-6-1 rdf:type ktype:Concept ;
     rdfs:label "F58.9.6.1 F58.9.6.1 — scan from a folder of hand-reviewed frames instead of automatic extraction" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-room-lib.test.ts, scripts/content/__tests__/splat-shots-lib.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-room-lib.test.ts, scripts/content/__tests__/splat-shots-lib.test.ts, scripts/content/__tests__/keyframe-select-lib.test.ts)." .
 
 rev:gap-f294-7 rdf:type ktype:Concept ;
     rdfs:label "F294.7 F294.7 — website outcome: an asset from a space shown on a page, linked back to its space" ;
