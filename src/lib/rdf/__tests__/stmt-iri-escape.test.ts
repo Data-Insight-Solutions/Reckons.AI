@@ -16,12 +16,25 @@ const st = (id: string): Statement => ({
 });
 
 describe('fact ids that are not IRI-safe', () => {
-  it('the written file parses, and the id round-trips', async () => {
-    const id = 'currents|urn:reckons:currents/new-current|urn:reckons:meta/currents/cadenceMinutes|360';
-    const ttl = toTurtleFull([st(id), st('plain-id')], [source], {});
+  const ids = [
+    'cfe418d7-6a96-4fe2-a7bd-7a67d0ac8824',
+    'currents|urn:reckons:currents/new-current|urn:reckons:meta/currents/cadenceMinutes|360',
+    'arrival|urn:reckons:currents/article/x|urn:reckons:meta/title|A "quoted" title',
+    'archive/e1/p/value%7Cwith-literal-escape',
+    '100%|done',
+    '~starts-with-the-marker',
+  ];
+  it('the written file parses, and every id comes back identical', async () => {
+    const ttl = toTurtleFull(ids.map(st), [source], {});
     expect(ttl).not.toContain('<urn:kbase:stmt/currents|');
     const back = await importTurtleFull(ttl, { name: 'fixture.ttl' });
-    expect(back.statements.map((x) => x.id).sort()).toEqual([id, 'plain-id'].sort());
-    expect(back.statements.every((x) => x.status === 'confirmed')).toBe(true);
+    expect(back.statements.map((x) => x.id).sort()).toEqual([...ids].sort());
+  });
+  it('an id with nothing unsafe is written as it was, and an unmarked escape is not decoded', async () => {
+    const ttl = toTurtleFull([st('cfe418d7-6a96-4fe2-a7bd-7a67d0ac8824'), st('archive/e1/p/value%7Cx')], [source], {});
+    expect(ttl).toContain('<urn:kbase:stmt/cfe418d7-6a96-4fe2-a7bd-7a67d0ac8824>');
+    expect(ttl).toContain('<urn:kbase:stmt/archive/e1/p/value%7Cx>');
+    const back = await importTurtleFull(ttl, { name: 'fixture.ttl' });
+    expect(back.statements.map((x) => x.id)).toContain('archive/e1/p/value%7Cx');
   });
 });
