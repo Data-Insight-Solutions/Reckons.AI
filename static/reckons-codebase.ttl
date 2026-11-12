@@ -1165,5 +1165,5 @@ code:splat-embed-viewer
     rdf:type ktype:Concept ;
     rdfs:label "Embeddable splat viewer" ;
     skos:definition "Builds a self-contained folder (page, bundled three.js viewer, the splat, an optional poster) that floats one Gaussian splat and turns it by drag; F294.7." ;
-    kpred:has-file "scripts/site/splat-embed.ts", "scripts/site/splat-embed-lib.ts", "scripts/site/check-embed.ts" ;
+    kpred:has-file "scripts/site/splat-embed.ts", "scripts/site/splat-embed-lib.ts", "scripts/site/check-embed.ts", "scripts/site/check-motion.ts" ;
     kpred:tested-by "scripts/site/__tests__/splat-embed.test.ts" .

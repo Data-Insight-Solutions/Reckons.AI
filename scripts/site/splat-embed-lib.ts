@@ -83,12 +83,13 @@ async function main() {
   const mesh = new SplatMesh({ url: frame.dataset.splat });
   await mesh.initialized;
   const sphere = mesh.getBoundingBox(true, new THREE.Box3()).getBoundingSphere(new THREE.Sphere());
-  mesh.position.copy(sphere.center).multiplyScalar(-1);
-  const spin = new THREE.Group(); spin.add(mesh);
-  const float = new THREE.Group(); float.add(spin); float.scale.setScalar(1 / sphere.radius);
-  scene.add(float);
+  // The object stays FIXED; the camera orbits and bobs. The library re-sorts its Gaussians by depth only when the
+  // camera moves, so moving the object under a still camera leaves a stale sort and renders wrongly.
+  const model = new THREE.Group(); mesh.position.copy(sphere.center).multiplyScalar(-1); model.add(mesh);
+  model.scale.setScalar(1 / sphere.radius);
+  scene.add(model);
   const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 100);
-  cam.position.set(0, 0, 3.6); cam.lookAt(0, 0, 0);
+  const DIST = 3.6, target = new THREE.Vector3();
 
   const resize = () => {
     const w = frame.clientWidth || 1, h = frame.clientHeight || 1;
@@ -101,26 +102,31 @@ async function main() {
 
   let yaw = 0, dragging = false, lastX = 0, resumeAt = 0, visible = true, last = performance.now(), t = 0, drawn = 0;
   frame.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; frame.classList.add('dragging'); try { frame.setPointerCapture(e.pointerId); } catch {} });
-  frame.addEventListener('pointermove', (e) => { if (!dragging) return; yaw += (e.clientX - lastX) * 0.012; lastX = e.clientX; });
+  frame.addEventListener('pointermove', (e) => { if (!dragging) return; yaw -= (e.clientX - lastX) * 0.012; lastX = e.clientX; });
   const up = () => { if (!dragging) return; dragging = false; frame.classList.remove('dragging'); resumeAt = performance.now() + 3000; };
   frame.addEventListener('pointerup', up); frame.addEventListener('pointercancel', up);
   new IntersectionObserver((es) => { visible = es[es.length - 1].isIntersecting; if (visible) last = performance.now(); }).observe(frame);
 
+  let paused = false;
+  const place = () => {
+    const bob = reduce ? 0 : Math.sin(t * 2 * Math.PI * 0.4) * 0.08;
+    cam.position.set(Math.sin(yaw) * DIST, bob, Math.cos(yaw) * DIST);
+    target.set(0, bob, 0); cam.lookAt(target);
+  };
   const tick = (now) => {
     requestAnimationFrame(tick);
     if (!visible || document.hidden) return;
     const dt = Math.min((now - last) / 1000, 0.1); last = now;
-    if (!reduce) {
+    if (!reduce && !paused) {
       t += dt;
-      if (!dragging && now >= resumeAt) yaw += dt * 0.35;
-      float.position.y = Math.sin(t * 2 * Math.PI * 0.4) * 0.04 * 2;
+      if (!dragging && now >= resumeAt) yaw -= dt * 0.35;
     }
-    spin.rotation.y = yaw;
+    place();
     renderer.render(scene, cam);
-    if (++drawn === 6) { if (poster) poster.remove(); window.__splatEmbed = { ready: true }; }
+    if (++drawn === 6) { if (poster) poster.remove(); window.__splatEmbed = { ready: true, setYaw: (v) => { yaw = v; }, getYaw: () => yaw, pause: (p) => { paused = p; } }; }
   };
   requestAnimationFrame(tick);
-  window.__splatEmbed = { ready: false, setYaw: (v) => { yaw = v; } };
+  window.__splatEmbed = { ready: false, setYaw: (v) => { yaw = v; }, getYaw: () => yaw, pause: (p) => { paused = p; } };
 }
 try { main().catch(fail); } catch { fail(); }
 `;
