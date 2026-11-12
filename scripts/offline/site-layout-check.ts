@@ -18,12 +18,14 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } fr
 import { tmpdir } from 'node:os';
 import { extname, join, normalize, resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { rowBalance, unbalancedRows } from './grid-balance.js';
 import { buildSite } from '../../src/lib/publish/site-build.js';
 
 const flag = (n: string): string | undefined => process.argv.find((a) => a.startsWith('--' + n + '='))?.split('=').slice(1).join('=');
 const widths = (flag('widths') ?? '390,1440').split(',').map((w) => parseInt(w, 10));
 const pages = (flag('pages') ?? '/').split(',');
 const shots = resolve(flag('shots') ?? join(tmpdir(), 'site-layout-shots'));
+const GRID_SELECTOR = flag('grids') ?? '.bento, .blocks, .split, .pairs, .engage, .path, .about, .principles, .principle-cards';
 const TYPES: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 async function main(): Promise<void> {
@@ -72,11 +74,28 @@ async function main(): Promise<void> {
         await page.waitForTimeout(1500);
         const m = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
         const overflow = m.sw > m.cw;
+        // grid balance: every row of every card grid must fill its columns (Matt 2026-11-12: "empty space on left")
+        const grids = await page.evaluate((sel) => Array.from(document.querySelectorAll(sel)).map((g, gi) => {
+          const cs = getComputedStyle(g);
+          const kids = Array.from(g.children).filter((c) => (c as HTMLElement).offsetParent !== null || getComputedStyle(c).position === 'fixed');
+          if (cs.display !== 'grid' || kids.length < 2) return null;
+          const gr = g.getBoundingClientRect();
+          const widths = cs.gridTemplateColumns.split(' ').map(parseFloat).filter((n) => !isNaN(n));
+          const gap = parseFloat(cs.columnGap) || 0;
+          let x = gr.left + (parseFloat(cs.paddingLeft) || 0);
+          const tracks = widths.map((w) => { const t = { x0: x, x1: x + w }; x += w + gap; return t; });
+          const boxes = kids.map((c) => { const r = c.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top + window.scrollY, bottom: r.bottom + window.scrollY }; });
+          return { name: (g.className || g.tagName) + '#' + gi, tracks, boxes };
+        }).filter((x) => x), GRID_SELECTOR);
+        const holes: string[] = [];
+        for (const g of grids as { name: string; tracks: { x0: number; x1: number }[]; boxes: { left: number; right: number; top: number; bottom: number }[] }[]) {
+          for (const r of unbalancedRows(rowBalance(g.tracks, g.boxes))) holes.push(g.name + ' row@' + Math.round(r.top) + ' empty cols ' + r.empty.join(',') + (r.startGap ? ' (LEFT gap)' : '') + (r.endGap ? ' (right gap)' : ''));
+        }
         const name = (path === '/' ? 'home' : path.replace(/\W+/g, '-').replace(/^-|-$/g, '')) + '-' + width + '.png';
         await page.screenshot({ path: join(shots, name), fullPage: true });
-        const ok = errors.length === 0 && !overflow;
+        const ok = errors.length === 0 && !overflow && holes.length === 0;
         if (!ok) bad++;
-        console.log((ok ? 'ok   ' : 'FAIL ') + width + 'px ' + path + '  scrollWidth ' + m.sw + ' / ' + m.cw + (errors.length ? '  errors: ' + errors.join(' | ') : '') + '  -> ' + join(shots, name));
+        console.log((ok ? 'ok   ' : 'FAIL ') + width + 'px ' + path + '  scrollWidth ' + m.sw + ' / ' + m.cw + '  grids ' + (grids as unknown[]).length + ' unbalanced rows ' + holes.length + (holes.length ? ' [' + holes.join('; ') + ']' : '') + (errors.length ? '  errors: ' + errors.join(' | ') : '') + '  -> ' + join(shots, name));
         await page.close();
       }
       await ctx.close();

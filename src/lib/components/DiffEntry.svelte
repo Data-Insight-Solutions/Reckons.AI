@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DiffEntry } from '$lib/rdf/diff';
+  import { resolveConflict, type DiffEntry } from '$lib/rdf/diff';
   import StatementCard from './StatementCard.svelte';
   import { setStatus, supersede, updateStatement, entityChoices, statements } from '$lib/stores/kb.svelte';
   import { recordAnswer } from '$lib/stores/workspace.svelte';
@@ -122,8 +122,7 @@
     error = null;
     processing = true;
     try {
-      for (const e of entry.existing) await setStatus(e.id, 'superseded');
-      await setStatus(entry.incoming.id, 'refined');
+      for (const r of resolveConflict(entry, 'replace')) await setStatus(r.id, r.status);
       onresolved();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -210,6 +209,7 @@
     reinforces: 'reinforces',
     conflicts: 'conflicts',
     refines: 'refines',
+    updates: 'updated',
     'near-duplicate': 'near duplicate',
     'synonym-reinforces': 'synonym',
     'antonym-conflicts': 'contradiction',
@@ -228,7 +228,7 @@
     {:else if entry.kind === 'duplicate'}
       <span class="muted">exact n-quad already known</span>
     {:else if entry.kind === 'conflicts'}
-      <span class="muted">disagrees with {entry.existing.length} prior fact(s)</span>
+      <span class="muted">{entry.possible ? 'may disagree with' : 'disagrees with'} {entry.existing.length} prior fact(s){entry.possible ? ' — not yet known whether this takes one value or several' : ''}</span>
     {:else if entry.kind === 'refines'}
       <span class="muted">more specific than {entry.existing.length} prior fact(s)</span>
     {:else if entry.kind === 'near-duplicate'}
@@ -356,6 +356,17 @@
           {processing ? 'dismissing…' : 'dismiss'}
         </button>
       {:else if entry.kind === 'conflicts'}
+        {#if entry.possible}
+          <button class="primary" onclick={pickIncoming} disabled={processing} title="The new value replaces what you have; the old ones are kept as replaced, not deleted.">
+            {processing ? 'updating…' : 'replace'}
+          </button>
+          <button onclick={keepBoth} disabled={processing} title="Both are true: keep the new value beside what you have. Nothing is replaced.">
+            {processing ? 'saving…' : 'keep both'}
+          </button>
+          <button class="danger" onclick={pickExisting} disabled={processing} title="Keep what you have and turn the new value down.">
+            {processing ? 'updating…' : 'reject'}
+          </button>
+        {:else}
         <button class="primary" onclick={pickIncoming} disabled={processing}>
           {processing ? 'updating…' : 'keep new'}
         </button>
@@ -365,6 +376,7 @@
         <button onclick={keepBoth} disabled={processing} title="Not actually a conflict — keep both statements">
           {processing ? 'saving…' : 'keep both'}
         </button>
+        {/if}
         {#if isLit(entry.incoming.o)}
           <button onclick={() => (editing = true)} disabled={processing}>refine</button>
         {/if}

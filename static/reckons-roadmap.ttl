@@ -4353,6 +4353,7 @@ kb:scan-curated-frames rdf:type ktype:Phase ;
     rdfs:label "F58.9.6.1 — scan from a folder of hand-reviewed frames instead of automatic extraction" ;
     kpred:feature-id "F58.9.6.1" ;
     kpred:has-status "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): done-tests 1 to 3 pass (scripts/content/__tests__/scan-room-lib.test.ts, 33 of 33). Missing: done-test 4, one recorded end-to-end scan from a reviewed folder passing scan:room --check with its registered count; the ring scan was built from hand-picked frames but its receipt is private and is not recorded here as a curated-folder run." ;
     kpred:part-of kb:room-scan-capture ;
     kpred:decided "MATT, 2026-11-12: \"Video is good, however, keyframes should be manually review[ed] to get the most crisp, not blurry image frames of differing angles.\"" ;
     kpred:description "A third input kind for npm run scan:room. A folder of jpg or png images that is not a Stray Scanner export becomes kind images: frame extraction and the automatic sharpness selection are skipped and every image is used exactly as given, in file-name order (COLMAP's sequential matching follows name order, so the folder is in capture order). The person (or an agent working for them) looks at candidate frames, keeps the crisp ones from differing angles, and copies the kept set into the folder. The receipt records source curated, the number supplied and a content hash of the folder (every file name and file hash) in place of extraction numbers, and receipt validation accepts that and refuses a curated receipt whose count, hash or input kind disagree. Video and Stray inputs behave exactly as before." ;
@@ -4363,6 +4364,23 @@ kb:scan-curated-frames rdf:type ktype:Phase ;
     kpred:done-test "(1) detectInput on a folder of images returns kind images, sorted, and still refuses an empty folder and a partial Stray export by naming what is missing; video and Stray detection are unchanged. (2) folderContentHash is stable under listing order and changes with any name or content change. (3) validateReceipt accepts a curated receipt (source curated, supplied equal to kept, folder hash equal to the input hash, at least 20 frames) and refuses each disagreement. (4) one end-to-end scan from a reviewed folder passes npm run scan:room -- --check, with the registered count taken from the check's measured value." ;
     kpred:progress "2026-11-12: input kind images, the curated frames record, folderContentHash and receipt validation are built and unit-tested on synthetic tiny images in a temporary folder (done-tests 1 to 3). Done-test 4 is not yet shown. Also: splat-shots.ts takes --up, --focus and --views so a reconstructed scene (arbitrary frame) can be viewed; before this it assumed the TripoSplat orientation. Unit-tested for the rotation maths only; the rendering itself is not unit-tested." ;
     kpred:honest-note "2026-11-12: status is in-progress because the end-to-end scan from a curated folder had not finished when this was written. The folder's hash proves WHICH frames were used, not that a person reviewed them; the review log is a separate private file and is not checked by code." .
+
+kb:scan-keyframe-select rdf:type ktype:Phase ;
+    rdfs:label "F58.9.6.2 — pick training frames by how sharp the OBJECT is, per stretch of the orbit" ;
+    kpred:feature-id "F58.9.6.2" ;
+    kpred:has-status "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): stays scaffolded. Done-tests 1 to 3 pass (scripts/content/__tests__/keyframe-select-lib.test.ts, 9 of 9). Done-test 4, the comparison, was run and the selection did not beat hand picking, so the feature is not shown to help; it is kept as a tool, not a default." ;
+    kpred:part-of kb:scan-curated-frames ;
+    kpred:decided "MATT, 2026-11-12: \"The splat ring is looking pretty good! Definitally use-able ... I think there is some room from improvement, and like I said it is likely within keyframe selection. The most clear image frames will help the reconstruction.\"" ;
+    kpred:decided "MATT, 2026-11-12: \"Video is good, however, keyframes should be manually review[ed] to get the most crisp, not blurry image frames of differing angles.\"" ;
+    kpred:description "npm run scan:keyframes decodes a video at a fixed rate with ffmpeg, scores each frame by the variance of the Laplacian on a REGION AROUND THE OBJECT (a fixed box, or a track file giving the object's centre over time, interpolated), splits the timeline into equal windows so every stretch of the orbit keeps a frame, keeps the sharpest eligible frame per window, refuses frames under a floor (a fraction of the median score) and frames nearly identical to the previous kept one, and writes the kept frames (a folder scan:room takes as is), report.json (every frame's score, window, kept or why not, and the windows left empty) and contact sheets of the kept frames and of the sharpest rejects for a person to look at." ;
+    kpred:constraint "The object is NOT detected: the person or an agent supplies the box or track. An empty window is reported as a coverage gap rather than filled with a blurred frame. Frames, tracks and reports stay private (outside the repository); tests use synthetic images only." ;
+    kpred:extends "scripts/content/scan-room-lib.ts" ;
+    kpred:has-file "scripts/content/select-keyframes.ts", "scripts/content/keyframe-select-lib.ts" ;
+    kpred:tested-by "scripts/content/__tests__/keyframe-select-lib.test.ts" ;
+    kpred:done-test "(1) laplacianVariance ranks crisp above blurred above flat on synthetic checkers. (2) trackAt interpolates and clamps; roiBox stays inside the frame; windowOf maps times to windows. (3) selectKeyframes keeps the sharpest per window, refuses below-floor and near-duplicate frames with the reason recorded, and reports an all-blurred window as empty. (4) one run on a real video, then a scan and a measured comparison with the previous selection." ;
+    kpred:progress "2026-11-12: library and command built; unit tests 1 to 3 pass on synthetic data. One run on the private 53 s ring video with a per-frame track derived from the earlier hand pass: 1,595 candidates at 30 fps, 260 windows, floor 0.7 x median, 199 kept. Done-test 4 (the scan and the comparison) is reported in the overseer's hand-off, not yet recorded here." ;
+    kpred:honest-note "2026-11-12: status is scaffolded, not functional, until the reconstruction from these frames has been compared with the earlier one by a person. A higher crop sharpness is a proxy for a better splat, not proof of one; the scoring is a blur score and does not measure angle coverage beyond the windows. The track used for the ring run came from the earlier hand pass (its recorded ring positions), so this run is not independent of that pass. scan-room.ts still has its own whole-frame sharpness for automatic extraction; the two are not yet unified." .
 
 kb:splat-file-import rdf:type ktype:Phase ;
     rdfs:label "F58.9.7 — import a PLY or SPZ splat from the device into a space" ;
@@ -8290,7 +8308,7 @@ kb:build-change-workflow rdf:type ktype:Phase ;
     kpred:description "A pair of synthetic notes in tests/fixtures/notes-corpus: the first builds a small space, the second changes one of its facts and adds others. Their expected facts in expectations.json are the ground truth for three uses at once. (1) The extraction bench (scripts/offline/extraction-score.ts) scores every local model on them, so 'space modifying' has a number, not only 'space building'. (2) The mock extractor returns those expected facts for a corpus note it recognizes, so a TestWorkflow in static/docs-testing.ttl can drive build, review by source, change, and the held-back disagreement through the browser with real content instead of placeholders. (3) The same steps, opened as a guided space, are the manual test with a real local model, which is where extraction quality is actually judged." ;
     kpred:principle "ONE GROUND TRUTH, THREE READERS. A browser test with placeholder facts proves the screens respond; a bench proves a model extracts; a manual run proves a person can get through it. Written separately they drift, and the test passes on a flow no model can produce. Written once, a model that cannot produce the change shows up in the bench as the reason the manual run fails." ;
     kpred:done "2026-10-27: the note pair (tests/fixtures/notes-corpus/06-garden-build.txt, 07-garden-change.txt) with expectations and a forbidden 'saturday' for the change note; the mock backend's corpus lookup (src/lib/integrations/llm/corpus-fixture.ts, explicit mock backend only, never the placeholder fallback); test:Workflow-BuildChange in static/docs-testing.ttl with six steps, screenshots and the page content/testing/workflow-build-change.md; tests/e2e/workflow-build-change.test.ts, which also fails if the note quoted in a step drifts from its corpus file. The test found that 'keep new' settles the chosen value as refined, not confirmed; both count as part of the space." ;
-    kpred:remaining "A bench run over the local roster on the new pair. The manual run with a real local model, which is the judgement the test cannot make. The steps are a docs page, not yet a guided space opened from the app." .
+    kpred:remaining "2026-11-12 (status-closer): a bench run over the local roster on the new pair; the manual run with a real local model, which the test cannot judge; the steps are a docs page, not yet a guided space opened from the app." .
 
 kb:gen-bench-in-graph rdf:type ktype:Phase ;
     rdfs:label "F183.2 — generation bench tasks live in the Testing graph, harder image briefs, and the Creative Commons allowlist" ;
@@ -10399,14 +10417,7 @@ kb:release-0-2-7 kpred:progress "2026-10-30, CUT AND BUILT, NOT YET IN PRODUCTIO
 kb:release-0-2-8 rdf:type ktype:Release ;
     rdfs:label "v0.2.8" ;
     kpred:version "0.2.8" ;
-    kpred:has-status "planned" ;
-    kpred:description "The overflow release, by decision not cohesive on one theme (Matt, 2026-10-30): reach (local host mode, LAN HTTPS) and the canvas and analysis work that moved out of 0.2.6 on 2026-10-13 and out of 0.2.7 on 2026-10-30. Moved because none had started, not because they were dropped." ;
     kpred:decided "MATT, 2026-10-30: received from v0.2.7 at the agents cut (see kb:release-0-2-7)." ;
-    kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:time-series-planning ;
-    kpred:has-part kb:enclosure-monitoring ;
-    kpred:has-part kb:shelly-generation-jobs ;
     kpred:proposed "2026-10-16: F259 enclosure monitoring and F166.1 Shelly generation dispatch are additional proposed near-term slices, targeting this reach release before v0.3.0. F259 builds the private policy space, live Currents, local alert execution and capacity warnings in order. This allocation is planning, not a claim of implementation or an approved hardware deployment." ;
     kpred:proposed "2026-10-16: allocate F258's four phases to this near-term release in dependency order: temporal contract and timelines, Timestral/baseline evaluation, optional local provider, then forecast-informed scheduling suggestions. Matt requested delivery before v0.3.0; this working v0.2.7 allocation may be refined within 0.2.x without representing the feature as already built." .
 
@@ -10443,13 +10454,7 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
 
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped. MOVED AGAIN to v0.2.8 at the agents cut, 2026-10-30." .
 
-kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
-    kpred:has-part kb:one-graph-canvas ;
-    kpred:has-part kb:set-layout ;
-    kpred:has-part kb:integration-plugin-sdk ;
-    kpred:has-part kb:analyze-job-sets ;
-    kpred:has-part kb:research-watch ;
-    kpred:has-part kb:graph-density-legibility .
+# 2026-11-12: the v0.2.8 has-part edges are rewritten once, in the release block below (measured from the commits, not narrated).
 
 # 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
 # release: what makes the local deputy and its queue trustworthy enough to run offline.
@@ -10631,7 +10636,6 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped. Moved on to v0.2.8 at the agents cut, 2026-10-30." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
@@ -11350,7 +11354,7 @@ kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statem
     kpred:relates-to kb:source-validation, kb:graph-legibility ;
     kpred:description "Opt-in per-space always-on checking while the app is open. Check unique pending and retained assertions against selected web search, scraping and cited model integrations, and all other registered local spaces. What a check finds becomes ordinary pending statements from a new source (rdf/triple-check.ts evidenceProposals): agreement is the same statement from that source, disagreement is a separate statement, and a page that disputes without stating a value is a partial-fact question. Repetition is not independent validation; different values may coexist. Never settle or rewrite claims automatically." ;
     kpred:constraint "Off by default. Web use sends statements to the explicitly selected optional providers; bound metered requests durably and show unavailable/partial evidence. Local space comparison uses no cloud model. Product taxonomy distinguishes space (container, including visual content) from its RDF graph. No new top-level navigation." ;
-    kpred:remaining "Live-provider accuracy/cost calibration is not delivered; no live web check has run in this repository's tests. The Ollama space comparison's suggestedWording is no longer surfaced anywhere since findings became statements (2026-10-27); either it becomes a refine proposal or it is removed." .
+    kpred:remaining "2026-11-12 (status-closer): live-provider accuracy and cost calibration is not delivered and no live web check has run in this repository tests; the Ollama space comparison suggestedWording is surfaced nowhere since 2026-10-27, so it must become a refine proposal or be removed." .
 kb:triple-check kpred:done "2026-10-27 (Opus review): a guided walkthrough space (static/starter-triple-check.ttl, built by scripts/starter/build-research.ts) replaces the bare research starter and the list of every bundled file. A fictional home battery described by four documents, two accepted and two pending, with a ten-step story: a conflict worth acting on, agreement that is support not proof, two answers that are both right, and no flag that is not confirmation. Story, navigation and presentation statements are no longer checked." .
 kb:triple-check kpred:done "2026-10-27 (Opus, Matt's direction: 'I would much rather the triple check add additional sources to validate, or add a conflicting statement separate to the existing'): the separate evidence panel, the 'Possible conflict' label and 'mark reviewed' are removed. Findings are written through prepareStatementsForWrite + persistSourceBatch with origin 'agent', so content policy and the F52 boundary apply. A web page's stated contradicting value is kept only when it occurs verbatim in the passage. Proposals are deduplicated by (source, s, p, o) across every status, so a rejected citation stays rejected. Same-space evidence is not proposed: Review's diff already compares within a space. The walkthrough now opens a companion space (static/starter-triple-check-reference.ttl, an owners' forum) so the offline walkthrough has something outside the space to find." .
 kb:triple-check kpred:proposed "2026-10-27 (agent, not decided): F100 is not a part of any release. It touches the evidence chain 0.2.6 was about, so it fits 0.2.7 as a part, or a 0.2.8 of its own; Matt's call." .
@@ -11490,8 +11494,7 @@ kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for p
     kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
     kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
 
-kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
-    kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
+kb:release-0-2-8 kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
 
 kb:downstream-site-build rdf:type ktype:Phase ;
     rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
@@ -11535,6 +11538,11 @@ kb:downstream-site-landing-layout rdf:type ktype:Phase ;
     kpred:progress     "2026-11-10, BUILT: src/lib/publish/site-landing.ts (layout, CSS, script) and site-config.ts (site.config.json: palettes, fonts, logo, navigation, footer, webhook, address). A site with a site.config.json renders EVERY page in the shared shell (header with Home, Services, About, Blog and Contact, footer, light/dark, phone menu); a template: landing page lays out its ## sections (hero, cards, steps, panels, about, banner, contact, text). The page CSP allows scripts and styles from the site only (no inline) and the webhook origin as the only connection and form target. With no webhook configured the contact block is a mailto link (the address from config), and nothing if there is no address either. Browser half of the done-test: npx tsx scripts/offline/site-layout-check.ts: no script errors, console errors or failed requests and no horizontal overflow at 390 and 1440 px, on the synthetic fixture (src/lib/publish/__tests__/fixtures/landing-site) and on a real site. NOT MET AS WRITTEN: the done-test names npm run visual:local's model as the judge of 'same layout'; visual:local drives the app on a copy of browser data and cannot open a static folder, and no local-model judgment was run. The comparison with the approved preview was a person-style read of full-page screenshots at both widths: same sections, grid, colors and reveals; the differences are the header (site pages instead of in-page anchors), no film-grain overlay (a data: image the CSP forbids) and a static logo file in place of the preview's animated inline SVG." ;
     kpred:description  "template: landing renders the design Matt approved on 2026-10-30 (soft drifting color wash, translucent panels, asymmetric card grid, reveal on scroll, light and dark, phone menu, contact form posting to the site's own n8n webhook) from page sections and site theme values, so any Reckons.AI site can use it. Brand colors, fonts and the webhook come from site configuration, never hard-coded." ;
     kpred:decided      "Matt, 2026-11-12: 'Scroll should be button on about and services, like homepage.' The guided-scroll control now appears on pages using the sections template as well as the landing page, still only when the site's guidedScroll setting is on; other templates (posts, contact) do not carry it." ;
+    kpred:tested-by    "src/lib/publish/__tests__/grid-balance.test.ts" ;
+    kpred:decided      "Matt, 2026-11-12: 'The layout of cards on career line section are not balanced, empty space on left.' Cause: the blocks grid gave the tall block grid-row: span 4 with an explicit media-slot column, so the blocks after the tall one auto-placed into column 2 and later rows started in column 2, leaving column 1 empty (the generator's CSS, not the page's @span choices). Fix is a generator rule for any blocks section: a wide block stands alone, a segment with a tall block becomes two columns filled to similar heights, any other segment is a pairs grid whose odd last block spans both columns, and an empty media slot renders nothing." ;
+    kpred:decided      "Matt, 2026-11-12, about the About-page principles block ('I help businesses turn raw data into strategic advantage ... People come first ... Knowledge transfers'): 'Should be better layout also'. A text section with @as: cards now renders a lead sentence (the highlighted ==sentence== in the accent gradient) and the bold-led bullets as a two-column grid of small cards (one column under 700 px); generic, no site wording in the generator." ;
+    kpred:decided      "Matt, 2026-11-12: the Recognition block 'Should be on about not services'; and of the five integration specialties on Services, 'Is a bit lengthy for the services page, we need to publish those articles in Blog.' Recognition now lives once on About; the Services list is one short line each, linking the post that covers it." ;
+    kpred:measured     "2026-11-12, GRID BALANCE (scripts/offline/site-layout-check.ts with scripts/offline/grid-balance.ts: a row is unbalanced when a column is empty in it). BEFORE (About build dis-about-v6): 1280 px 2 unbalanced rows, 1440 px 2, each a LEFT gap (column 0 empty) in the career-line blocks grid; 390 px 0; Home and Services 0 at 390, 1280 and 1440. AFTER (dis-about-v7): 0 unbalanced rows on /, /about/ and /services/ at 390, 1280 and 1440, no horizontal overflow. Row arithmetic unit-tested on synthetic boxes (6 tests). Limits: it judges columns filled, not heights; the two career-line columns are balanced by text length, so their bottoms differ by a card or less. The local vision model was not asked; the 1280 px screenshot was read by the overseer only." ;
     kpred:extends      "kb:downstream-site-build; kb:downstream-site-landing (F274.6)" ;
     kpred:evidence     "2026-10-30: Matt approved the mock-up ('That deployed SPA is looking pretty good'); it exists only as one hand-written HTML file in a private folder." ;
     kpred:done-test    "A fixture landing page with the same sections renders with no script errors and no horizontal scroll at 390 and 1440 px, and npm run visual:local's model judges it the same layout as the approved preview; brand values change when the fixture's theme changes." ;
@@ -11561,6 +11569,7 @@ kb:downstream-site-deploy rdf:type ktype:Phase ;
     kpred:depends-on   kb:downstream-site-build ;
     kpred:description  "A workflow in the site repository: on push (Sveltia commits included) it checks out Reckons.AI at a pinned commit, runs site:build, and deploys with wrangler pages deploy (branch previews for pull requests, production for main). The pinned commit is bumped by pull request until the package (F274.5) replaces it." ;
     kpred:evidence     "2026-10-30: Sveltia edits commit to GitHub, so a build that only runs on Matt's machine would leave them unpublished." ;
+    kpred:progress     "2026-11-12: workflow built in the site repository as .github/workflows/deploy.yml (branch content/site-pages, local commit; checks out Reckons.AI at pinned 1a5ba450, site:build, guard and fact-expiry, wrangler pages deploy to data-insight-solutions; fails fast naming any missing secret of CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, SITE_CONFIG_OVERRIDE). NOT YET PUSHED: the active gh account has no push access to the site repository, so no pull request exists and no run has happened. Waiting on that push and on the three secrets; done-test not met until a pull-request run is green." ;
     kpred:done-test    "On a pull request in the site repository the workflow is green and its preview URL serves the built index; the repository secret holds the Cloudflare token and no workflow log prints it." ;
     kpred:non-goal     "No DNS change: cutover is Matt's, in the dashboard." ;
     kpred:order        5 .
@@ -11854,6 +11863,7 @@ kb:gen-setup-by-os rdf:type ktype:Phase ;
     kpred:feature-id   "F58.9.17" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): Linux is measured (2026-11-05) and generationAvailability refuses splats on darwin (tests pass), but no Mac has followed the page from a clean machine, so the done-test is not met; waits for a Mac run recording chip, memory and the first failure." ;
     kpred:decided      "MATT, 2026-11-05: 'We need detailed documentation of all setup required to do the asset generation space, locally on your own machine. I have a potential test user that is using Mac, so we need to make sure we have instructions based on OS.'" ;
     kpred:description  "The setup page (feat:GenerationSetup in docs-features.ttl) walks a first-time reader through each operating system: install the basics, get the code, run the setup script, start the runner, make something, and what to do when it fails, with a table of what each system can make. gen-setup.sh checks the system first (Linux x86-64, or macOS on Apple Silicon; anything else stops with a reason) and names missing commands with the install line for that system. On a Mac it installs stable-diffusion.cpp's Metal build and Brush's Apple Silicon build, both pinned by SHA-256, and skips TripoSplat; the runner never offers splats on macOS (generationAvailability), with the reason in plain words." ;
     kpred:has-file     "scripts/content/gen-setup.sh" ;
@@ -11940,7 +11950,8 @@ kb:multi-scan-reconstruction rdf:type ktype:Phase ;
     rdfs:label "F58.9.19 — multi-scan reconstruction: a splat of one place from several captures of it" ;
     kpred:feature-id   "F58.9.19" ;
     kpred:part-of      kb:gen-video-to-splat ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): scaffolded until separately filmed videos are run (Matt is filming them): variant 1 has receipts on three of four captures, scripts/content/__tests__/scan-multi-lib.test.ts passes 12 of 12, and fusion, slices and photos plus scans are not built or measured." ;
     kpred:depends-on   kb:room-scan-capture ;
     kpred:decided      "MATT, 2026-11-08: make a new space and attempt multi-scan reconstruction — one scan to generate a splat, more than one scan, slices of different scans, images and scans together. The same day, the longer downstream pipeline he wants after the splat: Blender to editable shapes, a playable game (add/remove dirt, reshape land, add retaining walls), then a realistic mock-up image generated from the edited 3D against the original images — proposed separately as kb:terrain-mockup-pipeline." ;
     kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): fusion approach = one COLMAP layout over the pooled frames of all captures with cross-session matching, so every capture shares one coordinate frame; from it, one fused splat for preview and a mesh from the phone's depth maps for Blender — the end goal is one place as an editable, playable Blender object (.blend/.glb). Multi-scan fusion is a DIFFERENT feature from in-app shape overlap / node placement." ;
@@ -11948,6 +11959,9 @@ kb:multi-scan-reconstruction rdf:type ktype:Phase ;
     kpred:progress     "2026-11-10: variant 1 has passing receipts on three of the four captures; the fourth is queued. Fusion, slices, and photos plus scans are NOT built." ;
     kpred:has-file     "scripts/content/scan-room.ts" ;
     kpred:has-file     "scripts/content/scan-room-lib.ts" ;
+    kpred:has-file     "scripts/content/scan-multi.ts" ;
+    kpred:has-file     "scripts/content/scan-multi-lib.ts" ;
+    kpred:tested-by    "scripts/content/__tests__/scan-multi-lib.test.ts" ;
     kpred:done-test    "each of the four variants ends in a passing receipt OR its failure recorded on this entity with the failing stage and the receipt's numbers. Fusion or slices must also record the measured effect on registration, per F58.9.6's deferral of phone poses to a measured comparison." ;
     kpred:open-question "Receipt consistency: top-level frames.registered says 0 while the stage log and checks report the real count — which field is the truth, and should receipt self-consistency be a script-tier check?" ;
     kpred:honest-note  "UNVERIFIED BEYOND THE RECEIPT: the deputy read the receipt and the stage logs but never opened the splat in a viewer, so 'the garden is in there' is the checks' claim, not the deputy's. The trial data is private and machine-local; nothing from it may be committed." .
@@ -11958,6 +11972,7 @@ kb:scan-auto-attach rdf:type ktype:Phase ;
     kpred:feature-id   "F58.9.20" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): unit tests pass (scan-attach.test.ts 18 of 18, with splat-folder-import and job-result suites in the same run), but the e2e that mounts the viewer (tests/e2e/scan-auto-attach.test.ts) could not be run this session (the local Playwright web server failed: file-watcher limit and a Node module error), so the done-test is not shown today; also missing: undo for a supersession, per the 2026-11-11 correction." ;
     kpred:depends-on   kb:splat-file-import ;
     kpred:decided      "MATT, 2026-11-09/10: 'Scan job must attach the splat to the space on completion, mark completion in the space, and record the output asset as the job's result.'" ;
     kpred:description  "Design: scan-room.ts gains --space=<space slug>. On success it copies splat.spz into <workspace>/kbs/<slug>/assets/splats/<content id>.spz and appends pending rows that carry a kb target (the scanStatements set, src/lib/3d/splat.ts). The app's workspace drain stores the referenced blob from the folder when the space lacks it, so a pending row can bring its file. A scan row without a kb target is refused (2026-11-10 incident: 6 untargeted attach rows would have landed in whichever space was open). Also folded in: a space imported from a folder that has assets/splats/<id> but no live pred:splat statement gets that statement synthesized as PENDING." ;
@@ -12301,6 +12316,78 @@ kb:reckoning-outcome-review rdf:type ktype:Phase ;
     kpred:description  "The new version of a reckoned asset waits in review beside the old one: both previews, the receipt fields that differ, the QA report (F281.5), and the reckoning it answers. Accepting it closes the proposal (F223.1 lifecycle); rejecting it keeps the old version and the proposal open." ;
     kpred:done-test    "a pending new version shows both previews and the differing receipt fields in the existing review flow (no new navigation); accept closes the proposal; reject keeps it open with the reason." .
 kb:release-0-2-9 kpred:has-part kb:guided-asset-refine .
+
+# ── 2026-11-12 v0.2.8 RELEASE CUT (release/0.2.8, from integration/2026-11-10) ──
+kb:release-0-2-8 kpred:has-status "functional" ;
+    kpred:description "The website builder and scans release: the engine that turns a site repository into a finished website (blog, landing layout, search-engine files, a guided scroll), the Data Insight Solutions site as an example space with the story of how it was made, a guided walk through a story, facts that carry an expiry date, the scan of a ring into a 3D asset with its own public space (partial), scanning from hand-picked frames (partial), an embeddable 3D viewer (partial), and trust and review work for the local agents. It is no longer the assets-and-demos release: that headline moved to v0.2.9." ;
+    kpred:decided "MATT, 2026-11-12, answering 'which release route?': 'Release v0.2.8 from dev now'. This REVERSES his 2026-11-10 'Hold for headline' above." ;
+    kpred:decided "MATT, 2026-11-12: 'Lets make 0.2.8 ready today also? Stop sandbagging yourself.'" ;
+    kpred:headline kb:downstream-site-landing-layout ;
+    kpred:headline kb:story-walk-player ;
+    kpred:headline kb:downstream-site-space ;
+    kpred:has-part kb:downstream-site-build ;
+    kpred:has-part kb:downstream-site-blog ;
+    kpred:has-part kb:downstream-site-landing-layout ;
+    kpred:has-part kb:downstream-site-seo ;
+    kpred:has-part kb:downstream-site-space ;
+    kpred:has-part kb:story-walk-player ;
+    kpred:has-part kb:statement-standing ;
+    kpred:has-part kb:standing-drawn ;
+    kpred:has-part kb:review-row-contract ;
+    kpred:has-part kb:review-lanes ;
+    kpred:has-part kb:trust-evidence-on-claims ;
+    kpred:has-part kb:trust-nothing-private-leaves ;
+    kpred:has-part kb:trust-watching-costs-less ;
+    kpred:has-part kb:asset-qa-checks ;
+    kpred:has-part kb:asset-qa-review ;
+    kpred:has-part kb:asset-qa-fix-loop ;
+    kpred:has-part kb:splat-node-view ;
+    kpred:has-part kb:reckoning-gaps ;
+    kpred:has-part kb:queue-ram-guard ;
+    kpred:has-part kb:ollama-installed-model ;
+    kpred:has-part kb:local-panel ;
+    kpred:has-part kb:built-with-reckons ;
+    kpred:has-part kb:site-build-story ;
+    kpred:has-part kb:ring-scan-space ;
+    kpred:has-part kb:facts-that-expire ;
+    kpred:has-part kb:scan-curated-frames ;
+    kpred:has-part kb:scan-keyframe-select ;
+    kpred:has-part kb:site-space-assets ;
+    kpred:has-part kb:scan-auto-attach ;
+    kpred:has-part kb:device-space-jobs ;
+    kpred:has-part kb:shelly-generation-jobs ;
+    kpred:has-part kb:triple-check ;
+    kpred:has-part kb:standing-filters ;
+    kpred:has-part kb:gen-setup-by-os ;
+    kpred:has-part kb:build-change-workflow .
+
+kb:release-0-2-8 kpred:progress "2026-11-12, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.8; release notes at content/releases/v0-2-8.md; review space static/review-0.2.8.ttl (unlisted). Cut from integration/2026-11-10 (PR #610): 23 features functional, 12 partial (in-progress or scaffolded; the keyframe script F58.9.6.2 was added after the cut was first written), each at the status the graph holds on this date. 2026-11-12 (status-closer): F292.1 and F293 moved to functional on evidence; counts re-measured with release:burndown. Not in it, moved to v0.2.9 on purpose: the assets-and-demos headline and its minimum set (the F275 demo pipeline, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19), reach (F243, F244), time series (F258, F259), the canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61), F34.3, and the Sveltia CMS and deploy phases of the site engine (F274.4.4, F274.4.5)." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, promoted to staging for Matt's review, not in production. The 2026-11-06 re-cut (assets and demos) and the 2026-11-10 'Hold for headline' are both superseded by Matt's 2026-11-12 decision to release from dev now: none of that headline was functional (F223.5 to .8 and F275 are planned), so it moved rather than shipping half-built. PARTIAL and said so: the ring space (F292.3), scan from hand-picked frames (F58.9.6.1, the end-to-end run is not shown), the embeddable viewer (F294.7), Triple Check (F100.1), the device space (F269.1), scan auto-attach (F58.9.20) and Shelly generation jobs (F166.1) are in-progress or scaffolded." .
+
+kb:release-0-2-9 kpred:progress "2026-11-12, MOVED FROM v0.2.8 (Matt: release from dev now). Reasons, one line each. Assets and demos headline (F275, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19): planned, not started, so not releasable. Reach and time series (F243, F244, F258, F259): planned since 2026-10-07, no code. Canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61, F34.3): in-progress or planned with no dated note in over a month. Site engine Sveltia and deploy (F274.4.4, F274.4.5): planned, the DIS repository owns the live deploy." ;
+    kpred:has-part kb:demo-videos ;
+    kpred:has-part kb:proposal-outcome-assets ;
+    kpred:has-part kb:reckon-an-asset ;
+    kpred:has-part kb:reckoning-outcome-review ;
+    kpred:has-part kb:open-in-app ;
+    kpred:has-part kb:job-space-channel ;
+    kpred:has-part kb:review-run-sets ;
+    kpred:has-part kb:review-sample-gate ;
+    kpred:has-part kb:gen-video-quality ;
+    kpred:has-part kb:local-host-mode ;
+    kpred:has-part kb:lan-https ;
+    kpred:has-part kb:time-series-planning ;
+    kpred:has-part kb:enclosure-monitoring ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:set-layout ;
+    kpred:has-part kb:integration-plugin-sdk ;
+    kpred:has-part kb:analyze-job-sets ;
+    kpred:has-part kb:research-watch ;
+    kpred:has-part kb:graph-density-legibility ;
+    kpred:has-part kb:test-workflow-stories ;
+    kpred:has-part kb:downstream-site-sveltia ;
+    kpred:has-part kb:downstream-site-deploy .
 kb:release-0-3-0 kpred:has-part kb:interactive-space ;
     kpred:decided "MATT, 2026-11-07: 'For the big release on 0.3 I think interactive mode should be the highlight and core.' + MATT 2026-11-07 (AskUserQuestion) 'Interactive = core': F285 the interactive space is the v0.3.0 headline and core, and the sharing release (the has-part list below) is a part of it — the story is 'share a space you can move in on.' One cohesive release (F33); the sharing parts remain agent-proposed (2026-10-21) and ride along as parts, not the headline." .
 
@@ -12624,6 +12711,7 @@ kb:standing-filters rdf:type ktype:Phase ;
     kpred:feature-id   "F223.11" ;
     kpred:part-of      kb:graph-proposals ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): standing-filter.test.ts passes 5 of 5 (the unit half). Missing: no stamp of proposalOption on real statements, no control to flip between options (URL parameter only), the Reckoning stores no proposal options for a show-in-the-graph link, and the 3D renderer ignores litStatementIds; the end-to-end half was not re-run this session." ;
     kpred:depends-on   kb:standing-drawn ;
     kpred:relates-to   kb:proposal-options-ui ;
     kpred:relates-to   kb:one-graph-canvas ;
@@ -12644,6 +12732,7 @@ kb:device-space-jobs rdf:type ktype:Phase ;
     kpred:feature-id   "F269.1" ;
     kpred:part-of      kb:device-space ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): the --device writer and reader pass their done-test unit cases (scripts/agent/__tests__/queue-to-space-device.test.ts, 10 of 10) but the device space itself does not exist (F269), nothing schedules --device, and the output path and stable id are placeholders; it cannot be functional before F269." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:job-space-channel ;
     kpred:relates-to   kb:run-receipt ;
@@ -12836,6 +12925,7 @@ kb:built-with-reckons rdf:type ktype:Feature ;
     rdfs:label "Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
     kpred:feature-id   "F292" ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): F292.1 and F292.2 are functional; F292.3 is not, because the link from the live DIS page to the ring space goes live only with the v0.2.8 deploy of reckons.ai, and the real per-post claim lists question (open-question above) is still for Matt to decide." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:downstream-site ;
     kpred:relates-to   kb:downstream-site-space ;
@@ -12853,7 +12943,8 @@ kb:site-build-story rdf:type ktype:Phase ;
     rdfs:label "F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
     kpred:feature-id   "F292.1" ;
     kpred:part-of      kb:built-with-reckons ;
-    kpred:has-status   "in-progress" ;
+    kpred:has-status   "functional" ;
+    kpred:measured "2026-11-12 (status-closer): tests: scripts/starter/__tests__/build-site-space.test.ts 7 of 7 pass (one story, order, highlights resolve, counts equal the build, identical bytes on two runs); build-site-space --check reports nothing to compare when the site repository is absent here, and the committed example was regenerated with the dated credential, so step 4 now has a real fact. The 390px gap recorded on 2026-11-12 was the player, closed by F292.2 (slim step bar, tests/e2e/story-walk.test.ts, looked at on this example at 1440 and 390). Weakness: only Chromium was looked at; not in production until v0.2.8 deploys." ;
     kpred:order        1 ;
     kpred:depends-on   kb:downstream-site-space ;
     kpred:description  "scripts/starter/build-site-space.ts gains a story: one story:Story and five or six story:Step nodes, in plain words for a first-time visitor, each highlighting real nodes of the space (the site, a source, a page, a fact shared by several pages, the live-site leap). Counts in captions are computed from the build (pages, posts, facts, how many pages state the same fact), never typed in." ;
@@ -12884,6 +12975,7 @@ kb:ring-scan-space rdf:type ktype:Phase ;
     kpred:feature-id   "F292.3" ;
     kpred:part-of      kb:built-with-reckons ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): the unit half of the done-test passes (src/lib/storage/__tests__/example-kbs.test.ts, 4 of 4: the unlisted entry is absent from the list and resolvable by id). The ring is shown inline on the live https://data-insight.solutions/about/ (a same-origin viewer frame, loading lazy). Missing: the link from that page to /about?example=ring-scan does not work on reckons.ai until v0.2.8 deploys, and the headless-browser check that the splat node renders in the opened space is not recorded here." ;
     kpred:order        3 ;
     kpred:relates-to   kb:scan-curated-frames ;
     kpred:relates-to   kb:splat-refine ;
@@ -12906,7 +12998,8 @@ kb:ring-scan-space rdf:type ktype:Phase ;
 kb:facts-that-expire rdf:type ktype:Feature ;
     rdfs:label "Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;
     kpred:feature-id   "F293" ;
-    kpred:has-status   "in-progress" ;
+    kpred:has-status   "functional" ;
+    kpred:measured "2026-11-12 (status-closer): both halves of the done-test have evidence today. Unit, on a fixture site: src/lib/publish/__tests__/site-expiry.test.ts, 11 of 11 pass (past date reported with every page stating it, window warning, no date passes, unknown date is an open question, build refuses an expired fact naming fact and page). On the real site: npx tsx scripts/offline/fact-expiry.ts against the Data Insight Solutions site repository reports 1 fact with a valid-until marker (AWS Certified Solutions Architect - Associate, valid-until 2027-12-01), 0 expired, 0 within 60 days, 0 open dates, exit 0, and the same 1 fact in static/starter-data-insight-solutions.ttl; the live About page states it (valid to December 2027). Weaknesses said plainly: the check is in the script tier, not the blocking tier; a render that bypasses site:build would show the marker text; the date is as published on the site, not looked up by this check." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:built-with-reckons ;
     kpred:relates-to   kb:partial-facts ;
@@ -13007,9 +13100,31 @@ kb:site-space-assets rdf:type ktype:Phase ;
     kpred:feature-id   "F294.7" ;
     kpred:part-of      kb:outcome-reckoning ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): the embeddable viewer (scripts/site/splat-embed*, scripts/site/__tests__/splat-embed.test.ts 8 of 8) and same-origin frames plus lazy images (src/lib/publish/__tests__/site-inline-assets.test.ts 7 of 7) are built, and the ring is shown inline on the live https://data-insight.solutions/about/ (curl confirms the iframe, loading lazy). Missing: the linked-back-to-its-space half does not work until reckons.ai ships v0.2.8, so the done-test is not met today." ;
     kpred:relates-to   kb:built-with-reckons ;
     kpred:tested-by    "src/lib/publish/__tests__/site-inline-assets.test.ts" ;
     kpred:measured     "FOUND 2026-11-12 on the DIS About page: an inline frame of the self-hosted viewer was blocked even though it was same-origin, because the generated CSP has no frame-src and default-src is 'none'; and the still image (589 KB PNG) loaded eagerly because markdown images carried no loading attribute. Fix in this branch, unit-tested but not yet live: frame-src 'self' only on a page that holds a sanitized same-origin iframe (any other origin is stripped), and content images get loading=lazy decoding=async. Status stays in-progress until the DIS preview shows the ring inline." ;
     kpred:description  "A page can show an asset that lives in a space (a picture, a video, a Gaussian splat in a self-hosted viewer) with its origin label and a link to the space that holds how it was made. First instance: the scanned ring on the DIS About page (F292.3), done by hand on 2026-11-12." ;
     kpred:decided      "Matt, 2026-11-12: \"The ring viewer is not functional, nor the animation. Can it just be a plain embedded three.js frame, with the object floating and a drag to rotate?\" Replaces the PlayCanvas page made by splat-transform." ;
     kpred:description  "Embeddable viewer (2026-11-12): scripts/site/splat-embed.ts writes a self-contained folder (index.html, viewer.css, viewer.js bundling three + gaussian-splat-lite, the splat, an optional poster) with a transparent background, a gentle bob, a slow turn, drag to rotate (touch-action pan-y so a phone can still scroll), no zoom or pan, reduced-motion respected, rendering paused offscreen, and its own same-origin CSP. Weakness: the bundle is about 2.9 MB raw (the library embeds its wasm decoder), roughly 1 MB gzipped, and the CSP needs wasm-unsafe-eval because the decoder worker fails without it." .
+
+
+kb:scan-keyframe-select kpred:measured "2026-11-12, the ring's second reconstruction from these frames (199 kept of 1,595 candidates, 199 of 202 registered, 11,744 Gaussians after the trim) against the first (189 hand-kept frames, 11,214 Gaussians), rendered with identical settings from four views: variance of the Laplacian on the ring region was LOWER for the second in all four views (mean 472 vs 538; 14.7 vs 16.1 after a 1.5 px blur that suppresses single-pixel needles); by eye the second is somewhat cleaner on the face and the side lettering, the first crisper but spikier, the back messy in both. Matt: 'v2 of the ring wasn't a lot better, we will need to work on the multi-scan features I imagine.' Sharper frames alone did not make a sharper splat; the missing angles (underside, top, low views) are the larger gap." .
+
+kb:multi-scan-reconstruction kpred:decided "MATT, 2026-11-12 (chat): 'v2 of the ring wasn't a lot better, we will need to work on the multi-scan features I imagine.' Then: 'I will scan my other ring, and redo the first ring, this time multiple videos of each.' Two objects, several videos each: the first real multi-capture input for this phase." .
+
+kb:ring-scan-space kpred:progress "2026-11-12 (release overseer): the space now has ten steps and 41 entities. Verified in a fresh Playwright browser profile on a dev server from the release branch: the 16 s clip opens from the video node's preview and plays (readyState 4, 720 px wide, currentTime advanced 0 to 3.0 s), a kept frame loads (naturalWidth 480), and the guided walk steps 1 to 10 each light the nodes they name. Added step 9 (the script keyframe attempt, F58.9.6.2: 199 of 1,595 candidates, the second splat not clearly sharper) and step 10 (what comes next: several videos of two rings, combined by multi-scan reconstruction, F58.9.19, PLANNED and NOT BUILT). The splat shown in the space is still the FIRST one (11,214 Gaussians); the second (11,744) is not published. Weakness: the 3D canvas runs at 10 to 18 fps in a software-GL browser and node clicks on the moving canvas are unreliable in automation, so the node-panel check used the preview button." .
+
+kb:multi-scan-reconstruction kpred:progress "2026-11-12, BUILT (variant 2, slices, end to end on one real recording; NOT yet tried on separate videos): npm run scan:multi -- --capture <video|frames dir>[@from-to] --capture <...> [--keyframes-per-capture N] [--track f.json|--box c] --out <dir> pools each capture's keyframes (the scan:keyframes selector for a video, a frames folder as given) as <capture>__<n>.jpg, runs ONE COLMAP over the pool with one camera per capture and matching across captures (exhaustive up to 500 frames; above that vocabulary-tree loop detection, which needs RECKONS_COLMAP_VOCAB_TREE and otherwise refuses), then scan:room's own train, crop, check and compress. The receipt records matcher, per-capture supplied/registered and whether every capture is in one model; a capture COLMAP leaves out of the largest model fails the run by name. MEASURED, job ring-multi-slices (7a05d8f4, GPU 1): IMG_1257.MOV cut at 27 s into two captures, 75 and 62 keyframes, 137 pooled, exhaustive matching; COLMAP registered 137 of 137 (75/75 and 62/62) in ONE model; Brush 30,000 steps gave 319,505 Gaussians after the crop (333,784 before); poses 382.5 s, train 610.6 s; scan:room --check verified." ;
+    kpred:measured "2026-11-12, WHAT THE SLICES RUN DOES NOT SHOW: both captures are halves of ONE recording (same lens, light and session), so 137 of 137 proves the plumbing and the per-capture accounting, not that separate videos taken at different times, zooms or lights will join; the did-not-join failure is covered by unit tests on a fake model listing, never yet triggered by real COLMAP output. The selector kept few frames (75 and 62 of 110 windows each, 35 and 48 windows empty) so the pool is smaller than the 199-frame single-capture ring. The splat was neither trimmed nor baked nor viewed, so no claim is made about its quality against the single-capture ring." ;
+    kpred:open-question "NOT DONE in F58.9.19: a fused GLB or mesh path from the pooled model; images and scans together (a photo folder is accepted as a capture, but no run has mixed one with a video); the space that shows the result; a vocabulary-tree file for pools over 500 frames; and the real test the owner asked for, two or more separate videos of each ring." .
+
+
+kb:release-0-2-8 kpred:has-part kb:multi-scan-reconstruction ;
+    kpred:progress "2026-11-12 (Opus): F58.9.19 multi-scan reconstruction moved INTO v0.2.8 from v0.2.9 after it was built and ran end to end once (scaffolded): two slices of one recording, 137 of 137 frames in one model. It has not yet been tried on separate videos; Matt is filming them (Matt: 'anything else we need developed in 0.2.8 before release')." .
+
+
+# 2026-11-12 — Review: hold back and ask on unknown arity; same source and newer is an update (Matt). Moved here from kb:scan-auto-attach, where the bug that led to it was found.
+kb:dichotomy kpred:decided      "MATT, 2026-11-12: HOLD IT BACK AND ASK. When it isn\u0027t yet known whether a predicate takes one value or many, a different value is held back as a possible disagreement, showing what you already have, and you choose: replace, keep both, or reject. Nothing is replaced silently." ;
+    kpred:decided      "MATT, 2026-11-12, CAVEAT: A caveat would be, if we have enough information to determine this is an update, with say timestamps and source, then it should not need review. Lets say 20 tests for a feature pass, then 22 pass, we should have record to determine automatically that 2 new tests were added, not bug the user to confirm verifiable increases like that." ;
+    kpred:measured     "2026-11-12: computeDiff (src/lib/rdf/diff.ts) now holds a different object back as a conflict with possible=true where predicate arity is UNKNOWN (fewer than 8 subjects and none seen plural), measured single-valued stays a plain disagreement, and only a MEASURED plural predicate (some subject holds two objects: measuredPlural in predicate-arity.ts) is new with its siblings, so 22c607f2\u0027s accumulating-link fix still holds. Review shows replace / keep both / reject with reason \u0027may disagree with a fact you have: <existing>\u0027; resolveConflict() is the decision (replace supersedes exactly the conflicting facts, keep both supersedes none). Caveat built: the same origin (same sourceId, or the same uri after a refresh) with a strictly later createdAt is an \u0027updates\u0027 entry, applied by the Review page without a card, old value superseded, change logged as \u0027updated from 20 to 22, same origin, newer\u0027; missing or equal timestamps fall through to the arity rules (there is no separate valid-from field, createdAt is the only clock). Unit tests in diff.test.ts; tests/e2e/workflow-build-change.test.ts no longer seeds arity evidence and proves the young-space story again (run locally on desktop-chrome 2026-11-12). Weakness: a young space asks about genuinely plural predicates too, until one subject shows two values." .

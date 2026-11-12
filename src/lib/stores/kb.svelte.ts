@@ -712,7 +712,7 @@ export async function setStatuses(
         statementId: before.id,
         sourceId: before.sourceId,
         before: JSON.stringify({ status: before.status }),
-        after: JSON.stringify({ status: after.status }),
+        after: JSON.stringify({ status: after.status, ...(after.settledByDecision ? { note: after.settledByDecision } : {}) }),
       });
 
       if ((after.status === 'confirmed' || after.status === 'refined') && before.status === 'pending') {

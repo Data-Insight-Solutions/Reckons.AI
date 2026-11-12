@@ -62,28 +62,10 @@ async function heldValues(page: Page) {
     const runtimeImport = (p: string) => import(/* @vite-ignore */ p);
     const { db } = await runtimeImport('/src/lib/storage/db.ts');
     const rows = (await db.statements.toArray()) as { p: { value: string }; o: { value: string }; status: string }[];
-    const pick = (...status: string[]) => rows.filter((r) => status.includes(r.status) && /raised-beds|coordinator|open-on/.test(r.p.value) && !(r as unknown as { s: { value: string } }).s.value.includes('/evidence-')).map((r) => r.o.value.split('/').pop()).sort();
-    // "keep new" settles the chosen value as `refined`, which is as much a part of the space as `confirmed`.
+    const pick = (...status: string[]) => rows.filter((r) => status.includes(r.status) && /raised-beds|coordinator|open-on/.test(r.p.value)).map((r) => r.o.value.split('/').pop()).sort();
+    // "replace" settles the chosen value as `refined`, which is as much a part of the space as `confirmed`.
     return { confirmed: pick('confirmed', 'refined'), superseded: pick('superseded'), pending: rows.filter((r) => r.status === 'pending').length };
   });
-}
-
-  // Review only treats a different value as a disagreement for a predicate MEASURED single-valued (eight
-  // subjects, none with two values: rdf/predicate-arity.ts); an unmeasured one accumulates. A space a
-  // person has used for a while has that evidence, a three-fact space does not, so the story's space is
-  // given it: eight other places with one value each for the three predicates.
-async function seedMeasuredArity(page: Page) {
-  await page.evaluate(async () => {
-      const runtimeImport = (p: string) => import(/* @vite-ignore */ p);
-      const { db } = await runtimeImport('/src/lib/storage/db.ts');
-      const rows = (await db.statements.toArray()) as any[];
-      const out: any[] = [];
-      for (const name of ['raised-beds', 'coordinator', 'open-on']) {
-        const proto = rows.find((r) => r.p.value.includes(name) && r.status === 'confirmed');
-        for (let i = 0; i < 8; i++) out.push({ ...proto, id: `evidence-${name}-${i}`, s: { ...proto.s, value: `urn:kbase:concept/evidence-${name}-${i}` } });
-      }
-      await db.statements.bulkAdd(out);
-    });
 }
 
 const impls: Record<string, StepImpl> = {
@@ -101,7 +83,7 @@ const impls: Record<string, StepImpl> = {
     expect((await heldValues(page)).confirmed).toEqual(['12', 'Saturday', 'priya-shah']);
   },
 
-  'add-change-note': async (page, snap) => { await seedMeasuredArity(page); await addNote(page, snap, 'Garden meeting', CHANGE_NOTE); },
+  'add-change-note': (page, snap) => addNote(page, snap, 'Garden meeting', CHANGE_NOTE),
 
   'see-held-back': async (page, snap) => {
     await page.goto('/review?group=source');
@@ -109,7 +91,7 @@ const impls: Record<string, StepImpl> = {
     await expect(card).toBeVisible({ timeout: 10_000 });
     await expect(card).toContainText('3 held back');
     await expect(card.locator('.held-reason')).toHaveCount(3);
-    await expect(card.locator('.held-reason').first()).toContainText('disagrees with a fact you have');
+    await expect(card.locator('.held-reason').first()).toContainText('may disagree with a fact you have');
     // Nothing in it can go in one press, so there is no group accept to press by mistake.
     await expect(card.getByRole('button', { name: /^accept \d+$/ })).toHaveCount(0);
     // The canvas follows this group.
@@ -120,14 +102,14 @@ const impls: Record<string, StepImpl> = {
 
   'keep-new': async (page, snap) => {
     await page.goto('/review?group=source');
-    const keepNew = () => page.getByRole('button', { name: /^keep new$/i }).first();
-    await expect(keepNew()).toBeVisible({ timeout: 10_000 });
-    await snap(keepNew());
-    for (let i = 0; i < 6 && (await keepNew().count()); i++) {
-      await keepNew().click();
+    const replace = () => page.getByRole('button', { name: /^replace$/i }).first();
+    await expect(replace()).toBeVisible({ timeout: 10_000 });
+    await snap(replace());
+    for (let i = 0; i < 6 && (await replace().count()); i++) {
+      await replace().click();
       await page.waitForTimeout(300);
     }
-    await expect(keepNew()).toHaveCount(0, { timeout: 8_000 });
+    await expect(replace()).toHaveCount(0, { timeout: 8_000 });
   },
 
   'see-changed-space': async (page, snap) => {
