@@ -65,3 +65,10 @@ export function describePlan(items: JobPlanItem[]): string[] {
     ? `${i + 1}. ${STAGE_LABELS[item.stage]}: ${item.prompt}`
     : `${i + 1}. ${STAGE_LABELS[item.stage]} from image ${item.parent + 1}`);
 }
+
+/**
+ * A request for something to be generated: a make-verb and a picture/3D/video noun (either order
+ * of mention is fine). Used only to decide whether to show the runner's connect control under
+ * Shelly's reply; a miss costs nothing because the job panel and queue_jobs card show it too.
+ */
+export const GENERATION_ASK = /(?=.*\b(?:generat\w*|make|create|draw|paint|render|produce|build|show me)\b)(?=.*\b(?:pictures?|images?|photos?|illustrations?|artwork|3d|gaussian|splats?|videos?|clips?|glb|mesh|assets?)\b)/i;

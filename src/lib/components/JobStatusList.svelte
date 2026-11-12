@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RunnerConnect from './RunnerConnect.svelte';
   import { applyShellyViewAdjust } from '$lib/stores/shelly-bridge.svelte';
   import { cancelJob, generationJobs as gen } from '$lib/stores/generation-jobs.svelte';
   import { jobEntity } from '$lib/generation/job-node';
@@ -24,6 +25,7 @@
   }
 </script>
 
+{#if !gen.capabilities}<RunnerConnect compact />{/if}
 <ol class="job-status-list" aria-live="polite">
   {#each rows as request (request.id)}
     {@const job = gen.jobOf(request.id)}

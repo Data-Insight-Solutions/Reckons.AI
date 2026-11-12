@@ -33,6 +33,8 @@
   import AdaptivePanel from './AdaptivePanel.svelte';
   import GenerationStory from './GenerationStory.svelte';
   import JobStatusList from './JobStatusList.svelte';
+  import RunnerConnect from './RunnerConnect.svelte';
+  import { GENERATION_ASK } from '$lib/generation/job-plan';
   import { generationJobs, submitJobs, useGenerationJobs } from '$lib/stores/generation-jobs.svelte';
   import { describePlan, validateJobPlan } from '$lib/generation/job-plan';
   import { Tabs } from 'bits-ui';
@@ -1035,6 +1037,10 @@
   /** Approved queue_jobs cards, by action key → the request IDs they queued (shown live). */
   let queuedJobs = $state<Record<string, string[]>>({});
 
+  function asksForGeneration(prev?: { role: string; content: string }): boolean {
+    return prev?.role === 'user' && GENERATION_ASK.test(prev.content);
+  }
+
   function actionKey(msgIdx: number, actionIdx: number) {
     return `${msgIdx}-${actionIdx}`;
   }
@@ -1482,6 +1488,11 @@
           </div>
         {/if}
 
+        {#if generationJobs.requests.length > 0 || messages.some(m => m.role === 'user' && GENERATION_ASK.test(m.content))}
+          <!-- The runner's state and connect control live with the conversation, not only in the Generated assets story. -->
+          <div class="runner-strip"><RunnerConnect compact /></div>
+        {/if}
+
         {#each messages as msg, msgIdx}
           <div class="msg" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'} class:voice-msg={'_voice' in msg && msg._voice}>
             {#if msg.role === 'assistant'}
@@ -1489,6 +1500,11 @@
             {/if}
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             <div class="msg-body">{@html renderMarkdown(msg.content)}</div>
+
+            {#if msg.role === 'assistant' && !generationJobs.capabilities && !(msg.actions ?? []).some(a => a.type === 'queue_jobs') && asksForGeneration(messages[msgIdx - 1])}
+              <!-- Whatever the model wrote, an asset request with no runner connected always gets the connect control. -->
+              <RunnerConnect />
+            {/if}
 
             {#if msg.actions && msg.actions.length > 0}
               <div class="actions">
@@ -1545,6 +1561,7 @@
                           <span class="action-hint">{#each describePlan(plan.items) as line}{line}<br />{/each}runs on your computer, one job at a time; each result is added here for review</span>
                         {:else}
                           <span class="action-hint">{plan.error}</span>
+                          {#if !generationJobs.capabilities}<RunnerConnect />{/if}
                         {/if}
                       {/if}
                       {#if !(action.type === 'queue_jobs' && queuedJobs[key])}

@@ -82,7 +82,10 @@ function buildReviewSection(ctx: KBContext): string {
  */
 export function buildJobsSection(ctx: KBContext): string {
   const stages = ctx.localJobs?.stages ?? [];
-  if (!ctx.localJobs) return `\n\n---\nLOCAL JOBS — no local generation runner is connected. If asked to make images, videos or splats, say that generation runs on the person's own computer and needs the local runner connected (Generated assets story, or the setup guide at /docs/features/generation-setup). Do not say you are unable to make images in principle, and do not propose queue_jobs.`;
+  if (!ctx.localJobs) return `\n\n---\nLOCAL JOBS — no local generation runner is connected yet. This applies in any knowledge base, not only a story. When asked for an image, picture, video, splat or 3D asset, answer the request itself (never a review step, a refusal, or "I cannot make images"): say in one sentence that generation runs on the person's own computer and needs the local runner started (npm run gen:serve, see /docs/features/generation-setup) and its workspace folder connected, then end with ONE queue_jobs action for what they asked. The chat shows a Connect control under your reply and the person can approve the plan once the runner is connected. Example:
+<kb-actions>
+[{"type":"queue_jobs","label":"1 image","jobs":[{"stage":"image","prompt":"a brass lantern on a wooden table, studio light"}]}]
+</kb-actions>`;
   const ready = stages.filter(s => s.available).map(s => s.stage);
   const missing = stages.filter(s => !s.available).map(s => `${s.stage} (${s.reason ?? 'unavailable'})`);
   if (!ready.length) return `\n\n---\nLOCAL JOBS — the local runner is connected but nothing can run: ${missing.join('; ')}. Say what is missing; do not propose queue_jobs.`;
@@ -181,7 +184,7 @@ const REVIEW_SYSTEM_PROMPT = `You are Shelly 🐢, guiding a VISUAL TEST REVIEW 
 REVIEW MODE — you drive a screen-by-screen review, not a graph tour.
 
 RULES (strict):
-- If a LOCAL JOBS section below says what this computer can make and the person asks you to make an image, video or splat, that request outranks the review: answer it with the queue_jobs action it describes (one adjust_view is not needed), and do not narrate a review step.
+- If the person asks you to make an image, video or splat, that request outranks the review in every case: follow the LOCAL JOBS section below (a queue_jobs action, or what the runner is missing), never a review step or a refusal.
 - The VISUAL REVIEW list below is your source of truth. Do NOT invent what a screen shows beyond its title/page/assertion/verdict — you can't see the pixels; the reviewer can. Frame observations as prompts for THEM ("does the nav bar look right?"), not claims.
 - Never call this a graph "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
 - Go through the steps IN ORDER (Step 1, 2, 3 …). One step per message.
