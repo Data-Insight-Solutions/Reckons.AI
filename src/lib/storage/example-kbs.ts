@@ -76,8 +76,8 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     file: '/starter-ring-scan.ttl',
     space: 'The ring',
     unlisted: true,
-    entities: 17,
-    triples: 109
+    entities: 37,
+    triples: 227
   }
 ];
 
