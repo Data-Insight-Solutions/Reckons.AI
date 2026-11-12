@@ -50,6 +50,8 @@ export interface ShellContext {
   stamps?: Record<string, string>;
   /** True on the landing page only: the guided-scroll control is not on other pages of a site. */
   guided?: boolean;
+  /** False when the build writes no knowledge.ttl: the alternate link is then left out (F274.4.6). */
+  knowledgeTtl?: boolean;
 }
 
 /** A same-origin file URL with its content stamp, so a changed file is never served from an old cache. */
@@ -383,9 +385,10 @@ function headHtml(title: string, description: string, ctx: ShellContext): string
     + (c.noindex ? '<meta name="robots" content="noindex">\n' : '')
     + '<meta property="og:title" content="' + esc(c.title) + '">\n'
     + (desc ? '<meta property="og:description" content="' + esc(desc) + '">\n' : '')
-    + (c.ogImage ? '<meta property="og:image" content="' + esc(c.ogImage) + '">\n' : '')
+    + (c.url ? '<meta property="og:url" content="' + esc(c.url + ctx.currentUrl) + '">\n<link rel="canonical" href="' + esc(c.url + ctx.currentUrl) + '">\n' : '')
+    + (c.ogImage ? '<meta property="og:image" content="' + esc((c.url ?? '') + (c.ogImage.startsWith('/') ? '' : '/') + c.ogImage) + '">\n' : '')
     + (c.favicon ? '<link rel="icon" href="' + esc(c.favicon) + '">\n' : '')
-    + '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n'
+    + (ctx.knowledgeTtl === false ? '' : '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n')
     + '<link rel="stylesheet" href="' + stamped(ctx, 'landing.css') + '">'
     + (c.extraCss ? '\n<link rel="stylesheet" href="' + stamped(ctx, 'site-extra.css') + '">' : '');
 }

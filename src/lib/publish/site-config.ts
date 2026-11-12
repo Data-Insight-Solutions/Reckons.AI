@@ -54,6 +54,8 @@ export interface SiteConfig {
   logo: string | null;
   favicon: string | null;
   ogImage: string | null;
+  /** F274.4.6: the site's public address, an https origin with no path (e.g. https://example.com). Null: no canonical, og:url or sitemap, and og:image stays site-relative. */
+  url: string | null;
   noindex: boolean;
   nav: { label: string; href: string }[];
   cta: { label: string; href: string } | null;
@@ -246,12 +248,22 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
   const description = str(raw.description, 'description', 300);
   const asset = (v: unknown, f: string) => { const s = str(v, f); return s ? sitePath(s, f) : null; };
 
+  let url = str(raw.url, 'url', 200);
+  if (url) {
+    let u: URL;
+    try { u = new URL(url); } catch { fail('url is not a URL: ' + url); }
+    if (u.protocol !== 'https:') fail('url must be https (the public address of the site)');
+    if (u.username || u.password || u.search || u.hash || u.pathname !== '/') fail('url must be an origin only, like https://example.com (no path, query or credentials)');
+    url = u.origin;
+  }
+
   return {
     title,
     description,
     logo: asset(raw.logo, 'logo'),
     favicon: asset(raw.favicon, 'favicon'),
     ogImage: asset(raw.ogImage, 'ogImage'),
+    url,
     noindex: raw.noindex === true,
     nav,
     cta,

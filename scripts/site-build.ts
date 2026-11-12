@@ -68,6 +68,7 @@ try {
   if (drafts) console.log('site:build: DRAFT PREVIEW (drafts included, noindex, not deployable) - ' + result.out);
   for (const line of describeExpiry(result.expiry)) console.log('site:build: ' + line);
   if (result.expiry.overridden) console.log('site:build: --allow-expired was used: this build states a fact past its date and is a PREVIEW, not to be deployed');
+  console.log('site:build: ' + result.seoNote);
   console.log('site:build: ' + result.pageCount + ' page(s) built into ' + result.out);
   console.log('  ' + result.files.length + ' files total; assets copied: ' + result.copiedAssets + ', admin copied: ' + result.copiedAdmin);
 } catch (err) {
