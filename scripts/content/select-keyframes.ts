@@ -2,7 +2,7 @@
  * npm run scan:keyframes — pick training frames from a video by how sharp the OBJECT is (F58.9.6.2).
  *
  *   npm run scan:keyframes -- <video> --out <dir> [--fps 30] [--windows 220] [--floor-ratio 0.5] [--dup 0.03]
- *       [--box cx,cy,size | --track track.json] [--height 1600] [--sheet-cell 150]
+ *       [--box cx,cy,size | --track track.json] [--height 1600] [--sheet-cell 150] [--from seconds --to seconds]
  *
  *   --box    object region as fractions: centre x, centre y, side as a fraction of frame width (default 0.5,0.5,0.45)
  *   --track  JSON [{ "t": seconds, "x": 0..1, "y": 0..1 }, ...]: the object's centre over time (interpolated), for an
@@ -35,7 +35,7 @@ async function contactSheet(items: { file: string; label: string; box: ReturnTyp
 }
 
 export async function selectKeyframesCli(argv: string[]) {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|fps|windows|floor-ratio|dup|box|track|height|sheet-cell)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|fps|windows|floor-ratio|dup|box|track|height|sheet-cell|from|to)$/.test(argv[i - 1])));
   const video = positional[0] && resolve(positional[0]);
   const outArg = arg(argv, 'out');
   if (!video || !existsSync(video) || !outArg) throw new Error('usage: npm run scan:keyframes -- <video> --out <dir> [--fps 30] [--windows 220] [--box cx,cy,size | --track file.json]');
@@ -54,7 +54,10 @@ export async function selectKeyframesCli(argv: string[]) {
   const work = join(out, '.work');
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
-  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', '-i', video, '-vf', `fps=${fps},scale=-2:${height}`, '-q:v', '2', join(work, '%05d.jpg')], { encoding: 'utf8' });
+  // --from/--to cut a time slice first (multi-scan uses it to treat one recording as two captures); track times stay in SOURCE-video seconds (the slice start is added back when looking a position up).
+  const from = arg(argv, 'from'), to = arg(argv, 'to');
+  const slice = from !== undefined && to !== undefined ? ['-ss', from, '-t', String(Number(to) - Number(from))] : [];
+  const r = spawnSync('ffmpeg', ['-v', 'error', '-y', ...slice, '-i', video, '-vf', `fps=${fps},scale=-2:${height}`, '-q:v', '2', join(work, '%05d.jpg')], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`ffmpeg failed: ${(r.stderr || '').slice(-400)}`);
   const files = readdirSync(work).filter((f) => f.endsWith('.jpg')).sort();
   const duration = files.length / fps;
@@ -65,7 +68,7 @@ export async function selectKeyframesCli(argv: string[]) {
     const file = join(work, files[i]);
     const t = i / fps;
     const meta = await sharp(file).metadata();
-    const c = track ? trackAt(track, t) : { x: roi.cx, y: roi.cy };
+    const c = track ? trackAt(track, t + Number(from ?? 0)) : { x: roi.cx, y: roi.cy };
     const box = roiBox(meta.width!, meta.height!, { cx: c.x, cy: c.y, size: roi.size });
     boxes.set(i, box);
     const g = await sharp(file).extract(box).greyscale().raw().toBuffer({ resolveWithObject: true });
