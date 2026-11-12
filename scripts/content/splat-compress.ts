@@ -79,11 +79,22 @@ export function reducePly(src: string, out: string, opts: { shDegree?: number; m
 }
 
 /**
+ * splat-transform reads a PLY in the y-down convention, so --filter-box is applied with x and y negated relative to the
+ * numbers in the file. Measured 2026-11-12 on a real 341,115-Gaussian scan: the box written in file coordinates kept only
+ * the mirror-image region and cut off the object, which sat away from the origin (the intended box kept 336,236). The
+ * box handed to the tool is therefore mirrored in x and y; z is unchanged.
+ */
+export function toolBox(box: { min: number[]; max: number[] }): { min: number[]; max: number[] } {
+  return { min: [-box.max[0], -box.max[1], box.min[2]], max: [-box.min[0], -box.min[1], box.max[2]] };
+}
+
+/**
  * Crop a PLY to a box (the robust box of its own centres, see src/lib/3d/robust-extent.ts), dropping
  * the floaters outside it. Lossless for the Gaussians that stay: the same tool rewrites them as PLY.
  */
 export function cropPly(src: string, out: string, box: { min: number[]; max: number[] }, maxScale?: number): void {
-  const args = [src, '--filter-box', [...box.min, ...box.max].map((v) => v.toPrecision(9)).join(',')];
+  const t = toolBox(box);
+  const args = [src, '--filter-box', [...t.min, ...t.max].map((v) => v.toPrecision(9)).join(',')];
   // Also drop Gaussians bigger than maxScale on any axis (linear scale, file units): they are the streaks, not the surfaces.
   if (maxScale) for (const k of [0, 1, 2]) args.push('--filter-value', `scale_${k},lt,${maxScale.toPrecision(6)}`);
   transform([...args, out]);

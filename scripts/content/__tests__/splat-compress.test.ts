@@ -1,9 +1,10 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { judgeSplatPly, type SplatCheck } from '../../../src/lib/3d/splat-check';
-import { compressSplat, decodeToPly, judgeCompressed, verifyCompressed } from '../splat-compress';
+import { plyCentres } from '../../../src/lib/3d/splat-check';
+import { compressSplat, cropPly, decodeToPly, judgeCompressed, toolBox, verifyCompressed } from '../splat-compress';
 
 /** A deterministic PLY of `n` Gaussians scattered in a 5 x 2.6 x 4 slab (synthetic; nothing real). */
 function slabPly(n: number): Uint8Array {
@@ -69,5 +70,29 @@ describe('compressSplat (real converter, synthetic room)', () => {
     const junk = join(dir, 'junk.ply');
     writeFileSync(junk, 'not a ply');
     expect(() => compressSplat(junk)).toThrow(/not a usable splat/);
+  });
+});
+
+// F58.9.6.1: the crop box is in FILE coordinates. splat-transform applies it with x and y mirrored, which used to
+// keep the mirror-image region and cut off any object that sat away from the origin.
+describe('cropPly keeps the region it was asked for', () => {
+  it('mirrors x and y for the tool and leaves z alone', () => {
+    expect(toolBox({ min: [1, 2, 3], max: [4, 5, 6] })).toEqual({ min: [-4, -5, 3], max: [-1, -2, 6] });
+  });
+  it('keeps Gaussians inside the box in file coordinates and drops the mirror image (real converter, synthetic points)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'crop-test-'));
+    try {
+      const ply = join(dir, 'in.ply');
+      writeFileSync(ply, slabPly(4000));
+      const box = { min: [0.5, 0.2, -1], max: [2.4, 1.8, 1] };
+      cropPly(ply, join(dir, 'out.ply'), box);
+      const c = await plyCentres(new Uint8Array(readFileSync(join(dir, 'out.ply'))), 100000);
+      expect(c.length).toBeGreaterThan(0);
+      for (let i = 0; i < c.length; i += 3) {
+        expect(c[i]).toBeGreaterThanOrEqual(0.5 - 1e-4); expect(c[i]).toBeLessThanOrEqual(2.4 + 1e-4);
+        expect(c[i + 1]).toBeGreaterThanOrEqual(0.2 - 1e-4); expect(c[i + 1]).toBeLessThanOrEqual(1.8 + 1e-4);
+        expect(c[i + 2]).toBeGreaterThanOrEqual(-1 - 1e-4); expect(c[i + 2]).toBeLessThanOrEqual(1 + 1e-4);
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 });
