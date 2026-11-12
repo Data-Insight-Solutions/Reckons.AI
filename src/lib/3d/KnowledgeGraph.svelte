@@ -1596,8 +1596,8 @@
       reportedSettled = true;
       emitSettled(true);
       // What a person looking at the settled layout sees, as numbers (read by the spread measurement).
-      // Test hook (F292.2): live marker positions, so a test can prove a story step moved nothing.
-      if (renderer) (renderer.domElement as HTMLCanvasElement & { __markerPositions?: () => [string, number, number, number][] }).__markerPositions = () => [...nodePositionCache].map(([k, v]) => [k, v.x, v.y, v.z]);
+      // Test hook (F292.2): live marker positions, so a test can prove a story step moved nothing. Dev and test builds only (import.meta.env.DEV is false in a production build, so this is removed).
+      if (renderer && import.meta.env.DEV) (renderer.domElement as HTMLCanvasElement & { __markerPositions?: () => [string, number, number, number][] }).__markerPositions = () => [...nodePositionCache].map(([k, v]) => [k, v.x, v.y, v.z]);
       if (renderer && nodes.length <= 600) {
         renderer.domElement.dataset.spread = formatSpread(layoutSpread(nodes.map((n) => ({ x: n.pos.x, y: n.pos.y, z: n.pos.z, r: markerWorldRadius(n.degree) }))));
       }
