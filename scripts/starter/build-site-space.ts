@@ -11,6 +11,8 @@
  * It also carries, generated from the same build: a story 'How this website was made' (F292.1, scripts/starter/site-story.ts),
  * the one footer line shown on every page (read from footer.text of site.config.json, public by design), an expiry-check node,
  * and any list entry a page marks `| valid-until: <date or ?>` (F293) as a fact stated on the pages that say it.
+ * It also reads the PUBLISHED About and Services pages by their structure (site-profile.ts, site-profile-triples.ts): the person, the company,
+ * services linked to the posts the Services page links, credentials, recognition, mission, principles, the product and the scanned ring.
  *
  * ONLY published pages are ever included. Drafts, the pages' bodies, workspace/ files, the site config and the
  * contact webhook are never read into the space (the config is read for its public address only, never the
@@ -28,6 +30,8 @@ import { toTurtleFull } from '../../src/lib/rdf/serialize.js';
 import { iri, lit, type Source, type Statement, type Term } from '../../src/lib/rdf/types.js';
 import { STATED_ON_PREDICATE, VALID_UNTIL_PREDICATE, expiryFactsFromContent } from '../../src/lib/publish/site-expiry.js';
 import { XSD_INT, storyTriples, type StoryFact } from './site-story.js';
+import { extractProfile } from './site-profile.js';
+import { addProfile } from './site-profile-triples.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = path.join(ROOT, 'static', 'starter-data-insight-solutions.ttl');
@@ -46,7 +50,7 @@ const AT = Date.parse('2026-11-11T09:00:00Z');
 const SOURCE_ID = 'dis-website';
 
 export type SpaceOptions = { url: string; publisher?: string; siteName?: string; footer?: string };
-export type SpaceResult = { text: string; pages: number; posts: number; skippedNotPublished: number; statements: Statement[] };
+export type SpaceResult = { text: string; pages: number; posts: number; skippedNotPublished: number; statements: Statement[]; profileSkipped: string[] };
 
 /** The site's address with no trailing slash; refuses anything that is not an https URL with no credentials. */
 export function normalizeUrl(raw: string): string {
@@ -164,6 +168,10 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
     for (const pn of statedOn) add(factIri, STATED_ON_PREDICATE, iri(pn));
     storyFacts.push({ iri: factIri, label: f.label, validUntil: f.validUntil, pageCount: statedOn.length });
   }
+  // F274.7: who is behind the site and what it states about them, read from the About and Services pages' own structure.
+  const profile = extractProfile(files);
+  const who = addProfile(add, profile, { orgIri, siteIri, nodeBySlug, factIris: new Map(storyFacts.map((f) => [f.label, f.iri])), base });
+
   const sharedIri = KB + 'dis-shared-footer';
   const sharedText = opts.footer ?? siteName;
   add(sharedIri, RDF_TYPE, iri(TYPE + 'Fact'));
@@ -173,7 +181,7 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
   const storyIri = KB + 'dis-story';
   for (const t of storyTriples({
     storyIri, stepIri: (k) => KB + 'dis-story-step-' + k, siteName, siteIri, blogIri: hasPosts ? blogIri : null, checkIri,
-    pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts,
+    pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts, who,
   })) {
     add(t.s, t.p, 'iri' in t.o ? iri(t.o.iri) : 'integer' in t.o ? lit(String(t.o.integer), XSD_INT) : lit(t.o.text));
   }
@@ -185,7 +193,7 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
     'Only published pages and posts are included: no drafts, no page bodies (only the text of an entry a page marks valid-until), no site config beyond the public footer line, no contact address.',
   ].join('\n');
   const text = toTurtleFull(out, [source], { header }).replace(/^# generated .*\n/m, '');
-  return { text, pages, posts, skippedNotPublished: skipped, statements: out };
+  return { text, pages, posts, skippedNotPublished: skipped, statements: out, profileSkipped: profile.skipped };
 }
 
 /** The footer line the site shows on every page: the `footer.text` field of site.config.json (public by design), never any other field. */

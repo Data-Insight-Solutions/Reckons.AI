@@ -26,6 +26,17 @@ describe('example entries (F292.3)', () => {
     expect(new Set(quads.map((q) => q.subject.value)).size).toBe(ring.entities);
   });
 
+  it('the Data Insight Solutions example: its counts match the file (entities with facts, facts), and it names a person', () => {
+    const kb = findExampleKb('data-insight-solutions')!;
+    const quads: any[] = new Parser().parse(readFileSync(`static${kb.file}`, 'utf8'));
+    const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    const facts = quads.filter((q) => q.predicate.value === RDF + 'type' && q.object.value === RDF + 'Statement');
+    const subjects = new Set(quads.filter((q) => q.predicate.value === RDF + 'subject').map((q) => q.object.value));
+    expect(facts.length).toBe(kb.triples);
+    expect(subjects.size).toBe(kb.entities);
+    expect(quads.some((q) => q.predicate.value === RDF + 'type' && q.object.value === 'urn:kbase:type/Person')).toBe(true);
+  });
+
   it('the ring splat is reconstructed, exists, and is a story of ten ordered steps that resolve', () => {
     const quads: any[] = new Parser().parse(readFileSync('static/starter-ring-scan.ttl', 'utf8'));
     const splat = quads.find((q: any) => q.predicate.value === 'urn:kbase:predicate/splat')!;
