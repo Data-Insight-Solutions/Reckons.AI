@@ -3,6 +3,172 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-12 (night) — START HERE: what ran overnight while Matt slept (Claude Code, Opus 5.5, with Sonnet agents)
+
+Matt went to bed about 00:40 CST after answering four questions (recorded as `kpred:decided` on the entities):
+story mode is an IN-APP GUIDED WALK first; a CONTEXT PACKAGE is the shareable form of a space (F107.3.1);
+'expired cert check' meant CREDENTIALS ON THE ABOUT PAGE (F293); and for the ring, "keyframes should be manually
+review[ed] to get the most crisp, not blurry image frames of differing angles."
+
+**Local `dev` (ahead of origin/dev; PR #610 carries it, unmerged on GitHub) now also holds:** the site generator
+work (animated inline mark, guided-scroll control, card diagrams, employer logos with a notice, version stamps on
+scripts and styles, the `sections` template for About and Services); F293 facts that expire (site:build refuses a
+page stating an expired fact; `scripts/offline/fact-expiry.ts`); F292.1 the generated 'How this website was made'
+story in the Data Insight Solutions space; F292.2 the guided-walk player (step links, lighting without moving,
+a slim bar on phones, arrow keys; e2e 3/3 in Chrome only); the scan's new curated-frames input (F58.9.6.1);
+PR #604 (safety attestation now 6/6, circuit reset); a lossless fix for statement ids containing '|' that broke
+generated-assets.ttl (the existing workspace file stays broken until the app rewrites it).
+
+**Website preview** https://launch-preview.data-insight-solutions.pages.dev (noindex) was redeployed after each pass.
+The site repository branch `content/site-pages` has local commits only (never pushed): the About edits, the
+mark, diagrams, logos, softer contact wording, and the AWS credential marked `valid-until: 2027-12-01` (the page
+says "valid to December 2027"; the earliest day of that month is used). Its EARLIER local commit 7824b24 contains
+the n8n webhook address: rewrite it out before that branch is ever pushed. The n8n contact workflow is PUBLISHED
+and tested (one test email sent); preview origins were added to its allowed list.
+
+**Ring:** 189 of 373 candidate frames kept after a frame-by-frame review (`~/.local/state/reckons/ring-scan/frame-review.md`);
+two scans queued on GPU 1 (variant 2 = full-resolution square crops, because at the pipeline's 900x1600 the ring is
+~200 px wide). Nothing goes on the website until Matt has looked. Check the agent's result in the private notes.
+
+**Hume:** 23 narration clips banked in the demo cache plus 10 Kokoro versions and a blind A/B page at
+`~/.local/share/reckons/private-workspace/2026-11-12-voices/listen.html`. The '13 Nov shutdown of TTS and EVI'
+comes only from search summaries; Hume's current changelog does not mention it and the API still worked.
+
+**Deputy sizes (F289):** qwen3.8, the current deputy, is 27.3B, above Matt's 24B line. Candidates within it that can
+run the harness: devstral-small-2, mistral-small3.2:24b, lfm2.5, llama3.2:3b. Review and plan in
+`~/.local/share/reckons/private-workspace/2026-11-12-reports/`.
+
+**Open for Matt:** the three article drafts (`workspace/drafts/blog/` in the site repository); the shortened posts;
+which address the site lives at; whether the walk may show per-post claim lists; the producer-states thresholds
+(branch held); running the deputy benchmark.
+
+## 2026-11-11 (evening, wrap-up) — QUEUE MANAGED + RING TASK GROUNDED, not executed — for the next Claude/Opus session
+
+Matt asked the deputy (qwen3.8-160k) to "manage job queue this evening, claude is back after midnight," then gave the ring task, DIS feedback, and called the wrap. **Nothing here is a decision by Matt beyond what is quoted.**
+
+**Queue (live, ~/.local/state/reckons/jobs/):** worker pid 2860949 healthy, was at 131/140 running `deputy-f74-14-request-validation` at wrap.
+- **DROPPED 4 stale garden jobs** (44c0f170 image-overview; 0ebf89dd/ed155755/a7f00635 scan slots) — all pointed at
+  `tripleNotes-examples`, which is now on `fix/site-landing-mark` and has **neither** `scripts/review-spaces/` **nor**
+  `reckons-workspace/` (the garden space TTL was not found anywhere under /home/matt/Github). They would all have
+  failed. The `feat/review-story-garden` branch still has the scripts; the space data is gone — decide whether to rebuild the
+  garden demo or let the ring/DIS story replace it.
+- **HOLDS (unchanged, do not ignore):** docs-review 55 and docs-expand 62 unreviewed proposals (limit 50) — release by
+  reviewing; safety-attestation circuit OPEN (3 strikes) — **do NOT reset before it passes 6/6** (fix the classification
+  of the unclassified path first, per the 2026-11-11 midday entry).
+- A local-work-reviewer batch (≤10) was dispatched before the wrap to cut the docs-review/docs-expand counts —
+  **outcome NOT confirmed by the deputy at wrap** (subagent had not reported back).
+- `deputy-f287-4-default-arrange-order` failed 01:16 with a transient gateway 500 (U+FFFF XML error from
+  localhost:11434); worker retries on backoff — **not re-confirmed at wrap**.
+
+**Ring task (Matt: "Make a space and try to generate the ring") — GROUNDED ONLY, no space built, no job queued:**
+- Video: `/home/matt/Downloads/IMG_1257.MOV` (also `/home/matt/Videos/IMG_1257.MOV`) — 4K HEVC, 53 s, 120 fps,
+  filmed on a **checkerboard/ArUco-style scan board** (deliberate photogrammetry setup). Ring: silver championship-style,
+  faceted diamond crown, red gem center, black panels engraved "ROE". Frames: `~/.local/state/reckons/ring-frames/` (f5–f48).
+- Paths available: (a) generative prompt→image(zimage)→splat(TripoSplat) — wrapper on branch `feat/review-story-garden`
+  (`scripts/review-spaces/generate-assets.ts`, pattern: `--slot=… --stages=image,splat --workspace=…`, image before splat,
+  GPU1); (b) reconstruction — `scripts/content/scan_colmap.py` + `scan-attach.ts` from real frames (the checkerboard
+  suggests Matt intends this one); F58.9.19 multi-scan fusion decided but NOT built.
+- **HONESTY REQUIREMENT (honest-status):** an asset made from a text prompt is NOT his ring — label origin "generated"
+  and make the story say exactly which pipeline produced it. Story goal (Matt): "how did I make this ring digital asset
+  from a real object"; if it looks really good → DIS About page, linked to the space.
+
+**Matt's decisions/feedback this evening — ALL recorded in the review queue as kb_add_note (agent local-deputy:qwen3.8-160k):**
+(1) "Built with Reckons.AI" must be a kickass experience INSIDE Reckons.AI: story mode of the site-generation process,
+why it made the info clear/organized/referenced, cross-page instant editing, staleness detection ("expired cert check?"),
+tie DIS to Reckons.AI as the tool for publishing great web content. (2) Ring → DIS About page + linked space + story.
+(3) Landing: "very clear by language that this is a 1 person company. It may not be forever, so landing should be less
+blunt" (roadmap precedent: the SOLO wording becomes false if the team expands — scope-decision ~line 1367).
+(4) About + Services pages "very bland at the moment" — need better layouts. (5) Harness warning: auto mode not working,
+harness may be acting up; keep deputy work on the plain tool path.
+
+**Unverified / still open at wrap:** reviewer-batch outcome; f287-4 retry; the TTL parse failure at
+`reckons-workspace/kbs/generated-assets/generated-assets.ttl:1128` (sched:offer-tasks skipped 4 notes because of it —
+the failing block is structurally identical to its neighbours; root cause not found, deputy's n3 repro attempt failed).
+
+## 2026-11-11 (midday) — Data Insight Solutions site: build diagnosed, launch path ready — for Fable (local deputy qwen3.8, Matt asked for Fable handoff)
+
+**The right repo is `/home/matt/Github/DataInsightSolutions-website`** (github.com/Data-Insight-Solutions/DataInsightSolutions-website),
+NOT `data-insight-solutions.com` (the old Netlify site, still in DNS). Matt: old one first, then the redesign —
+**deploy the redesign on Cloudflare, over the existing Pages project `data-insight-solutions`
+(preview `data-insight-solutions.pages.dev`), noindex until Matt cuts DNS over.** Launch date **2026-11-14
+(AI Reality Check talk) confirmed by Matt this session.** Scope: brand + landing + reviewed blog +
+pre-built HTML; NO engine package. Blog pipeline approved: Triple Check (facts settled) → shorten all 8
+posts, every change a review-queue proposal (claims format already exists in
+`workspace/drafts/reckons-ai.claims.md`, 0 ungrounded as of 2026-11-10).
+
+**BUILD "GAPS" — all three explained, none is a bug (diagnosed this session, Fable to use as-is):**
+- `2024-ai-video-editing` is NOT dropped — it IS the current `index.html`. All 4 core pages
+  (index/services/about/contact) are `status: draft`; `publishablePages` (src/lib/rdf/page.ts:194) keeps
+  only published|unlisted, so the 8 published blog posts are the whole site and `pickHome`
+  (src/lib/publish/site-generator.ts:107) fell back to lowest-order root page → that post became home.
+- services/about/contact missing = **correct by design** (AGENTS.md: "A page is public only after the
+  owner approves and publishes it"). The launch blocker is simply: Matt publishes the 4 core pages
+  (flip `status: draft` → `published` in their frontmatter) — then index.md (template: landing) becomes
+  the real home and displaces the post.
+- Output has **no noindex/robots.txt** — expected; add it at deploy time (write `robots.txt`
+  `User-agent: * / Disallow: /` into the output dir after `site:build`, before `wrangler pages deploy`).
+
+**Verified working this session:** `npm run site:build -- --site=/home/matt/Github/DataInsightSolutions-website
+--out=…` → 8 pages, 31 files, 19 assets, clean import (12 files / 182 statements / 0 warnings), output at
+`~/.local/state/reckons/site-builds/data-insight-solutions`. Wrangler auth via `CLOUDFLARE_API_TOKEN` (never
+print it). Two small fixes for the final build: pass `--title="Data Insight Solutions"` (default
+"Reckons.AI site" leaked into the post-home's <title>), and the robots.txt above.
+
+**Not done (Fable's, or Opus's, call to make — deputy has no push/deploy authority anyway):** publish the
+4 core pages, rebuild with title + noindex, `wrangler pages deploy` over `data-insight-solutions`, verify
+the pages.dev preview, queue the blog Triple-Check+shorten. Unverified: that Matt wants ALL 4 core pages
+public at 11-14 (he approved the deploy, but per AGENTS.md the status flip is the owner's act).
+
+## 2026-11-11 (early) — STATUS CHECK for Opus/Fable (flagged by local deputy qwen3.8; Matt asked "did the deputy crash?")
+
+**Answer: NO, the local deputy did not crash.** The job that just ended, `deputy-local-f89-4-5-sampler`,
+finished clean: `queue.done.jsonl` shows `outcome: passed, exitCode 0`; the worker log says "Sampler script
+implemented, 6/6 tests pass, committed to `agent/local-f89-4-5-sampler`"; head moved `cf657102 → d88659e9`.
+The worker then advanced to `deputy-local-f89-4-4-run-tree` (alive); ollama is up with `qwen3.8:latest`
+answering in ~5s; no OOM in `dmesg`, no zombies. **Do not chase a phantom crash.**
+
+**What likely looked alarming:** the worker *self-pauses on GPU heat* — `queue-worker: paused — GPU 0 at
+91 C >= 83 C; N queued` — then resumes. That is expected thermal throttling (GPU at 91°C ≥ 83°C threshold),
+not a fault. If jobs feel slow, that is the reason.
+
+**RESOLVED during this session (Matt chose, deputy did):**
+- **`dev:test` server on `localhost:5174`** — was DOWN (visual gate blind: *"dev server connection refused at
+  localhost:5174, 0 gates evaluated"*). **Now RESTORED:** `npm run dev:test` running, serving **HTTP 200**
+  (verified 127.0.0.1:5174, ~232 KB, ~0.13 s) → the Space visual gate (`sched:visual-tests`) now has a target.
+  **Caveat:** it runs as a background process in *this* deputy session — if this session ends first, restart with
+  `npm run dev:test` (port 5174) before running the visual gate.
+- **`deputy-local-f74-15-receipt-check`** — Matt chose "drop it." Clarification for the record: it was a
+  **one-shot deputy draft, not recurring** (not in `static/reckons-jobs.ttl`) and was **already out of the active
+  queue** — no entry in `queue.jsonl`, only a single failed record in `queue.done.jsonl` (exit 143 / SIGTERM,
+  2026-11-10T23:30Z). It sits in a 30-min retry backoff but will **not auto re-fire** (nothing schedules it). So
+  there was nothing in the live queue to drop; if the F74.15 receipt-check draft is still wanted, re-brief it.
+
+**STILL OPEN (needs a triage decision — not a crash):**
+- **Review queue is over limit and holding jobs** (`worker.json` → `held`):
+  - `docs-review`: 53 unreviewed proposals (limit 50)
+  - `docs-expand`: 62 unreviewed proposals (limit 50)
+  - `safety-attestation`: **circuit OPEN** (3×). Root cause found (ran the attestation inline — 5/6 controls
+    pass): the one failing control is the unclassified generative path `src/lib/integrations/llm/triple-check.ts`
+    (F100.1, deliberately local-only). Most likely a classification-REGISTRATION gap (that path is a local-only,
+    structured-output prompt that per `kb:tenet-private` does not carry the preamble), **not** a real safety hole —
+    but Opus to confirm. **Do NOT reset the circuit before it passes**: fix the classification, re-run
+    `npx tsx scripts/offline/safety-attestation.ts` (want 6/6), then
+    `npx tsx scripts/agent/job-watch.ts --name=sched:safety-attestation --reset`.
+  - `visual-tests`: **RAM guard** (not a bug) — it loads the VLM (~16 GB) on top of the deputy's resident qwen3.8
+    (23 GB); the ~39 GB spill tripped the guard and self-paused. Needs the VLM to fit (fewer co-resident models)
+    or a deliberate guard-limit decision.
+  Triage decisions for Opus/Matt: review some proposals down under 50 to release `docs-review`/`docs-expand`;
+  confirm + fix the safety classification before resetting its circuit.
+
+**Unverified / awaiting a decision (not done):** the pending deputy memory change
+`~/.config/reckons/local-claude/memory-written/20261111T004402Z/changes.patch` is **not merged** — review and
+merge or reject it (it is a proposal, per the deputy contract).
+
+**What Matt decided (this session):** (a) **start 5174** — done, serving HTTP 200; (b) **drop f74‑15** — done,
+it was already out of the active queue (one-shot, not recurring). **Still open for Opus/Fable:** the over-limit
+review queue (docs-review / docs-expand) and the safety-attestation circuit reset, plus the unmerged memory patch
+below.
+
 ## 2026-11-10 (night) — START HERE: build wave merged into LOCAL dev; one batch PR open (Fable 5.2 + Sonnet overseers)
 
 **Local `dev` is AHEAD of `origin/dev`.** It equals branch `integration/2026-11-10` (PR #610, base dev, NOT merged
