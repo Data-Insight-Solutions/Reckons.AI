@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDiff as measuredDiff, resolveConflict, type DiffEntry } from '../diff';
+import { computeDiff as measuredDiff, resolveConflict, describeUpdate, type DiffEntry } from '../diff';
 import type { Arity } from '../predicate-arity';
 import type { Statement } from '../types';
 import { iri, lit } from '../types';
@@ -303,6 +303,58 @@ describe('computeDiff — arity decides whether a different object is a conflict
     expect(resolveConflict(entry, 'keep-both')).toEqual([{ id: b.id, status: 'confirmed' }]);
     expect(resolveConflict(entry, 'keep-both').some((r) => r.status === 'superseded')).toBe(false);
     expect(resolveConflict(entry, 'reject')).toEqual([{ id: a.id, status: 'confirmed' }, { id: b.id, status: 'rejected' }]);
+  });
+
+  describe('same origin, demonstrably later: an update, not a question (Matt, 2026-11-12)', () => {
+    const TESTS = iri('urn:kbase:predicate/tests-passing');
+    const SUITE = iri('urn:kbase:concept/suite');
+    const f = (n: string, o: { sourceId?: string; createdAt?: number; status?: Statement['status'] }) =>
+      makeStatement({ s: SUITE, p: TESTS, o: lit(n), sourceId: o.sourceId ?? 'src-1', createdAt: o.createdAt ?? 1000, status: o.status ?? 'confirmed' });
+    const STATUS = iri('urn:kbase:predicate/has-status');
+    const measuredSingle = () => {
+      const ex: Statement[] = [];
+      for (let i = 0; i < 8; i++) ex.push(makeStatement({ s: iri(`urn:kbase:concept/m${i}`), p: TESTS, o: lit('1'), sourceId: 'other' }));
+      return ex;
+    };
+
+    it('same origin + newer -> update with history (old superseded by the caller, recorded text)', () => {
+      const old = f('20', { createdAt: 1000 });
+      const diff = measuredDiff([f('22', { createdAt: 2000, status: 'pending' })], [old]);
+      const e = diff.entries[0] as Extract<DiffEntry, { kind: 'updates' }>;
+      expect(e.kind).toBe('updates');
+      expect(e.existing).toEqual([old]);
+      expect(diff.summary.updates).toBe(1);
+      expect(describeUpdate(e)).toBe('updated from 20 to 22, same origin, newer');
+    });
+    it('direction does not matter: a drop from the same origin is also an update', () => {
+      expect(measuredDiff([f('18', { createdAt: 2000, status: 'pending' })], [f('20', {})]).entries[0].kind).toBe('updates');
+    });
+    it('same origin but equal time is held back (possible disagreement)', () => {
+      const e = measuredDiff([f('22', { createdAt: 1000, status: 'pending' })], [f('20', {})]).entries[0] as Extract<DiffEntry, { kind: 'conflicts' }>;
+      expect(e.kind).toBe('conflicts');
+      expect(e.possible).toBe(true);
+    });
+    it('same origin but older or missing time is held back', () => {
+      expect(measuredDiff([f('22', { createdAt: 500, status: 'pending' })], [f('20', {})]).entries[0].kind).toBe('conflicts');
+      const noTime = { ...f('22', { status: 'pending' }), createdAt: undefined as unknown as number };
+      expect(measuredDiff([noTime], [f('20', {})]).entries[0].kind).toBe('conflicts');
+    });
+    it('different origin + newer, unknown arity -> held back as a possible disagreement', () => {
+      const e = measuredDiff([f('22', { sourceId: 'src-2', createdAt: 2000, status: 'pending' })], [f('20', {})]).entries[0] as Extract<DiffEntry, { kind: 'conflicts' }>;
+      expect(e.kind).toBe('conflicts');
+      expect(e.possible).toBe(true);
+    });
+    it('different origin + newer, measured single-valued -> a plain disagreement', () => {
+      const e = measuredDiff([f('22', { sourceId: 'src-2', createdAt: 2000, status: 'pending' })], [f('20', {}), ...measuredSingle()]).entries[0] as Extract<DiffEntry, { kind: 'conflicts' }>;
+      expect(e.kind).toBe('conflicts');
+      expect(e.possible).toBeUndefined();
+      void STATUS;
+    });
+    it('a refreshed origin (new id, same locator) counts as the same one', () => {
+      const key = (st: Statement) => (st.sourceId === 'src-1b' ? 'src-1' : st.sourceId);
+      const diff = measuredDiff([f('22', { sourceId: 'src-1b', createdAt: 2000, status: 'pending' })], [f('20', {})], { sourceKey: key } as never);
+      expect(diff.entries[0].kind).toBe('updates');
+    });
   });
 
   it('a measured single-valued predicate is a plain (not "possible") disagreement', () => {

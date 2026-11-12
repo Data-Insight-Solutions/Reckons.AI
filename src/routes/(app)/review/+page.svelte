@@ -44,7 +44,7 @@
   } from '$lib/rdf/cross-kb-align';
   import { termKey, iriFromNodeKey, isIRI, isLit, isMetaPredicate, type Statement } from '$lib/rdf/types';
   import { newAliasValues, primaryLabelAfterMerge, buildAliasStatements } from '$lib/rdf/merge-aliases';
-  import { computeDiff } from '$lib/rdf/diff';
+  import { computeDiff, describeUpdate } from '$lib/rdf/diff';
   import { isSpaceMetadata } from '$lib/rdf/graph-view';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { semanticEnrichDiff, labelFromIRI } from '$lib/rdf/semantic-diff';
@@ -190,7 +190,30 @@
   );
 
   // Structural diff
-  const structuralDiff = $derived(computeDiff(incoming, existing));
+  const sourceKeyOf = $derived.by(() => {
+    const uri = new Map(sources().map((src) => [src.id, src.uri]));
+    return (st: { sourceId: string }) => uri.get(st.sourceId) || st.sourceId;
+  });
+  const structuralDiff = $derived(computeDiff(incoming, existing, { sourceKey: sourceKeyOf }));
+
+  // Automatic updates (Matt, 2026-11-12): the same origin, later, says a different value. Verifiable from
+  // the record, so the new value is accepted, the old one kept as superseded history, and the change is
+  // written to the change log ("updated from 20 to 22, same origin, newer") instead of asked about.
+  const appliedUpdates = new Set<string>();
+  $effect(() => {
+    const todo = structuralDiff.entries.filter((e): e is Extract<typeof e, { kind: 'updates' }> => e.kind === 'updates' && !appliedUpdates.has(e.incoming.id));
+    if (todo.length === 0) return;
+    for (const e of todo) appliedUpdates.add(e.incoming.id);
+    const at = Date.now();
+    void setStatuses(todo.flatMap((e) => {
+      const note = describeUpdate(e);
+      const settledBy = { actor: 'automatic update', channel: 'review', at };
+      return [
+        ...e.existing.map((x) => ({ id: x.id, status: 'superseded' as const, settledBy, settledByDecision: note })),
+        { id: e.incoming.id, status: 'confirmed' as const, settledBy, settledByDecision: note },
+      ];
+    })).catch((err) => { for (const e of todo) appliedUpdates.delete(e.incoming.id); console.error('automatic update failed', err); });
+  });
 
   // Semantic diff (async upgrade)
   let semanticDiff = $state<ReturnType<typeof computeDiff> | null>(null);
@@ -199,7 +222,11 @@
   let semanticVersion = 0;
   let semanticFailed = false;
 
-  const diff = $derived(semanticDiff ?? structuralDiff);
+  // Same-origin, newer-value updates are applied below without asking; they are not queue items.
+  const diff = $derived.by(() => {
+    const d = semanticDiff ?? structuralDiff;
+    return { ...d, entries: d.entries.filter((e) => e.kind !== 'updates') };
+  });
   // F32: partial "? question" facts, and the list actually shown (optionally filtered).
   const questionEntries = $derived(diff.entries.filter((e) => e.incoming.needsObject));
 
@@ -569,7 +596,7 @@
   $effect(() => {
     const inc = incoming;
     const ex = existing;
-    const sDiff = computeDiff(inc, ex);
+    const sDiff = computeDiff(inc, ex, { sourceKey: sourceKeyOf });
     const myVersion = ++semanticVersion;
     semanticReady = false;
     if (sDiff.entries.length === 0) {
@@ -655,9 +682,9 @@
   const summaryKey = $derived(`${groupMode}:${activeGroup?.key ?? '*'}:${Math.ceil(summaryEntries.length / 5)}`);
   const summaryCache = new Map<string, DiffSummary>();
   function diffOf(entries: typeof shownEntries): ReturnType<typeof computeDiff> {
-    const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
+    const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, updates: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
     const field: Record<string, keyof typeof summary> = {
-      new: 'new', duplicate: 'duplicate', reinforces: 'reinforces', conflicts: 'conflicts', refines: 'refines', returned: 'returned',
+      new: 'new', duplicate: 'duplicate', reinforces: 'reinforces', conflicts: 'conflicts', refines: 'refines', updates: 'updates', returned: 'returned',
       'near-duplicate': 'nearDuplicate', 'synonym-reinforces': 'synonymReinforces', 'antonym-conflicts': 'antonymConflicts',
     };
     for (const e of entries) summary[field[e.kind]]++;

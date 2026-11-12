@@ -209,6 +209,7 @@
     reinforces: 'reinforces',
     conflicts: 'conflicts',
     refines: 'refines',
+    updates: 'updated',
     'near-duplicate': 'near duplicate',
     'synonym-reinforces': 'synonym',
     'antonym-conflicts': 'contradiction',
