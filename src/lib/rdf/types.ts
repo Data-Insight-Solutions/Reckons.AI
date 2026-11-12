@@ -458,10 +458,10 @@ export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
 /** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
 export const STMT_PREFIX = 'urn:kbase:stmt/';
 
-/** Characters a Turtle IRI cannot hold; a statement id such as `currents|s|p|v` carries them. */
+/** Characters a Turtle IRI cannot hold; a fact id such as `currents|s|p|v` carries them. */
 const IRI_UNSAFE = /[|"<>{}\\^`\s]/g;
 const IRI_UNSAFE_ESCAPES = /%(7C|22|3C|3E|7B|7D|5C|5E|60|20|09|0A|0D)/g;
-/** A statement id as it is written inside <urn:kbase:stmt/{id}>: only the characters an IRI cannot hold are escaped. */
+/** A fact id as it is written inside <urn:kbase:stmt/{id}>: only the characters an IRI cannot hold are escaped. */
 export const stmtIdToIriPart = (id: string): string =>
   id.replace(IRI_UNSAFE, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
 /** The inverse of stmtIdToIriPart; any other text, including other percent sequences, is left as it is. */
