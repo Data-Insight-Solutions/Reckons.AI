@@ -94,8 +94,11 @@ To make things, end your message with ONE queue_jobs action listing every job. E
 When asked for several DIFFERENT images, write a distinct, specific prompt for each. The person approves the whole list once; jobs run one at a time on their GPU (roughly 15 s per image, 40 s per splat, 60 s per video), and each result appears in this knowledge base with a Job entity recording it.`;
 }
 
-function buildContextSection(ctx: KBContext): string {
-  if (ctx.reviewSteps?.length) return buildReviewSection(ctx);
+export function buildContextSection(ctx: KBContext): string {
+  // A story (the Generated assets example is one) is also a place to ASK for things. Without the
+  // jobs section here Shelly in free conversation never learned she could queue local generation, and
+  // answered a request for an image with a review step instead (found by the F166.1 end-to-end run, 2026-11-12).
+  if (ctx.reviewSteps?.length) return buildJobsSection(ctx) + buildReviewSection(ctx);
   const entities = ctx.sampleEntities
     .slice(0, 15)
     .map((e) => `  • ${e.label}${e.type ? ` [${e.type}]` : ' [NO TYPE]'} <${e.iri}>: ${e.predicates.slice(0, 3).join(', ')}`)
@@ -108,18 +111,23 @@ function buildContextSection(ctx: KBContext): string {
   return buildJobsSection(ctx) + `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
 }
 
-function parseActions(text: string): { clean: string; actions: KBAction[] } {
-  const match = text.match(/<kb-actions>([\s\S]*?)<\/kb-actions>/);
-  if (!match) return { clean: text.trim(), actions: [] };
+export function parseActions(text: string): { clean: string; actions: KBAction[] } {
+  // A model told "end with ONE block" sometimes writes two (the F166.1 end-to-end run: an adjust_view block,
+  // then the queue_jobs block). Reading only the first silently dropped the one the person asked for.
+  const blocks = [...text.matchAll(/<kb-actions>([\s\S]*?)<\/kb-actions>/g)];
+  if (!blocks.length) return { clean: text.trim(), actions: [] };
 
-  let actions: KBAction[] = [];
-  try {
-    actions = JSON.parse(match[1].trim());
-  } catch {
-    // malformed — ignore
+  const actions: KBAction[] = [];
+  for (const block of blocks) {
+    try {
+      const parsed = JSON.parse(block[1].trim());
+      if (Array.isArray(parsed)) actions.push(...parsed);
+    } catch {
+      // malformed — ignore this block, keep the others
+    }
   }
 
-  const clean = text.replace(/<kb-actions>[\s\S]*?<\/kb-actions>/, '').trim();
+  const clean = text.replace(/<kb-actions>[\s\S]*?<\/kb-actions>/g, '').trim();
   return { clean, actions };
 }
 
@@ -173,6 +181,7 @@ const REVIEW_SYSTEM_PROMPT = `You are Shelly 🐢, guiding a VISUAL TEST REVIEW 
 REVIEW MODE — you drive a screen-by-screen review, not a graph tour.
 
 RULES (strict):
+- If a LOCAL JOBS section below says what this computer can make and the person asks you to make an image, video or splat, that request outranks the review: answer it with the queue_jobs action it describes (one adjust_view is not needed), and do not narrate a review step.
 - The VISUAL REVIEW list below is your source of truth. Do NOT invent what a screen shows beyond its title/page/assertion/verdict — you can't see the pixels; the reviewer can. Frame observations as prompts for THEM ("does the nav bar look right?"), not claims.
 - Never call this a graph "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
 - Go through the steps IN ORDER (Step 1, 2, 3 …). One step per message.

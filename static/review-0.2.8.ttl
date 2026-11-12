@@ -210,7 +210,7 @@ rev:gap-f269-1 rdf:type ktype:Concept ;
 
 rev:gap-f166-1 rdf:type ktype:Concept ;
     rdfs:label "F166.1 Shelly — request a local image-to-splat job and attach its actual result" ;
-    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists tests/e2e/generated-assets-story.test.ts, src/lib/generation/__tests__/protocol.test.ts, scripts/content/__tests__/generation-runner.test.ts, src/lib/generation/__tests__/job-node.test.ts, src/lib/integrations/llm/__tests__/turtle-chat-jobs.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/content/__tests__/showcase.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists tests/e2e/generated-assets-story.test.ts, src/lib/generation/__tests__/protocol.test.ts, scripts/content/__tests__/generation-runner.test.ts, src/lib/generation/__tests__/job-node.test.ts, src/lib/integrations/llm/__tests__/turtle-chat-jobs.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/content/__tests__/showcase.test.ts)." .
 
 rev:gap-f100-1 rdf:type ktype:Concept ;
     rdfs:label "F100.1 Triple Check — continuous statement evidence" ;
