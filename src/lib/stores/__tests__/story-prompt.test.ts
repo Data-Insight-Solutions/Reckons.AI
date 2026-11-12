@@ -162,10 +162,21 @@ describe('startStoryFromLink (F261)', () => {
     expect(startStoryFromLink(graph, null)).toBe(false);
     expect(startStory).not.toHaveBeenCalled();
     expect(startStoryFromLink(graph, '')).toBe(true);
-    expect(startStory).toHaveBeenLastCalledWith('urn:a');
+    expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 1);
     expect(startStoryFromLink(graph, 'urn:b')).toBe(true);
-    expect(startStory).toHaveBeenLastCalledWith('urn:b');
+    expect(startStory).toHaveBeenLastCalledWith('urn:b', false, 1);
     expect(startStoryFromLink([], '')).toBe(false);
+  });
+  it('opens at the step a link names (&step=<n>, 1-based), clamped to the story, and at the first for nonsense', () => {
+    const facts = tour('urn:a');
+    startStoryFromLink(facts, 'urn:a', '2');
+    expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 2);
+    startStoryFromLink(facts, 'urn:a', '9');
+    expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 2);
+    for (const bad of ['0', '-1', 'x', '1.5', null]) {
+      startStoryFromLink(facts, 'urn:a', bad);
+      expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 1);
+    }
   });
 });
 

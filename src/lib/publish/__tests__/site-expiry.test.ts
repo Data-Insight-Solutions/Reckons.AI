@@ -35,6 +35,13 @@ describe('valid-until markers', () => {
       ['Oct 2021 – Nov 2023 | Example Co | Engineer', '2099-01-01'],
     ]);
   });
+  it('drops a trailing link and the dash before it from a fact label, and keeps a link inside a name', () => {
+    const t = (line: string) => parseExpiryMarkers(line)[0].text;
+    expect(t('- Certificate Alpha, valid to May 2030 \u2014 [verify](https://x.test/a) | valid-until: 2030-05-31')).toBe('Certificate Alpha, valid to May 2030');
+    expect(t('- Certificate Alpha - [any words](https://x.test/a) | valid-until: ?')).toBe('Certificate Alpha');
+    expect(t('- Certificate Alpha, [verify](https://x.test/a) | valid-until: ?')).toBe('Certificate Alpha');
+    expect(t('- Certificate [Beta](https://x.test/b) | valid-until: ?')).toBe('Certificate Beta');
+  });
   it('refuses a marker that is not a real date or ?, and an entry that is only a marker', () => {
     expect(() => parseExpiryMarkers('- Thing | valid-until: soon')).toThrow(/YYYY-MM-DD/);
     expect(() => parseExpiryMarkers('- Thing | valid-until: 2026-02-31')).toThrow(/real date/);

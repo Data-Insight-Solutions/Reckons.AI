@@ -64,9 +64,21 @@ function isCalendarDate(s: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
+const LINK_WORDS = 'verify|verification|view|link|reference|credential|proof|details|badge';
+/**
+ * A link that ENDS an entry is a pointer, not part of the fact: "AWS Certified ... — [verify](https://...)" is
+ * the fact "AWS Certified ...". Dropped, with any dash before it, when a dash precedes it or its words are a
+ * pointer word (verify, view, link...). A link inside a name ("Certificate [Beta](url)") is kept.
+ */
+export function stripTrailingLink(s: string): string {
+  const dash = new RegExp('\\s*[\\u2014\\u2013-]+\\s*\\[[^\\]]*\\]\\([^)]*\\)\\s*$');
+  const word = new RegExp('[\\s,;:]*\\[(?:' + LINK_WORDS + ')\\]\\([^)]*\\)\\s*$', 'i');
+  return s.replace(dash, '').replace(word, '').trimEnd();
+}
+
 /** Links and emphasis flattened to their words, so one fact reads the same wherever it is written. */
 function plain(s: string): string {
-  return s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
+  return stripTrailingLink(s).replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /** Split a list entry on its `|` separators; a segment that is the marker is returned apart from the rest. */

@@ -184,9 +184,9 @@ kb:dis-expiry-check
     rdfs:comment "Runs on every build and in the script tier (scripts/offline/fact-expiry.ts): lists any fact past its valid-until date, warns 60 days ahead, and the build refuses to publish a page that states an expired fact." ;
     pred:part-of kb:dis-site .
 
-kb:dis-fact-0b39147ad997
+kb:dis-fact-118e57793700
     rdf:type <urn:kbase:type/Fact> ;
-    rdfs:label "AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 — verify" ;
+    rdfs:label "AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027" ;
     pred:valid-until "2027-12-01"^^xsd:date ;
     pred:stated-on kb:dis-page-about .
 
@@ -246,8 +246,8 @@ kb:dis-story-step-4
     <urn:reckons:story/partOf> kb:dis-story ;
     <urn:reckons:story/order> "4"^^xsd:integer ;
     <urn:reckons:story/title> "Facts that expire" ;
-    <urn:reckons:story/content> "Some things stop being true on a known day. 1 fact on this site carries an end date: AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 — verify (valid until 2027-12-01). On every build the check lists anything past its date, warns 60 days ahead, and refuses to publish a page that states an expired fact, naming the fact and the page." ;
-    <urn:reckons:story/highlight> kb:dis-fact-0b39147ad997 .
+    <urn:reckons:story/content> "Some things stop being true on a known day. 1 fact on this site carries an end date: AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 (valid until 2027-12-01). On every build the check lists anything past its date, warns 60 days ahead, and refuses to publish a page that states an expired fact, naming the fact and the page." ;
+    <urn:reckons:story/highlight> kb:dis-fact-118e57793700 .
 
 kb:dis-story-step-5
     rdf:type <urn:reckons:story/Step> ;
@@ -1775,9 +1775,9 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-8836fa5cde22bc63>
+<urn:kbase:stmt/dis-a269e7d8589c3a71>
     rdf:type rdf:Statement ;
-    rdf:subject kb:dis-fact-0b39147ad997 ;
+    rdf:subject kb:dis-fact-118e57793700 ;
     rdf:predicate rdf:type ;
     rdf:object <urn:kbase:type/Fact> ;
     meta:status "confirmed" ;
@@ -1786,20 +1786,20 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-27dab7277413be8b>
+<urn:kbase:stmt/dis-87ffb38362e5b194>
     rdf:type rdf:Statement ;
-    rdf:subject kb:dis-fact-0b39147ad997 ;
+    rdf:subject kb:dis-fact-118e57793700 ;
     rdf:predicate rdfs:label ;
-    rdf:object "AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 — verify" ;
+    rdf:object "AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027" ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-e6b729287b294299>
+<urn:kbase:stmt/dis-398cb3beaee28228>
     rdf:type rdf:Statement ;
-    rdf:subject kb:dis-fact-0b39147ad997 ;
+    rdf:subject kb:dis-fact-118e57793700 ;
     rdf:predicate pred:valid-until ;
     rdf:object "2027-12-01"^^xsd:date ;
     meta:status "confirmed" ;
@@ -1808,9 +1808,9 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-081f0aa332091154>
+<urn:kbase:stmt/dis-0bde3d8c13f6ba79>
     rdf:type rdf:Statement ;
-    rdf:subject kb:dis-fact-0b39147ad997 ;
+    rdf:subject kb:dis-fact-118e57793700 ;
     rdf:predicate pred:stated-on ;
     rdf:object kb:dis-page-about ;
     meta:status "confirmed" ;
@@ -2314,22 +2314,22 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-17e5e7654c9da70d>
+<urn:kbase:stmt/dis-f2b7e9ddbf46b8e3>
     rdf:type rdf:Statement ;
     rdf:subject kb:dis-story-step-4 ;
     rdf:predicate <urn:reckons:story/content> ;
-    rdf:object "Some things stop being true on a known day. 1 fact on this site carries an end date: AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 — verify (valid until 2027-12-01). On every build the check lists anything past its date, warns 60 days ahead, and refuses to publish a page that states an expired fact, naming the fact and the page." ;
+    rdf:object "Some things stop being true on a known day. 1 fact on this site carries an end date: AWS Certified Solutions Architect – Associate, issued December 2024, valid to December 2027 (valid until 2027-12-01). On every build the check lists anything past its date, warns 60 days ahead, and refuses to publish a page that states an expired fact, naming the fact and the page." ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-945a7060bf31b417>
+<urn:kbase:stmt/dis-a79466c5b1c4d197>
     rdf:type rdf:Statement ;
     rdf:subject kb:dis-story-step-4 ;
     rdf:predicate <urn:reckons:story/highlight> ;
-    rdf:object kb:dis-fact-0b39147ad997 ;
+    rdf:object kb:dis-fact-118e57793700 ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;

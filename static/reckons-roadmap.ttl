@@ -12850,12 +12850,17 @@ kb:story-walk-player rdf:type ktype:Phase ;
     rdfs:label "F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas" ;
     kpred:feature-id   "F292.2" ;
     kpred:part-of      kb:built-with-reckons ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "functional" ;
     kpred:order        2 ;
     kpred:relates-to   kb:standing-filters ;
     kpred:description  "Stories already play through Shelly (TurtleChatPanel). The walk Matt chose needs: a visible step counter, Next and Back that work by keyboard and touch, the canvas lighting the step's highlights and dimming the rest (the same mechanism F223.11 built for focusing a proposal option, so nodes do not move), and a link that opens a space at a given step. No new top-level tab." ;
     kpred:open-question "Is Shelly's panel the right home for the walk on a phone, or does the walk need its own slim bar over the canvas? Decide from a 390px screenshot of both, not in the abstract." ;
-    kpred:done-test    "E2E on a synthetic space with a three-step story: the counter reads 1 of 3; Next lights step 2's nodes and dims the rest; node positions before and after are equal; Back returns; the step link restores the step after a reload." .
+    kpred:done-test    "E2E on a synthetic space with a three-step story: the counter reads 1 of 3; Next lights step 2's nodes and dims the rest; node positions before and after are equal; Back returns; the step link restores the step after a reload." ;
+    kpred:decided      "CLAUDE (Sonnet overseer), 2026-11-12, from 390px screenshots of both (the open question above): on a phone the walk is a SLIM STEP BAR over the canvas, not the Shelly bottom sheet. The sheet is a modal that covers about 85 percent of the screen, so the lit markers were hidden behind it; the bar holds the caption (scrolls past 26 percent of the height) and the counter, Back, Next, chat and exit above the navigation bar and leaves the canvas visible. A 'chat' button brings the sheet back. It lives inside the existing Shelly panel; no new tab. On desktop the walk stays in Shelly's panel." ;
+    kpred:progress     "2026-11-12 (Sonnet overseer), BUILT on branch feat/f292-f293-site-story-expiry: (1) ?story=<iri>&step=<n> opens a story at that step (1-based, clamped) and the address follows the step, so a reload returns to it; (2) a step lights its highlights and dims everything else through the canvas's lit-fact and dim path (edges that touch a lit node stay lit), with no focus layout and nothing selected; positions are measured equal before and after a step (the canvas exposes __markerPositions for that; selecting a marker had moved them about 0.35 units, which is why a step no longer selects); (3) on a phone the slim bar above, with no detail sheet; (4) left and right arrows step the story unless focus is in a text field or a modifier is held, and the canvas's own arrow navigation yields while a story plays. E2E tests/e2e/story-walk.test.ts, three tests on a synthetic three-step space, pass on desktop chromium (1280 and 390 wide). Looked at on the Data Insight Solutions example at 1440 and 390. NOT TRUE YET: an authored story:layout still switches the layout (by design); with the caption area dim, a step whose highlights have no drawn label shows no label for them (labels are hidden by overlap); only Chromium was run; the desktop panel does not always scroll the new step's caption into view at once; not in production." ;
+    kpred:has-file     "src/lib/components/TurtleChatPanel.svelte" ;
+    kpred:tested-by    "tests/e2e/story-walk.test.ts" ;
+    kpred:tested-by    "src/lib/stores/__tests__/story-prompt.test.ts" .
 
 kb:facts-that-expire rdf:type ktype:Feature ;
     rdfs:label "Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;

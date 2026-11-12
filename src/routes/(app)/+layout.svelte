@@ -119,7 +119,7 @@
       const { getCurrentKbId } = await import('$lib/storage/kb-registry');
       // ?story starts the story outright (F261); otherwise the one-time notice offers it.
       const { startStoryFromLink } = await import('$lib/stores/story-prompt.svelte');
-      if (!startStoryFromLink(statements(), new URL(window.location.href).searchParams.get('story'))) {
+      if (!startStoryFromLink(statements(), new URL(window.location.href).searchParams.get('story'), new URL(window.location.href).searchParams.get('step'))) {
         promptStoryIfPresent(statements(), getCurrentKbId());
       }
       // Apply embedding model from settings

@@ -7,7 +7,8 @@
    *  • "chat"         — free-form Claude conversation that can propose KB changes
    */
   import { onDestroy, onMount, tick } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
+  import { isCompact } from '$lib/stores/viewport.svelte';
   import { confirmedStatements, statements, sources, addStatements, addSource, updateStatement, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
@@ -20,7 +21,7 @@
   import { turtleChat, resolveChatProvider as _resolveProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { Statement, Source } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
-  import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay } from '$lib/stores/shelly-bridge.svelte';
+  import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay, storyStartStepRequested } from '$lib/stores/shelly-bridge.svelte';
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
   import type { GraphLayout } from '$lib/rdf/view-suggestions';
 
@@ -615,8 +616,8 @@
     clearCountdown();
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
-    // Play step 0 — voice plays only if user has explicitly enabled it
-    if (!story.interaction) playStoryStep(story, 0);
+    // Play the step a link asked for (`&step=<n>`, 1-based), else the first. Voice plays only if the user enabled it.
+    if (!story.interaction) playStoryStep(story, Math.min(Math.max(storyStartStepRequested(), 1), Math.max(story.steps.length, 1)) - 1);
     tab = 'explore';
   }
 
@@ -637,6 +638,7 @@
     if (step.question) msg += `\n\n> ${step.question}`;
 
     storyMessages = [...storyMessages, { role: 'shelly', content: msg, isStep: true, stepIdx: idx }];
+    syncStoryUrl(story.id, idx + 1);
 
     /*
      * A STEP'S OWN LAYOUT WINS. story:layout is what the author chose to answer THIS step's
@@ -653,12 +655,17 @@
     // unknown name would otherwise reach the renderer. An unrecognised layout falls back rather
     // than throwing, so a story from a newer build degrades instead of breaking.
     const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
-    const stepLayout = authored ?? (step.highlights.length <= 2 ? 'focus' : undefined);
+    /*
+     * F292.2, LIGHT WITHOUT MOVING. A step lights its highlights and dims the rest (the canvas draws the
+     * spotlight through the lit-fact mechanism F223.11 built), and it no longer falls back to the
+     * focus layout, which re-arranged every marker on every step. An AUTHORED story:layout still applies.
+     * It SELECTS nothing: selecting a marker re-seats the layout (measured: positions moved about 0.35 units
+     * between steps) and opens a detail sheet that covers the caption on a phone. The markers are lit, not selected.
+     */
     if (step.highlights.length > 0) {
       applyShellyViewAdjust({
-        selectEntity: step.highlights[0],
         spotlight: step.highlights,
-        layout: stepLayout
+        layout: authored
       });
     } else if (authored) {
       applyShellyViewAdjust({ layout: authored });
@@ -669,6 +676,45 @@
     if (ts.voiceEnabled) {
       speakText(`${step.title}. ${step.content}`);
     }
+  }
+
+  /** Keep `?story=<iri>&step=<n>` in the address so a reload (or a copied link) returns to this step. */
+  function syncStoryUrl(storyIri: string | null, step: number) {
+    if (typeof window === 'undefined') return;
+    try {
+      const u = new URL(window.location.href);
+      if (storyIri) { u.searchParams.set('story', storyIri); u.searchParams.set('step', String(step)); }
+      else { u.searchParams.delete('story'); u.searchParams.delete('step'); }
+      replaceState(u, {});
+    } catch { /* the router is not ready yet; the link simply is not updated */ }
+  }
+
+  /** Left and right arrows step the story, unless the person is typing or holding a modifier. */
+  function onStoryArrows(e: KeyboardEvent) {
+    if (!currentStory || currentStory.interaction || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    e.preventDefault();
+    if (e.key === 'ArrowRight') { if (storyStepIdx < currentStory.steps.length - 1) storyNext(); }
+    else storyPrev();
+  }
+
+  onDestroy(() => { if (currentStory) syncStoryUrl(null, 0); });
+
+  /*
+   * ON A PHONE THE WALK IS A SLIM STEP BAR, not the bottom sheet (F292.2, chosen from 390px screenshots of
+   * both, recorded on kb:story-walk-player). The sheet is a modal that takes most of the screen, so the
+   * lit markers it exists to point at were hidden behind it. The bar holds the caption and the controls
+   * over a short strip and leaves the canvas visible and tappable. "chat" brings the sheet back.
+   */
+  let sheetOverride = $state(false);
+  const walkBar = $derived(isCompact() && currentStory !== null && !currentStory.interaction && !sheetOverride);
+  const walkStep = $derived(currentStory && !currentStory.interaction ? currentStory.steps[storyStepIdx] ?? null : null);
+
+  function exitStory() {
+    stopAutoPlay(); stopStory(); currentStory = null;
+    syncStoryUrl(null, 0);
   }
 
   function storyNext() {
@@ -1237,6 +1283,8 @@
 
 </script>
 
+<svelte:window onkeydown={onStoryArrows} />
+
 <Tabs.Root
   value={tab}
   onValueChange={(v) => {
@@ -1252,7 +1300,7 @@
   }}
 >
 <AdaptivePanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
-  title="Shelly" open={true} onOpenChange={(o) => { if (!o) onclose(); }}
+  title="Shelly" open={!walkBar} onOpenChange={(o) => { if (!o && !walkBar) onclose(); }}
   extraStyle={voiceVolume > 0.05 ? `box-shadow: 0 0 ${8 + voiceVolume * 28}px ${2 + voiceVolume * 10}px color-mix(in srgb, #4caf50 ${Math.round(voiceVolume * 55)}%, transparent)` : ''}
 >
   {#snippet header()}
@@ -1733,7 +1781,7 @@
                 {storyCountdown}s
               </span>
             {/if}
-            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
+            <button class="story-btn story-exit" onclick={exitStory} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
           </div>
           {#if showVolumeSlider}
             <div class="story-volume-row">
@@ -1865,8 +1913,34 @@
 </AdaptivePanel>
 </Tabs.Root>
 
+{#if walkBar && walkStep && currentStory}
+  <section class="walk-bar" aria-label="Story: {currentStory.label}">
+    <div class="walk-text">
+      <strong class="walk-title">{walkStep.title}</strong>
+      <p class="walk-caption">{walkStep.content}</p>
+    </div>
+    <div class="walk-controls">
+      <span class="story-step-label mono" aria-live="polite">{storyStepIdx + 1} / {currentStory.steps.length}</span>
+      <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0} aria-label="Previous step">←</button>
+      <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1} aria-label="Next step">→</button>
+      <button class="story-btn" onclick={() => (sheetOverride = true)} aria-label="Open Shelly chat">chat</button>
+      <button class="story-btn story-exit" onclick={() => { exitStory(); onclose(); }} aria-label="Exit story mode">✕</button>
+    </div>
+  </section>
+{/if}
+
 
 <style>
+  .walk-bar {
+    position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 58px); z-index: 350;
+    display: flex; flex-direction: column; gap: 0.35rem; padding: 0.55rem 0.75rem;
+    background: color-mix(in srgb, var(--surface, #111) 94%, transparent); border-top: 1px solid var(--line, #333);
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
+  }
+  .walk-text { max-height: 26vh; overflow-y: auto; }
+  .walk-title { color: var(--accent); font-size: 0.9rem; }
+  .walk-caption { margin: 0.2rem 0 0; font-size: 0.82rem; line-height: 1.4; }
+  .walk-controls { display: flex; align-items: center; gap: 0.35rem; justify-content: space-between; }
   /* ── Header ── */
   .panel-header {
     display: flex;
