@@ -13002,6 +13002,8 @@ kb:site-space-assets rdf:type ktype:Phase ;
     rdfs:label "F294.7 — website outcome: an asset from a space shown on a page, linked back to its space" ;
     kpred:feature-id   "F294.7" ;
     kpred:part-of      kb:outcome-reckoning ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:relates-to   kb:built-with-reckons ;
+    kpred:tested-by    "src/lib/publish/__tests__/site-inline-assets.test.ts" ;
+    kpred:measured     "FOUND 2026-11-12 on the DIS About page: an inline frame of the self-hosted viewer was blocked even though it was same-origin, because the generated CSP has no frame-src and default-src is 'none'; and the still image (589 KB PNG) loaded eagerly because markdown images carried no loading attribute. Fix in this branch, unit-tested but not yet live: frame-src 'self' only on a page that holds a sanitized same-origin iframe (any other origin is stripped), and content images get loading=lazy decoding=async. Status stays in-progress until the DIS preview shows the ring inline." ;
     kpred:description  "A page can show an asset that lives in a space (a picture, a video, a Gaussian splat in a self-hosted viewer) with its origin label and a link to the space that holds how it was made. First instance: the scanned ring on the DIS About page (F292.3), done by hand on 2026-11-12." .
