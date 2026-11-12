@@ -1,4 +1,4 @@
-// Example spaces offered on /about. An entry with unlisted: true opens by link (/about?example=<id>) but is
+// Examples offered on /about. An entry with unlisted: true opens by link (/about?example=<id>) but is
 // not rendered in the list (F292.3: the ring, which a website links to). Unlisted is not private.
 export interface ExampleKb {
   id: string; icon: string; title: string; label?: string; body: string; file: string; space?: string;
@@ -42,7 +42,7 @@ export const EXAMPLE_KBS: ExampleKb[] = [
   },
   {
     // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
-    // Unlisted 2026-11-12 (Matt: review spaces are not public examples); still opened by /about?example=review-0.2.6 for the F34.5 release review.
+    // Unlisted 2026-11-12 (Matt: review examples are not public); still opened by /about?example=review-0.2.6 for the F34.5 release review.
     id: 'review-0.2.6',
     unlisted: true,
     icon: '✓',
@@ -55,7 +55,7 @@ export const EXAMPLE_KBS: ExampleKb[] = [
   },
   {
     // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
-    // Unlisted 2026-11-12 (Matt: review spaces are not public examples); still opened by /about?example=review-0.2.7 for the F34.5 release review.
+    // Unlisted 2026-11-12 (Matt: review examples are not public); still opened by /about?example=review-0.2.7 for the F34.5 release review.
     id: 'review-0.2.7',
     unlisted: true,
     icon: '✓',

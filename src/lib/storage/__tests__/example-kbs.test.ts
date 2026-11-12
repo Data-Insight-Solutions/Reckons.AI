@@ -3,7 +3,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { Parser } from 'n3';
 import { EXAMPLE_KBS, listedExampleKbs, findExampleKb } from '../example-kbs';
 
-describe('example spaces (F292.3)', () => {
+describe('example entries (F292.3)', () => {
   it('the ring is unlisted: resolvable by id, absent from the list', () => {
     expect(findExampleKb('ring-scan')?.file).toBe('/starter-ring-scan.ttl');
     expect(listedExampleKbs().some((k) => k.id === 'ring-scan')).toBe(false);
