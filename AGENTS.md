@@ -57,7 +57,7 @@ This project has its own Reckons.AI MCP server configured (`reckons`). It expose
 - **When touching code files**: `kb_search` the Codebase KB to see which module owns the file.
 - **At the start of a session**: `kb_stats` to see current state.
 
-Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private.
+Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private. EXCEPTION (Matt, 2026-11-11: "I'm fine with data cross over and duplication in the Reckons.AI repo, I am acting as Data Insight Solutions LLC, when writing Reckons.AI anyhow"): the Data Insight Solutions website's PUBLISHED pages and posts may be shipped as one generated example space (`static/starter-data-insight-solutions.ttl`, `scripts/starter/build-site-space.ts`), because he publishes both; its drafts, workspace files, config and contact address never are.
 
 ### Keeping KBs up to date
 

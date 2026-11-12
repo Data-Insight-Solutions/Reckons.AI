@@ -111,7 +111,7 @@ function assertNoSymlink(rel: string, abs: string, where: string): void {
  * Read every markdown file under <site>/content/ into the site-import file map (keys: content/<rel>).
  * A site without content/, or with no markdown pages, is an error — not an empty build.
  */
-function readSiteContent(site: string): Record<string, string> {
+export function readSiteContent(site: string): Record<string, string> {
   const contentDir = join(site, 'content');
   if (!existsSync(contentDir) || !statSync(contentDir).isDirectory()) {
     fail('no content/ directory in ' + site + ' — a site repository must contain content/*.md');

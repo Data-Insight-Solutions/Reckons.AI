@@ -39,6 +39,7 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
+    { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC, shown as a space: each published page and post is a node, with a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 15, triples: 133 },
     { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
     {
       id: 'quickstart',
@@ -94,7 +95,7 @@
       entities: 7,
       triples: 31
     },
-  ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
+  ] as { id: string; icon: string; title: string; label?: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 
   let loadingKb = $state<string | null>(null);
   let loadError = $state('');
@@ -143,6 +144,13 @@
 
   let exIdx = $state(0);
   let fading = $state(false);
+
+  // A link of the form /about?example=<id> opens that example space on its own.
+  onMount(() => {
+    const id = new URL(window.location.href).searchParams.get('example');
+    const kb = id ? EXAMPLE_KBS.find((k) => k.id === id) : undefined;
+    if (kb) void importStarterKB(kb);
+  });
 
   onMount(() => {
     const iv = setInterval(() => {
@@ -934,6 +942,7 @@
           <span class="starter-icon">{kb.icon}</span>
           <div class="starter-info">
             <strong>{kb.title}</strong>
+            {#if kb.label}<span class="starter-label mono">{kb.label}</span>{/if}
             <p>{kb.body}</p>
             <div class="starter-stats mono">
               <span>{kb.entities} entities</span>
@@ -1697,6 +1706,8 @@
     margin: 0;
     line-height: 1.55;
   }
+
+  .starter-label { display: inline-block; margin-left: 8px; font-size: 0.7rem; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
 
   .stp-example {
     font-size: 0.72rem;
