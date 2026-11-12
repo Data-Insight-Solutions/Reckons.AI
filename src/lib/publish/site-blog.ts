@@ -135,6 +135,7 @@ const BLOG_CSS = [
   '.post-categories a{border:1px solid var(--line);border-radius:999px;padding:0 .6rem;font-size:.8rem;color:var(--muted)}',
   '.references-note{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);color:var(--muted);font-size:.92rem}',
   '.references-note h2{font-size:1rem;margin:.2rem 0 .5rem}',
+  '@media(min-width:900px){.post-list{grid-template-columns:repeat(auto-fill,minmax(380px,1fr))}}',
   '@media(max-width:720px){.post-card{flex-direction:column}.post-card img{width:100%;flex:none;height:auto;max-height:200px}}',
 ].join('\n');
 

@@ -367,13 +367,18 @@ function documentHtml(ctx: ShellContext, title: string, description: string, mai
     + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n<script src="/landing.js"></script>\n</body>\n</html>';
 }
 
+/** Page title with the site name appended, unless the page title already contains it. */
+function pageTitle(page: string, site: string): string {
+  return page.toLowerCase().includes(site.toLowerCase()) ? page : page + ' · ' + site;
+}
+
 /** A page whose template is `landing`: its `## ` sections laid out as the landing design. */
 export function renderLandingPage(page: SitePage, ctx: ShellContext): string {
   const sections = parseLanding(page.body);
   const main = sections.length
     ? sections.map((s) => renderSection(s, ctx)).join('\n')
     : wrapSection({ title: page.title, opts: {}, body: page.body, subs: [] }, renderText({ title: page.title, opts: {}, body: page.body, subs: [] }));
-  return documentHtml(ctx, page.title + ' · ' + ctx.config.title, page.excerpt, main);
+  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main);
 }
 
 /** Any other page of a configured site: its markdown in a panel, inside the common shell. */
@@ -383,7 +388,7 @@ export function renderShellPage(page: SitePage, ctx: ShellContext, extra?: { htm
   const wantsForm = slugify(page.slug) === slugify(ctx.config.contact.slug);
   const form = wantsForm ? '<div class="page-contact">' + contactBlock(ctx.config) + '</div>' : '';
   const main = '<section class="page"><div class="wrap narrow"><article class="panel prose"><h1>' + esc(page.title) + '</h1>' + date + (extra?.before ?? '') + body + (extra?.after ?? '') + '</article>' + form + '</div></section>';
-  return documentHtml(ctx, page.title + ' · ' + ctx.config.title, page.excerpt, main);
+  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main);
 }
 
 // ── Stylesheet and script ────────────────────────────────────────────────────
@@ -404,7 +409,8 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.65
 a { color: var(--accent-bright); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 img { max-width: 100%; height: auto; }
 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gutter); }
-.wrap.narrow { max-width: 860px; }
+.wrap.narrow { max-width: 980px; }
+.wrap.narrow:has(.post-list) { max-width: var(--wrap); }
 .eyebrow { display: inline-block; font: 500 12px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--accent-bright); }
 h1, h2, h3 { letter-spacing: -.02em; }
 
