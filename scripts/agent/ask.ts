@@ -105,6 +105,7 @@ export function askGraph(q: Question, pendingPath = PENDING): { queued: boolean;
   const line = JSON.stringify(entry);
 
   const queued = queueFindings([entry], {
+    origin: 'note', // an agent's own question or report in a chat, not a JobRun: needs only its space (F89.4.1)
     agent: entry.agent,
     path: pendingPath,
     recomputes: false,

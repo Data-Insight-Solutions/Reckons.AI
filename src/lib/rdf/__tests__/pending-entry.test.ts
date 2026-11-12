@@ -111,6 +111,8 @@ describe('partitionPendingJsonl', () => {
     expect(result.entries).toHaveLength(1);
     expect(result.entries[0].object).toBe('planned');
     expect(result.retainedLines).toEqual([other, unscoped]);
+    // The drain can SAY why it kept rows back: one is for another destination, one names none.
+    expect(result.heldForOtherTargets).toBe(1);
     expect(result.issues).toMatchObject([{ line: 3, code: 'missing-kb' }]);
   });
 

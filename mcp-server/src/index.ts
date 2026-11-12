@@ -20,7 +20,7 @@
 import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { mergeGraphs, mergeToPending } from './merge.js';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { KBReader, MultiKBReader, type Triple } from './kb-reader.js';
 import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
@@ -29,8 +29,9 @@ import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-c
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
-import { appendPendingLines } from './pending-file.js';
-import { defaultCtx, jobEnqueue, jobList, jobStatus } from './local-jobs.js';
+import { appendPendingRows } from './pending-file.js';
+import { defaultCtx, jobEnqueue, jobLanes, jobList, jobStatus } from './local-jobs.js';
+import { routeLanes } from './review-lane.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -627,7 +628,7 @@ function handleKbMerge(params: { source: string; target: string; write_pending?:
     const pendingPath = kbFolder
       ? join(kbFolder, 'pending.jsonl')
       : kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, entries);
+    appendPendingRows(pendingPath, entries.map((l: string) => JSON.parse(l) as Record<string, unknown>), { kb: params.target });
     lines.push(`${entries.length} proposal(s) queued → ${pendingPath}`);
     lines.push(`Nothing was written to a graph. Accept or reject them in the Reckons.AI review queue.`);
   } else {
@@ -682,7 +683,7 @@ type AddNoteParams = {
 };
 
 function handleKbAddNote(params: AddNoteParams): object {
-  const entry = JSON.stringify({
+  const entry = {
     subject: `urn:kbase:${params.subject.replace(/\s+/g, '-').toLowerCase()}`,
     predicate: `urn:kbase:predicate/${params.predicate.replace(/\s+/g, '-').toLowerCase()}`,
     object: params.object,
@@ -693,17 +694,17 @@ function handleKbAddNote(params: AddNoteParams): object {
     priority: params.priority ?? 'normal',
     addedByMcp: true,
     addedAt: new Date().toISOString()
-  });
+  };
 
   // Try workspace kbs/{name}/ folder first, fall back to legacy sidecar file
   const kbFolder = kb.getKbFolderPath(params.kb);
   if (kbFolder) {
     const pendingPath = join(kbFolder, 'pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: basename(kbFolder) });
   } else {
     // Legacy: write next to the .ttl file
     const pendingPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: params.kb });
   }
 
   return {
@@ -927,7 +928,8 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
 function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
   const base = resolveBase(params.base);
   const files = pendingQueueFiles();
-  const rows = files.flatMap((f) => readPendingRows(f));
+  // Findings are a check's report, not a person's task (F89.4.3), so they get no review link.
+  const rows = routeLanes(files.flatMap((f) => readPendingRows(f)), jobLanes(defaultCtx())).review;
   const groups = reviewGroups(rows, base)
     .filter((g) => !params.agent || g.agent.toLowerCase().includes(params.agent.toLowerCase()));
 
@@ -1011,14 +1013,14 @@ function legacySiblingTriples(): { subject: string; predicate: string; object: s
  * with already-settled ones removed. A settled decision is not DELETED from the queue — the app
  * owns that, and a tool that quietly shrank the queue would make the two disagree.
  */
-function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number } {
+function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number; findings: number } {
   const sources = buildSources(pendingQueueFiles(kbFilter), queueWorkspace);
-  const state = loadReviewState(sources, workspaceArity(), kbFilter);
-  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled };
+  const state = loadReviewState(sources, workspaceArity(), kbFilter, jobLanes(defaultCtx()));
+  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled, findings: state.findings };
 }
 
 function handleKbReviewNext(params: ReviewNextParams): object {
-  const { decisions, files, totalRows, settled } = loadDecisions(params.kb);
+  const { decisions, files, totalRows, settled, findings } = loadDecisions(params.kb);
   if (files.length === 0) {
     return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
   }
@@ -1028,7 +1030,8 @@ function handleKbReviewNext(params: ReviewNextParams): object {
   const body = [
     renderQueue(shown, decisions.length, params.limit ?? 10, settled),
     '',
-    `From ${totalRows} queue row(s) across ${files.length} file(s).`,
+    `From ${totalRows} queue row(s) across ${files.length} file(s).` +
+      (findings > 0 ? ` ${findings} of them are FINDINGS (a check's observations that ask for an action, not a fact): they are not listed here and belong to the checks' reports (F89.4.3).` : ''),
     'kb_review_show(decision) reads one in full; kb_review_decide(decision, verdict) records a verdict.',
   ].join('\n');
   return { content: [{ type: 'text', text: body }] };

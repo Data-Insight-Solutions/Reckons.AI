@@ -35,6 +35,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { atomicWriteFile, withFileLock } from '../agent/state-file.js';
 import { readTextOr } from '../lib/read-file.js';
+import { readJobs } from '../lib/jobs-graph-read.js';
+import { handRunId, stampRow, type RowOrigin } from '../../mcp-server/src/row-contract.js';
+import type { Lane } from '../../mcp-server/src/review-lane.js';
 
 const repositoryUrl = new URL('../..', import.meta.url);
 // Vitest's transformed module URL is HTTP-shaped rather than file:, even though the test still
@@ -117,12 +120,57 @@ export function transactPendingQueue<T>(
  * queue-integrity.ts). Same call shape as appendFileSync so the migration is mechanical. A missing
  * trailing newline on the existing file is repaired rather than gluing two rows into one line.
  */
-export function appendQueueText(queuePath: string, text: string, _encoding?: string): void {
+export function appendQueueText(queuePath: string, text: string, opts?: string | { origin?: RowOrigin; env?: Record<string, string | undefined>; now?: Date }): void {
   if (!text) return;
+  // A string third argument is the old appendFileSync `encoding`, kept so migration stays mechanical.
+  const o = typeof opts === 'object' ? opts : {};
   transactPendingQueue(queuePath, (current) => {
     const sep = current && !current.endsWith('\n') ? '\n' : '';
-    return { content: current + sep + text + (text.endsWith('\n') ? '' : '\n'), result: undefined };
+    return { content: current + sep + stampLines(text, o) + (text.endsWith('\n') ? '\n' : '\n'), result: undefined };
   });
+}
+
+/**
+ * A HAND RUN has no JobRun (nobody went through the queue worker), and a person must not be refused
+ * for running a command. So the stamping step MINTS `hand:<job name>:<UTC timestamp>`, once per
+ * process and name so every row of that run shares it, and says so in one line.
+ */
+const handRuns = new Map<string, string>();
+export function mintHandRun(jobName: string, now = new Date()): string {
+  const key = jobName.trim() || process.argv[1]?.split('/').pop()?.replace(/\.[a-z]+$/, '') || 'unknown';
+  let id = handRuns.get(key);
+  if (!id) {
+    id = handRunId(key, now);
+    handRuns.set(key, id);
+    console.error(`pending-queue: no RECKONS_RUN_ID (not run by the queue worker); minted run ${id} for this process's rows`);
+  }
+  return id;
+}
+
+let jobLaneCache: Map<string, Lane> | undefined;
+/** Lane per job name from static/reckons-jobs.ttl (kpred:emits), read once. Empty if unreadable. */
+export function declaredJobLanes(): Map<string, Lane> {
+  if (jobLaneCache) return jobLaneCache;
+  const m = new Map<string, Lane>();
+  try { for (const j of readJobs()) if (j.emits !== 'nothing') m.set(j.name, j.emits); } catch { /* no jobs graph */ }
+  return (jobLaneCache = m);
+}
+
+/**
+ * THE ROW CONTRACT (F89.4.1): stamp and validate every JSON row in `text` BEFORE anything is
+ * written, so one refused row refuses the whole append and the queue is left as it was. A line that
+ * does not parse as an object is passed through untouched (queue-integrity reports it); it is
+ * evidence, not something to repair here. Throws RowContractError naming the missing field.
+ */
+export function stampLines(text: string, ctx: { origin?: RowOrigin; env?: Record<string, string | undefined>; now?: Date } = {}): string {
+  const jobLanes = declaredJobLanes();
+  return text.replace(/\n+$/, '').split('\n').map((line) => {
+    if (!line.trim()) return line;
+    let row: unknown;
+    try { row = JSON.parse(line); } catch { return line; }
+    if (row === null || typeof row !== 'object' || Array.isArray(row)) return line;
+    return JSON.stringify(stampRow(row as Record<string, unknown>, { mintRun: (n) => mintHandRun(n, ctx.now), ...ctx, jobLanes }));
+  }).join('\n');
 }
 
 /**
@@ -193,7 +241,7 @@ export type QueueResult = { queued: number; skipped: number; superseded: number 
  */
 export function queueFindings(
   findings: Finding[],
-  opts: { agent: string; path?: string; recomputes?: boolean; kb?: string },
+  opts: { agent: string; path?: string; recomputes?: boolean; kb?: string; origin?: RowOrigin },
 ): QueueResult {
   const path = opts.path ?? QUEUE_PATH;
   return transactPendingQueue(path, (current) => queueFindingsLocked(findings, opts, current));
@@ -201,7 +249,7 @@ export function queueFindings(
 
 function queueFindingsLocked(
   findings: Finding[],
-  opts: { agent: string; path?: string; recomputes?: boolean; kb?: string },
+  opts: { agent: string; path?: string; recomputes?: boolean; kb?: string; origin?: RowOrigin },
   existingRaw: string,
 ): PendingQueueTransaction<QueueResult> {
   const agent = opts.agent;
@@ -227,13 +275,13 @@ function queueFindingsLocked(
   // default. A producer that targets another graph must say so explicitly. Leaving `kb` absent
   // used to mean "whatever graph the browser has open", which is not routing at all.
   const targetKb = opts.kb ?? 'roadmap';
-  const rows = findings.map((f) => ({
+  const rows = findings.map((f) => stampRow({
     ...f,
     kb: f.kb ?? targetKb,
     agent,
     addedAt: now,
     addedByMcp: true,
-  }));
+  } as Record<string, unknown>, { origin: opts.origin ?? 'job', jobLanes: declaredJobLanes(), mintRun: (n) => mintHandRun(n) }) as typeof findings[number] & { kb: string });
 
   let skipped = 0;
   const incoming = new Set<string>();

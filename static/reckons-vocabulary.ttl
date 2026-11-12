@@ -389,6 +389,10 @@ kpred:set-relates-to a rdf:Property ;
     rdfs:domain skos:Collection ;
     rdfs:comment "A relation between two SETS, or a set and one entity. LOCAL: SKOS has no Collection-to-Collection relation — its mapping properties relate Concepts, and skos:related is domain and range skos:Concept, so reusing it here would be a range violation." .
 
+kpred:reconstructed-from a rdf:Property ;
+    rdfs:label "reconstructed from" ;
+    rdfs:comment "A scan (a Gaussian splat) was reconstructed from this capture. A DOMAIN relation between two entities, drawn as an edge. It is deliberately not prov:wasDerivedFrom: every prov: predicate is treated as accountability metadata about a statement and hidden from the canvas (isMetaPredicate), so a splat linked that way still looks like an island. MULTI-VALUED: a capture may yield several splats, so accepting one never replaces another." .
+
 
 ## =============================================================================
 ## RELATION LAYER — claim, provenance, or question.
@@ -590,6 +594,31 @@ kpred:network a rdf:Property ;
     rdfs:label "needs network" ;
     rdfs:domain ktype:Schedule ;
     rdfs:comment "\"true\" when the scheduled command talks to the internet (e.g. an advisory lookup), so the person can see which recurring jobs leave the machine." .
+
+kpred:emits a rdf:Property ;
+    rdfs:label "emits" ;
+    rdfs:domain ktype:OfflineJob ;
+    rdfs:comment "What a job puts in front of the review queue (F89.4.3): claim (subject, predicate and object), question (object open), finding (an observation that asks for an action and goes to the check's report, not to a person) or nothing. The jobs lint fails a job that does not declare one." .
+
+kpred:kept-on-purpose a rdf:Property ;
+    rdfs:label "kept on purpose" ;
+    rdfs:comment "The object is a repository-relative directory path that is deliberately kept whole (a scaffold, a vendored tree, a published API). The dead-weight sweep (F89.4.3) asks 'is this directory kept whole on purpose?' once per directory, and reads this fact on its next run so it never lists the files under a directory so recorded. Put it on the module that owns the directory when one exists." .
+
+# ── F293: facts that expire (2026-11-12) ─────────────────────────────────────
+# CHOICE RECORDED: a LOCAL predicate with skos:closeMatch to schema:validThrough, not the schema.org term itself.
+# This file's own rule (see the layer note above) is "reference the IRI via a mapping, write the sentence yourself".
+# schema:validThrough is declared for offers, jobs and similar, so using it directly on any fact would put its
+# domain wrong; a kpred: term keeps the data consistent with every other fact here and the mapping carries the standard.
+# An OPEN date is the object "?" with needsObject true (src/lib/rdf/partial-facts.ts), never a guessed date.
+
+kpred:valid-until a rdf:Property ;
+    rdfs:label "valid until" ;
+    skos:closeMatch <https://schema.org/validThrough> ;
+    rdfs:comment "The last day a fact is still true, as an xsd:date. The fact is expired only when this date has passed; nothing infers a lifetime. The object ? marks an open question: the date has not been given." .
+
+kpred:stated-on a rdf:Property ;
+    rdfs:label "stated on" ;
+    rdfs:comment "A fact is stated on a page of a site. One fact may be stated on many pages; the expiry check names every one of them." .
 
 # 2026-10-08 — LAYERS APPROVED BY MATT in a Claude Code chat review of the layer-classify job's proposals
 # (qwen3:32b drafted them; 475 queued rows over 355 predicates). claim is the fail-safe default above, so the 331

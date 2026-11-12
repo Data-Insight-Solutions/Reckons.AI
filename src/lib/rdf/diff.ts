@@ -1,12 +1,18 @@
 import type { Statement, Term } from './types';
 import { termKey, tripleKey } from './types';
+import { predicateArity, isSingleValued, type Arity } from './predicate-arity';
 
 /**
  * When new statements come in from a document, we classify each one against
  * the existing KB. The user can then accept, refine, or reject the diff.
  */
 export type DiffEntry =
-  | { kind: 'new'; incoming: Statement }
+  /**
+   * `siblings`: live facts with the same subject and predicate but another object, when the predicate
+   * ACCUMULATES (or is not known to be single-valued). They are not a conflict; the card may still
+   * offer an explicit "replaces" for a person who means it.
+   */
+  | { kind: 'new'; incoming: Statement; siblings?: Statement[] }
   | { kind: 'duplicate'; incoming: Statement; existing: Statement }
   | { kind: 'reinforces'; incoming: Statement; existing: Statement[] } // same (s,p,o), different graph
   | { kind: 'conflicts'; incoming: Statement; existing: Statement[] }   // same (s,p), different o
@@ -86,8 +92,17 @@ function isRefinementOf(incoming: Term, existing: Term): boolean {
   return a.includes(b) && a.length > b.length + 4;
 }
 
-export function computeDiff(incoming: Statement[], existing: Statement[]): Diff {
+export function computeDiff(
+  incoming: Statement[],
+  existing: Statement[],
+  opts: { /** Override the measured arity (a test, or a caller that knows better). */ arity?: ReadonlyMap<string, Arity> } = {},
+): Diff {
   const { byTriple, bySp, settled } = indexExisting(existing);
+  // A different object for the same subject and predicate is a CONFLICT only where the predicate is
+  // single-valued; measured from the facts already stored, and unknown means multi-valued.
+  const arity = opts.arity ?? predicateArity(existing
+    .filter((st) => st.status !== 'rejected' && st.status !== 'superseded' && st.status !== 'pending' && st.o.kind !== undefined && !st.needsObject)
+    .map((st) => ({ subject: termKey(st.s), predicate: st.p.value, object: termKey(st.o) })));
   const entries: DiffEntry[] = [];
   const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
 
@@ -133,6 +148,12 @@ export function computeDiff(incoming: Statement[], existing: Statement[]): Diff 
         priorStatus: rejected.length > 0 ? 'rejected' : 'superseded'
       });
       summary.returned++;
+      continue;
+    }
+
+    if (sameSp.length > 0 && !isSingleValued(arity, inc.p.value)) {
+      entries.push({ kind: 'new', incoming: inc, siblings: sameSp });
+      summary.new++;
       continue;
     }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Parser } from 'n3';
-import { extractFacts, validateVerdict, runToTurtle, runEntityId, TTL_PREFIXES, buildPrompt, tailOf } from '../job-watch.js';
+import { extractFacts, validateVerdict, runToTurtle, runEntityId, jobEnv, TTL_PREFIXES, buildPrompt, tailOf } from '../job-watch.js';
 
 const LOG = [
   '\u001b[32m ✓ \u001b[39m src/a.test.ts (3 tests)',
@@ -74,5 +74,16 @@ describe('runToTurtle', () => {
     expect(quads.filter((q) => q.predicate.value === 'urn:kbase:predicate/finding')).toHaveLength(1);
     expect(quads.find((q) => q.predicate.value === 'urn:kbase:predicate/exit-code')?.object.value).toBe('1');
     expect(quads.find((q) => q.predicate.value === 'urn:kbase:predicate/headline')?.object.value).toBe('it said "no"\nnewline');
+  });
+});
+
+describe('the run id reaches the job (F89.4.1)', () => {
+  it('hands the job the id of the JobRun entity this same run records', () => {
+    const started = new Date('2026-11-10T21:00:00.000Z');
+    const env = jobEnv('dead-weight', started, { PATH: '/bin', RECKONS_RUN_ID: 'stale' });
+    expect(env.RECKONS_RUN_ID).toBe(runEntityId('dead-weight', started));
+    expect(env.RECKONS_RUN_ID).toBe('jobrun:dead-weight-20261110T210000Z');
+    expect(env.RECKONS_JOB_NAME).toBe('dead-weight');
+    expect(env.PATH).toBe('/bin');
   });
 });

@@ -23,7 +23,7 @@ rev:gap rdf:type ktype:Concept ;
     rdfs:comment "5 part(s) of v0.2.7 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
-    p:has rev:gap-f245, rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthropic-usage-runs-out, rev:gap-phase-4-group-the-queue-so-it-can-be-judged-in-one-pass, rev:gap-f273, rev:gap-f274-1 .
+    p:has rev:gap-f245, rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthropic-usage-runs-out, rev:gap-f89-4, rev:gap-f273, rev:gap-f274-1 .
 
 rev:gap-f245 rdf:type ktype:Concept ;
     rdfs:label "F245 Agents in the app — a dashboard, and agent settings per space and per device" ;
@@ -33,9 +33,9 @@ rev:gap-phase-7-the-local-deputy-claude-code-driven-by-a-local-model-when-anthro
     rdfs:label "Phase 7 — the local deputy: Claude Code driven by a local model when Anthropic usage runs out" ;
     rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists tests/bench/__tests__/orchestration-scoring.test.ts, tests/bench/__tests__/overseer-tasks.test.ts, scripts/agent/__tests__/local-claude-window.test.ts, scripts/agent/__tests__/deputy-memory.test.ts)." .
 
-rev:gap-phase-4-group-the-queue-so-it-can-be-judged-in-one-pass rdf:type ktype:Concept ;
-    rdfs:label "Phase 4 — group the queue so it can be judged in one pass" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/presettle.test.ts)." .
+rev:gap-f89-4 rdf:type ktype:Concept ;
+    rdfs:label "F89.4 Phase 4 — group the queue so it can be judged in one pass" ;
+    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/presettle.test.ts, scripts/offline/__tests__/pending-queue.test.ts, scripts/offline/__tests__/queue-integrity.test.ts, scripts/agent/__tests__/job-watch.test.ts, mcp-server/src/__tests__/pending-file.test.ts, mcp-server/src/__tests__/review-lane.test.ts, scripts/offline/__tests__/dead-weight-groups.test.ts, scripts/__tests__/jobs-graph-read.test.ts)." .
 
 rev:gap-f273 rdf:type ktype:Concept ;
     rdfs:label "F273 Procedure over prose — define the job, then let the harness run the process, so speed cannot skip a step" ;

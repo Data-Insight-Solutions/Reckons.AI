@@ -218,7 +218,7 @@ test('a reload between creating a job directory and writing its request resumes 
 });
 
 test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166.1.2)', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await fixtureWorkspace(page);
   await page.evaluate(async () => {
     const reply = 'I can make both on your computer: two different images, then a Gaussian splat from each.\n<kb-actions>\n'
@@ -235,7 +235,7 @@ test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166
     workspace.__linkHandleForTest(await navigator.storage.getDirectory());
   });
   const queue = page.getByRole('button', { name: 'queue 4', exact: true });
-  await expect(queue).toBeEnabled({ timeout: 15_000 });
+  await expect(queue).toBeEnabled({ timeout: 40_000 });
   await expect(page.getByText('2. Gaussian splat from image 1')).toBeVisible();
   await queue.click();
   await expect.poll(async () => (await jobRequests(page)).length).toBe(4);

@@ -24,6 +24,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readPendingRows, type PendingRow } from './review-links.js';
+import { routeLanes, type Lane } from './review-lane.js';
 import { groupDecisions, normalizeKb, rowId, settledIds, type Arity, type Decision } from './review-session.js';
 
 export const WORKSPACE_QUEUE_FILE = 'knowledge.pending.jsonl';
@@ -68,6 +69,8 @@ export interface ReviewState {
   sources: QueueSource[];
   totalRows: number;
   settled: number;
+  /** Finding-lane rows kept out of the decisions (F89.4.3): they belong to a check's report. */
+  findings: number;
 }
 
 /**
@@ -77,6 +80,7 @@ export interface ReviewState {
  */
 export function loadReviewState(
   sources: QueueSource[], arity: ReadonlyMap<string, Arity>, kbFilter?: string,
+  jobLanes?: ReadonlyMap<string, Lane>,
 ): ReviewState {
   const wanted = kbFilter ? normalizeKb(kbFilter) : null;
   const seen = new Set<string>();
@@ -91,11 +95,12 @@ export function loadReviewState(
       rows.push(r);
     }
   }
+  const split = routeLanes(rows, jobLanes);
   const settled = new Set<string>();
   for (const s of sources) for (const id of settledIds(s.decisions)) settled.add(id);
-  const all = groupDecisions(rows, arity);
+  const all = groupDecisions(split.review, arity);
   const decisions = all.filter((d) => !settled.has(d.id));
-  return { decisions, sources, totalRows: rows.length, settled: all.length - decisions.length };
+  return { decisions, sources, totalRows: rows.length, settled: all.length - decisions.length, findings: split.findings.length };
 }
 
 /** The journals a verdict on `d` must be written to: one per source holding any of its rows. */

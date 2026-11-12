@@ -101,6 +101,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-everyday ,
         graph:starter-everyday-reviewed ,
         graph:starter-generated-assets ,
+        graph:starter-ring-scan ,
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-sim-ramp-cup ,
@@ -109,6 +110,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-turtles ,
         graph:starter-visual-review ,
         graph:starter-your-room ,
+        graph:starter-data-insight-solutions ,
         graph:website ,
         graph:website-status .
 
@@ -289,10 +291,21 @@ graph:starter-generated-assets a void:Dataset ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-generated-assets.ttl" .
 
+graph:starter-ring-scan a void:Dataset ;
+    dcterms:title "Starter: the ring (unlisted; reconstructed from photographs, F292.3)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-ring-scan.ttl" .
+
 graph:starter-your-room a void:Dataset ;
     dcterms:title "Starter: your room" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-your-room.ttl" .
+
+graph:starter-data-insight-solutions a void:Dataset ;
+    dcterms:title "Starter: Data Insight Solutions (a published website)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-data-insight-solutions.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/starter/build-site-space.ts> .
 
 graph:starter-everyday a void:Dataset ;
     dcterms:title "Starter: everyday" ;

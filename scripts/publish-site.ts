@@ -16,6 +16,7 @@ import path from 'path';
 import { execFileSync } from 'child_process';
 import { Parser } from 'n3';
 import { generateStaticSite } from '../src/lib/publish/site-generator.js';
+import { assertNotDraftPreview } from '../src/lib/publish/site-build.js';
 import { checkAssetSizes, getTarget, formatBytes, type PublishTarget } from '../src/lib/publish/targets.js';
 import type { Statement } from '../src/lib/rdf/types.js';
 import { writeGeneratedSite } from './lib/site-output.js';
@@ -85,6 +86,8 @@ if (oversized.length) {
 }
 
 // ── Deploy step ──
+// A site:build --drafts preview must never reach a host (F274.4.2).
+assertNotDraftPreview(generatedDirectory);
 console.log(`\n${B}deploy${X} ${D}(${target.deploy})${X}`);
 if (target.deploy === 'cli' && target.cli) {
   const cmd = target.cli.command(generatedDirectory, project);

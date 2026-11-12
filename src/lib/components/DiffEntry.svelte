@@ -132,6 +132,25 @@
       processing = false;
     }
   }
+  /**
+   * An EXPLICIT replacement: the person says this new value replaces the others for the same subject
+   * and predicate. Only offered on an accumulating predicate, where accepting never replaces by itself.
+   */
+  async function replaceSiblings() {
+    if (entry.kind !== 'new' || !entry.siblings?.length) return;
+    error = null;
+    processing = true;
+    try {
+      for (const e of entry.siblings) await setStatus(e.id, 'superseded');
+      await setStatus(entry.incoming.id, 'refined');
+      onresolved();
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+      console.error('Failed to replace:', e);
+    } finally {
+      processing = false;
+    }
+  }
   async function pickExisting() {
     if (entry.kind !== 'conflicts' && entry.kind !== 'refines' && entry.kind !== 'antonym-conflicts') return;
     error = null;
@@ -226,6 +245,9 @@
   </div>
 
   <StatementCard statement={entry.incoming} compact />
+  {#if entry.kind === 'new' && entry.siblings?.length}
+    <p class="muted">this predicate holds several values, so accepting adds it beside {entry.siblings.length} existing one(s)</p>
+  {/if}
   {#if entry.incoming.excerpt}
     <blockquote class="excerpt">{entry.incoming.excerpt}</blockquote>
   {/if}
@@ -304,6 +326,11 @@
         </button>
         {#if isLit(entry.incoming.o)}
           <button onclick={() => (editing = true)} disabled={processing}>refine</button>
+        {/if}
+        {#if entry.siblings?.length}
+          <button onclick={replaceSiblings} disabled={processing} title="Accepting adds this alongside the {entry.siblings.length} existing value(s). Use this only to REPLACE them.">
+            {processing ? 'replacing…' : `replaces ${entry.siblings.length} existing`}
+          </button>
         {/if}
         <button class="danger" onclick={reject} disabled={processing}>
           {processing ? 'rejecting…' : 'reject'}

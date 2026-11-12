@@ -23,16 +23,29 @@ describe('jobs graph reader (F216)', () => {
 
   it('orders by hnav:order and reads the flags', () => {
     const jobs = parseJobs(`${PRE}
-job:b a ktype:OfflineJob ; rdfs:label "b" ; kpred:job-tier "agent" ; kpred:command "echo b" ; kpred:job-enabled "false" ; kpred:job-queues "false" ; hnav:order 2 .
-job:a a ktype:OfflineJob ; rdfs:label "a" ; kpred:job-tier "script" ; kpred:command "echo a" ; kpred:job-enabled "true" ; kpred:job-blocking "true" ; hnav:order 1 .`);
+job:b a ktype:OfflineJob ; rdfs:label "b" ; kpred:job-tier "agent" ; kpred:emits "claim" ; kpred:command "echo b" ; kpred:job-enabled "false" ; kpred:job-queues "false" ; hnav:order 2 .
+job:a a ktype:OfflineJob ; rdfs:label "a" ; kpred:job-tier "script" ; kpred:emits "nothing" ; kpred:command "echo a" ; kpred:job-enabled "true" ; kpred:job-blocking "true" ; hnav:order 1 .`);
     expect(jobs.map((j) => j.name)).toEqual(['a', 'b']);
     expect(jobs[0]).toMatchObject({ enabled: true, blocking: true, tier: 'script' });
     expect(jobs[1]).toMatchObject({ enabled: false, queues: false, tier: 'agent' });
   });
 
   it('fails loudly on a job with no command, no tier or no label', () => {
-    expect(() => parseJobs(`${PRE}job:x a ktype:OfflineJob ; rdfs:label "x" ; kpred:job-tier "script" .`)).toThrow(/no kpred:command/);
+    expect(() => parseJobs(`${PRE}job:x a ktype:OfflineJob ; rdfs:label "x" ; kpred:job-tier "script" ; kpred:emits "nothing" .`)).toThrow(/no kpred:command/);
     expect(() => parseJobs(`${PRE}job:x a ktype:OfflineJob ; rdfs:label "x" ; kpred:command "echo" .`)).toThrow(/job-tier/);
     expect(() => parseJobs(`${PRE}job:x a ktype:OfflineJob ; kpred:job-tier "script" ; kpred:command "echo" .`)).toThrow(/rdfs:label/);
+  });
+
+  it('jobs lint (F89.4.3): a job that declares no lane, or an invented one, fails', () => {
+    const base = 'job:x a ktype:OfflineJob ; rdfs:label "x" ; kpred:job-tier "script" ; kpred:command "echo" ';
+    expect(() => parseJobs(`${PRE}${base}.`)).toThrow(/kpred:emits/);
+    expect(() => parseJobs(`${PRE}${base}; kpred:emits "report" .`)).toThrow(/kpred:emits/);
+    for (const e of ['claim', 'question', 'finding', 'nothing']) {
+      expect(parseJobs(`${PRE}${base}; kpred:emits "${e}" .`)[0].emits).toBe(e);
+    }
+  });
+
+  it('every job in the real file declares what it emits', () => {
+    for (const j of readJobs()) expect(['claim', 'question', 'finding', 'nothing']).toContain(j.emits);
   });
 });

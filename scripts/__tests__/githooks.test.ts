@@ -24,7 +24,7 @@ function sh(cwd: string, cmd: string, env: Record<string, string> = {}) {
 function jobsTtl(spec: { jobs: { name: string; tier: string; enabled: boolean; blocking: boolean; cmd: string }[] }): string {
   const head = '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix ktype: <urn:kbase:type/> .\n@prefix kpred: <urn:kbase:predicate/> .\n@prefix hnav: <urn:reckons:nav/> .\n@prefix job: <urn:reckons:job/> .\n';
   const q = (v: string) => JSON.stringify(v);
-  return head + spec.jobs.map((j, i) => `job:${j.name} a ktype:OfflineJob ; rdfs:label ${q(j.name)} ; kpred:job-tier ${q(j.tier)} ; kpred:command ${q(j.cmd)} ; kpred:job-enabled ${q(String(j.enabled))} ; kpred:job-blocking ${q(String(j.blocking))} ; hnav:order ${i} .\n`).join('');
+  return head + spec.jobs.map((j, i) => `job:${j.name} a ktype:OfflineJob ; rdfs:label ${q(j.name)} ; kpred:job-tier ${q(j.tier)} ; kpred:emits "nothing" ; kpred:command ${q(j.cmd)} ; kpred:job-enabled ${q(String(j.enabled))} ; kpred:job-blocking ${q(String(j.blocking))} ; hnav:order ${i} .\n`).join('');
 }
 function tempRepo(registry?: object, jobs?: object) {
   const d = mkdtempSync(join(tmpdir(), 'githooks-'));

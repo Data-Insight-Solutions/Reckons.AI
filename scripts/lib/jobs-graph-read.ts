@@ -19,12 +19,16 @@ const ORDER = 'urn:reckons:nav/order';
 const OFFLINE_JOB = 'urn:kbase:type/OfflineJob';
 
 export type JobTier = 'script' | 'agent';
+/** What a job puts in front of the review queue (F89.4.3): `nothing` means it writes no rows. */
+export type JobEmits = 'claim' | 'question' | 'finding' | 'nothing';
+export const JOB_EMITS: readonly JobEmits[] = ['claim', 'question', 'finding', 'nothing'];
 export interface Job {
   name: string;
   cmd: string;
   desc?: string;
   enabled: boolean;
   tier: JobTier;
+  emits: JobEmits;
   /** Under --ci, a failure here fails the build. */
   blocking?: boolean;
   /** false = the command no longer writes to the review queue, so back-pressure must not hold it. */
@@ -49,9 +53,11 @@ export function parseJobs(ttl: string): Job[] {
     if (!o.label) throw bad('rdfs:label');
     if (o['job-tier'] !== 'script' && o['job-tier'] !== 'agent') throw bad('kpred:job-tier of script or agent');
     if (!o.command) throw bad('kpred:command');
+    // THE JOBS LINT (F89.4.3): a job that does not say what it emits cannot be routed to a lane.
+    if (!(JOB_EMITS as readonly string[]).includes(o.emits)) throw bad(`kpred:emits of ${JOB_EMITS.join(', ')} (what it puts in the review queue)`);
     const order = o.order !== undefined && Number.isFinite(Number(o.order)) ? Number(o.order) : 1e6 + i;
     const job: Job = {
-      name: o.label, cmd: o.command, enabled: o['job-enabled'] !== 'false', tier: o['job-tier'],
+      name: o.label, cmd: o.command, enabled: o['job-enabled'] !== 'false', tier: o['job-tier'], emits: o.emits as JobEmits,
       ...(o.desc ? { desc: o.desc } : {}),
       ...(o['job-blocking'] === 'true' ? { blocking: true } : {}),
       ...(o['job-queues'] === 'false' ? { queues: false } : {}),

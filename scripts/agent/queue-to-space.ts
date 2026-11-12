@@ -26,6 +26,11 @@
  * Defaults: --dir $XDG_STATE_HOME|~/.local/state/reckons/jobs
  *           --out $XDG_DATA_HOME|~/.local/share/reckons/private-workspace/kbs/job-plan/job-plan.ttl
  *
+ * DEVICE MODE (F269.1, --device): the same script also writes the FULL per-job record for the private
+ * device space: see buildDeviceSpaceText below. It goes to its own file, apart from anything a person
+ * edits, mode 0600, and the writer refuses a path inside a Git checkout. The job-plan output above is
+ * unchanged (same path, same nodes) so the running 10-minute schedule is not disturbed.
+ *
  * WEAKNESS, said out loud: a RUNNING job (current.json) carries only a name and pid — no queue id —
  * so its node id is the job's queue id when the name still resolves to a queued entry (it does,
  * because the worker removes a job from queue.jsonl only once it finishes), else the slug of its
@@ -33,11 +38,13 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Parser } from 'n3';
 import { pidAlive, slug } from './job-state.js';
+import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
 
 // ── vocabulary ─────────────────────────────────────────────────────────────
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -173,6 +180,12 @@ export function buildSpaceText(records: JobRecord[], nowMs: number): string {
   const facts: Fact[] = [...typeFacts];
   for (const r of ordered) facts.push(...factsFor(r, resolve));
 
+  return renderSpace(facts, nowMs, { stableId: KB_STABLE_ID, sourceIri: SOURCE_IRI, sourceTitle: SOURCE_TITLE });
+}
+
+/** Serialize facts as the app's annotated export: every fact a confirmed, derived reification block. */
+function renderSpace(facts: Fact[], nowMs: number, id: { stableId: string; sourceIri: string; sourceTitle: string }): string {
+  const srcShort = shorten(id.sourceIri);
   const lines: string[] = [];
   lines.push(`# generated ${new Date(nowMs).toISOString()}`);
   lines.push(`# ${facts.length} statements — full annotated export`);
@@ -181,26 +194,30 @@ export function buildSpaceText(records: JobRecord[], nowMs: number): string {
   lines.push('');
 
   lines.push('# ---- kb identity ----');
-  lines.push(`<urn:reckons:kb> <urn:reckons:meta/kbStableId> "${KB_STABLE_ID}" .`);
+  lines.push(`<urn:reckons:kb> <urn:reckons:meta/kbStableId> "${id.stableId}" .`);
   lines.push('');
 
   lines.push('# ---- sources ----');
-  lines.push(`src:local-job-queue`);
+  lines.push(srcShort);
   lines.push(`    rdf:type meta:Source ;`);
-  lines.push(`    dc:title ${JSON.stringify(SOURCE_TITLE)} ;`);
+  lines.push(`    dc:title ${JSON.stringify(id.sourceTitle)} ;`);
   lines.push(`    dc:created "${SCHEMA_CREATED}"^^xsd:dateTime .`);
   lines.push('');
 
   lines.push('# ---- statement metadata (all statuses) ----');
+  const seen = new Set<string>();
   for (const f of facts) {
-    lines.push(`<urn:kbase:stmt/${factId(f)}>`);
+    const sid = factId(f);
+    if (seen.has(sid)) continue; // one block per distinct fact
+    seen.add(sid);
+    lines.push(`<urn:kbase:stmt/${sid}>`);
     lines.push(`    rdf:type rdf:Statement ;`);
     lines.push(`    rdf:subject ${shorten(f.s)} ;`);
     lines.push(`    rdf:predicate ${shorten(f.p)} ;`);
     lines.push(`    rdf:object ${lit(f.o, f.dt)} ;`);
     lines.push(`    meta:status "confirmed" ;`);
     lines.push(`    meta:confidence "1"^^xsd:decimal ;`);
-    lines.push(`    prov:wasDerivedFrom src:local-job-queue ;`);
+    lines.push(`    prov:wasDerivedFrom ${srcShort} ;`);
     lines.push(`    dc:created "${f.created}"^^xsd:dateTime .`);
     lines.push('');
   }
@@ -357,6 +374,219 @@ export function buildRecords(dir: string, nowMs: number, opts: BuildOpts = {}): 
   return records;
 }
 
+
+// ── device space: the full per-job record (F269.1) ─────────────────────────
+
+const DEVICE_STABLE_ID = 'b1b1b1b1-2c2c-4d3d-8e4e-5f6f708192a4';
+const DEVICE_SOURCE_IRI = 'urn:kbase:source/device-job-records';
+const DEVICE_SOURCE_TITLE = 'Local job records (derived by script)';
+const DEVICE_JOB_TYPE = 'urn:kbase:type/DeviceJob';
+const DEVICE_RUN_TYPE = 'urn:kbase:type/DeviceJobRun';
+/** The leap predicate of src/lib/rdf/kb-leap.ts (LEAP_PRED / LEAP_LABEL_PRED); the target is a stable id. */
+const LEAP_PRED = 'urn:reckons:leap';
+const LEAP_LABEL_PRED = 'urn:reckons:leap/label';
+/** Run nodes kept per job; older runs are only a count (F269.1). */
+export const RUNS_KEPT = 20;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type DeviceJobState = 'running' | 'given-up' | 'held' | 'queued' | 'idle';
+export type JobDef = { key: string; name: string; tier?: string; enabled?: boolean; description?: string; schedule?: string };
+export type RawRun = {
+  id: string; name: string; finishedAt: string; startedAt?: string; outcome: string; exitCode?: number; reason?: string;
+  /** From the done record's `result` (what the job wrote to RECKONS_JOB_RESULT, F58.9.20), when it has one:
+   *  the output asset's content id and the space it was made for (a stable id leaps; a folder name stays a label). */
+  output?: string; forSpace?: string;
+};
+export type RawQueued = { id: string; name: string; after?: string[]; gpu?: boolean; gpuIndex?: number; addedAt?: string };
+export type DeviceInput = {
+  defs: JobDef[];
+  queued: RawQueued[];
+  running: { name: string; started?: string }[];
+  /** name -> reason, from worker.json's held list. */
+  held: Map<string, string>;
+  /** name -> failure signature, from circuits.json (an open circuit = the worker gave up). */
+  circuits: Map<string, { count: number; signature: string }>;
+  done: RawRun[];
+};
+
+/** `sched:x` and `x` are the same job. */
+const jobKeyOf = (name: string): string => slug(name.replace(/^sched:/, ''));
+
+/** Defined jobs (static/reckons-jobs.ttl) and schedules (schedules.ttl), by key. Pure over the two texts. */
+export function parseDefinitions(jobsTtl: string, schedulesTtl: string): JobDef[] {
+  const NS = { type: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type', label: RDFS_LABEL, def: 'http://www.w3.org/2004/02/skos/core#definition' };
+  const read = (ttl: string): Map<string, Map<string, string>> => {
+    const m = new Map<string, Map<string, string>>();
+    try {
+      for (const q of new Parser().parse(ttl)) {
+        const o = m.get(q.subject.value) ?? new Map<string, string>();
+        if (!o.has(q.predicate.value)) o.set(q.predicate.value, q.object.value);
+        m.set(q.subject.value, o);
+      }
+    } catch { /* an unparsable file contributes nothing, loudly absent from the output */ }
+    return m;
+  };
+  const defs = new Map<string, JobDef>();
+  for (const [, o] of read(jobsTtl)) {
+    if (o.get(NS.type) !== 'urn:kbase:type/OfflineJob') continue;
+    const name = o.get(NS.label);
+    if (!name) continue;
+    defs.set(jobKeyOf(name), { key: jobKeyOf(name), name, tier: o.get(`${P}job-tier`), enabled: o.get(`${P}job-enabled`) !== 'false', description: o.get(NS.def) });
+  }
+  for (const [iri, o] of read(schedulesTtl)) {
+    if (o.get(NS.type) !== 'urn:kbase:type/Schedule') continue;
+    const id = iri.split(/[/#:]/).pop() ?? iri;
+    const key = jobKeyOf(id);
+    const prev = defs.get(key);
+    const every = o.get(`${P}every`);
+    defs.set(key, {
+      key, name: prev?.name ?? id, tier: prev?.tier ?? o.get(`${P}tier`), enabled: prev?.enabled ?? o.get(`${P}enabled`) !== 'false',
+      description: prev?.description ?? o.get(NS.label), ...(every ? { schedule: every } : {}),
+    });
+  }
+  return [...defs.values()];
+}
+
+const cardOf = (q?: { gpu?: boolean; gpuIndex?: number }): string | undefined =>
+  !q ? undefined : q.gpu === false ? 'cpu' : typeof q.gpuIndex === 'number' ? `gpu${q.gpuIndex}` : 'any gpu';
+
+/**
+ * Render the device space's job records. Pure: the same input gives the same bytes apart from the
+ * `# generated` line. Every fact is confirmed and derived from one named source: nothing here is a
+ * proposal.
+ */
+export function buildDeviceSpaceText(input: DeviceInput, nowMs: number): string {
+  const defs = new Map(input.defs.map((d) => [d.key, d]));
+  const jobIri = (key: string): string => `urn:kbase:concept/device-job-${key}`;
+  const runsBy = new Map<string, RawRun[]>();
+  for (const r of input.done) {
+    const k = jobKeyOf(r.name);
+    (runsBy.get(k) ?? runsBy.set(k, []).get(k)!).push(r);
+  }
+  const queuedBy = new Map(input.queued.map((q) => [jobKeyOf(q.name), q]));
+  const runningBy = new Map(input.running.map((r) => [jobKeyOf(r.name), r]));
+  const heldBy = new Map([...input.held].map(([n, why]) => [jobKeyOf(n), why]));
+  const circBy = new Map([...input.circuits].map(([n, c]) => [jobKeyOf(n), c]));
+  const passedKeys = new Set(input.done.filter((r) => r.outcome === 'passed').map((r) => jobKeyOf(r.name)));
+
+  // Which jobs get a node: anything with state or a run. A defined job with nothing to say has none.
+  const keys = new Set<string>([...runsBy.keys(), ...queuedBy.keys(), ...runningBy.keys(), ...heldBy.keys(), ...circBy.keys()]);
+  for (const q of input.queued) for (const a of q.after ?? []) keys.add(jobKeyOf(a));
+
+  const facts: Fact[] = [];
+  const typeFact = (iri: string, label: string, color: string, icon: string): void => {
+    for (const [p, o] of [[RDF_TYPE, ENTITY_TYPE], [RDFS_LABEL, label], [`${P}icon`, icon], [`${P}color`, color]] as const)
+      facts.push({ s: iri, p, o, created: SCHEMA_CREATED });
+  };
+  typeFact(DEVICE_JOB_TYPE, 'Device job', '#5b2a86', 'box');
+  typeFact(DEVICE_RUN_TYPE, 'Device job run', '#7a5aa6', 'circle');
+
+  for (const key of [...keys].sort()) {
+    const def = defs.get(key);
+    const run = runningBy.get(key);
+    const circ = circBy.get(key);
+    const held = heldBy.get(key);
+    const q = queuedBy.get(key);
+    const runs = (runsBy.get(key) ?? []).slice().sort((a, b) => b.finishedAt.localeCompare(a.finishedAt) || b.id.localeCompare(a.id));
+    const state: DeviceJobState = run ? 'running' : circ ? 'given-up' : held ? 'held' : q ? 'queued' : 'idle';
+    const reason = state === 'given-up' ? `gave up after ${circ!.count} failures: ${circ!.signature}` : state === 'held' ? held : undefined;
+    const iri = jobIri(key);
+    const created = run?.started ?? runs[0]?.finishedAt ?? q?.addedAt ?? SCHEMA_CREATED;
+    const F = (p: string, o: string, dt?: string): void => { facts.push({ s: iri, p, o, ...(dt ? { dt } : {}), created }); };
+    F(RDF_TYPE, DEVICE_JOB_TYPE);
+    F(RDFS_LABEL, def?.name ?? key);
+    F(`${P}job-state`, state);
+    if (reason) F(`${P}state-reason`, reason);
+    if (def?.tier) F(`${P}job-tier`, def.tier);
+    if (def?.schedule) F(`${P}job-schedule`, def.schedule);
+    if (def?.description) F(`${P}job-definition`, def.description.slice(0, 400));
+    if (def && def.enabled === false) F(`${P}job-enabled`, 'false');
+    const card = cardOf(q);
+    if (card) F(`${P}job-card`, card);
+    if (run?.started) F(`${P}started`, run.started, XSD_DT);
+    // What it waits on: predecessors with no passed run yet.
+    for (const a of [...(q?.after ?? [])].sort()) {
+      const ak = jobKeyOf(a);
+      if (!passedKeys.has(ak) && keys.has(ak)) F(`${P}waits-on`, jobIri(ak));
+    }
+    F(`${P}run-count`, String(runs.length));
+    if (runs.length > RUNS_KEPT) F(`${P}older-runs`, String(runs.length - RUNS_KEPT));
+
+    for (const r of runs.slice(0, RUNS_KEPT)) {
+      const rIri = `urn:kbase:concept/device-run-${r.id}`;
+      const R = (p: string, o: string, dt?: string): void => { facts.push({ s: rIri, p, o, ...(dt ? { dt } : {}), created: r.finishedAt }); };
+      R(RDF_TYPE, DEVICE_RUN_TYPE);
+      R(RDFS_LABEL, `${def?.name ?? key} ${r.finishedAt}`);
+      R(`${P}run-of`, iri);
+      if (r.startedAt) R(`${P}started`, r.startedAt, XSD_DT);
+      R(`${P}finished`, r.finishedAt, XSD_DT);
+      R(`${P}run-outcome`, r.outcome);
+      if (typeof r.exitCode === 'number') R(`${P}exit-code`, String(r.exitCode));
+      if (r.reason) R(`${P}outcome-reason`, r.reason);
+      if (r.output) R(`${P}output`, r.output);
+      // A run made for a space leaps to it only by stable id; a plain folder name is kept as a label, never guessed into a leap.
+      if (r.forSpace) {
+        if (UUID_RE.test(r.forSpace)) { R(LEAP_PRED, r.forSpace.toLowerCase()); R(LEAP_LABEL_PRED, 'The space this run was made for'); }
+        else R(`${P}for-space`, r.forSpace);
+      }
+      F(`${P}has-run`, rIri);
+    }
+  }
+  return renderSpace(facts, nowMs, { stableId: DEVICE_STABLE_ID, sourceIri: DEVICE_SOURCE_IRI, sourceTitle: DEVICE_SOURCE_TITLE });
+}
+
+/** Read the worker's own files (and the two definition files) into a DeviceInput. Nothing is written. */
+export function readDeviceInput(dir: string, opts: { jobsTtl?: string; schedulesTtl?: string; alive?: (pid: number) => boolean } = {}): DeviceInput {
+  const alive = opts.alive ?? pidAlive;
+  const obj = (j: Record<string, unknown> | undefined): Record<string, unknown> => j ?? {};
+  const queued: RawQueued[] = [];
+  for (const line of readLines(path.join(dir, 'queue.jsonl'))) {
+    const j = asJob(line);
+    if (!j || !str(j.id) || !str(j.name)) continue;
+    queued.push({ id: str(j.id)!, name: str(j.name)!, ...(normAfter(j.after) ? { after: normAfter(j.after) } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(typeof j.gpuIndex === 'number' ? { gpuIndex: j.gpuIndex } : {}), ...(str(j.addedAt) ? { addedAt: str(j.addedAt) } : {}) });
+  }
+  const readJson = (f: string): unknown => { try { return JSON.parse(readFileSync(path.join(dir, f), 'utf8')); } catch { return undefined; } };
+  const cur = readJson('current.json');
+  const running = (Array.isArray(cur) ? cur : [])
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === 'object' && typeof (c as Record<string, unknown>).pid === 'number' && alive((c as Record<string, unknown>).pid as number) && !!str((c as Record<string, unknown>).name))
+    .map((c) => ({ name: str(c.name)!, started: str(c.started) }));
+  const held = new Map<string, string>();
+  const worker = obj(readJson('worker.json') as Record<string, unknown> | undefined);
+  if (Array.isArray(worker.held)) for (const h of worker.held) {
+    if (typeof h !== 'string') continue;
+    const i = h.indexOf(': ');
+    if (i > 0) held.set(h.slice(0, i), h.slice(i + 2)); else held.set(h, 'held');
+  }
+  const circuits = new Map<string, { count: number; signature: string }>();
+  const circ = readJson('circuits.json');
+  if (circ && typeof circ === 'object') for (const [n, v] of Object.entries(circ as Record<string, unknown>)) {
+    const c = v as { count?: unknown; signature?: unknown } | null;
+    if (c && typeof c.count === 'number') circuits.set(n, { count: c.count, signature: typeof c.signature === 'string' ? c.signature : '' });
+  }
+  const done: RawRun[] = [];
+  for (const line of readLines(path.join(dir, 'queue.done.jsonl'))) {
+    const j = asJob(line);
+    if (!j || !str(j.id) || !str(j.name) || !str(j.finishedAt)) continue;
+    const res = j.result && typeof j.result === 'object' ? (j.result as Record<string, unknown>) : undefined;
+    done.push({ id: str(j.id)!, name: str(j.name)!, finishedAt: str(j.finishedAt)!, outcome: str(j.outcome) ?? 'failed',
+      ...(str(j.startedAt) ? { startedAt: str(j.startedAt) } : {}), ...(typeof j.exitCode === 'number' ? { exitCode: j.exitCode } : {}),
+      ...(str(j.reason) ? { reason: str(j.reason) } : {}), ...(res && str(res.contentId) ? { output: str(res.contentId) } : {}), ...(res && str(res.space) ? { forSpace: str(res.space) } : {}) });
+  }
+  const defs = parseDefinitions(opts.jobsTtl ?? '', opts.schedulesTtl ?? '');
+  return { defs, queued, running, held, circuits, done };
+}
+
+/** True when `p` or any parent directory holds a `.git` (a checkout or a worktree). */
+export function insideGitCheckout(p: string): boolean {
+  let d = path.dirname(path.resolve(p));
+  for (;;) {
+    if (existsSync(path.join(d, '.git'))) return true;
+    const up = path.dirname(d);
+    if (up === d) return false;
+    d = up;
+  }
+}
+
 // ── writer ─────────────────────────────────────────────────────────────────
 
 const defaultQueueDir = (): string =>
@@ -364,12 +594,19 @@ const defaultQueueDir = (): string =>
 const defaultOut = (): string =>
   path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'reckons', 'private-workspace', 'kbs', 'job-plan', 'job-plan.ttl');
 
-function writeAtomic(p: string, text: string): void {
+/** Private output: refuses a path inside a Git checkout, writes mode 0600 (a space can be about private work). */
+export function writeAtomic(p: string, text: string): void {
+  if (insideGitCheckout(p)) throw new Error(`refusing to write job records inside a Git checkout: ${p}`);
   mkdirSync(path.dirname(p), { recursive: true });
   const tmp = `${p}.${process.pid}.tmp`;
-  writeFileSync(tmp, text, 'utf8');
+  writeFileSync(tmp, text, { encoding: 'utf8', mode: 0o600 });
+  chmodSync(tmp, 0o600);
   renameSync(tmp, p);
 }
+
+const defaultDeviceOut = (): string =>
+  path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'reckons', 'device-space', 'kbs', 'this-device', 'job-records.ttl');
+const readOr = (p: string): string => { try { return readFileSync(p, 'utf8'); } catch { return ''; } };
 
 function main(): void {
   const args = process.argv.slice(2);
@@ -385,6 +622,15 @@ function main(): void {
   const dir = flag('dir') ?? defaultQueueDir();
   const out = flag('out') ?? defaultOut();
   const nowMs = Date.now();
+  if (args.includes('--device')) {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+    const jobsTtl = readOr(flag('jobs') ?? path.join(root, 'static', 'reckons-jobs.ttl'));
+    const schedulesTtl = readOr(flag('schedules') ?? path.join(mainCheckoutRoot(), 'reckons-workspace', 'schedules.ttl'));
+    const dev = readDeviceInput(dir, { jobsTtl, schedulesTtl });
+    const devOut = flag('device-out') ?? defaultDeviceOut();
+    writeAtomic(devOut, buildDeviceSpaceText(dev, nowMs));
+    console.log(`device jobs: ${dev.done.length} run record(s), ${dev.queued.length} queued → ${devOut}`);
+  }
   const records = buildRecords(dir, nowMs);
   writeAtomic(out, buildSpaceText(records, nowMs));
   console.log(`job-plan: ${records.length} job(s) → ${out}`);
