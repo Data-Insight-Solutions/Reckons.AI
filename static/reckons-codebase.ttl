@@ -407,6 +407,7 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/site-seo.ts" ;
               kpred:has-file "src/lib/publish/__tests__/site-landing.test.ts" ;
               kpred:has-file "scripts/offline/site-layout-check.ts" ;
+              kpred:has-file "scripts/offline/grid-balance.ts" ;
               kpred:has-file "src/lib/publish/site-expiry.ts" ;
               kpred:has-file "src/lib/publish/__tests__/site-expiry.test.ts" ;
               kpred:has-file "scripts/offline/fact-expiry.ts" ;
