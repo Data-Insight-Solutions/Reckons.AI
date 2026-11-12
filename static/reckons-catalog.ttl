@@ -101,6 +101,7 @@ graph:catalog a dcat:Catalog ;
         graph:starter-everyday ,
         graph:starter-everyday-reviewed ,
         graph:starter-generated-assets ,
+        graph:starter-ring-scan ,
         graph:starter-guide ,
         graph:starter-quickstart ,
         graph:starter-sim-ramp-cup ,
@@ -289,6 +290,11 @@ graph:starter-generated-assets a void:Dataset ;
     dcterms:title "Starter: generated assets" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-generated-assets.ttl" .
+
+graph:starter-ring-scan a void:Dataset ;
+    dcterms:title "Starter: the ring (unlisted; reconstructed from photographs, F292.3)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-ring-scan.ttl" .
 
 graph:starter-your-room a void:Dataset ;
     dcterms:title "Starter: your room" ;
