@@ -26,6 +26,9 @@
  *          (repeatable) states <subject> <predicate> <splat>. With neither, ONE question row asks which capture it is a scan of.
  *          --links-only adds just those link rows to a splat that is already attached.
  *
+ * Curated frames (F58.9.6.1): a folder of jpg/png images that is not a Stray export is used AS GIVEN. Extraction and the automatic
+ *          sharpness selection are skipped; the receipt records source "curated", the count and a hash of the folder's contents.
+ *
  * Usage:   npm run scan:room -- <input> [--out dir] [--steps 30000] [--frames 200] [--space slug]
  *          npm run scan:room -- --attach=<scan dir> --space=<slug> [--workspace dir]
  *          npm run scan:room -- --check <out dir>      verify a finished scan's receipt, hash and splat
@@ -44,8 +47,8 @@ import { compressSplat, cropPly, reducePly, verifyCompressed, type CompressForma
 import { plyCentres } from '../../src/lib/3d/splat-check.js';
 import { robustExtent } from '../../src/lib/3d/robust-extent.js';
 import {
-  chooseFps, detectInput, judgeRegistration, parseOdometry, pathLength, selectSharpest, validateReceipt,
-  type ScanReceipt,
+  chooseFps, detectInput, folderContentHash, isCuratedFrames, judgeRegistration, MIN_CURATED_IMAGES, parseOdometry, pathLength, selectSharpest,
+  validateReceipt, type FramesRecord, type ScanReceipt,
 } from './scan-room-lib.js';
 
 const GEN = process.env.RECKONS_GEN_HOME ?? join(homedir(), '.local/share/reckons/gen');
@@ -108,7 +111,12 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   const steps = Number(arg(argv, 'steps', '30000'));
   const target = Number(arg(argv, 'frames', '200'));
 
-  const inputHash = await sha256File(input.video);
+  // For a curated folder the "input" is the whole set: its hash covers every file name and content.
+  const curated = input.kind === 'images'
+    ? await Promise.all(input.images.map(async (name) => ({ name, sha256: await sha256File(join(input.dir, name)), bytes: statSync(join(input.dir, name)).size })))
+    : null;
+  if (curated && curated.length < MIN_CURATED_IMAGES) throw new Error(`only ${curated.length} images in ${inputPath}; a scan needs at least ${MIN_CURATED_IMAGES} overlapping frames`);
+  const inputHash = curated ? folderContentHash(curated) : await sha256File((input as { video: string }).video);
   const out = resolve(arg(argv, 'out') ?? join(homedir(), '.local/share/reckons/scans', inputHash.slice(0, 12)));
   mkdirSync(out, { recursive: true });
   const work = join(out, 'work');
@@ -132,8 +140,8 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   };
 
   // The phone's own pose log, when there is one: cross-check only.
-  const info = probe(input.video);
-  if (input.kind === 'stray') {
+  const info = input.kind === 'images' ? null : probe(input.video);
+  if (input.kind === 'stray' && info) {
     const rows = parseOdometry(readFileSync(join(input.dir, 'odometry.csv'), 'utf8'));
     const approxFrames = Math.round(info.durationS * info.fps);
     notes.push(`odometry.csv: ${rows.length} poses, ${pathLength(rows).toFixed(2)} m travelled (video about ${approxFrames} frames); phone poses and depth not used`);
@@ -141,18 +149,29 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   }
 
   let extracted = 0, kept = 0, registered = 0, pycolmap = 'unknown';
-  const fps = chooseFps(info.durationS, info.fps, Math.round(target * 1.25));
+  const fps = info ? chooseFps(info.durationS, info.fps, Math.round(target * 1.25)) : 0;
   const ply = join(out, 'splat.ply');
   const uncropped = join(out, 'splat.uncropped.ply');
   let registration = judgeRegistration(0, 0);
   if (prior) {
-    ({ extracted, kept, registered } = prior.frames);
+    ({ kept, registered } = prior.frames);
+    extracted = isCuratedFrames(prior.frames) ? prior.frames.supplied : prior.frames.extracted;
     pycolmap = prior.tools.pycolmap;
     registration = prior.checks.registration;
     copyFileSync(uncropped, ply);
     console.log('== resume: frames, poses and training are kept from the earlier run');
   } else {
   // ── frames
+  if (input.kind === 'images') {
+    // Supplied by the owner after looking at every frame: no extraction, no scoring, no dropping. Names are kept, because
+    // COLMAP's sequential matching follows file-name order and the folder is in capture order.
+    console.log(`== frames (${input.images.length} images supplied, used as given)`);
+    await timed('frames', () => {
+      for (const f of input.images) copyFileSync(join(input.dir, f), join(work, 'images', f));
+      extracted = kept = input.images.length;
+    });
+    notes.push(`frames supplied by the owner (curated, ${kept} images, folder sha256 ${inputHash.slice(0, 12)}); no extraction and no automatic blur selection were run`);
+  } else if (info) {
   console.log(`== frames (${info.width}x${info.height}, ${info.durationS.toFixed(1)} s, ${info.fps.toFixed(1)} fps)`);
   await timed('frames', async () => {
     run('frames', 'ffmpeg', ['-v', 'error', '-y', '-i', input.video, '-vf', `fps=${fps},scale='min(1600,iw)':'min(1600,ih)':force_original_aspect_ratio=decrease`, '-q:v', '2', join(work, 'cand', '%05d.jpg')]);
@@ -166,6 +185,7 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     kept = keepIdx.length;
   });
   console.log(`   ${extracted} extracted at ${fps} fps, ${kept} kept after dropping the blurriest`);
+  }
 
   // ── poses
   console.log('== poses (COLMAP, sequential matching)');
@@ -252,21 +272,25 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     console.log(`   ${c.file}: ${(c.bytes / 1e6).toFixed(2)} MB, ${c.ratio}x smaller than the PLY (lossy)`);
   });
 
+  const registeredCount = Number(registration.measured?.registered ?? registered);
+  const framesRecord = (): FramesRecord => input.kind === 'images'
+    ? { source: 'curated', supplied: kept, kept, registered: registeredCount, folderSha256: inputHash }
+    : { extracted, kept, registered: registeredCount, fps };
   const receipt: ScanReceipt = {
     origin: 'reconstructed',
-    input: { kind: input.kind, name: basename(inputPath), sha256: inputHash, bytes: statSync(input.video).size },
+    input: { kind: input.kind, name: basename(inputPath), sha256: inputHash, bytes: curated ? curated.reduce((n, c) => n + c.bytes, 0) : statSync((input as { video: string }).video).size },
     // ONE MEASURE, ONE FIELD (F74.15): the summary figure IS the check's measured value, taken
     // from the check at write time — there is no second copy to drift from. (Before this, the
     // receipt read the outer variable that the fresh-run branch's own `registered` shadows, so fresh runs wrote 0 here
     // while the check had measured the true count.) A resumed receipt written before
     // checks carried a measured count falls back to the count it already recorded.
-    frames: { extracted, kept, registered: Number(registration.measured?.registered ?? registered), fps },
+    frames: framesRecord(),
     tools: {
       ffmpeg: run('frames', 'ffmpeg', ['-version']).split('\n')[0],
       pycolmap,
       brush: run('train', BRUSH, ['--version']).trim(),
     },
-    settings: { totalSteps: steps, targetFrames: target, matching: 'sequential overlap 10', cameraModel: 'SIMPLE_RADIAL single camera', minRegisteredFraction: 0.5, seed: 42 },
+    settings: { totalSteps: steps, ...(input.kind === 'images' ? {} : { targetFrames: target }), matching: 'sequential overlap 10', cameraModel: 'SIMPLE_RADIAL single camera', minRegisteredFraction: 0.5, seed: 42 },
     stagesS,
     gaussians: Number(splat.measured.count),
     output: { file: 'splat.ply', sha256: await sha256File(ply), bytes: statSync(ply).size },
