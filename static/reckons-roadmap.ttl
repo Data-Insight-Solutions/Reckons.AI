@@ -12803,7 +12803,7 @@ kb:demo-videos kpred:decided "MATT, 2026-11-11 (chat with Claude Code): 'The mas
 kb:built-with-reckons rdf:type ktype:Feature ;
     rdfs:label "Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
     kpred:feature-id   "F292" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:downstream-site ;
     kpred:relates-to   kb:downstream-site-space ;
@@ -12814,17 +12814,22 @@ kb:built-with-reckons rdf:type ktype:Feature ;
     kpred:decided      "MATT, 2026-11-12 (AskUserQuestion): story mode is first an IN-APP GUIDED WALK (numbered steps over the canvas, each lighting the facts, sources and assets it is about, a short caption, Next and Back; no audio, no rendering), chosen over a narrated video and over walk-then-video. A video may follow once he approves a script and a voice (kb:demo-videos 2026-11-11: no rushed videos)." ;
     kpred:description  "The Data Insight Solutions space (F274.7) shows WHAT the site says. This adds HOW and WHY: an ordered story in the same space, in the app's existing story vocabulary (src/lib/rdf/story.ts: story:Story and story:Step with order, title, content and highlight, played through Shelly), walking a visitor through the making of the site: (1) the sources the owner supplied; (2) the claims taken from them, each checked and kept beside its source, with what could not be grounded flagged rather than published; (3) the pages, generated from one graph, so a fact stated on several pages is edited once and every page follows; (4) a fact that expires (F293), caught before a visitor sees it; (5) the result, linked to the live site. Each step lights the nodes it is about. The story is generated from the build, not written by hand, so it stays true when the site changes." ;
     kpred:constraint   "PUBLIC EVIDENCE ONLY. The site space ships in the public repository (F274.7, AGENTS.md exception of 2026-11-11). Owner notes that are private (workspace/sources in the site repository is git-ignored) are never copied in; the story may state how many claims were checked against them, never their content." ;
-    kpred:open-question "FOR MATT: may the story show the per-post claim lists (claim, grounding, status) for the PUBLISHED posts, or only their counts? Showing them is the strongest evidence; it also exposes which claims were marked 'not grounded in this repository'." .
+    kpred:open-question "FOR MATT: may the story show the per-post claim lists (claim, grounding, status) for the PUBLISHED posts, or only their counts? Showing them is the strongest evidence; it also exposes which claims were marked 'not grounded in this repository'." ;
+    kpred:progress     "2026-11-12 (Sonnet overseer): F292.1 (the generated story) and F293 (facts that expire) are in progress on branch feat/f292-f293-site-story-expiry; F292.2 (the guided walk) is not started. See each phase for what is built and what is not." .
 
 kb:site-build-story rdf:type ktype:Phase ;
     rdfs:label "F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
     kpred:feature-id   "F292.1" ;
     kpred:part-of      kb:built-with-reckons ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:order        1 ;
     kpred:depends-on   kb:downstream-site-space ;
     kpred:description  "scripts/starter/build-site-space.ts gains a story: one story:Story and five or six story:Step nodes, in plain words for a first-time visitor, each highlighting real nodes of the space (the site, a source, a page, a fact shared by several pages, the live-site leap). Counts in captions are computed from the build (pages, posts, facts, how many pages state the same fact), never typed in." ;
-    kpred:done-test    "Unit, on the fixture site: the generated space contains one story with ordered steps whose highlights all resolve to nodes in the same space; a caption's numbers equal the build's counts; two runs are identical; --check still passes. In the app: the story plays through Shelly on the Data Insight Solutions example, each step lighting its nodes (checked in a browser, desktop and 390px)." .
+    kpred:done-test    "Unit, on the fixture site: the generated space contains one story with ordered steps whose highlights all resolve to nodes in the same space; a caption's numbers equal the build's counts; two runs are identical; --check still passes. In the app: the story plays through Shelly on the Data Insight Solutions example, each step lighting its nodes (checked in a browser, desktop and 390px)." ;
+    kpred:progress     "2026-11-12 (Sonnet overseer), BUILT on branch feat/f292-f293-site-story-expiry: scripts/starter/site-story.ts and build-site-space.ts generate one story 'How this website was made' with five ordered steps in the app's story vocabulary (sources; pages from one set of settings; one footer line stated on all 12 pages and posts; facts that expire; the live website), every number computed from the build and every highlight a node of the same file; the committed example was regenerated (190 facts) and --check passes; unit tests cover one story, order, resolving highlights, counts equal to the build, identical bytes on two runs. In a headless browser on a dev server it plays through Shelly on the Data Insight Solutions example, 1 / 5 to 5 / 5, each step selecting and spotlighting its nodes on desktop. NOT TRUE YET: at 390px the node detail sheet that opens on step 1 covers the story caption and most of the canvas, so a phone visitor sees node details, not the lit nodes (that is the player, F292.2); step 4 says plainly that no fact is dated, because the real site marks none (F293); it is not in production." ;
+    kpred:has-file     "scripts/starter/site-story.ts" ;
+    kpred:has-file     "scripts/starter/build-site-space.ts" ;
+    kpred:tested-by    "scripts/starter/__tests__/build-site-space.test.ts" .
 
 kb:story-walk-player rdf:type ktype:Phase ;
     rdfs:label "F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas" ;
@@ -12840,7 +12845,7 @@ kb:story-walk-player rdf:type ktype:Phase ;
 kb:facts-that-expire rdf:type ktype:Feature ;
     rdfs:label "Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;
     kpred:feature-id   "F293" ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:built-with-reckons ;
     kpred:relates-to   kb:partial-facts ;
@@ -12849,7 +12854,11 @@ kb:facts-that-expire rdf:type ktype:Feature ;
     kpred:description  "Script tier. A fact may carry a valid-until date (a borrowed term where one fits, for example schema:validThrough, declared in static/reckons-vocabulary.ttl). A check lists every fact past its date, and every fact within a warning window (default 60 days), and for a site space names every page that states it. site:build warns on a fact within the window and REFUSES to publish a page stating an expired fact, naming the fact and the page. A fact with no date never expires; a credential with an unknown date is an open question (F32), not an assumption." ;
     kpred:principle    "A PAST DATE IS NOT A GUESS. Nothing is marked expired unless its own valid-until date has passed; the check never infers a lifetime from a type of credential." ;
     kpred:open-question "FOR MATT: the valid-until date of 'AWS Certified Solutions Architect – Associate' (and any other credential on the About page that expires). Until he gives it, it is a partial fact: subject the credential, predicate valid-until, object open." ;
-    kpred:done-test    "Unit, on a fixture site: a credential dated past is reported with every page that states it and site:build refuses those pages naming both; one within 60 days warns; one with no date passes; an unknown date appears as an open question. On the real site: the check runs in the script tier and its report is recorded here with its date." .
+    kpred:done-test    "Unit, on a fixture site: a credential dated past is reported with every page that states it and site:build refuses those pages naming both; one within 60 days warns; one with no date passes; an unknown date appears as an open question. On the real site: the check runs in the script tier and its report is recorded here with its date." ;
+    kpred:progress     "2026-11-12 (Sonnet overseer), BUILT on branch feat/f292-f293-site-story-expiry: the predicate kpred:valid-until (declared with skos:closeMatch to schema:validThrough; the choice and why are in static/reckons-vocabulary.ttl); src/lib/publish/site-expiry.ts parses a list entry ending `| valid-until: YYYY-MM-DD` or `| valid-until: ?`, removes the marker before the page renders, and merges one fact stated on several pages into one fact naming every page; site:build warns inside the window, lists open dates, REFUSES a page stating an expired fact naming fact and page, and builds anyway only with --allow-expired, saying it is a preview; scripts/offline/fact-expiry.ts (job fact-expiry, script tier, emits finding) lists expired, within-window (--warn-days, default 60) and open facts with every page, exit 1 on an expired fact; a generated site example carries each fact as a kpred:valid-until fact stated on its pages, and an open date as an open question in the partial-fact form blocking those pages. NOT BUILT or NOT TRUE YET: the real Data Insight Solutions site carries NO marker today (its repository is another agent's to edit), so on the real site the check reports 0 facts; the About page already says the AWS certification is valid to December 2027 in prose, which the check does not read; the check is not in the blocking tier; the landing template (site-landing.ts) was not edited, markers are removed in site-build.ts before any template sees them, so a render that bypasses site:build would show the marker text." ;
+    kpred:has-file     "src/lib/publish/site-expiry.ts" ;
+    kpred:has-file     "scripts/offline/fact-expiry.ts" ;
+    kpred:tested-by    "src/lib/publish/__tests__/site-expiry.test.ts" .
 
 kb:canonical-graph-package kpred:decided "MATT, 2026-11-11 (chat with Claude Code): 'I have a clear idea to deffine and communicate. We have what i think are 'context packages' where you can even package, open questions for someone else to answer. Package a clear linear story line, across the process. The power to embed expertise within a context package, or specific details about a unique scenario, then merge them. Context packages are spaces within REckons.AI, but the export that contains all evidence (source files) for all claims in teh space statement graph.'" ;
     kpred:decided "MATT, 2026-11-12 (AskUserQuestion): a CONTEXT PACKAGE is the SHAREABLE FORM OF A SPACE. A space stays the thing a person works in; a context package is what is exported or shared: the space plus every source file its facts cite, its open questions and its story. Opening one creates a space; merging one back brings in the answers. No new tab. Chosen over a new thing above spaces and over not naming it at all." .

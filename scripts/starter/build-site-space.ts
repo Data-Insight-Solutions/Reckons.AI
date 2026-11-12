@@ -8,6 +8,10 @@
  *
  *   npx tsx scripts/starter/build-site-space.ts --site=<site repository> [--url=<public address>] [--check]
  *
+ * It also carries, generated from the same build: a story 'How this website was made' (F292.1, scripts/starter/site-story.ts),
+ * the one footer line shown on every page (read from footer.text of site.config.json, public by design), an expiry-check node,
+ * and any list entry a page marks `| valid-until: <date or ?>` (F293) as a fact stated on the pages that say it.
+ *
  * ONLY published pages are ever included. Drafts, the pages' bodies, workspace/ files, the site config and the
  * contact webhook are never read into the space (the config is read for its public address only, never the
  * webhook). `--check` fails when the committed file differs from what the site repository now generates, and is
@@ -22,6 +26,8 @@ import { importSiteWithBlog } from '../../src/lib/publish/site-blog.js';
 import { readSiteContent } from '../../src/lib/publish/site-build.js';
 import { toTurtleFull } from '../../src/lib/rdf/serialize.js';
 import { iri, lit, type Source, type Statement, type Term } from '../../src/lib/rdf/types.js';
+import { STATED_ON_PREDICATE, VALID_UNTIL_PREDICATE, expiryFactsFromContent } from '../../src/lib/publish/site-expiry.js';
+import { XSD_INT, storyTriples, type StoryFact } from './site-story.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = path.join(ROOT, 'static', 'starter-data-insight-solutions.ttl');
@@ -39,8 +45,8 @@ const LEAP_LABEL = 'urn:reckons:leap/label';
 const AT = Date.parse('2026-11-11T09:00:00Z');
 const SOURCE_ID = 'dis-website';
 
-export type SpaceOptions = { url: string; publisher?: string; siteName?: string };
-export type SpaceResult = { text: string; pages: number; posts: number; skippedNotPublished: number };
+export type SpaceOptions = { url: string; publisher?: string; siteName?: string; footer?: string };
+export type SpaceResult = { text: string; pages: number; posts: number; skippedNotPublished: number; statements: Statement[] };
 
 /** The site's address with no trailing slash; refuses anything that is not an https URL with no credentials. */
 export function normalizeUrl(raw: string): string {
@@ -73,12 +79,12 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
   const val = (m: Map<string, string[]>, p: string): string | undefined => m.get(p)?.[0];
 
   const out: Statement[] = [];
-  const add = (s: string, p: string, o: Term): void => {
+  const add = (s: string, p: string, o: Term, extra: Partial<Statement> = {}): void => {
     const key = `${s}|${p}|${o.kind}:${o.value}`;
     out.push({
       id: 'dis-' + createHash('sha256').update(key).digest('hex').slice(0, 16),
       s: iri(s), p: iri(p), o, g: iri('urn:kbase:source/' + SOURCE_ID), sourceId: SOURCE_ID,
-      confidence: 1, status: 'confirmed', createdAt: AT, updatedAt: AT,
+      confidence: 1, status: 'confirmed', createdAt: AT, updatedAt: AT, ...extra,
     });
   };
 
@@ -97,6 +103,8 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
 
   let pages = 0, posts = 0, skipped = 0, hasPosts = false;
   const published = new Set<string>();
+  const nodeBySlug = new Map<string, string>();
+  const pageNodes: string[] = [];
   for (const [subject, m] of [...bySubject].sort(([a], [b]) => a.localeCompare(b))) {
     if (val(m, RDF_TYPE) !== TYPE + 'WebPage') continue;
     if (val(m, PAGE + 'status') !== 'published') { skipped++; continue; }
@@ -108,6 +116,8 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
     const isPost = val(m, PAGE + 'template') === 'post';
     const isHome = !isPost && slug === 'index';
     const node = KB + 'dis-' + (isPost ? 'post-' : 'page-') + slug.replace(/[^A-Za-z0-9_-]/g, '-');
+    nodeBySlug.set(slug, node);
+    if (!isPost) pageNodes.push(node);
     add(node, RDF_TYPE, iri(TYPE + (isPost ? 'BlogPost' : 'WebPage')));
     add(node, RDFS_LABEL, lit(val(m, RDFS_LABEL) ?? slug));
     const excerpt = val(m, PAGE + 'excerpt');
@@ -137,14 +147,55 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
     add(blogIri, KP + 'part-of', iri(siteIri));
   }
 
+  // F293: facts a page marks with a valid-until date, and F292.1: the story of how the site was made.
+  const checkIri = KB + 'dis-expiry-check';
+  add(checkIri, RDF_TYPE, iri(TYPE + 'Check'));
+  add(checkIri, RDFS_LABEL, lit('Expiry check'));
+  add(checkIri, RDFS_COMMENT, lit('Runs on every build and in the script tier (scripts/offline/fact-expiry.ts): lists any fact past its valid-until date, warns 60 days ahead, and the build refuses to publish a page that states an expired fact.'));
+  add(checkIri, KP + 'part-of', iri(siteIri));
+  const storyFacts: StoryFact[] = [];
+  for (const f of expiryFactsFromContent(files)) {
+    const factIri = KB + 'dis-' + f.id;
+    const statedOn = f.pages.map((pg) => nodeBySlug.get(pg.slug)).filter((x): x is string => !!x);
+    add(factIri, RDF_TYPE, iri(TYPE + 'Fact'));
+    add(factIri, RDFS_LABEL, lit(f.label));
+    if (f.validUntil) add(factIri, VALID_UNTIL_PREDICATE, lit(f.validUntil, 'http://www.w3.org/2001/XMLSchema#date'));
+    else add(factIri, VALID_UNTIL_PREDICATE, lit('?'), { status: 'pending', needsObject: true, askedBy: 'site-build', blocks: statedOn, question: 'On what date does "' + f.label + '" stop being true?' });
+    for (const pn of statedOn) add(factIri, STATED_ON_PREDICATE, iri(pn));
+    storyFacts.push({ iri: factIri, label: f.label, validUntil: f.validUntil, pageCount: statedOn.length });
+  }
+  const sharedIri = KB + 'dis-shared-footer';
+  const sharedText = opts.footer ?? siteName;
+  add(sharedIri, RDF_TYPE, iri(TYPE + 'Fact'));
+  add(sharedIri, RDFS_LABEL, lit(sharedText));
+  add(sharedIri, RDFS_COMMENT, lit('Written once in the site settings; every page and post shows it.'));
+  for (const pn of nodeBySlug.values()) add(sharedIri, STATED_ON_PREDICATE, iri(pn));
+  const storyIri = KB + 'dis-story';
+  for (const t of storyTriples({
+    storyIri, stepIri: (k) => KB + 'dis-story-step-' + k, siteName, siteIri, blogIri: hasPosts ? blogIri : null, checkIri,
+    pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts,
+  })) {
+    add(t.s, t.p, 'iri' in t.o ? iri(t.o.iri) : 'integer' in t.o ? lit(String(t.o.integer), XSD_INT) : lit(t.o.text));
+  }
+
   const source: Source = { id: SOURCE_ID, title: siteName + ' website', uri: base + '/', ingestedAt: AT, kind: 'url', trustLevel: 'trusted' };
   const header = [
     `${siteName}: the website's published pages and posts as a space (F274.7, kb:downstream-site-space).`,
     'Generated by scripts/starter/build-site-space.ts from the site repository; do not edit by hand.',
-    'Only published pages and posts are included: no drafts, no page bodies, no site config, no contact address.',
+    'Only published pages and posts are included: no drafts, no page bodies (only the text of an entry a page marks valid-until), no site config beyond the public footer line, no contact address.',
   ].join('\n');
   const text = toTurtleFull(out, [source], { header }).replace(/^# generated .*\n/m, '');
-  return { text, pages, posts, skippedNotPublished: skipped };
+  return { text, pages, posts, skippedNotPublished: skipped, statements: out };
+}
+
+/** The footer line the site shows on every page: the `footer.text` field of site.config.json (public by design), never any other field. */
+export function resolveFooter(site: string): string | undefined {
+  const cfg = path.join(site, 'site.config.json');
+  if (!existsSync(cfg)) return undefined;
+  try {
+    const f = (JSON.parse(readFileSync(cfg, 'utf8')) as { footer?: { text?: unknown } }).footer?.text;
+    return typeof f === 'string' && f.trim() ? f.trim() : undefined;
+  } catch { return undefined; }
 }
 
 /** The public address: --url, else a `url` or `siteUrl` field of site.config.json (never any other field). */
@@ -169,7 +220,7 @@ function main(): void {
     console.error('Usage: npx tsx scripts/starter/build-site-space.ts --site=<site repository> [--url=<https address>] [--check]');
     process.exit(1);
   }
-  const r = buildSiteSpace(readSiteContent(path.resolve(site)), { url: resolveUrl(path.resolve(site), arg('url')) });
+  const r = buildSiteSpace(readSiteContent(path.resolve(site)), { url: resolveUrl(path.resolve(site), arg('url')), footer: resolveFooter(path.resolve(site)) });
   if (check) {
     const cur = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
     if (cur !== r.text) { console.error('build-site-space --check: static/starter-data-insight-solutions.ttl is stale. Run: npx tsx scripts/starter/build-site-space.ts --site=<site repository> --url=<address>'); process.exit(1); }

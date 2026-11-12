@@ -36,6 +36,10 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { generateStaticSite } from './site-generator';
 import { createBlogExtension, importSiteWithBlog } from './site-blog';
 import { loadSiteConfig } from './site-config';
+import {
+  FACTS_FILE, classifyExpiry, expiryFactsFromContent, factsFileText, stripExpiryFromContent, todayUtc,
+  describeExpiry, type ExpiryReport,
+} from './site-expiry';
 
 export interface SiteBuildOptions {
   /** Site repository directory — must contain a content/ folder of markdown pages. */
@@ -52,6 +56,12 @@ export interface SiteBuildOptions {
   includeDrafts?: boolean;
   /** Path to a JSON file whose top-level keys are merged over site.config.json at build time (`webhook` is shorthand for contact.webhook). Only the merged values reach the output, never the path. */
   configOverride?: string;
+  /** F293: build even when a page states a fact past its valid-until date. A PREVIEW switch: the result says it was used. Default false. */
+  allowExpired?: boolean;
+  /** F293: today as YYYY-MM-DD (tests); default the current UTC date. */
+  today?: string;
+  /** F293: how many days ahead a valid-until date draws a warning. Default 60. */
+  warningDays?: number;
 }
 
 /** Present in the output of an includeDrafts build; a deploy path must refuse a directory holding it. */
@@ -74,6 +84,8 @@ export interface SiteBuildResult {
   files: string[];
   copiedAssets: number;
   copiedAdmin: number;
+  /** F293: the facts with a valid-until date (or an open one) that the pages state, sorted by date state. */
+  expiry: ExpiryReport & { overridden: boolean };
 }
 
 const MANIFEST_NAME = '.reckons-site-build.json';
@@ -214,7 +226,18 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
     fail('output must not be inside the site directory (' + out + ')');
   }
 
-  const content = readSiteContent(site);
+  const rawContent = readSiteContent(site);
+  // F293: valid-until markers are read from the pages, then removed so no visitor sees them.
+  const expiryFacts = expiryFactsFromContent(rawContent, { includeDrafts: opts.includeDrafts === true });
+  const expiry = classifyExpiry(expiryFacts, opts.today ?? todayUtc(), opts.warningDays);
+  if (expiry.expired.length > 0 && opts.allowExpired !== true) {
+    fail(
+      'refusing to build: a page states a fact past its valid-until date.\n' +
+      expiry.expired.map((f) => '  "' + f.label + '" expired ' + f.validUntil + '; stated on ' + f.pages.map((p) => p.path).join(', ')).join('\n') +
+      '\n  Update the date or the entry, or pass --allow-expired for a preview build that is not to be deployed.',
+    );
+  }
+  const content = stripExpiryFromContent(rawContent);
   const stmts = importSiteWithBlog(content);
   const blog = createBlogExtension(stmts);
   const drafts = opts.includeDrafts === true;
@@ -242,6 +265,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   // Stage everything, then swap into <out>: the output is a faithful image of the site
   // at build time, so a page that became a draft between builds cannot survive in <out>.
   const files: Record<string, string> = { ...generated.files, _headers: siteHeaders(drafts) };
+  if (expiryFacts.length > 0) files[FACTS_FILE] = factsFileText(expiryFacts);
   if (drafts) {
     files[DRAFT_PREVIEW_MARKER] =
       'This directory is a LOCAL PREVIEW built with --drafts. It contains unpublished draft pages.\n' +
@@ -281,7 +305,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
       renameSync(stage, out);
     }
 
-    return { out, pageCount: generated.pageCount, files: all, copiedAssets: copiedAssets.length, copiedAdmin: copiedAdmin.length };
+    return { out, pageCount: generated.pageCount, files: all, copiedAssets: copiedAssets.length, copiedAdmin: copiedAdmin.length, expiry: { ...expiry, overridden: expiry.expired.length > 0 } };
   } catch (err) {
     rmSync(stage, { recursive: true, force: true });
     throw err;

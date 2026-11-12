@@ -385,6 +385,17 @@ job:host-health rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "false" ;
     hnav:order          55 .
 
+job:fact-expiry rdf:type          ktype:OfflineJob ;
+    rdfs:label          "fact-expiry" ;
+    skos:prefLabel      "fact-expiry" ;
+    skos:definition     "F293: lists every fact a site states that is past its valid-until date, every fact within the 60-day warning window, and every open date, each with every page that states it. Exits 1 on an expired fact. A date compared with today's date; no model, no network. Reads the committed Data Insight Solutions example; pass --built=<dir> or --site=<repository> by hand for a build or a site." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "finding" ;
+    kpred:command       "npx tsx scripts/offline/fact-expiry.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          76 .
+
 job:landing-data rdf:type          ktype:OfflineJob ;
     rdfs:label          "landing-data" ;
     skos:prefLabel      "landing-data" ;
@@ -855,9 +866,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 75 of them, 62 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 76 of them, 63 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
