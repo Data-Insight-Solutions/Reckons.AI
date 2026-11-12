@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import { Parser } from 'n3';
 import { EXAMPLE_KBS, listedExampleKbs, findExampleKb } from '../example-kbs';
 
@@ -26,7 +26,7 @@ describe('example entries (F292.3)', () => {
     expect(new Set(quads.map((q) => q.subject.value)).size).toBe(ring.entities);
   });
 
-  it('the ring splat is reconstructed, exists, and is a story of five ordered steps that resolve', () => {
+  it('the ring splat is reconstructed, exists, and is a story of eight ordered steps that resolve', () => {
     const quads: any[] = new Parser().parse(readFileSync('static/starter-ring-scan.ttl', 'utf8'));
     const splat = quads.find((q: any) => q.predicate.value === 'urn:kbase:predicate/splat')!;
     expect(existsSync(`static${splat.object.value}`)).toBe(true);
@@ -34,9 +34,19 @@ describe('example entries (F292.3)', () => {
     expect(origin?.object.value).toBe('reconstructed');
     const subjects = new Set(quads.map((q) => q.subject.value));
     const steps: string[] = quads.filter((q) => q.predicate.value === 'urn:reckons:story/partOf').map((q) => q.subject.value);
-    expect(steps.length).toBe(5);
+    expect(steps.length).toBe(8);
     const orders = steps.map((s: string) => Number(quads.find((q) => q.subject.value === s && q.predicate.value === 'urn:reckons:story/order')!.object.value)).sort();
-    expect(orders).toEqual([1, 2, 3, 4, 5]);
+    expect(orders).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     for (const q of quads.filter((q) => q.predicate.value === 'urn:reckons:story/highlight')) expect(subjects.has(q.object.value)).toBe(true);
+  });
+
+  it('every published ring media file exists and is small (video, frames)', () => {
+    const quads: any[] = new Parser().parse(readFileSync('static/starter-ring-scan.ttl', 'utf8'));
+    const media = quads.filter((q) => ['urn:kbase:predicate/video', 'urn:kbase:predicate/photo'].includes(q.predicate.value));
+    expect(media.length).toBe(12);
+    for (const q of media) {
+      expect(existsSync(`static${q.object.value}`), q.object.value).toBe(true);
+      expect(statSync(`static${q.object.value}`).size).toBeLessThan(3 * 1024 * 1024);
+    }
   });
 });
