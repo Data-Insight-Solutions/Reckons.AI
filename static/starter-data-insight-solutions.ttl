@@ -207,7 +207,7 @@ kb:dis-page-about
 kb:dis-page-contact
     rdf:type <urn:kbase:type/WebPage> ;
     rdfs:label "Contact" ;
-    rdfs:comment "Tell me about your DAM, your integrations, or what you'd like AI to do for your team." ;
+    rdfs:comment "Tell us about your DAM, your integrations, or what you'd like AI to do for your team." ;
     pred:url "https://data-insight.solutions/contact/" ;
     pred:part-of kb:dis-site ;
     <urn:reckons:nav/next> kb:dis-page-home ;
@@ -362,7 +362,7 @@ kb:dis-concept-dam
 kb:dis-mission
     rdf:type <urn:kbase:type/Mission> ;
     rdfs:label "Mission" ;
-    rdfs:comment "I help businesses turn raw data into strategic advantage through thoughtful architecture, skilled implementation, and a genuine partnership." ;
+    rdfs:comment "We help businesses turn raw data into strategic advantage through thoughtful architecture, skilled implementation, and a genuine partnership." ;
     pred:stated-on kb:dis-page-about ;
     pred:tenet "Technology should amplify human capability, not replace it." .
 
@@ -383,7 +383,7 @@ kb:dis-principle-context-matters
 kb:dis-principle-partnerships-work
     rdf:type <urn:kbase:type/Principle> ;
     rdfs:label "Partnerships work" ;
-    rdfs:comment "I am invested in your long-term outcomes" ;
+    rdfs:comment "We are invested in your long-term outcomes" ;
     pred:stated-on kb:dis-page-about ;
     pred:part-of kb:dis-mission .
 
@@ -2178,11 +2178,11 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-b9e9ac325f11d1ca>
+<urn:kbase:stmt/dis-8e6588d8eb09026c>
     rdf:type rdf:Statement ;
     rdf:subject kb:dis-page-contact ;
     rdf:predicate rdfs:comment ;
-    rdf:object "Tell me about your DAM, your integrations, or what you'd like AI to do for your team." ;
+    rdf:object "Tell us about your DAM, your integrations, or what you'd like AI to do for your team." ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;
@@ -3443,11 +3443,11 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-07415926df1bb6e1>
+<urn:kbase:stmt/dis-70bf359c66941310>
     rdf:type rdf:Statement ;
     rdf:subject kb:dis-mission ;
     rdf:predicate rdfs:comment ;
-    rdf:object "I help businesses turn raw data into strategic advantage through thoughtful architecture, skilled implementation, and a genuine partnership." ;
+    rdf:object "We help businesses turn raw data into strategic advantage through thoughtful architecture, skilled implementation, and a genuine partnership." ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;
@@ -3641,11 +3641,11 @@ src:dis-website
     prov:wasDerivedFrom src:dis-website ;
     dc:created "2026-11-11T09:00:00.000Z"^^xsd:dateTime .
 
-<urn:kbase:stmt/dis-523b3895a13ff0bf>
+<urn:kbase:stmt/dis-3f720d88d090f316>
     rdf:type rdf:Statement ;
     rdf:subject kb:dis-principle-partnerships-work ;
     rdf:predicate rdfs:comment ;
-    rdf:object "I am invested in your long-term outcomes" ;
+    rdf:object "We are invested in your long-term outcomes" ;
     meta:status "confirmed" ;
     meta:confidence "1"^^xsd:decimal ;
     meta:reviewMetadata "{\"version\":1,\"fields\":{\"sourceId\":\"dis-website\",\"updatedAt\":1794387600000}}" ;
