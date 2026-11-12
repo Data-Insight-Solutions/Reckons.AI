@@ -12794,3 +12794,75 @@ kb:demo-videos kpred:decided "MATT, 2026-11-11 (chat with Claude Code): 'We need
     kpred:proposed "FABLE 5.2, 2026-11-11: one small comparison before any narration is produced in bulk. The same ten narration lines, written in plain words, voiced by (a) the Hume integration as it works today, (b) Hume's current SDK and API if they differ from what the integration calls, and (c) the open local voices that run on this machine, starting with the one the app already ships. Scored by Matt's ear on a short blind listen, plus the measured cost per minute, seconds to produce a line, and whether it runs with no network. What the Hume service change dated 2026-11-13 in this graph actually is must be read from Hume's own documentation first; this entry does not know." .
 
 kb:demo-videos kpred:decided "MATT, 2026-11-11 (chat with Claude Code): 'The mass creation of feature demo videos isn't quite ready, lets not rush out garbage. Slow is smooth smooth is fast, turtle theory.' So no batch of feature videos is rendered, and no narration is banked in bulk to beat a date. A story space is prepared and its walk is drafted; a video is rendered when the space and the script have been reviewed." .
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+# 2026-11-12 (night) — Matt's directions before bed, recorded and planned by Claude Code (Opus 5.5).
+# PLANS ONLY unless a later dated line says otherwise. Quotes are his; his choices were made by
+# question form (AskUserQuestion) at about 00:40 CST.
+# ════════════════════════════════════════════════════════════════════════════════════════════════
+kb:built-with-reckons rdf:type ktype:Feature ;
+    rdfs:label "Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
+    kpred:feature-id   "F292" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:downstream-site ;
+    kpred:relates-to   kb:downstream-site-space ;
+    kpred:relates-to   kb:story-offers ;
+    kpred:relates-to   kb:facts-that-expire ;
+    kpred:relates-to   kb:canonical-graph-package ;
+    kpred:decided      "MATT, 2026-11-11 (chat with Claude Code): 'This built with Reckons.AI needs to be a kickass experience within Reckons.AI as well, story mode on the website generation process we did with Reckons.AI, why it helped validate and make information on the site clear organized and referenced. Why we can edit the website across multiple pages instantly, and event detect when statements might not be true anymore (expired cert check?). We need to really tie together DIS with Reckons.AI as a tool for publishing great web content.'" ;
+    kpred:decided      "MATT, 2026-11-12 (AskUserQuestion): story mode is first an IN-APP GUIDED WALK (numbered steps over the canvas, each lighting the facts, sources and assets it is about, a short caption, Next and Back; no audio, no rendering), chosen over a narrated video and over walk-then-video. A video may follow once he approves a script and a voice (kb:demo-videos 2026-11-11: no rushed videos)." ;
+    kpred:description  "The Data Insight Solutions space (F274.7) shows WHAT the site says. This adds HOW and WHY: an ordered story in the same space, in the app's existing story vocabulary (src/lib/rdf/story.ts: story:Story and story:Step with order, title, content and highlight, played through Shelly), walking a visitor through the making of the site: (1) the sources the owner supplied; (2) the claims taken from them, each checked and kept beside its source, with what could not be grounded flagged rather than published; (3) the pages, generated from one graph, so a fact stated on several pages is edited once and every page follows; (4) a fact that expires (F293), caught before a visitor sees it; (5) the result, linked to the live site. Each step lights the nodes it is about. The story is generated from the build, not written by hand, so it stays true when the site changes." ;
+    kpred:constraint   "PUBLIC EVIDENCE ONLY. The site space ships in the public repository (F274.7, AGENTS.md exception of 2026-11-11). Owner notes that are private (workspace/sources in the site repository is git-ignored) are never copied in; the story may state how many claims were checked against them, never their content." ;
+    kpred:open-question "FOR MATT: may the story show the per-post claim lists (claim, grounding, status) for the PUBLISHED posts, or only their counts? Showing them is the strongest evidence; it also exposes which claims were marked 'not grounded in this repository'." .
+
+kb:site-build-story rdf:type ktype:Phase ;
+    rdfs:label "F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
+    kpred:feature-id   "F292.1" ;
+    kpred:part-of      kb:built-with-reckons ;
+    kpred:has-status   "planned" ;
+    kpred:order        1 ;
+    kpred:depends-on   kb:downstream-site-space ;
+    kpred:description  "scripts/starter/build-site-space.ts gains a story: one story:Story and five or six story:Step nodes, in plain words for a first-time visitor, each highlighting real nodes of the space (the site, a source, a page, a fact shared by several pages, the live-site leap). Counts in captions are computed from the build (pages, posts, facts, how many pages state the same fact), never typed in." ;
+    kpred:done-test    "Unit, on the fixture site: the generated space contains one story with ordered steps whose highlights all resolve to nodes in the same space; a caption's numbers equal the build's counts; two runs are identical; --check still passes. In the app: the story plays through Shelly on the Data Insight Solutions example, each step lighting its nodes (checked in a browser, desktop and 390px)." .
+
+kb:story-walk-player rdf:type ktype:Phase ;
+    rdfs:label "F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas" ;
+    kpred:feature-id   "F292.2" ;
+    kpred:part-of      kb:built-with-reckons ;
+    kpred:has-status   "planned" ;
+    kpred:order        2 ;
+    kpred:relates-to   kb:standing-filters ;
+    kpred:description  "Stories already play through Shelly (TurtleChatPanel). The walk Matt chose needs: a visible step counter, Next and Back that work by keyboard and touch, the canvas lighting the step's highlights and dimming the rest (the same mechanism F223.11 built for focusing a proposal option, so nodes do not move), and a link that opens a space at a given step. No new top-level tab." ;
+    kpred:open-question "Is Shelly's panel the right home for the walk on a phone, or does the walk need its own slim bar over the canvas? Decide from a 390px screenshot of both, not in the abstract." ;
+    kpred:done-test    "E2E on a synthetic space with a three-step story: the counter reads 1 of 3; Next lights step 2's nodes and dims the rest; node positions before and after are equal; Back returns; the step link restores the step after a reload." .
+
+kb:facts-that-expire rdf:type ktype:Feature ;
+    rdfs:label "Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;
+    kpred:feature-id   "F293" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:built-with-reckons ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:anchor-staleness ;
+    kpred:decided      "MATT, 2026-11-12 (AskUserQuestion, on his phrase 'detect when statements might not be true anymore (expired cert check?)'): he meant CREDENTIALS ON THE ABOUT PAGE (facts like his AWS certification carry a valid-until date, and a check flags any fact past its date and names every page that states it), chosen over watching the site's HTTPS certificate and over a general end-date feature." ;
+    kpred:description  "Script tier. A fact may carry a valid-until date (a borrowed term where one fits, for example schema:validThrough, declared in static/reckons-vocabulary.ttl). A check lists every fact past its date, and every fact within a warning window (default 60 days), and for a site space names every page that states it. site:build warns on a fact within the window and REFUSES to publish a page stating an expired fact, naming the fact and the page. A fact with no date never expires; a credential with an unknown date is an open question (F32), not an assumption." ;
+    kpred:principle    "A PAST DATE IS NOT A GUESS. Nothing is marked expired unless its own valid-until date has passed; the check never infers a lifetime from a type of credential." ;
+    kpred:open-question "FOR MATT: the valid-until date of 'AWS Certified Solutions Architect – Associate' (and any other credential on the About page that expires). Until he gives it, it is a partial fact: subject the credential, predicate valid-until, object open." ;
+    kpred:done-test    "Unit, on a fixture site: a credential dated past is reported with every page that states it and site:build refuses those pages naming both; one within 60 days warns; one with no date passes; an unknown date appears as an open question. On the real site: the check runs in the script tier and its report is recorded here with its date." .
+
+kb:canonical-graph-package kpred:decided "MATT, 2026-11-11 (chat with Claude Code): 'I have a clear idea to deffine and communicate. We have what i think are 'context packages' where you can even package, open questions for someone else to answer. Package a clear linear story line, across the process. The power to embed expertise within a context package, or specific details about a unique scenario, then merge them. Context packages are spaces within REckons.AI, but the export that contains all evidence (source files) for all claims in teh space statement graph.'" ;
+    kpred:decided "MATT, 2026-11-12 (AskUserQuestion): a CONTEXT PACKAGE is the SHAREABLE FORM OF A SPACE. A space stays the thing a person works in; a context package is what is exported or shared: the space plus every source file its facts cite, its open questions and its story. Opening one creates a space; merging one back brings in the answers. No new tab. Chosen over a new thing above spaces and over not naming it at all." .
+
+kb:context-package rdf:type ktype:Phase ;
+    rdfs:label "F107.3.1 — the context package: a space with all its evidence, its open questions and its story, that someone else can open, answer and merge back" ;
+    kpred:feature-id   "F107.3.1" ;
+    kpred:part-of      kb:canonical-graph-package ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:collaborative-space-building ;
+    kpred:relates-to   kb:partial-facts ;
+    kpred:relates-to   kb:built-with-reckons ;
+    kpred:description  "The user-facing name for the package F107.3 already plans. What makes it a CONTEXT package: (1) EVIDENCE COMPLETE: every fact that cites a source travels with that source's file, and the export says how many facts cite nothing; (2) its OPEN QUESTIONS travel as questions addressed to whoever opens it; (3) its STORY travels as the ordered walk (F292.2); (4) MERGING BACK brings the answers and new evidence home as pending facts from one run, reviewed as one group (F89.4.4). This is also the unit F288 (collaborative space building) sends between teams." ;
+    kpred:principle    "A PACKAGE THAT LEAVES OUT ITS EVIDENCE IS A RUMOUR. An export states its evidence coverage (facts with a source file included, facts whose source is withheld as private, facts citing nothing), and never claims completeness it does not have." ;
+    kpred:open-question "Which sources may never leave a device (private notes, credentials) and how a package marks a withheld source without leaking its content: decide with F288's consent design." ;
+    kpred:done-test    "On a synthetic space with three sources (one marked private), two open questions and a three-step story: the package holds the two shareable source files and states one withheld; opening it in a fresh profile creates a space with the questions open and the story playable; answering a question there and merging the package back produces one pending group in the original space." .
