@@ -32,10 +32,12 @@ code:generation
     kpred:has-file "src/lib/generation/workspace-client.ts" ;
     kpred:has-file "src/lib/generation/attach.ts" ;
     kpred:has-file "src/lib/components/GenerationStory.svelte" ;
+    kpred:has-file "src/lib/components/RunnerConnect.svelte" ;
     kpred:has-file "scripts/content/generation-runner.ts" ;
     kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
-    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" .
+    kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
+    kpred:tested-by "tests/e2e/generation-connect-outside-story.test.ts" .
 
 code:sim
     rdf:type ktype:Concept ;
