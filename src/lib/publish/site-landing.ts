@@ -295,18 +295,41 @@ function renderAbout(s: LandingSection): string {
 
 /**
  * Blocks: one panel per `###`, in a two-column grid on desktop and one column on phones. `@span: tall`
- * lets one block take the height of three. A `###` with `@as: media` is an optional slot for a picture or
+ * puts one block in a column, the other blocks filling the two columns to similar heights; `@span: wide` runs a block across both columns. A `###` with `@as: media` is an optional slot for a picture or
  * diagram (`@diagram: path.svg`); with none given it renders nothing, so a site can reserve the place.
  */
 function renderBlocks(s: LandingSection, ctx: ShellContext): string {
-  const blocks = s.subs.map((sub, i) => {
+  type Item = { html: string; wide: boolean; tall: boolean };
+  const items: Item[] = s.subs.map((sub, i) => {
     if (sub.opts.as === 'media') {
       const d = diagram(sub, ctx);
-      return d ? '<div class="media-slot panel reveal">' + d + '</div>' : '<div class="media-slot" hidden></div>';
+      return { html: d ? '<div class="media-slot panel reveal">' + d + '</div>' : '', wide: false, tall: false };
     }
-    return '<div class="panel reveal' + (DELAY[i % 4] ?? '') + (sub.opts.span === 'tall' ? ' tall' : sub.opts.span === 'wide' ? ' wide' : '') + '"><h3>' + heading(sub.title) + '</h3>' + diagram(sub, ctx) + subBody(sub, false) + '</div>';
-  });
-  return sectionHead(s) + '<div class="blocks">' + blocks.join('\n') + '</div>';
+    const cls = (sub.opts.span === 'tall' ? ' tall' : sub.opts.span === 'wide' ? ' wide' : '');
+    return { html: '<div class="panel reveal' + (DELAY[i % 4] ?? '') + cls + '"><h3>' + heading(sub.title) + '</h3>' + diagram(sub, ctx) + subBody(sub, false) + '</div>', wide: sub.opts.span === 'wide', tall: sub.opts.span === 'tall' };
+  }).filter((x) => x.html);
+  // Balance by construction, not by hand-tuned spans: a `wide` block stands alone across the grid; the
+  // blocks between two wide ones form one segment. A segment with a `tall` block puts it beside a stack of
+  // the rest (so no row can have a hole on its left); any other segment is a two-column grid whose odd last
+  // block spans both columns.
+  const out: string[] = [];
+  let seg: Item[] = [];
+  const flush = (): void => {
+    if (seg.length === 0) return;
+    const tall = seg.find((x) => x.tall);
+    if (tall && seg.length > 1) {
+      // fill the two columns to similar heights: each remaining block goes to the lighter column (text length as the weight)
+      const weight = (h: string): number => h.replace(/<[^>]*>/g, '').length + 120;
+      const cols: { w: number; h: string[] }[] = [{ w: weight(tall.html), h: [tall.html] }, { w: 0, h: [] }];
+      for (const x of seg) { if (x === tall) continue; const c = cols[0].w < cols[1].w ? cols[0] : cols[1]; c.h.push(x.html); c.w += weight(x.html); }
+      out.push('<div class="split">' + cols.map((c) => '<div class="col">' + c.h.join('\n') + '</div>').join('') + '</div>');
+    }
+    else out.push('<div class="pairs">' + seg.map((x) => x.html).join('\n') + '</div>');
+    seg = [];
+  };
+  for (const it of items) { if (it.wide) { flush(); out.push(it.html); } else seg.push(it); }
+  flush();
+  return sectionHead(s) + '<div class="blocks">' + out.join('\n') + '</div>';
 }
 
 function renderBanner(s: LandingSection): string {
@@ -348,7 +371,27 @@ function renderContact(s: LandingSection, ctx: ShellContext): string {
   return '<div class="contact"><div class="side reveal">' + eyebrow + '<h2>' + heading(s.title) + '</h2>' + block(s.body) + '</div>' + contactBlock(ctx.config) + '</div>';
 }
 
+/**
+ * A text section with `@as: cards`: the paragraphs are a lead (the first is larger) and a bulleted list whose
+ * items each begin with a bold phrase becomes a grid of small cards, the phrase (minus a trailing colon) as the
+ * card's title and the rest as its body. Two columns on desktop, one on a phone. Generic: it knows no site's words.
+ */
+function renderCardText(s: LandingSection): string {
+  const lines = s.body.split(/\r?\n/);
+  const items = listItems(s.body);
+  const prose = lines.filter((l) => !/^\s*[-*]\s+/.test(l)).join('\n');
+  // paragraphs go through heading(), so a `==highlighted==` sentence gets the accent gradient
+  const lead = prose.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p, i) => '<p' + (i === 0 ? ' class="lead-line"' : '') + '>' + heading(p) + '</p>').join('');
+  const cards = items.map((it) => {
+    const m = /^\*\*(.+?)\*\*\s*(.*)$/.exec(it);
+    const title = m ? m[1].replace(/\s*:\s*$/, '') : '';
+    return '<div class="panel reveal"><h3>' + (title ? inline(title) : '') + '</h3><p>' + inline(m ? m[2] : it) + '</p></div>';
+  });
+  return sectionHead(s) + '<div class="lead-block reveal">' + lead + '</div><div class="principle-cards">' + cards.join('\n') + '</div>';
+}
+
 function renderText(s: LandingSection): string {
+  if (s.opts.as === 'cards') return renderCardText(s);
   return sectionHead(s) + '<div class="panel prose reveal">' + block(s.body) + '</div>';
 }
 
@@ -632,17 +675,19 @@ section.tight { padding-top: 0; }
 .page-sections .bento .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .page-sections .bento .card .proof { margin-top: auto; }
 @media (max-width: 900px) { .page-sections .bento .card:nth-child(n) { grid-column: 1 / -1; } }
-.blocks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: start; }
-.blocks .tall { grid-row: span 4; }
-.blocks .media-slot { grid-column: 2; }
-.blocks .wide { grid-column: 1 / -1; }
+.blocks { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.blocks .split, .blocks .pairs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.blocks .split { align-items: stretch; }
+.blocks .split .col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.blocks .pairs { align-items: start; }
+.blocks .pairs > .panel:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .blocks .panel { padding: clamp(22px, 3vw, 34px); }
 .blocks h3 { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2-soft); margin: 0 0 12px; }
 .blocks .panel ul { margin: 8px 0 0; padding-left: 20px; color: var(--text-soft); }
 .blocks .panel li { margin: 0 0 6px; }
 .blocks .panel p { margin: 0 0 10px; color: var(--text-soft); }
 .blocks .panel a { color: var(--accent-bright); }
-@media (max-width: 900px) { .blocks { grid-template-columns: 1fr; } .blocks .tall { grid-row: auto; } .blocks .media-slot { grid-column: auto; } }
+@media (max-width: 900px) { .blocks .split, .blocks .pairs { grid-template-columns: 1fr; } .blocks .pairs > .panel:last-child:nth-child(odd) { grid-column: auto; } }
 .fineprint { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-mute); }
 .diagram { margin: 4px 0 14px; max-width: 380px; }
 .diagram svg { display: block; width: 100%; height: auto; }
@@ -689,6 +734,15 @@ section.page { padding-top: clamp(24px, 4vw, 56px); }
 .prose img { border-radius: 12px; }
 iframe.embed-4x3 { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 4 / 3; border: 0; border-radius: 12px; background: var(--bg-2); }
 .blocks .panel { min-width: 0; }
+.lead-block { max-width: 62ch; margin: 0 0 28px; }
+.lead-block p { margin: 0 0 12px; color: var(--text-soft); font-size: clamp(18px, 2vw, 22px); line-height: 1.5; }
+.lead-block p .grad { font-weight: 600; }
+.principle-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.principle-cards .panel { padding: clamp(20px, 2.6vw, 28px); min-width: 0; }
+.principle-cards h3 { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2-soft); margin: 0 0 10px; }
+.principle-cards p { margin: 0; color: var(--text-soft); }
+.principle-cards a { color: var(--accent-bright); }
+@media (max-width: 700px) { .principle-cards { grid-template-columns: 1fr; } }
 .prose pre { background: color-mix(in srgb, var(--bg) 55%, transparent); padding: 1rem; border-radius: 12px; overflow: auto; }
 .prose code { font-family: var(--mono); font-size: .92em; }
 .prose table { border-collapse: collapse; display: block; overflow-x: auto; }

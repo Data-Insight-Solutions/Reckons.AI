@@ -373,11 +373,28 @@ describe('sections pages (F274.4.3)', () => {
     const about = read(out, 'about/index.html');
     expect(about).toContain('class="blocks"');
     expect(about).toContain('<div class="panel reveal tall"><h3>One</h3>');
-    expect(about).toContain('<div class="media-slot" hidden></div>');
+    expect(about).not.toContain('media-slot'); // an empty slot renders nothing, so it cannot leave a hole
+    expect(about).toContain('<div class="split"><div class="col"><div class="panel reveal tall">'); // tall sits beside a stack
     expect(about).toContain('page-sections');
     expect(about).toContain('id="guide"'); // Matt 2026-11-12: sections pages carry the scroll control too
     expect(about).not.toContain('<ul class="chips">');
     expect(read(out, 'index.html')).toContain('id="guide"');
     expect(read(out, 'index.html')).not.toContain('page-sections');
+  });
+
+  it('wide blocks stand alone and an odd run of blocks sits in a pairs grid; @as: cards turns bold-led bullets into cards', () => {
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
+    tmp.push(site, join(out, '..'));
+    cpSync(FIXTURE, site, { recursive: true });
+    writeFileSync(join(site, 'content/about.md'), '---\ntitle: About\nslug: about\ntemplate: sections\nstatus: published\nexcerpt: About.\n---\n\n## Background\n@section: blocks\n\n### A\nText a.\n\n### B\nText b.\n\n### C\nText c.\n\n### W\n@span: wide\nWide.\n\n## Values\n@section: text\n@as: cards\n\nLead sentence.\n\n==Highlighted.==\n\n- **One:** first [link](/about/).\n- **Two:** second.\n');
+    buildSite({ site, out });
+    const about = read(out, 'about/index.html');
+    expect(about).toContain('<div class="pairs">');
+    expect(about).toMatch(/<\/div>\s*<div class="panel reveal[^"]*wide"><h3>W<\/h3>/);
+    expect(about).toContain('<div class="principle-cards">');
+    expect(about).toMatch(/<h3>One<\/h3><p>first <a [^>]*>link<\/a>\.<\/p>/);
+    expect(about).toContain('<p class="lead-line">Lead sentence.</p>');
+    expect(about).toContain('<span class="grad">Highlighted.</span>');
   });
 });
