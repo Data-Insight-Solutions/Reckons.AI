@@ -39,7 +39,7 @@
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
   const EXAMPLE_KBS = [
-    { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC, shown as a space: each published page and post is a node, with a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 15, triples: 133 },
+    { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC: each published page and post is a node, with a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 15, triples: 133 },
     { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
     {
       id: 'quickstart',
@@ -145,7 +145,7 @@
   let exIdx = $state(0);
   let fading = $state(false);
 
-  // A link of the form /about?example=<id> opens that example space on its own.
+  // A link of the form /about?example=<id> opens that example on its own.
   onMount(() => {
     const id = new URL(window.location.href).searchParams.get('example');
     const kb = id ? EXAMPLE_KBS.find((k) => k.id === id) : undefined;
