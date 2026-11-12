@@ -26,7 +26,7 @@ describe('example entries (F292.3)', () => {
     expect(new Set(quads.map((q) => q.subject.value)).size).toBe(ring.entities);
   });
 
-  it('the ring splat is reconstructed, exists, and is a story of eight ordered steps that resolve', () => {
+  it('the ring splat is reconstructed, exists, and is a story of ten ordered steps that resolve', () => {
     const quads: any[] = new Parser().parse(readFileSync('static/starter-ring-scan.ttl', 'utf8'));
     const splat = quads.find((q: any) => q.predicate.value === 'urn:kbase:predicate/splat')!;
     expect(existsSync(`static${splat.object.value}`)).toBe(true);
@@ -34,9 +34,9 @@ describe('example entries (F292.3)', () => {
     expect(origin?.object.value).toBe('reconstructed');
     const subjects = new Set(quads.map((q) => q.subject.value));
     const steps: string[] = quads.filter((q) => q.predicate.value === 'urn:reckons:story/partOf').map((q) => q.subject.value);
-    expect(steps.length).toBe(8);
-    const orders = steps.map((s: string) => Number(quads.find((q) => q.subject.value === s && q.predicate.value === 'urn:reckons:story/order')!.object.value)).sort();
-    expect(orders).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(steps.length).toBe(10);
+    const orders = steps.map((s: string) => Number(quads.find((q) => q.subject.value === s && q.predicate.value === 'urn:reckons:story/order')!.object.value)).sort((a: number, b: number) => a - b);
+    expect(orders).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     for (const q of quads.filter((q) => q.predicate.value === 'urn:reckons:story/highlight')) expect(subjects.has(q.object.value)).toBe(true);
   });
 
