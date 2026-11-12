@@ -12899,3 +12899,74 @@ kb:context-package rdf:type ktype:Phase ;
     kpred:done-test    "On a synthetic space with three sources (one marked private), two open questions and a three-step story: the package holds the two shareable source files and states one withheld; opening it in a fresh profile creates a space with the questions open and the story playable; answering a question there and merging the package back produces one pending group in the original space." .
 
 kb:deputy-harness-bench kpred:measured "2026-11-12 (Claude Code, `ollama show` on this machine): parameters and context window of each installed model. Over Matt's 24B line: qwen3.8, the current deputy, 27.3B (262,144); qwen3-coder 30.5B mixture of experts (262,144); gemma3:27b 27.4B (131,072); command-r:35b 32.3B (131,072). Within it: devstral-small-2 24.0B (393,216); mistral-small3.2:24b 24.0B (131,072); lfm2.5 8.5B mixture of experts (128,000); phi4:14b 14.7B (16,384, below the harness's 124,928-token floor, so it cannot run the deputy at all); llama3.2:3b 3.2B (131,072). So the candidates that satisfy both are devstral-small-2, mistral-small3.2:24b, lfm2.5 and llama3.2:3b. The deputy's own review of the evidence and a proposed run plan (roughly 3 to 8 machine hours per model) is in Matt's private workspace, 2026-11-12-reports/DEPUTY-BENCH-REVIEW.md." .
+
+## F294 — Outcome Reckonings: one guided way to make a thing (an asset, a website, a plan).
+## Planned 2026-11-12 from the Data Insight Solutions launch, where every step below was done by hand.
+kb:outcome-reckoning rdf:type ktype:Feature ;
+    rdfs:label "F294 — Outcome Reckonings: one guided way to make a thing, whether an asset, a website or a plan" ;
+    kpred:feature-id   "F294" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:wf-reckon, kb:guided-asset-refine, kb:guided-how-to-generate, kb:byo-static-host, kb:downstream-site, kb:downstream-site-deploy, kb:built-with-reckons, kb:shelly-generation-jobs ;
+    kpred:decided      "MATT, 2026-11-12 (chat): 'We should definitally roadmap many improevements to the site builder experience, just like the asset generation experience and any other outcome reckoning.'" ;
+    kpred:description  "The Reckoning (situation, target, proposal) already gains a 'generate an asset' target in F284. This generalises it: an OUTCOME is a declared recipe with the inputs it needs, what the space already holds, the gaps it cannot fill, the checks that gate each step, the steps a person must approve, and the next action. Scripts, local jobs and agents run the steps; each result lands in the space as a fact a person can review. The first two outcomes are a generated asset (F284) and a published website (the phases below); others follow only once those two work end to end." ;
+    kpred:principle    "NOT STORY-ONLY AND NOT A NEW TAB. An outcome is reachable from the Reckoning, from Shelly in free conversation and from the space itself (Matt, 2026-11-12, on F166.1: generation must not remain story mode only). A guided story may walk it, but is never the only way in. No new top-level navigation tab (F284 decision; AGENTS.md rule 2)." ;
+    kpred:principle    "A CHECK A RULE CAN DECIDE IS A SCRIPT. Every gate below was a deterministic check on 2026-11-12, run by an agent one command at a time. The outcome runs them itself and reports each with its numbers; a model is used only where no rule can decide, and only to propose." ;
+    kpred:principle    "PRODUCTION, DNS AND DELETION STAY HUMAN GATES. The outcome prepares the exact change and the way back; a person approves it." ;
+    kpred:remaining    "Plan only, 2026-11-12. Nothing in F294 is built; the checks it names exist as separate scripts (guard-public, fact-expiry, the site layout check) or were written by hand on the day." .
+
+kb:site-preflight rdf:type ktype:Phase ;
+    rdfs:label "F294.1 — website outcome: one preflight report before publishing" ;
+    kpred:feature-id   "F294.1" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:description  "One command and one report for a built site: the public-content guard, facts past or near their valid-until date (F293), layout at phone and desktop widths, every internal link and asset resolving, no draft pages, indexable (no noindex, robots.txt and sitemap present), no secrets beyond declared public endpoints, and each form's endpoint accepting the site's own origins (a CORS preflight, never a test submission)." ;
+    kpred:measured     "2026-11-12, Data Insight Solutions production build: an agent ran these as eight separate steps plus a link checker written on the spot. Results: guard pass, 1 fact 0 expired, layout pass on 6 pages at 390 and 1440 px, 494 references with 21 broken (all one /knowledge.ttl alternate link the build never writes), 0 drafts, 0 noindex, form preflight 204 from both production origins." .
+
+kb:site-live-state rdf:type ktype:Phase ;
+    rdfs:label "F294.2 — website outcome: what is live now, and the way back" ;
+    kpred:feature-id   "F294.2" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Before a publish: which host serves each of the site's addresses today, the production deployment to roll back to, and what differs between a preview and production (a host can add noindex to previews by itself). Recorded in the site space as facts with a date, so the next publish starts from them." ;
+    kpred:measured     "2026-11-12: the live DIS site turned out to be served by Netlify behind the Cloudflare proxy, found only from response headers; www redirected to an older domain. The rollback point could not be recorded because the deploy login had expired (F294.4)." .
+
+kb:site-domain-switch rdf:type ktype:Phase ;
+    rdfs:label "F294.3 — website outcome: switching a domain over, with protected records and redirects" ;
+    kpred:feature-id   "F294.3" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Generated steps for every address the site answers to: the canonical domain, www, and older domains redirected permanently to the canonical one. Records that must not change (mail exchangers, SPF and verification TXT records) are named before the change and checked unchanged after it. The person approves every DNS change." ;
+    kpred:decided      "MATT, 2026-11-12 (chat): 'data-insight-solutions.com should also point to our new cloudflare pages site.' Read by Claude Code as a permanent redirect to https://data-insight.solutions (one canonical address); the domain has no mail records, so the change cannot affect email." .
+
+kb:site-private-settings rdf:type ktype:Phase ;
+    rdfs:label "F294.4 — website outcome: private settings, missing pieces and deploy credentials" ;
+    kpred:feature-id   "F294.4" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:description  "A form endpoint or other private setting lives in a private override, never in the site repository, and the build says so when a page needs one it was not given. The deploy tool's login is treated as an expiring fact (the F293 pattern applied to tooling) and checked before the deploy step, not discovered by it." ;
+    kpred:measured     "2026-11-12: the first production build silently had no contact form, because the site configuration leaves the endpoint empty and the override was not passed. The deploy then stopped on an expired Cloudflare login that only a browser can renew." .
+
+kb:site-outcome-reckoning rdf:type ktype:Phase ;
+    rdfs:label "F294.5 — website outcome in the Reckoning: target 'a published website'" ;
+    kpred:feature-id   "F294.5" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:site-preflight, kb:site-live-state, kb:site-domain-switch, kb:site-private-settings ;
+    kpred:description  "Over a site space, the Reckoning with target 'a published website' shows each step (build, preflight, preview, publish, domain, verify) with its check, its state and its evidence, the gaps, and one next action. Scripts and local jobs run the steps; production and DNS wait for the person." ;
+    kpred:done-test    "On a synthetic site space with one expired fact and one form without an endpoint, the Reckoning shows both as gaps with the pages they affect, blocks the publish step, and names one next action for each; nothing is deployed." .
+
+kb:site-after-publish rdf:type ktype:Phase ;
+    rdfs:label "F294.6 — website outcome after publishing: it keeps checking" ;
+    kpred:feature-id   "F294.6" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:description  "Scheduled local checks on the live site: facts approaching their valid-until date, links that stopped resolving, the form endpoint still granting the site's origins, and pages whose underlying facts moved since they were built. Findings arrive in the site space for review." .
+
+kb:site-space-assets rdf:type ktype:Phase ;
+    rdfs:label "F294.7 — website outcome: an asset from a space shown on a page, linked back to its space" ;
+    kpred:feature-id   "F294.7" ;
+    kpred:part-of      kb:outcome-reckoning ;
+    kpred:has-status   "planned" ;
+    kpred:relates-to   kb:built-with-reckons ;
+    kpred:description  "A page can show an asset that lives in a space (a picture, a video, a Gaussian splat in a self-hosted viewer) with its origin label and a link to the space that holds how it was made. First instance: the scanned ring on the DIS About page (F292.3), done by hand on 2026-11-12." .
