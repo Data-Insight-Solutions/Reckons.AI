@@ -73,9 +73,27 @@ export interface SiteExtension {
 
 /** F274.4.3 registration point: a configured site renders through site-landing.ts, others through renderPage.
  *  F274.4.2 blog hooks and the draft marker are carried into the configured shell as well. */
+/** An 8-hex content hash (FNV-1a): a changed file gets a new address, an unchanged one keeps it. Cache-busting, not security. */
+export function contentStamp(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+const stampCache = new WeakMap<GenerateSiteOptions, Record<string, string>>();
+function stampsFor(opts: GenerateSiteOptions): Record<string, string> {
+  let st = stampCache.get(opts);
+  if (!st) {
+    st = {};
+    for (const [name, text] of Object.entries(configuredSiteFiles(opts))) st[name] = contentStamp(text);
+    stampCache.set(opts, st);
+  }
+  return st;
+}
+
 function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions, extra?: { html: string }): string {
   if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts, extra);
-  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri) };
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri), stamps: stampsFor(opts) };
   const ext = opts.extension;
   const shellExtra = {
     html: extra?.html,

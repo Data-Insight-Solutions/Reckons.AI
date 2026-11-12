@@ -44,6 +44,14 @@ export interface ShellContext {
   config: SiteConfig;
   /** Root-absolute URL of the page being rendered, e.g. "/" or "/about/". */
   currentUrl: string;
+  /** Content stamps by output file name (landing.css, landing.js, site-extra.css): added to the linked URLs as ?v=. */
+  stamps?: Record<string, string>;
+}
+
+/** A same-origin file URL with its content stamp, so a changed file is never served from an old cache. */
+function stamped(ctx: ShellContext, name: string): string {
+  const v = ctx.stamps?.[name];
+  return '/' + name + (v ? '?v=' + v : '');
 }
 
 function esc(s: string): string {
@@ -229,7 +237,7 @@ function renderCards(s: LandingSection, ctx: ShellContext): string {
 function renderSteps(s: LandingSection, ctx: ShellContext): string {
   const steps = s.subs.map((sub, i) =>
     '<div class="step reveal' + (DELAY[i % 4] ?? '') + '"><div class="dot panel">' + String(i + 1).padStart(2, '0') + '</div><div><h4>' + heading(sub.title) + '</h4>' + diagram(sub, ctx) + block(sub.body) + '</div></div>');
-  return sectionHead(s) + '<div class="path">' + steps.join('\n') + '</div>';
+  return sectionHead(s) + '<div class="path' + (steps.length === 4 ? ' cols-4' : '') + '">' + steps.join('\n') + '</div>';
 }
 
 function renderPanels(s: LandingSection, ctx: ShellContext): string {
@@ -354,8 +362,8 @@ function headHtml(title: string, description: string, ctx: ShellContext): string
     + (c.ogImage ? '<meta property="og:image" content="' + esc(c.ogImage) + '">\n' : '')
     + (c.favicon ? '<link rel="icon" href="' + esc(c.favicon) + '">\n' : '')
     + '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n'
-    + '<link rel="stylesheet" href="/landing.css">'
-    + (c.extraCss ? '\n<link rel="stylesheet" href="/site-extra.css">' : '');
+    + '<link rel="stylesheet" href="' + stamped(ctx, 'landing.css') + '">'
+    + (c.extraCss ? '\n<link rel="stylesheet" href="' + stamped(ctx, 'site-extra.css') + '">' : '');
 }
 
 function headerHtml(ctx: ShellContext): string {
@@ -393,7 +401,7 @@ function documentHtml(ctx: ShellContext, title: string, description: string, mai
   return '<!doctype html>\n<html lang="en">\n<head>\n' + headHtml(title, description, ctx) + '\n</head>\n'
     + '<body class="no-js" data-theme-key="' + esc(ctx.config.themeKey) + '">\n'
     + '<div class="aurora" aria-hidden="true"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>\n'
-    + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n' + extraBody + '<script src="/landing.js"></script>\n</body>\n</html>';
+    + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n' + extraBody + '<script src="' + stamped(ctx, 'landing.js') + '"></script>\n</body>\n</html>';
 }
 
 /** Page title with the site name appended, unless the page title already contains it. */
@@ -546,12 +554,15 @@ section.tight { padding-top: 0; }
 .path { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; position: relative; }
 .path::before { content: ""; position: absolute; left: 6%; right: 6%; top: 34px; height: 2px; background: linear-gradient(90deg, var(--accent-bright), var(--accent-2-soft), var(--accent-3)); transform: scaleX(var(--draw, 0)); transform-origin: left; transition: transform 1.4s cubic-bezier(.2,.7,.2,1); opacity: .7; }
 .path.in { --draw: 1; }
+/* four steps: four across when there is room, two by two below that (no connecting line there), one column on phones */
+.path.cols-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 1100px) and (min-width: 901px) { .path.cols-4 { grid-template-columns: repeat(2, 1fr); row-gap: 36px; } .path.cols-4::before { display: none; } }
 .path .step { padding: 0 6px; }
 .path .dot { width: 68px; height: 68px; border-radius: 50%; display: grid; place-items: center; font: 500 13px/1 var(--mono); color: var(--accent-bright); margin-bottom: 18px; position: relative; }
 .path h4 { margin: 0 0 8px; font-size: 20px; }
 .path p { margin: 0; color: var(--text-soft); }
 @media (max-width: 900px) {
-  .path { grid-template-columns: 1fr; gap: 28px; }
+  .path, .path.cols-4 { grid-template-columns: 1fr; gap: 28px; }
   .path::before { left: 33px; right: auto; top: 34px; bottom: 34px; width: 2px; height: auto; transform: scaleY(var(--draw, 0)); transform-origin: top; background: linear-gradient(180deg, var(--accent-bright), var(--accent-3)); }
   .path .step { display: grid; grid-template-columns: 68px 1fr; gap: 18px; padding: 0; }
   .path .dot { margin: 0; }
@@ -649,7 +660,10 @@ footer a { color: var(--text-soft); }
 .d1 { --d: .08s; } .d2 { --d: .16s; } .d3 { --d: .24s; } .d4 { --d: .32s; } .d5 { --d: .4s; }
 
 /* Guided scroll: a small pill fixed bottom right, clear of the phone's bottom edge, so it does not sit on the navigation or the form's send button. */
-.guide { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel-strong); border: 1px solid var(--panel-line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 6px 20px var(--shadow); font: 500 12px/1 var(--mono); opacity: .9; }
+.guide { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel-strong); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--panel-line)); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent), 0 8px 24px var(--shadow); font: 500 12px/1 var(--mono); opacity: .95; }
+/* One gentle ring, once, about two seconds after the pill first shows; never repeats, and the reduced-motion rule below removes it. */
+.guide::after { content: ""; position: absolute; inset: -2px; border-radius: 999px; border: 2px solid var(--accent-bright); pointer-events: none; opacity: 0; animation: guide-ring 1.1s ease-out 2s 1 forwards; }
+@keyframes guide-ring { 0% { opacity: .75; transform: scale(1); } 100% { opacity: 0; transform: scale(1.35, 1.9); } }
 .guide[hidden], .guide [hidden] { display: none; }
 .guide-btn { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: transparent; color: var(--text-soft); font: inherit; cursor: pointer; }
 .guide-btn:hover { color: var(--text); background: var(--panel); }

@@ -63,8 +63,8 @@ describe('landing layout (F274.4.3)', () => {
     expect(html).not.toMatch(/<script(?![^>]*\bsrc=)/);
     expect(html).not.toMatch(/<style[\s>]/);
     expect(html).not.toMatch(/\sstyle="/);
-    expect(html).toContain('<link rel="stylesheet" href="/landing.css">');
-    expect(html).toContain('<script src="/landing.js"></script>');
+    expect(html).toMatch(/<link rel="stylesheet" href="\/landing\.css\?v=[0-9a-f]{8}">/);
+    expect(html).toMatch(/<script src="\/landing\.js\?v=[0-9a-f]{8}"><\/script>/);
     expect(readdirSync(out)).toEqual(expect.arrayContaining(['landing.css', 'landing.js']));
   });
 
@@ -201,7 +201,7 @@ describe('site-supplied mark and stylesheet', () => {
     const html = read(out, 'index.html');
     expect(html).toContain('<div class="halo"></div>' + SVG);
     expect(html.split('id="mark"')[1].split('</div>')[0]).not.toContain('<img');
-    expect(html).toContain('<link rel="stylesheet" href="/landing.css">\n<link rel="stylesheet" href="/site-extra.css">');
+    expect(html).toMatch(/<link rel="stylesheet" href="\/landing\.css\?v=[0-9a-f]{8}">\n<link rel="stylesheet" href="\/site-extra\.css\?v=[0-9a-f]{8}">/);
     expect(read(out, 'site-extra.css')).toContain('animation: spin');
     expect(html).not.toMatch(/\sstyle="/);
   });
@@ -325,5 +325,36 @@ describe('card diagrams, entry logos and small print (F274.4.3)', () => {
     expect(html).not.toContain('class="diagram"');
     expect(html).not.toContain('logo-plate"');
     expect(html).not.toContain('<p class="fineprint">');
+  });
+});
+
+describe('content stamps on linked files (F274.4.3)', () => {
+  const stampOf = (html: string, name: string) => new RegExp('/' + name.replace('.', '\\.') + '\\?v=([0-9a-f]{8})').exec(html)?.[1];
+  it('a changed file gets a new stamp, an unchanged one keeps it, on every page, and the CSP still allows them', () => {
+    const a = build((c) => { c.theme.dark.accent = '#12aa55'; });
+    const same = build((c) => { c.theme.dark.accent = '#12aa55'; });
+    const other = build((c) => { c.theme.dark.accent = '#aa1255'; });
+    for (const page of ['index.html', 'about/index.html']) {
+      expect(stampOf(read(a, page), 'landing.css')).toBeTruthy();
+      expect(stampOf(read(a, page), 'landing.css')).toBe(stampOf(read(same, page), 'landing.css'));
+      expect(stampOf(read(a, page), 'landing.css')).not.toBe(stampOf(read(other, page), 'landing.css'));
+      // the script did not change when only a colour did
+      expect(stampOf(read(a, page), 'landing.js')).toBe(stampOf(read(other, page), 'landing.js'));
+    }
+    expect(stampOf(read(a, 'index.html'), 'landing.css')).toBe(stampOf(read(a, 'about/index.html'), 'landing.css'));
+    expect(read(a, 'index.html')).toContain("style-src 'self'; ");
+    expect(read(a, 'index.html')).toContain("script-src 'self'; ");
+  });
+
+  it('a steps section of four gets the four-column class, three do not', () => {
+    expect(read(build(), 'index.html')).not.toContain('class="path cols-4"');
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
+    tmp.push(site, join(out, '..'));
+    cpSync(FIXTURE, site, { recursive: true });
+    const f = join(site, 'content/index.md');
+    writeFileSync(f, readFileSync(f, 'utf8').replace('### What I built\n', '### A fourth step\nMore.\n\n### What I built\n'));
+    buildSite({ site, out });
+    expect(read(out, 'index.html')).toContain('class="path cols-4"');
   });
 });
