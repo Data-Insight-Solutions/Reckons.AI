@@ -11534,6 +11534,7 @@ kb:downstream-site-deploy rdf:type ktype:Phase ;
     kpred:depends-on   kb:downstream-site-build ;
     kpred:description  "A workflow in the site repository: on push (Sveltia commits included) it checks out Reckons.AI at a pinned commit, runs site:build, and deploys with wrangler pages deploy (branch previews for pull requests, production for main). The pinned commit is bumped by pull request until the package (F274.5) replaces it." ;
     kpred:evidence     "2026-10-30: Sveltia edits commit to GitHub, so a build that only runs on Matt's machine would leave them unpublished." ;
+    kpred:progress     "2026-11-12: workflow built in the site repository as .github/workflows/deploy.yml (branch content/site-pages, local commit; checks out Reckons.AI at pinned 1a5ba450, site:build, guard and fact-expiry, wrangler pages deploy to data-insight-solutions; fails fast naming any missing secret of CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, SITE_CONFIG_OVERRIDE). NOT YET PUSHED: the active gh account has no push access to the site repository, so no pull request exists and no run has happened. Waiting on that push and on the three secrets; done-test not met until a pull-request run is green." ;
     kpred:done-test    "On a pull request in the site repository the workflow is green and its preview URL serves the built index; the repository secret holds the Cloudflare token and no workflow log prints it." ;
     kpred:non-goal     "No DNS change: cutover is Matt's, in the dashboard." ;
     kpred:order        5 .
