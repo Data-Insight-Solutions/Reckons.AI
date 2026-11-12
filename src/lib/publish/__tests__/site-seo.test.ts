@@ -29,7 +29,7 @@ function build(src: string, config?: Record<string, unknown>, drafts = false) {
   return { out, result, read: (p: string) => readFileSync(join(out, p), 'utf8') };
 }
 
-describe('site address set', () => {
+describe('site address given', () => {
   const b = () => build(FIXTURE, { url: 'https://example.test/', ogImage: 'assets/og.png' });
 
   it('writes robots.txt with a Sitemap line and a sitemap of published pages only', () => {
@@ -58,7 +58,7 @@ describe('site address set', () => {
   });
 });
 
-describe('site address unset', () => {
+describe('site address absent', () => {
   it('writes robots.txt with no Sitemap line, no sitemap, no canonical, a relative og:image, and says so', () => {
     const { out, read, result } = build(FIXTURE, { ogImage: 'assets/og.png' });
     expect(read('robots.txt')).toBe('User-agent: *\nAllow: /\n');
