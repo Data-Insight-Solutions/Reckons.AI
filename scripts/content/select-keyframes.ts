@@ -8,7 +8,7 @@
  *   --track  JSON [{ "t": seconds, "x": 0..1, "y": 0..1 }, ...]: the object's centre over time (interpolated), for an
  *            object that moves across the frame as the camera orbits. The object is not detected here; the person (or
  *            an agent) supplies where it is.
- * Writes <out>/f0001.jpg… (kept frames, capture order: a folder scan:room takes as is), report.json, and contact
+ * Writes <out>/f0001.jpg… (kept frames, capture order: a folder scan:room takes as is) and, in <out>/review/, report.json and contact
  * sheets (kept-sheet-NN.jpg, rejected-sheet-NN.jpg) showing each frame's object crop with its score.
  */
 import { spawnSync } from 'node:child_process';
@@ -80,9 +80,12 @@ export async function selectKeyframesCli(argv: string[]) {
   const sheetOf = async (list: typeof decisions, name: string) => {
     for (let s = 0; s * 100 < list.length; s++) {
       const part = list.slice(s * 100, s * 100 + 100);
-      await contactSheet(part.map((d) => ({ file: join(work, files[d.index]), box: boxes.get(d.index)!, label: `${d.t.toFixed(2)}s ${d.score.toFixed(0)}${d.kept ? '' : ' ' + d.reason.slice(0, 8)}` })), cell, join(out, `${name}-sheet-${String(s + 1).padStart(2, '0')}.jpg`));
+      await contactSheet(part.map((d) => ({ file: join(work, files[d.index]), box: boxes.get(d.index)!, label: `${d.t.toFixed(2)}s ${d.score.toFixed(0)}${d.kept ? '' : ' ' + d.reason.slice(0, 8)}` })), cell, join(out, 'review', `${name}-sheet-${String(s + 1).padStart(2, '0')}.jpg`));
     }
   };
+  // Sheets and the report go in review/, NOT beside the frames: scan:room takes every image in the folder as a frame.
+  const review = join(out, 'review');
+  mkdirSync(review, { recursive: true });
   await sheetOf(kept, 'kept');
   // Rejected sheet: the sharpest rejects, the ones a person is most likely to want back.
   await sheetOf([...decisions.filter((d) => !d.kept)].sort((a, b) => b.score - a.score).slice(0, 100).sort((a, b) => a.index - b.index), 'rejected');
@@ -98,7 +101,7 @@ export async function selectKeyframesCli(argv: string[]) {
     allScoreMedian: median(scored.map((s) => s.score)),
     frames: decisions.map((d) => ({ index: d.index, t: Number(d.t.toFixed(3)), score: Number(d.score.toFixed(1)), window: d.window, kept: d.kept, reason: d.reason })),
   };
-  writeFileSync(join(out, 'report.json'), JSON.stringify(report, null, 1));
+  writeFileSync(join(review, 'report.json'), JSON.stringify(report, null, 1));
   rmSync(work, { recursive: true, force: true });
   console.log(`${scored.length} candidates, ${kept.length} kept, ${emptyWindows.length} empty windows; kept score median ${report.keptScore.median.toFixed(0)}, floor ${floor.toFixed(0)}`);
   return report;
