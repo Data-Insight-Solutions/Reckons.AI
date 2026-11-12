@@ -14,7 +14,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Parser, type Quad } from 'n3';
+import { Parser } from 'n3';
 import {
   DEFAULT_WARNING_DAYS, FACTS_FILE, STATED_ON_PREDICATE, VALID_UNTIL_PREDICATE, classifyExpiry, describeExpiry,
   expiryFactsFromContent, parseFactsFile, todayUtc, type ExpiryFact,
@@ -28,7 +28,8 @@ const URL_PRED = 'urn:kbase:predicate/url';
 
 /** The facts a Turtle file states: every valid-until fact still alive, with the pages that say it. */
 export function factsFromTurtle(ttl: string): ExpiryFact[] {
-  const quads: Quad[] = new Parser().parse(ttl);
+  type Q = { subject: { value: string }; predicate: { value: string }; object: { value: string } };
+  const quads: Q[] = new Parser().parse(ttl);
   const objects = (s: string, p: string): string[] => quads.filter((q) => q.subject.value === s && q.predicate.value === p).map((q) => q.object.value);
   const first = (s: string, p: string): string | undefined => objects(s, p)[0];
   const facts = new Map<string, ExpiryFact>();
