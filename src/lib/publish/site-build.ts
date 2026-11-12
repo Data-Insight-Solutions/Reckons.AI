@@ -36,6 +36,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { generateStaticSite } from './site-generator';
 import { createBlogExtension, importSiteWithBlog } from './site-blog';
 import { loadSiteConfig } from './site-config';
+import { seoFiles } from './site-seo';
 import {
   FACTS_FILE, classifyExpiry, expiryFactsFromContent, factsFileText, stripExpiryFromContent, todayUtc,
   describeExpiry, type ExpiryReport,
@@ -86,6 +87,8 @@ export interface SiteBuildResult {
   copiedAdmin: number;
   /** F293: the facts with a valid-until date (or an open one) that the pages state, sorted by date state. */
   expiry: ExpiryReport & { overridden: boolean };
+  /** F274.4.6: what was written for robots.txt / sitemap.xml and why, or why not. */
+  seoNote: string;
 }
 
 const MANIFEST_NAME = '.reckons-site-build.json';
@@ -242,8 +245,11 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   const blog = createBlogExtension(stmts);
   const drafts = opts.includeDrafts === true;
   let generated: ReturnType<typeof generateStaticSite>;
+  let siteConfig: ReturnType<typeof loadSiteConfig> | undefined;
   try {
-    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts, siteConfig: loadSiteConfig(site, readOverride(opts.configOverride)) ?? undefined });
+    siteConfig = loadSiteConfig(site, readOverride(opts.configOverride)) ?? undefined;
+    // knowledgeTtl: false because this build writes no knowledge.ttl (publishing the space's statements is a separate decision).
+    generated = generateStaticSite(stmts, { siteTitle: opts.siteTitle, extension: blog, includeDrafts: drafts, siteConfig, knowledgeTtl: false });
   } catch (err) {
     fail((err as Error).message);
   }
@@ -264,7 +270,8 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
 
   // Stage everything, then swap into <out>: the output is a faithful image of the site
   // at build time, so a page that became a draft between builds cannot survive in <out>.
-  const files: Record<string, string> = { ...generated.files, _headers: siteHeaders(drafts) };
+  const seo = seoFiles(Object.keys(generated.files), { url: siteConfig?.url ?? null, noindex: siteConfig?.noindex === true, draftPreview: drafts });
+  const files: Record<string, string> = { ...generated.files, ...seo.files, _headers: siteHeaders(drafts) };
   if (expiryFacts.length > 0) files[FACTS_FILE] = factsFileText(expiryFacts);
   if (drafts) {
     files[DRAFT_PREVIEW_MARKER] =
@@ -305,7 +312,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
       renameSync(stage, out);
     }
 
-    return { out, pageCount: generated.pageCount, files: all, copiedAssets: copiedAssets.length, copiedAdmin: copiedAdmin.length, expiry: { ...expiry, overridden: expiry.expired.length > 0 } };
+    return { out, pageCount: generated.pageCount, files: all, copiedAssets: copiedAssets.length, copiedAdmin: copiedAdmin.length, expiry: { ...expiry, overridden: expiry.expired.length > 0 }, seoNote: seo.note };
   } catch (err) {
     rmSync(stage, { recursive: true, force: true });
     throw err;

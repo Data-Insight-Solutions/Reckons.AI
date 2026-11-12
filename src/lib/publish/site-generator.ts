@@ -35,6 +35,8 @@ export interface GenerateSiteOptions {
   /** F274.4.3: from <site>/site.config.json. When present, every page uses the configured shell
    *  (header, navigation, footer, palettes) and `landing` pages the landing layout. */
   siteConfig?: SiteConfig;
+  /** Default true. False: the build writes no knowledge.ttl, so no page links to it (F274.4.6). */
+  knowledgeTtl?: boolean;
 }
 
 /** A page the extension adds that is not a WebPage (the blog index, a category page). */
@@ -93,7 +95,7 @@ function stampsFor(opts: GenerateSiteOptions): Record<string, string> {
 
 function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions, extra?: { html: string }): string {
   if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts, extra);
-  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri), stamps: stampsFor(opts) };
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri), stamps: stampsFor(opts), knowledgeTtl: opts.knowledgeTtl };
   const ext = opts.extension;
   const shellExtra = {
     html: extra?.html,
@@ -261,8 +263,7 @@ ${robots}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(page.title)} · ${siteTitle}</title>
 ${page.excerpt ? `<meta name="description" content="${escapeHtml(page.excerpt)}">` : ''}
-<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">
-<link rel="stylesheet" href="/styles.css">
+${opts.knowledgeTtl === false ? '' : '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n'}<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -283,7 +284,7 @@ ${page.excerpt ? `<meta name="description" content="${escapeHtml(page.excerpt)}"
     ${prev || next ? nav : ''}
   </main>
 </div>
-<footer class="site-footer">Published from a <a href="/knowledge.ttl">knowledge graph</a> with Reckons.AI.</footer>
+<footer class="site-footer">Published from a ${opts.knowledgeTtl === false ? 'knowledge graph' : '<a href="/knowledge.ttl">knowledge graph</a>'} with Reckons.AI.</footer>
 </body>
 </html>`;
 }
