@@ -100,7 +100,7 @@ function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null
     before: (page.status === 'draft' && opts.includeDrafts ? '<p class="draft-banner">Draft: local preview only, not published.</p>' : '') + (extra ? '' : ext?.beforeBody?.(page) ?? ''),
     after: extra ? '' : ext?.afterBody?.(page) ?? '',
   };
-  const html = page.template === 'landing' ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
+  const html = (page.template === 'landing' || page.template === 'sections') ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
   return opts.includeDrafts ? html.replace('<head>\n', '<head>\n<meta name="robots" content="noindex, nofollow">\n') : html;
 }
 
@@ -355,7 +355,7 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
   const ext = opts.extension;
   const selected = opts.includeDrafts ? all : publishablePages(all);
   const prepared = ext?.preparePages ? ext.preparePages(selected) : selected;
-  const pages = prepared.map((p) => (p.template === 'landing' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
+  const pages = prepared.map((p) => (p.template === 'landing' || p.template === 'sections' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
   const home = pickHome(pages);
   const homeIri = home?.iri ?? null;
   const theme = extractTheme(stmts);

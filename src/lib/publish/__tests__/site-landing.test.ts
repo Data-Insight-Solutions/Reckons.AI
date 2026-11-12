@@ -358,3 +358,26 @@ describe('content stamps on linked files (F274.4.3)', () => {
     expect(read(out, 'index.html')).toContain('class="path cols-4"');
   });
 });
+
+describe('sections pages (F274.4.3)', () => {
+  it('a page with template: sections gets the landing layout, blocks and an empty media slot, but is not the home page and has no scroll control', () => {
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
+    tmp.push(site, join(out, '..'));
+    cpSync(FIXTURE, site, { recursive: true });
+    const f = join(site, 'content/about.md');
+    writeFileSync(f, '---\ntitle: About\nslug: about\ntemplate: sections\nstatus: published\nexcerpt: About.\n---\n\n## Background\n@section: blocks\n\n### One\n@span: tall\nText one.\n\n### Slot\n@as: media\n\n### Two\n- a\n- b\n');
+    const cfg = join(site, 'site.config.json');
+    const c = JSON.parse(readFileSync(cfg, 'utf8')); c.guidedScroll = true; writeFileSync(cfg, JSON.stringify(c));
+    buildSite({ site, out });
+    const about = read(out, 'about/index.html');
+    expect(about).toContain('class="blocks"');
+    expect(about).toContain('<div class="panel reveal tall"><h3>One</h3>');
+    expect(about).toContain('<div class="media-slot" hidden></div>');
+    expect(about).toContain('page-sections');
+    expect(about).not.toContain('id="guide"');
+    expect(about).not.toContain('<ul class="chips">');
+    expect(read(out, 'index.html')).toContain('id="guide"');
+    expect(read(out, 'index.html')).not.toContain('page-sections');
+  });
+});

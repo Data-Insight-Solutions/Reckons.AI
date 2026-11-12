@@ -16,9 +16,11 @@
  *
  * Hero: the heading is the h1 (`==words==` gets the gradient), the first paragraph is the lede, a
  * list of links becomes the buttons (first = primary), `@tagline` sits under the logo mark.
+ * A page with `template: sections` is laid out the same way as the landing (without being the home page or carrying the scroll control).
  * A `###` in cards, steps or panels may carry `@diagram: assets/x.svg`, a site file inlined above its text (checked like the mark).
  * A timeline item may end with `| logo: /assets/x.png`, shown small on a light plate beside its name, and the `###` may
  * carry `@note: text`, a small-print line under the list.
+ * Blocks: each `###` a panel in a two-column grid; `@span: tall|wide`; `@as: media` reserves an optional media slot.
  * Cards: each `###` is a card; its first paragraph is the lead; `Proof: Label | text` adds a proof
  * line, `Stat: 212,000` a large figure, `@tag: alpha` a small tag. Steps: each `###` is a stage of a
  * path that draws itself. Panels: each `###` is a panel; `Price: text` lines become highlighted notes;
@@ -46,6 +48,8 @@ export interface ShellContext {
   currentUrl: string;
   /** Content stamps by output file name (landing.css, landing.js, site-extra.css): added to the linked URLs as ?v=. */
   stamps?: Record<string, string>;
+  /** True on the landing page only: the guided-scroll control is not on other pages of a site. */
+  guided?: boolean;
 }
 
 /** A same-origin file URL with its content stamp, so a changed file is never served from an old cache. */
@@ -204,7 +208,7 @@ function renderHero(s: LandingSection, ctx: ShellContext): string {
   const eyebrow = s.opts.eyebrow ? '<span class="eyebrow reveal">' + esc(s.opts.eyebrow) + '</span>' : '';
   return '<div class="hero"' + (s.opts.id ? ' id="' + esc(slugify(s.opts.id)) + '"' : '') + '><div class="wrap"><div>'
     + eyebrow + '<h1 class="reveal d1">' + heading(s.title) + '</h1>' + paras + buttons
-    + (ctx.config.guidedScroll ? '' : '<div class="scroll-cue reveal d5"><span></span>Scroll</div>') + '</div>' + mark + '</div></div>';
+    + (ctx.guided ? '' : '<div class="scroll-cue reveal d5"><span></span>Scroll</div>') + '</div>' + mark + '</div></div>';
 }
 
 /** A card's, step's or panel's `@diagram: path` as an inlined, checked SVG above its text (nothing when the site has no inliner). */
@@ -257,31 +261,50 @@ function listItems(md: string): string[] {
   return md.split(/\r?\n/).map((l) => /^\s*[-*]\s+(.*)$/.exec(l)?.[1]).filter((x): x is string => !!x);
 }
 
+/** The body of an about/blocks item: a timeline, chips (a list and nothing else) or plain markdown. */
+function subBody(sub: LandingSub, chips = true): string {
+  const items = listItems(sub.body);
+  if (sub.opts.as === 'timeline') {
+    return '<ol class="timeline">' + items.map((it) => {
+      const fields = it.split('|').map((x) => x.trim());
+      // an optional `logo: /path` field: a small image beside the entry, shown as it was supplied
+      const logoAt = fields.findIndex((f, i) => i >= 2 && /^logo:/i.test(f));
+      const logo = logoAt >= 0 ? fields.splice(logoAt, 1)[0].replace(/^logo:\s*/i, '') : '';
+      const [when, what, role] = fields;
+      const img = logo && logo.startsWith('/') ? '<span class="logo-plate"><img class="logo" src="' + esc(href(logo)) + '" alt=""></span>' : '';
+      return '<li><div class="when">' + inline(when ?? '') + '</div><div class="what">' + img + '<span>' + inline(what ?? '') + '</span></div>' + (role ? '<div class="role">' + inline(role) + '</div>' : '') + '</li>';
+    }).join('') + '</ol>' + (sub.opts.note ? '<p class="fineprint">' + inline(sub.opts.note) + '</p>' : '');
+  }
+  if (chips && items.length > 0 && sub.body.trim().split(/\r?\n/).every((l) => l.trim() === '' || /^\s*[-*]\s/.test(l))) {
+    return '<div class="chips">' + items.map((it) => '<span class="chip">' + inline(it) + '</span>').join('') + '</div>';
+  }
+  return block(sub.body);
+}
+
 function renderAbout(s: LandingSection): string {
   const cols: string[][] = [[], []];
   s.subs.forEach((sub, i) => {
     const col = sub.opts.panel === '2' ? 1 : sub.opts.panel === '1' ? 0 : (i === 0 ? 0 : 1);
-    let inner = '<h3>' + heading(sub.title) + '</h3>';
-    const items = listItems(sub.body);
-    if (sub.opts.as === 'timeline') {
-      inner += '<ol class="timeline">' + items.map((it) => {
-        const fields = it.split('|').map((x) => x.trim());
-        // an optional `logo: /path` field: a small image beside the entry, shown as it was supplied
-        const logoAt = fields.findIndex((f, i) => i >= 2 && /^logo:/i.test(f));
-        const logo = logoAt >= 0 ? fields.splice(logoAt, 1)[0].replace(/^logo:\s*/i, '') : '';
-        const [when, what, role] = fields;
-        const img = logo && logo.startsWith('/') ? '<span class="logo-plate"><img class="logo" src="' + esc(href(logo)) + '" alt=""></span>' : '';
-        return '<li><div class="when">' + inline(when ?? '') + '</div><div class="what">' + img + '<span>' + inline(what ?? '') + '</span></div>' + (role ? '<div class="role">' + inline(role) + '</div>' : '') + '</li>';
-      }).join('') + '</ol>' + (sub.opts.note ? '<p class="fineprint">' + inline(sub.opts.note) + '</p>' : '');
-    } else if (items.length > 0 && sub.body.trim().split(/\r?\n/).every((l) => l.trim() === '' || /^\s*[-*]\s/.test(l))) {
-      inner += '<div class="chips">' + items.map((it) => '<span class="chip">' + inline(it) + '</span>').join('') + '</div>';
-    } else {
-      inner += block(sub.body);
-    }
-    cols[col].push(inner);
+    cols[col].push('<h3>' + heading(sub.title) + '</h3>' + subBody(sub));
   });
   const panels = cols.filter((c) => c.length).map((c, i) => '<div class="panel reveal' + (DELAY[i] ?? '') + '">' + c.join('') + '</div>');
   return sectionHead(s) + '<div class="about">' + panels.join('\n') + '</div>';
+}
+
+/**
+ * Blocks: one panel per `###`, in a two-column grid on desktop and one column on phones. `@span: tall`
+ * lets one block take the height of three. A `###` with `@as: media` is an optional slot for a picture or
+ * diagram (`@diagram: path.svg`); with none given it renders nothing, so a site can reserve the place.
+ */
+function renderBlocks(s: LandingSection, ctx: ShellContext): string {
+  const blocks = s.subs.map((sub, i) => {
+    if (sub.opts.as === 'media') {
+      const d = diagram(sub, ctx);
+      return d ? '<div class="media-slot panel reveal">' + d + '</div>' : '<div class="media-slot" hidden></div>';
+    }
+    return '<div class="panel reveal' + (DELAY[i % 4] ?? '') + (sub.opts.span === 'tall' ? ' tall' : sub.opts.span === 'wide' ? ' wide' : '') + '"><h3>' + heading(sub.title) + '</h3>' + diagram(sub, ctx) + subBody(sub, false) + '</div>';
+  });
+  return sectionHead(s) + '<div class="blocks">' + blocks.join('\n') + '</div>';
 }
 
 function renderBanner(s: LandingSection): string {
@@ -335,6 +358,7 @@ function renderSection(s: LandingSection, ctx: ShellContext): string {
     case 'steps': return wrapSection(s, renderSteps(s, ctx));
     case 'panels': return wrapSection(s, renderPanels(s, ctx));
     case 'about': return wrapSection(s, renderAbout(s));
+    case 'blocks': return wrapSection(s, renderBlocks(s, ctx));
     case 'banner': return wrapSection(s, renderBanner(s), ' class="tight"');
     case 'contact': return wrapSection(s, renderContact(s, ctx));
     default: return wrapSection(s, renderText(s));
@@ -397,9 +421,9 @@ function guideHtml(config: SiteConfig): string {
     + '<span class="guide-sr" id="guide-live" role="status" aria-live="polite"></span></div>\n';
 }
 
-function documentHtml(ctx: ShellContext, title: string, description: string, main: string, extraBody = ''): string {
+function documentHtml(ctx: ShellContext, title: string, description: string, main: string, extraBody = '', bodyClass = ''): string {
   return '<!doctype html>\n<html lang="en">\n<head>\n' + headHtml(title, description, ctx) + '\n</head>\n'
-    + '<body class="no-js" data-theme-key="' + esc(ctx.config.themeKey) + '">\n'
+    + '<body class="no-js' + bodyClass + '" data-theme-key="' + esc(ctx.config.themeKey) + '">\n'
     + '<div class="aurora" aria-hidden="true"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>\n'
     + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n' + extraBody + '<script src="' + stamped(ctx, 'landing.js') + '"></script>\n</body>\n</html>';
 }
@@ -410,12 +434,14 @@ function pageTitle(page: string, site: string): string {
 }
 
 /** A page whose template is `landing`: its `## ` sections laid out as the landing design. */
-export function renderLandingPage(page: SitePage, ctx: ShellContext): string {
+export function renderLandingPage(page: SitePage, pageCtx: ShellContext): string {
+  const guided = page.template === 'landing' && !!pageCtx.config.guidedScroll;
+  const ctx = { ...pageCtx, guided };
   const sections = parseLanding(page.body);
   const main = sections.length
     ? sections.map((s) => renderSection(s, ctx)).join('\n')
     : wrapSection({ title: page.title, opts: {}, body: page.body, subs: [] }, renderText({ title: page.title, opts: {}, body: page.body, subs: [] }));
-  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main, guideHtml(ctx.config));
+  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main, guided ? guideHtml(ctx.config) : '', page.template === 'sections' ? ' page-sections' : '');
 }
 
 /** Any other page of a configured site: its markdown in a panel, inside the common shell. */
@@ -597,6 +623,18 @@ section.tight { padding-top: 0; }
 .logo-plate { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 8px; background: #fff; border: 1px solid var(--panel-line); }
 .logo-plate .logo { display: block; height: 26px; width: auto; max-width: 100%; }
 @media (max-width: 640px) { .timeline .what { flex-direction: column; align-items: flex-start; gap: 8px; } }
+.page-sections .bento { align-items: start; }
+.blocks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: start; }
+.blocks .tall { grid-row: span 4; }
+.blocks .media-slot { grid-column: 2; }
+.blocks .wide { grid-column: 1 / -1; }
+.blocks .panel { padding: clamp(22px, 3vw, 34px); }
+.blocks h3 { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2-soft); margin: 0 0 12px; }
+.blocks .panel ul { margin: 8px 0 0; padding-left: 20px; color: var(--text-soft); }
+.blocks .panel li { margin: 0 0 6px; }
+.blocks .panel p { margin: 0 0 10px; color: var(--text-soft); }
+.blocks .panel a { color: var(--accent-bright); }
+@media (max-width: 900px) { .blocks { grid-template-columns: 1fr; } .blocks .tall { grid-row: auto; } .blocks .media-slot { grid-column: auto; } }
 .fineprint { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-mute); }
 .diagram { margin: 4px 0 14px; max-width: 380px; }
 .diagram svg { display: block; width: 100%; height: auto; }
