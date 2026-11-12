@@ -196,7 +196,8 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:tested-by "src/lib/rdf/__tests__/bm25.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/reasoning.test.ts" ;
           kpred:tested-by "src/lib/rdf/__tests__/temporal.test.ts" ;
-          kpred:tested-by "src/lib/rdf/__tests__/archive.test.ts" .
+          kpred:tested-by "src/lib/rdf/__tests__/archive.test.ts" ;
+          kpred:tested-by "src/lib/rdf/__tests__/stmt-iri-escape.test.ts" .
 
 ## =============================================================================
 ## src/lib/stores — Svelte 5 Rune Stores

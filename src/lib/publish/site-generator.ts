@@ -73,22 +73,43 @@ export interface SiteExtension {
 
 /** F274.4.3 registration point: a configured site renders through site-landing.ts, others through renderPage.
  *  F274.4.2 blog hooks and the draft marker are carried into the configured shell as well. */
+/** An 8-hex content hash (FNV-1a): a changed file gets a new address, an unchanged one keeps it. Cache-busting, not security. */
+export function contentStamp(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+const stampCache = new WeakMap<GenerateSiteOptions, Record<string, string>>();
+function stampsFor(opts: GenerateSiteOptions): Record<string, string> {
+  let st = stampCache.get(opts);
+  if (!st) {
+    st = {};
+    for (const [name, text] of Object.entries(configuredSiteFiles(opts))) st[name] = contentStamp(text);
+    stampCache.set(opts, st);
+  }
+  return st;
+}
+
 function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions, extra?: { html: string }): string {
   if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts, extra);
-  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri) };
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri), stamps: stampsFor(opts) };
   const ext = opts.extension;
   const shellExtra = {
     html: extra?.html,
     before: (page.status === 'draft' && opts.includeDrafts ? '<p class="draft-banner">Draft: local preview only, not published.</p>' : '') + (extra ? '' : ext?.beforeBody?.(page) ?? ''),
     after: extra ? '' : ext?.afterBody?.(page) ?? '',
   };
-  const html = page.template === 'landing' ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
+  const html = (page.template === 'landing' || page.template === 'sections') ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
   return opts.includeDrafts ? html.replace('<head>\n', '<head>\n<meta name="robots" content="noindex, nofollow">\n') : html;
 }
 
 /** The configured site's extra files (stylesheet and script shared by every page). */
 function configuredSiteFiles(opts: GenerateSiteOptions): Record<string, string> {
-  return opts.siteConfig ? { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() } : {};
+  if (!opts.siteConfig) return {};
+  const files: Record<string, string> = { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() };
+  if (opts.siteConfig.extraCss !== null) files['site-extra.css'] = opts.siteConfig.extraCss;
+  return files;
 }
 
 const SITE = 'urn:reckons:site/';
@@ -334,7 +355,7 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
   const ext = opts.extension;
   const selected = opts.includeDrafts ? all : publishablePages(all);
   const prepared = ext?.preparePages ? ext.preparePages(selected) : selected;
-  const pages = prepared.map((p) => (p.template === 'landing' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
+  const pages = prepared.map((p) => (p.template === 'landing' || p.template === 'sections' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
   const home = pickHome(pages);
   const homeIri = home?.iri ?? null;
   const theme = extractTheme(stmts);

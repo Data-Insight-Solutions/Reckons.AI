@@ -9,7 +9,7 @@ import { decodePortableMetadata } from './portable-metadata';
  */
 
 import type { Statement, Source, Term, ReviewStatus, EvidenceSpan } from './types';
-import { hasLeakedTermKey } from './types';
+import { hasLeakedTermKey, stmtIdFromIriPart } from './types';
 import { notifyImportQuarantine } from './cut-notice';
 import { isAltitude } from './fact-altitude';
 
@@ -342,7 +342,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
       else if (pv === KBASE + 'altitude')           d.altitude    = isAltitude(ov.value) ? ov.value : undefined;
       else if (pv === KBASE + 'gloss')              d.gloss       = ov.value;
       else if (pv === KBASE + 'excerpt')            d.excerpt     = ov.value;
-      else if (pv === KBASE + 'supersedes')         d.supersedes  = ov.value.replace(STMT_PREFIX, '');
+      else if (pv === KBASE + 'supersedes')         d.supersedes  = stmtIdFromIriPart(ov.value.replace(STMT_PREFIX, ''));
       else if (pv === PROV  + 'wasDerivedFrom')     d.g           = n3ToTerm(ov);
       else if (pv === DC    + 'created')            d.createdAt   = new Date(ov.value).getTime();
     } else if (
@@ -420,7 +420,7 @@ export async function importTurtleFull(turtle: string, opts: { name?: string } =
       : g.kind === 'iri' ? g.value : 'unknown';
 
     statements.push({
-      id:         iri.slice(STMT_PREFIX.length),
+      id:         stmtIdFromIriPart(iri.slice(STMT_PREFIX.length)),
       s,
       p:          { kind: 'iri', value: p.value },
       o,

@@ -1,5 +1,6 @@
 import { encodePortableMetadata } from './portable-metadata';
 import type { Statement, Source, Term, NamedNode } from './types';
+import { stmtIdToIriPart } from './types';
 import { notifyExportSkipped } from './cut-notice';
 import { isIRI, isLit, isBNode, termToString, hasLeakedTermKey } from './types';
 import { scanForExportAdvisory, exportAdvisoryHeader, exportAdvisoryTriple } from '../safety/content-policy';
@@ -168,7 +169,7 @@ export function toTurtle(statements: Statement[], opts: TurtleOptions = {}): str
     lines.push('# ---- provenance ----');
     for (const st of kept) {
       lines.push(
-        `<urn:kbase:stmt/${st.id}> prov:wasDerivedFrom ${termTTL(st.g, prefixes)} ;`
+        `<urn:kbase:stmt/${stmtIdToIriPart(st.id)}> prov:wasDerivedFrom ${termTTL(st.g, prefixes)} ;`
       );
       lines.push(`    dc:created "${new Date(st.createdAt).toISOString()}"^^xsd:dateTime .`);
     }
@@ -463,7 +464,7 @@ export function toTurtleFull(
   // 3. Reification blocks for ALL statements (carries status + full metadata)
   lines.push('# ---- statement metadata (all statuses) ----');
   for (const st of statements) {
-    lines.push(`<urn:kbase:stmt/${st.id}>`);
+    lines.push(`<urn:kbase:stmt/${stmtIdToIriPart(st.id)}>`);
     lines.push(`    rdf:type rdf:Statement ;`);
     lines.push(`    rdf:subject ${termTTL(st.s, prefixes)} ;`);
     lines.push(`    rdf:predicate ${termTTL(st.p, prefixes)} ;`);
@@ -492,7 +493,7 @@ export function toTurtleFull(
         `        <http://purl.org/dc/terms/hasVersion> ${JSON.stringify(version)} ] ;`,
       );
     }
-    if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${st.supersedes}> ;`);
+    if (st.supersedes) lines.push(`    meta:supersedes <urn:kbase:stmt/${stmtIdToIriPart(st.supersedes)}> ;`);
     lines.push(`    prov:wasDerivedFrom ${termTTL(st.g, prefixes)} ;`);
     lines.push(`    dc:created "${new Date(st.createdAt).toISOString()}"^^xsd:dateTime .`);
     lines.push('');

@@ -8,7 +8,7 @@
  * Colour and font values go through the same allow-lists the theme code already uses (output-policy).
  */
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { themeColor, themeFont } from './output-policy';
 
 export const SITE_CONFIG_FILE = 'site.config.json';
@@ -77,6 +77,14 @@ export interface SiteConfig {
   };
   /** localStorage key remembering the visitor's light or dark choice. */
   themeKey: string;
+  /** Sanitised inline SVG for the landing hero's mark (read from `markSvg`), or null: the logo image is used. */
+  markSvg: string | null;
+  /** Text of the site's extra stylesheet (read from `extraCss`), copied to /site-extra.css and linked after landing.css, or null. */
+  extraCss: string | null;
+  /** The guided-scroll control on landing pages (`guidedScroll` in the file: true or { dwellSeconds }), or null: off. */
+  guidedScroll: { dwellSeconds: number } | null;
+  /** Reads, checks and returns an SVG file of the site for inlining (a card's `@diagram`); null when the config was not read from a site folder. */
+  inlineSvg: ((relPath: string) => string) | null;
 }
 
 /** Neutral defaults: what a site gets for any value its config leaves out. Not any site's brand. */
@@ -106,6 +114,7 @@ const DEFAULT_NAV = [
   { label: 'Contact', href: '/contact/' },
 ];
 
+export const DEFAULT_DWELL_SECONDS = 8;
 const DEFAULT_FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
 const DEFAULT_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 const DEFAULT_TOPICS = ['General question', 'A project', 'Something else'];
@@ -158,6 +167,16 @@ function fontStack(v: unknown, field: string, fallback: string): string {
   if (!s) return fallback;
   if (themeFont(s, '\u0000') === '\u0000') fail(field + ' may contain only letters, digits, blanks, commas, - and _: ' + s);
   return s;
+}
+
+/** `guidedScroll`: absent/false = off, true = on with the default dwell, { dwellSeconds: 2..60 } = on with that dwell. */
+function guidedScroll(v: unknown): SiteConfig['guidedScroll'] {
+  if (v === undefined || v === null || v === false) return null;
+  if (v === true) return { dwellSeconds: DEFAULT_DWELL_SECONDS };
+  if (!isObj(v)) fail('guidedScroll must be true, false or { dwellSeconds }');
+  const d = v.dwellSeconds === undefined ? DEFAULT_DWELL_SECONDS : v.dwellSeconds;
+  if (typeof d !== 'number' || !Number.isFinite(d) || d < 2 || d > 60) fail('guidedScroll.dwellSeconds must be a number from 2 to 60');
+  return { dwellSeconds: d };
 }
 
 /** Validate and normalise a parsed site.config.json. */
@@ -246,7 +265,48 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
     },
     contact: { webhook, email, slug, topics: (topicsRaw as string[]).map((t) => t.trim()), tag: str(contactRaw.tag, 'contact.tag', 40) ?? 'site' },
     themeKey: str(raw.themeKey, 'themeKey', 60) ?? 'site-theme',
+    markSvg: null,
+    extraCss: null,
+    guidedScroll: guidedScroll(raw.guidedScroll),
+    inlineSvg: null,
   };
+}
+
+/**
+ * Check an SVG that will be inlined into the page and return its markup. The page policy blocks inline
+ * styles and scripts, and an inlined file is part of the page, so what the policy would drop silently
+ * (or what would reach out of the page) fails the build instead, naming the offending thing.
+ */
+const SVG_SHAPES = new Set(['svg', 'g', 'path', 'line', 'circle', 'rect', 'ellipse', 'polygon', 'polyline', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'title', 'desc', 'text', 'tspan', 'symbol']);
+
+export function sanitizeInlineSvg(text: string, field = 'markSvg'): string {
+  const svg = text.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').trim();
+  if (!/^<svg[\s>]/i.test(svg) || !/<\/svg>\s*$/i.test(svg)) fail(field + ' must be one <svg> element');
+  if (/<!(doctype|entity)/i.test(svg)) fail(field + ' must not declare a DOCTYPE or entities');
+  for (const m of svg.matchAll(/<\/?\s*([A-Za-z][\w:.-]*)/g)) {
+    if (!SVG_SHAPES.has(m[1].toLowerCase())) fail(field + ' contains a <' + m[1] + '> element, which is not allowed in an inlined mark (only drawing shapes, gradients and titles are: it could run code, reach out of the page or be blocked by the page policy)');
+  }
+  for (const m of svg.matchAll(/\s([^\s=<>"'/]+)\s*=\s*("[^"]*"|'[^']*')/g)) {
+    const name = m[1].toLowerCase();
+    const value = m[2].slice(1, -1);
+    if (name === 'style') fail(field + ' has an inline style attribute (style="' + value.slice(0, 40) + '"); move it to the site\'s extra stylesheet as a class, because the page policy blocks inline styles');
+    if (name.startsWith('on')) fail(field + ' has an event-handler attribute (' + name + ')');
+    if ((name === 'href' || name.endsWith(':href')) && !value.startsWith('#')) fail(field + ' has an external reference (' + name + '="' + value.slice(0, 40) + '"); only #fragment references are allowed');
+    if (/url\(\s*['"]?(?!#)/i.test(value) || /^\s*(javascript|data):/i.test(value)) fail(field + ' has an external reference in ' + name + '="' + value.slice(0, 40) + '"');
+  }
+  return svg;
+}
+
+/** A file named in the config, resolved inside the site directory. */
+function siteFile(site: string, rel: unknown, field: string): string | null {
+  const name = str(rel, field);
+  if (!name) return null;
+  if (/[\x00-\x1f\\]/.test(name) || /^[a-z][a-z0-9+.-]*:/i.test(name) || name.startsWith('/') || name.split('/').includes('..')) fail(field + ' must be a path inside the site: ' + name);
+  const root = resolve(site);
+  const abs = resolve(root, name);
+  if (!abs.startsWith(root + sep)) fail(field + ' must be a path inside the site: ' + name);
+  if (!existsSync(abs)) fail(field + ' names a file that does not exist: ' + name);
+  return readFileSync(abs, 'utf8');
 }
 
 /** Read <site>/site.config.json. Null when the site has none (the plain generator layout is used). */
@@ -263,5 +323,18 @@ export function loadSiteConfig(site: string, override?: Record<string, unknown>)
     if (typeof webhook === 'string') merged.contact = { ...((merged.contact as Record<string, unknown>) ?? {}), webhook };
     raw = merged;
   }
-  return parseSiteConfig(raw);
+  const cfg = parseSiteConfig(raw);
+  cfg.inlineSvg = (rel) => {
+    const text = siteFile(site, rel, 'diagram');
+    return sanitizeInlineSvg(text ?? '', 'diagram ' + rel);
+  };
+  const r = raw as Record<string, unknown>;
+  const svg = siteFile(site, r.markSvg, 'markSvg');
+  const css = siteFile(site, r.extraCss, 'extraCss');
+  if (svg !== null) cfg.markSvg = sanitizeInlineSvg(svg);
+  if (css !== null) {
+    if (/@import|<\/?style/i.test(css)) fail('extraCss must not use @import or contain markup');
+    cfg.extraCss = css;
+  }
+  return cfg;
 }

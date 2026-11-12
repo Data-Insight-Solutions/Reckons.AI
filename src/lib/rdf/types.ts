@@ -458,6 +458,25 @@ export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
 /** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
 export const STMT_PREFIX = 'urn:kbase:stmt/';
 
+/** Characters a Turtle IRI cannot hold; a fact id such as `currents|s|p|v` carries them. */
+const IRI_UNSAFE = /[|"<>{}\\^`\s]/;
+const STMT_ID_MARK = '~';
+/**
+ * A fact id as it is written inside <urn:kbase:stmt/{id}>. An id with nothing an IRI cannot hold (a uuid, an
+ * archive id, anything written before) is written exactly as it is. Any other id is written with a leading `~`
+ * (no generated id starts with one; an id that does is marked too) and `%` plus every unsafe character
+ * percent-encoded, so reading it back is lossless.
+ */
+export const stmtIdToIriPart = (id: string): string =>
+  IRI_UNSAFE.test(id) || id.startsWith(STMT_ID_MARK)
+    ? STMT_ID_MARK + id.replace(/[%|"<>{}\\^`\s]/g, (c) => encodeURIComponent(c))
+    : id;
+/** The inverse of stmtIdToIriPart. Only a marked id is decoded; an unmarked one, even with a literal %7C, is taken as written. */
+export const stmtIdFromIriPart = (part: string): string => {
+  if (!part.startsWith(STMT_ID_MARK)) return part;
+  try { return decodeURIComponent(part.slice(1)); } catch { return part; }
+};
+
 /** Automated test/crawl telemetry (button-crawl findings, route probes).
  *
  * These are OBSERVATIONS ABOUT A TEST RUN, not knowledge the graph is about. Their objects are UI
