@@ -1160,3 +1160,10 @@ code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
 # Hand-held walkthroughs (F261).
 code:rdf kpred:has-file "src/lib/rdf/story-offers.ts" ;
     kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts" .
+
+code:splat-embed-viewer
+    rdf:type ktype:Concept ;
+    rdfs:label "Embeddable splat viewer" ;
+    skos:definition "Builds a self-contained folder (page, bundled three.js viewer, the splat, an optional poster) that floats one Gaussian splat and turns it by drag; F294.7." ;
+    kpred:has-file "scripts/site/splat-embed.ts", "scripts/site/splat-embed-lib.ts", "scripts/site/check-embed.ts" ;
+    kpred:tested-by "scripts/site/__tests__/splat-embed.test.ts" .
