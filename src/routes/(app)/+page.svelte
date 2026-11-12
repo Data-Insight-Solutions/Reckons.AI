@@ -74,7 +74,7 @@
     LEAP_PRED, LEAP_LABEL_PRED,
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
-  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
@@ -757,11 +757,15 @@
    * Fact ids that pass every fact-level filter, so the canvas lights an EDGE only when its own
    * fact matches (F223.11). null = no fact-level filter: nothing is dimmed on that account.
    */
+  // F292.2: while a story step lights markers, an edge is lit when it touches one of them (no layout change).
+  const spotlightKeys = $derived(new Set(shellySpotlight()));
   const litStatementIds = $derived.by(() => {
     const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
-    if (!status && !optionFocus) return null;
+    const spot = spotlightKeys.size > 0;
+    if (!status && !optionFocus && !spot) return null;
     const ids = new Set<string>();
     for (const s of visible) {
+      if (spot) { const [a, b] = statementNodeKeys(s); if (!spotlightKeys.has(a) && !spotlightKeys.has(b)) continue; }
       if (status && !passesStandingFilters(s, activeFilters)) continue;
       if (optionFocus && !optionFocus.lit.has(s.id)) continue;
       if (nodeSetMatch) { const [a, b] = statementNodeKeys(s); if (!nodeSetMatch.has(a) || !nodeSetMatch.has(b)) continue; }
@@ -1017,7 +1021,7 @@
   // Shared dim/highlight state — used by both the graph components and the label overlay.
   // Nothing here REMOVES a node: the unmatched keep their place in the force simulation and
   // render at 0.18 alpha, so the graph's shape holds still while you look through the lens.
-  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0);
+  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0 || shellySpotlight().length > 0);
   const highlightedSet = $derived(new Set([
     ...(matchedKeys ?? []),
     ...shellySpotlight(),
@@ -1994,6 +1998,8 @@
       // Don't intercept when user is typing
       const tag = (e.target as Element)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      // A playing story owns the left and right arrows (F292.2): they step the story, not the canvas.
+      if (activeStoryId() !== null && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
 
       if (e.key === 'Escape') {
         selected = null;
