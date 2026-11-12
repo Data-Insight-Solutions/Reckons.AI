@@ -4353,6 +4353,7 @@ kb:scan-curated-frames rdf:type ktype:Phase ;
     rdfs:label "F58.9.6.1 — scan from a folder of hand-reviewed frames instead of automatic extraction" ;
     kpred:feature-id "F58.9.6.1" ;
     kpred:has-status "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): done-tests 1 to 3 pass (scripts/content/__tests__/scan-room-lib.test.ts, 33 of 33). Missing: done-test 4, one recorded end-to-end scan from a reviewed folder passing scan:room --check with its registered count; the ring scan was built from hand-picked frames but its receipt is private and is not recorded here as a curated-folder run." ;
     kpred:part-of kb:room-scan-capture ;
     kpred:decided "MATT, 2026-11-12: \"Video is good, however, keyframes should be manually review[ed] to get the most crisp, not blurry image frames of differing angles.\"" ;
     kpred:description "A third input kind for npm run scan:room. A folder of jpg or png images that is not a Stray Scanner export becomes kind images: frame extraction and the automatic sharpness selection are skipped and every image is used exactly as given, in file-name order (COLMAP's sequential matching follows name order, so the folder is in capture order). The person (or an agent working for them) looks at candidate frames, keeps the crisp ones from differing angles, and copies the kept set into the folder. The receipt records source curated, the number supplied and a content hash of the folder (every file name and file hash) in place of extraction numbers, and receipt validation accepts that and refuses a curated receipt whose count, hash or input kind disagree. Video and Stray inputs behave exactly as before." ;
@@ -4368,6 +4369,7 @@ kb:scan-keyframe-select rdf:type ktype:Phase ;
     rdfs:label "F58.9.6.2 — pick training frames by how sharp the OBJECT is, per stretch of the orbit" ;
     kpred:feature-id "F58.9.6.2" ;
     kpred:has-status "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): stays scaffolded. Done-tests 1 to 3 pass (scripts/content/__tests__/keyframe-select-lib.test.ts, 9 of 9). Done-test 4, the comparison, was run and the selection did not beat hand picking, so the feature is not shown to help; it is kept as a tool, not a default." ;
     kpred:part-of kb:scan-curated-frames ;
     kpred:decided "MATT, 2026-11-12: \"The splat ring is looking pretty good! Definitally use-able ... I think there is some room from improvement, and like I said it is likely within keyframe selection. The most clear image frames will help the reconstruction.\"" ;
     kpred:decided "MATT, 2026-11-12: \"Video is good, however, keyframes should be manually review[ed] to get the most crisp, not blurry image frames of differing angles.\"" ;
@@ -8306,7 +8308,7 @@ kb:build-change-workflow rdf:type ktype:Phase ;
     kpred:description "A pair of synthetic notes in tests/fixtures/notes-corpus: the first builds a small space, the second changes one of its facts and adds others. Their expected facts in expectations.json are the ground truth for three uses at once. (1) The extraction bench (scripts/offline/extraction-score.ts) scores every local model on them, so 'space modifying' has a number, not only 'space building'. (2) The mock extractor returns those expected facts for a corpus note it recognizes, so a TestWorkflow in static/docs-testing.ttl can drive build, review by source, change, and the held-back disagreement through the browser with real content instead of placeholders. (3) The same steps, opened as a guided space, are the manual test with a real local model, which is where extraction quality is actually judged." ;
     kpred:principle "ONE GROUND TRUTH, THREE READERS. A browser test with placeholder facts proves the screens respond; a bench proves a model extracts; a manual run proves a person can get through it. Written separately they drift, and the test passes on a flow no model can produce. Written once, a model that cannot produce the change shows up in the bench as the reason the manual run fails." ;
     kpred:done "2026-10-27: the note pair (tests/fixtures/notes-corpus/06-garden-build.txt, 07-garden-change.txt) with expectations and a forbidden 'saturday' for the change note; the mock backend's corpus lookup (src/lib/integrations/llm/corpus-fixture.ts, explicit mock backend only, never the placeholder fallback); test:Workflow-BuildChange in static/docs-testing.ttl with six steps, screenshots and the page content/testing/workflow-build-change.md; tests/e2e/workflow-build-change.test.ts, which also fails if the note quoted in a step drifts from its corpus file. The test found that 'keep new' settles the chosen value as refined, not confirmed; both count as part of the space." ;
-    kpred:remaining "A bench run over the local roster on the new pair. The manual run with a real local model, which is the judgement the test cannot make. The steps are a docs page, not yet a guided space opened from the app." .
+    kpred:remaining "2026-11-12 (status-closer): a bench run over the local roster on the new pair; the manual run with a real local model, which the test cannot judge; the steps are a docs page, not yet a guided space opened from the app." .
 
 kb:gen-bench-in-graph rdf:type ktype:Phase ;
     rdfs:label "F183.2 — generation bench tasks live in the Testing graph, harder image briefs, and the Creative Commons allowlist" ;
@@ -11352,7 +11354,7 @@ kb:triple-check a ktype:Feature ; rdfs:label "Triple Check — continuous statem
     kpred:relates-to kb:source-validation, kb:graph-legibility ;
     kpred:description "Opt-in per-space always-on checking while the app is open. Check unique pending and retained assertions against selected web search, scraping and cited model integrations, and all other registered local spaces. What a check finds becomes ordinary pending statements from a new source (rdf/triple-check.ts evidenceProposals): agreement is the same statement from that source, disagreement is a separate statement, and a page that disputes without stating a value is a partial-fact question. Repetition is not independent validation; different values may coexist. Never settle or rewrite claims automatically." ;
     kpred:constraint "Off by default. Web use sends statements to the explicitly selected optional providers; bound metered requests durably and show unavailable/partial evidence. Local space comparison uses no cloud model. Product taxonomy distinguishes space (container, including visual content) from its RDF graph. No new top-level navigation." ;
-    kpred:remaining "Live-provider accuracy/cost calibration is not delivered; no live web check has run in this repository's tests. The Ollama space comparison's suggestedWording is no longer surfaced anywhere since findings became statements (2026-10-27); either it becomes a refine proposal or it is removed." .
+    kpred:remaining "2026-11-12 (status-closer): live-provider accuracy and cost calibration is not delivered and no live web check has run in this repository tests; the Ollama space comparison suggestedWording is surfaced nowhere since 2026-10-27, so it must become a refine proposal or be removed." .
 kb:triple-check kpred:done "2026-10-27 (Opus review): a guided walkthrough space (static/starter-triple-check.ttl, built by scripts/starter/build-research.ts) replaces the bare research starter and the list of every bundled file. A fictional home battery described by four documents, two accepted and two pending, with a ten-step story: a conflict worth acting on, agreement that is support not proof, two answers that are both right, and no flag that is not confirmation. Story, navigation and presentation statements are no longer checked." .
 kb:triple-check kpred:done "2026-10-27 (Opus, Matt's direction: 'I would much rather the triple check add additional sources to validate, or add a conflicting statement separate to the existing'): the separate evidence panel, the 'Possible conflict' label and 'mark reviewed' are removed. Findings are written through prepareStatementsForWrite + persistSourceBatch with origin 'agent', so content policy and the F52 boundary apply. A web page's stated contradicting value is kept only when it occurs verbatim in the passage. Proposals are deduplicated by (source, s, p, o) across every status, so a rejected citation stays rejected. Same-space evidence is not proposed: Review's diff already compares within a space. The walkthrough now opens a companion space (static/starter-triple-check-reference.ttl, an owners' forum) so the offline walkthrough has something outside the space to find." .
 kb:triple-check kpred:proposed "2026-10-27 (agent, not decided): F100 is not a part of any release. It touches the evidence chain 0.2.6 was about, so it fits 0.2.7 as a part, or a 0.2.8 of its own; Matt's call." .
@@ -11861,6 +11863,7 @@ kb:gen-setup-by-os rdf:type ktype:Phase ;
     kpred:feature-id   "F58.9.17" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): Linux is measured (2026-11-05) and generationAvailability refuses splats on darwin (tests pass), but no Mac has followed the page from a clean machine, so the done-test is not met; waits for a Mac run recording chip, memory and the first failure." ;
     kpred:decided      "MATT, 2026-11-05: 'We need detailed documentation of all setup required to do the asset generation space, locally on your own machine. I have a potential test user that is using Mac, so we need to make sure we have instructions based on OS.'" ;
     kpred:description  "The setup page (feat:GenerationSetup in docs-features.ttl) walks a first-time reader through each operating system: install the basics, get the code, run the setup script, start the runner, make something, and what to do when it fails, with a table of what each system can make. gen-setup.sh checks the system first (Linux x86-64, or macOS on Apple Silicon; anything else stops with a reason) and names missing commands with the install line for that system. On a Mac it installs stable-diffusion.cpp's Metal build and Brush's Apple Silicon build, both pinned by SHA-256, and skips TripoSplat; the runner never offers splats on macOS (generationAvailability), with the reason in plain words." ;
     kpred:has-file     "scripts/content/gen-setup.sh" ;
@@ -11948,6 +11951,7 @@ kb:multi-scan-reconstruction rdf:type ktype:Phase ;
     kpred:feature-id   "F58.9.19" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): scaffolded until separately filmed videos are run (Matt is filming them): variant 1 has receipts on three of four captures, scripts/content/__tests__/scan-multi-lib.test.ts passes 12 of 12, and fusion, slices and photos plus scans are not built or measured." ;
     kpred:depends-on   kb:room-scan-capture ;
     kpred:decided      "MATT, 2026-11-08: make a new space and attempt multi-scan reconstruction — one scan to generate a splat, more than one scan, slices of different scans, images and scans together. The same day, the longer downstream pipeline he wants after the splat: Blender to editable shapes, a playable game (add/remove dirt, reshape land, add retaining walls), then a realistic mock-up image generated from the edited 3D against the original images — proposed separately as kb:terrain-mockup-pipeline." ;
     kpred:decided      "MATT, 2026-11-10 (chat with Claude Code): fusion approach = one COLMAP layout over the pooled frames of all captures with cross-session matching, so every capture shares one coordinate frame; from it, one fused splat for preview and a mesh from the phone's depth maps for Blender — the end goal is one place as an editable, playable Blender object (.blend/.glb). Multi-scan fusion is a DIFFERENT feature from in-app shape overlap / node placement." ;
@@ -11968,6 +11972,7 @@ kb:scan-auto-attach rdf:type ktype:Phase ;
     kpred:feature-id   "F58.9.20" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): unit tests pass (scan-attach.test.ts 18 of 18, with splat-folder-import and job-result suites in the same run), but the e2e that mounts the viewer (tests/e2e/scan-auto-attach.test.ts) could not be run this session (the local Playwright web server failed: file-watcher limit and a Node module error), so the done-test is not shown today; also missing: undo for a supersession, per the 2026-11-11 correction." ;
     kpred:depends-on   kb:splat-file-import ;
     kpred:decided      "MATT, 2026-11-09/10: 'Scan job must attach the splat to the space on completion, mark completion in the space, and record the output asset as the job's result.'" ;
     kpred:description  "Design: scan-room.ts gains --space=<space slug>. On success it copies splat.spz into <workspace>/kbs/<slug>/assets/splats/<content id>.spz and appends pending rows that carry a kb target (the scanStatements set, src/lib/3d/splat.ts). The app's workspace drain stores the referenced blob from the folder when the space lacks it, so a pending row can bring its file. A scan row without a kb target is refused (2026-11-10 incident: 6 untargeted attach rows would have landed in whichever space was open). Also folded in: a space imported from a folder that has assets/splats/<id> but no live pred:splat statement gets that statement synthesized as PENDING." ;
@@ -12356,8 +12361,8 @@ kb:release-0-2-8 kpred:has-status "functional" ;
     kpred:has-part kb:gen-setup-by-os ;
     kpred:has-part kb:build-change-workflow .
 
-kb:release-0-2-8 kpred:progress "2026-11-12, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.8; release notes at content/releases/v0-2-8.md; review space static/review-0.2.8.ttl (unlisted). Cut from integration/2026-11-10 (PR #610): 21 features functional, 14 partial (in-progress or scaffolded; the keyframe script F58.9.6.2 was added after the cut was first written), each at the status the graph holds on this date. Not in it, moved to v0.2.9 on purpose: the assets-and-demos headline and its minimum set (the F275 demo pipeline, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19), reach (F243, F244), time series (F258, F259), the canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61), F34.3, and the Sveltia CMS and deploy phases of the site engine (F274.4.4, F274.4.5)." ;
-    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, promoted to staging for Matt's review, not in production. The 2026-11-06 re-cut (assets and demos) and the 2026-11-10 'Hold for headline' are both superseded by Matt's 2026-11-12 decision to release from dev now: none of that headline was functional (F223.5 to .8 and F275 are planned), so it moved rather than shipping half-built. PARTIAL and said so: the ring space (F292.3), the generated site story (F292.1), facts that expire (F293, the check and the build refusal exist; the real credential date is still an open question for Matt), scan from hand-picked frames (F58.9.6.1, the end-to-end run is not shown), the embeddable viewer (F294.7), Triple Check (F100.1), the device space (F269.1), scan auto-attach (F58.9.20) and Shelly generation jobs (F166.1) are in-progress or scaffolded." .
+kb:release-0-2-8 kpred:progress "2026-11-12, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.8; release notes at content/releases/v0-2-8.md; review space static/review-0.2.8.ttl (unlisted). Cut from integration/2026-11-10 (PR #610): 23 features functional, 12 partial (in-progress or scaffolded; the keyframe script F58.9.6.2 was added after the cut was first written), each at the status the graph holds on this date. 2026-11-12 (status-closer): F292.1 and F293 moved to functional on evidence; counts re-measured with release:burndown. Not in it, moved to v0.2.9 on purpose: the assets-and-demos headline and its minimum set (the F275 demo pipeline, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19), reach (F243, F244), time series (F258, F259), the canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61), F34.3, and the Sveltia CMS and deploy phases of the site engine (F274.4.4, F274.4.5)." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, promoted to staging for Matt's review, not in production. The 2026-11-06 re-cut (assets and demos) and the 2026-11-10 'Hold for headline' are both superseded by Matt's 2026-11-12 decision to release from dev now: none of that headline was functional (F223.5 to .8 and F275 are planned), so it moved rather than shipping half-built. PARTIAL and said so: the ring space (F292.3), scan from hand-picked frames (F58.9.6.1, the end-to-end run is not shown), the embeddable viewer (F294.7), Triple Check (F100.1), the device space (F269.1), scan auto-attach (F58.9.20) and Shelly generation jobs (F166.1) are in-progress or scaffolded." .
 
 kb:release-0-2-9 kpred:progress "2026-11-12, MOVED FROM v0.2.8 (Matt: release from dev now). Reasons, one line each. Assets and demos headline (F275, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19): planned, not started, so not releasable. Reach and time series (F243, F244, F258, F259): planned since 2026-10-07, no code. Canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61, F34.3): in-progress or planned with no dated note in over a month. Site engine Sveltia and deploy (F274.4.4, F274.4.5): planned, the DIS repository owns the live deploy." ;
     kpred:has-part kb:demo-videos ;
@@ -12706,6 +12711,7 @@ kb:standing-filters rdf:type ktype:Phase ;
     kpred:feature-id   "F223.11" ;
     kpred:part-of      kb:graph-proposals ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): standing-filter.test.ts passes 5 of 5 (the unit half). Missing: no stamp of proposalOption on real statements, no control to flip between options (URL parameter only), the Reckoning stores no proposal options for a show-in-the-graph link, and the 3D renderer ignores litStatementIds; the end-to-end half was not re-run this session." ;
     kpred:depends-on   kb:standing-drawn ;
     kpred:relates-to   kb:proposal-options-ui ;
     kpred:relates-to   kb:one-graph-canvas ;
@@ -12726,6 +12732,7 @@ kb:device-space-jobs rdf:type ktype:Phase ;
     kpred:feature-id   "F269.1" ;
     kpred:part-of      kb:device-space ;
     kpred:has-status   "scaffolded" ;
+    kpred:remaining "2026-11-12 (status-closer): the --device writer and reader pass their done-test unit cases (scripts/agent/__tests__/queue-to-space-device.test.ts, 10 of 10) but the device space itself does not exist (F269), nothing schedules --device, and the output path and stable id are placeholders; it cannot be functional before F269." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:job-space-channel ;
     kpred:relates-to   kb:run-receipt ;
@@ -12918,6 +12925,7 @@ kb:built-with-reckons rdf:type ktype:Feature ;
     rdfs:label "Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
     kpred:feature-id   "F292" ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): F292.1 and F292.2 are functional; F292.3 is not, because the link from the live DIS page to the ring space goes live only with the v0.2.8 deploy of reckons.ai, and the real per-post claim lists question (open-question above) is still for Matt to decide." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:downstream-site ;
     kpred:relates-to   kb:downstream-site-space ;
@@ -12935,7 +12943,8 @@ kb:site-build-story rdf:type ktype:Phase ;
     rdfs:label "F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
     kpred:feature-id   "F292.1" ;
     kpred:part-of      kb:built-with-reckons ;
-    kpred:has-status   "in-progress" ;
+    kpred:has-status   "functional" ;
+    kpred:measured "2026-11-12 (status-closer): tests: scripts/starter/__tests__/build-site-space.test.ts 7 of 7 pass (one story, order, highlights resolve, counts equal the build, identical bytes on two runs); build-site-space --check reports nothing to compare when the site repository is absent here, and the committed example was regenerated with the dated credential, so step 4 now has a real fact. The 390px gap recorded on 2026-11-12 was the player, closed by F292.2 (slim step bar, tests/e2e/story-walk.test.ts, looked at on this example at 1440 and 390). Weakness: only Chromium was looked at; not in production until v0.2.8 deploys." ;
     kpred:order        1 ;
     kpred:depends-on   kb:downstream-site-space ;
     kpred:description  "scripts/starter/build-site-space.ts gains a story: one story:Story and five or six story:Step nodes, in plain words for a first-time visitor, each highlighting real nodes of the space (the site, a source, a page, a fact shared by several pages, the live-site leap). Counts in captions are computed from the build (pages, posts, facts, how many pages state the same fact), never typed in." ;
@@ -12966,6 +12975,7 @@ kb:ring-scan-space rdf:type ktype:Phase ;
     kpred:feature-id   "F292.3" ;
     kpred:part-of      kb:built-with-reckons ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): the unit half of the done-test passes (src/lib/storage/__tests__/example-kbs.test.ts, 4 of 4: the unlisted entry is absent from the list and resolvable by id). The ring is shown inline on the live https://data-insight.solutions/about/ (a same-origin viewer frame, loading lazy). Missing: the link from that page to /about?example=ring-scan does not work on reckons.ai until v0.2.8 deploys, and the headless-browser check that the splat node renders in the opened space is not recorded here." ;
     kpred:order        3 ;
     kpred:relates-to   kb:scan-curated-frames ;
     kpred:relates-to   kb:splat-refine ;
@@ -12988,7 +12998,8 @@ kb:ring-scan-space rdf:type ktype:Phase ;
 kb:facts-that-expire rdf:type ktype:Feature ;
     rdfs:label "Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;
     kpred:feature-id   "F293" ;
-    kpred:has-status   "in-progress" ;
+    kpred:has-status   "functional" ;
+    kpred:measured "2026-11-12 (status-closer): both halves of the done-test have evidence today. Unit, on a fixture site: src/lib/publish/__tests__/site-expiry.test.ts, 11 of 11 pass (past date reported with every page stating it, window warning, no date passes, unknown date is an open question, build refuses an expired fact naming fact and page). On the real site: npx tsx scripts/offline/fact-expiry.ts against the Data Insight Solutions site repository reports 1 fact with a valid-until marker (AWS Certified Solutions Architect - Associate, valid-until 2027-12-01), 0 expired, 0 within 60 days, 0 open dates, exit 0, and the same 1 fact in static/starter-data-insight-solutions.ttl; the live About page states it (valid to December 2027). Weaknesses said plainly: the check is in the script tier, not the blocking tier; a render that bypasses site:build would show the marker text; the date is as published on the site, not looked up by this check." ;
     kpred:priority     "high" ;
     kpred:relates-to   kb:built-with-reckons ;
     kpred:relates-to   kb:partial-facts ;
@@ -13089,6 +13100,7 @@ kb:site-space-assets rdf:type ktype:Phase ;
     kpred:feature-id   "F294.7" ;
     kpred:part-of      kb:outcome-reckoning ;
     kpred:has-status   "in-progress" ;
+    kpred:remaining "2026-11-12 (status-closer): the embeddable viewer (scripts/site/splat-embed*, scripts/site/__tests__/splat-embed.test.ts 8 of 8) and same-origin frames plus lazy images (src/lib/publish/__tests__/site-inline-assets.test.ts 7 of 7) are built, and the ring is shown inline on the live https://data-insight.solutions/about/ (curl confirms the iframe, loading lazy). Missing: the linked-back-to-its-space half does not work until reckons.ai ships v0.2.8, so the done-test is not met today." ;
     kpred:relates-to   kb:built-with-reckons ;
     kpred:tested-by    "src/lib/publish/__tests__/site-inline-assets.test.ts" ;
     kpred:measured     "FOUND 2026-11-12 on the DIS About page: an inline frame of the self-hosted viewer was blocked even though it was same-origin, because the generated CSP has no frame-src and default-src is 'none'; and the still image (589 KB PNG) loaded eagerly because markdown images carried no loading attribute. Fix in this branch, unit-tested but not yet live: frame-src 'self' only on a page that holds a sanitized same-origin iframe (any other origin is stripped), and content images get loading=lazy decoding=async. Status stays in-progress until the DIS preview shows the ring inline." ;
