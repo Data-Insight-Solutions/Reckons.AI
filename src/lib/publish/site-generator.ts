@@ -88,7 +88,10 @@ function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null
 
 /** The configured site's extra files (stylesheet and script shared by every page). */
 function configuredSiteFiles(opts: GenerateSiteOptions): Record<string, string> {
-  return opts.siteConfig ? { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() } : {};
+  if (!opts.siteConfig) return {};
+  const files: Record<string, string> = { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() };
+  if (opts.siteConfig.extraCss !== null) files['site-extra.css'] = opts.siteConfig.extraCss;
+  return files;
 }
 
 const SITE = 'urn:reckons:site/';

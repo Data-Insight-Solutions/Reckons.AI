@@ -9,7 +9,7 @@ import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildSite } from '../site-build';
-import { parseLanding, landingCss, landingJs } from '../site-landing';
+import { parseLanding, landingCss, landingJs, GUIDE_LOGIC } from '../site-landing';
 import { parseSiteConfig } from '../site-config';
 
 const FIXTURE = join(process.cwd(), 'src/lib/publish/__tests__/fixtures/landing-site');
@@ -174,5 +174,109 @@ describe('site config validation', () => {
     expect(html).toContain('action="https://hooks.example.test/webhook/override-test"');
     const everything = [html, read(join(outDir, 'site'), 'landing.js'), read(join(outDir, 'site'), '_headers')].join('\n');
     expect(everything).not.toContain('private-override-name');
+  });
+});
+
+describe('site-supplied mark and stylesheet', () => {
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" class="mk" role="img" aria-label="Mark"><circle class="m1" cx="5" cy="5" r="3"/></svg>';
+  /** Build with the two files written into the copied site. */
+  function buildWith(svg: string, css = '.mk .m1 { animation: spin 2s infinite; }'): string {
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
+    tmp.push(site, join(out, '..'));
+    cpSync(FIXTURE, site, { recursive: true });
+    const file = join(site, 'site.config.json');
+    const cfg = JSON.parse(readFileSync(file, 'utf8'));
+    cfg.markSvg = 'mark-anim.svg';
+    cfg.extraCss = 'extra.css';
+    writeFileSync(file, JSON.stringify(cfg));
+    writeFileSync(join(site, 'mark-anim.svg'), svg);
+    writeFileSync(join(site, 'extra.css'), css);
+    buildSite({ site, out });
+    return out;
+  }
+
+  it('inlines the mark where the logo image was, and links the extra stylesheet after landing.css', () => {
+    const out = buildWith('<?xml version="1.0"?>\n<!-- note -->\n' + SVG);
+    const html = read(out, 'index.html');
+    expect(html).toContain('<div class="halo"></div>' + SVG);
+    expect(html.split('id="mark"')[1].split('</div>')[0]).not.toContain('<img');
+    expect(html).toContain('<link rel="stylesheet" href="/landing.css">\n<link rel="stylesheet" href="/site-extra.css">');
+    expect(read(out, 'site-extra.css')).toContain('animation: spin');
+    expect(html).not.toMatch(/\sstyle="/);
+  });
+
+  it('fails the build for a script, an event handler, an external reference or an inline style in the SVG', () => {
+    const bad = (inner: string) => () => buildWith(SVG.replace('<circle', inner + '<circle'));
+    expect(bad('<script>alert(1)</script>')).toThrow(/<script> element/);
+    expect(bad('<g onclick="x()"/>')).toThrow(/event-handler attribute \(onclick\)/);
+    expect(bad('<use href="https://example.test/x.svg#a"/>')).toThrow(/external reference/);
+    expect(bad('<g fill="url(https://example.test/p)"/>')).toThrow(/external reference/);
+    expect(bad('<g style="animation-delay:1s"/>')).toThrow(/inline style attribute/);
+  });
+
+  it('a site that supplies neither builds exactly as before: the logo image, one stylesheet', () => {
+    const out = build();
+    const html = read(out, 'index.html');
+    expect(html).toContain('<div class="halo"></div><img src="/assets/mark.svg"');
+    expect(html).not.toContain('site-extra.css');
+    expect(readdirSync(out)).not.toContain('site-extra.css');
+  });
+});
+
+describe('guided scroll (F274.4.3)', () => {
+  // evaluates the very string the browser script ships
+  const L = new Function(GUIDE_LOGIC + '; return guideLogic;')() as any;
+  const tops = [0, 800, 1700, 2600];
+  const maxY = 3100;
+
+  it('picks the next section below the current position, clamped to the end of the page', () => {
+    expect(L.nextTarget(tops, 0, maxY)).toBe(800);
+    expect(L.nextTarget(tops, 800, maxY)).toBe(1700);
+    expect(L.nextTarget(tops, 1000, maxY)).toBe(1700);
+    expect(L.nextTarget(tops, 2600, maxY)).toBe(maxY);
+    expect(L.nextTarget(tops, 3100, maxY)).toBeNull();
+    expect(L.nextTarget([0, 500, 4000], 500, 900)).toBe(900); // last section lower than the page can scroll
+  });
+
+  it('starts moving, dwells on arrival, counts down, then moves again; stops at the last section', () => {
+    let st = L.start(tops, 0, maxY);
+    expect(st).toMatchObject({ mode: 'moving', target: 800 });
+    st = L.arrive(800, maxY, 8);
+    expect(st).toMatchObject({ mode: 'dwell', left: 8 });
+    st = L.tick(st, 3);
+    expect(st).toMatchObject({ mode: 'dwell', left: 5 });
+    expect(L.tick(st, 5).mode).toBe('moving');
+    expect(L.arrive(maxY, maxY, 8).mode).toBe('end');
+    expect(L.start(tops, maxY, maxY).mode).toBe('end');
+  });
+
+  it('pauses only what is running, and play resumes from the section nearest the top', () => {
+    const dwell = L.arrive(800, maxY, 8);
+    expect(L.pause(dwell).mode).toBe('paused');
+    expect(L.tick(L.pause(dwell), 99).mode).toBe('paused'); // a paused countdown does not run
+    expect(L.pause({ mode: 'end', left: 0, target: null }).mode).toBe('end');
+    expect(L.resume(tops, 802, maxY, 8)).toMatchObject({ mode: 'dwell', left: 8 }); // on a section: wait it out
+    expect(L.resume(tops, 1000, maxY, 8)).toMatchObject({ mode: 'moving', target: 1700 }); // nearest is above: next one
+    expect(L.resume(tops, 1600, maxY, 8)).toMatchObject({ mode: 'moving', target: 1700 }); // nearest is below: go to it
+    expect(L.resume(tops, maxY, maxY, 8).mode).toBe('end');
+  });
+
+  it('is off by default and on, with a dwell, from the config; the hero cue gives way to it', () => {
+    expect(parseSiteConfig({ title: 'X' }).guidedScroll).toBeNull();
+    expect(parseSiteConfig({ title: 'X', guidedScroll: true }).guidedScroll).toEqual({ dwellSeconds: 8 });
+    expect(parseSiteConfig({ title: 'X', guidedScroll: { dwellSeconds: 12 } }).guidedScroll).toEqual({ dwellSeconds: 12 });
+    expect(() => parseSiteConfig({ title: 'X', guidedScroll: { dwellSeconds: 1 } })).toThrow(/dwellSeconds/);
+    const off = read(build(), 'index.html');
+    expect(off).not.toContain('id="guide"');
+    expect(off).toContain('class="scroll-cue');
+    const on = read(build((c) => { c.guidedScroll = { dwellSeconds: 5 }; }), 'index.html');
+    expect(on).toContain('id="guide"');
+    expect(on).toContain('data-dwell="5"');
+    expect(on).toContain('<button type="button" class="guide-btn" id="guide-go"');
+    expect(on).not.toContain('class="scroll-cue');
+    expect(on).not.toMatch(/\sstyle="/);
+    expect(on).not.toMatch(/<script(?![^>]*\bsrc=)/);
+    expect(read(build((c) => { c.guidedScroll = true; }), 'about/index.html')).not.toContain('id="guide"');
   });
 });

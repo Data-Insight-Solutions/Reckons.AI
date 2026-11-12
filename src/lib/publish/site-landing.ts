@@ -182,14 +182,18 @@ function renderHero(s: LandingSection, ctx: ShellContext): string {
     ? '<div class="ctas reveal d3">' + links.map((l, i) => '<a class="btn ' + (i === 0 ? 'btn-primary' : 'btn-ghost') + '" href="' + esc(href(l.href)) + '">' + inline(l.text) + '</a>').join('') + '</div>'
     : '';
   const markSrc = s.opts.mark || ctx.config.logo;
-  const mark = markSrc
-    ? '<div class="mark reveal d1" id="mark"><div class="halo"></div><img src="' + esc(href(markSrc)) + '" alt="' + esc(s.opts['mark-alt'] ?? ctx.config.title) + '">'
+  // A site-supplied inline SVG (config.markSvg, already checked by site-config) stands in for the logo image.
+  const markInner = ctx.config.markSvg && !s.opts.mark
+    ? ctx.config.markSvg
+    : markSrc ? '<img src="' + esc(href(markSrc)) + '" alt="' + esc(s.opts['mark-alt'] ?? ctx.config.title) + '">' : '';
+  const mark = markInner
+    ? '<div class="mark reveal d1" id="mark"><div class="halo"></div>' + markInner
       + (s.opts.tagline ? '<div class="tagline">' + esc(s.opts.tagline) + '</div>' : '') + '</div>'
     : '';
   const eyebrow = s.opts.eyebrow ? '<span class="eyebrow reveal">' + esc(s.opts.eyebrow) + '</span>' : '';
   return '<div class="hero"' + (s.opts.id ? ' id="' + esc(slugify(s.opts.id)) + '"' : '') + '><div class="wrap"><div>'
     + eyebrow + '<h1 class="reveal d1">' + heading(s.title) + '</h1>' + paras + buttons
-    + '<div class="scroll-cue reveal d5"><span></span>Scroll</div></div>' + mark + '</div></div>';
+    + (ctx.config.guidedScroll ? '' : '<div class="scroll-cue reveal d5"><span></span>Scroll</div>') + '</div>' + mark + '</div></div>';
 }
 
 function renderCards(s: LandingSection): string {
@@ -336,7 +340,8 @@ function headHtml(title: string, description: string, ctx: ShellContext): string
     + (c.ogImage ? '<meta property="og:image" content="' + esc(c.ogImage) + '">\n' : '')
     + (c.favicon ? '<link rel="icon" href="' + esc(c.favicon) + '">\n' : '')
     + '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n'
-    + '<link rel="stylesheet" href="/landing.css">';
+    + '<link rel="stylesheet" href="/landing.css">'
+    + (c.extraCss ? '\n<link rel="stylesheet" href="/site-extra.css">' : '');
 }
 
 function headerHtml(ctx: ShellContext): string {
@@ -360,11 +365,21 @@ function footerHtml(ctx: ShellContext): string {
     + (f.attribution ? '<span>Built with <a href="https://reckons.ai">Reckons.AI</a></span>' : '') + '</div></footer>';
 }
 
-function documentHtml(ctx: ShellContext, title: string, description: string, main: string): string {
+/** The guided-scroll control (F274.4.3): real buttons, hidden until the script shows it on a page longer than the screen. */
+function guideHtml(config: SiteConfig): string {
+  if (!config.guidedScroll) return '';
+  return '<div class="guide" id="guide" role="group" aria-label="Guided scroll" data-dwell="' + config.guidedScroll.dwellSeconds + '" hidden>'
+    + '<button type="button" class="guide-btn" id="guide-go" aria-label="Scroll the page section by section">Scroll</button>'
+    + '<span class="guide-count" id="guide-count" aria-hidden="true" hidden><svg viewBox="0 0 24 24"><circle class="track" cx="12" cy="12" r="10"/><circle class="bar" id="guide-bar" cx="12" cy="12" r="10" pathLength="100"/></svg><b id="guide-num"></b></span>'
+    + '<button type="button" class="guide-btn guide-icon" id="guide-pause" aria-label="Pause guided scroll" hidden></button>'
+    + '<span class="guide-sr" id="guide-live" role="status" aria-live="polite"></span></div>\n';
+}
+
+function documentHtml(ctx: ShellContext, title: string, description: string, main: string, extraBody = ''): string {
   return '<!doctype html>\n<html lang="en">\n<head>\n' + headHtml(title, description, ctx) + '\n</head>\n'
     + '<body class="no-js" data-theme-key="' + esc(ctx.config.themeKey) + '">\n'
     + '<div class="aurora" aria-hidden="true"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>\n'
-    + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n<script src="/landing.js"></script>\n</body>\n</html>';
+    + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n' + extraBody + '<script src="/landing.js"></script>\n</body>\n</html>';
 }
 
 /** Page title with the site name appended, unless the page title already contains it. */
@@ -378,7 +393,7 @@ export function renderLandingPage(page: SitePage, ctx: ShellContext): string {
   const main = sections.length
     ? sections.map((s) => renderSection(s, ctx)).join('\n')
     : wrapSection({ title: page.title, opts: {}, body: page.body, subs: [] }, renderText({ title: page.title, opts: {}, body: page.body, subs: [] }));
-  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main);
+  return documentHtml(ctx, pageTitle(page.title, ctx.config.title), page.excerpt, main, guideHtml(ctx.config));
 }
 
 /** Any other page of a configured site: its markdown in a panel, inside the common shell. */
@@ -612,6 +627,20 @@ footer a { color: var(--text-soft); }
 .no-js .reveal { opacity: 1; transform: none; }
 .d1 { --d: .08s; } .d2 { --d: .16s; } .d3 { --d: .24s; } .d4 { --d: .32s; } .d5 { --d: .4s; }
 
+/* Guided scroll: a small pill fixed bottom right, clear of the phone's bottom edge, so it does not sit on the navigation or the form's send button. */
+.guide { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 40; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--panel-strong); border: 1px solid var(--panel-line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 6px 20px var(--shadow); font: 500 12px/1 var(--mono); opacity: .9; }
+.guide[hidden], .guide [hidden] { display: none; }
+.guide-btn { min-height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: transparent; color: var(--text-soft); font: inherit; cursor: pointer; }
+.guide-btn:hover { color: var(--text); background: var(--panel); }
+.guide-btn:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+.guide-icon { min-width: 36px; padding: 0; font-size: 11px; }
+.guide-count { position: relative; width: 28px; height: 28px; display: inline-grid; place-items: center; color: var(--text-mute); }
+.guide-count svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.guide-count .track { fill: none; stroke: var(--panel-line); stroke-width: 2; }
+.guide-count .bar { fill: none; stroke: var(--accent-bright); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; opacity: .8; }
+.guide-count b { position: relative; font: 400 10px/1 var(--mono); }
+.guide-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body.has-guide footer { padding-bottom: 84px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
@@ -633,9 +662,158 @@ export function landingCss(config: SiteConfig): string {
 }
 
 /** landing.js: theme toggle, phone menu, header on scroll, reveal on scroll, contact form post. */
+/**
+ * The guided-scroll rules, as plain JS shared by the browser script and the unit tests (the tests
+ * evaluate this very string, so what is tested is what ships). Pure: no DOM, no timers.
+ * State is { mode: 'idle'|'moving'|'dwell'|'paused'|'end', left, target }.
+ */
+export const GUIDE_LOGIC = `var guideLogic = (function () {
+  var TOL = 4;
+  /** The scroll position of the next section below y, or null when y is at the end of the page. */
+  function nextTarget(tops, y, maxY) {
+    if (y >= maxY - TOL) return null;
+    for (var i = 0; i < tops.length; i++) if (tops[i] > y + TOL) return Math.min(tops[i], maxY);
+    return y < maxY - TOL ? maxY : null;
+  }
+  function nearest(tops, y) {
+    var best = 0;
+    for (var i = 1; i < tops.length; i++) if (Math.abs(tops[i] - y) < Math.abs(tops[best] - y)) best = i;
+    return best;
+  }
+  function start(tops, y, maxY) {
+    var t = nextTarget(tops, y, maxY);
+    return t === null ? { mode: 'end', left: 0, target: null } : { mode: 'moving', left: 0, target: t };
+  }
+  /** A move has finished: wait out the dwell, or stop at the last section. */
+  function arrive(y, maxY, dwell) {
+    return nextTarget([], y, maxY) === null ? { mode: 'end', left: 0, target: null } : { mode: 'dwell', left: dwell, target: null };
+  }
+  function tick(st, dt) {
+    if (st.mode !== 'dwell') return st;
+    var left = st.left - dt;
+    return left > 0 ? { mode: 'dwell', left: left, target: null } : { mode: 'moving', left: 0, target: null };
+  }
+  function pause(st) {
+    return st.mode === 'moving' || st.mode === 'dwell' ? { mode: 'paused', left: st.left, target: null } : st;
+  }
+  /** Play again: continue from the section nearest the top of the screen. */
+  function resume(tops, y, maxY, dwell) {
+    if (y >= maxY - TOL) return { mode: 'end', left: 0, target: null };
+    var i = nearest(tops, y);
+    if (Math.abs(tops[i] - y) <= TOL) return { mode: 'dwell', left: dwell, target: null };
+    if (tops[i] > y) return { mode: 'moving', left: 0, target: Math.min(tops[i], maxY) };
+    var t = nextTarget(tops, y, maxY);
+    return t === null ? { mode: 'end', left: 0, target: null } : { mode: 'moving', left: 0, target: t };
+  }
+  return { nextTarget: nextTarget, nearest: nearest, start: start, arrive: arrive, tick: tick, pause: pause, resume: resume };
+})();`;
+
+const GUIDE_DOM = `
+  var guide = document.getElementById('guide');
+  if (guide) (function () {
+    var go = document.getElementById('guide-go'), pauseBtn = document.getElementById('guide-pause');
+    var count = document.getElementById('guide-count'), bar = document.getElementById('guide-bar'), num = document.getElementById('guide-num');
+    var live = document.getElementById('guide-live');
+    var dwell = Math.max(2, Number(guide.getAttribute('data-dwell')) || 8);
+    var st = { mode: 'idle', left: 0, target: null };
+    var anim = null, timer = null, lastTick = 0, expected = null, dwellY = 0;
+    var reduced = function () { return matchMedia('(prefers-reduced-motion: reduce)').matches; };
+    var maxY = function () { return Math.max(0, document.documentElement.scrollHeight - innerHeight); };
+    var tops = function () {
+      var h = hdr ? hdr.offsetHeight : 0, out = [];
+      document.querySelectorAll('main > .hero, main > section').forEach(function (el) {
+        out.push(el.classList.contains('hero') ? 0 : Math.max(0, Math.round(el.getBoundingClientRect().top + scrollY - h)));
+      });
+      return out.sort(function (a, b) { return a - b; });
+    };
+    var say = function (t) { live.textContent = ''; setTimeout(function () { live.textContent = t; }, 30); };
+    var jump = function (y) { scrollTo({ top: y, behavior: 'instant' }); };
+
+    function paint() {
+      var started = st.mode !== 'idle';
+      pauseBtn.hidden = !started || st.mode === 'end';
+      count.hidden = !(st.mode === 'dwell' || st.mode === 'paused');
+      go.textContent = st.mode === 'end' ? 'Back to top' : 'Scroll';
+      go.setAttribute('aria-label', st.mode === 'end' ? 'Back to the top of the page' : st.mode === 'idle' ? 'Scroll the page section by section' : 'Go to the next section now');
+      var playing = st.mode === 'moving' || st.mode === 'dwell';
+      pauseBtn.textContent = playing ? '\u275A\u275A' : '\u25B6';
+      pauseBtn.setAttribute('aria-label', playing ? 'Pause guided scroll' : 'Play guided scroll');
+      var frac = st.mode === 'dwell' || st.mode === 'paused' ? Math.max(0, Math.min(1, st.left / dwell)) : 0;
+      bar.style.strokeDashoffset = String(100 - frac * 100);
+      num.textContent = st.mode === 'dwell' || st.mode === 'paused' ? String(Math.ceil(st.left)) : '';
+    }
+    function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } expected = null; }
+    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
+    function setState(next) { st = next; paint(); drive(); }
+    function pauseNow(announce) { stopAnim(); stopTimer(); if (st.mode === 'moving' || st.mode === 'dwell') { st = guideLogic.pause(st); paint(); if (announce) say('Paused'); } }
+
+    function moveTo(y) {
+      stopAnim();
+      var from = scrollY, dist = y - from;
+      if (reduced() || Math.abs(dist) < 2) { jump(y); setState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); return; }
+      var dur = Math.min(6000, Math.max(1800, Math.abs(dist) * 5)), t0 = performance.now();
+      (function frame(now) {
+        var p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        expected = Math.round(from + dist * e);
+        jump(expected);
+        if (p < 1) anim = requestAnimationFrame(frame);
+        else { anim = null; expected = null; setState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); }
+      })(t0);
+    }
+    function drive() {
+      stopTimer();
+      dwellY = scrollY;
+      if (st.mode === 'moving' && !anim) {
+        var target = st.target !== null ? st.target : guideLogic.nextTarget(tops(), scrollY, maxY());
+        if (target === null) { setState({ mode: 'end', left: 0, target: null }); say('End of page'); } else moveTo(target);
+      } else if (st.mode === 'dwell') {
+        lastTick = performance.now();
+        timer = setInterval(function () {
+          var now = performance.now(), dt = (now - lastTick) / 1000; lastTick = now;
+          st = guideLogic.tick(st, dt); paint();
+          if (st.mode !== 'dwell') drive();
+        }, 100);
+      }
+    }
+    function visitorMoved(e) {
+      if (e && e.target && guide.contains(e.target)) return;
+      if (st.mode === 'moving' || st.mode === 'dwell') pauseNow(true);
+    }
+    ['wheel', 'touchmove'].forEach(function (n) { addEventListener(n, visitorMoved, { passive: true }); });
+    addEventListener('keydown', function (e) {
+      if (/^(ArrowUp|ArrowDown|PageUp|PageDown|Home|End| |Spacebar)$/.test(e.key)) visitorMoved(e);
+    });
+    addEventListener('scroll', function () {
+      // a scroll we did not make: during a move it differs from where the move put the page
+      if (st.mode === 'moving' && expected !== null && Math.abs(scrollY - expected) > 3) pauseNow(true);
+      else if (st.mode === 'dwell' && Math.abs(scrollY - dwellY) > 3) pauseNow(true);
+    }, { passive: true });
+
+    go.addEventListener('click', function () {
+      if (st.mode === 'end') { stopAnim(); jump(0); st = { mode: 'idle', left: 0, target: null }; paint(); say('Back at the top'); return; }
+      stopAnim(); stopTimer();
+      st = guideLogic.start(tops(), scrollY, maxY()); paint(); drive();
+      if (st.mode !== 'end') say('Playing'); else say('End of page');
+    });
+    pauseBtn.addEventListener('click', function () {
+      if (st.mode === 'moving' || st.mode === 'dwell') { pauseNow(false); say('Paused'); }
+      else if (st.mode === 'paused') { st = guideLogic.resume(tops(), scrollY, maxY(), dwell); paint(); drive(); say(st.mode === 'end' ? 'End of page' : 'Playing'); }
+    });
+
+    var show = function () {
+      var long = document.documentElement.scrollHeight > innerHeight + 40;
+      guide.hidden = !long;
+      document.body.classList.toggle('has-guide', long);
+    };
+    addEventListener('resize', show); addEventListener('load', show); show();
+    paint();
+  })();
+`;
+
 export function landingJs(): string {
   return `(function () {
   'use strict';
+  ${GUIDE_LOGIC}
   var root = document.documentElement;
   var key = document.body.getAttribute('data-theme-key') || 'site-theme';
   document.body.classList.remove('no-js');
@@ -663,6 +841,7 @@ export function landingJs(): string {
     if (mark && !reduce && scrollY < innerHeight) mark.style.translate = '0 ' + (scrollY * 0.12) + 'px';
   }, { passive: true });
 
+  ${GUIDE_DOM}
   var targets = document.querySelectorAll('.reveal, .path');
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (es) {
