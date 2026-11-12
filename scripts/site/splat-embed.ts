@@ -1,7 +1,7 @@
 /**
  * Build a small self-contained embeddable viewer folder for ONE Gaussian splat (F294.7).
  *   npx tsx scripts/site/splat-embed.ts --splat=ring.spz --out=DIR [--title=...] [--poster=img] [--bg=#101010]
- * Writes index.html, viewer.css, viewer.js (three + gaussian-splat-lite bundled), the splat and the poster.
+ * Writes index.html, viewer.css, loader.js (tiny, loads viewer.js when the frame nears the viewport), viewer.js (three + gaussian-splat-lite bundled), the splat and the poster.
  * Floating, slowly turning, drag to rotate; transparent unless --bg is given.
  */
 import { build } from 'esbuild';
@@ -9,7 +9,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseEmbedArgs, renderEmbedCss, renderEmbedHtml, VIEWER_ENTRY } from './splat-embed-lib.js';
+import { parseEmbedArgs, renderEmbedCss, renderEmbedHtml, VIEWER_ENTRY, LOADER_SOURCE } from './splat-embed-lib.js';
 
 export async function buildEmbed(argv: string[]): Promise<string> {
   const a = parseEmbedArgs(argv);
@@ -28,6 +28,7 @@ export async function buildEmbed(argv: string[]): Promise<string> {
   const posterFile = a.poster ? basename(a.poster) : undefined;
   if (a.poster) copyFileSync(resolve(a.poster), join(out, posterFile!));
   writeFileSync(join(out, 'index.html'), renderEmbedHtml({ title: a.title, splatFile, posterFile }));
+  writeFileSync(join(out, 'loader.js'), LOADER_SOURCE);
   writeFileSync(join(out, 'viewer.css'), renderEmbedCss(a.bg));
   return out;
 }

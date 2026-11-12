@@ -19,6 +19,21 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(`console: ${m.
 page.on('requestfailed', (r) => errors.push(`requestfailed: ${r.url()}`));
 const remote: string[] = [];
 page.on('request', (r) => { if (!r.url().startsWith(`http://127.0.0.1:${port}`) && !/^(blob|data):/.test(r.url())) remote.push(r.url()); });
+// lazy-load proof: embed the viewer in a tall host page, far below the fold
+const requested: string[] = [];
+page.on('request', (r) => requested.push(r.url().replace(/^.*\//, '')));
+server.on('request', () => {});
+await page.route('**/__host.html', (r) => r.fulfill({ contentType: 'text/html', body: `<body style="margin:0"><div style="height:3000px"></div><iframe src="/index.html" style="width:600px;height:600px;border:0" id="f"></iframe></body>` }));
+await page.goto(`http://127.0.0.1:${port}/__host.html`);
+await page.waitForTimeout(1500);
+const lazyBefore = !requested.includes('viewer.js');
+await page.evaluate(() => window.scrollTo(0, 2600));
+await page.waitForTimeout(500);
+const frameHandle = await page.waitForSelector('#f'); const fr = (await frameHandle.contentFrame())!;
+await fr.waitForFunction(() => (window as any).__splatEmbed?.ready || (window as any).__splatEmbed?.failed, null, { timeout: 60000 });
+const loadedAfter = requested.includes('viewer.js');
+console.log(JSON.stringify({ lazyBefore, loadedAfter }));
+if (!lazyBefore || !loadedAfter) { console.error('lazy-load failed'); process.exit(1); }
 await page.goto(`http://127.0.0.1:${port}/`);
 await page.waitForFunction(() => (window as any).__splatEmbed?.ready || (window as any).__splatEmbed?.failed, null, { timeout: 60000 });
 const status = await page.evaluate(() => (window as any).__splatEmbed);

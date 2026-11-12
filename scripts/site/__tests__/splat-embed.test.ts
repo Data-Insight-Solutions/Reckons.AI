@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildEmbed } from '../splat-embed.js';
-import { EMBED_CSP, parseEmbedArgs, renderEmbedHtml } from '../splat-embed-lib.js';
+import { EMBED_CSP, LOADER_SOURCE, parseEmbedArgs, renderEmbedHtml } from '../splat-embed-lib.js';
 
 describe('parseEmbedArgs', () => {
   it('requires --splat and --out', () => {
@@ -26,6 +26,17 @@ describe('embed page', () => {
     expect(EMBED_CSP).not.toMatch(/https?:|\/\/|\*/);
     expect(EMBED_CSP).toContain("default-src 'none'");
   });
+  it('index.html loads only the loader, with no inline script', () => {
+    const h = renderEmbedHtml({ title: 'T', splatFile: 'a.spz' });
+    expect(h).toContain('src="loader.js"');
+    expect(h).not.toContain('src="viewer.js"');
+    expect(h).not.toMatch(/<script(?![^>]*src=)/);
+  });
+  it('loader injects viewer.js on first intersection with a 200px margin', () => {
+    expect(LOADER_SOURCE).toContain("'viewer.js'");
+    expect(LOADER_SOURCE).toContain("rootMargin: '200px'");
+    expect(LOADER_SOURCE).toContain('disconnect');
+  });
   it('escapes the title', () => {
     expect(renderEmbedHtml({ title: '<b>"x"', splatFile: 'a.spz' })).not.toContain('<b>"x"');
   });
@@ -37,7 +48,7 @@ describe('buildEmbed', () => {
     writeFileSync(join(d, 'a.spz'), 'x'); writeFileSync(join(d, 'p.webp'), 'y');
     const out = join(d, 'out');
     await buildEmbed([`--splat=${join(d, 'a.spz')}`, `--out=${out}`, `--poster=${join(d, 'p.webp')}`]);
-    expect(readdirSync(out).sort()).toEqual(['a.spz', 'index.html', 'p.webp', 'viewer.css', 'viewer.js']);
+    expect(readdirSync(out).sort()).toEqual(['a.spz', 'index.html', 'loader.js', 'p.webp', 'viewer.css', 'viewer.js']);
     expect(readFileSync(join(out, 'index.html'), 'utf8')).not.toMatch(/https?:\/\//);
   }, 60000);
 });
