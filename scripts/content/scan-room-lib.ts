@@ -5,6 +5,7 @@
  */
 import { createHash } from 'node:crypto';
 import type { Check } from './asset-checks.js';
+import { validateMulti, type MultiRecord } from './scan-multi-lib.js';
 
 export type ScanInput =
   | { kind: 'stray'; dir: string; video: string; files: string[] }
@@ -138,6 +139,8 @@ export interface ScanReceipt {
   gaussians: number;
   output: { file: string; sha256: string; bytes: number };
   checks: { registration: Check; splat: Check };
+  /** F58.9.19: set when several captures were pooled into one COLMAP model: per-capture accounting and which matcher ran. */
+  multi?: MultiRecord;
   /** Set when the INPUT video is itself synthetic (a rendered made-up room): what made it. */
   synthetic?: { note: string; generator: string };
   /** Set on a receipt published into the repository: the PLY is NOT committed (too large), only these files. */
@@ -183,6 +186,7 @@ export function validateReceipt(r: ScanReceipt): string[] {
   if (typeof measuredRegistered === 'number' && measuredRegistered !== r.frames.registered) {
     p.push(`frames.registered is ${r.frames.registered}, but the registration check measured ${measuredRegistered} (the check's value is the truth)`);
   }
+  if (r.multi) p.push(...validateMulti(r.multi, isCuratedFrames(r.frames) ? r.frames.supplied : r.frames.kept, r.frames.registered));
   for (const k of ['ffmpeg', 'pycolmap', 'brush']) if (!r.tools?.[k]) p.push(`tool version missing: ${k}`);
   for (const k of ['frames', 'poses', 'train']) if (!(r.stagesS?.[k] >= 0)) p.push(`stage duration missing: ${k}`);
   if (!r.checks?.registration?.pass) p.push('registration check did not pass');

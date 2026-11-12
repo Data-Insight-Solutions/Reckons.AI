@@ -46,6 +46,7 @@ import { checkSplat } from './asset-checks.js';
 import { compressSplat, cropPly, reducePly, verifyCompressed, type CompressFormat } from './splat-compress.js';
 import { plyCentres } from '../../src/lib/3d/splat-check.js';
 import { robustExtent } from '../../src/lib/3d/robust-extent.js';
+import { judgeJoin, captureOfFrame, type MultiRecord } from './scan-multi-lib.js';
 import {
   chooseFps, detectInput, folderContentHash, isCuratedFrames, judgeRegistration, MIN_CURATED_IMAGES, parseOdometry, pathLength, selectSharpest,
   validateReceipt, type FramesRecord, type ScanReceipt,
@@ -98,7 +99,7 @@ function run(stage: string, cmd: string, args: string[], env: NodeJS.ProcessEnv 
 }
 
 export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
-  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree|max-scale-fraction|space|workspace|attach|label|derived-from|link-from)$/.test(argv[i - 1])));
+  const positional = argv.filter((a, i) => !a.startsWith('--') && !(i > 0 && /^--(out|steps|frames|format|max-gaussians|sh-degree|max-scale-fraction|space|workspace|attach|label|derived-from|link-from|captures-file)$/.test(argv[i - 1])));
   const inputArg = positional[0];
   if (!inputArg) throw new Error('usage: npm run scan:room -- <Stray Scanner folder | video file> [--out dir] [--steps N] [--frames N]');
   const inputPath = resolve(inputArg);
@@ -148,6 +149,12 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
     if (Math.abs(rows.length - approxFrames) > Math.max(5, approxFrames * 0.05)) notes.push('odometry row count differs from the video frame count by more than 5%');
   }
 
+  // MULTI-SCAN (F58.9.19): scan-multi.ts pools the frames of several captures into one curated folder and passes the manifest here.
+  const multiManifest = arg(argv, 'captures-file') ? JSON.parse(readFileSync(resolve(arg(argv, 'captures-file') as string), 'utf8')) as {
+    matcher: MultiRecord['matcher']; matcherReason: string; vocabTree: string | null;
+    captures: { name: string; source: string; keyframes: number; camera: string }[];
+  } : null;
+  let multi: MultiRecord | undefined = prior?.multi;
   let extracted = 0, kept = 0, registered = 0, pycolmap = 'unknown';
   const fps = info ? chooseFps(info.durationS, info.fps, Math.round(target * 1.25)) : 0;
   const ply = join(out, 'splat.ply');
@@ -188,8 +195,9 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   }
 
   // ── poses
-  console.log('== poses (COLMAP, sequential matching)');
+  console.log(`== poses (COLMAP, ${multiManifest ? `${multiManifest.matcher} matching across ${multiManifest.captures.length} captures, one camera each` : 'sequential matching'})`);
   let registered = 0, pycolmap = 'unknown';
+  if (multiManifest) writeFileSync(join(work, 'captures.json'), JSON.stringify({ matcher: multiManifest.matcher, vocabTree: multiManifest.vocabTree }));
   await timed('poses', () => {
     const o = run('poses', PY, [COLMAP_PY, work]);
     const line = o.trim().split('\n').reverse().find((l) => l.startsWith('{'));
@@ -200,6 +208,21 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
   });
   registration = judgeRegistration(registered, kept);
   console.log(`   registered ${registered} of ${kept}`);
+  if (multiManifest) {
+    // Every capture must be in the ONE model written for training; a capture COLMAP left in another sub-model is a failure, not a smaller scan.
+    const listing = JSON.parse(readFileSync(join(work, 'models.json'), 'utf8')) as { models: string[][] };
+    const supplied: Record<string, number> = {};
+    for (const f of readdirSync(join(work, 'images'))) { const c = captureOfFrame(f); supplied[c] = (supplied[c] ?? 0) + 1; }
+    const verdict = judgeJoin(supplied, listing);
+    for (const c of verdict.captures) console.log(`   capture ${c.name}: ${c.registered} of ${c.supplied} registered${c.joined ? '' : '  DID NOT JOIN'}`);
+    console.log(`   ${verdict.modelsFound} COLMAP model(s); ${verdict.singleModel ? 'every capture is in the largest one' : 'NOT every capture is in one model'}`);
+    multi = {
+      matcher: multiManifest.matcher, matcherReason: multiManifest.matcherReason, modelsFound: verdict.modelsFound, singleModel: verdict.singleModel,
+      captures: verdict.captures.map((c) => { const m = multiManifest.captures.find((x) => x.name === c.name); return { ...c, source: m?.source ?? '?', keyframes: m?.keyframes ?? c.supplied, camera: m?.camera ?? 'SIMPLE_RADIAL' }; }),
+    };
+    writeFileSync(join(out, 'multi-receipt.json'), JSON.stringify(multi, null, 2) + '\n');
+    if (!verdict.singleModel) throw new StageError('poses', verdict.failures.join('; '));
+  }
   if (!registration.pass) throw new StageError('poses', registration.problems.join('; '));
 
   // ── train
@@ -290,11 +313,12 @@ export async function scanRoom(argv: string[]): Promise<ScanReceipt> {
       pycolmap,
       brush: run('train', BRUSH, ['--version']).trim(),
     },
-    settings: { totalSteps: steps, ...(input.kind === 'images' ? {} : { targetFrames: target }), matching: 'sequential overlap 10', cameraModel: 'SIMPLE_RADIAL single camera', minRegisteredFraction: 0.5, seed: 42 },
+    settings: { totalSteps: steps, ...(input.kind === 'images' ? {} : { targetFrames: target }), matching: multi ? `${multi.matcher} across captures` : 'sequential overlap 10', cameraModel: multi ? 'SIMPLE_RADIAL, one camera per capture' : 'SIMPLE_RADIAL single camera', minRegisteredFraction: 0.5, seed: 42 },
     stagesS,
     gaussians: Number(splat.measured.count),
     output: { file: 'splat.ply', sha256: await sha256File(ply), bytes: statSync(ply).size },
     checks: { registration, splat },
+    multi,
     crop,
     reduce,
     compressed,
