@@ -6,6 +6,10 @@
  *
  *   npx tsx scripts/content/splat-shots.ts --out=DIR file1.ply file2.spz ...
  *
+ * Reconstructed scenes (npm run scan:room) have an arbitrary frame, not TripoSplat's: pass --up=x,y,z (the scene's up in file
+ * coordinates), --focus=x,y,z,r (a centre and radius in file coordinates to frame, default the whole splat) and
+ * --views=az:el:dist[:lookY],... to choose cameras.
+ *
  * One PNG per file and view: DIR/<name>.<view>.png. Orientation matches the app (createNormalizedSplat):
  * TripoSplat's y-down, faces +x frame is turned so the picture's side faces the camera.
  * Software GL is slow and its blending is not a phone's, so this compares settings; it does not say how
@@ -17,19 +21,24 @@ import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { parseVec3, parseViews, quaternionToY } from './splat-shots-lib.js';
 
 const args = process.argv.slice(2);
 const out = resolve(args.find((a) => a.startsWith('--out='))?.split('=')[1] ?? '.');
 const files = args.filter((a) => !a.startsWith('--')).map((f) => resolve(f));
 mkdirSync(out, { recursive: true });
 /** name, azimuth degrees, elevation degrees, camera distance as a multiple of the radius, look-at height (radius units) */
-const VIEWS = [['threequarter', 30, 18, 3.3, 0], ['front', 0, 8, 3.3, 0], ['detail', 12, 22, 1.15, 0.28]] as const;
+const opt = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
+const VIEWS = opt('views') ? parseViews(opt('views')!) : [['threequarter', 30, 18, 3.3, 0], ['front', 0, 8, 3.3, 0], ['detail', 12, 22, 1.15, 0.28]] as const;
+const UP = opt('up') ? quaternionToY(parseVec3(opt('up')!, '--up')) : null;
+const FOCUS = opt('focus') ? opt('focus')!.split(',').map(Number) : null;
+if (FOCUS && (FOCUS.length !== 4 || FOCUS.some((n) => !Number.isFinite(n)))) throw new Error('--focus must be x,y,z,r');
 
 const dir = mkdtempSync(join(tmpdir(), 'splat-shots-'));
 writeFileSync(join(dir, 'entry.js'), `
 import * as THREE from 'three';
 import { GaussianSplatRenderer, SplatMesh } from 'gaussian-splat-lite';
-window.shoot = async (url, views) => {
+window.shoot = async (url, views, up, focus) => {
   const W = 900;
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
   renderer.setSize(W, W); renderer.setClearColor(0xe6e6e6); document.body.appendChild(renderer.domElement);
@@ -37,9 +46,12 @@ window.shoot = async (url, views) => {
   scene.add(new GaussianSplatRenderer({ renderer }));
   const mesh = new SplatMesh({ url }); await mesh.initialized;
   const sphere = mesh.getBoundingBox(true, new THREE.Box3()).getBoundingSphere(new THREE.Sphere());
-  const inner = new THREE.Group(); inner.rotation.set(Math.PI, Math.PI / 2, 0);
-  mesh.position.copy(sphere.center).multiplyScalar(-1); inner.add(mesh);
-  const group = new THREE.Group(); group.scale.setScalar(1 / sphere.radius); group.add(inner); scene.add(group);
+  const inner = new THREE.Group();
+  if (up) inner.quaternion.set(up[0], up[1], up[2], up[3]); else inner.rotation.set(Math.PI, Math.PI / 2, 0);
+  const centre = focus ? new THREE.Vector3(focus[0], focus[1], focus[2]) : sphere.center;
+  const radius = focus ? focus[3] : sphere.radius;
+  mesh.position.copy(centre).multiplyScalar(-1); inner.add(mesh);
+  const group = new THREE.Group(); group.scale.setScalar(1 / radius); group.add(inner); scene.add(group);
   const cam = new THREE.PerspectiveCamera(35, 1, 0.01, 100);
   const shots = {};
   for (const [name, az, el, dist, lookY] of views) {
@@ -68,7 +80,7 @@ for (const f of files) {
   const page = await browser.newPage({ viewport: { width: 900, height: 900 } });
   page.on('pageerror', (e) => console.error('page error', e.message));
   await page.goto(`http://127.0.0.1:${port}/`);
-  const r = await page.evaluate(([u, v]) => (window as any).shoot(u, v), [`/f/${basename(f)}`, VIEWS] as const) as { shots: Record<string, string>; gl: string };
+  const r = await page.evaluate(([u, v, up, focus]) => (window as any).shoot(u, v, up, focus), [`/f/${basename(f)}`, VIEWS, UP, FOCUS] as const) as { shots: Record<string, string>; gl: string };
   for (const [name, data] of Object.entries(r.shots)) writeFileSync(join(out, `${basename(f).replace(/\.[^.]+$/, '')}.${name}.png`), Buffer.from(data.split(',')[1], 'base64'));
   console.log(`${basename(f)} rendered (${r.gl})`);
   await page.close();
