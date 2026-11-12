@@ -360,7 +360,7 @@ describe('content stamps on linked files (F274.4.3)', () => {
 });
 
 describe('sections pages (F274.4.3)', () => {
-  it('a page with template: sections gets the landing layout, blocks and an empty media slot, but is not the home page and has no scroll control', () => {
+  it('a page with template: sections gets the landing layout, blocks and an empty media slot, but is not the home page and carries the scroll control', () => {
     const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
     const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
     tmp.push(site, join(out, '..'));
@@ -375,7 +375,7 @@ describe('sections pages (F274.4.3)', () => {
     expect(about).toContain('<div class="panel reveal tall"><h3>One</h3>');
     expect(about).toContain('<div class="media-slot" hidden></div>');
     expect(about).toContain('page-sections');
-    expect(about).not.toContain('id="guide"');
+    expect(about).toContain('id="guide"'); // Matt 2026-11-12: sections pages carry the scroll control too
     expect(about).not.toContain('<ul class="chips">');
     expect(read(out, 'index.html')).toContain('id="guide"');
     expect(read(out, 'index.html')).not.toContain('page-sections');

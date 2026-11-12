@@ -48,7 +48,7 @@ export interface ShellContext {
   currentUrl: string;
   /** Content stamps by output file name (landing.css, landing.js, site-extra.css): added to the linked URLs as ?v=. */
   stamps?: Record<string, string>;
-  /** True on the landing page only: the guided-scroll control is not on other pages of a site. */
+  /** True on the landing and `sections` pages: the guided-scroll control is not on other templates (posts, contact). */
   guided?: boolean;
   /** False when the build writes no knowledge.ttl: the alternate link is then left out (F274.4.6). */
   knowledgeTtl?: boolean;
@@ -370,16 +370,18 @@ function renderSection(s: LandingSection, ctx: ShellContext): string {
 // ── The shell: head, header, footer ──────────────────────────────────────────
 
 /** The CSP of a configured-site page: this site's own scripts and styles, the webhook as the only outside target. */
-export function shellCsp(config: SiteConfig): string {
+export function shellCsp(config: SiteConfig, opts: { frames?: boolean } = {}): string {
   const origin = config.contact.webhook ? new URL(config.contact.webhook).origin : "'none'";
   return "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src " + origin
-    + '; form-action ' + origin + "; object-src 'none'; base-uri 'none'";
+    + '; form-action ' + origin + "; object-src 'none'; base-uri 'none'"
+    // Only a page that actually holds a (sanitized, same-origin) frame may load one.
+    + (opts.frames ? "; frame-src 'self'" : '');
 }
 
-function headHtml(title: string, description: string, ctx: ShellContext): string {
+function headHtml(title: string, description: string, ctx: ShellContext, frames = false): string {
   const c = ctx.config;
   const desc = description || c.description || '';
-  return '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="' + esc(shellCsp(c)) + '">\n<meta name="referrer" content="no-referrer">\n'
+  return '<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="' + esc(shellCsp(c, { frames })) + '">\n<meta name="referrer" content="no-referrer">\n'
     + '<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>' + esc(title) + '</title>\n'
     + (desc ? '<meta name="description" content="' + esc(desc) + '">\n' : '')
     + (c.noindex ? '<meta name="robots" content="noindex">\n' : '')
@@ -425,7 +427,7 @@ function guideHtml(config: SiteConfig): string {
 }
 
 function documentHtml(ctx: ShellContext, title: string, description: string, main: string, extraBody = '', bodyClass = ''): string {
-  return '<!doctype html>\n<html lang="en">\n<head>\n' + headHtml(title, description, ctx) + '\n</head>\n'
+  return '<!doctype html>\n<html lang="en">\n<head>\n' + headHtml(title, description, ctx, /<iframe[\s>]/.test(main + extraBody)) + '\n</head>\n'
     + '<body class="no-js' + bodyClass + '" data-theme-key="' + esc(ctx.config.themeKey) + '">\n'
     + '<div class="aurora" aria-hidden="true"><i class="a"></i><i class="b"></i><i class="c"></i><i class="d"></i></div>\n'
     + headerHtml(ctx) + '\n<main id="top">\n' + main + '\n</main>\n' + footerHtml(ctx) + '\n' + extraBody + '<script src="' + stamped(ctx, 'landing.js') + '"></script>\n</body>\n</html>';
@@ -438,7 +440,7 @@ function pageTitle(page: string, site: string): string {
 
 /** A page whose template is `landing`: its `## ` sections laid out as the landing design. */
 export function renderLandingPage(page: SitePage, pageCtx: ShellContext): string {
-  const guided = page.template === 'landing' && !!pageCtx.config.guidedScroll;
+  const guided = (page.template === 'landing' || page.template === 'sections') && !!pageCtx.config.guidedScroll;
   const ctx = { ...pageCtx, guided };
   const sections = parseLanding(page.body);
   const main = sections.length
@@ -685,6 +687,8 @@ section.page { padding-top: clamp(24px, 4vw, 56px); }
 .prose p, .prose li { color: var(--text-soft); }
 .prose .date { color: var(--text-mute); font: 400 13px/1 var(--mono); display: block; margin-bottom: 18px; }
 .prose img { border-radius: 12px; }
+iframe.embed-4x3 { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 4 / 3; border: 0; border-radius: 12px; background: var(--bg-2); }
+.blocks .panel { min-width: 0; }
 .prose pre { background: color-mix(in srgb, var(--bg) 55%, transparent); padding: 1rem; border-radius: 12px; overflow: auto; }
 .prose code { font-family: var(--mono); font-size: .92em; }
 .prose table { border-collapse: collapse; display: block; overflow-x: auto; }

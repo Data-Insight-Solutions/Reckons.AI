@@ -13,14 +13,22 @@ export function localImageUrl(value: string | null): string | null {
   } catch { return null; }
 }
 
+/** An embeddable frame must be a same-origin absolute path ("/assets/x"); anything else is dropped. */
+export function localFrameUrl(value: string | null): string | null {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) return null;
+  return localImageUrl(value);
+}
+
 export function sanitizePageHtml(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'hr', 'blockquote', 'pre', 'code',
       'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 's', 'del', 'a', 'img', 'table', 'thead', 'tbody',
-      'tr', 'th', 'td', 'caption', 'details', 'summary', 'div', 'span', 'sup', 'sub'],
-    allowedAttributes: { a: ['href', 'title', 'rel'], img: ['src', 'alt', 'title'],
+      'tr', 'th', 'td', 'caption', 'details', 'summary', 'div', 'span', 'sup', 'sub', 'iframe'],
+    allowedAttributes: { a: ['href', 'title', 'rel'], img: ['src', 'alt', 'title', 'loading', 'decoding'],
+      iframe: ['src', 'title', 'loading', 'width', 'height', 'class'],
       code: ['class'], th: ['colspan', 'rowspan'], td: ['colspan', 'rowspan'], ol: ['start'] },
-    allowedClasses: { code: [/^language-[a-z0-9-]+$/i] },
+    allowedClasses: { code: [/^language-[a-z0-9-]+$/i], iframe: [/^embed-[a-z0-9-]+$/] },
+    exclusiveFilter: (frame) => frame.tag === 'iframe' && !localFrameUrl(frame.attribs.src ?? null),
     allowedSchemes: ['http', 'https', 'mailto'],
     allowProtocolRelative: false,
     parseStyleAttributes: false,
@@ -29,8 +37,9 @@ export function sanitizePageHtml(html: string): string {
       a: (tagName, attribs) => ({ tagName, attribs: { ...attribs, rel: 'noopener noreferrer' } }),
       img: (tagName, attribs): sanitizeHtml.Tag => {
         const src = localImageUrl(attribs.src);
-        return { tagName, attribs: src ? { ...attribs, src } : { alt: attribs.alt ?? '' } };
+        return { tagName, attribs: src ? { ...attribs, src, loading: 'lazy', decoding: 'async' } : { alt: attribs.alt ?? '' } };
       },
+      iframe: (tagName, attribs): sanitizeHtml.Tag => ({ tagName, attribs: { ...attribs, loading: 'lazy' } }),
     },
   });
 }
