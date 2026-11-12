@@ -274,12 +274,15 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
  * styles and scripts, and an inlined file is part of the page, so what the policy would drop silently
  * (or what would reach out of the page) fails the build instead, naming the offending thing.
  */
+const SVG_SHAPES = new Set(['svg', 'g', 'path', 'line', 'circle', 'rect', 'ellipse', 'polygon', 'polyline', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'title', 'desc', 'text', 'tspan', 'symbol']);
+
 export function sanitizeInlineSvg(text: string, field = 'markSvg'): string {
   const svg = text.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').trim();
   if (!/^<svg[\s>]/i.test(svg) || !/<\/svg>\s*$/i.test(svg)) fail(field + ' must be one <svg> element');
   if (/<!(doctype|entity)/i.test(svg)) fail(field + ' must not declare a DOCTYPE or entities');
-  const tag = /<\/?\s*(script|style|foreignObject|iframe|object|embed|image|link|a|animate|set|animateTransform|animateMotion)\b/i.exec(svg);
-  if (tag) fail(field + ' contains a <' + tag[1] + '> element, which is not allowed in an inlined mark (it would run code, reach out of the page or be blocked by the page policy)');
+  for (const m of svg.matchAll(/<\/?\s*([A-Za-z][\w:.-]*)/g)) {
+    if (!SVG_SHAPES.has(m[1].toLowerCase())) fail(field + ' contains a <' + m[1] + '> element, which is not allowed in an inlined mark (only drawing shapes, gradients and titles are: it could run code, reach out of the page or be blocked by the page policy)');
+  }
   for (const m of svg.matchAll(/\s([^\s=<>"'/]+)\s*=\s*("[^"]*"|'[^']*')/g)) {
     const name = m[1].toLowerCase();
     const value = m[2].slice(1, -1);

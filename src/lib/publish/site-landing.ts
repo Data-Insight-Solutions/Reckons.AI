@@ -639,7 +639,7 @@ footer a { color: var(--text-soft); }
 .guide-count .track { fill: none; stroke: var(--panel-line); stroke-width: 2; }
 .guide-count .bar { fill: none; stroke: var(--accent-bright); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 0; opacity: .8; }
 .guide-count b { position: relative; font: 400 10px/1 var(--mono); }
-.guide-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.guide-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); }
 body.has-guide footer { padding-bottom: 84px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -726,7 +726,7 @@ const GUIDE_DOM = `
       });
       return out.sort(function (a, b) { return a - b; });
     };
-    var say = function (t) { live.textContent = ''; setTimeout(function () { live.textContent = t; }, 30); };
+    var say = function (t) { live.textContent = ''; requestAnimationFrame(function () { live.textContent = t; }); };
     var jump = function (y) { scrollTo({ top: y, behavior: 'instant' }); };
 
     function paint() {
@@ -734,30 +734,30 @@ const GUIDE_DOM = `
       pauseBtn.hidden = !started || st.mode === 'end';
       count.hidden = !(st.mode === 'dwell' || st.mode === 'paused');
       go.textContent = st.mode === 'end' ? 'Back to top' : 'Scroll';
-      go.setAttribute('aria-label', st.mode === 'end' ? 'Back to the top of the page' : st.mode === 'idle' ? 'Scroll the page section by section' : 'Go to the next section now');
+      go.ariaLabel = (st.mode === 'end' ? 'Back to the top of the page' : st.mode === 'idle' ? 'Scroll the page section by section' : 'Go to the next section now');
       var playing = st.mode === 'moving' || st.mode === 'dwell';
       pauseBtn.textContent = playing ? '\u275A\u275A' : '\u25B6';
-      pauseBtn.setAttribute('aria-label', playing ? 'Pause guided scroll' : 'Play guided scroll');
+      pauseBtn.ariaLabel = playing ? 'Pause guided scroll' : 'Play guided scroll';
       var frac = st.mode === 'dwell' || st.mode === 'paused' ? Math.max(0, Math.min(1, st.left / dwell)) : 0;
       bar.style.strokeDashoffset = String(100 - frac * 100);
       num.textContent = st.mode === 'dwell' || st.mode === 'paused' ? String(Math.ceil(st.left)) : '';
     }
     function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } expected = null; }
-    function stopTimer() { if (timer) { clearInterval(timer); timer = null; } }
-    function setState(next) { st = next; paint(); drive(); }
+    function stopTimer() { if (timer) { cancelAnimationFrame(timer); timer = null; } }
+    function applyState(next) { st = next; paint(); drive(); }
     function pauseNow(announce) { stopAnim(); stopTimer(); if (st.mode === 'moving' || st.mode === 'dwell') { st = guideLogic.pause(st); paint(); if (announce) say('Paused'); } }
 
     function moveTo(y) {
       stopAnim();
       var from = scrollY, dist = y - from;
-      if (reduced() || Math.abs(dist) < 2) { jump(y); setState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); return; }
+      if (reduced() || Math.abs(dist) < 2) { jump(y); applyState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); return; }
       var dur = Math.min(6000, Math.max(1800, Math.abs(dist) * 5)), t0 = performance.now();
       (function frame(now) {
         var p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
         expected = Math.round(from + dist * e);
         jump(expected);
         if (p < 1) anim = requestAnimationFrame(frame);
-        else { anim = null; expected = null; setState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); }
+        else { anim = null; expected = null; applyState(guideLogic.arrive(scrollY, maxY(), dwell)); if (st.mode === 'end') say('End of page'); }
       })(t0);
     }
     function drive() {
@@ -765,14 +765,14 @@ const GUIDE_DOM = `
       dwellY = scrollY;
       if (st.mode === 'moving' && !anim) {
         var target = st.target !== null ? st.target : guideLogic.nextTarget(tops(), scrollY, maxY());
-        if (target === null) { setState({ mode: 'end', left: 0, target: null }); say('End of page'); } else moveTo(target);
+        if (target === null) { applyState({ mode: 'end', left: 0, target: null }); say('End of page'); } else moveTo(target);
       } else if (st.mode === 'dwell') {
         lastTick = performance.now();
-        timer = setInterval(function () {
-          var now = performance.now(), dt = (now - lastTick) / 1000; lastTick = now;
+        timer = requestAnimationFrame(function loop(now) {
+          var dt = Math.min(0.5, (now - lastTick) / 1000); lastTick = now;
           st = guideLogic.tick(st, dt); paint();
-          if (st.mode !== 'dwell') drive();
-        }, 100);
+          if (st.mode !== 'dwell') drive(); else timer = requestAnimationFrame(loop);
+        });
       }
     }
     function visitorMoved(e) {

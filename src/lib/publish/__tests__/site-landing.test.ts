@@ -209,8 +209,9 @@ describe('site-supplied mark and stylesheet', () => {
   it('fails the build for a script, an event handler, an external reference or an inline style in the SVG', () => {
     const bad = (inner: string) => () => buildWith(SVG.replace('<circle', inner + '<circle'));
     expect(bad('<script>alert(1)</script>')).toThrow(/<script> element/);
+    expect(bad('<use href="#a"/>')).toThrow(/<use> element/);
     expect(bad('<g onclick="x()"/>')).toThrow(/event-handler attribute \(onclick\)/);
-    expect(bad('<use href="https://example.test/x.svg#a"/>')).toThrow(/external reference/);
+    expect(bad('<g href="https://example.test/x.svg#a"/>')).toThrow(/external reference/);
     expect(bad('<g fill="url(https://example.test/p)"/>')).toThrow(/external reference/);
     expect(bad('<g style="animation-delay:1s"/>')).toThrow(/inline style attribute/);
   });
