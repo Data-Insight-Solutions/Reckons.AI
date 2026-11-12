@@ -16,6 +16,9 @@
  *
  * Hero: the heading is the h1 (`==words==` gets the gradient), the first paragraph is the lede, a
  * list of links becomes the buttons (first = primary), `@tagline` sits under the logo mark.
+ * A `###` in cards, steps or panels may carry `@diagram: assets/x.svg`, a site file inlined above its text (checked like the mark).
+ * A timeline item may end with `| logo: /assets/x.png`, shown small on a light plate beside its name, and the `###` may
+ * carry `@note: text`, a small-print line under the list.
  * Cards: each `###` is a card; its first paragraph is the lead; `Proof: Label | text` adds a proof
  * line, `Stat: 212,000` a large figure, `@tag: alpha` a small tag. Steps: each `###` is a stage of a
  * path that draws itself. Panels: each `###` is a panel; `Price: text` lines become highlighted notes;
@@ -196,7 +199,13 @@ function renderHero(s: LandingSection, ctx: ShellContext): string {
     + (ctx.config.guidedScroll ? '' : '<div class="scroll-cue reveal d5"><span></span>Scroll</div>') + '</div>' + mark + '</div></div>';
 }
 
-function renderCards(s: LandingSection): string {
+/** A card's, step's or panel's `@diagram: path` as an inlined, checked SVG above its text (nothing when the site has no inliner). */
+function diagram(sub: LandingSub, ctx: ShellContext): string {
+  const path = sub.opts.diagram;
+  return path && ctx.config.inlineSvg ? '<div class="diagram">' + ctx.config.inlineSvg(path) + '</div>' : '';
+}
+
+function renderCards(s: LandingSection, ctx: ShellContext): string {
   const cards = s.subs.map((sub, i) => {
     const stat = takeLines(sub.body, 'Stat');
     const proof = takeLines(stat.rest, 'Proof');
@@ -212,24 +221,24 @@ function renderCards(s: LandingSection): string {
     }
     const tag = sub.opts.tag ? '<span class="tag">' + esc(sub.opts.tag) + '</span>' : '';
     body = body || '';
-    return '<article class="card panel reveal' + (i % 2 ? ' d1' : '') + '"><span class="num">' + String(i + 1).padStart(2, '0') + '</span><h3>' + heading(sub.title) + ' ' + tag + '</h3>' + body + proofHtml + '</article>';
+    return '<article class="card panel reveal' + (i % 2 ? ' d1' : '') + '"><span class="num">' + String(i + 1).padStart(2, '0') + '</span><h3>' + heading(sub.title) + ' ' + tag + '</h3>' + diagram(sub, ctx) + body + proofHtml + '</article>';
   });
   return sectionHead(s) + '<div class="bento">' + cards.join('\n') + '</div>';
 }
 
-function renderSteps(s: LandingSection): string {
+function renderSteps(s: LandingSection, ctx: ShellContext): string {
   const steps = s.subs.map((sub, i) =>
-    '<div class="step reveal' + (DELAY[i % 4] ?? '') + '"><div class="dot panel">' + String(i + 1).padStart(2, '0') + '</div><div><h4>' + heading(sub.title) + '</h4>' + block(sub.body) + '</div></div>');
+    '<div class="step reveal' + (DELAY[i % 4] ?? '') + '"><div class="dot panel">' + String(i + 1).padStart(2, '0') + '</div><div><h4>' + heading(sub.title) + '</h4>' + diagram(sub, ctx) + block(sub.body) + '</div></div>');
   return sectionHead(s) + '<div class="path">' + steps.join('\n') + '</div>';
 }
 
-function renderPanels(s: LandingSection): string {
+function renderPanels(s: LandingSection, ctx: ShellContext): string {
   const n = Math.min(Math.max(s.subs.length, 1), 3);
   const panels = s.subs.map((sub, i) => {
     const price = takeLines(sub.body, 'Price');
     const notes = price.values.map((v) => '<div class="price">' + inline(v) + '</div>');
     const noteHtml = notes.length > 1 ? '<div class="options">' + notes.join('') + '</div>' : notes.join('');
-    return '<div class="panel reveal' + (DELAY[i % 4] ?? '') + '"><span class="k">' + String(i + 1).padStart(2, '0') + '</span><h3>' + heading(sub.title) + '</h3>' + block(price.rest) + noteHtml + '</div>';
+    return '<div class="panel reveal' + (DELAY[i % 4] ?? '') + '"><span class="k">' + String(i + 1).padStart(2, '0') + '</span><h3>' + heading(sub.title) + '</h3>' + diagram(sub, ctx) + block(price.rest) + noteHtml + '</div>';
   });
   const foot = s.opts.footnote ? '<p class="footnote reveal">' + inline(s.opts.footnote) + '</p>' : '';
   return sectionHead(s) + '<div class="engage cols-' + n + '">' + panels.join('\n') + '</div>' + foot;
@@ -248,9 +257,14 @@ function renderAbout(s: LandingSection): string {
     const items = listItems(sub.body);
     if (sub.opts.as === 'timeline') {
       inner += '<ol class="timeline">' + items.map((it) => {
-        const [when, what, role] = it.split('|').map((x) => x.trim());
-        return '<li><div class="when">' + inline(when ?? '') + '</div><div class="what">' + inline(what ?? '') + '</div>' + (role ? '<div class="role">' + inline(role) + '</div>' : '') + '</li>';
-      }).join('') + '</ol>';
+        const fields = it.split('|').map((x) => x.trim());
+        // an optional `logo: /path` field: a small image beside the entry, shown as it was supplied
+        const logoAt = fields.findIndex((f, i) => i >= 2 && /^logo:/i.test(f));
+        const logo = logoAt >= 0 ? fields.splice(logoAt, 1)[0].replace(/^logo:\s*/i, '') : '';
+        const [when, what, role] = fields;
+        const img = logo && logo.startsWith('/') ? '<span class="logo-plate"><img class="logo" src="' + esc(href(logo)) + '" alt=""></span>' : '';
+        return '<li><div class="when">' + inline(when ?? '') + '</div><div class="what">' + img + '<span>' + inline(what ?? '') + '</span></div>' + (role ? '<div class="role">' + inline(role) + '</div>' : '') + '</li>';
+      }).join('') + '</ol>' + (sub.opts.note ? '<p class="fineprint">' + inline(sub.opts.note) + '</p>' : '');
     } else if (items.length > 0 && sub.body.trim().split(/\r?\n/).every((l) => l.trim() === '' || /^\s*[-*]\s/.test(l))) {
       inner += '<div class="chips">' + items.map((it) => '<span class="chip">' + inline(it) + '</span>').join('') + '</div>';
     } else {
@@ -309,9 +323,9 @@ function renderText(s: LandingSection): string {
 function renderSection(s: LandingSection, ctx: ShellContext): string {
   switch (s.opts.section) {
     case 'hero': return renderHero(s, ctx);
-    case 'cards': return wrapSection(s, renderCards(s));
-    case 'steps': return wrapSection(s, renderSteps(s));
-    case 'panels': return wrapSection(s, renderPanels(s));
+    case 'cards': return wrapSection(s, renderCards(s, ctx));
+    case 'steps': return wrapSection(s, renderSteps(s, ctx));
+    case 'panels': return wrapSection(s, renderPanels(s, ctx));
     case 'about': return wrapSection(s, renderAbout(s));
     case 'banner': return wrapSection(s, renderBanner(s), ' class="tight"');
     case 'contact': return wrapSection(s, renderContact(s, ctx));
@@ -568,6 +582,13 @@ section.tight { padding-top: 0; }
 .timeline li:first-child::before { background: var(--accent-bright); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
 .timeline .when { font: 400 13px/1.4 var(--mono); color: var(--text-mute); }
 .timeline .what { font-weight: 600; font-size: 18px; }
+.timeline .what { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.logo-plate { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 8px; background: #fff; border: 1px solid var(--panel-line); }
+.logo-plate .logo { display: block; height: 26px; width: auto; max-width: 100%; }
+@media (max-width: 640px) { .timeline .what { flex-direction: column; align-items: flex-start; gap: 8px; } }
+.fineprint { margin: 14px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-mute); }
+.diagram { margin: 4px 0 14px; max-width: 380px; }
+.diagram svg { display: block; width: 100%; height: auto; }
 .timeline .role { color: var(--text-soft); font-size: 15px; }
 .about h3 { font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-2-soft); margin: 0 0 6px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 26px; }

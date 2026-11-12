@@ -281,3 +281,49 @@ describe('guided scroll (F274.4.3)', () => {
     expect(read(build((c) => { c.guidedScroll = true; }), 'about/index.html')).not.toContain('id="guide"');
   });
 });
+
+describe('card diagrams, entry logos and small print (F274.4.3)', () => {
+  const DG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" class="dg" role="img" aria-label="Test"><line class="ln" x1="0" y1="0" x2="9" y2="9"/></svg>';
+  function buildEdited(diagramSvg: string | null, edit = true): string {
+    const site = mkdtempSync(join(tmpdir(), 'landing-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'landing-out-')) + '/site';
+    tmp.push(site, join(out, '..'));
+    cpSync(FIXTURE, site, { recursive: true });
+    if (edit) {
+      const f = join(site, 'content/index.md');
+      let md = readFileSync(f, 'utf8');
+      md = md.replace('### The problem\n', '### The problem\n@diagram: diagram.svg\n');
+      md = md.replace('@as: timeline\n', '@as: timeline\n@note: Marks belong to their owners.\n');
+      md = md.replace('| Example Co | Developer', '| Example Co | Developer | logo: /assets/mark.svg');
+      writeFileSync(f, md);
+      if (diagramSvg !== null) writeFileSync(join(site, 'diagram.svg'), diagramSvg);
+    }
+    buildSite({ site, out });
+    return out;
+  }
+
+  it('inlines a card diagram above its text, shows an entry logo with empty alt, and prints the note under the list', () => {
+    const html = read(buildEdited(DG), 'index.html');
+    expect(html).toContain('<h4>The problem</h4><div class="diagram">' + DG + '</div>');
+    expect(html).toContain('<span class="logo-plate"><img class="logo" src="/assets/mark.svg" alt=""></span><span>Example Co</span>');
+    expect(html).toContain('</ol><p class="fineprint">Marks belong to their owners.</p>');
+    expect(html).not.toMatch(/\sstyle="/);
+    expect(html).not.toContain('logo: /assets');
+    // the entry without a logo and the other pages are untouched
+    expect(html).toContain('<div class="what"><span>Sample Inc</span></div>');
+    expect(read(buildEdited(DG), 'about/index.html')).not.toContain('fineprint');
+  });
+
+  it('fails the build for a diagram with an inline style, a script or a missing file', () => {
+    expect(() => buildEdited(DG.replace('<line', '<line style="stroke:red"'))).toThrow(/inline style attribute/);
+    expect(() => buildEdited(DG.replace('<line', '<script>x</script><line'))).toThrow(/<script> element/);
+    expect(() => buildEdited(null)).toThrow(/does not exist/);
+  });
+
+  it('a site that uses none of it builds as before: no diagram block, no plate, no small print', () => {
+    const html = read(build(), 'index.html');
+    expect(html).not.toContain('class="diagram"');
+    expect(html).not.toContain('logo-plate"');
+    expect(html).not.toContain('<p class="fineprint">');
+  });
+});

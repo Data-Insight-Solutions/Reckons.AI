@@ -83,6 +83,8 @@ export interface SiteConfig {
   extraCss: string | null;
   /** The guided-scroll control on landing pages (`guidedScroll` in the file: true or { dwellSeconds }), or null: off. */
   guidedScroll: { dwellSeconds: number } | null;
+  /** Reads, checks and returns an SVG file of the site for inlining (a card's `@diagram`); null when the config was not read from a site folder. */
+  inlineSvg: ((relPath: string) => string) | null;
 }
 
 /** Neutral defaults: what a site gets for any value its config leaves out. Not any site's brand. */
@@ -266,6 +268,7 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
     markSvg: null,
     extraCss: null,
     guidedScroll: guidedScroll(raw.guidedScroll),
+    inlineSvg: null,
   };
 }
 
@@ -321,6 +324,10 @@ export function loadSiteConfig(site: string, override?: Record<string, unknown>)
     raw = merged;
   }
   const cfg = parseSiteConfig(raw);
+  cfg.inlineSvg = (rel) => {
+    const text = siteFile(site, rel, 'diagram');
+    return sanitizeInlineSvg(text ?? '', 'diagram ' + rel);
+  };
   const r = raw as Record<string, unknown>;
   const svg = siteFile(site, r.markSvg, 'markSvg');
   const css = siteFile(site, r.extraCss, 'extraCss');
