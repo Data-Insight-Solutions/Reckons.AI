@@ -62,10 +62,28 @@ async function heldValues(page: Page) {
     const runtimeImport = (p: string) => import(/* @vite-ignore */ p);
     const { db } = await runtimeImport('/src/lib/storage/db.ts');
     const rows = (await db.statements.toArray()) as { p: { value: string }; o: { value: string }; status: string }[];
-    const pick = (...status: string[]) => rows.filter((r) => status.includes(r.status) && /raised-beds|coordinator|open-on/.test(r.p.value)).map((r) => r.o.value.split('/').pop()).sort();
+    const pick = (...status: string[]) => rows.filter((r) => status.includes(r.status) && /raised-beds|coordinator|open-on/.test(r.p.value) && !(r as unknown as { s: { value: string } }).s.value.includes('/evidence-')).map((r) => r.o.value.split('/').pop()).sort();
     // "keep new" settles the chosen value as `refined`, which is as much a part of the space as `confirmed`.
     return { confirmed: pick('confirmed', 'refined'), superseded: pick('superseded'), pending: rows.filter((r) => r.status === 'pending').length };
   });
+}
+
+  // Review only treats a different value as a disagreement for a predicate MEASURED single-valued (eight
+  // subjects, none with two values: rdf/predicate-arity.ts); an unmeasured one accumulates. A space a
+  // person has used for a while has that evidence, a three-fact space does not, so the story's space is
+  // given it: eight other places with one value each for the three predicates.
+async function seedMeasuredArity(page: Page) {
+  await page.evaluate(async () => {
+      const runtimeImport = (p: string) => import(/* @vite-ignore */ p);
+      const { db } = await runtimeImport('/src/lib/storage/db.ts');
+      const rows = (await db.statements.toArray()) as any[];
+      const out: any[] = [];
+      for (const name of ['raised-beds', 'coordinator', 'open-on']) {
+        const proto = rows.find((r) => r.p.value.includes(name) && r.status === 'confirmed');
+        for (let i = 0; i < 8; i++) out.push({ ...proto, id: `evidence-${name}-${i}`, s: { ...proto.s, value: `urn:kbase:concept/evidence-${name}-${i}` } });
+      }
+      await db.statements.bulkAdd(out);
+    });
 }
 
 const impls: Record<string, StepImpl> = {
@@ -83,7 +101,7 @@ const impls: Record<string, StepImpl> = {
     expect((await heldValues(page)).confirmed).toEqual(['12', 'Saturday', 'priya-shah']);
   },
 
-  'add-change-note': (page, snap) => addNote(page, snap, 'Garden meeting', CHANGE_NOTE),
+  'add-change-note': async (page, snap) => { await seedMeasuredArity(page); await addNote(page, snap, 'Garden meeting', CHANGE_NOTE); },
 
   'see-held-back': async (page, snap) => {
     await page.goto('/review?group=source');

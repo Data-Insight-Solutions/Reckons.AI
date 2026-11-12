@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildSite } from '../site-build';
 import { parseLanding, landingCss, landingJs, GUIDE_LOGIC } from '../site-landing';
-import { parseSiteConfig } from '../site-config';
+import { parseSiteConfig, sanitizeInlineSvg } from '../site-config';
 
 const FIXTURE = join(process.cwd(), 'src/lib/publish/__tests__/fixtures/landing-site');
 const tmp: string[] = [];
@@ -396,5 +396,19 @@ describe('sections pages (F274.4.3)', () => {
     expect(about).toMatch(/<h3>One<\/h3><p>first <a [^>]*>link<\/a>\.<\/p>/);
     expect(about).toContain('<p class="lead-line">Lead sentence.</p>');
     expect(about).toContain('<span class="grad">Highlighted.</span>');
+  });
+});
+
+describe('sanitizeInlineSvg comments', () => {
+  it('accepts an SVG with a normal comment and an xml prolog', () => {
+    const out = sanitizeInlineSvg('<?xml version="1.0"?><!-- note --><svg><path d="M0 0"/></svg>');
+    expect(out.startsWith('<svg')).toBe(true);
+    expect(out).not.toContain('<!--');
+  });
+  it('rejects a nested comment that one pass would leave as an opener', () => {
+    expect(() => sanitizeInlineSvg('<!<!---->--<svg><path d="M0 0"/></svg>')).toThrow(/comment/);
+  });
+  it('rejects a dangling comment opener', () => {
+    expect(() => sanitizeInlineSvg('<svg><!-- never closed<path d="M0 0"/></svg>')).toThrow();
   });
 });

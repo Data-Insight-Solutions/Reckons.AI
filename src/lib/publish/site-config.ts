@@ -292,7 +292,15 @@ export function parseSiteConfig(raw: unknown): SiteConfig {
 const SVG_SHAPES = new Set(['svg', 'g', 'path', 'line', 'circle', 'rect', 'ellipse', 'polygon', 'polyline', 'defs', 'lineargradient', 'radialgradient', 'stop', 'clippath', 'mask', 'title', 'desc', 'text', 'tspan', 'symbol']);
 
 export function sanitizeInlineSvg(text: string, field = 'markSvg'): string {
-  const svg = text.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '').trim();
+  // Strip until nothing changes: one pass over `<!<!---->--` leaves a fresh `<!--` behind.
+  let stripped = text;
+  for (let before = ''; before !== stripped;) {
+    before = stripped;
+    stripped = stripped.replace(/<\?xml[\s\S]*?\?>/g, '').replace(/<!--[\s\S]*?-->/g, '');
+  }
+  const svg = stripped.trim();
+  // A single pass can leave a comment opener behind (`<!<!---->--` becomes `<!--`), so anything left fails.
+  if (svg.includes('<!--') || svg.includes('-->') || svg.includes('<?')) fail(field + ' has a malformed or unterminated comment or processing instruction');
   if (!/^<svg[\s>]/i.test(svg) || !/<\/svg>\s*$/i.test(svg)) fail(field + ' must be one <svg> element');
   if (/<!(doctype|entity)/i.test(svg)) fail(field + ' must not declare a DOCTYPE or entities');
   for (const m of svg.matchAll(/<\/?\s*([A-Za-z][\w:.-]*)/g)) {
