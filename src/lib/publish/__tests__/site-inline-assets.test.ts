@@ -47,3 +47,29 @@ describe('inline frames and lazy images (F294.7)', () => {
     expect(sanitizePageHtml('<img src="/a.png" alt="x">')).toBe('<img src="/a.png" alt="x" loading="lazy" decoding="async" />');
   });
 });
+
+describe('guided-scroll control on sections pages (F274.4.3)', () => {
+  function site(guided: boolean): string {
+    const src = mkdtempSync(join(tmpdir(), 'guide-site-'));
+    const out = mkdtempSync(join(tmpdir(), 'guide-out-')) + '/site';
+    tmp.push(src, join(out, '..'));
+    cpSync(FIXTURE, src, { recursive: true });
+    const cfgFile = join(src, 'site.config.json');
+    const cfg = JSON.parse(readFileSync(cfgFile, 'utf8'));
+    if (guided) cfg.guidedScroll = { dwellSeconds: 8 }; else delete cfg.guidedScroll;
+    writeFileSync(cfgFile, JSON.stringify(cfg));
+    writeFileSync(join(src, 'content/team.md'), '---\ntitle: Team\nslug: team\ntemplate: sections\nstatus: published\nexcerpt: Team.\n---\n\n## One\n@section: text\n\nFirst.\n\n## Two\n@section: text\n\nSecond.\n');
+    buildSite({ site: src, out });
+    return out;
+  }
+  it('is on landing and sections pages, off on doc pages', () => {
+    const out = site(true);
+    for (const f of ['index.html', 'team/index.html']) expect(readFileSync(join(out, f), 'utf8'), f).toContain('id="guide"');
+    for (const f of ['contact/index.html', 'about/index.html']) expect(readFileSync(join(out, f), 'utf8'), f).not.toContain('id="guide"');
+    expect(csp(readFileSync(join(out, 'team/index.html'), 'utf8'))).toContain("script-src 'self'");
+  });
+  it('is absent everywhere when guidedScroll is off', () => {
+    const out = site(false);
+    for (const f of ['index.html', 'team/index.html']) expect(readFileSync(join(out, f), 'utf8'), f).not.toContain('id="guide"');
+  });
+});

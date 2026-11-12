@@ -48,7 +48,7 @@ export interface ShellContext {
   currentUrl: string;
   /** Content stamps by output file name (landing.css, landing.js, site-extra.css): added to the linked URLs as ?v=. */
   stamps?: Record<string, string>;
-  /** True on the landing page only: the guided-scroll control is not on other pages of a site. */
+  /** True on the landing and `sections` pages: the guided-scroll control is not on other templates (posts, contact). */
   guided?: boolean;
   /** False when the build writes no knowledge.ttl: the alternate link is then left out (F274.4.6). */
   knowledgeTtl?: boolean;
@@ -440,7 +440,7 @@ function pageTitle(page: string, site: string): string {
 
 /** A page whose template is `landing`: its `## ` sections laid out as the landing design. */
 export function renderLandingPage(page: SitePage, pageCtx: ShellContext): string {
-  const guided = page.template === 'landing' && !!pageCtx.config.guidedScroll;
+  const guided = (page.template === 'landing' || page.template === 'sections') && !!pageCtx.config.guidedScroll;
   const ctx = { ...pageCtx, guided };
   const sections = parseLanding(page.body);
   const main = sections.length
@@ -687,8 +687,8 @@ section.page { padding-top: clamp(24px, 4vw, 56px); }
 .prose p, .prose li { color: var(--text-soft); }
 .prose .date { color: var(--text-mute); font: 400 13px/1 var(--mono); display: block; margin-bottom: 18px; }
 .prose img { border-radius: 12px; }
-.prose iframe { display: block; width: 100%; border: 0; border-radius: 12px; background: var(--bg-2); }
-.prose iframe.embed-4x3 { aspect-ratio: 4 / 3; height: auto; }
+iframe.embed-4x3 { display: block; width: 100%; max-width: 100%; height: auto; aspect-ratio: 4 / 3; border: 0; border-radius: 12px; background: var(--bg-2); }
+.blocks .panel { min-width: 0; }
 .prose pre { background: color-mix(in srgb, var(--bg) 55%, transparent); padding: 1rem; border-radius: 12px; overflow: auto; }
 .prose code { font-family: var(--mono); font-size: .92em; }
 .prose table { border-collapse: collapse; display: block; overflow-x: auto; }

@@ -24,7 +24,7 @@ const flag = (n: string): string | undefined => process.argv.find((a) => a.start
 const widths = (flag('widths') ?? '390,1440').split(',').map((w) => parseInt(w, 10));
 const pages = (flag('pages') ?? '/').split(',');
 const shots = resolve(flag('shots') ?? join(tmpdir(), 'site-layout-shots'));
-const TYPES: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.ico': 'image/x-icon' };
+const TYPES: Record<string, string> = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.woff2': 'font/woff2', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 async function main(): Promise<void> {
   let root = flag('dir') ? resolve(flag('dir') as string) : '';
@@ -40,6 +40,8 @@ async function main(): Promise<void> {
   const server = createServer((req, res) => {
     let p = decodeURIComponent((req.url ?? '/').split('?')[0]);
     if (p.endsWith('/')) p += 'index.html';
+    // Static hosts such as Cloudflare Pages serve /x.html at /x; do the same so a framed page resolves.
+    if (!p.endsWith('/') && !extname(p) && existsSync(join(root, p + '.html'))) p += '.html';
     const file = normalize(join(root, p));
     if (!file.startsWith(root) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404); res.end('not found'); return; }
     res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
