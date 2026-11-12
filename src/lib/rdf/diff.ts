@@ -1,6 +1,6 @@
 import type { Statement, Term } from './types';
 import { termKey, tripleKey } from './types';
-import { predicateArity, isSingleValued, type Arity } from './predicate-arity';
+import { predicateArity, measuredPlural, isSingleValued, localName, type Arity } from './predicate-arity';
 
 /**
  * When new statements come in from a document, we classify each one against
@@ -15,7 +15,7 @@ export type DiffEntry =
   | { kind: 'new'; incoming: Statement; siblings?: Statement[] }
   | { kind: 'duplicate'; incoming: Statement; existing: Statement }
   | { kind: 'reinforces'; incoming: Statement; existing: Statement[] } // same (s,p,o), different graph
-  | { kind: 'conflicts'; incoming: Statement; existing: Statement[] }   // same (s,p), different o
+  | { kind: 'conflicts'; incoming: Statement; existing: Statement[]; possible?: boolean }   // same (s,p), different o; `possible`: arity not yet known
   | { kind: 'refines'; incoming: Statement; existing: Statement[] }     // existing was rougher
   // Exact triple the user has already settled and dismissed — see indexExisting.
   | { kind: 'returned'; incoming: Statement; existing: Statement[]; priorStatus: 'rejected' | 'superseded' }
@@ -98,11 +98,16 @@ export function computeDiff(
   opts: { /** Override the measured arity (a test, or a caller that knows better). */ arity?: ReadonlyMap<string, Arity> } = {},
 ): Diff {
   const { byTriple, bySp, settled } = indexExisting(existing);
-  // A different object for the same subject and predicate is a CONFLICT only where the predicate is
-  // single-valued; measured from the facts already stored, and unknown means multi-valued.
-  const arity = opts.arity ?? predicateArity(existing
+  // A different object for the same subject and predicate: where the predicate is MEASURED single-valued it
+  // is a disagreement; where it is MEASURED plural it is simply new (accepting keeps the others); where
+  // arity is not yet known it is held back as a POSSIBLE disagreement and the person chooses
+  // (Matt, 2026-11-12). Nothing is superseded unless they pick replace.
+  const settledTriples = existing
     .filter((st) => st.status !== 'rejected' && st.status !== 'superseded' && st.status !== 'pending' && st.o.kind !== undefined && !st.needsObject)
-    .map((st) => ({ subject: termKey(st.s), predicate: st.p.value, object: termKey(st.o) })));
+    .map((st) => ({ subject: termKey(st.s), predicate: st.p.value, object: termKey(st.o) }));
+  const arity = opts.arity ?? predicateArity(settledTriples);
+  const plural = measuredPlural(settledTriples);
+  const isMulti = (p: string) => plural.has(localName(p)) || (opts.arity !== undefined && arity.get(localName(p)) === 'multi');
   const entries: DiffEntry[] = [];
   const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
 
@@ -151,7 +156,7 @@ export function computeDiff(
       continue;
     }
 
-    if (sameSp.length > 0 && !isSingleValued(arity, inc.p.value)) {
+    if (sameSp.length > 0 && !isSingleValued(arity, inc.p.value) && isMulti(inc.p.value)) {
       entries.push({ kind: 'new', incoming: inc, siblings: sameSp });
       summary.new++;
       continue;
@@ -164,7 +169,9 @@ export function computeDiff(
         entries.push({ kind: 'refines', incoming: inc, existing: refines });
         summary.refines++;
       } else {
-        entries.push({ kind: 'conflicts', incoming: inc, existing: sameSp });
+        entries.push(isSingleValued(arity, inc.p.value)
+          ? { kind: 'conflicts', incoming: inc, existing: sameSp }
+          : { kind: 'conflicts', incoming: inc, existing: sameSp, possible: true });
         summary.conflicts++;
       }
       continue;
@@ -175,4 +182,18 @@ export function computeDiff(
   }
 
   return { entries, summary };
+}
+
+/**
+ * What choosing replace / keep both / reject does to a held-back disagreement, as status changes.
+ * replace supersedes exactly the existing facts it conflicts with; keep both supersedes nothing;
+ * reject turns the incoming value down and leaves what you have confirmed.
+ */
+export function resolveConflict(
+  entry: { incoming: Statement; existing: Statement[] },
+  choice: 'replace' | 'keep-both' | 'reject',
+): { id: string; status: 'superseded' | 'refined' | 'confirmed' | 'rejected' }[] {
+  if (choice === 'replace') return [...entry.existing.map((e) => ({ id: e.id, status: 'superseded' as const })), { id: entry.incoming.id, status: 'refined' as const }];
+  if (choice === 'keep-both') return [{ id: entry.incoming.id, status: 'confirmed' }];
+  return [...entry.existing.map((e) => ({ id: e.id, status: 'confirmed' as const })), { id: entry.incoming.id, status: 'rejected' }];
 }

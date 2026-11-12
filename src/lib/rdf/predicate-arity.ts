@@ -47,3 +47,24 @@ export function predicateArity(
 export function isSingleValued(arity: ReadonlyMap<string, Arity>, predicateIri: string): boolean {
   return arity.get(localName(predicateIri)) === 'functional';
 }
+
+/**
+ * Predicates MEASURED plural: some subject holds two objects for them. This is the only evidence that
+ * licenses "accepting a different value just adds it". A predicate merely seen on too few subjects is
+ * UNKNOWN, not plural: Review holds a different value back as a possible disagreement and asks
+ * (Matt, 2026-11-12), rather than assuming either way.
+ */
+export function measuredPlural(
+  triples: readonly { subject: string; predicate: string; object: string }[],
+): Set<string> {
+  const objects = new Map<string, Set<string>>();
+  for (const t of triples) {
+    const key = JSON.stringify([t.subject, localName(t.predicate)]);
+    let set = objects.get(key);
+    if (!set) objects.set(key, (set = new Set()));
+    set.add(t.object);
+  }
+  const plural = new Set<string>();
+  for (const [key, values] of objects) if (values.size > 1) plural.add((JSON.parse(key) as [string, string])[1]);
+  return plural;
+}

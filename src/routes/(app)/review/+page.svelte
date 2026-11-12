@@ -482,7 +482,11 @@
   function holdReason(e: (typeof shownEntries)[number]): string | null {
     const st = e.incoming;
     if (st.needsObject) return 'needs an answer';
-    if (!BULK_KINDS.has(e.kind)) return e.kind === 'refines' ? 'refines a fact you have' : 'disagrees with a fact you have';
+    if (!BULK_KINDS.has(e.kind)) {
+      if (e.kind === 'refines') return 'refines a fact you have';
+      if (e.kind === 'conflicts' && e.possible) return `may disagree with a fact you have: ${e.existing.map((x) => x.o.value ?? termKey(x.o)).join(', ')}`;
+      return 'disagrees with a fact you have';
+    }
     if (st.confidence < 0.5) return 'low confidence';
     const o = termKey(st.o);
     if (pendingValues.get(`${termKey(st.s)}|${st.p.value}`)?.some((v) => v.o !== o && v.source !== st.sourceId)) return 'another source says otherwise';
