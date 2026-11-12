@@ -377,3 +377,11 @@ site:release-notes-v0-2-7 a schema:WebPage ;
     schema:url <https://reckons.ai/docs/releases/v0-2-7> ;
     schema:position 94 ;
     schema:abstract "The agents release: a This Device page that shows your local AI helpers at work, review links that open the right space, questions settled from earlier decisions before they reach you, and a local stand-in that keeps working when cloud usage runs out." .
+
+site:release-notes-v0-2-8 a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.2.8" ;
+    schema:url <https://reckons.ai/docs/releases/v0-2-8> ;
+    schema:position 95 ;
+    schema:abstract "The website builder release: turn a folder of pages into a finished website, a website that tells how it was made, a guided walk through a story, a date on a fact that flags it when it goes out of date, and a first 3D asset scanned from photographs." .

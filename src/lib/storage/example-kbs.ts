@@ -67,6 +67,19 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     triples: 31
   },
   {
+    // F34.5: the release's visual tests, for manual review.
+    // Unlisted 2026-11-12 (Matt: review examples are not public); still opened by /about?example=review-0.2.8 for the F34.5 release review.
+    id: 'review-0.2.8',
+    unlisted: true,
+    icon: '✓',
+    title: 'Review 0.2.8',
+    body: 'The main workflows of v0.2.8 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note.',
+    file: '/review-0.2.8.ttl',
+    space: 'Review 0.2.8',
+    entities: 42,
+    triples: 209
+  },
+  {
     // F292.3: UNLISTED. Opened by /about?example=ring-scan (the Data Insight Solutions site links to it) and never shown in the list.
     // Unlisted is not private: the file is public. The ring is RECONSTRUCTED from photographs, not generated.
     id: 'ring-scan',

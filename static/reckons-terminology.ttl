@@ -546,7 +546,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
     kpred:term-ratchet "graph/prose/3292" ;
     kpred:term-ratchet "statement/prose/1016" ;
     kpred:term-ratchet "source/prose/1520" ;
-    kpred:term-ratchet "space/prose/632" ;
+    kpred:term-ratchet "space/prose/637" ;
     kpred:term-ratchet "node/prose/1258" ;
     kpred:term-ratchet "export/prose/252" ;
     kpred:term-ratchet "share/prose/144" ;
@@ -592,3 +592,5 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-10-30 RAISED BY THE RESIDUAL, v0.2.7 RELEASE NOTES (trim-then-bump, Matt 2026-10-13). content/releases/v0-2-7.md first added graph +1, source +1, set +1, space +4; rewording removed all but space +2 ('opens the right space', the user word for the thing opened). Baseline space 549 -> 551." .
 
 <urn:kbase:vocabulary/terminology> kpred:measured "2026-11-05: share raised 143 to 144 for F58.9.17 (v0.2.7.1). The one new use is the folder path ~/.local/share/reckons/gen in the generation setup page's removal step, a path a tester must type exactly, not the word share." .
+
+<urn:kbase:vocabulary/terminology> kpred:measured "2026-11-12 RAISED BY THE RESIDUAL, v0.2.8 RELEASE NOTES (trim-then-bump, Matt 2026-10-13). content/releases/v0-2-8.md first added space +13, source +2, node +1, set +1, share +1, statement +1; rewording removed all but space +5, each a use of the user word for the thing (an example space, a space inside Reckons.AI, open a space at a step, a row names its space). Baseline space 632 -> 637." .

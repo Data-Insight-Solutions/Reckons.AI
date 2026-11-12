@@ -10399,14 +10399,7 @@ kb:release-0-2-7 kpred:progress "2026-10-30, CUT AND BUILT, NOT YET IN PRODUCTIO
 kb:release-0-2-8 rdf:type ktype:Release ;
     rdfs:label "v0.2.8" ;
     kpred:version "0.2.8" ;
-    kpred:has-status "planned" ;
-    kpred:description "The overflow release, by decision not cohesive on one theme (Matt, 2026-10-30): reach (local host mode, LAN HTTPS) and the canvas and analysis work that moved out of 0.2.6 on 2026-10-13 and out of 0.2.7 on 2026-10-30. Moved because none had started, not because they were dropped." ;
     kpred:decided "MATT, 2026-10-30: received from v0.2.7 at the agents cut (see kb:release-0-2-7)." ;
-    kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:time-series-planning ;
-    kpred:has-part kb:enclosure-monitoring ;
-    kpred:has-part kb:shelly-generation-jobs ;
     kpred:proposed "2026-10-16: F259 enclosure monitoring and F166.1 Shelly generation dispatch are additional proposed near-term slices, targeting this reach release before v0.3.0. F259 builds the private policy space, live Currents, local alert execution and capacity warnings in order. This allocation is planning, not a claim of implementation or an approved hardware deployment." ;
     kpred:proposed "2026-10-16: allocate F258's four phases to this near-term release in dependency order: temporal contract and timelines, Timestral/baseline evaluation, optional local provider, then forecast-informed scheduling suggestions. Matt requested delivery before v0.3.0; this working v0.2.7 allocation may be refined within 0.2.x without representing the feature as already built." .
 
@@ -10443,13 +10436,7 @@ kb:release-0-2-6 kpred:starts "2026-10-08" ;
 
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day-10 cut: Spaces as a canvas mode (F218), the shared canvas on / (F92), the collection layout (F256), the voice plugin on a minimal plugin contract (F61), Analyze recipes (F255), the recency index and research watch (F246), import profiling and density-aware labels (F108.4), the F254 phases beyond 1a, the GPU lease and the stream:false callers. Moved because none had started on day 5 of 10, not because they were dropped. MOVED AGAIN to v0.2.8 at the agents cut, 2026-10-30." .
 
-kb:release-0-2-8 kpred:has-part kb:meta-graph-view ;
-    kpred:has-part kb:one-graph-canvas ;
-    kpred:has-part kb:set-layout ;
-    kpred:has-part kb:integration-plugin-sdk ;
-    kpred:has-part kb:analyze-job-sets ;
-    kpred:has-part kb:research-watch ;
-    kpred:has-part kb:graph-density-legibility .
+# 2026-11-12: the v0.2.8 has-part edges are rewritten once, in the release block below (measured from the commits, not narrated).
 
 # 2026-11-03 — v0.2.9 SCOPE DECIDED (Matt, answering Claude Code in chat). The orchestration
 # release: what makes the local deputy and its queue trustworthy enough to run offline.
@@ -10631,7 +10618,6 @@ kb:test-workflow-devices rdf:type ktype:Feature ;
     kpred:description "Capture each workflow a second time at a phone viewport from the device matrix in tests/visual/workflow-harness.ts and show it beside the desktop shot. PLANNED, NOT BUILT; the F34.2 flagship is desktop only." .
 
 kb:release-0-2-6 kpred:has-part kb:test-workflow-docs .
-kb:release-0-2-8 kpred:has-part kb:test-workflow-stories .
 kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: F34.3 test-workflow stories (kb:test-workflow-stories) moved from v0.2.6 to v0.2.7 so 0.2.6 stays on the evidence chain; it is not dropped. Moved on to v0.2.8 at the agents cut, 2026-10-30." .
 
 kb:term-ratchet-prose-only rdf:type ktype:Feature ;
@@ -11490,8 +11476,7 @@ kb:downstream-site kpred:decided "MATT, 2026-10-30, HOST: 'Yes deploy site for p
     kpred:decided "MATT, 2026-10-30: 'we need sveltia and the blog setup and working? We want Reckons.AI web engine in there.' The hand-prepared preview is replaced by the engine's build (F274.4.1-.5)." ;
     kpred:decided "MATT, 2026-10-30, CONTACT: 'We should do contact form through my n8n server again, like for the Reckons.AI site. Seperate automation.' Built: n8n workflow 'Data Insight Solutions — Website contact → email' (POST /webhook/dis-contact), raw rows in data table dis_contact_submissions; unpublished until Matt says." .
 
-kb:release-0-2-8 kpred:has-part kb:downstream-site-engine ;
-    kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
+kb:release-0-2-8 kpred:decided "MATT, 2026-10-30: 'web engine can be part of 0.2.8?' Yes: F274.4 (site:build, blog, landing layout, Sveltia, deploy) is a part of v0.2.8; F274.1 stays in v0.2.7." .
 
 kb:downstream-site-build rdf:type ktype:Phase ;
     rdfs:label "F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
@@ -12301,6 +12286,78 @@ kb:reckoning-outcome-review rdf:type ktype:Phase ;
     kpred:description  "The new version of a reckoned asset waits in review beside the old one: both previews, the receipt fields that differ, the QA report (F281.5), and the reckoning it answers. Accepting it closes the proposal (F223.1 lifecycle); rejecting it keeps the old version and the proposal open." ;
     kpred:done-test    "a pending new version shows both previews and the differing receipt fields in the existing review flow (no new navigation); accept closes the proposal; reject keeps it open with the reason." .
 kb:release-0-2-9 kpred:has-part kb:guided-asset-refine .
+
+# ── 2026-11-12 v0.2.8 RELEASE CUT (release/0.2.8, from integration/2026-11-10) ──
+kb:release-0-2-8 kpred:has-status "functional" ;
+    kpred:description "The website builder and scans release: the engine that turns a site repository into a finished website (blog, landing layout, search-engine files, a guided scroll), the Data Insight Solutions site as an example space with the story of how it was made, a guided walk through a story, facts that carry an expiry date, the scan of a ring into a 3D asset with its own public space (partial), scanning from hand-picked frames (partial), an embeddable 3D viewer (partial), and trust and review work for the local agents. It is no longer the assets-and-demos release: that headline moved to v0.2.9." ;
+    kpred:decided "MATT, 2026-11-12, answering 'which release route?': 'Release v0.2.8 from dev now'. This REVERSES his 2026-11-10 'Hold for headline' above." ;
+    kpred:decided "MATT, 2026-11-12: 'Lets make 0.2.8 ready today also? Stop sandbagging yourself.'" ;
+    kpred:headline kb:downstream-site-landing-layout ;
+    kpred:headline kb:story-walk-player ;
+    kpred:headline kb:downstream-site-space ;
+    kpred:has-part kb:downstream-site-build ;
+    kpred:has-part kb:downstream-site-blog ;
+    kpred:has-part kb:downstream-site-landing-layout ;
+    kpred:has-part kb:downstream-site-seo ;
+    kpred:has-part kb:downstream-site-space ;
+    kpred:has-part kb:story-walk-player ;
+    kpred:has-part kb:statement-standing ;
+    kpred:has-part kb:standing-drawn ;
+    kpred:has-part kb:review-row-contract ;
+    kpred:has-part kb:review-lanes ;
+    kpred:has-part kb:trust-evidence-on-claims ;
+    kpred:has-part kb:trust-nothing-private-leaves ;
+    kpred:has-part kb:trust-watching-costs-less ;
+    kpred:has-part kb:asset-qa-checks ;
+    kpred:has-part kb:asset-qa-review ;
+    kpred:has-part kb:asset-qa-fix-loop ;
+    kpred:has-part kb:splat-node-view ;
+    kpred:has-part kb:reckoning-gaps ;
+    kpred:has-part kb:queue-ram-guard ;
+    kpred:has-part kb:ollama-installed-model ;
+    kpred:has-part kb:local-panel ;
+    kpred:has-part kb:built-with-reckons ;
+    kpred:has-part kb:site-build-story ;
+    kpred:has-part kb:ring-scan-space ;
+    kpred:has-part kb:facts-that-expire ;
+    kpred:has-part kb:scan-curated-frames ;
+    kpred:has-part kb:site-space-assets ;
+    kpred:has-part kb:scan-auto-attach ;
+    kpred:has-part kb:device-space-jobs ;
+    kpred:has-part kb:shelly-generation-jobs ;
+    kpred:has-part kb:triple-check ;
+    kpred:has-part kb:standing-filters ;
+    kpred:has-part kb:gen-setup-by-os ;
+    kpred:has-part kb:build-change-workflow .
+
+kb:release-0-2-8 kpred:progress "2026-11-12, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.8; release notes at content/releases/v0-2-8.md; review space static/review-0.2.8.ttl (unlisted). Cut from integration/2026-11-10 (PR #610): 21 features functional, 13 partial (in-progress or scaffolded), each at the status the graph holds on this date. Not in it, moved to v0.2.9 on purpose: the assets-and-demos headline and its minimum set (the F275 demo pipeline, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19), reach (F243, F244), time series (F258, F259), the canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61), F34.3, and the Sveltia CMS and deploy phases of the site engine (F274.4.4, F274.4.5)." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, promoted to staging for Matt's review, not in production. The 2026-11-06 re-cut (assets and demos) and the 2026-11-10 'Hold for headline' are both superseded by Matt's 2026-11-12 decision to release from dev now: none of that headline was functional (F223.5 to .8 and F275 are planned), so it moved rather than shipping half-built. PARTIAL and said so: the ring space (F292.3), the generated site story (F292.1), facts that expire (F293, the check and the build refusal exist; the real credential date is still an open question for Matt), scan from hand-picked frames (F58.9.6.1, the end-to-end run is not shown), the embeddable viewer (F294.7), Triple Check (F100.1), the device space (F269.1), scan auto-attach (F58.9.20) and Shelly generation jobs (F166.1) are in-progress or scaffolded." .
+
+kb:release-0-2-9 kpred:progress "2026-11-12, MOVED FROM v0.2.8 (Matt: release from dev now). Reasons, one line each. Assets and demos headline (F275, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19): planned, not started, so not releasable. Reach and time series (F243, F244, F258, F259): planned since 2026-10-07, no code. Canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61, F34.3): in-progress or planned with no dated note in over a month. Site engine Sveltia and deploy (F274.4.4, F274.4.5): planned, the DIS repository owns the live deploy." ;
+    kpred:has-part kb:demo-videos ;
+    kpred:has-part kb:proposal-outcome-assets ;
+    kpred:has-part kb:reckon-an-asset ;
+    kpred:has-part kb:reckoning-outcome-review ;
+    kpred:has-part kb:open-in-app ;
+    kpred:has-part kb:job-space-channel ;
+    kpred:has-part kb:review-run-sets ;
+    kpred:has-part kb:review-sample-gate ;
+    kpred:has-part kb:gen-video-quality ;
+    kpred:has-part kb:multi-scan-reconstruction ;
+    kpred:has-part kb:local-host-mode ;
+    kpred:has-part kb:lan-https ;
+    kpred:has-part kb:time-series-planning ;
+    kpred:has-part kb:enclosure-monitoring ;
+    kpred:has-part kb:meta-graph-view ;
+    kpred:has-part kb:one-graph-canvas ;
+    kpred:has-part kb:set-layout ;
+    kpred:has-part kb:integration-plugin-sdk ;
+    kpred:has-part kb:analyze-job-sets ;
+    kpred:has-part kb:research-watch ;
+    kpred:has-part kb:graph-density-legibility ;
+    kpred:has-part kb:test-workflow-stories ;
+    kpred:has-part kb:downstream-site-sveltia ;
+    kpred:has-part kb:downstream-site-deploy .
 kb:release-0-3-0 kpred:has-part kb:interactive-space ;
     kpred:decided "MATT, 2026-11-07: 'For the big release on 0.3 I think interactive mode should be the highlight and core.' + MATT 2026-11-07 (AskUserQuestion) 'Interactive = core': F285 the interactive space is the v0.3.0 headline and core, and the sharing release (the has-part list below) is a part of it — the story is 'share a space you can move in on.' One cohesive release (F33); the sharing parts remain agent-proposed (2026-10-21) and ride along as parts, not the headline." .
 
