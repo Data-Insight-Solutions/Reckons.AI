@@ -106,6 +106,7 @@ export async function scanQuality(argv: string[]): Promise<{ metrics: QualityMet
   if (!existsSync(inputPath)) throw new Error(`no such input: ${inputPath}`);
   const isDir = statSync(inputPath).isDirectory();
   const input = detectInput(inputPath, isDir, isDir ? readdirSync(inputPath) : []);
+  if (input.kind === 'images') throw new Error('scan:quality measures a video or a Stray Scanner export; a folder of curated images has no motion to measure');
   const fps = Number(arg(argv, 'fps') ?? 2);
   if (!(fps > 0)) throw new Error('--fps must be a positive number');
 
