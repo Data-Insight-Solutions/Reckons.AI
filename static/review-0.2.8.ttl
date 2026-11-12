@@ -178,7 +178,7 @@ rev:gap-f292 rdf:type ktype:Concept ;
 
 rev:gap-f292-1 rdf:type ktype:Concept ;
     rdfs:label "F292.1 F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts)." .
 
 rev:gap-f292-3 rdf:type ktype:Concept ;
     rdfs:label "F292.3 F292.3 — the ring: an unlisted public space a website links to, and the scanned asset shown on the website itself" ;
@@ -186,7 +186,7 @@ rev:gap-f292-3 rdf:type ktype:Concept ;
 
 rev:gap-f293 rdf:type ktype:Concept ;
     rdfs:label "F293 Facts that expire — a fact can carry a valid-until date, and anything stating it is flagged before it goes stale" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/publish/__tests__/site-expiry.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/publish/__tests__/site-expiry.test.ts)." .
 
 rev:gap-f58-9-6-1 rdf:type ktype:Concept ;
     rdfs:label "F58.9.6.1 F58.9.6.1 — scan from a folder of hand-reviewed frames instead of automatic extraction" ;
