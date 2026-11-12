@@ -64,11 +64,11 @@ function isCalendarDate(s: string): boolean {
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
-const LINK_WORDS = 'verify|verification|view|link|source|credential|proof|details|badge';
+const LINK_WORDS = 'verify|verification|view|link|reference|credential|proof|details|badge';
 /**
  * A link that ENDS an entry is a pointer, not part of the fact: "AWS Certified ... — [verify](https://...)" is
  * the fact "AWS Certified ...". Dropped, with any dash before it, when a dash precedes it or its words are a
- * pointer word (verify, view, link, source...). A link inside a name ("Certificate [Beta](url)") is kept.
+ * pointer word (verify, view, link...). A link inside a name ("Certificate [Beta](url)") is kept.
  */
 export function stripTrailingLink(s: string): string {
   const dash = new RegExp('\\s*[\\u2014\\u2013-]+\\s*\\[[^\\]]*\\]\\([^)]*\\)\\s*$');
