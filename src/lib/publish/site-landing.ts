@@ -623,7 +623,10 @@ section.tight { padding-top: 0; }
 .logo-plate { display: inline-flex; align-items: center; padding: 5px 9px; border-radius: 8px; background: #fff; border: 1px solid var(--panel-line); }
 .logo-plate .logo { display: block; height: 26px; width: auto; max-width: 100%; }
 @media (max-width: 640px) { .timeline .what { flex-direction: column; align-items: flex-start; gap: 8px; } }
-.page-sections .bento { align-items: start; }
+.page-sections .bento .card:nth-child(n) { grid-column: span 6; display: flex; flex-direction: column; }
+.page-sections .bento .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.page-sections .bento .card .proof { margin-top: auto; }
+@media (max-width: 900px) { .page-sections .bento .card:nth-child(n) { grid-column: 1 / -1; } }
 .blocks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; align-items: start; }
 .blocks .tall { grid-row: span 4; }
 .blocks .media-slot { grid-column: 2; }
