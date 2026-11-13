@@ -299,6 +299,16 @@ sched:dis-fact-expiry rdf:type ktype:Schedule ;
     kpred:enabled   "true" ;
     kpred:description "F293. Guards the Data Insight Solutions site against stating a fact after its own valid-until date. A date compared with today's date; exits 1 on an expired fact, and facts inside the 60-day window are reported without failing. Reads the sibling site repository directly, so it sees a page edited since the last example-space build." .
 
+sched:dis-site-live rdf:type ktype:Schedule ;
+    rdfs:label      "Published website is up, whole and current" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/site-live.ts --site=\"$HOME/Github/DataInsightSolutions-website\" --dns" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:network   "true" ;
+    kpred:enabled   "true" ;
+    kpred:description "F294.6. Reads the live Data Insight Solutions site over https (same origin only): every page and internal file answers 200 with a fitting content-type, the build stamp names the commit now on the site repository's main, and the site's mail DNS has not changed since a private baseline (counts only on stdout, values in a private state folder). Exits 1 on a finding. Never reads the site's workspace folder, its form endpoint or any config override." .
+
 sched:site-space-check rdf:type ktype:Schedule ;
     rdfs:label      "Website example space matches the site" ;
     kpred:every     "1d" ;

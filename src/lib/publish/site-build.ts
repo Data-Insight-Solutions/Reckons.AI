@@ -31,7 +31,9 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
+import pkg from '../../../package.json';
 import { dirname, join, relative, resolve } from 'node:path';
 import { generateStaticSite } from './site-generator';
 import { createBlogExtension, importSiteWithBlog } from './site-blog';
@@ -61,6 +63,8 @@ export interface SiteBuildOptions {
   allowExpired?: boolean;
   /** F293: today as YYYY-MM-DD (tests); default the current UTC date. */
   today?: string;
+  /** The time written into reckons-build.json (default: now). Tests pin it so a rebuild is byte-identical. */
+  now?: Date;
   /** F293: how many days ahead a valid-until date draws a warning. Default 60. */
   warningDays?: number;
 }
@@ -92,6 +96,28 @@ export interface SiteBuildResult {
 }
 
 const MANIFEST_NAME = '.reckons-site-build.json';
+
+/** F294.6: the build stamp a deployed site serves, so a check can tell whether production is what was merged. */
+export const BUILD_STAMP_FILE = 'reckons-build.json';
+
+export interface BuildStamp { generator: 'Reckons.AI'; version: string; siteCommit: string | null; builtAt: string }
+
+/** HEAD of the site repository when `site` is itself a git checkout (not merely inside one), else null. Never throws. */
+export function readSiteCommit(site: string): string | null {
+  try {
+    const git = (args: string[]): string => execFileSync('git', ['-C', site, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 10000 }).trim();
+    if (resolve(git(['rev-parse', '--show-toplevel'])) !== resolve(site)) return null;
+    const head = git(['rev-parse', 'HEAD']);
+    return /^[0-9a-f]{40}$/.test(head) ? head : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Version, site commit and time only: nothing from the config, the override file or the environment. */
+export function buildStamp(site: string, now: Date = new Date()): BuildStamp {
+  return { generator: 'Reckons.AI', version: pkg.version, siteCommit: readSiteCommit(site), builtAt: now.toISOString() };
+}
 const MANIFEST_FORMAT = 'reckons-site-build-v1';
 
 interface SiteBuildManifest {
@@ -272,6 +298,7 @@ export function buildSite(opts: SiteBuildOptions): SiteBuildResult {
   // at build time, so a page that became a draft between builds cannot survive in <out>.
   const seo = seoFiles(Object.keys(generated.files), { url: siteConfig?.url ?? null, noindex: siteConfig?.noindex === true, draftPreview: drafts });
   const files: Record<string, string> = { ...generated.files, ...seo.files, _headers: siteHeaders(drafts) };
+  if (!drafts) files[BUILD_STAMP_FILE] = JSON.stringify(buildStamp(site, opts.now), null, 2) + '\n';
   if (expiryFacts.length > 0) files[FACTS_FILE] = factsFileText(expiryFacts);
   if (drafts) {
     files[DRAFT_PREVIEW_MARKER] =
