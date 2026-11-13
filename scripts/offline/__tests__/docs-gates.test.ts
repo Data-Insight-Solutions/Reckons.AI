@@ -107,3 +107,16 @@ describe('docs-expand wiring', () => {
     expect(rejectReason(draft, subject)).toMatch(/unexplained jargon/);
   });
 });
+
+describe('"Turtle" is jargon only as the file format (Shelly is a turtle)', () => {
+  const ttl = readFileSync('static/reckons-terminology.ttl', 'utf8');
+  const j = readDocsJargon(ttl);
+  it('the creature passes', () => {
+    expect(unexplainedJargon('Shelly the turtle points you to the next step.', j)).toEqual([]);
+    expect(unexplainedJargon('Everything on the far side of the turtle was guessed.', j)).toEqual([]);
+  });
+  it('the file format fails unless explained', () => {
+    expect(unexplainedJargon('Download your graph as Turtle and share it.', j)).toContain('turtle');
+    expect(unexplainedJargon('Open the Turtle file in any editor.', j)).toContain('turtle');
+  });
+});

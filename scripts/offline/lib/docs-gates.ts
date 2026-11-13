@@ -49,6 +49,12 @@ export function readDocsJargon(ttl: string): DocsJargon {
 
 /** File formats are matched by rule, not listed: `.ttl`, `.jsonl` and friends are never plain speech. */
 const FORMAT_TOKEN = /\.(?:ttl|jsonl|trig|nq|nt|owl|rdf|n3)\b/gi;
+/**
+ * "Turtle" is jargon only as the FILE FORMAT. Shelly, the app's guide, is a turtle, and docs say so
+ * ("the far side of the turtle"), so the bare word is not listed in kpred:docs-jargon; the format
+ * sense is matched by its context instead: "Turtle file", "as Turtle", "annotated-Turtle", ...
+ */
+const TURTLE_FORMAT = /(?<=\b(?:as|in|to|from|into|export|import|annotated)[\s-])Turtle\b|\bTurtle(?=[\s-](?:files?|format|syntax|export|import|serializ\w*|round-?trip|text|documents?)\b)/g;
 
 export type JargonHit = { term: string; explained: boolean };
 
@@ -79,6 +85,7 @@ export function jargonHits(text: string, jargon: DocsJargon, own: readonly strin
       found.push({ term: m[1], start: m.index! + m[0].indexOf(m[1]), end: m.index! + m[0].indexOf(m[1]) + m[1].length });
     }
     for (const m of sentence.matchAll(FORMAT_TOKEN)) found.push({ term: m[0].toLowerCase(), start: m.index!, end: m.index! + m[0].length });
+    for (const m of sentence.matchAll(TURTLE_FORMAT)) found.push({ term: 'Turtle', start: m.index!, end: m.index! + m[0].length });
     for (const f of found) {
       const bare = f.term.toLowerCase().replace(/s$/, '');
       const esc = bare.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
