@@ -987,3 +987,105 @@ feat:TripleCheck a ktype:Concept, skos:Concept ;
     kpred:description "Each check retains dated citations. A likely true or false label summarizes a small sample of distinct publisher passages; it is not proof or a calibrated probability. Copied pages do not establish independence. You may ignore suggestions, mark evidence reviewed, or decide whether to refine a statement. Checking never accepts or rewrites your assertions automatically." ;
     kpred:description "Repository comparison views show a selected shortlist, dated GitHub metrics and cited qualitative proposals. Save selected entities, relationships or specific assertions as a space view. The canvas limits visible entities by default and discloses hidden statements; expanding the view changes only the display. Analyze can explicitly apply purpose-based organization with a recovery snapshot. The bundled synthetic research space demonstrates conflicting document corpora." ;
     kpred:honest-note "Evidence is stored in this browser and is not currently exported with the space. Paid provider accuracy and cost have not been calibrated. Enterprise SME discovery, RBAC and approved evidence projections remain planned; local checking provides no enterprise access enforcement." .
+
+
+## =============================================================================
+## Owed before v0.2.8 — written 2026-11-12 from each feature's own status and
+## "remaining" notes in the roadmap. Each page relates (kpred:relates-to) to every
+## feature it covers; that link is what the release docs gate counts.
+## =============================================================================
+
+feat:SiteBuilder
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Build a website from your notes" ;
+    skos:definition     "A website kept as a folder of plain text pages can be built into ordinary web pages with one command: npm run site:build -- --site=<site folder> --out=<output folder>. It reads every page under the site's content folder, writes each as a page you can host anywhere, and copies the site's images and admin files beside them. A page marked as a draft is left out. Pages under content/blog/ become blog posts: a blog index with the newest first (date, excerpt and cover image), one page per category, and, when a post asks for it, a short note saying its references were gathered with Triple Check and reviewed by the author. A page can use the landing layout, a soft color-wash front page with cards and a contact form; its colors, fonts and form address come from the site's own settings, so any site can use it. If the site's settings give its public address, the build also writes robots.txt, sitemap.xml, a canonical link on each page and a full address for social-preview images; without an address it writes none of those and says so rather than guessing one. A fact in a page can carry a valid-until date, for example a certification: the build warns when one is within 60 days of expiring and refuses to publish any page that states an expired one, naming the fact and the page. The Data Insight Solutions website is also shipped as an example collection (open About, then its card): each published page and post appears in it as a box, linked to its neighbours, with a link to the live site." ;
+    kpred:honest-note   "WHAT IT DOES NOT DO. It builds a folder of files; it does not host or deploy them. It does not publish the facts in your collection: the build never writes a knowledge file, because publishing facts is a privacy decision. A fact without a valid-until date never expires, and an unknown expiry date is only listed as an open question. The example collection holds published pages and posts only (never drafts, settings or the contact address), and its posts crowd together on the canvas." ;
+    skos:broader        feat:PublishedDocs ;
+    kpred:relates-to    kb:downstream-site-build ;
+    kpred:relates-to    kb:downstream-site-blog ;
+    kpred:relates-to    kb:downstream-site-landing-layout ;
+    kpred:relates-to    kb:downstream-site-seo ;
+    kpred:relates-to    kb:downstream-site-space ;
+    kpred:relates-to    kb:facts-that-expire .
+
+feat:GuidedWalks
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Guided walks: a story you step through" ;
+    skos:definition     "A story is a short guided tour stored inside a collection. Open one with /?story (the collection's own story) or /?story=<the story's address>, and Shelly plays it. A walk shows which step you are on (step N of M), Next and Back work from the keyboard and by touch, and each step lights the entities it is about and dims the rest without moving anything. A step can also offer a button: open a page in the app, or change one setting. You always press the button yourself; a story never changes a setting on its own, and only three settings can be offered (Triple Check on or off, its web half off only, and 2D or 3D). Nothing that sends data anywhere, such as an address, a key or a model, can be offered. The Data Insight Solutions example comes with a generated story, five or six steps in plain words for a first visitor, whose counts (pages, posts, facts) are worked out from the build, not typed." ;
+    kpred:honest-note   "EARLY. Only the Triple Check walkthrough uses the buttons so far; the other example stories do not. A step cannot yet spotlight a whole group of entities or open an image, clip or splat full screen. The new step counter and the link that reopens a step are described in the roadmap; the browser test for them is not shown as passing in this release's notes." ;
+    skos:broader        feat:StorySystem ;
+    kpred:relates-to    kb:story-offers ;
+    kpred:relates-to    kb:site-build-story ;
+    kpred:relates-to    kb:story-walk-player .
+
+feat:ScanRealObjects
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Scanning real objects and places, more carefully" ;
+    skos:definition     "Three additions to the phone-scan pipeline, all run from the command line on your own machine. Picking frames: npm run scan:keyframes reads a video, scores each frame by how sharp the OBJECT is (a box you give it, or a track of where the object is over time), splits the video into equal stretches so every stretch of the orbit keeps its sharpest frame, and writes the kept frames plus a report listing every frame's score and any stretch left with no good frame. Several captures of one place: the aim is one splat of a place made from several recordings. Only the first step is built: one capture becomes one splat. Attaching the result: scan:room can be told which collection the result belongs to, copy the finished splat into that collection's folder and queue a review row linking it; the row is refused if it names no collection, so a scan can never land in whichever collection happens to be open." ;
+    kpred:honest-note   "ALL THREE ARE EARLY (scaffolded). Frame picking did not beat picking frames by hand in the one comparison run, so it is a tool, not a default; you must supply the object's box or track, because the object is not detected; and the frames it keeps are not yet the same code scan:room uses on its own. Combining several recordings is not built or measured beyond one capture, and the garden trial it was tried on is private. Auto-attach passes its unit tests, but its browser test could not be run in the last session, and there is no undo for a link that replaced another. A generated splat is a guess on the side the camera never saw." ;
+    skos:broader        feat:RoomScan ;
+    kpred:relates-to    kb:scan-keyframe-select ;
+    kpred:relates-to    kb:multi-scan-reconstruction ;
+    kpred:relates-to    kb:scan-auto-attach .
+
+feat:StandingOnCanvas
+    rdf:type            ktype:Concept ;
+    rdfs:label          "How held facts, proposals and questions look on the canvas" ;
+    skos:definition     "Every fact has a standing, worked out from fields it already has: HELD (you confirmed it), PENDING (waiting for your review), PROPOSED (waiting, and part of one option of a proposal) or QUESTION (its object is not known yet). The canvas draws each differently, in 2D and 3D: held facts as before; proposed facts as dashed lines in the proposal's own color, with an entity that exists only in a proposal drawn hollow with a dashed ring; a question as a half-strength line ending in a hollow circle marked '?'. The legend names the four, and the difference is carried by line style and shape, not color alone, so it still reads in a grey printout. A question is drawn so it cannot be mistaken for something a filter has dimmed. A related script finds the gaps between your situation and your target: each unmet requirement and each open question about the situation becomes a ranked list, every gap a question with its subject and predicate known and its object open." ;
+    kpred:honest-note   "THE GAP LIST IS NOT SHOWN IN THE APP. It is a function that nothing calls yet, so you cannot see gaps today, and a placeholder subject is listed as a gap but is not bound to anything. Feeding the gaps to research jobs is planned and not built. Proposals themselves are still being built, so the proposed look appears only on data that already carries an option." ;
+    skos:broader        feat:Proposals ;
+    kpred:relates-to    kb:statement-standing ;
+    kpred:relates-to    kb:standing-drawn ;
+    kpred:relates-to    kb:reckoning-gaps .
+
+feat:ReviewRowLanes
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Where a machine's row goes in Review: claim, question or finding" ;
+    skos:definition     "Every row a local job writes for you to review is stamped when it is written with the collection it belongs to, the run that made it, the job's name and a lane. The lane says what accepting it would do: a CLAIM writes a fact when accepted; a QUESTION wants an answer; a FINDING is a machine's note that something needs doing (a file, a page, a commit), so accepting writes nothing, which is why a finding can be rejected or put off but never settled. Findings are kept out of your review queue. A row missing its collection, run or lane is refused at write time with the missing field named. If a person runs a job by hand there is no run to name, so the row is stamped with a made-up run id of the form hand:<job>:<time> and a line says so. Rows your own notes make need only a collection. If the app has to keep back a row that names no collection, it now says how many and why." ;
+    kpred:honest-note   "PARTLY BUILT. The model that made a row is stamped only when a job reports it, and almost none do, so it is often missing and not enforced. Older rows get their lane from their job's declaration plus a guess whose accuracy was not measured, and the declarations are a first reading, not an audit. Nothing yet fails a queue row whose lane its job did not declare. Some producers still write findings as rows; those are hidden from review but still written." ;
+    skos:broader        feat:ReviewSystem ;
+    kpred:relates-to    kb:review-row-contract ;
+    kpred:relates-to    kb:review-lanes .
+
+feat:LocalJobsOnThisDevice
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Local jobs: the one queue, This device and the memory guard" ;
+    skos:definition     "Work that runs on your own computer goes through one queue. The definitions of those jobs (name, tier, schedule) now live in a plain text file, static/reckons-jobs.ttl, which is what the tools read; the old JSON copy is no longer the master. The queue worker looks at the computer's memory as well as the graphics card: a graphics job waits while less than 6 GiB of RAM is free, and if the Ollama service starts holding more than 6 GiB (a sign a model is loading into RAM instead of onto the card) or free RAM falls under 2 GiB, the worker stops that job, unloads the models and pauses the queue until you resume it. Ollama now runs the model you have installed: a bare name such as llama3.2 becomes the installed tag, and if the model you chose is missing, the best installed one runs and a warning names both and the ollama pull command that fixes it. Shelly can queue generation: a request for a picture, clip or 3D asset becomes a job in the same queue, shown in the collection as a job card (prompt, stage, seed, state, what it waits for, the asset it made), and a chain such as three images then a splat is approved once, not once per step. This device is meant to be a private collection where each job can be read in full: its state, why it is held, what it waits on and its recent runs." ;
+    kpred:honest-note   "THIS DEVICE DOES NOT EXIST YET. Only the writer and reader code is built and tested on sample records; the collection itself is not created, nothing schedules the writer, and its output location is a placeholder. Generation needs the local runner (npm run gen:serve) running on your machine; without it Shelly has nothing to queue to. Shelly writing a valid job plan has been tested only with a stand-in reply, not a real model, and the card shows Queued or Waiting, not how many jobs are ahead. A recurring job cannot yet be told to allow a model larger than the card; only a hand-added job can. The Ollama substitution notice needs a first successful check of what is installed; before that, nothing is substituted or announced." ;
+    skos:broader        feat:LocalJobsMCP ;
+    kpred:relates-to    kb:queue-ram-guard ;
+    kpred:relates-to    kb:jobs-graph-as-source ;
+    kpred:relates-to    kb:ollama-installed-model ;
+    kpred:relates-to    kb:shelly-job-queue ;
+    kpred:relates-to    kb:device-space-jobs .
+
+feat:GenerationQuality
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Generated media: checks, retries, settings and what it costs" ;
+    skos:definition     "Everything a local generation run produces can be checked. Rule-based checks cover images, video and splats and now also PDFs (blank page, missing phrase, unembedded font, wrong page size, text off the page) and SVG drawings (does it render). A vision model on your machine can then review the asset and name defects from a fixed list; video is judged by its middle frame and a PDF by its first pages, and with no local model connected the report says the review was not run, not that the asset is clean. If a check fails or a defect is named, the runner tries again with the next seed within a budget, keeps the best attempt and records every attempt's seed, problems and score in the receipt. A private review collection compares generation settings: one prompt at the root and a branch for each setting, with the same seeds on each, so you can judge them side by side. A showcase splat was generated at the highest quality the local pipeline reached, with each run's settings, peak graphics memory, time and size recorded, and shrunk to a size the app can ship. A table in the generation setup guide lists, per stage (image, video, splat), peak graphics memory, RAM, disk for the model files and time, each measured on a named machine." ;
+    kpred:honest-note   "MEASURED ON ONE MACHINE: two RTX 3090 cards with 24 GB each. No run below 24 GB exists, so no minimum requirement is stated, and the RAM column is the largest single process, not the whole machine. The showcase splat has not been opened through the app, only rendered with the same library; it is invented from one picture, so its far side is a guess, and about 11 percent of its points had to be clamped. The vision model's score is a hint beside a result, never a pass or a fail; that is yours. The settings sweep used one subject and one seed per setting. The retry step is tested on sample failures, not a live one." ;
+    skos:broader        feat:GenerationSetup ;
+    kpred:relates-to    kb:asset-qa-checks ;
+    kpred:relates-to    kb:asset-qa-review ;
+    kpred:relates-to    kb:asset-qa-fix-loop ;
+    kpred:relates-to    kb:bench-review-space ;
+    kpred:relates-to    kb:showcase-splat ;
+    kpred:relates-to    kb:generation-resource-requirements .
+
+feat:AgentTrustChecks
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Trust checks for work done by a local helper" ;
+    skos:definition     "Three scripts, each a rule a computer can check, so they cost no model time. Evidence: every claim in a helper's report that something works, passed or exists must carry, on the same line, the command, its exit code and the log line; a script marks a claim without them UNVERIFIED. Privacy: before a branch is merged, a script scans its changes, commit messages and branch name against a list of private terms you keep outside any repository, and prints counts and positions, never the terms. Cost: a passing job that needs no model is summarized from its exit code, duration and pass/fail lines, and a model reads a log only for a failure or a model-driven job; a second script fails if a passed rule-based run in the last day names a model." ;
+    kpred:honest-note   "BUILT AND TESTED ONLY ON SAMPLE DATA, AS OF 2026-11-10. No helper's brief yet asks for the evidence line format, and the merge step calls none of the three, so nothing stops a branch automatically. The privacy check is a literal, case-insensitive text match, so it can miss a reworded or split term, and it has not been run against the real list. The cost check is not yet a scheduled job." ;
+    skos:broader        feat:LocalJobsMCP ;
+    kpred:relates-to    kb:trust-evidence-on-claims ;
+    kpred:relates-to    kb:trust-nothing-private-leaves ;
+    kpred:relates-to    kb:trust-watching-costs-less .
+
+feat:TripleCheckLocalSearch
+    rdf:type            ktype:Concept ;
+    rdfs:label          "Triple Check with your own search server" ;
+    skos:definition     "Triple Check can use a third way to search the web: a SearXNG server you run yourself, which needs no account and no key. The claim being checked is still sent from your machine to public search engines, so this keeps it from a search company's account but is not offline." ;
+    kpred:honest-note   "EARLY, NEVER RUN AGAINST A REAL SERVER. The setting and the connection code are built and tested against a pretend reply only; no SearXNG server runs where it was written. Your server must turn on JSON output and allow the app's address, which the app cannot change for you, and the published https site may be blocked by the browser from calling a plain http server on your own computer. A fully offline option, such as an offline copy of Wikipedia, is the next step and is not built." ;
+    skos:broader        feat:TripleCheck ;
+    kpred:relates-to    kb:triple-check-local-search .
