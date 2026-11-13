@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterChain, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
+import { afterChain, jobWatchTier, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
 import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
@@ -313,5 +313,17 @@ describe('catch-up schedules', () => {
     const r = parseSchedules(ttl, '/root', 'h');
     expect(r.map((x) => [x.name, x.everyMs, x.gpu, !!x.network])).toEqual([['sched:pull-notes', 900_000, false, false], ['sched:llm', 7 * every, true, true]]);
     expect(r[0].argv).toEqual(['/bin/bash', '-c', 'npx tsx scripts/notes-pull.ts']);
+  });
+});
+
+describe('jobWatchTier: a passed script job is never read by a model', () => {
+  it('a script schedule (gpu:false) is script tier even though it may use Ollama', () => {
+    expect(jobWatchTier({ gpu: false })).toBe('script');
+  });
+  it('a job that never touches Ollama is script tier', () => {
+    expect(jobWatchTier({ ollama: false })).toBe('script');
+  });
+  it('a GPU job is not', () => {
+    expect(jobWatchTier({})).toBeUndefined();
   });
 });

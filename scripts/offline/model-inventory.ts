@@ -33,7 +33,7 @@ const TAGGED = /['"`]([a-z0-9][\w.\-]*:[\w.\-]+)['"`]/gi;
 export function defaultsInSource(file: string, text: string): Expectation[] {
   const out: Expectation[] = [];
   text.split('\n').forEach((line, i) => {
-    if (!/model/i.test(line) || /^\s*(\*|\/\/)/.test(line)) return;
+    if (!/model/i.test(line) || /^\s*(\*|\/\/|\/\*)/.test(line)) return; // any comment line, including one opening with a doc comment (2026-11-13: a doc comment in model-routing.ts was reported as a missing model)
     for (const m of line.matchAll(TAGGED)) {
       if (/^(https?|urn|file|node):/i.test(m[1])) continue;
       out.push({ model: m[1], where: `${file}:${i + 1}` });

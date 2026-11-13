@@ -50,7 +50,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { jobResultPath, resultsDir, takeJobResult, addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
+import { jobResultPath, resultsDir, takeJobResult, addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, jobWatchTier, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
 import { chooseRoute, fetchModelSizes, fetchResidentModels, readRoutingTable, recordRouteAttempt, type RouteChoice } from './model-routing.js';
@@ -106,7 +106,7 @@ function runJob(job: QueueJob, limits: RamLimits, model?: string): Promise<RunRe
     // detached = the job gets its own process group. job-watch passes SIGTERM only to its direct child, and a
     // `bash -c "npx tsx …"` chain can leave the grandchild holding the Ollama request alive; a group kill reaches it,
     // and closing that request is what makes Ollama abort a load in progress (journal, 2026-11-04 12:39:07).
-    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, ...(needsOllama(job) ? [] : ['--tier=script']), '--', ...job.argv], {
+    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, ...(jobWatchTier(job) ? [`--tier=${jobWatchTier(job)}`] : []), '--', ...job.argv], {
       // A job that does not use Ollama gets no model verdict either: loading a reader model between
       // two generation stages would only compete with the next stage for VRAM.
       cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '', ...(model ? { RECKONS_LOCAL_MODEL: model } : {}), RECKONS_JOB_RESULT: jobResultPath(job.id),
