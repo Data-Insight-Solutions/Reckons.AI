@@ -121,6 +121,8 @@ describe('job chains (--after)', () => {
   it('the state machine refuses to start behind a stalled chain and says so', () => {
     const queue = [job('a', { after: ['b'] }), job('b', { after: ['a'] })];
     expect(workerStep(base({ queue, done: [] }))).toEqual({ state: 'paused-broken-chain', startJob: false, reason: 'a waiting on b; b waiting on a' });
+    // a closed RAM/GPU gate is named first: a chain head waiting for room is not a broken chain (2026-11-13)
+    expect(workerStep(base({ queue: [job('head'), job('tail', { after: ['head'] })], done: [], gpuBlocked: 'RAM 10 GiB < 16 GiB' }))).toEqual({ state: 'paused-resources', startJob: false, reason: 'RAM 10 GiB < 16 GiB' });
     // a startable sibling beside the cycle still starts
     expect(workerStep(base({ queue: [...queue, job('free')], done: [] })).startJob).toBe(true);
   });

@@ -273,7 +273,10 @@ export function workerStep(i: StepInput): Step {
   if (pickNext(orderQueue(i.queue), i.gpuBlocked, i.done ?? [], i.queue, i.ollamaUp)) return { state: 'working', startJob: true };
   if (!i.ollamaUp && (!i.gpuBlocked || i.queue.some(needsOllama))) return { state: 'paused-ollama-down', startJob: false };
   const stall = chainStallReason(i.queue, i.done ?? []);
-  if (stall) return { state: 'paused-broken-chain', startJob: false, reason: stall };
+  // A resource gate that is closed is the blocker to name: a chain's head waiting for room is not a
+  // broken chain (2026-11-13: the status read "deputy-bench-mistral waiting on deputy-bench-qwen3-8"
+  // while every job, chained or not, was waiting for RAM).
+  if (stall && !i.gpuBlocked) return { state: 'paused-broken-chain', startJob: false, reason: stall };
   return { state: 'paused-resources', startJob: false, reason: i.gpuBlocked };
 }
 
