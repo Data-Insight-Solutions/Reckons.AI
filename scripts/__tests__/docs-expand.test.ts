@@ -18,7 +18,7 @@ const SUBJECT = 'urn:reckons:arch/KnowledgeGraph';
 /** A draft that should pass: long enough, plain, no invention. */
 const GOOD =
   'A knowledge graph is a graph-structured database where entities are nodes and relationships '
-  + 'are edges. Triples, each with a subject, predicate and object, form the graph, so the same '
+  + 'are edges. Triples, meaning statements made of a subject, predicate and object, form the graph, so the same '
   + 'subject can appear in many triples and build a web of interconnected knowledge. The result is '
   + 'queryable in ways a document store is not, because every claim is separately addressable.';
 
