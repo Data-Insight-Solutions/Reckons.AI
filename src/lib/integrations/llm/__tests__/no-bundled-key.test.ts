@@ -3,9 +3,9 @@
  * account". Three things have to hold for that to be true of the PUBLISHED build, and each is
  * pinned here so a change that breaks one fails a test instead of a sentence going quietly stale:
  *
- *  1. Nothing in the build pipeline supplies a provider key (no CI secret exported as a VITE_ var).
+ *  1. Nothing in the build pipeline supplies a provider key (no CI secret passed in as a VITE_ var).
  *  2. If one were supplied — through the environment OR a local `.env` file, both of which Vite
- *     inlines — the build refuses (vite-secret-guard), unless the explicit local-only override is set.
+ *     inlines — the build refuses (vite-secret-guard), unless the explicit local-only override is present.
  *  3. A cloud request carries exactly the key the caller (the person's Settings) passed, nothing else.
  *
  * The honest limit: a developer's LOCAL build can still bake a key via VITE_SECRET_GUARD_ALLOW=1.
@@ -23,7 +23,7 @@ afterEach(() => vi.unstubAllGlobals());
 const SECRET_VITE = /VITE_[A-Z0-9_]*(KEY|SECRET|TOKEN|PASSWORD)/i;
 
 describe('the published build bundles no provider key', () => {
-  it('no CI workflow or package script exports a VITE_ secret into the build', () => {
+  it('no CI workflow or package script supplies a VITE_ secret to the build', () => {
     const dir = '.github/workflows';
     const files = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)).map((f) => join(dir, f));
     files.push('package.json');
