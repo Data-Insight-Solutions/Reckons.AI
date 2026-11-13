@@ -17,11 +17,11 @@ export async function probeBridge(fetcher: typeof fetch = fetch): Promise<Bridge
 }
 
 /** Start the runner with the given generation folder. Returns '' on success, or a plain-words problem. */
-export async function startRunner(workspace: string, restart = false, fetcher: typeof fetch = fetch): Promise<string> {
+export async function startRunner(workspace = '', restart = false, fetcher: typeof fetch = fetch): Promise<string> {
   const post = (action: string, body: unknown) => fetcher(`${BRIDGE}/${action}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   try {
     if (restart) { await post('stop', {}); await new Promise(r => setTimeout(r, 1200)); }
-    const r = await post('start', { worker: true, workspace });
+    const r = await post('start', { worker: true, ...(workspace ? { workspace } : {}) });
     if (r.ok) return '';
     const e = (await r.json().catch(() => ({}))) as { error?: string };
     return r.status === 400 ? 'That folder was not found on this computer. Type its full path, for example /home/you/reckons-assets.' : `The runner could not be started (${e.error ?? r.status}).`;

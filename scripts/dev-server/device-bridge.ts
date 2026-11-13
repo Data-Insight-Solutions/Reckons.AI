@@ -23,6 +23,8 @@
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { watchedFolders } from '../agent/gen-watch-core.js';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -152,7 +154,7 @@ async function installed(root: string) {
 /**
  * A generation folder the runner may serve (F166.1.3): an absolute path to an existing directory.
  * The browser cannot read the path of a folder it was given, so the person types it once; it reaches
- * the worker only as the RECKONS_GEN_WORKSPACE environment value, never as a shell string.
+ * the agent watcher only as the RECKONS_GEN_FOLDERS environment value, never as a shell string.
  */
 export function validWorkspace(value: unknown): string | undefined {
   if (typeof value !== 'string' || !value || value.length > 1024 || value.includes('\0') || !path.isAbsolute(value)) return undefined;
@@ -169,7 +171,7 @@ export function deviceBridge(): Plugin {
     if (running()) return;
     const tsxCli = createRequire(path.join(root, 'package.json')).resolve('tsx/cli');
     const args = [tsxCli, path.join(root, 'scripts/agent/watch.ts'), '--ndjson', ...(worker ? [] : ['--no-worker'])];
-    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', ...(workspace ? { RECKONS_GEN_WORKSPACE: workspace } : {}) } });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', ...(workspace ? { RECKONS_GEN_FOLDERS: workspace } : {}) } });
     Object.assign(state, { child, worker, workspace, startedAt: new Date().toISOString(), snapshot: undefined, snapshotAt: undefined, stderr: [], exit: undefined, stopRequested: false });
     let buf = '';
     child.stdout!.setEncoding('utf8');
@@ -226,6 +228,19 @@ export function deviceBridge(): Plugin {
             case 'POST /agent-watch/stop':
               stop();
               return json(res, 202, { stopping: true });
+            case 'GET /generation-services': {
+              // What the agent watcher reports for each folder it serves (watcher.json), read-only.
+              const cfgPath = path.join(process.env.XDG_CONFIG_HOME ?? path.join(homedir(), '.config'), 'reckons/generation-folders.json');
+              let config: unknown; try { config = JSON.parse(readFileSync(cfgPath, 'utf8')); } catch { config = undefined; }
+              const { folders, idleSeconds } = watchedFolders({ home: homedir(), env: process.env, config, exists: existsSync });
+              const reports = folders.map(folder => {
+                try {
+                  const w = JSON.parse(readFileSync(path.join(folder, '.reckons-generation', 'watcher.json'), 'utf8')) as { heartbeat?: number; services?: unknown; runner?: string };
+                  return { folder, fresh: typeof w.heartbeat === 'number' && Date.now() - w.heartbeat < 30_000, services: w.services ?? [], runner: w.runner };
+                } catch { return { folder, fresh: false, services: [], runner: undefined }; }
+              });
+              return json(res, 200, { idleSeconds, folders: reports, configFile: cfgPath });
+            }
             case 'GET /host':
               return json(res, 200, hostSpecs());
             case 'GET /installed':

@@ -62,6 +62,8 @@ export interface GenerationCapabilities {
   workspaceId: string;
   heartbeat: number;
   stages: { stage: GenerationStage; available: boolean; reason?: string }[];
+  /** Present only when the agent watcher wrote this (watcher.json): whether its runner is on, stopped after idling, or another process serves the folder. */
+  runner?: 'on' | 'stopped' | 'external';
 }
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

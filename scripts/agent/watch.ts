@@ -434,6 +434,7 @@ async function main(): Promise<void> {
     process.stdout.on('error', () => process.exit(0));
     const emit = async () => process.stdout.write(`${JSON.stringify(webSnapshot(await snapshot(), new Date(), thresholds))}\n`);
     if (!argv.includes('--no-worker')) startWorker();
+    if (!argv.includes('--no-generation')) (await import('./gen-watch.js')).startGenerationWatch();
     await emit();
     setInterval(() => void emit(), 2000);
     return;
@@ -449,6 +450,7 @@ async function main(): Promise<void> {
     process.stdout.write(`\x1b[2J\x1b[H${render(await snapshot(), new Date(), { detail, thresholds, width: process.stdout.columns, frame })}\n`);
   };
   if (!argv.includes('--no-worker')) startWorker();
+  if (!argv.includes('--no-generation')) (await import('./gen-watch.js')).startGenerationWatch();
   await draw();
   setInterval(() => void draw(), 2000);
 }

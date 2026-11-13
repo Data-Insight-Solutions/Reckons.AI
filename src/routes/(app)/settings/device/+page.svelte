@@ -14,9 +14,14 @@
   import { ago, duration, dueText, headline, sortDue, watcherProblem, type Level, type WatchStatus } from '$lib/device/agent-watch-view';
   import { browserSpecs, bytes, waitForExtension, type BrowserSpecs } from '$lib/device/browser-specs';
   import { integrations } from '$lib/device/integrations';
+  import type { ServiceDescriptor } from '$lib/generation/services';
   import { openRunnerPopup } from '$lib/stores/runner-popup.svelte';
 
   const BRIDGE = '/__reckons/device';
+
+  type ServiceReport = { idleSeconds: number; configFile: string; folders: { folder: string; fresh: boolean; services: ServiceDescriptor[]; runner?: string }[] };
+  let serviceReport = $state<ServiceReport | null>(null);
+  const stateText = (r: ServiceDescriptor) => r.status === 'not-installed' ? 'not installed' : r.status === 'running' ? 'running a request' : 'installed, starts when needed';
 
   type HostSpecs = { hostname: string; os: string; arch: string; cpu: string; cores: number; memoryBytes: number; freeMemoryBytes: number; uptimeSeconds: number; nodeVersion: string; gpus: { index: number; name: string; memoryMiB: number; driver?: string }[] };
   type Installed = { ollama: { up: boolean; url: string; models: { name: string; sizeBytes: number; family?: string; parameters?: string; quantization?: string }[] }; mcp: { name: string; transport: string; via: string }[] | null; mcpFile: string | null };
@@ -51,6 +56,7 @@
       const w = await getJson<WatchStatus>('/agent-watch');
       bridge = w !== null;
       watch = w;
+      if (w) serviceReport = await getJson<ServiceReport>('/generation-services').catch(() => null);
     } catch {
       bridge = false;
     }
@@ -121,10 +127,33 @@
   {/snippet}
 </SettingsHeader>
 
+
+<section id="d-services" class="card">
+  <div class="card-head">
+    <h3>generation services</h3>
+    <button onclick={openRunnerPopup}>connect the local generation runner</button>
+  </div>
+  <!-- Deliberately minimal: this list moves into the plugin library (F296). -->
+  {#if serviceReport}
+    {#each serviceReport.folders as f (f.folder)}
+      <p class="muted small">{f.folder}{f.fresh ? '' : ' (no heartbeat: start agent watch)'}</p>
+      <ul>
+        {#each f.services as r (r.id)}
+          <li data-service={r.purposes[0]}>{r.name}: {stateText(r)}{#if r.status === 'not-installed'} · <a href={r.install.docs} target="_blank" rel="noopener noreferrer">Install</a>{/if}</li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="muted small">No generation folder found (default ~/Documents/reckons-assets).</p>
+    {/each}
+    <p class="muted small">Idle stop: {Math.round(serviceReport.idleSeconds / 60)} min (idleSeconds in {serviceReport.configFile}). The setup script installs all three together today.</p>
+  {:else}
+    <p class="muted small">{bridge ? 'Reading…' : 'Needs the local dev server; the connect popup shows the same once a folder is connected.'}</p>
+  {/if}
+</section>
+
 <section id="d-agents" class="card">
   <div class="card-head">
     <h3>agent watch</h3>
-    <button onclick={openRunnerPopup}>connect the local generation runner</button>
     {#if bridge && watch}
       <div class="controls">
         {#if watch.running}

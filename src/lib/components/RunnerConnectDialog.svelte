@@ -11,7 +11,7 @@
   import { isMobile } from '$lib/stores/viewport.svelte';
   import { supportsWorkspace, workspaceState } from '$lib/stores/workspace.svelte';
   import { connectJobs, useGenerationJobs, generationJobs as gen } from '$lib/stores/generation-jobs.svelte';
-  import { connectView, RUNNER_COMMAND } from '$lib/generation/connect-steps';
+  import { connectView, serviceLines, RUNNER_COMMAND } from '$lib/generation/connect-steps';
   import { probeBridge, startRunner, WORKSPACE_PATH_KEY, type BridgeState } from '$lib/generation/runner-bridge';
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -25,7 +25,7 @@
 
   const view = $derived(connectView({
     supported: supportsWorkspace(), workspace: workspaceState(), connecting: gen.connecting,
-    runnerReady: !!gen.capabilities, error: gen.connectionError, bridge,
+    runnerReady: !!gen.capabilities, services: gen.capabilities?.stages, error: gen.connectionError, bridge,
   }));
 
   // While open, ask the dev-server bridge whether it can start the runner and whether one is running.
@@ -40,7 +40,7 @@
   async function start() {
     starting = true; startError = '';
     try { localStorage.setItem(WORKSPACE_PATH_KEY, folderPath.trim()); } catch { /* fine */ }
-    startError = await startRunner(folderPath.trim(), bridge.running);
+    startError = await startRunner(folderPath.trim());
     bridge = await probeBridge();
     starting = false;
   }
@@ -48,9 +48,9 @@
   $effect(() => { if (!open) return; return untrack(() => useGenerationJobs()); });
   // Close itself once connected, after a short confirmation. Only if it was open when that happened.
   $effect(() => {
-    if (!open || view.status !== 'connected') return;
+    if (!open || status !== 'connected') return;
     justConnected = true;
-    const t = setTimeout(() => { open = false; justConnected = false; }, 1800);
+    const t = setTimeout(() => { open = false; justConnected = false; }, untrack(() => lines.some(l => !l.installed)) ? 4000 : 1800);
     return () => clearTimeout(t);
   });
   $effect(() => { if (!open) { justConnected = false; copied = false; } });
@@ -58,6 +58,9 @@
   async function copy() {
     try { await navigator.clipboard.writeText(RUNNER_COMMAND); copied = true; setTimeout(() => (copied = false), 2000); } catch { copied = false; }
   }
+  // A primitive, so a fresh heartbeat object every two seconds does not restart the close timer.
+  const status = $derived(view.status);
+  const lines = $derived(serviceLines(gen.capabilities?.stages));
   const mark = (s: string) => (s === 'done' ? 'done' : s === 'active' ? 'now' : 'next');
 </script>
 
@@ -65,25 +68,21 @@
   <p class="rc-lead">Generation runs on your own computer. Nothing starts until you do these steps.</p>
   <ol class="rc-steps">
     <li data-step="start" data-step-state={view.steps.start}>
-      <h3><span class="rc-mark">{mark(view.steps.start)}</span> 1. Start the runner</h3>
+      <h3><span class="rc-mark">{mark(view.steps.start)}</span> 1. Start the agent watcher</h3>
       {#if view.start === 'running'}
-        <p>The runner is running{bridge.workspace ? ` and serving ${bridge.workspace}` : ''}.</p>
-        {#if bridge.available && !bridge.workspace && !gen.capabilities}
-          <p class="rc-small">It was started without a generation folder, so it cannot see the folder you choose. Restart it with that folder:</p>
-          <div class="rc-cmd"><input class="rc-input" bind:value={folderPath} placeholder="/home/you/reckons-assets" aria-label="Full path of the workspace folder" />
-            <button class="rc-btn" onclick={start} disabled={starting || !folderPath.trim()}>Restart with this folder</button></div>
-        {/if}
+        <p>The agent watcher is running. It starts each generation service only when a request needs it, and stops it again when idle.</p>
       {:else if view.start === 'button'}
-        <p>This computer can start it for you. Type the full path of the folder it should use, then start it.</p>
-        <div class="rc-cmd"><input class="rc-input" bind:value={folderPath} placeholder="/home/you/reckons-assets" aria-label="Full path of the workspace folder" />
-          <button class="rc-btn rc-primary" onclick={start} disabled={starting || !folderPath.trim()}>Start the runner</button></div>
+        <p>This computer can start it for you. It serves <code class="rc-inline">~/Documents/reckons-assets</code> unless you add another folder below.</p>
+        <div class="rc-cmd"><input class="rc-input" bind:value={folderPath} placeholder="Another folder, full path (optional)" aria-label="Another generation folder, full path (optional)" />
+          <button class="rc-btn rc-primary" onclick={start} disabled={starting}>Start the agent watcher</button></div>
         {#if startError}<p class="rc-small" role="alert">{startError}</p>{/if}
       {:else}
-        <p>This page cannot start programs, so start it once on this computer. In a terminal in the Reckons.AI folder run:</p>
+        <p>This page cannot start programs, so start the agent watcher once on this computer. In a terminal in the Reckons.AI folder run:</p>
         <div class="rc-cmd"><code>{RUNNER_COMMAND}</code>
           <button class="rc-btn" onclick={copy} aria-label="Copy the command">{copied ? 'Copied' : 'Copy'}</button></div>
+        <p class="rc-small">It serves <code class="rc-inline">~/Documents/reckons-assets</code>, so choose that folder in step 2. For another folder, list it under "folders" in <code class="rc-inline">~/.config/reckons/generation-folders.json</code> and restart it.</p>
       {/if}
-      <p class="rc-small">Use the same folder in step 2. <a href="/docs/features/generation-setup" target="_blank" rel="noopener noreferrer">Setup for your operating system</a> · <a href="/settings/device" onclick={() => (open = false)}>Open the device page</a></p>
+      <p class="rc-small"><a href="/docs/features/generation-setup" target="_blank" rel="noopener noreferrer">Setup for your operating system</a> · <a href="/settings/device" onclick={() => (open = false)}>Open the device page</a></p>
     </li>
     <li data-step="folder" data-step-state={view.steps.folder}>
       <h3><span class="rc-mark">{mark(view.steps.folder)}</span> 2. Choose the workspace folder</h3>
@@ -100,7 +99,14 @@
       <p class="rc-status" role="status" data-connect-status={view.status}>
         {#if justConnected}Connected{:else if view.steps.folder === 'todo' || view.status === 'need-folder' || view.status === 'unsupported'}Waiting for steps 1 and 2.{:else}{view.message}{/if}
       </p>
-      {#if view.fix && (view.status === 'waiting' || view.status === 'failed')}<p class="rc-small">{view.fix}</p>{/if}
+      {#if lines.length}
+        <ul class="rc-services" aria-label="Generation services">
+          {#each lines as l (l.stage)}
+            <li data-service={l.stage} data-installed={l.installed}>{l.label}: {l.text}{#if !l.installed} — <a href="/docs/features/generation-setup" target="_blank" rel="noopener noreferrer">Install</a>{/if}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if view.fix && (view.status === 'waiting' || view.status === 'failed' || view.status === 'needs-install')}<p class="rc-small">{view.fix}</p>{/if}
       {#if view.steps.folder === 'done' && view.status !== 'connected'}
         <button class="rc-btn" onclick={() => connectJobs(false)} disabled={gen.connecting}>Check again</button>
       {/if}
@@ -144,6 +150,8 @@
   h3 { margin: 0 0 0.25rem; font-size: 0.82rem; }
   p { margin: 0.2rem 0; line-height: 1.4; }
   .rc-mark { font-family: var(--font-mono); font-size: 0.65rem; color: var(--accent); text-transform: uppercase; margin-right: 0.3rem; }
+  .rc-services { margin: 0.3rem 0; padding-left: 1.1rem; font-size: 0.78rem; }
+  .rc-inline { display: inline; padding: 0; background: none; }
   .rc-small { font-size: 0.75rem; color: var(--text-muted, var(--muted)); }
   .rc-input { flex: 1; min-width: 0; font: 0.75rem var(--font-mono); padding: 0.25rem 0.4rem; background: var(--surface-2, transparent); color: inherit; border: 1px solid var(--line); border-radius: 0.3rem; }
   .rc-cmd { display: flex; gap: 0.4rem; align-items: flex-start; }

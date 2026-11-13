@@ -9,8 +9,9 @@
    * generation is not story-mode only. `compact` drops the setup sentence for the job list.
    */
   let { compact = false }: { compact?: boolean } = $props();
-  const state = $derived(gen.connecting ? 'connecting' : gen.capabilities ? 'connected' : 'not connected');
-  const label = $derived(state === 'connected' ? 'Local generation runner: connected' : state === 'connecting' ? 'Local generation runner: connecting…' : 'Local generation runner: not connected');
+  const ready = $derived(!!gen.capabilities?.stages.some(x => x.available));
+  const state = $derived(gen.connecting ? 'connecting' : ready ? 'connected' : gen.capabilities ? 'needs install' : 'not connected');
+  const label = $derived(state === 'connected' ? 'Local generation runner: connected' : state === 'connecting' ? 'Local generation runner: connecting…' : state === 'needs install' ? 'Local generation: connected, no service installed yet' : 'Local generation runner: not connected');
 </script>
 
 <div class="runner-connect" data-runner-state={state}>
@@ -22,7 +23,7 @@
       <span class="runner-help">Needs a browser with workspace folder access, such as desktop Chrome or Edge.</span>
     {/if}
     {#if !compact}
-      <span class="runner-help">Start the runner on your generation machine with <code>npm run gen:serve -- --workspace=/path/to/workspace</code>, then connect that same folder
+      <span class="runner-help">Start the agent watcher on your generation machine with <code>npm run agent:watch</code>, then connect its generation folder
         (<a href="/docs/features/generation-setup" target="_blank" rel="noopener noreferrer">setup guide</a>).</span>
     {/if}
     {#if gen.connectionError}<span class="runner-help">{gen.connectionError}</span>{/if}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { connectView, explainConnectError, RUNNER_COMMAND } from '../connect-steps';
+import { connectView, explainConnectError, serviceLines, RUNNER_COMMAND } from '../connect-steps';
 
 const base = { supported: true, workspace: 'none' as const, connecting: false, runnerReady: false, error: '' };
 
@@ -43,6 +43,16 @@ describe('connect popup steps (F166.1.3)', () => {
     expect(running.steps.start).toBe('done');
     expect(running.status).toBe('need-folder');
   });
+  it('watcher present but nothing installed: needs install, not connected', () => {
+    const v = connectView({ ...base, workspace: 'connected', runnerReady: true, services: [{ stage: 'image', available: false, reason: 'image: missing' }, { stage: 'splat', available: false }] });
+    expect(v.status).toBe('needs-install');
+  });
+  it('per service lines: installed ones start on demand, missing ones say so, independently', () => {
+    const lines = serviceLines([{ stage: 'image', available: true }, { stage: 'splat', available: false }]);
+    expect(lines.map(l => `${l.label}: ${l.text}`)).toEqual(['image generation: installed, will start when needed', 'splat generation: not installed']);
+    const v = connectView({ ...base, workspace: 'connected', runnerReady: true, services: [{ stage: 'image', available: true }, { stage: 'splat', available: false }] });
+    expect(v.status).toBe('connected');
+  });
   it('unsupported browser', () => {
     expect(connectView({ ...base, supported: false }).status).toBe('unsupported');
   });
@@ -52,7 +62,8 @@ describe('connect popup steps (F166.1.3)', () => {
   it('the command is the one in package.json', async () => {
     const pkg = (await import('../../../../package.json')).default as { scripts: Record<string, string> };
     expect(pkg.scripts['gen:serve']).toBeTruthy();
-    expect(RUNNER_COMMAND.startsWith('npm run gen:serve')).toBe(true);
+    expect(RUNNER_COMMAND).toBe('npm run agent:watch');
+    expect(pkg.scripts['agent:watch']).toBeTruthy();
   });
 });
 
@@ -71,4 +82,17 @@ describe('runner bridge client (F166.1.3)', () => {
     expect(await startRunner('/w', false, ok({ error: 'bad' }, 400))).toMatch(/folder was not found/);
     expect(await startRunner('/w', false, ok({ running: true }, 202))).toBe('');
   });
+});
+
+import { describeService, serviceLine, SERVICE_PURPOSES } from '../services';
+describe('services as plugin-shaped records (F166.1.3)', () => {
+  it('one typed record per service, separate ids, each its own install step', () => {
+    const rows = SERVICE_PURPOSES.map(p => describeService(p, { available: p === 'image', active: false, idleSeconds: 600 }));
+    expect(new Set(rows.map(r => r.id)).size).toBe(3);
+    expect(rows.every(r => r.kind === 'local-service' && r.purposes.length === 1 && r.install.docs)).toBe(true);
+    expect(rows.map(r => r.status)).toEqual(['idle', 'not-installed', 'not-installed']);
+    expect(rows[0].install.perServiceInstaller).toBe(false);
+  });
+  it('running when a request for it is active', () => expect(describeService('splat', { available: true, active: true, idleSeconds: 1 }).status).toBe('running'));
+  it('plain line', () => expect(serviceLine(describeService('video', { available: false, active: false, idleSeconds: 1 }))).toBe('video generation: not installed'));
 });
