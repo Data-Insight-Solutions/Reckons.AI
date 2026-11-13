@@ -561,6 +561,38 @@ ktype:DeviceProfile a rdfs:Class ;
     rdfs:label "device profile" ;
     rdfs:comment "A machine (or every machine, hostname \"*\") that statements can be scoped to." .
 
+# ── Model routing (F74.6, 2026-11-13): job kind -> ordered candidate models, data in static/reckons-jobs.ttl ──
+ktype:JobKind a rdfs:Class ;
+    rdfs:label "Job kind" ;
+    rdfs:comment "A kind of local-model work (code-draft, extraction, visual, ...). The routing table keys on it, so a job declares its kind instead of hard-coding a model." .
+
+ktype:ModelRoute a rdfs:Class ;
+    rdfs:label "Model route" ;
+    rdfs:comment "One candidate model for one job kind, ordered by hnav:order, with its evidence and whether that evidence is measured or a guess." .
+
+kpred:route-kind a rdf:Property ;
+    rdfs:label "route kind" ;
+    rdfs:domain ktype:ModelRoute ;
+    rdfs:comment "The job kind this candidate serves." .
+
+kpred:route-local a rdf:Property ;
+    rdfs:label "has a local route" ;
+    rdfs:domain ktype:JobKind ;
+    rdfs:comment "\"false\" when no local model is used for this kind (local code review, retired 2026-10-13); the work goes to a Sonnet or Opus subagent." .
+
+kpred:evidence-grade a rdf:Property ;
+    rdfs:label "evidence grade" ;
+    rdfs:domain ktype:ModelRoute ;
+    rdfs:comment "measured (a bench or calibration is cited in the evidence) or guess (listed so it can be measured)." .
+
+kpred:job-kind a rdf:Property ;
+    rdfs:label "job kind" ;
+    rdfs:comment "On a schedule or offline job: the kind of local-model work it does; the router picks the model from the routing table. Absent = no routing and the flat RAM start gate applies." .
+
+kpred:job-model a rdf:Property ;
+    rdfs:label "job model" ;
+    rdfs:comment "On a schedule or offline job: an explicit model that overrides the routing table." .
+
 ktype:Threshold a rdfs:Class ;
     rdfs:label "threshold" ;
     rdfs:comment "A named limit. rdfs:label is the metric; kpred:yellow / kpred:red bound a colour band, kpred:limit is a single hard limit. Merged per property across defaults and device overrides, matched by label." .

@@ -6,6 +6,8 @@
 @prefix job:    <urn:reckons:job/> .
 @prefix jobset: <urn:reckons:jobset/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix kind:   <urn:reckons:jobkind/> .
+@prefix route:  <urn:reckons:route/> .
 
 ## ---------------------------------------------------------------------------
 ## THE SOURCE of the offline jobs (F216, 2026-10-27). Hand-edit this file.
@@ -224,6 +226,7 @@ job:describe-entities rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "describe-entities" ;
     skos:definition     "Local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph + linked files (needs OLLAMA_BASE_URL)" ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "prose-draft" ;
     kpred:emits         "claim" ;
     kpred:command       "npx tsx scripts/offline/describe-entities.ts" ;
     kpred:job-enabled   "true" ;
@@ -312,6 +315,7 @@ job:extraction-score rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "extraction-score" ;
     skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "extraction" ;
     kpred:emits         "nothing" ;
     kpred:command       "npx tsx scripts/offline/extraction-score.ts" ;
     kpred:job-enabled   "true" ;
@@ -423,6 +427,7 @@ job:layer-classify rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "layer-classify" ;
     skos:definition     "F194 agent tier: propose claim/provenance/question for each unclassified predicate, biggest blast radius first. DISABLED as a routine job — it is a bulk one-off, and re-proposing the same 355 predicates every sweep would bury the queue it writes to. Run it by hand with --limit and read the provenance verdicts first: those are the ones that remove a human from the loop." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "classification-judgment" ;
     kpred:emits         "claim" ;
     kpred:command       "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/layer-classify.ts --limit=40" ;
     kpred:job-enabled   "false" ;
@@ -720,6 +725,7 @@ job:space-visual-gate rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "space-visual-gate" ;
     skos:definition     "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "visual" ;
     kpred:emits         "finding" ;
     kpred:command       "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174" ;
     kpred:job-enabled   "true" ;
@@ -868,6 +874,235 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
     kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          2 .
+
+
+## ---------------------------------------------------------------------------
+## MODEL ROUTING (F74.6, kb:model-routing-ledger; 2026-11-13). Job KIND -> ordered candidate models.
+## Matt, 2026-11-13: "We need to do good routing to qwen coder, or specialized models anyway, using smaller models may not be a problem for many job types."
+## A job declares kpred:job-kind (a schedule or an offline job); scripts/agent/model-routing.ts picks the first
+## candidate that is installed AND fits the RAM gate (model size + floor). kpred:job-model is an explicit override.
+## Order = hnav:order. kpred:evidence-grade: measured (a bench or calibration cited in the evidence) or guess (to be measured).
+## WEAKNESS: only the extraction, visual and code rows rest on a head-to-head bench; the rest are "in use" or guesses.
+## ---------------------------------------------------------------------------
+
+kind:code-draft rdf:type ktype:JobKind ;
+    rdfs:label "code-draft" ;
+    skos:definition "Drafting or editing code a human or test will gate." ;
+    kpred:route-local "true" .
+
+route:code-draft-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "code-draft 1: devstral-small-2" ;
+    kpred:route-kind kind:code-draft ;
+    kpred:model "devstral-small-2" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "15.2 GB. Co-winner with qwen3-coder on the local coding bench (npm run bench:coding; MEMORY.md: \"qwen3-coder/devstral-small-2 (code)\"); smaller than qwen3-coder, so it starts first. Extraction bench 2026-09-04 shows it is NOT a prose model (56%)." ;
+    hnav:order 1 .
+
+route:code-draft-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "code-draft 2: qwen3-coder:latest" ;
+    kpred:route-kind kind:code-draft ;
+    kpred:model "qwen3-coder:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "18.6 GB. Benchmarked winner for code (tests/bench/run-coding-bench.ts). Needs the most room of the code models, so it is the second rung. Wrong tool for prose: 39% on extraction, kb:extraction-scoring." ;
+    hnav:order 2 .
+
+route:code-draft-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "code-draft 3: phi4:14b" ;
+    kpred:route-kind kind:code-draft ;
+    kpred:model "phi4:14b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "9.1 GB. Unmeasured for code on this machine; listed so a small-model run can be tried and scored. Move it up only after a bench result." ;
+    hnav:order 3 .
+
+kind:code-review rdf:type ktype:JobKind ;
+    rdfs:label "code-review" ;
+    skos:definition "Reviewing a diff for correctness." ;
+    kpred:route-local "false"; 
+    kpred:honest-note "No local route. Local code review was retired 2026-10-13 after 0 true findings in 49 (qwen3-coder and devstral-small-2 missed both real bugs in the trial); PR review is a Sonnet or Opus subagent. scripts/offline/code-review.ts stays for hand re-runs only." .
+
+kind:prose-draft rdf:type ktype:JobKind ;
+    rdfs:label "prose-draft" ;
+    skos:definition "Drafting a description, page or paragraph that a human gates." ;
+    kpred:route-local "true" .
+
+route:prose-draft-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 1: qwen3.8:latest" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. The harness default (DEFAULT_REASONING_MODEL) and the model describe-entities and the docs jobs already run on; no head-to-head prose bench exists, so the grade is for \"in use and gated by a human\", not \"best\"." ;
+    hnav:order 1 .
+
+route:prose-draft-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 2: mistral-small3.2:24b" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "15.2 GB. Unmeasured for drafting here; it was the only model that refused the off-topic quote in the 2026-10-28 verifier calibration (two cases), which says nothing about prose quality." ;
+    hnav:order 2 .
+
+route:prose-draft-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 3: phi4:14b" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "phi4:14b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "9.1 GB. Candidate small model; measure on describe-entities with --limit=10 and a human read before promoting it." ;
+    hnav:order 3 .
+
+kind:extraction rdf:type ktype:JobKind ;
+    rdfs:label "extraction" ;
+    skos:definition "Pulling triples out of prose." ;
+    kpred:route-local "true" .
+
+route:extraction-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 1: gemma3:27b" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.4 GB. 72% strict recall, first of six (kb:extraction-scoring, 2026-09-04); 68% in the 48 GB-class rerun. The measured leader among installed models (qwen3:32b, 74%, is no longer installed)." ;
+    hnav:order 1 .
+
+route:extraction-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 2: phi4:14b" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "phi4:14b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "9.1 GB. 53% strict recall, 68% loose, 0 invented (2026-09-04 48 GB-class run): the best SMALL model measured, but 19 points under gemma3:27b, so it is a fallback when room is short, not the first rung." ;
+    hnav:order 2 .
+
+route:extraction-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 3: devstral-small-2:latest" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "devstral-small-2:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "15.2 GB. 56% (2026-09-04 sweep). Fewer points than gemma3:27b and no smaller than mistral-small." ;
+    hnav:order 3 .
+
+route:extraction-4 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 4: nuextract:latest" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "nuextract:latest" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "2.2 GB. A model built for structured extraction and the smallest candidate by far, but NOT measured on this repository's extraction bench. Highest-value measurement in this table: if it nears 53%, it is the first rung and extraction stops needing a 17 GB model." ;
+    hnav:order 4 .
+
+kind:classification-judgment rdf:type ktype:JobKind ;
+    rdfs:label "classification-judgment" ;
+    skos:definition "Choosing a label, sense or yes/no over many items, where a panel or a human re-checks the disagreements." ;
+    kpred:route-local "true" .
+
+route:classification-judgment-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 1: qwen3.8:latest" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. The local-panel default model (3 votes); the 2026-09-30 calibration measured its predecessor qwen3.6 at 13/13 unanimous-right on 30 hand-labelled sites (scripts/agent/local-panel.ts header). The qwen3.8 successor has not been re-scored on that fixture." ;
+    hnav:order 1 .
+
+route:classification-judgment-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 2: gemma3:27b" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "17.4 GB. Larger-general-model rung named by the ledger decision for hard judgment; the mixed panel that included it did not beat one model voting thrice (local-panel.ts header)." ;
+    hnav:order 2 .
+
+route:classification-judgment-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 3: phi4:14b" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "phi4:14b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "9.1 GB. Small candidate; fails the 2026-10-28 off-topic-quote check as a verifier (passed an off-topic quote), so it is not for verification." ;
+    hnav:order 3 .
+
+route:classification-judgment-4 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 4: llama3.2:3b" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "llama3.2:3b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "2.0 GB. Cheapest rung; 22% on extraction says it is weak at language tasks, so use only for coarse routing labels, after a measurement." ;
+    hnav:order 4 .
+
+kind:verification rdf:type ktype:JobKind ;
+    rdfs:label "verification" ;
+    skos:definition "A different model checking another model's answer or quote." ;
+    kpred:route-local "true" .
+
+route:verification-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "verification 1: mistral-small3.2:24b" ;
+    kpred:route-kind kind:verification ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "15.2 GB. DEFAULT_VERIFIER in presettle.ts: the only one of four models that refused an off-topic quote (2026-10-28, two cases, one run: a choice, not a measurement)." ;
+    hnav:order 1 .
+
+kind:visual rdf:type ktype:JobKind ;
+    rdfs:label "visual" ;
+    skos:definition "Reading a screenshot or image." ;
+    kpred:route-local "true" .
+
+route:visual-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "visual 1: qwen2.5vl:7b" ;
+    kpred:route-kind kind:visual ;
+    kpred:model "qwen2.5vl:7b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "6.0 GB. Winner of the visual bench and the visual gate model (MEMORY.md \"Winners\"; scripts/offline/visual-diff.ts, space-visual-gate.ts). The only vision model installed." ;
+    hnav:order 1 .
+
+kind:summarize rdf:type ktype:JobKind ;
+    rdfs:label "summarize" ;
+    skos:definition "Compressing an entity subgraph or text into a short summary." ;
+    kpred:route-local "true" .
+
+route:summarize-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 1: lfm2.5:latest" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "lfm2.5:latest" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "5.2 GB. Small; 33% on extraction, so unproven for summaries. Measure on kb_local_summarize before use." ;
+    hnav:order 1 .
+
+route:summarize-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 2: phi4:14b" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "phi4:14b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "9.1 GB. Mid-size candidate." ;
+    hnav:order 2 .
+
+route:summarize-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 3: qwen3.8:latest" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. Default for kb_local_summarize; in use, not benchmarked against the small ones." ;
+    hnav:order 3 .
+
+kind:embed rdf:type ktype:JobKind ;
+    rdfs:label "embed" ;
+    skos:definition "Turning text into vectors." ;
+    kpred:route-local "true" .
+
+route:embed-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "embed 1: nomic-embed-text:latest" ;
+    kpred:route-kind kind:embed ;
+    kpred:model "nomic-embed-text:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "0.27 GB. The embedding model the local jobs already call; the app itself uses BGE-small in the browser (src/lib/embed.ts), a separate path." ;
+    hnav:order 1 .
+
+kind:agentic-deputy rdf:type ktype:JobKind ;
+    rdfs:label "agentic-deputy" ;
+    skos:definition "The local deputy: tool-using multi-step work in a worktree." ;
+    kpred:route-local "true" .
+
+route:agentic-deputy-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "agentic-deputy 1: qwen3.8-160k:latest" ;
+    kpred:route-kind kind:agentic-deputy ;
+    kpred:model "qwen3.8-160k:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB, 160k context. The deputy model (npm run claude:local, AGENTS.md rule 5); no smaller installed model has a long enough context window." ;
+    hnav:order 1 .
 
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
