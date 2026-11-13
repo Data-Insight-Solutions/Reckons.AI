@@ -84,6 +84,7 @@
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
     "scan:room": "npx tsx scripts/content/scan-room.ts",
     "splat:compress": "npx tsx scripts/content/splat-compress.ts",
+    "print:sheet": "npx tsx scripts/content/print-sheet.ts",
     "scan:multi": "npx tsx scripts/content/scan-multi.ts",
     "scan:keyframes": "npx tsx scripts/content/select-keyframes.ts",
     "scan:quality": "npx tsx scripts/content/scan-quality.ts",
