@@ -422,7 +422,7 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
   } else if (provider === 'gemini') {
     raw = await chatGemini(messages, system, apiKey, model ?? 'gemini-2.0-flash');
   } else if (provider === 'ollama') {
-    raw = await chatOllama(messages, system, model ?? 'llama3.2', ollamaBaseUrl);
+    raw = await chatOllama(messages, system, model, ollamaBaseUrl);
   } else if (provider === 'wasm') {
     raw = await chatWithWasm(messages, system, model ?? undefined);
   } else if (provider === 'chrome-ai') {
