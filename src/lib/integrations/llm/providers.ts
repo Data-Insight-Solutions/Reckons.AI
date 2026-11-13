@@ -6,6 +6,8 @@
  * respective provider endpoints — they never touch a backend server.
  */
 
+import { pickDefaultOllamaModel, NO_OLLAMA_MODEL_MESSAGE } from './model-for-task';
+
 export type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 // ── Claude (Anthropic) ────────────────────────────────────────────────────────
@@ -186,16 +188,30 @@ function promptSize(messages: ChatMessage[], system: string): number {
   return system.length + messages.reduce((n, m) => n + m.content.length, 0);
 }
 
+/**
+ * No chosen model and none resolved by the caller: ask the server what it has (cheap, one
+ * /api/tags call) and use the best installed one. Throws the actionable "pull a model" message
+ * rather than sending a request that would 404. A name that was passed is returned untouched.
+ */
+export async function resolveOllamaModelOrThrow(model: string | undefined, baseUrl: string): Promise<string> {
+  if (model && model.trim()) return model;
+  const installed = await listOllamaModels(baseUrl);
+  const picked = pickDefaultOllamaModel(installed);
+  if (!picked) throw new Error(NO_OLLAMA_MODEL_MESSAGE);
+  return picked;
+}
+
 /** Calls a locally running Ollama instance via its OpenAI-compatible chat endpoint. */
 export async function chatOllama(
   messages: ChatMessage[],
   system: string,
-  model = 'llama3.2',
+  model: string | undefined = undefined,
   baseUrl = 'http://localhost:11434',
   maxTokens = 1024,
   signal?: AbortSignal
 ): Promise<string> {
   const url = `${baseUrl}/v1/chat/completions`;
+  model = await resolveOllamaModelOrThrow(model, baseUrl);
   const res = await ollamaFetch(url, {
     model,
     max_tokens: maxTokens,
@@ -229,12 +245,13 @@ export async function chatOllamaStructured(
   messages: ChatMessage[],
   system: string,
   schema: Record<string, unknown>,
-  model = 'llama3.2',
+  model: string | undefined = undefined,
   baseUrl = 'http://localhost:11434',
   maxTokens = 1024,
   signal?: AbortSignal
 ): Promise<string> {
   const url = `${baseUrl}/api/chat`;
+  model = await resolveOllamaModelOrThrow(model, baseUrl);
   const res = await ollamaFetch(url, {
     model,
     stream: false,

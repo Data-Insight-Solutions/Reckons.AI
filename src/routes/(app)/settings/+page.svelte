@@ -22,6 +22,8 @@
     computeContentHash, formatContentHash
   } from '$lib/storage/kb-fingerprint';
   import { onMount } from 'svelte';
+  import { pickDefaultOllamaModel } from '$lib/integrations/llm/model-for-task';
+  import { ollamaReachable, installedOllamaModels } from '$lib/integrations/llm/prefer-local';
   import Select from '$lib/components/ui/Select.svelte';
   import { Dialog } from 'bits-ui';
   import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
@@ -73,7 +75,18 @@
   let claudeModel = $state(settings().claudeModel);
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
-  let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
+  let ollamaModel = $state(settings().ollamaModel ?? '');
+  // "Automatic": blank means the best installed model by role runs (F279.1). Show which one, once
+  // the Ollama probe has run; before that we only say Automatic rather than guess a name.
+  let ollamaInstalled = $state<string[] | null>(null);
+  const ollamaAutoPlaceholder = $derived.by(() => {
+    const auto = ollamaInstalled ? pickDefaultOllamaModel(ollamaInstalled, 'extraction') : undefined;
+    return auto ? `Automatic (${auto})` : 'Automatic';
+  });
+  async function refreshOllamaInstalled() {
+    const base = ollamaBaseUrl || 'http://localhost:11434';
+    if (await ollamaReachable(base)) ollamaInstalled = installedOllamaModels(base);
+  }
   // Per-task overrides. Empty string means "use the general model above" — the resolver
   // (ollamaModelFor) treats blank as unset, so an empty box is not a broken setting.
   let ollamaIngestModel = $state(settings().ollamaIngestModel ?? '');
@@ -265,6 +278,7 @@
   let deviceProfile = $state<DeviceProfile | null>(null);
 
   onMount(async () => {
+    void refreshOllamaInstalled();
     const id = await getOrCreateStableId(
       settings().kbStableId,
       (newId) => updateSettings({ kbStableId: newId })
@@ -431,7 +445,7 @@
     claudeModel            = d.claudeModel;
     openaiModel            = d.openaiModel;
     geminiModel            = d.geminiModel;
-    ollamaModel            = d.ollamaModel;
+    ollamaModel            = d.ollamaModel ?? '';
     ollamaIngestModel      = d.ollamaIngestModel ?? '';
     ollamaAnalyzeModel     = d.ollamaAnalyzeModel ?? '';
     ollamaChatModel        = d.ollamaChatModel ?? '';
@@ -529,7 +543,7 @@
     claudeModel                = ud.claudeModel;
     openaiModel                = ud.openaiModel;
     geminiModel                = ud.geminiModel;
-    ollamaModel                = ud.ollamaModel;
+    ollamaModel                = ud.ollamaModel ?? '';
     ollamaIngestModel          = ud.ollamaIngestModel ?? '';
     ollamaAnalyzeModel         = ud.ollamaAnalyzeModel ?? '';
     ollamaChatModel            = ud.ollamaChatModel ?? '';
@@ -967,14 +981,14 @@
 {#if usedProviders.has('ollama')}
 <section id="s-ollama" class="card">
   <h3>ollama <span class="local-badge mono">local</span></h3>
-  <p class="hint">No API key needed. Run <code>ollama serve</code> then pull a model: <code>ollama pull llama3.2</code></p>
+  <p class="hint">No API key needed. Run <code>ollama serve</code>, then pull a small model that suits the job (for example <code>ollama pull gemma3</code> for extraction and chat, <code>ollama pull qwen3-coder</code> for code). Leave the model box blank and Reckons.AI picks from what you have installed.</p>
   <label class="field">
     <span class="lbl mono">base url</span>
     <input type="text" bind:value={ollamaBaseUrl} placeholder="http://localhost:11434" />
   </label>
   <label class="field">
     <span class="lbl mono">model</span>
-    <input type="text" bind:value={ollamaModel} placeholder="llama3.2" />
+    <input type="text" bind:value={ollamaModel} placeholder={ollamaAutoPlaceholder} />
   </label>
 
   <p class="hint">
@@ -1692,7 +1706,7 @@
           <tr><td><code>VITE_GEMINI_MODEL</code></td><td>Gemini model</td><td>gemini-2.0-flash</td></tr>
           <tr><td><code>VITE_PREFERRED_BACKEND</code></td><td>Default backend</td><td>claude</td></tr>
           <tr><td><code>VITE_OLLAMA_BASE_URL</code></td><td>Ollama URL</td><td>http://localhost:11434</td></tr>
-          <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>llama3.2</td></tr>
+          <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>automatic</td></tr>
           <tr><td><code>VITE_OPENROUTER_MODEL</code></td><td>OpenRouter model</td><td>meta-llama/llama-3.2-3b-instruct:free</td></tr>
           <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>onnx-community/Qwen2.5-0.5B-Instruct</td></tr>
         </tbody>

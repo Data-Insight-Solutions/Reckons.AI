@@ -15,8 +15,9 @@ export interface LLMConfig {
   baseUrl?: string;
 }
 
-const DEFAULT_MODELS: Record<Provider, string> = {
-  ollama: 'llama3.2',
+// Ollama has no default model name: the CLI uses the first non-embedding model the server has
+// installed (F279.1), or says to pull one.
+const DEFAULT_MODELS: Record<Exclude<Provider, 'ollama'>, string> = {
   claude: 'claude-opus-5-5',
   openai: 'gpt-4o-mini',
 };
@@ -76,7 +77,7 @@ export async function extract(
   config: LLMConfig,
   noteText: string,
 ): Promise<string> {
-  const model = config.model ?? DEFAULT_MODELS[config.provider];
+  const model = config.model ?? (config.provider === 'ollama' ? await firstInstalledOllamaModel(config.baseUrl ?? 'http://localhost:11434') : DEFAULT_MODELS[config.provider]);
   const messages = [{ role: 'user' as const, content: `Extract triples from this note:\n\n${noteText}` }];
 
   if (config.provider === 'ollama') {
@@ -102,7 +103,7 @@ export async function chat(
   messages: Array<{ role: 'user' | 'assistant'; content: string }>,
   kbContext: string,
 ): Promise<string> {
-  const model = config.model ?? DEFAULT_MODELS[config.provider];
+  const model = config.model ?? (config.provider === 'ollama' ? await firstInstalledOllamaModel(config.baseUrl ?? 'http://localhost:11434') : DEFAULT_MODELS[config.provider]);
   const systemPrompt = `${SYSTEM}\n\nKnowledge base context:\n${kbContext}`;
 
   if (config.provider === 'ollama') {
@@ -120,6 +121,17 @@ export async function chat(
 }
 
 // ── Ollama ────────────────────────────────────────────────────────────────────
+
+async function firstInstalledOllamaModel(baseUrl: string): Promise<string> {
+  let names: string[] = [];
+  try {
+    const res = await fetch(`${baseUrl}/api/tags`);
+    if (res.ok) names = ((await res.json()).models ?? []).map((m: { name: string }) => m.name);
+  } catch { /* fall through to the message */ }
+  const usable = names.find((n) => !n.toLowerCase().includes('embed'));
+  if (!usable) throw new Error('No Ollama model is installed — run `ollama pull gemma3`, or set "model" in .reckonsrc.');
+  return usable;
+}
 
 async function chatOllama(
   baseUrl: string,

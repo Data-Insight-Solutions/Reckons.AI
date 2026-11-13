@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { ollamaModelFor, resolveInstalledModel, pickDefaultOllamaModel, FALLBACK_OLLAMA_MODEL } from '../model-for-task';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+  ollamaModelFor, resolveInstalledModel, pickDefaultOllamaModel, setOllamaSubstitutionListener,
+  NO_OLLAMA_MODEL_MESSAGE, type OllamaTask,
+} from '../model-for-task';
+import { chatOllama, resolveOllamaModelOrThrow } from '../providers';
 
 /** The 11 models actually installed on this machine (2026-11-03). */
 const THIS_MACHINE = [
@@ -27,8 +31,8 @@ describe('ollamaModelFor', () => {
     expect(ollamaModelFor('chat', { ollamaModel: 'qwen3-coder' })).toBe('qwen3-coder');
   });
 
-  it('falls back to one documented default when nothing is set', () => {
-    expect(ollamaModelFor('analyze', {})).toBe(FALLBACK_OLLAMA_MODEL);
+  it('names no model when nothing is set and the installed list is unknown', () => {
+    expect(ollamaModelFor('analyze', {})).toBeUndefined();
   });
 
   it('sub-tasks inherit from analyze, matching how their BACKEND already falls back', () => {
@@ -97,13 +101,19 @@ describe('pickDefaultOllamaModel', () => {
       .toBe('custom-a:1');
   });
 
-  it('returns the fallback for an empty list', () => {
-    expect(pickDefaultOllamaModel([])).toBe(FALLBACK_OLLAMA_MODEL);
+  it('returns undefined for an empty list — no invented name', () => {
+    expect(pickDefaultOllamaModel([])).toBeUndefined();
   });
 
-  it('returns the fallback when only embedding models are installed', () => {
-    expect(pickDefaultOllamaModel(['nomic-embed-text:latest', 'bge-embed:small']))
-      .toBe(FALLBACK_OLLAMA_MODEL);
+  it('returns undefined when only embedding models are installed', () => {
+    expect(pickDefaultOllamaModel(['nomic-embed-text:latest', 'bge-embed:small'])).toBeUndefined();
+  });
+
+  it('picks per role: code leans on the code model, extraction and chat do not', () => {
+    expect(pickDefaultOllamaModel(THIS_MACHINE, 'code')).toBe('qwen3-coder:latest');
+    expect(pickDefaultOllamaModel(THIS_MACHINE, 'extraction')).toBe('mistral-small3.2:24b');
+    expect(pickDefaultOllamaModel(['qwen3-coder:latest', 'gemma3:4b'], 'extraction')).toBe('gemma3:4b');
+    expect(pickDefaultOllamaModel(['qwen3-coder:latest', 'gemma3:4b'], 'code')).toBe('qwen3-coder:latest');
   });
 });
 
@@ -129,7 +139,53 @@ describe('ollamaModelFor with an installed-model list', () => {
 
   it('null or undefined list keeps the previous resolution exactly', () => {
     expect(ollamaModelFor('analyze', { ollamaModel: 'llama3.2' }, null)).toBe('llama3.2');
-    expect(ollamaModelFor('analyze', {}, null)).toBe(FALLBACK_OLLAMA_MODEL);
+    expect(ollamaModelFor('analyze', {}, null)).toBeUndefined();
     expect(ollamaModelFor('analyze', { ollamaModel: 'llama3.2' })).toBe('llama3.2');
+  });
+});
+
+describe('F279.1: no default model name', () => {
+  const TASKS: OllamaTask[] = ['ingest', 'analyze', 'chat', 'diffSummary', 'mergeAnalysis'];
+  afterEach(() => { setOllamaSubstitutionListener(null); vi.unstubAllGlobals(); });
+
+  it('nothing chosen → an installed model for every role', () => {
+    for (const t of TASKS) {
+      const m = ollamaModelFor(t, {}, THIS_MACHINE);
+      expect(THIS_MACHINE).toContain(m);
+    }
+  });
+
+  it('nothing chosen and only a small model installed → that model, never a name that is not there', () => {
+    expect(ollamaModelFor('chat', {}, ['gemma3:4b'])).toBe('gemma3:4b');
+  });
+
+  it('nothing chosen, nothing installed → undefined', () => {
+    expect(ollamaModelFor('ingest', {}, [])).toBeUndefined();
+  });
+
+  it('a chosen installed model is never replaced and raises no notice', () => {
+    const seen: unknown[] = [];
+    setOllamaSubstitutionListener((s) => seen.push(s));
+    expect(ollamaModelFor('ingest', { ollamaModel: 'phi4:14b' }, THIS_MACHINE)).toBe('phi4:14b');
+    expect(seen).toEqual([]);
+  });
+
+  it('a chosen model that is missing is substituted and announced', () => {
+    const seen: unknown[] = [];
+    setOllamaSubstitutionListener((s) => seen.push(s));
+    expect(ollamaModelFor('ingest', { ollamaModel: 'qwen3:32b' }, THIS_MACHINE)).toBe('mistral-small3.2:24b');
+    expect(seen).toEqual([{ task: 'ingest', chosen: 'qwen3:32b', used: 'mistral-small3.2:24b' }]);
+  });
+
+  it('the caller with no model and no installed list asks the server, and says to pull when empty', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ models: [] }) })));
+    await expect(resolveOllamaModelOrThrow(undefined, 'http://x')).rejects.toThrow(NO_OLLAMA_MODEL_MESSAGE);
+    await expect(chatOllama([{ role: 'user', content: 'hi' }], 's')).rejects.toThrow(/ollama pull/);
+  });
+
+  it('the caller picks the best installed model when the server has some', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ models: [{ name: 'gemma3:4b' }] }) })));
+    await expect(resolveOllamaModelOrThrow(undefined, 'http://x')).resolves.toBe('gemma3:4b');
+    await expect(resolveOllamaModelOrThrow('mine:1', 'http://x')).resolves.toBe('mine:1');
   });
 });

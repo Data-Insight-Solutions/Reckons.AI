@@ -8,7 +8,7 @@
  * `example-archive-is-an-enterprise-dam`). Nobody chose that; there was simply nowhere to say
  * otherwise.
  *
- * ONE RESOLVER, NOT TEN FALLBACKS. Ten call sites each wrote `s.ollamaModel ?? 'llama3.2'`. Ten
+ * ONE RESOLVER, NOT TEN FALLBACKS. Ten call sites each wrote `s.ollamaModel ?? <a model name>`. Ten
  * copies of a default is ten places for it to drift, and no place to add a task without editing
  * all of them. Everything goes through here now.
  *
@@ -55,8 +55,25 @@ const FIELD: Record<OllamaTask, keyof OllamaModelSettings> = {
   mergeAnalysis: 'ollamaMergeAnalysisModel',
 };
 
-/** Last-resort default, in ONE place. Small and almost always present on a fresh Ollama install. */
-export const FALLBACK_OLLAMA_MODEL = 'llama3.2';
+/**
+ * The roles a model can be picked for. The five tasks map onto them (`roleForTask`); `code` has no
+ * task yet but the setup guide and the picker use it, so the preference list lives here.
+ */
+export type OllamaRole = 'extraction' | 'chat' | 'code';
+
+export function roleForTask(task: OllamaTask): OllamaRole {
+  return task === 'chat' ? 'chat' : 'extraction';
+}
+
+/**
+ * A model worth suggesting in a message when nothing is installed. NOT a default: nothing is ever
+ * run from this name, it only appears in "run `ollama pull ...`".
+ */
+export const SUGGESTED_PULL_MODEL = 'gemma3';
+
+/** The error text a caller shows when no Ollama model is installed and none is chosen. */
+export const NO_OLLAMA_MODEL_MESSAGE =
+  `No Ollama model is installed — run \`ollama pull ${SUGGESTED_PULL_MODEL}\`, or choose one in Settings → Ollama.`;
 
 /**
  * Resolve a model name against the models the server actually has installed (the `/api/tags`
@@ -75,39 +92,37 @@ export function resolveInstalledModel(name: string, installed: string[]): string
 }
 
 /**
- * Preferred local models, best first, for a server that has any of them installed.
+ * Preferred local models per role, best first, for a server that has any of them installed.
  *
- * The ORDER follows the task brief of 2026-11-03 (Matt), which cited this machine's extraction
- * benches: zero invented facts outranks recall, because an invented triple is a persistent
- * citable claim while a missed one is only an absence. The per-model recall figures in that
- * brief are NOT reproduced here because the result files that back them are not in the repo,
- * so they cannot be checked from this file. `qwen3:32b` heads the list but was removed from
- * this machine on 2026-10-26; resolution skips names that are not installed, so it only
- * applies to a machine that has it. `qwen3-coder` is a code model that tends to mangle prose,
- * so it sits just above the fallback. Models never benched here fall back to public
- * benchmarks, then to the first non-embedding model installed.
+ * The extraction ORDER follows the task brief of 2026-11-03 (Matt), which cited this machine's
+ * extraction benches: zero invented facts outranks recall, because an invented triple is a
+ * persistent citable claim while a missed one is only an absence. The per-model recall figures are
+ * NOT reproduced here because the result files that back them are not in the repo. Resolution
+ * skips names that are not installed. `qwen3-coder` is a code model that tends to mangle prose,
+ * so it is last among the extraction picks. Chat favors general instruction-following models; code
+ * favors the code models. `llama3.2` stays in the lists only as a small option for low-RAM
+ * machines: it is never named as a default.
  */
-export const PREFERRED_OLLAMA_MODELS = [
-  'qwen3:32b',
-  'mistral-small3.2:24b',
-  'gemma3:27b',
-  'phi4:14b',
-  'qwen3-coder',
-  'llama3.2',
-];
+export const PREFERRED_OLLAMA_MODELS_BY_ROLE: Record<OllamaRole, string[]> = {
+  extraction: ['qwen3:32b', 'mistral-small3.2:24b', 'gemma3:27b', 'phi4:14b', 'gemma3', 'qwen3-coder', 'llama3.2'],
+  chat: ['mistral-small3.2:24b', 'gemma3:27b', 'qwen3:32b', 'phi4:14b', 'gemma3', 'llama3.2', 'qwen3-coder'],
+  code: ['qwen3-coder', 'devstral-small-2', 'qwen3:32b', 'phi4:14b', 'mistral-small3.2:24b'],
+};
+
+/** The extraction ordering (kept for existing importers). */
+export const PREFERRED_OLLAMA_MODELS = PREFERRED_OLLAMA_MODELS_BY_ROLE.extraction;
 
 /**
- * The model to run when the user has not chosen one: the best preferred model the server has,
- * else the first installed model that is not an embedding model (embedding models cannot do
- * extraction or chat), else the bare fallback (nothing is installed — or Ollama is down).
+ * The best installed model for a role: the first preferred model the server has, else the first
+ * installed model that is not an embedding model (embedders cannot do extraction or chat), else
+ * undefined — nothing usable is installed. There is deliberately NO invented fallback name.
  */
-export function pickDefaultOllamaModel(installed: string[]): string {
-  for (const name of PREFERRED_OLLAMA_MODELS) {
+export function pickDefaultOllamaModel(installed: string[], role: OllamaRole = 'extraction'): string | undefined {
+  for (const name of PREFERRED_OLLAMA_MODELS_BY_ROLE[role]) {
     const resolved = resolveInstalledModel(name, installed);
     if (resolved) return resolved;
   }
-  const firstUsable = installed.find((name) => !name.toLowerCase().includes('embed'));
-  return firstUsable ?? FALLBACK_OLLAMA_MODEL;
+  return installed.find((name) => !name.toLowerCase().includes('embed'));
 }
 
 /** The user's own choice for a task — task override, else the sub-task's analyze parent, else the
@@ -127,7 +142,7 @@ export function explicitOllamaModel(task: OllamaTask, s: OllamaModelSettings): s
 }
 
 /**
- * The model for a task: its own override, else the general `ollamaModel`, else the fallback.
+ * The model for a task: its own override, else the general `ollamaModel`, else undefined — no model name is invented.
  *
  * `diffSummary` and `mergeAnalysis` are sub-tasks of analyze and inherit from it, matching how
  * `diffSummaryBackend` already falls back to `analyzeBackend`. Splitting the backend but not the
@@ -137,9 +152,10 @@ export function explicitOllamaModel(task: OllamaTask, s: OllamaModelSettings): s
  * resolved to the tag the server actually has (`llama3.2` → `llama3.2:3b`), and when nothing is
  * configured — or the chosen name is not installed — `pickDefaultOllamaModel` picks the best
  * model that IS there. A model the user chose that is installed is never overridden. Without a
- * list the resolution is exactly what it was before: the chosen name, else the bare fallback.
+ * list the result is the chosen name, else undefined; callers that must send a request resolve
+ * `undefined` through `resolveOllamaModelOrThrow` (providers.ts), which asks the server itself.
  */
-export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings, installed?: string[] | null): string {
+export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings, installed?: string[] | null): string | undefined {
   const explicit = explicitOllamaModel(task, s);
 
   if (installed) {
@@ -147,12 +163,14 @@ export function ollamaModelFor(task: OllamaTask, s: OllamaModelSettings, install
       const resolved = resolveInstalledModel(explicit, installed);
       if (resolved) return resolved;
     }
-    const used = pickDefaultOllamaModel(installed);
-    if (explicit) substitutionListener?.({ task, chosen: explicit, used });
-    return used;
+    const used = pickDefaultOllamaModel(installed, roleForTask(task));
+    if (used && explicit) substitutionListener?.({ task, chosen: explicit, used });
+    // Nothing usable installed: keep the person's own choice (the server will say it is missing)
+    // rather than inventing a name; with no choice either, undefined.
+    return used ?? explicit;
   }
 
-  return explicit ?? FALLBACK_OLLAMA_MODEL;
+  return explicit;
 }
 
 /** A chosen model the server does not have, and the installed one that ran in its place. */

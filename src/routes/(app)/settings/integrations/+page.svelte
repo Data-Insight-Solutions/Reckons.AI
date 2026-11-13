@@ -165,10 +165,9 @@
       color: '#1a9b8e',
       keyField: undefined,
       modelField: 'ollamaModel',
-      modelDefault: 'llama3.2',
       features: ['ingest', 'analyze', 'chat'],
       docsUrl: 'https://ollama.com/',
-      note: 'Fully local, GPU-accelerated. Best offline quality. Run: ollama serve + ollama pull llama3.2'
+      note: 'Fully local, GPU-accelerated. Best offline quality. Run: ollama serve, then pull a small model (e.g. ollama pull gemma3). Leave the model blank to use whatever is installed.'
     },
     {
       id: 'wasm',
@@ -282,7 +281,7 @@
   async function saveProvider(p: ProviderDef) {
     const patch: Partial<SettingsRecord> = {};
     if (p.keyField)   patch[p.keyField]   = keyInputs[p.id]?.trim() || undefined as any;
-    if (p.modelField) patch[p.modelField] = modelInputs[p.id]?.trim() || p.modelDefault as any;
+    if (p.modelField) patch[p.modelField] = modelInputs[p.id]?.trim() || p.modelDefault as any; // Ollama has no default: blank = Automatic (F279.1)
     await updateSettings(patch);
   }
 
@@ -704,7 +703,7 @@
           <input
             type="text"
             bind:value={modelInputs[p.id]}
-            placeholder={p.modelDefault}
+            placeholder={p.modelDefault ?? 'Automatic'}
             onblur={() => saveProvider(p)}
           />
         </label>

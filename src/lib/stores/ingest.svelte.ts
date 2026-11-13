@@ -244,7 +244,7 @@ export async function ingest(
     backend === 'claude'     ? (s.claudeModel     ?? 'claude-opus-5-5')                        :
     backend === 'openai'     ? (s.openaiModel     ?? 'gpt-4o-mini')                            :
     backend === 'gemini'     ? (s.geminiModel     ?? 'gemini-2.0-flash')                       :
-    backend === 'ollama'     ? (ollamaModel ?? ollamaModelFor('ingest', s))             :
+    backend === 'ollama'     ? (ollamaModel ?? ollamaModelFor('ingest', s) ?? 'ollama (automatic)') :
     backend === 'wasm'       ? (s.wasmIngestModel || s.wasmModel || 'onnx-community/Qwen2.5-0.5B-Instruct') :
     backend === 'openrouter' ? (s.openrouterModel ?? 'meta-llama/llama-3.2-3b-instruct:free')  :
     backend === 'reckons'    ? (s.reckonsModel    ?? '@cf/meta/llama-3.1-8b-instruct')         :
@@ -390,7 +390,7 @@ export async function ingest(
         // prompt above — pass it through as an override so small-model prompt
         // selection doesn't replace it.
         triples = await extractWithOllama(text, title, {
-          model: ollamaModel ?? ollamaModelFor('ingest', s),
+          model: ollamaModel ?? ollamaModelFor('ingest', s), // undefined = resolved against the server
           baseUrl: s.ollamaBaseUrl,
           systemPromptOverride: kind === 'repository' ? systemPrompt : undefined,
           promptMode: s.ollamaPromptMode,

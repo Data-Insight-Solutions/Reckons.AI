@@ -55,7 +55,7 @@ export type SettingsRecord = {
   /** Sub-task overrides within analyze — fall back to analyzeBackend when absent */
   diffSummaryBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
-  ollamaModel: string;
+  ollamaModel?: string;
   /**
    * Per-task Ollama model overrides — fall back to `ollamaModel` when absent.
    *
@@ -319,7 +319,8 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   ingestBackend: (import.meta.env.VITE_INGEST_BACKEND as SettingsRecord['ingestBackend']) || undefined,
   analyzeBackend: (import.meta.env.VITE_ANALYZE_BACKEND as SettingsRecord['analyzeBackend']) || undefined,
   chatBackend: (import.meta.env.VITE_CHAT_BACKEND as SettingsRecord['chatBackend']) || undefined,
-  ollamaModel: import.meta.env.VITE_OLLAMA_MODEL ?? 'llama3.2',
+  // No default model name: unset means "Automatic" (best installed model by role, F279.1).
+  ollamaModel: import.meta.env.VITE_OLLAMA_MODEL || undefined,
   // Unset by default: absent means "use ollamaModel", so an existing install keeps its behaviour
   // exactly until someone deliberately splits a task off.
   ollamaIngestModel: import.meta.env.VITE_OLLAMA_INGEST_MODEL || undefined,
