@@ -47,7 +47,7 @@ test('outside the story, asking Shelly for a picture with no runner shows the co
   const state = page.locator('.runner-connect');
   await expect(state.first()).toBeVisible({ timeout: 40_000 });
   await expect(state.first()).toContainText('not connected');
-  await expect(page.getByText('Start the runner on your generation machine')).toBeVisible();
+  await expect(page.getByText('Start the agent watcher on your generation machine')).toBeVisible();
   // One in the panel strip, one under her queue_jobs card.
   expect(await state.count()).toBeGreaterThanOrEqual(2);
   await expect(page.getByRole('button', { name: 'Connect workspace folder' }).first()).toBeVisible();

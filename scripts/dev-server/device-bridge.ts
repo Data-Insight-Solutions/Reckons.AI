@@ -22,7 +22,9 @@
  * server can call it, which is the same trust the dev server already extends to its own pages.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { watchedFolders } from '../agent/gen-watch-core.js';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -73,6 +75,7 @@ export function mcpServers(json: unknown): McpServerView[] {
 type WatchState = {
   child?: ChildProcess;
   startedAt?: string;
+  workspace?: string;
   worker: boolean;
   /** The last complete snapshot line, already parsed. */
   snapshot?: unknown;
@@ -148,18 +151,28 @@ async function installed(root: string) {
   return { ollama, mcp, mcpFile: existsSync(mcpPath) ? '.mcp.json' : null };
 }
 
+/**
+ * A generation folder the runner may serve (F166.1.3): an absolute path to an existing directory.
+ * The browser cannot read the path of a folder it was given, so the person types it once; it reaches
+ * the agent watcher only as the RECKONS_GEN_FOLDERS environment value, never as a shell string.
+ */
+export function validWorkspace(value: unknown): string | undefined {
+  if (typeof value !== 'string' || !value || value.length > 1024 || value.includes('\0') || !path.isAbsolute(value)) return undefined;
+  try { return statSync(value).isDirectory() ? path.resolve(value) : undefined; } catch { return undefined; }
+}
+
 export function deviceBridge(): Plugin {
   const state: WatchState = { worker: true, stderr: [] };
   let root = process.cwd();
 
   const running = () => !!state.child && state.child.exitCode === null && state.child.signalCode === null;
 
-  function start(worker: boolean): void {
+  function start(worker: boolean, workspace?: string): void {
     if (running()) return;
     const tsxCli = createRequire(path.join(root, 'package.json')).resolve('tsx/cli');
     const args = [tsxCli, path.join(root, 'scripts/agent/watch.ts'), '--ndjson', ...(worker ? [] : ['--no-worker'])];
-    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1' } });
-    Object.assign(state, { child, worker, startedAt: new Date().toISOString(), snapshot: undefined, snapshotAt: undefined, stderr: [], exit: undefined, stopRequested: false });
+    const child = spawn(process.execPath, args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NO_COLOR: '1', ...(workspace ? { RECKONS_GEN_FOLDERS: workspace } : {}) } });
+    Object.assign(state, { child, worker, workspace, startedAt: new Date().toISOString(), snapshot: undefined, snapshotAt: undefined, stderr: [], exit: undefined, stopRequested: false });
     let buf = '';
     child.stdout!.setEncoding('utf8');
     child.stdout!.on('data', (chunk: string) => {
@@ -201,18 +214,33 @@ export function deviceBridge(): Plugin {
           switch (route) {
             case 'GET /agent-watch':
               return json(res, 200, {
-                running: running(), pid: running() ? state.child!.pid : undefined, worker: state.worker, startedAt: state.startedAt,
+                running: running(), pid: running() ? state.child!.pid : undefined, worker: state.worker, workspace: running() ? state.workspace : undefined, startedAt: state.startedAt,
                 snapshot: state.snapshot ?? null, snapshotAt: state.snapshotAt, exit: state.exit, stderr: state.stderr,
                 command: 'npm run agent:watch',
               });
             case 'POST /agent-watch/start': {
               const body = await readBody(req);
-              start(body.worker !== false);
+              const workspace = body.workspace === undefined ? undefined : validWorkspace(body.workspace);
+              if (body.workspace !== undefined && !workspace) return json(res, 400, { error: 'workspace must be an absolute path to an existing folder' });
+              start(body.worker !== false, workspace);
               return json(res, 202, { running: running() });
             }
             case 'POST /agent-watch/stop':
               stop();
               return json(res, 202, { stopping: true });
+            case 'GET /generation-services': {
+              // What the agent watcher reports for each folder it serves (watcher.json), read-only.
+              const cfgPath = path.join(process.env.XDG_CONFIG_HOME ?? path.join(homedir(), '.config'), 'reckons/generation-folders.json');
+              let config: unknown; try { config = JSON.parse(readFileSync(cfgPath, 'utf8')); } catch { config = undefined; }
+              const { folders, idleSeconds } = watchedFolders({ home: homedir(), env: process.env, config, exists: existsSync });
+              const reports = folders.map(folder => {
+                try {
+                  const w = JSON.parse(readFileSync(path.join(folder, '.reckons-generation', 'watcher.json'), 'utf8')) as { heartbeat?: number; services?: unknown; runner?: string };
+                  return { folder, fresh: typeof w.heartbeat === 'number' && Date.now() - w.heartbeat < 30_000, services: w.services ?? [], runner: w.runner };
+                } catch { return { folder, fresh: false, services: [], runner: undefined }; }
+              });
+              return json(res, 200, { idleSeconds, folders: reports, configFile: cfgPath });
+            }
             case 'GET /host':
               return json(res, 200, hostSpecs());
             case 'GET /installed':

@@ -3,6 +3,11 @@ import {
   verifyOutput, type GenerationCapabilities, type GenerationJob, type GenerationRequest,
 } from './protocol';
 
+function notConnected(error: unknown): Error {
+  if (error instanceof DOMException && error.name === 'NotFoundError') return new Error('No generation runner is connected to this workspace.');
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 /** Capture the folder handle once; switching workspaces cannot redirect an in-flight request. */
 export class WorkspaceGenerationClient {
   constructor(private readonly workspace: FileSystemDirectoryHandle) {}
@@ -23,14 +28,19 @@ export class WorkspaceGenerationClient {
     await writer.write(JSON.stringify(value));
     await writer.close();
   }
+  /**
+   * The runner's own report while it runs; otherwise the agent watcher's (watcher.json, same shape),
+   * which is how a folder with a watcher but no running runner still reads as connected: the watcher
+   * starts the runner when a request arrives and stops it after it has idled.
+   */
   async capabilities(): Promise<GenerationCapabilities> {
-    try { return parseCapabilities(await this.read(await this.root(), 'capabilities.json')); }
+    const root = await this.root().catch((error) => { throw notConnected(error); });
+    try { return parseCapabilities(await this.read(root, 'capabilities.json')); }
     catch (error) {
-      if (error instanceof DOMException && error.name === 'NotFoundError') {
-        throw new Error('No generation runner is connected to this workspace.');
-      }
-      throw error;
+      if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error;
     }
+    try { return parseCapabilities(await this.read(root, 'watcher.json')); }
+    catch (error) { throw notConnected(error); }
   }
   async submit(input: GenerationRequest): Promise<void> {
     const request = parseRequest(input);

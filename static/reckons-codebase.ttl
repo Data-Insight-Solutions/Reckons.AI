@@ -33,11 +33,22 @@ code:generation
     kpred:has-file "src/lib/generation/attach.ts" ;
     kpred:has-file "src/lib/components/GenerationStory.svelte" ;
     kpred:has-file "src/lib/components/RunnerConnect.svelte" ;
+    kpred:has-file "src/lib/components/RunnerConnectDialog.svelte" ;
+    kpred:has-file "src/lib/stores/runner-popup.svelte.ts" ;
+    kpred:has-file "src/lib/generation/connect-steps.ts" ;
+    kpred:has-file "src/lib/generation/services.ts" ;
+    kpred:has-file "src/lib/generation/runner-bridge.ts" ;
+    kpred:has-file "scripts/dev-server/device-bridge.ts" ;
+    kpred:has-file "scripts/agent/gen-watch-core.ts" ;
+    kpred:has-file "scripts/agent/gen-watch.ts" ;
     kpred:has-file "scripts/content/generation-runner.ts" ;
     kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
-    kpred:tested-by "tests/e2e/generation-connect-outside-story.test.ts" .
+    kpred:tested-by "tests/e2e/generation-connect-outside-story.test.ts" ;
+    kpred:tested-by "tests/e2e/generation-connect-popup.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/connect-steps.test.ts" ;
+    kpred:tested-by "scripts/agent/__tests__/gen-watch-core.test.ts" .
 
 code:sim
     rdf:type ktype:Concept ;

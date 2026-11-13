@@ -44,3 +44,15 @@ describe('mcpServers', () => {
     expect(mcpServers({})).toEqual([]);
   });
 });
+
+describe('validWorkspace (F166.1.3)', () => {
+  it('accepts an absolute existing folder and nothing else', async () => {
+    const { validWorkspace } = await import('../device-bridge.js');
+    expect(validWorkspace(process.cwd())).toBe(process.cwd());
+    expect(validWorkspace('relative/dir')).toBeUndefined();
+    expect(validWorkspace('/definitely/not/here-xyz')).toBeUndefined();
+    expect(validWorkspace(process.cwd() + '\0x')).toBeUndefined();
+    expect(validWorkspace(`${process.cwd()}/package.json`)).toBeUndefined();
+    expect(validWorkspace(42)).toBeUndefined();
+  });
+});
