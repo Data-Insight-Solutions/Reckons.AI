@@ -1,7 +1,7 @@
 ---
 title: "Ingest"
 slug: "ingest"
-order: 1021
+order: 1025
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

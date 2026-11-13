@@ -1,7 +1,7 @@
 ---
 title: "Git Analysis"
 slug: "git-analysis-features"
-order: 1017
+order: 1019
 section: "Features"
 parent: "mcp-workspace"
 template: doc

@@ -3,6 +3,44 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-13 (overnight) — START HERE: v0.2.8 is on staging; promotion to main waits on owed docs
+
+Matt went to bed about 23:20 CST on 2026-11-12, asking for overnight work through overseer subagents and local jobs.
+
+**Release v0.2.8.** On staging (PR #618 merged 2026-11-13 05:03 UTC). PR #624 (staging -> main) is open
+and MATT merges it; it is BLOCKED by `release-notes.ts --check-docs`: 32 features shipped without a docs
+entity. An overseer is writing grouped docs pages on `docs/v028-owed` (worktree tripleNotes-docs-028) ->
+PR into dev -> then a dev -> staging promotion (Claude merges) -> #624 re-runs. Matt reviewed on
+https://claude.ai/artifact/Bnm5TJmJkEjM56j9sZDFXq : 9 pass, 1 fail (Shelly generation: fixed in #620,
+F166.1 recorded in progress until he tries the real folder picker), 2 skip; release, ring link and
+search index all 'yes'. His browser served stale builds twice today (PWA cache): hard reload fixes it.
+
+**After #624 merges (reckons.ai = v0.2.8):** Matt pushes `content/site-pages` in DataInsightSolutions-website
+(local commits: company voice 6edd5f7, ring link 6032fbe, blog covers 02756b1, business-card files when
+that agent lands them); his DIS PR #3 previews through the GitHub workflow; merging it publishes the site.
+Claude cannot push there (matt-roe has no write access; the Data-Insight-Solutions identity is Matt's).
+
+**Live today:** data-insight.solutions and data-insight-solutions.com serve the new site from Cloudflare
+Pages (Matt switched the domains); Microsoft 365 records verified unchanged; the contact form accepts
+both origins. Production currently holds build v8; later work is on the preview only.
+
+**In flight overnight (each opens a PR into dev and stops; none merges to main):**
+- docs owed for v0.2.8 (release-critical, first);
+- DIS business card in the DIS space (front + back WITHOUT the phone, Matt's choice), the print-sheet
+  script, F294.8 'derived outputs regenerate' and F295 Canva integration (plan) — worktree tripleNotes-dis-card;
+- the runner connect popup and on-demand generation services (Matt: no always-on service; the agent
+  watcher starts a service on request, prompts install when missing, services listed separately and not
+  bundled; shaped as plugin records) — worktree tripleNotes-runner-popup, resumes after the docs work;
+- PR #625: F296 plugin library planned for v0.2.9 (everything is a plugin, one filtered library replacing
+  seven settings pages); two open questions for Matt on the entity.
+
+**Local jobs queued:** release-burndown, claim-audit, docs-staleness, describe-entities, proposal-yield.
+The queue had been paused by the RAM guard at 22:59 (a deputy job left 1.0 GiB free); resumed at 23:25
+with 13 GiB available.
+
+**Business cards:** the print sheet is ~/Documents/DIS-business-cards-letter-duplex-v3.pdf (from the design as
+Matt last edited it). Overnight inputs are in ~/.local/share/reckons/overnight-2026-11-12/.
+
 ## 2026-11-12 (night) — START HERE: what ran overnight while Matt slept (Claude Code, Opus 5.5, with Sonnet agents)
 
 Matt went to bed about 00:40 CST after answering four questions (recorded as `kpred:decided` on the entities):
