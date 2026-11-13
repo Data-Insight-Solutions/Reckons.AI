@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { getCurrentKbId } from '$lib/storage/kb-registry';
-  import { supportsWorkspace } from '$lib/stores/workspace.svelte';
+  import { supportsWorkspace, workspaceState } from '$lib/stores/workspace.svelte';
   import { applyShellyViewAdjust } from '$lib/stores/shelly-bridge.svelte';
   import {
     cancelJob, clearJobsError, connectJobs, generationJobs as gen, retryJob, submitJobs, useGenerationJobs,
@@ -58,6 +58,13 @@
   }
 
   $effect(() => { if (gen.attached.length) void scroll(); });
+  // A folder that becomes connected after the story opened is picked up now, not at the next 2 s poll.
+  // Otherwise the Reconnect button stays on screen for up to two seconds and then vanishes under
+  // whoever is about to press it (the e2e click race on dev, 2026-11-13). Fires on the state change only.
+  $effect(() => {
+    if (workspaceState() !== 'connected') return;
+    untrack(() => { if (!gen.capabilities && !gen.connecting) void connectJobs(); });
+  });
 
   onMount(() => {
     try {
@@ -91,11 +98,12 @@
     {#if !capabilities || connectionError}
       <div class="connection">
         <p>{connectionError || 'Checking the local generation runner…'}</p>
-        {#if supportsWorkspace()}
-          <button onclick={() => connect(true)} disabled={connecting}>Connect workspace folder</button>
-          <button onclick={() => connect()} disabled={connecting}>Reconnect runner</button>
-        {:else}
+        {#if !supportsWorkspace()}
           <p>Local generation needs a browser with workspace folder access, such as desktop Chrome or Edge.</p>
+        {:else if !connecting}
+          <!-- No buttons while a connection is in flight: its answer is about to remove them. -->
+          <button onclick={() => connect(true)}>Connect workspace folder</button>
+          <button onclick={() => connect()}>Reconnect runner</button>
         {/if}
         <details>
           <summary>Set up local generation</summary>
