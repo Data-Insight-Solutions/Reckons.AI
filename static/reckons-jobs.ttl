@@ -204,7 +204,7 @@ job:dead-weight rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "script" ;
     kpred:emits         "question" ;
     kpred:command       "npx tsx scripts/offline/dead-weight.ts --pending" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          23 .
 
@@ -314,7 +314,7 @@ job:extraction-score rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "agent" ;
     kpred:emits         "nothing" ;
     kpred:command       "npx tsx scripts/offline/extraction-score.ts" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          16 ;
     kpred:job-queues    "false" .
@@ -550,6 +550,17 @@ job:release-burndown rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "false" ;
     hnav:order          1 .
 
+job:site-space-check rdf:type          ktype:OfflineJob ;
+    rdfs:label          "site-space-check" ;
+    skos:prefLabel      "site-space-check" ;
+    skos:definition     "F274.7: fails when static/starter-data-insight-solutions.ttl differs from what the sibling Data Insight Solutions site repository now generates from its PUBLISHED pages. Report-only and exit 0 when that repository is not on this machine, so CI and other checkouts pass. Scheduled daily as sched:site-space-check; the repository is read through $HOME so no private path is stored." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "nothing" ;
+    kpred:command       "npx tsx scripts/starter/build-site-space.ts --site=\"$HOME/Github/DataInsightSolutions-website\" --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          99 .
+
 job:release-review-space rdf:type          ktype:OfflineJob ;
     rdfs:label          "release-review-space" ;
     skos:prefLabel      "release-review-space" ;
@@ -623,7 +634,7 @@ job:script-inventory rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "script" ;
     kpred:emits         "finding" ;
     kpred:command       "npx tsx scripts/offline/script-inventory.ts --pending" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          61 .
 
@@ -866,7 +877,7 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:site-space-check, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;

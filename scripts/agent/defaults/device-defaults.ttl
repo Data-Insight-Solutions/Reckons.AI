@@ -71,11 +71,17 @@
     kpred:device <urn:reckons:device/default> ;
     kpred:limit 4096 .
 
-# RAM guard (F74.11, scripts/agent/session-ram.ts). A GPU job does not start while system RAM available is under this many MiB
+# RAM guard (F74.11, scripts/agent/session-ram.ts). A GPU job does not start while system RAM available is under this many MiB.
+# Raised 6144 -> 16384 on 2026-11-13. Measured 2026-11-12/13: SEVEN jobs in 48 h were stopped by the 2 GiB floor, each after starting
+# above the old 6 GiB. Ollama's journal says why: with 13.6 GiB free it logged "disabling mmap for llama-server load due to host
+# memory pressure" for a 15.7 GiB model, so the load staged the whole file in RAM and available fell to 1.0 GiB. A 15 to 17 GiB
+# model needs about that much free BEFORE it loads, so this is the start gate matching the load, not a loosened guard. The floor is unchanged.
+# WEAKNESS: with desktop sessions open this machine often has 14 to 16 GiB available, so GPU jobs now wait more often; close memory-heavy apps
+# or set a lower figure for a smaller model in ~/.config/reckons/device.ttl.
 <urn:reckons:threshold/ramStartAvailMiB> a ktype:Threshold ;
     rdfs:label "ramStartAvailMiB" ;
     kpred:device <urn:reckons:device/default> ;
-    kpred:limit 6144 .
+    kpred:limit 16384 .
 
 # A running job is stopped when system RAM available falls under this many MiB, even a --ram-spill job
 <urn:reckons:threshold/ramFloorAvailMiB> a ktype:Threshold ;

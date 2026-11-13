@@ -56,8 +56,8 @@ sched:offer-tasks rdf:type    ktype:Schedule ;
 
 sched:review-stars rdf:type   ktype:Schedule ;
     rdfs:label      "Review new GitHub stars" ;
-    kpred:every     "24h" ;
-    kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 15" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/stars-scan.ts --pending --limit 8" ;
     kpred:tier      "script" ;
     kpred:network   "true" ;
     kpred:enabled   "true" ;
@@ -139,16 +139,16 @@ sched:graph-lint rdf:type ktype:Schedule ;
 
 sched:claim-audit rdf:type ktype:Schedule ;
     rdfs:label      "Claim audit" ;
-    kpred:every     "1w" ;
-    kpred:command   "npx tsx scripts/offline/claim-audit.ts --pending" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/claim-audit.ts" ;
     kpred:tier      "script" ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "true" ;
-    kpred:description "Hand-written claims against the graph." .
+    kpred:description "Hand-written claims against the graph (README, SAFETY.md, COUNSEL-BRIEF.md, app shell, landing copy). Daily and REPORT-ONLY since 2026-11-13 (overseer): the run log in the jobs state folder is the report, and it does not write proposals, because 6 findings in SAFETY.md and COUNSEL-BRIEF.md were already known and a daily --pending run would only re-queue them. Run it with --pending by hand when a person is ready to rule on the findings." .
 
 sched:docs-staleness rdf:type ktype:Schedule ;
     rdfs:label      "Docs staleness" ;
-    kpred:every     "1w" ;
+    kpred:every     "1d" ;
     kpred:command   "npx tsx scripts/offline/docs-staleness.ts --quiet" ;
     kpred:tier      "script" ;
     kpred:harness   "session-worker" ;
@@ -234,8 +234,8 @@ sched:extraction-score rdf:type ktype:Schedule ;
     kpred:command   "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/extraction-score.ts --pending" ;
     kpred:tier      "agent" ;
     kpred:harness   "session-worker" ;
-    kpred:enabled   "true" ;
-    kpred:description "Agent tier: proposals only." .
+    kpred:enabled   "false" ;
+    kpred:description "Agent tier: proposals only. DISABLED 2026-11-13 (overseer): proposal-yield shows 69 proposed, 64 ruled on, 0% accepted. Re-enable only after a reviewed sample shows the scoring finds something a person acts on. offline:all --tier=agent still runs it weekly through sched:offline-all-agent; that schedule matches no single producer, so the F74.9 hold does not cover it (a gap, said out loud)." .
 
 sched:offline-all-agent rdf:type ktype:Schedule ;
     rdfs:label      "Agent-tier offline jobs" ;
@@ -264,8 +264,8 @@ sched:terminology-sweep rdf:type ktype:Schedule ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
     kpred:harness   "session-worker" ;
-    kpred:enabled   "true" ;
-    kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies." .
+    kpred:enabled   "false" ;
+    kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies. DISABLED 2026-11-13 (overseer, Matt: "aim for improvement of outcomes, not needless compute"): every term-senses producer shows 0% accepted (about 190 ruled); see the fix-or-deprecate suggestion in the review queue." .
 
 sched:rename-pr rdf:type ktype:Schedule ;
     rdfs:label      "Safe rename batch as a pull request" ;
@@ -276,3 +276,42 @@ sched:rename-pr rdf:type ktype:Schedule ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "true" ;
     kpred:description "Applies the next safe kb rename batch in a fresh worktree, runs every gate, and opens a PR to dev only when all pass. Weekly. Talks to GitHub (push, PR)." .
+
+
+# -- Standing guards for what shipped the week of 2026-11-09 (job-queue overseer, Matt 2026-11-13: "schedule more
+# jobs"). All script tier, no model, so the F74.9 back-pressure never holds them and no GPU or RAM gate applies.
+# Findings go to the run log in the jobs state folder and to the queue's done log (outcome failed on a nonzero exit);
+# none writes a proposal, so a daily run cannot pile up the review queue. The DIS site repository is a sibling checkout,
+# read through $HOME so no private path is in this file; when it is not there each check exits 0 (build-site-space says so; fact-expiry reports 0 facts, which is why its output, not only its exit code, is the record).
+
+sched:dis-fact-expiry rdf:type ktype:Schedule ;
+    rdfs:label      "Website facts past their valid-until date" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/fact-expiry.ts --site=\"$HOME/Github/DataInsightSolutions-website\"" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F293. Guards the Data Insight Solutions site against stating a fact after its own valid-until date. A date compared with today's date; exits 1 on an expired fact, and facts inside the 60-day window are reported without failing. Reads the sibling site repository directly, so it sees a page edited since the last example-space build." .
+
+sched:site-space-check rdf:type ktype:Schedule ;
+    rdfs:label      "Website example space matches the site" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/starter/build-site-space.ts --site=\"$HOME/Github/DataInsightSolutions-website\" --check" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F274.7. Guards static/starter-data-insight-solutions.ttl against drifting from the PUBLISHED pages of the site repository. Exits 1 when the committed space differs from what the site now generates (regenerate it on a branch); report-only when the site repository is absent. Reads published pages only, never drafts or config." .
+
+sched:release-review-space rdf:type ktype:Schedule ;
+    rdfs:label      "Release review spaces match the roadmap" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/release-review-space.ts --check" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F34.5. Guards each static/review-<version>.ttl against the roadmap's release parts and the Testing graph's workflows it is generated from. Exits 1 on a difference. It also runs inside sched:offline-script-tier; this separate entry gives it its own last-success so a stale review space is visible on its own." .
+
+# PLANNED, not scheduled: the business-card print sheet. `npm run print:sheet -- --check` compares a sheet's receipt with its
+# design export, but it needs the front, back and sheet paths as arguments and the card design export lives in the
+# private site checkout, so a schedule cannot name them without a private path. Plan: print-sheet.ts reads the
+# site's assets/brand/business-card.json for the three paths (a --site flag), then the schedule is one line.
