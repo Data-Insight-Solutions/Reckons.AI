@@ -575,6 +575,14 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 <urn:kbase:vocabulary/terminology>
     kpred:ui-jargon "IndexedDB", "localStorage", "IRI", "URN", "triple", "reification", "reified",
         "N-Quads", "TriG", "named graph", "SHACL", "RDFS", "OWL", "namespace", "mutation", "serialization" .
+# DOCS JARGON (2026-11-13): extra terms a docs page must not use without saying what they mean, read by
+# scripts/offline/lib/docs-gates.ts (docs-expand). A SEPARATE predicate from kpred:ui-jargon on purpose: ui-jargon
+# feeds the on-screen ratchet (jargon/43), so listing "RDF" or "Turtle" there would raise that count on screens that
+# are fine. File extensions (.ttl, .jsonl, ...) are matched by rule in the gate, not listed. Origin: a reviewer
+# rejected docs-expand drafts for "triples", ".ttl", "content hashing", "Manifest V3" and "roundtrip" (Matt, 2026-11-13).
+<urn:kbase:vocabulary/terminology>
+    kpred:docs-jargon "TTL", "Turtle", "RDF", "SPARQL", "URI", "JSON-LD", "Manifest V3", "content hashing",
+        "roundtrip", "round-trip", "ontology", "schema.org", "SKOS", "PROV-O" .
 # Baselines measured 2026-10-07 on dev (before #386 fixed /kb). The ratchet lets them fall, never rise.
 <urn:kbase:vocabulary/terminology> kpred:ui-term-ratchet "jargon/43", "graph-as-space/73" .
 # A feature name containing a jargon word is the name, not the word (ui-terms.ts skips it). Matt named
