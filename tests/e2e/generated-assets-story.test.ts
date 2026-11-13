@@ -144,6 +144,23 @@ test('Shelly waits for the image, offers derivations, and resumes without duplic
   expect((await jobRequests(page)).length).toBe(3);
 });
 
+test('a folder connected after the story opened is picked up at once; no connect button lingers for the next poll', async ({ page }) => {
+  // Regression (dev, 2026-11-13): the button stayed up to 2 s, then vanished under a click in progress.
+  await page.evaluate(async () => {
+    const path = '/src/lib/stores/shelly-bridge.svelte.ts';
+    const bridge = await import(/* @vite-ignore */ path);
+    bridge.startExplore();
+  });
+  await page.getByRole('button', { name: /Create an asset with Shelly/ }).click();
+  await expect(page.getByRole('heading', { name: 'Let’s create something' })).toBeVisible();
+  const reconnect = page.getByRole('button', { name: 'Reconnect runner', exact: true });
+  await expect(reconnect).toBeVisible();
+  await fixtureWorkspace(page);
+  // The story polls every 2 s; reacting to the folder must be faster than one poll.
+  await expect(reconnect).toHaveCount(0, { timeout: 1_500 });
+  await expect(page.getByRole('button', { name: 'Generate image', exact: true })).toBeVisible();
+});
+
 test('failed and cancelled images never unlock derivations; retry is a new job', async ({ page }) => {
   await fixtureWorkspace(page);
   await openStory(page);
