@@ -14,6 +14,7 @@
   import { ago, duration, dueText, headline, sortDue, watcherProblem, type Level, type WatchStatus } from '$lib/device/agent-watch-view';
   import { browserSpecs, bytes, waitForExtension, type BrowserSpecs } from '$lib/device/browser-specs';
   import { integrations } from '$lib/device/integrations';
+  import { openRunnerPopup } from '$lib/stores/runner-popup.svelte';
 
   const BRIDGE = '/__reckons/device';
 
@@ -123,6 +124,7 @@
 <section id="d-agents" class="card">
   <div class="card-head">
     <h3>agent watch</h3>
+    <button onclick={openRunnerPopup}>connect the local generation runner</button>
     {#if bridge && watch}
       <div class="controls">
         {#if watch.running}

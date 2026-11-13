@@ -33,6 +33,8 @@
   import DownloadConsentDialog from '$lib/components/DownloadConsentDialog.svelte';
   import ArchiveReferenceDialog from '$lib/components/ArchiveReferenceDialog.svelte';
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
+  import RunnerConnectDialog from '$lib/components/RunnerConnectDialog.svelte';
+  import { runnerPopup } from '$lib/stores/runner-popup.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
   import { initOllamaModelNotice } from '$lib/stores/ollama-model-notice';
   import { initViewport } from '$lib/stores/viewport.svelte';
@@ -267,6 +269,7 @@
 <DownloadConsentDialog />
 <ArchiveReferenceDialog />
 <FeedbackDialog />
+<RunnerConnectDialog bind:open={runnerPopup.open} />
 
 {#if shellyChatOpen()}
   {#await import('$lib/components/TurtleChatPanel.svelte') then chatModule}

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { supportsWorkspace } from '$lib/stores/workspace.svelte';
-  import { connectJobs, generationJobs as gen } from '$lib/stores/generation-jobs.svelte';
+  import { openRunnerPopup } from '$lib/stores/runner-popup.svelte';
+  import { generationJobs as gen } from '$lib/stores/generation-jobs.svelte';
 
   /**
    * The local generation runner's state and the one connect control, wherever the person already is
@@ -16,7 +17,7 @@
   <span class="runner-state" role="status">{label}</span>
   {#if state !== 'connected'}
     {#if supportsWorkspace()}
-      <button class="sm" onclick={() => connectJobs(true)} disabled={gen.connecting}>Connect workspace folder</button>
+      <button class="sm" onclick={openRunnerPopup} disabled={gen.connecting}>Connect workspace folder</button>
     {:else}
       <span class="runner-help">Needs a browser with workspace folder access, such as desktop Chrome or Edge.</span>
     {/if}
