@@ -265,7 +265,7 @@ sched:terminology-sweep rdf:type ktype:Schedule ;
     kpred:command   "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "false" ;
-    kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies. DISABLED 2026-11-13 (overseer, Matt: "aim for improvement of outcomes, not needless compute"): every term-senses producer shows 0% accepted (about 190 ruled); see the fix-or-deprecate suggestion in the review queue." .
+    kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies. DISABLED 2026-11-13 (overseer, Matt: 'aim for improvement of outcomes, not needless compute'): every term-senses producer shows 0% accepted (about 190 ruled); see the fix-or-deprecate suggestion in the review queue." .
 
 sched:rename-pr rdf:type ktype:Schedule ;
     rdfs:label      "Safe rename batch as a pull request" ;
