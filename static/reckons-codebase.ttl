@@ -498,6 +498,7 @@ code:llm  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/stores/ollama-model-notice.ts" ;
           kpred:has-file "src/lib/stores/__tests__/ollama-model-notice.test.ts" ;
           kpred:has-file "src/lib/integrations/llm/voice-catalog.ts" ;
+          kpred:has-file "src/lib/integrations/llm/__tests__/no-bundled-key.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/extractor.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/ollama-extract.test.ts" ;
           kpred:tested-by "src/lib/integrations/llm/__tests__/prefer-local.test.ts" .

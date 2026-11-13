@@ -52,7 +52,7 @@ This is a refusal to **carry**, not a refusal to **let you have.** We're not jud
 
 ## Ethics, not just law
 
-Laws vary across borders, and legality is a floor, not a ceiling. Reckons.AI applies a **baseline ethical standard** regardless of whether something happens to be legal in a given place. There is a category we refuse **everywhere we are in the loop** — enforced at generation time by the ethics preamble ✅, and at distribution by the publish gate ✅ — and no explanation, purpose, or agreement unlocks it:
+Laws vary across borders, and legality is a floor, not a ceiling. Reckons.AI applies a **baseline ethical standard** regardless of whether something happens to be legal in a given place. There is a category we refuse **everywhere we are in the loop** — enforced at generation time by the ethics preamble ✅ (pinned by `src/lib/safety/__tests__/ethics-purpose.test.ts`, which also pins where it is deliberately omitted), and at distribution by the publish gate ✅ (pinned by `src/lib/publish/__tests__/publish-gate.test.ts`; the offline zip download is deliberately ungated) — and no explanation, purpose, or agreement unlocks it:
 
 - Any sexualization of minors
 - Non-consensual intimate content of real people
