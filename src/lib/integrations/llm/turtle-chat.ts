@@ -1,7 +1,7 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatReckons, chatChromeAI, type ChatMessage } from './providers';
 import { ollamaModelFor } from './model-for-task';
 import { chatWithWasm } from './wasm';
-import { preferLocalBackendSync } from './prefer-local';
+import { installedOllamaModels, preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
 import { ethicsPreambleFor, localityOf } from '../../safety/content-policy';
 
@@ -74,8 +74,34 @@ function buildReviewSection(ctx: KBContext): string {
   return `\n\n---\nVISUAL REVIEW — this graph is a visual-test story with ${ctx.reviewSteps!.length} step(s). Each step captured a screen; walk them IN ORDER and review the picture, not the graph. The steps (with their IRIs — use these in adjust_view selectEntity to bring each screenshot on screen):\n${steps}`;
 }
 
-function buildContextSection(ctx: KBContext): string {
-  if (ctx.reviewSteps?.length) return buildReviewSection(ctx);
+/**
+ * F166.1.2: tell Shelly what the person's own machine can make right now, and how to ask for it.
+ * Written from the runner's live capabilities, so she never offers a stage that is missing and
+ * never claims she "cannot generate images" when the honest answer is "your runner is not
+ * connected" (kb:shelly-generation-jobs constraint).
+ */
+export function buildJobsSection(ctx: KBContext): string {
+  const stages = ctx.localJobs?.stages ?? [];
+  if (!ctx.localJobs) return `\n\n---\nLOCAL JOBS — no local generation runner is connected yet. This applies in any knowledge base, not only a story. When asked for an image, picture, video, splat or 3D asset, answer the request itself (never a review step, a refusal, or "I cannot make images"): say in one sentence that generation runs on the person's own computer and needs the local runner started (npm run gen:serve, see /docs/features/generation-setup) and its workspace folder connected, then end with ONE queue_jobs action for what they asked. The chat shows a Connect control under your reply and the person can approve the plan once the runner is connected. Example:
+<kb-actions>
+[{"type":"queue_jobs","label":"1 image","jobs":[{"stage":"image","prompt":"a brass lantern on a wooden table, studio light"}]}]
+</kb-actions>`;
+  const ready = stages.filter(s => s.available).map(s => s.stage);
+  const missing = stages.filter(s => !s.available).map(s => `${s.stage} (${s.reason ?? 'unavailable'})`);
+  if (!ready.length) return `\n\n---\nLOCAL JOBS — the local runner is connected but nothing can run: ${missing.join('; ')}. Say what is missing; do not propose queue_jobs.`;
+  return `\n\n---\nLOCAL JOBS — the person's own computer can make: ${ready.join(', ')}.${missing.length ? ` Not available: ${missing.join('; ')}.` : ''}
+To make things, end your message with ONE queue_jobs action listing every job. Each job is {"stage":"image","prompt":"..."} or a derivation {"stage":"splat","from":N} / {"stage":"video","from":N,"prompt":"motion words"} where N is the 0-based index of an EARLIER image job in the same list. At most 12 jobs. Example, two images with a splat each:
+<kb-actions>
+[{"type":"queue_jobs","label":"2 images, each with a Gaussian splat","jobs":[{"stage":"image","prompt":"a brass lantern on a wooden table, studio light"},{"stage":"splat","from":0},{"stage":"image","prompt":"a ceramic teapot on a linen cloth, soft daylight"},{"stage":"splat","from":2}]}]
+</kb-actions>
+When asked for several DIFFERENT images, write a distinct, specific prompt for each. The person approves the whole list once; jobs run one at a time on their GPU (roughly 15 s per image, 40 s per splat, 60 s per video), and each result appears in this knowledge base with a Job entity recording it.`;
+}
+
+export function buildContextSection(ctx: KBContext): string {
+  // A story (the Generated assets example is one) is also a place to ASK for things. Without the
+  // jobs section here Shelly in free conversation never learned she could queue local generation, and
+  // answered a request for an image with a review step instead (found by the F166.1 end-to-end run, 2026-11-12).
+  if (ctx.reviewSteps?.length) return buildJobsSection(ctx) + buildReviewSection(ctx);
   const entities = ctx.sampleEntities
     .slice(0, 15)
     .map((e) => `  • ${e.label}${e.type ? ` [${e.type}]` : ' [NO TYPE]'} <${e.iri}>: ${e.predicates.slice(0, 3).join(', ')}`)
@@ -85,21 +111,26 @@ function buildContextSection(ctx: KBContext): string {
   if (ctx.untypedEntityCount > 0) alerts.push(`${ctx.untypedEntityCount} entities have no type (use query_kb filter:"no-type" to see them)`);
   if (ctx.manualStatementCount > 0) alerts.push(`${ctx.manualStatementCount} manually added statements (use query_kb filter:"no-source")`);
 
-  return `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
+  return buildJobsSection(ctx) + `\n\n---\nKB SNAPSHOT — THIS IS YOUR ONLY SOURCE OF TRUTH. Only reference facts shown here.\nSample of ${Math.min(ctx.sampleEntities.length, 15)} of ${ctx.statementCount > 0 ? 'many' : '0'} entities (this graph is deliberately scoped; absence of a fact doesn't mean it's false, just not yet captured):\n- ${ctx.statementCount} confirmed statements across ${ctx.sourceCount} source(s)\n- Types in use: ${ctx.typesPresent.join(', ') || 'none yet'}${alerts.length ? '\n- Attention: ' + alerts.join('; ') : ''}\n- Entities with their triples (label [type] <IRI>: predicate → object) — untyped shown first:\n${entities || '  (no entities loaded yet)'}`;
 }
 
-function parseActions(text: string): { clean: string; actions: KBAction[] } {
-  const match = text.match(/<kb-actions>([\s\S]*?)<\/kb-actions>/);
-  if (!match) return { clean: text.trim(), actions: [] };
+export function parseActions(text: string): { clean: string; actions: KBAction[] } {
+  // A model told "end with ONE block" sometimes writes two (the F166.1 end-to-end run: an adjust_view block,
+  // then the queue_jobs block). Reading only the first silently dropped the one the person asked for.
+  const blocks = [...text.matchAll(/<kb-actions>([\s\S]*?)<\/kb-actions>/g)];
+  if (!blocks.length) return { clean: text.trim(), actions: [] };
 
-  let actions: KBAction[] = [];
-  try {
-    actions = JSON.parse(match[1].trim());
-  } catch {
-    // malformed — ignore
+  const actions: KBAction[] = [];
+  for (const block of blocks) {
+    try {
+      const parsed = JSON.parse(block[1].trim());
+      if (Array.isArray(parsed)) actions.push(...parsed);
+    } catch {
+      // malformed — ignore this block, keep the others
+    }
   }
 
-  const clean = text.replace(/<kb-actions>[\s\S]*?<\/kb-actions>/, '').trim();
+  const clean = text.replace(/<kb-actions>[\s\S]*?<\/kb-actions>/g, '').trim();
   return { clean, actions };
 }
 
@@ -153,6 +184,7 @@ const REVIEW_SYSTEM_PROMPT = `You are Shelly 🐢, guiding a VISUAL TEST REVIEW 
 REVIEW MODE — you drive a screen-by-screen review, not a graph tour.
 
 RULES (strict):
+- If the person asks you to make an image, video or splat, that request outranks the review in every case: follow the LOCAL JOBS section below (a queue_jobs action, or what the runner is missing), never a review step or a refusal.
 - The VISUAL REVIEW list below is your source of truth. Do NOT invent what a screen shows beyond its title/page/assertion/verdict — you can't see the pixels; the reviewer can. Frame observations as prompts for THEM ("does the nav bar look right?"), not claims.
 - Never call this a graph "about" a topic. It is a visual test of the app's UI. Do not guess a subject/domain.
 - Go through the steps IN ORDER (Step 1, 2, 3 …). One step per message.
@@ -239,7 +271,10 @@ export function resolveChatProvider(s: {
   const model =
     provider === 'openai' ? (s.openaiModel ?? (pref === 'openrouter' ? s.openrouterModel : 'gpt-4o-mini'))
     : provider === 'gemini' ? (s.geminiModel ?? 'gemini-2.0-flash')
-    : provider === 'ollama' ? ollamaModelFor('chat', s)
+    // Sync path: last-known-good installed list from the probe (which preferLocalBackendSync
+    // above keeps refreshing in the background); null when no probe has succeeded, in which
+    // case resolution is exactly what it was before.
+    : provider === 'ollama' ? ollamaModelFor('chat', s, installedOllamaModels(s.ollamaBaseUrl || 'http://localhost:11434'))
     : provider === 'wasm' ? (s.wasmChatModel || s.wasmModel || undefined)
     : provider === 'chrome-ai' ? undefined
     : provider === 'mock' ? undefined

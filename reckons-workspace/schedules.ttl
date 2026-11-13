@@ -110,6 +110,15 @@ sched:offline-script-tier rdf:type ktype:Schedule ;
     kpred:enabled   "true" ;
     kpred:description "The free checks, daily." .
 
+sched:job-plan rdf:type           ktype:Schedule ;
+    rdfs:label      "Refresh the job-plan space" ;
+    kpred:every     "10m" ;
+    kpred:command   "npx tsx scripts/agent/queue-to-space.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Writes the local job queue (queued, running, and the last 48 h finished) as the annotated job-plan space the app renders as a graph — the 'visualize the job plan for when we are claude token-less' idea (2026-11-03). Script tier, zero tokens, so the session-worker fires it on its 10-minute cadence while a session is active: exactly the token-less window." .
+
 sched:align rdf:type ktype:Schedule ;
     rdfs:label      "Full alignment check" ;
     kpred:every     "1d" ;

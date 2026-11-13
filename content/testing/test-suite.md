@@ -16,7 +16,7 @@ related:
 
 Reckons.AI test infrastructure: 4,285 unit tests in 317 files (Vitest + jsdom; counted 2026-10-27), Playwright E2E with 6 device profiles, visual regression with pixel analysis + DOM overlap + text presence checks, optional Mistral OCR and Claude Vision tiers. All tests run locally without API keys.
 
-<p class="derived">It has 8 parts below.</p>
+<p class="derived">It has 9 parts below.</p>
 
 ## In this section
 
@@ -39,6 +39,10 @@ Each stream uses fresh browser storage, synthetic UI inputs and an explicit loop
 **[Starter assets in the production build](../testing/starter-asset-smoke)**
 
 The production smoke test opens Getting started and enables all previews.
+
+**[Synthetic room reconstruction quality](../testing/synthetic-room-benchmark)**
+
+Render the seeded synthetic room with ROOM_BENCHMARK=1, then train against its exact Blender poses.
 
 **[Three.js example loading and isolation](../testing/three-example-nodes)**
 

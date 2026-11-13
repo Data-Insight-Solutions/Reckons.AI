@@ -20,7 +20,7 @@
 import { createInterface } from 'node:readline';
 import { appendFileSync, readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { mergeGraphs, mergeToPending } from './merge.js';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { KBReader, MultiKBReader, type Triple } from './kb-reader.js';
 import { compressTriples, estimateTokens } from './compress.js';
 import { bm25Search, invalidateCache } from './search.js';
@@ -29,7 +29,9 @@ import { ollamaEnabled, OLLAMA_DISABLED_MESSAGE, OLLAMA_MODEL } from './ollama-c
 import { extractTriplesLocally, summarizeLocally } from './local-llm.js';
 import { entityToMarkdown } from './entity-markdown.js';
 import { validateToolArgs } from './validate-args.js';
-import { appendPendingLines } from './pending-file.js';
+import { appendPendingRows } from './pending-file.js';
+import { defaultCtx, jobEnqueue, jobLanes, jobList, jobStatus } from './local-jobs.js';
+import { routeLanes } from './review-lane.js';
 
 /**
  * Core usage instructions returned on `initialize` — MCP clients inject these
@@ -57,7 +59,7 @@ HARD CONVENTIONS (getting these wrong breaks the graph):
 
 VALIDATE — never commit broken output. Every TTL must parse (N3); run the relevant tests/build first.
 
-WHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note (type 'question': subject + predicate known, object left open — a partial fact); it surfaces in the Reckons.AI review UI for a human. This is the offline safety valve.
+LONG JOBS GO TO THE LOCAL QUEUE. An e2e suite, a benchmark, a research or batch-analysis run is not yours to run inline on a cloud model: kb_job_list shows the defined local jobs, kb_job_enqueue(name) queues one, kb_job_status(id) reports it. Queueing works even when no worker is running.\n\nWHEN UNCERTAIN OR STUCK, ASK — do not guess. Emit a QUESTION with kb_add_note (type 'question': subject + predicate known, object left open — a partial fact); it surfaces in the Reckons.AI review UI for a human. This is the offline safety valve.
 
 POLICY: never push to main (feature branch → PR → dev). Do NOT create docs/*.md — add entities to the TTL KBs. Surface findings/proposals as pending graph entries (kb_add_note), not chat.`;
 import { generatePageMarkdown, type GeneratePageParams } from './generate-page.js';
@@ -418,6 +420,34 @@ const TOOLS = [
     }
   },
   {
+    name: 'kb_job_list',
+    description: 'List the local jobs that can be queued (static/reckons-jobs.ttl and the schedules file): name, tier, what each does, last run and current state. Check here BEFORE running a long job (e2e suite, benchmark, research, batch analysis) yourself: if a local job exists for it, queue it with kb_job_enqueue instead of spending cloud tokens.',
+    inputSchema: { type: 'object', properties: {} }
+  },
+  {
+    name: 'kb_job_enqueue',
+    description: 'Queue one defined local job for the local worker. Only names from kb_job_list are accepted, never a command. Returns the queue id. Works with no worker running: the job is recorded and stays queued until `npm run agent:watch` starts the worker. Optional args are appended (shell-quoted) to the job command.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Job name exactly as kb_job_list shows it' },
+        args: { type: 'array', items: { type: 'string' }, description: 'Extra arguments appended to the defined command' }
+      },
+      required: ['name']
+    }
+  },
+  {
+    name: 'kb_job_status',
+    description: 'Status of a local job by queue id (from kb_job_enqueue) or by name: queued, running, done or failed, exit code, the last 40 log lines and where the full log is. Says so when the job is queued with no worker running.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Queue id returned by kb_job_enqueue' },
+        name: { type: 'string', description: 'Job name; reports its newest state' }
+      }
+    }
+  },
+  {
     name: 'kb_entity_markdown',
     description: 'Deterministically render one KB entity as a WebPage markdown document (frontmatter + body) from its triples — no LLM involved, works without OLLAMA_BASE_URL. rdfs:label becomes the title, description-ish literal predicates become body sections (and drive the excerpt), and relations become a markdown link list naming the target entities.',
     inputSchema: {
@@ -598,7 +628,7 @@ function handleKbMerge(params: { source: string; target: string; write_pending?:
     const pendingPath = kbFolder
       ? join(kbFolder, 'pending.jsonl')
       : kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, entries);
+    appendPendingRows(pendingPath, entries.map((l: string) => JSON.parse(l) as Record<string, unknown>), { kb: params.target });
     lines.push(`${entries.length} proposal(s) queued → ${pendingPath}`);
     lines.push(`Nothing was written to a graph. Accept or reject them in the Reckons.AI review queue.`);
   } else {
@@ -653,7 +683,7 @@ type AddNoteParams = {
 };
 
 function handleKbAddNote(params: AddNoteParams): object {
-  const entry = JSON.stringify({
+  const entry = {
     subject: `urn:kbase:${params.subject.replace(/\s+/g, '-').toLowerCase()}`,
     predicate: `urn:kbase:predicate/${params.predicate.replace(/\s+/g, '-').toLowerCase()}`,
     object: params.object,
@@ -664,17 +694,17 @@ function handleKbAddNote(params: AddNoteParams): object {
     priority: params.priority ?? 'normal',
     addedByMcp: true,
     addedAt: new Date().toISOString()
-  });
+  };
 
   // Try workspace kbs/{name}/ folder first, fall back to legacy sidecar file
   const kbFolder = kb.getKbFolderPath(params.kb);
   if (kbFolder) {
     const pendingPath = join(kbFolder, 'pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: basename(kbFolder) });
   } else {
     // Legacy: write next to the .ttl file
     const pendingPath = kbPath.replace(/\.ttl$/, '.pending.jsonl');
-    appendPendingLines(pendingPath, [entry]);
+    appendPendingRows(pendingPath, [entry], { kb: params.kb });
   }
 
   return {
@@ -898,7 +928,8 @@ function handleKbCheckPlan(params: { work: string; commits?: number; kb?: string
 function handleKbReviewLinks(params: { base?: string; agent?: string }): object {
   const base = resolveBase(params.base);
   const files = pendingQueueFiles();
-  const rows = files.flatMap((f) => readPendingRows(f));
+  // Findings are a check's report, not a person's task (F89.4.3), so they get no review link.
+  const rows = routeLanes(files.flatMap((f) => readPendingRows(f)), jobLanes(defaultCtx())).review;
   const groups = reviewGroups(rows, base)
     .filter((g) => !params.agent || g.agent.toLowerCase().includes(params.agent.toLowerCase()));
 
@@ -982,14 +1013,14 @@ function legacySiblingTriples(): { subject: string; predicate: string; object: s
  * with already-settled ones removed. A settled decision is not DELETED from the queue — the app
  * owns that, and a tool that quietly shrank the queue would make the two disagree.
  */
-function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number } {
+function loadDecisions(kbFilter?: string): { decisions: Decision[]; files: string[]; totalRows: number; settled: number; findings: number } {
   const sources = buildSources(pendingQueueFiles(kbFilter), queueWorkspace);
-  const state = loadReviewState(sources, workspaceArity(), kbFilter);
-  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled };
+  const state = loadReviewState(sources, workspaceArity(), kbFilter, jobLanes(defaultCtx()));
+  return { decisions: state.decisions, files: sources.map((s) => s.queue), totalRows: state.totalRows, settled: state.settled, findings: state.findings };
 }
 
 function handleKbReviewNext(params: ReviewNextParams): object {
-  const { decisions, files, totalRows, settled } = loadDecisions(params.kb);
+  const { decisions, files, totalRows, settled, findings } = loadDecisions(params.kb);
   if (files.length === 0) {
     return { content: [{ type: 'text', text: 'No pending queue file found in this workspace, which is NOT the same as an empty queue.' }] };
   }
@@ -999,7 +1030,8 @@ function handleKbReviewNext(params: ReviewNextParams): object {
   const body = [
     renderQueue(shown, decisions.length, params.limit ?? 10, settled),
     '',
-    `From ${totalRows} queue row(s) across ${files.length} file(s).`,
+    `From ${totalRows} queue row(s) across ${files.length} file(s).` +
+      (findings > 0 ? ` ${findings} of them are FINDINGS (a check's observations that ask for an action, not a fact): they are not listed here and belong to the checks' reports (F89.4.3).` : ''),
     'kb_review_show(decision) reads one in full; kb_review_decide(decision, verdict) records a verdict.',
   ].join('\n');
   return { content: [{ type: 'text', text: body }] };
@@ -1744,6 +1776,9 @@ rl.on('line', (line) => {
               .then(result => respond(id ?? null, result))
               .catch(e => respondError(id ?? null, -32603, `Internal error: ${e instanceof Error ? e.message : String(e)}`));
             break;
+          case 'kb_job_list': respond(id ?? null, { content: [{ type: 'text', text: jobList(defaultCtx()) }] }); break;
+          case 'kb_job_enqueue': { const r = jobEnqueue(defaultCtx(), toolArgs as { name?: string; args?: string[] }); respond(id ?? null, { content: [{ type: 'text', text: r.text }], ...(r.ok ? {} : { isError: true }) }); break; }
+          case 'kb_job_status': respond(id ?? null, { content: [{ type: 'text', text: jobStatus(defaultCtx(), toolArgs as { id?: string; name?: string }) }] }); break;
           case 'kb_entity_markdown': respond(id ?? null, handleKbEntityMarkdown(toolArgs as { entity: string; kb?: string })); break;
           default:
             respondError(id ?? null, -32601, `Unknown tool: ${toolName}`);

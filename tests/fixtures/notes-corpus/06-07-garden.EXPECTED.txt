@@ -1,0 +1,14 @@
+06 builds a small space; 07 changes it. Synthetic: no real garden or people.
+
+06-garden-build.txt should give four separate facts:
+  the garden has 12 raised beds; Priya Shah coordinates it; the tool shed is open on Saturdays;
+  the beds' water comes from a rain barrel.
+
+07-garden-change.txt changes three of them and must be read as the NEW state, not as history:
+  the shed is open on Sundays; Marco Ruiz coordinates the garden; the garden has 16 raised beds.
+  "added four raised beds" is the reason for the count, not a fact to keep instead of it.
+
+Why the pair exists (F183.3): the second note is where "space modifying" happens. In Review each
+changed fact arrives beside the one it replaces and is held back from a group accept, so a person
+decides it. A model that writes "Saturday" again, or "4 raised beds", passes a build-only test and
+quietly corrupts the space; this pair is what catches it.

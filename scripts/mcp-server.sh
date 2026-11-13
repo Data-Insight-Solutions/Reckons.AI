@@ -58,6 +58,26 @@ if ! command -v node >/dev/null 2>&1; then
   exit 127
 fi
 
+# WHY THIS FALLBACK — measured 2026-11-03. mcp-server/dist is a build output and mcp-workspace/
+# is local, so neither exists in a git worktree under .claude/worktrees/. Every deputy session
+# running there lost all kb_* tools (CONNECTION_CLOSED) on the FATAL below. The main checkout has
+# the same repo at a different root, already built: in a LINKED worktree .git is a FILE (a normal
+# checkout has a directory), and its git common dir is the main checkout's .git, so the parent of
+# that dir is the main checkout's root. Serve its build, and — when --kb was not given — its
+# mcp-workspace: the server resolves the relative --kb and the queue dir against its own cwd,
+# which is now the main root. A caller-supplied --kb was already resolved to an absolute path
+# against the caller's folder above, so it keeps pointing at the caller's own workspace.
+if [ ! -f mcp-server/dist/index.js ] && [ -f .git ]; then
+  COMMON_DIR="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || COMMON_DIR=""
+  if [ -n "$COMMON_DIR" ]; then
+    MAIN_ROOT="$(dirname "$COMMON_DIR")"
+    if [ -f "$MAIN_ROOT/mcp-server/dist/index.js" ]; then
+      echo "[reckons-mcp] this worktree has no build; serving the main checkout at $MAIN_ROOT" >&2
+      cd "$MAIN_ROOT"
+    fi
+  fi
+fi
+
 if [ ! -f mcp-server/dist/index.js ]; then
   echo "[reckons-mcp] FATAL: mcp-server/dist/index.js is missing." >&2
   echo "[reckons-mcp] Build it with: npm --prefix mcp-server install && npm --prefix mcp-server run build" >&2

@@ -2,8 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { clearStorage, waitForApp } from './helpers';
 
 /**
- * RELEASE REVIEW SPACES (F34.5 / kb:release-review-spaces): About lists "Review 0.2.6" and "Review
- * 0.2.7" under example data; each opens as its own space whose nodes are that release's visual
+ * RELEASE REVIEW SPACES (F34.5 / kb:release-review-spaces): /about?example=review-0.2.6 and review-0.2.7 (unlisted, not in the examples list); each opens as its own space whose nodes are that release's visual
  * tests; a step takes a pass / fail verdict from the node panel, written as a meta triple.
  *
  * What the 0.2.7 space holds is whatever static/review-0.2.7.ttl says, and that file is generated:
@@ -19,10 +18,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openReview(page: Page, version: string) {
-  await page.goto('/about');
-  const card = page.locator('.starter-card', { hasText: new RegExp(`review ${version.replace(/\./g, '\\.')}`, 'i') });
-  await expect(card).toBeVisible({ timeout: 10_000 });
-  await card.click();
+  // Unlisted since 2026-11-12: the review spaces are not among the public examples, so open by link.
+  await page.goto(`/about?example=review-${version}`);
   await page.waitForURL((url) => url.pathname === '/', { timeout: 15_000 });
   await expect(page.locator('main canvas').first()).toBeVisible({ timeout: 15_000 });
 }

@@ -19,6 +19,7 @@ import {
 } from '../graph-view';
 import type { Statement } from '../types';
 import { iri, lit } from '../types';
+import { UNKNOWN_OBJECT } from '../partial-facts';
 
 const KP = 'urn:kbase:predicate/';
 const KB = 'urn:kbase:concept/';
@@ -440,5 +441,59 @@ describe("the container's own record is drawn only at 'all' (Matt, 2026-10-21)",
     // Listed as hidden, so the label and type paths that mint markers cannot bring it back (F144).
     expect([...hidden.hidden.statementIds].sort()).toEqual([facts[1].id, facts[2].id].sort());
     expect(buildGraphView(facts, { spaceMetadata: true }).hidden.statementIds.size).toBe(0);
+  });
+  it('treats a guided story as configuration, drawn only at all (Matt, 2026-10-27)', () => {
+    const S = 'urn:reckons:story/';
+    const facts = [
+      st('battery', 'warranty', 'ten-years'),
+      { ...st('x', 'y', 'z'), s: iri(`${S}tour/step-1`), p: iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'), o: iri(`${S}Step`) },
+      { ...st('x', 'y', 'z'), s: iri(`${S}tour/step-1`), p: iri(`${S}highlight`), o: iri(`${KB}battery`) },
+    ];
+    expect(buildGraphView(facts).edges.map((e) => e.p.value)).toEqual([`${KB.replace('concept', 'predicate')}warranty`]);
+    expect(buildGraphView(facts, { spaceMetadata: true }).edges).toHaveLength(3);
+  });
+});
+
+// ── F223.9 — a question's missing end (kb:fact-standing) ───────────────
+//
+// the proposals entry in the roadmap, evidence (4), 2026-11-10, read from the code and not observed in the
+// running app: a question's missing object is the literal "?", and a short literal shared by
+// two or more facts becomes a category marker — so two questions in the same place would both
+// point at ONE shared "?" marker. This test is written FIRST, and its result on the unchanged
+// code is recorded in DEPUTY-NOTES.md (the roadmap's done-test says the same).
+describe('F223.9 — a question\'s missing end is its own marker, never the shared "?"', () => {
+  it('two questions end at two DISTINCT markers, and the literal "?" is not a category', () => {
+    // Two open questions about two different things. Both ask for an object; the placeholder
+    // object is UNKNOWN_OBJECT ("?") and needsObject marks the fact as a question.
+    const q1 = { ...st('topic-a', 'open-question', { literal: UNKNOWN_OBJECT }), needsObject: true };
+    const q2 = { ...st('topic-b', 'open-question', { literal: UNKNOWN_OBJECT }), needsObject: true };
+    const view = buildGraphView([q1, q2]);
+
+    // The placeholder is not a value two facts have in common: it must not earn a category marker.
+    expect(view.categories.has(UNKNOWN_OBJECT)).toBe(false);
+
+    // And the two questions must end at two different markers — one per question, keyed by the
+    // fact — not at one shared marker.
+    const questionEdges = view.edges.filter((e) => e.id === q1.id || e.id === q2.id);
+    const ends = questionEdges.map((e) => view.questionEnds.get(e.id));
+    expect(ends).toHaveLength(2);
+    expect(new Set(ends).size).toBe(2);
+  });
+});
+
+describe('F223.9 — the view carries standing', () => {
+  it('passes a standing with every edge and every marker', () => {
+    const held = st('a', 'rel', 'b');
+    const prop = { ...st('c', 'rel', 'd'), status: 'pending' as const, proposalOption: 'opt-1' };
+    const heldToC = st('a', 'rel', 'c');
+    const q = { ...st('e', 'asks', { literal: UNKNOWN_OBJECT }), status: 'pending' as const, needsObject: true };
+    const view = buildGraphView([held, prop, heldToC, q]);
+    expect(view.standing.get(held.id)).toBe('held');
+    expect(view.standing.get(prop.id)).toBe('proposed');
+    expect(view.standing.get(q.id)).toBe('question');
+    const k = (n: string) => `i:${KB}${n}`;
+    expect(view.nodeStandings.get(k('d'))).toBe('proposed'); // only proposed touches it
+    expect(view.nodeStandings.get(k('c'))).toBe('held'); // held + proposed -> held
+    expect(view.nodeStandings.get(view.questionEnds.get(q.id)!)).toBe('question');
   });
 });

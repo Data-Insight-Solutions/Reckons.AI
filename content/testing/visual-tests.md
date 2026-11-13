@@ -1,7 +1,7 @@
 ---
 title: "Visual Regression Tests"
 slug: "visual-tests"
-order: 1029
+order: 1037
 section: "Testing"
 parent: "test-suite"
 template: doc

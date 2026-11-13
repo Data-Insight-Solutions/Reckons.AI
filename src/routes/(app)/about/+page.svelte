@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
   import { openExampleSpace } from '$lib/storage/example-space';
+  import { EXAMPLE_KBS, listedExampleKbs, findExampleKb, type ExampleKb } from '$lib/storage/example-kbs';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
   import { startStory } from '$lib/stores/shelly-bridge.svelte';
@@ -38,67 +39,12 @@
   }
 
   // ── Example KBs (importable into user's own KB) ──────────────────────
-  const EXAMPLE_KBS = [
-    {
-      id: 'quickstart',
-      icon: '🚀',
-      title: 'Quick-Start Example',
-      body: 'People, projects, research notes, decisions, and metrics — see how real-world data maps to facts.',
-      file: '/starter-quickstart.ttl',
-      entities: 15,
-      triples: 90
-    },
-    {
-      // F58.9.4: opens as its OWN space, so trying it never mixes into the one you are working in.
-      id: 'generated-assets',
-      icon: '✦',
-      title: 'Generated assets',
-      body: 'Pictures, clips and Gaussian splats made by local models on one machine, each linked to the prompt it came from. Opens as its own space.',
-      file: '/starter-generated-assets.ttl',
-      space: 'Generated assets',
-      entities: 9,
-      triples: 81
-    },
-    {
-      // F58.9.10: a guided space. The room in it is SYNTHETIC; the steps say how to use a real scan.
-      id: 'your-room',
-      icon: '⌂',
-      title: 'Your room',
-      body: 'Scan a room, bring it in as the background, and place generated objects inside it. Four steps, with a made-up room so you can try them first. Opens as its own space.',
-      file: '/starter-your-room.ttl',
-      space: 'Your room',
-      entities: 7,
-      triples: 53
-    },
-    {
-      // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
-      id: 'review-0.2.6',
-      icon: '✓',
-      title: 'Review 0.2.6',
-      body: 'The main workflows of v0.2.6 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note. Opens as its own space.',
-      file: '/review-0.2.6.ttl',
-      space: 'Review 0.2.6',
-      entities: 21,
-      triples: 119
-    },
-    {
-      // F34.5: a generated space of the release's visual tests, for manual review. Verdicts are set from the node panel.
-      id: 'review-0.2.7',
-      icon: '✓',
-      title: 'Review 0.2.7',
-      body: 'The main workflows of v0.2.7 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note. Opens as its own space.',
-      file: '/review-0.2.7.ttl',
-      space: 'Review 0.2.7',
-      entities: 7,
-      triples: 31
-    },
-  ] as { id: string; icon: string; title: string; body: string; file: string; space?: string; entities: number; triples: number }[];
 
   let loadingKb = $state<string | null>(null);
   let loadError = $state('');
   let switchingToOfficial = $state(false);
 
-  async function importStarterKB(kb: typeof EXAMPLE_KBS[0]) {
+  async function importStarterKB(kb: ExampleKb) {
     loadingKb = kb.id;
     loadError = '';
     try {
@@ -141,6 +87,13 @@
 
   let exIdx = $state(0);
   let fading = $state(false);
+
+  // A link of the form /about?example=<id> opens that example on its own.
+  onMount(() => {
+    const id = new URL(window.location.href).searchParams.get('example');
+    const kb = findExampleKb(id);
+    if (kb) void importStarterKB(kb);
+  });
 
   onMount(() => {
     const iv = setInterval(() => {
@@ -919,10 +872,11 @@
     <p class="starter-sub-heading mono">example data</p>
     <p class="starter-sub-desc">
       Explore generic example facts designed for learning Reckons.AI.
+      <a href="/settings/triple-check">Check any example with Triple Check →</a>
     </p>
 
     <div class="starter-grid">
-      {#each EXAMPLE_KBS as kb (kb.id)}
+      {#each listedExampleKbs() as kb (kb.id)}
         <button
           class="starter-card"
           onclick={() => importStarterKB(kb)}
@@ -931,6 +885,7 @@
           <span class="starter-icon">{kb.icon}</span>
           <div class="starter-info">
             <strong>{kb.title}</strong>
+            {#if kb.label}<span class="starter-label mono">{kb.label}</span>{/if}
             <p>{kb.body}</p>
             <div class="starter-stats mono">
               <span>{kb.entities} entities</span>
@@ -1694,6 +1649,8 @@
     margin: 0;
     line-height: 1.55;
   }
+
+  .starter-label { display: inline-block; margin-left: 8px; font-size: 0.7rem; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
 
   .stp-example {
     font-size: 0.72rem;

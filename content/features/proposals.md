@@ -1,7 +1,7 @@
 ---
 title: "Proposals: decisions that cite their evidence"
 slug: "proposals"
-order: 1035
+order: 1036
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

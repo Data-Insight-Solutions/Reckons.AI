@@ -16,7 +16,7 @@ related:
 
 Reckons.AI is a personal knowledge graph that runs entirely in your browser. No server, no account, no cloud dependency. Your data stays on your device in IndexedDB, and you control every piece of knowledge that enters your graph through a human review process.
 
-<p class="derived">It has 48 parts below, 3 of which are not built yet.</p>
+<p class="derived">It has 49 parts below, 4 of which are not built yet.</p>
 
 ## In this section
 
@@ -74,6 +74,7 @@ Reckons.AI is a personal knowledge graph that runs entirely in your browser. No 
 <a class="card" href="../architecture/tailwind-containment"><span class="card-title">Tailwind-Without-Preflight Containment</span><span class="card-text">shadcn-svelte components are introduced on Tailwind v4 with Tailwind's CSS reset (preflight) disabled.</span></a>
 <a class="card" href="../integrations-tech/architecture-integrations-tech"><span class="card-title">Technology Stack</span><span class="card-text">Static SvelteKit 2 app with Svelte 5 runes.</span></a>
 <a class="card" href="../features/reckoning-simulator"><span class="card-title">The reckoning simulator, first part</span><span class="card-text">A reckoning will be able to try a proposal in a physical scene before you choose it.</span></a>
+<a class="card" href="../features/triple-check"><span class="card-title">Triple Check</span><span class="card-status">in-progress</span><span class="card-text">Optional continuous checking of statements against your other spaces and, if you allow it, cited web pages.</span></a>
 <a class="card" href="../architecture/ttl-first-docs"><span class="card-title">TTL-First Documentation</span><span class="card-text">Reckons.AI uses its own TTL knowledge graphs as the primary documentation format.</span></a>
 <a class="card" href="../features/ttl-export"><span class="card-title">Turtle Export</span><span class="card-text">Export your graph as a .ttl file with full reification metadata (status, source, confidence, timestamps, excerpts).</span></a>
 <a class="card" href="#why-it-matters"><span class="card-title">Why Reckons.AI Matters</span><span class="card-text">In an era of information overload, Reckons.AI gives individuals a structured way to capture, verify, connect, and retrieve knowledge.</span></a>

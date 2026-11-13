@@ -134,7 +134,7 @@ jobs:
       # debris. The graph was clean the whole time. An unverified finding kept a real gate
       # switched off — the product's own thesis, demonstrated at our expense.
       #
-      # Only jobs marked blocking:true in jobs.json can fail the build (--ci). Everything else
+      # Only jobs marked blocking in reckons-jobs.ttl can fail the build (--ci). Everything else
       # still reports and queues findings without gating.
       - name: Run script tier (blocking on jobs marked blocking:true)
         run: npx tsx scripts/offline/run-all.ts --tier=script --ci

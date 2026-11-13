@@ -44,6 +44,9 @@ export type Verdict = { status: Status; headline: string; findings: Finding[] };
 export type Facts = { exitCode: number; durationMs: number; lines: string[]; counts: Record<string, number> };
 
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;
+/** F286.6: a model reads a log only for an agent-tier job or a failure. A passed script-tier job is summarized by rule. */
+export const modelMayRead = (tier: string | undefined, exitCode: number): boolean => tier !== 'script' || exitCode !== 0;
+
 export const stripAnsi = (s: string): string => s.replace(ANSI, '');
 
 /** Patterns that make a log line worth showing the model. */
@@ -275,11 +278,19 @@ export async function askModel(base: string, model: string, prompt: string): Pro
 
 let activeChild: ReturnType<typeof spawn> | undefined;
 
-function run(argv: string[], logPath: string): Promise<{ exitCode: number; durationMs: number }> {
+/**
+ * The environment a watched job runs in: its own JobRun id and name, so every queue row it writes can
+ * name the run that made it (F89.4.1). The id is the SAME one this run's TTL entity gets.
+ */
+export function jobEnv(name: string, startedAt: Date, base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  return { ...base, RECKONS_RUN_ID: runEntityId(name, startedAt), RECKONS_JOB_NAME: name };
+}
+
+function run(argv: string[], logPath: string, env: NodeJS.ProcessEnv = process.env): Promise<{ exitCode: number; durationMs: number }> {
   return new Promise((resolve) => {
     const out = createWriteStream(logPath);
     const t0 = Date.now();
-    const child = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(argv[0], argv.slice(1), { stdio: ['ignore', 'pipe', 'pipe'], env });
     activeChild = child;
     child.stdout.pipe(out, { end: false });
     child.stderr.pipe(out, { end: false });
@@ -302,7 +313,7 @@ async function main(): Promise<void> {
   const flag = (k: string) => flags.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
   const name = flag('name');
   const reset = flags.includes('--reset');
-  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--reset] -- <command…>'); process.exit(2); }
+  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--tier=script|agent] [--reset] -- <command…>'); process.exit(2); }
   const num = (k: string, d: number) => { const v = Number(flag(k)); return Number.isFinite(v) && v > 0 ? Math.trunc(v) : d; };
   const maxAttempts = num('max-attempts', DEFAULT_MAX_ATTEMPTS);
   const maxPerHour = num('max-per-hour', DEFAULT_MAX_PER_HOUR);
@@ -335,7 +346,7 @@ async function main(): Promise<void> {
   const cleanup = (code: number) => () => { activeChild?.kill(); try { updateCurrent({ removePid: process.pid }); } catch { /* best effort */ } process.exit(code); };
   process.on('SIGINT', cleanup(130));
   process.on('SIGTERM', cleanup(143));
-  const { exitCode, durationMs } = await run(cmd, logPath);
+  const { exitCode, durationMs } = await run(cmd, logPath, jobEnv(name, startedAt));
   updateCurrent({ removePid: process.pid });
   const endedAt = new Date();
   const log = readFileSync(logPath, 'utf8');
@@ -351,6 +362,7 @@ async function main(): Promise<void> {
     return { status: exitCode === 0 ? 'passed' : 'failed', headline: `${bits.join(', ')} (script facts only: ${why})`.slice(0, 120), findings: [] };
   };
   if (!base) verdict = scriptOnly('OLLAMA_BASE_URL not set');
+  else if (!modelMayRead(flag('tier'), exitCode)) verdict = scriptOnly('script-tier job passed, summarized by rule');
   else {
     const t0 = Date.now();
     try {

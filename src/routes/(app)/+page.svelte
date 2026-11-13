@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { projectSpaceView } from '$lib/rdf/space-view';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
@@ -22,6 +23,7 @@
   import BackgroundExampleControls from '$lib/components/BackgroundExampleControls.svelte';
   import type { ThreeExampleSession } from '$lib/3d/three-example-session.svelte';
   import { setMeta } from '$lib/stores/space-room';
+  import { splatDemand } from '$lib/stores/splat-demand.svelte';
   import AssetSplatViewer from '$lib/components/AssetSplatViewer.svelte';
   import SplatPlacementControls from '$lib/components/SplatPlacementControls.svelte';
   import BackgroundSettingsControls from '$lib/components/BackgroundSettingsControls.svelte';
@@ -72,7 +74,7 @@
     LEAP_PRED, LEAP_LABEL_PRED,
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
-  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
@@ -86,6 +88,8 @@
   import { replaceState } from '$app/navigation';
   import { page } from '$app/stores';
   import type { GraphFilter } from '$lib/types/turtle-chat';
+  import { standingOf } from '$lib/rdf/statement-standing';
+  import { passesStandingFilters, statementNodeKeys, focusOption, type OptionFocus } from '$lib/rdf/standing-filter';
   import { getSettings, saveSettings } from '$lib/storage/db';
   import { previewModeFrom, legacyFlagsFor, PREVIEW_MODES, PREVIEW_MODE_LABELS, PREVIEW_MODE_HINTS } from '$lib/storage/preview-mode';
   import { shouldSuggest2D, dismissPerfSuggestion, resetPerfMonitor, currentFps } from '$lib/stores/perf-monitor.svelte';
@@ -374,6 +378,9 @@
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
   let activeFilters = $state<Set<GraphFilter>>(new Set());
+  /** F223.11: the proposal option shown on the canvas, and the fact ids it cites (quiet strength). */
+  let focusOptionId = $state<string | null>(null);
+  let focusCited = $state<string[]>([]);
   let selectedSources = $state<Set<string>>(new Set());
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
@@ -422,6 +429,9 @@
     if (sel) selected = sel;
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
+    // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
+    focusOptionId = params.get('focus');
+    focusCited = (params.get('cite') ?? '').split(',').filter(Boolean);
     const src = params.get('src');
     if (src) selectedSources = new Set(src.split(',').filter(Boolean));
     const typ = params.get('types');
@@ -466,6 +476,8 @@
     });
   });
 
+  /** Above this many things, slowness is offered the hubs filter as well as 2D. A suggestion, never a cap. */
+  const HUBS_SUGGEST_ENTITIES = 150;
   // Push a notification when 3D performance is poor
   $effect(() => {
     const shouldShow = shouldSuggest2D() && !use2D && webglAvailable;
@@ -484,8 +496,20 @@
           ondismiss: dismissPerfSuggestion,
           action: { label: 'Switch to 2D', onclick: () => { use2D = true; resetPerfMonitor(); dismissNotification('perf-3d'); updateSettings({ prefer2D: true }); } }
         });
+        // A big canvas is slow in either renderer, so offer the filter that draws less, not only the
+        // cheaper renderer. Hubs are the most connected things; the detail control brings the rest back.
+        if (!detail.hubsOnly && canvasProjection.entities.size > HUBS_SUGGEST_ENTITIES) {
+          pushNotification({
+            id: 'perf-hubs',
+            type: 'info',
+            title: `${canvasProjection.entities.size} things on the canvas`,
+            body: 'Show only the most connected ones? The detail control in view settings brings the rest back.',
+            action: { label: 'Show hubs only', onclick: () => { detailLevel = 'hubs'; resetPerfMonitor(); dismissNotification('perf-hubs'); } },
+          });
+        }
       } else {
         dismissNotification('perf-3d');
+        dismissNotification('perf-hubs');
       }
     });
   });
@@ -517,6 +541,7 @@
     // cleared would reapply it on the next load.
     if (selected) params.set('sel', selected); else params.delete('sel');
     if (activeFilters.size > 0) params.set('f', [...activeFilters].join(',')); else params.delete('f');
+    if (focusOptionId) { params.set('focus', focusOptionId); if (focusCited.length) params.set('cite', focusCited.join(',')); else params.delete('cite'); } else { params.delete('focus'); params.delete('cite'); }
     if (selectedSources.size > 0) params.set('src', [...selectedSources].join(',')); else params.delete('src');
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
@@ -724,6 +749,32 @@
     if (showingLanding || use2D || !webglAvailable) graph3DReady = false;
   });
 
+  /** The option shown on the canvas (F223.11), or null. Computed from the same facts the canvas draws. */
+  const optionFocus = $derived<OptionFocus | null>(
+    focusOptionId ? focusOption(visible, focusOptionId, { citations: focusCited }) : null,
+  );
+  /**
+   * Fact ids that pass every fact-level filter, so the canvas lights an EDGE only when its own
+   * fact matches (F223.11). null = no fact-level filter: nothing is dimmed on that account.
+   */
+  // F292.2: while a story step lights markers, an edge is lit when it touches one of them (no layout change).
+  const spotlightKeys = $derived(new Set(shellySpotlight()));
+  const litStatementIds = $derived.by(() => {
+    const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
+    const spot = spotlightKeys.size > 0;
+    if (!status && !optionFocus && !spot) return null;
+    const ids = new Set<string>();
+    for (const s of visible) {
+      if (spot) { const [a, b] = statementNodeKeys(s); if (!spotlightKeys.has(a) && !spotlightKeys.has(b)) continue; }
+      if (status && !passesStandingFilters(s, activeFilters)) continue;
+      if (optionFocus && !optionFocus.lit.has(s.id)) continue;
+      if (nodeSetMatch) { const [a, b] = statementNodeKeys(s); if (!nodeSetMatch.has(a) || !nodeSetMatch.has(b)) continue; }
+      ids.add(s.id);
+    }
+    return ids;
+  });
+  const quietStatementIds = $derived(optionFocus ? optionFocus.quiet : null);
+
   /**
    * Statement-level filters (status · source · entity type · no-source · no-type), resolved
    * to the node keys they keep. A node is kept if ANY statement touching it passes every
@@ -732,21 +783,18 @@
    * null = no statement-level filter is active (everything matches; nothing to dim).
    */
   const filterMatch = $derived.by(() => {
-    const wantStatus = activeFilters.has('confirmed') || activeFilters.has('pending');
+    const wantStatus = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
+    const wantFocus = optionFocus !== null;
     const wantSource = selectedSources.size > 0;
     const wantType = typedSubjects !== null;
     const wantNoSource = activeFilters.has('no-source');
     const wantNoType = activeFilters.has('no-type');
-    if (!wantStatus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
+    if (!wantStatus && !wantFocus && !wantSource && !wantType && !wantNoSource && !wantNoType) return null;
 
     const keys = new Set<string>();
     for (const s of visible) {
-      if (wantStatus) {
-        const ok =
-          (activeFilters.has('confirmed') && (s.status === 'confirmed' || s.status === 'refined')) ||
-          (activeFilters.has('pending') && s.status === 'pending');
-        if (!ok) continue;
-      }
+      if (wantStatus && !passesStandingFilters(s, activeFilters)) continue;
+      if (wantFocus && !optionFocus!.lit.has(s.id) && !optionFocus!.quiet.has(s.id)) continue;
       if (wantSource && !selectedSources.has(s.sourceId)) continue;
       if (wantNoSource && s.sourceId !== 'manual') continue;
       if (wantType && !(typedSubjects!.has(s.s.value) || typedSubjects!.has(s.o.value))) continue;
@@ -758,8 +806,8 @@
         )
       )
         continue;
-      keys.add(termKey(s.s));
-      keys.add(termKey(s.o));
+      // A question's missing end is its own marker (F223.9), so it is matched under its own key.
+      for (const k of statementNodeKeys(s)) keys.add(k);
     }
     return keys;
   });
@@ -778,8 +826,16 @@
   // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
   // of `visible` is the mistake documented above: it empties the topology, and an empty
   // `visible` draws the marketing landing page over the user's own graph.
+  const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === $page.url.searchParams.get('view')));
+  // NO GENERIC CAP (Matt, 2026-10-27: "a generic load limit is not effective"). A saved view narrows
+  // the canvas to what it names; otherwise everything the filters allow is drawn, and when that is
+  // slow the performance notice below offers the hubs filter, which the reader can see and undo.
+  const canvasProjection = $derived(projectSpaceView(visible, {
+    view: activeSpaceView, limit: 0,
+    focus: selected?.startsWith('i:') ? selected.slice(2) : undefined,
+  }));
   const graphView = $derived(
-    buildGraphView(visible, {
+    buildGraphView(perspective === 'sources' ? visible : canvasProjection.statements, {
       categoryNodes: showCategoryNodes,
       minAltitude: perspective === 'sources' ? undefined : detail.floor ?? undefined,
       spaceMetadata: detailLevel === 'all',
@@ -965,7 +1021,7 @@
   // Shared dim/highlight state — used by both the graph components and the label overlay.
   // Nothing here REMOVES a node: the unmatched keep their place in the force simulation and
   // render at 0.18 alpha, so the graph's shape holds still while you look through the lens.
-  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0);
+  const dimMode = $derived(matchedKeys !== null || selectedSetKeys.length > 0 || shellySpotlight().length > 0);
   const highlightedSet = $derived(new Set([
     ...(matchedKeys ?? []),
     ...shellySpotlight(),
@@ -978,6 +1034,13 @@
       (s.status === 'confirmed' || s.status === 'refined') &&
       !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)
     ).length
+  );
+  // F223.9: counts by standing, for the legend and the proposed / questions chips.
+  const visibleProposedCount = $derived(
+    statements().filter(s => standingOf(s) === 'proposed' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
+  );
+  const visibleQuestionCount = $derived(
+    statements().filter(s => standingOf(s) === 'question' && s.status !== 'rejected' && s.status !== 'superseded' && !GRAPH_EXCLUDED_PREDICATES.has(s.p.value)).length
   );
   const visiblePendingCount = $derived(
     statements().filter(s =>
@@ -1336,6 +1399,7 @@
    * node click leave the app in the same state.
    */
   function openNodeFromThumb(key: string) {
+    splatDemand.request(key); // opening an entity asks for its on-demand splat (no-op for any other entity)
     expandedAssetKey = key;
     assetFullscreen = false;
     if (selected !== key) {
@@ -1934,6 +1998,8 @@
       // Don't intercept when user is typing
       const tag = (e.target as Element)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      // A playing story owns the left and right arrows (F292.2): they step the story, not the canvas.
+      if (activeStoryId() !== null && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) return;
 
       if (e.key === 'Escape') {
         selected = null;
@@ -2161,6 +2227,8 @@
     onreorder: (order) => { nodeOrder = order; },
     get highlighted() { return graphHighlighted; },
     get dimMode() { return perspective === 'statements' && dimMode; },
+    get litStatementIds() { return litStatementIds; },
+    get quietStatementIds() { return quietStatementIds; },
     get podMode() { return podMode; },
     get ghostGraph() { return ghostGraph; },
     get ghostAnchorKey() { return ghostAnchorKey; },
@@ -2335,8 +2403,9 @@
        focal point (3D only; the settings are not drawn in 2D), the same component the Graphs tab uses.
        A Three.js example: its name, Load/Stop and Interact, driven by the SAME session as the floating bar. -->
   {#if (backgroundSplat && !use2D && webglAvailable) || backgroundExample}
-  <div class="overlay-group" data-testid="graph-background-settings">
-    <span class="group-label mono">background</span>
+  <details class="background-disclosure" data-testid="graph-background-settings">
+    <summary class="mono">Background</summary>
+    <div class="overlay-group background-controls">
     {#if backgroundSplat && !use2D && webglAvailable}<BackgroundSettingsControls />{/if}
     {#if backgroundExample && backgroundExampleSession}
       <div class="bg-example-row mono" role="group" aria-label="Background in view settings">
@@ -2344,7 +2413,8 @@
           onclear={() => setBackgroundExample(null)} />
       </div>
     {/if}
-  </div>
+    </div>
+  </details>
   {/if}
 
   <!-- TIMELINE CONTROLS (visible only when timeline layout is active) -->
@@ -2474,6 +2544,19 @@
   <div class="vs-header mono">view settings</div>
 {/snippet}
 <AdaptivePanel corner="top-left" width={360} minWidth={240} maxWidth={800} zIndex={300} title="View settings" header={isCompact() ? undefined : viewSettingsHeader} open={isCompact() ? filterSheetOpen : true} onOpenChange={(o) => (filterSheetOpen = o)}>
+  <!-- Saved views only: with none saved, a picker with one choice explained nothing (Matt, 2026-10-27). -->
+  {#if (settings().researchViews ?? []).length > 0}
+    <div class="focused-view-controls">
+      <label>Saved view<select aria-label="Saved view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
+        <option value="">Whole space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
+      </select></label>
+      {#if activeSpaceView}
+        <!-- Counts named things only: a value such as "10 kWh" is drawn as a node but is not one of them. -->
+        <p data-testid="space-view-count">Showing {canvasProjection.entities.size} of {canvasProjection.candidateEntities} things{#if canvasProjection.hiddenStatements > 0}; {canvasProjection.hiddenStatements} statements are hidden from the canvas and still in this space{/if}.</p>
+      {/if}
+    </div>
+  {/if}
+
 <div class="overlay-inner">
 
   <!-- FILTERS -->
@@ -2509,6 +2592,24 @@
         <span class="num">{visiblePendingCount}</span>
         <span class="lbl mono">pending</span>
       </button>
+      <!-- F223.11: proposals and questions, beside confirmed and pending. Shown only when the space holds one. -->
+      {#if visibleProposedCount > 0 || activeFilters.has('proposed')}
+        <button class="chip" class:active={activeFilters.has('proposed')} onclick={() => toggleFilter('proposed')} title="Show only facts that belong to a proposal's options">
+          <span class="num">{visibleProposedCount}</span>
+          <span class="lbl mono">proposed</span>
+        </button>
+      {/if}
+      {#if visibleQuestionCount > 0 || activeFilters.has('questions')}
+        <button class="chip" class:active={activeFilters.has('questions')} onclick={() => toggleFilter('questions')} title="Show only open questions: facts whose answer is not known yet">
+          <span class="num">{visibleQuestionCount}</span>
+          <span class="lbl mono">questions</span>
+        </button>
+      {/if}
+      {#if focusOptionId}
+        <button class="chip active" onclick={() => { focusOptionId = null; focusCited = []; }} title="Stop showing one proposal option">
+          <span class="lbl mono">option {focusOptionId} ✕</span>
+        </button>
+      {/if}
       <!-- Sources filter chip -->
       <Popover.Root bind:open={showSourceFilter} onOpenChange={(o) => { if (o) showTypeFilter = false; }}>
         <Popover.Trigger>
@@ -2596,6 +2697,14 @@
         </Popover.Root>
       {/if}
     </div>
+    <!-- F223.10: names how the canvas draws a fact's standing. Shape and line carry it, never colour alone. -->
+    {#if visibleProposedCount + visibleQuestionCount > 0}
+      <ul class="standing-legend mono" aria-label="How facts are drawn">
+        <li><span class="sw sw-held"></span>held: solid line</li>
+        {#if visibleProposedCount > 0}<li><span class="sw sw-proposed"></span>proposed: dashed, hollow</li>{/if}
+        {#if visibleQuestionCount > 0}<li><span class="sw sw-question">?</span>question: dashed, hollow, half strength</li>{/if}
+      </ul>
+    {/if}
   </div>
 
   {@render graphTools()}
@@ -2954,6 +3063,13 @@
     </div>
     {/snippet}
     <div class="np-body">
+      {#if selected && splatDemand.deferred.has(selected) && !splatDemand.requested.has(selected)}
+        <!-- F58.9: a heavy entity splat is not loaded at startup (ENTITY_SPLAT_STARTUP_BUDGET). -->
+        <button class="np-act-btn np-act-primary np-load-splat" onclick={() => splatDemand.request(selected!)}
+          title="This splat has {(splatDemand.counts.get(selected) ?? 0).toLocaleString()} Gaussians, so it waits to be asked for">
+          ✦ Load 3D splat
+        </button>
+      {/if}
       <!-- Also known as — every other name this node answers to (entities only) -->
       {#if selectedIri}
       <div class="np-aliases">
@@ -3463,6 +3579,11 @@
 {/if}
 
 <style>
+  .focused-view-controls { display: grid; gap: 0.5rem; border-bottom: 1px solid var(--line); padding-bottom: 0.65rem; margin-bottom: 0.65rem; font-size: 0.75rem; }
+  .focused-view-controls label { display: flex; justify-content: space-between; gap: 0.5rem; }
+  .focused-view-controls select { min-width: 0; max-width: 65%; background: var(--surface); color: var(--ink); }
+  .focused-view-controls p { color: var(--muted); margin: 0; }
+
   .source-set-preview { pointer-events: auto; display: flex; gap: 0.55rem; align-items: center; transform: translate(-50%, -110%); padding: 0.55rem 0.75rem; min-width: 130px; max-width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad); text-align: left; box-shadow: 0 3px 12px #0004; }
   .source-set-preview strong { display: block; font-size: 0.8rem; white-space: normal; }
   .source-set-preview small { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
@@ -3599,6 +3720,20 @@
     gap: 0.35rem;
   }
 
+  .background-disclosure summary {
+    padding: 0.45rem 0.2rem;
+    font-size: 0.65rem;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .background-disclosure summary:hover { color: var(--ink); }
+  .background-disclosure summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--rad-sm);
+  }
+  .background-controls { padding-top: 0.35rem; }
+
   /* Collapsible graph-package / sync section — keeps the panel short by default */
   .pkg-disclosure {
     display: flex;
@@ -3616,6 +3751,11 @@
     opacity: 0.7;
   }
 
+  .standing-legend { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.8rem; font-size: 0.65rem; color: var(--muted); }
+  .standing-legend li { display: flex; align-items: center; gap: 0.35rem; }
+  .standing-legend .sw { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--ink-2); }
+  .standing-legend .sw-proposed { border-top: 2px dashed var(--data); }
+  .standing-legend .sw-question { border: 1.5px dashed var(--ink-2); border-radius: 50%; width: 0.9rem; height: 0.9rem; line-height: 0.75rem; text-align: center; font-size: 0.6rem; color: var(--ink-2); opacity: 0.8; }
   .chip-row {
     display: flex;
     flex-wrap: wrap;

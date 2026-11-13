@@ -25,6 +25,31 @@ export interface GenerationReceipt {
   settings: Record<string, string | number>;
   ranAt: string;
   durationS: number;
+  /** The asset QA loop's record (F281): each attempt, which one this output is, and what is still open. */
+  qa?: GenerationQa;
+}
+/** One attempt of the QA fix loop (F281.3). `defects` come from the vision model's fixed list. */
+export interface GenerationQaAttempt {
+  seed: number;
+  pass: boolean;
+  problems: string[];
+  notes: string[];
+  reviewed: boolean;
+  reviewUnreadable?: boolean;
+  defects: string[];
+  score?: number;
+}
+export interface GenerationQa {
+  version: 1;
+  budget: number;
+  attempts: GenerationQaAttempt[];
+  /** Index into attempts of the output this receipt describes. */
+  chosen: number;
+  /** clean: passed and reviewed with nothing found; draft-with-notes: passed, something open; failed: no attempt passed. */
+  verdict: 'clean' | 'draft-with-notes' | 'failed';
+  fixed: string[];
+  open: string[];
+  reviewModel?: string;
 }
 export interface GenerationJob {
   request: GenerationRequest;
@@ -79,6 +104,20 @@ export function parseJob(value: unknown, request: GenerationRequest): Generation
   return value as unknown as GenerationJob;
 }
 
+/**
+ * The receipt's seed is the requested one, or the QA loop reseeded (F281.3): then its record must start
+ * at the requested seed, and the chosen attempt must be the seed the receipt says it used. Pure.
+ */
+function seedAccounted(value: Record<string, unknown>, requested: number): boolean {
+  const used = (value.settings as Record<string, unknown>).seed;
+  if (used === requested) return true;
+  const qa = value.qa;
+  if (!record(qa) || !Array.isArray(qa.attempts) || !Number.isInteger(qa.chosen)) return false;
+  const attempts = qa.attempts as unknown[];
+  const first = attempts[0];
+  const chosen = attempts[qa.chosen as number];
+  return record(first) && first.seed === requested && record(chosen) && chosen.seed === used;
+}
 export function validateReceipt(value: unknown, request: GenerationRequest): asserts value is GenerationReceipt {
   if (!record(value) || value.stage !== request.stage || !record(value.check) || value.check.pass !== true
     || !record(value.output) || value.output.file !== OUTPUT_FILES[request.stage]
@@ -90,7 +129,7 @@ export function validateReceipt(value: unknown, request: GenerationRequest): ass
       && typeof m.sha256 === 'string' && HASH.test(m.sha256))
     || !record(value.input) || (request.stage !== 'splat' && value.input.prompt !== request.prompt)
     || (request.parentId && (typeof value.input.imageSha256 !== 'string' || !HASH.test(value.input.imageSha256)))
-    || !record(value.settings) || value.settings.seed !== request.seed
+    || !record(value.settings) || !seedAccounted(value, request.seed)
     || typeof value.ranAt !== 'string' || !Number.isFinite(Date.parse(value.ranAt))
     || typeof value.durationS !== 'number' || !Number.isFinite(value.durationS) || value.durationS < 0) {
     throw new Error('Generation receipt is missing, failed, or inconsistent');

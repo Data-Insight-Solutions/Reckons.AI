@@ -1,14 +1,14 @@
 /**
  * npm run agent:queue — the local-job queue a session worker drains (F74.7).
  *
- *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate)
+ *   queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--cpu] [--ram-spill] [--no-ollama] [--after=<job>…] -- <argv…>   append one job (argv, never a shell string; --cpu = script tier, skips the GPU gate; --no-ollama = runs while Ollama is down; --ram-spill = its model is too big for VRAM, so the RAM guard's spill check skips it (the RAM floor still applies); --after names predecessors that must have a passed run, repeatable)
  *   queue.ts list                                                     queued jobs, then recurring jobs and when each is due
  *   queue.ts pause | resume                                           create / remove the PAUSE file; while it exists the worker starts nothing
  *   queue.ts drop <id>                                                remove a queued job (recorded as dropped)
  *   queue.ts seed-standard                                            add the standard local batch, skipping any already queued
  *   queue.ts enqueue-due                                              add each overdue recurring job once (the worker does this itself)
  *
- * The worker is scripts/agent/queue-worker.ts; it runs only while the session heartbeat is fresh.
+ * The worker is scripts/agent/queue-worker.ts.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -90,16 +90,21 @@ function main(): void {
     const name = flag('name');
     const cwd = flag('cwd');
     const priority = flag('priority') !== undefined ? Number(flag('priority')) : undefined;
-    if (!name || !cwd || argv.length === 0 || (priority !== undefined && !Number.isFinite(priority))) {
-      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] -- <argv…>');
+    // Which physical GPU to run on: the gate judges that GPU only and spawn pins CUDA_VISIBLE_DEVICES /
+    // GGML_VK_VISIBLE_DEVICES to it (e.g. --gpu=1 keeps a scan on the idle GPU while Ollama heats GPU0).
+    const gpuIndex = flag('gpu') !== undefined ? Number(flag('gpu')) : undefined;
+    // Repeatable: --after=<name> --after=<id> … each names a predecessor this job runs after.
+    const after = flags.filter((a) => a.startsWith('--after=')).map((a) => a.slice('--after='.length).trim()).filter((a) => a.length > 0);
+    if (!name || !cwd || argv.length === 0 || (priority !== undefined && !Number.isFinite(priority)) || (gpuIndex !== undefined && (!Number.isInteger(gpuIndex) || gpuIndex < 0))) {
+      console.error('Usage: queue.ts add --name=<job> --cwd=<dir> [--priority=n] [--gpu=<n>] [--cpu] [--ram-spill] [--no-ollama] [--after=<job>…] -- <argv…>');
       process.exit(2);
     }
-    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined)]);
+    const r = addJobs([newJob(name, path.resolve(cwd), argv, priority, flags.includes('--cpu') ? false : undefined, after, flags.includes('--ram-spill'), flags.includes('--no-ollama') ? false : undefined, gpuIndex)]);
     console.log(r.add.length ? `queued ${name} (${r.add[0].id})` : `already queued: ${name} in ${cwd}`);
   } else if (cmd === 'list') {
     const q = orderQueue(readQueue());
     console.log(`QUEUE ${queuePath()} — ${q.length} job(s)${isPaused() ? ' — PAUSED (queue.ts resume)' : ''}`);
-    for (const j of q) console.log(`  ${j.id}  ${j.name}${j.priority ? ` (p${j.priority})` : ''}  ${j.cwd}  ${j.argv.join(' ').slice(0, 90)}`);
+    for (const j of q) console.log(`  ${j.id}  ${j.name}${j.priority ? ` (p${j.priority})` : ''}${j.gpuIndex !== undefined ? ` gpu${j.gpuIndex}` : ''}${j.after?.length ? ` after:${j.after.join(',')}` : ''}${j.ramSpill ? ' ram-spill' : ''}  ${j.cwd}  ${j.argv.join(' ').slice(0, 90)}`);
     const { jobs, successes } = loadRecurring(root);
     const due = dueAll(jobs, mergeSuccesses(successes, doneSuccesses(readDone())), Date.now());
     console.log(`RECURRING — ${due.length}: ${due.map(dueLabel).join(', ') || 'none'}`);

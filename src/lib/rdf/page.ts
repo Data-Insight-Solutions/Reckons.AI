@@ -56,7 +56,7 @@ const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 
 /** `post`: dated, reverse-chronological content — release notes, announcements, blog entries.
  *  See `sitePosts()` for the newest-first ordering helper. */
-export type PageTemplate = 'landing' | 'doc' | 'full' | 'sidebar' | 'post';
+export type PageTemplate = 'landing' | 'sections' | 'doc' | 'full' | 'sidebar' | 'post';
 export type PageStatus   = 'draft' | 'published' | 'unlisted';
 export type PageNav       = 'menu' | 'sidebar' | 'both' | 'hidden';
 
@@ -81,7 +81,7 @@ export interface SitePage {
   generated?: string;
 }
 
-const TEMPLATES = new Set<PageTemplate>(['landing', 'doc', 'full', 'sidebar', 'post']);
+const TEMPLATES = new Set<PageTemplate>(['landing', 'sections', 'doc', 'full', 'sidebar', 'post']);
 const STATUSES  = new Set<PageStatus>(['draft', 'published', 'unlisted']);
 const NAVS      = new Set<PageNav>(['menu', 'sidebar', 'both', 'hidden']);
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

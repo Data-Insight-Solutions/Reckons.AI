@@ -17,6 +17,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { currentActor, actorLine } from './actor.js';
 import { readPendingRows } from './review-links.js';
+import { routeLanes } from './review-lane.js';
 import {
   buildVerdict, filterDecisions, groupDecisions, predicateArity, recordVerdicts, renderDecision,
   renderQueue, renderVerdict, ReviewRefusal, settledIds,
@@ -117,7 +118,9 @@ function load(deps: ReviewDeps): Loaded | null {
   const arity = predicateArity(triples);
   const rows = readPendingRows(queueFile);
   const settled = settledIds(decisionsFileFor(queueFile));
-  const all = groupDecisions(rows, arity);
+  // Findings are a check's report, not a person's decision (F89.4.3). The CLI has no jobs graph, so
+  // it routes on the row's own lane and the first-pass rule.
+  const all = groupDecisions(routeLanes(rows).review, arity);
   const decisions = all.filter((d) => !settled.has(d.id));
   return { decisions, queueFile, totalRows: rows.length, settled: all.length - decisions.length };
 }
