@@ -1110,6 +1110,13 @@ code:review-queue-integrity rdf:type ktype:Concept ;
     kpred:has-file "scripts/offline/queue-integrity.ts", "scripts/offline/pending-queue.ts", "scripts/offline/queue-dedupe.ts" ;
     kpred:tested-by "scripts/offline/__tests__/queue-integrity.test.ts", "scripts/offline/__tests__/pending-queue.test.ts" .
 
+# docs-expand gates (2026-11-13): deterministic checks between a local draft and the review queue.
+code:docs-expand-gates rdf:type ktype:Concept ;
+    rdfs:label "docs-expand jargon and grounding gates" ;
+    kpred:description "lib/docs-gates.ts: pure checks a drafted docs paragraph must clear before review (unexplained jargon read from the terminology graph, words the grounding never used, and a skip rule for pages that already read plainly). docs-expand.ts wires them in. Calibration numbers are on kb:job-backpressure in the roadmap." ;
+    kpred:has-file "scripts/offline/lib/docs-gates.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/docs-gates.test.ts" .
+
 code:three-example-viewer rdf:type ktype:Concept ;
     rdfs:label "Isolated Three.js example attachments" ;
     skos:broader code:threed ;
