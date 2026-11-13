@@ -33,6 +33,10 @@ export interface Job {
   blocking?: boolean;
   /** false = the command no longer writes to the review queue, so back-pressure must not hold it. */
   queues?: boolean;
+  /** Model routing (F74.6): the kind of local-model work; the routing table picks the model. */
+  kind?: string;
+  /** Explicit model override of the routing table. */
+  model?: string;
 }
 
 export const jobsGraphPath = (root = process.cwd()): string => path.join(root, 'static', 'reckons-jobs.ttl');
@@ -61,6 +65,8 @@ export function parseJobs(ttl: string): Job[] {
       ...(o.desc ? { desc: o.desc } : {}),
       ...(o['job-blocking'] === 'true' ? { blocking: true } : {}),
       ...(o['job-queues'] === 'false' ? { queues: false } : {}),
+      ...(o['job-kind'] ? { kind: o['job-kind'] } : {}),
+      ...(o['job-model'] ? { model: o['job-model'] } : {}),
     };
     return { job, order };
   });

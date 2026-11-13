@@ -208,9 +208,12 @@ qwen3-coder flagged `restoreSnapshot` for trusting its input unvalidated (accept
 graph-wipe path, now guarded and tested), while two other findings on the same file misread
 deliberate design and were rejected.
 
-Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-small-2` for code,
-`qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
-for embeddings.
+Local models installed here (2026-11-13, after Matt uninstalled command-r:35b, devstral-small-2, phi4:14b,
+lfm2.5 and llama3.2:3b): `qwen3.8` (+ the `qwen3.8-160k` alias, the deputy until the deputy benchmark decides),
+`qwen3-coder` for code, `mistral-small3.2:24b` general, `gemma3:27b` prose, `qwen2.5vl:7b` visual, `nuextract`
+extraction, `nomic-embed-text` embeddings. `qwen3.6` is NOT installed. Pick by job kind, not by name: the table is
+data in `static/reckons-jobs.ttl` (`ktype:ModelRoute`) and `scripts/agent/model-routing.ts` applies it with a
+per-model RAM gate. No small general model remains (the smallest is 15.2 GB).
 
 ### Reusable local security checks (F172.1)
 

@@ -13,7 +13,7 @@
 
 /** No default — unset means the feature is disabled. */
 export const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL;
-export const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'devstral-small-2:latest';
+export const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? 'gemma3:27b';
 
 export function ollamaEnabled(): boolean {
   return !!OLLAMA_BASE_URL;
@@ -22,7 +22,7 @@ export function ollamaEnabled(): boolean {
 export const OLLAMA_DISABLED_MESSAGE =
   'Local LLM offload is disabled. Set the OLLAMA_BASE_URL environment variable to enable it ' +
   '(e.g. OLLAMA_BASE_URL=http://localhost:11434) and restart the MCP server. ' +
-  'Optionally set OLLAMA_MODEL to pick a model (default: devstral-small-2:latest).';
+  'Optionally set OLLAMA_MODEL to pick a model (default: gemma3:27b, the measured leader at prose extraction).';
 
 export type OllamaChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 

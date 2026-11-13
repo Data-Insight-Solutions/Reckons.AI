@@ -14,6 +14,9 @@ describe('device batch size', () => {
     expect(localOptions({ num_ctx: 8192 }, () => 256)).toEqual({ num_batch: 256, num_ctx: 8192 });
     expect(localOptions({ num_batch: 64 }, () => 256)).toEqual({ num_batch: 64 });
     expect(localOptions({ temperature: 0 }, () => undefined)).toEqual({ temperature: 0 });
+    // use_mmap is opt-in (measured 2026-11-13) and never overrides the caller
+    expect(localOptions({ temperature: 0 }, () => 256, true)).toEqual({ num_batch: 256, temperature: 0, use_mmap: true });
+    expect(localOptions({ use_mmap: false }, () => undefined, true)).toEqual({ use_mmap: false });
   });
 });
 

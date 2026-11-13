@@ -2,7 +2,7 @@
  * F239 phase 1, HOST SIDE, local folder first (R2 later): watch one shared space folder and
  * answer, with a LOCAL model, as PROPOSALS only.
  *
- *   npx tsx scripts/agent/space-watch.ts --space=<dir> [--once] [--interval=60] [--host=<name>] [--model=qwen3.6:latest]
+ *   npx tsx scripts/agent/space-watch.ts --space=<dir> [--once] [--interval=60] [--host=<name>] [--model=qwen3.8:latest]
  *
  * What it reads in <dir>:  consent.json, requests/<id>.json, knowledge.pending.jsonl (open
  *   questions), *.ttl (the space's statements, read-only).

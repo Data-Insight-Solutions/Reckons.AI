@@ -45,7 +45,9 @@ export type Recurring = { name: string; label: string; argv: string[]; cwd: stri
   /** false for tier=script: the GPU gate does not apply. Anything not declared script is treated as GPU. */
   gpu: boolean;
   /** Run immediately on first session activation, then respect kpred:every. */
-  firstPass: boolean };
+  firstPass: boolean;
+  /** Model routing (F74.6): kpred:job-kind picks the model from the routing table; kpred:job-model overrides it. */
+  kind?: string; model?: string };
 
 /** `sched:<id>` — the queue name of a recurring job, so its history is findable by name. */
 export const scheduleName = (iri: string): string => `sched:${iri.split('/').pop()}`;
@@ -72,7 +74,7 @@ export function toRecurring(compiled: CompiledSchedule[], cwd: string): Recurrin
     // The command is a shell string in the graph (as schedule.ts runs it), so the argv is `bash -c <command>`;
     // the graph is LOCAL and named here, never imported.
     out.push({ name: scheduleName(c.iri), label: c.label, argv: ['/bin/bash', '-c', c.command], cwd: scheduleCwd(c.cwd, cwd, os.homedir()), every: c.every, everyMs, firstPass: c.firstPass,
-      ...(c.network ? { network: true } : {}), ...(c.tier ? { tier: c.tier } : {}), gpu: c.tier !== 'script' });
+      ...(c.network ? { network: true } : {}), ...(c.tier ? { tier: c.tier } : {}), gpu: c.tier !== 'script', ...(c.kind ? { kind: c.kind } : {}), ...(c.model ? { model: c.model } : {}) });
   }
   return out;
 }
@@ -146,7 +148,7 @@ export function selectDue(statuses: Due[], queued: QueueJob[], runningName?: str
   const out: QueueJob[] = [];
   for (const s of statuses) {
     if (!s.due || s.job.name === runningName || held.has(s.job.name)) continue;
-    const j = newJob(s.job.name, s.job.cwd, s.job.argv, priority, s.job.gpu);
+    const j = newJob(s.job.name, s.job.cwd, s.job.argv, priority, s.job.gpu, undefined, undefined, undefined, undefined, s.job.kind, s.job.model);
     if (have.has(jobKey(j))) continue;
     have.add(jobKey(j));
     out.push(j);

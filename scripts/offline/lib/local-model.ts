@@ -36,11 +36,21 @@ export function deviceNumBatch(load: () => { thresholds: Record<string, { limit?
   return n > 0 ? Math.floor(n) : undefined;
 }
 
-/** Ollama `options` with the device's num_batch added. The caller's values win. */
-export function localOptions<T extends Record<string, unknown>>(options: T, numBatch: () => number | undefined = deviceNumBatch): T & { num_batch?: number } {
-  if ('num_batch' in options) return options;
-  const n = numBatch();
-  return n === undefined ? options : { num_batch: n, ...options };
+/**
+ * Ollama `options` with the device's num_batch added. The caller's values win.
+ *
+ * use_mmap (opt-in, RECKONS_LOCAL_MMAP=1): under host memory pressure Ollama 0.40.11 logs "disabling mmap for
+ * llama-server load due to host memory pressure" and stages the model in RAM. Passing options.use_mmap=true is
+ * honored (journal: load_mode = mmap, no "disabling" line). Measured 2026-11-13, ONE run per arm, never under the
+ * pressure that took available RAM to 1.0 GiB: MemAvailable fell 1364 MiB without it vs 394 MiB with it for a
+ * 15.2 GB model (devstral-small-2), 600 vs 409 MiB for a 9.1 GB one (phi4:14b). So it helps by about 1 GiB at
+ * 15 GB, not enough to loosen the per-model gate, and it is OFF by default until a run under real pressure shows it.
+ */
+export function localOptions<T extends Record<string, unknown>>(options: T, numBatch: () => number | undefined = deviceNumBatch, mmap: boolean = process.env.RECKONS_LOCAL_MMAP === '1'): T & { num_batch?: number; use_mmap?: boolean } {
+  let out: T & { num_batch?: number; use_mmap?: boolean } = options;
+  if (!('num_batch' in options)) { const n = numBatch(); if (n !== undefined) out = { num_batch: n, ...options }; }
+  if (mmap && !('use_mmap' in out)) out = { ...out, use_mmap: true };
+  return out;
 }
 
 /** An error thrown by a local call, carrying the HTTP status when there was one. */
