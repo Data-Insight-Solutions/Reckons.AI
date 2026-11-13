@@ -175,15 +175,21 @@ export function loadDeviceConfig(root: string = mainCheckoutRoot(), host: string
     const c = JSON.parse(readFileSync(cachePath(), 'utf8')) as { key: string; value: Compiled };
     if (c.key === key) return c.value;
   } catch { /* no cache, or unreadable: recompile */ }
-  const sources = files.filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8'));
-  let value: Compiled;
-  try { value = { thresholds: resolveThresholds(sources, host), schedules: compileSchedules(sources, host) }; }
-  catch (e) {
-    // A syntax error in the PRIVATE device.ttl must not take the watcher down: say so and use the defaults alone.
-    console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring ${devicePath()}`);
-    const safe = files.filter((f) => f !== devicePath() && existsSync(f)).map((f) => readFileSync(f, 'utf8'));
-    return { thresholds: resolveThresholds(safe, host), schedules: compileSchedules(safe, host) };
+  // A syntax error in ANY source must not take the watcher or the queue down: drop THAT file, name
+  // it, and keep the others. (2026-11-13: a bad quote in the tracked schedules.ttl was blamed on
+  // device.ttl, and the "fallback" re-parsed the broken file and crashed agent:queue anyway.)
+  const sources: string[] = [];
+  let dropped = false;
+  for (const f of files.filter((p) => existsSync(p))) {
+    const ttl = readFileSync(f, 'utf8');
+    try { new Parser().parse(ttl); sources.push(ttl); }
+    catch (e) {
+      dropped = true;
+      console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring ${f}`);
+    }
   }
+  const value: Compiled = { thresholds: resolveThresholds(sources, host), schedules: compileSchedules(sources, host) };
+  if (dropped) return value; // never cache a partial result: the error must repeat until the file is fixed
   try {
     mkdirSync(path.dirname(cachePath()), { recursive: true });
     const tmp = `${cachePath()}.${process.pid}.tmp`;

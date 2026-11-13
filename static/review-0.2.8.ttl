@@ -170,7 +170,7 @@ rev:gap-f279 rdf:type ktype:Concept ;
 
 rev:gap-f74-7 rdf:type ktype:Concept ;
     rdfs:label "F74.7 Local panel — judgments handed to local models mid-session, only disagreements come back" ;
-    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/local-panel.test.ts, scripts/agent/__tests__/local-activity.test.ts, scripts/agent/__tests__/watch-render.test.ts, scripts/offline/__tests__/term-senses.test.ts, scripts/offline/lib/__tests__/ollama-stream.test.ts, scripts/offline/lib/__tests__/gpu-wait.test.ts, scripts/agent/__tests__/queue-chains.test.ts, scripts/agent/__tests__/session-gpu-pin.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/agent/__tests__/device-config.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/watch-restart.test.ts, scripts/agent/__tests__/device-config.test.ts, scripts/offline/__tests__/tracked-ttl-parses.test.ts, scripts/agent/__tests__/local-panel.test.ts, scripts/agent/__tests__/local-activity.test.ts, scripts/agent/__tests__/watch-render.test.ts, scripts/offline/__tests__/term-senses.test.ts, scripts/offline/lib/__tests__/ollama-stream.test.ts, scripts/offline/lib/__tests__/gpu-wait.test.ts, scripts/agent/__tests__/queue-chains.test.ts, scripts/agent/__tests__/session-gpu-pin.test.ts, scripts/agent/__tests__/session-queue.test.ts)." .
 
 rev:gap-f292 rdf:type ktype:Concept ;
     rdfs:label "F292 Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;

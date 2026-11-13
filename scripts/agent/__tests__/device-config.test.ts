@@ -1,7 +1,8 @@
-import { mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Parser } from 'n3';
 import { cacheKey, compileSchedules, defaultsPath, legacyWatchToTurtle, loadDeviceConfig, resolveThresholds } from '../device-config';
 import { DEFAULT_GPU_LIMITS, mergeGpuLimits } from '../session-gpu';
 import { DEFAULT_THRESHOLDS, mergeThresholds } from '../watch-render';
@@ -82,6 +83,24 @@ describe('cache keyed by mtime', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     writeFileSync(process.env.RECKONS_DEVICE_TTL!, 'this is not turtle <<<');
     expect(loadDeviceConfig(dir, 'h').thresholds.gpuUtil).toEqual({ yellow: 85, red: 98 });
+  });
+  it('a syntax error in schedules.ttl drops THAT file, names it, and keeps device.ttl', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mkdirSync(path.join(dir, 'reckons-workspace'));
+    const sched = path.join(dir, 'reckons-workspace', 'schedules.ttl');
+    writeFileSync(sched, HEAD + '<urn:x> rdfs:label "a "quoted" word" .\n');
+    writeFileSync(process.env.RECKONS_DEVICE_TTL!, HEAD + dev('h', 'h') + th('h', 'gpuUtil', 'kpred:yellow 33'));
+    expect(loadDeviceConfig(dir, 'h').thresholds.gpuUtil.yellow).toBe(33);
+    expect(err.mock.calls.map((c) => String(c[0])).join('\n')).toContain(sched);
+    expect(err.mock.calls.map((c) => String(c[0])).join('\n')).not.toContain('device.ttl');
+  });
+});
+
+describe('the tracked schedules graph', () => {
+  it('parses (a broken one silently drops every schedule)', () => {
+    const root = path.resolve(path.dirname(defaultsPath()), '..', '..', '..');
+    const ttl = readFileSync(path.join(root, 'reckons-workspace', 'schedules.ttl'), 'utf8');
+    expect(() => new Parser().parse(ttl)).not.toThrow();
   });
 });
 

@@ -30,7 +30,7 @@
  * minute old, refreshes it in a detached process that the status line never waits for.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -464,12 +464,42 @@ async function main(): Promise<void> {
  * the window just watches. --no-worker opts out. WEAKNESS: a job the worker started via job-watch
  * may outlive a hard kill (SIGKILL) of this window; SIGINT/SIGTERM stop the worker cleanly.
  */
+/**
+ * Restart policy for the worker the watcher owns. 2026-11-13: the worker crashed at 16:03 on a
+ * Turtle syntax error in schedules.ttl and the watcher kept drawing the turtle over a dead queue for
+ * hours, because it spawned the worker once and never looked again. A worker that exits non-zero
+ * (or is killed by a signal we did not send) is restarted after a backoff: 30 s, doubling to 10 min,
+ * reset once a worker has stayed up 10 minutes. A clean exit (code 0) is deliberate and is left alone.
+ */
+export const WORKER_RESTART_MIN_MS = 30_000;
+export const WORKER_RESTART_MAX_MS = 600_000;
+export function workerRestartDelay(prevDelayMs: number, ranMs: number): number {
+  if (ranMs >= WORKER_RESTART_MAX_MS) return WORKER_RESTART_MIN_MS;
+  return Math.min(Math.max(prevDelayMs, WORKER_RESTART_MIN_MS / 2) * 2, WORKER_RESTART_MAX_MS);
+}
+export const shouldRestartWorker = (code: number | null, stopping: boolean): boolean => !stopping && code !== 0;
+
 function startWorker(): void {
   const dir = join(process.env.XDG_STATE_HOME ?? join(homedir(), '.local/state'), 'reckons/jobs');
   mkdirSync(dir, { recursive: true });
-  const out = openSync(join(dir, 'queue-worker.log'), 'a');
-  const worker = spawn(process.execPath, [...process.execArgv, join(dirname(fileURLToPath(import.meta.url)), 'queue-worker.ts'), '--stay'], { stdio: ['ignore', out, out] });
-  const stop = () => { if (worker.exitCode === null) worker.kill('SIGTERM'); };
+  const logPath = join(dir, 'queue-worker.log');
+  let worker: ReturnType<typeof spawn> | undefined;
+  let stopping = false;
+  let delay = 0;
+  const spawnOne = () => {
+    const out = openSync(logPath, 'a');
+    const startedAt = Date.now();
+    worker = spawn(process.execPath, [...process.execArgv, join(dirname(fileURLToPath(import.meta.url)), 'queue-worker.ts'), '--stay'], { stdio: ['ignore', out, out] });
+    worker.on('exit', (code, signal) => {
+      try { closeSync(out); } catch { /* already closed */ }
+      if (!shouldRestartWorker(code, stopping)) return;
+      delay = workerRestartDelay(delay, Date.now() - startedAt);
+      try { appendFileSync(logPath, `watch: queue-worker exited (${signal ?? `code ${code}`}); restarting in ${delay / 1000}s\n`); } catch { /* log only */ }
+      setTimeout(spawnOne, delay);
+    });
+  };
+  spawnOne();
+  const stop = () => { stopping = true; if (worker && worker.exitCode === null) worker.kill('SIGTERM'); };
   process.on('exit', stop);
   for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP'] as const) process.on(sig, () => { stop(); process.exit(0); });
 }
