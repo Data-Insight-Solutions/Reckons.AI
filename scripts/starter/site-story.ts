@@ -24,7 +24,11 @@ export interface StoryWho {
   highlights: string[];
 }
 
+/** The business card and its regenerated print sheets (site-card.ts); counts come from the build. */
+export interface StoryCard { designIri: string; images: string[]; versions: number; sheets: number; sheetIris: string[]; ruleIri: string; changedWhy: string }
+
 export interface StoryInput {
+  card?: StoryCard;
   /** Present when the About page names a person; adds the step that introduces them. */
   who?: StoryWho;
   storyIri: string;
@@ -66,6 +70,14 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
       + ', each one marked with the page that states it. Open the person or the company to see them connected to the services, the posts that cover them and the dated credential.',
     highlights: w.highlights,
   }] : [];
+  const cd = i.card;
+  const cardStep = cd ? [{
+    title: 'The business card, and its print sheets',
+    content: 'The owner\'s business card is a design in this space, made from the website\'s own colours, fonts and logo, with its front and back shown as images (the back without the phone number, by the owner\'s choice). '
+      + n(cd.sheets, 'print sheet was', 'print sheets were') + ' built from it across ' + n(cd.versions, 'version', 'versions') + ' of the design, each sheet linked to the version it came from and to the sheet that replaced it' + (cd.changedWhy ? ' (' + cd.changedWhy + ')' : '')
+      + '. A rule node says what happens when the design changes: the sheet made from the old version is out of date, so a new one is built from the new export. The sheets themselves are private PDFs.',
+    highlights: [cd.designIri, ...cd.images, ...cd.sheetIris, cd.ruleIri],
+  }] : [];
   const steps = [
     {
       title: 'Where the content came from',
@@ -93,7 +105,7 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
       highlights: [i.siteIri],
     },
   ];
-  return [steps[0], ...whoStep, ...steps.slice(1)];
+  return [steps[0], ...whoStep, ...cardStep, ...steps.slice(1)];
 }
 
 export function storyTriples(i: StoryInput): StoryTriple[] {

@@ -6,7 +6,7 @@ export interface ExampleKb {
 }
 
 export const EXAMPLE_KBS: ExampleKb[] = [
-  { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC: the person and company behind it, its services, credentials and posts as connected nodes, a scanned ring, and a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 57, triples: 421 },
+  { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC: the person and company behind it, its services, credentials and posts as connected nodes, a scanned ring, and a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 68, triples: 519 },
   { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
   {
     id: 'quickstart',

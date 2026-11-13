@@ -14,6 +14,9 @@
  * It also reads the PUBLISHED About and Services pages by their structure (site-profile.ts, site-profile-triples.ts): the person, the company,
  * services linked to the posts the Services page links, credentials, recognition, mission, principles, the product and the scanned ring.
  *
+ * When the site holds assets/brand/business-card.json and its two public WebPs, the card design, its versions, its print sheets and the
+ * regenerate-on-change rule are added too (site-card.ts, F294.8) and the two images are copied to static/media/.
+ *
  * ONLY published pages are ever included. Drafts, the pages' bodies, workspace/ files, the site config and the
  * contact webhook are never read into the space (the config is read for its public address only, never the
  * webhook). `--check` fails when the committed file differs from what the site repository now generates, and is
@@ -21,7 +24,7 @@
  * Written in the app's annotated export (toTurtleFull) with no generated-at line, so two runs are identical.
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { importSiteWithBlog } from '../../src/lib/publish/site-blog.js';
@@ -32,6 +35,7 @@ import { STATED_ON_PREDICATE, VALID_UNTIL_PREDICATE, expiryFactsFromContent } fr
 import { XSD_INT, storyTriples, type StoryFact } from './site-story.js';
 import { extractProfile } from './site-profile.js';
 import { addProfile } from './site-profile-triples.js';
+import { CARD_MEDIA, addCard, parseCardRecord, type CardRecord } from './site-card.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const OUT = path.join(ROOT, 'static', 'starter-data-insight-solutions.ttl');
@@ -49,7 +53,7 @@ const LEAP_LABEL = 'urn:reckons:leap/label';
 const AT = Date.parse('2026-11-11T09:00:00Z');
 const SOURCE_ID = 'dis-website';
 
-export type SpaceOptions = { url: string; publisher?: string; siteName?: string; footer?: string };
+export type SpaceOptions = { url: string; publisher?: string; siteName?: string; footer?: string; card?: CardRecord };
 export type SpaceResult = { text: string; pages: number; posts: number; skippedNotPublished: number; statements: Statement[]; profileSkipped: string[] };
 
 /** The site's address with no trailing slash; refuses anything that is not an https URL with no credentials. */
@@ -172,6 +176,9 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
   const profile = extractProfile(files);
   const who = addProfile(add, profile, { orgIri, siteIri, nodeBySlug, factIris: new Map(storyFacts.map((f) => [f.label, f.iri])), base });
 
+  // F294.8: the business card, its design versions and the print sheets regenerated from them.
+  const card = opts.card ? addCard(add, opts.card, { orgIri, siteIri, personIri: who?.personIri }) : undefined;
+
   const sharedIri = KB + 'dis-shared-footer';
   const sharedText = opts.footer ?? siteName;
   add(sharedIri, RDF_TYPE, iri(TYPE + 'Fact'));
@@ -181,7 +188,7 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
   const storyIri = KB + 'dis-story';
   for (const t of storyTriples({
     storyIri, stepIri: (k) => KB + 'dis-story-step-' + k, siteName, siteIri, blogIri: hasPosts ? blogIri : null, checkIri,
-    pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts, who,
+    pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts, who, card,
   })) {
     add(t.s, t.p, 'iri' in t.o ? iri(t.o.iri) : 'integer' in t.o ? lit(String(t.o.integer), XSD_INT) : lit(t.o.text));
   }
@@ -219,6 +226,15 @@ export function resolveUrl(site: string, flagUrl?: string): string {
   throw new Error('no public address: pass --url=https://... (site.config.json has no url or siteUrl field)');
 }
 
+/** The public brand record of the card and the two public images, read from the site repository when present. */
+export function readCard(site: string): { record: CardRecord; images: Record<'front' | 'back', Buffer> } | undefined {
+  const dir = path.join(site, 'assets', 'brand');
+  const json = path.join(dir, 'business-card.json');
+  const f = path.join(dir, 'business-card-front.webp'), b = path.join(dir, 'business-card-back.webp');
+  if (!existsSync(json) || !existsSync(f) || !existsSync(b)) return undefined;
+  return { record: parseCardRecord(readFileSync(json, 'utf8')), images: { front: readFileSync(f), back: readFileSync(b) } };
+}
+
 function main(): void {
   const arg = (n: string): string | undefined => process.argv.find((a) => a.startsWith('--' + n + '='))?.split('=').slice(1).join('=');
   const check = process.argv.includes('--check');
@@ -228,15 +244,20 @@ function main(): void {
     console.error('Usage: npx tsx scripts/starter/build-site-space.ts --site=<site repository> [--url=<https address>] [--check]');
     process.exit(1);
   }
-  const r = buildSiteSpace(readSiteContent(path.resolve(site)), { url: resolveUrl(path.resolve(site), arg('url')), footer: resolveFooter(path.resolve(site)) });
+  const card = readCard(path.resolve(site));
+  const r = buildSiteSpace(readSiteContent(path.resolve(site)), { url: resolveUrl(path.resolve(site), arg('url')), footer: resolveFooter(path.resolve(site)), card: card?.record });
+  const media = (side: 'front' | 'back'): string => path.join(ROOT, 'static', CARD_MEDIA[side]);
+  const imagesCurrent = !card || (['front', 'back'] as const).every((k) => existsSync(media(k)) && readFileSync(media(k)).equals(card.images[k]));
   if (check) {
     const cur = existsSync(OUT) ? readFileSync(OUT, 'utf8') : '';
+    if (!imagesCurrent) { console.error('build-site-space --check: the business card images in static/media differ from the site repository. Run the generator without --check.'); process.exit(1); }
     if (cur !== r.text) { console.error('build-site-space --check: static/starter-data-insight-solutions.ttl is stale. Run: npx tsx scripts/starter/build-site-space.ts --site=<site repository> --url=<address>'); process.exit(1); }
     console.log('build-site-space --check: up to date');
     return;
   }
   writeFileSync(OUT, r.text);
-  console.log(`wrote static/starter-data-insight-solutions.ttl: ${r.pages} page(s), ${r.posts} post(s); ${r.skippedNotPublished} not published and left out`);
+  if (card) { mkdirSync(path.join(ROOT, 'static', 'media'), { recursive: true }); for (const k of ['front', 'back'] as const) writeFileSync(media(k), card.images[k]); }
+  console.log(`wrote static/starter-data-insight-solutions.ttl: ${r.pages} page(s), ${r.posts} post(s); ${r.skippedNotPublished} not published and left out${card ? '; the business card and its two images' : ''}`);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('build-site-space.ts')) main();
