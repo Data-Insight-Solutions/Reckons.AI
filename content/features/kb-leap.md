@@ -1,7 +1,7 @@
 ---
 title: "Graph Leap"
 slug: "kb-leap"
-order: 1019
+order: 1021
 section: "Features"
 parent: "multi-kb"
 template: doc
