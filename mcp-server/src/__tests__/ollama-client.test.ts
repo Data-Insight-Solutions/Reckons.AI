@@ -25,11 +25,11 @@ describe('ollama-client', () => {
     expect(mod.OLLAMA_DISABLED_MESSAGE).toMatch(/http:\/\/localhost:11434/);
   });
 
-  it('defaults OLLAMA_MODEL to devstral-small-2:latest when unset', async () => {
+  it('defaults OLLAMA_MODEL to gemma3:27b when unset', async () => {
     delete process.env.OLLAMA_MODEL;
     process.env.OLLAMA_BASE_URL = 'http://localhost:11434';
     const mod = await freshModule();
-    expect(mod.OLLAMA_MODEL).toBe('devstral-small-2:latest');
+    expect(mod.OLLAMA_MODEL).toBe('gemma3:27b');
   });
 
   it('is enabled once OLLAMA_BASE_URL is set and posts to /api/chat with stream:false', async () => {

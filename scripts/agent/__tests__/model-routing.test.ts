@@ -7,9 +7,9 @@ import { parseJobs } from '../../lib/jobs-graph-read.js';
 import { newJob, parseQueue } from '../session-queue.js';
 
 const GB = 1e9;
-// Fake Ollama sizes (bytes), the 2026-11-13 install.
+// Fake Ollama sizes (bytes), the 2026-11-13 install AFTER the cleanup (no small general model).
 const SIZES = new Map<string, number>([
-  ['qwen3-coder:latest', 18.6 * GB], ['devstral-small-2:latest', 15.2 * GB], ['phi4:14b', 9.1 * GB], ['gemma3:27b', 17.4 * GB],
+  ['qwen3-coder:latest', 18.6 * GB], ['mistral-small3.2:24b', 15.2 * GB], ['gemma3:27b', 17.4 * GB],
   ['nuextract:latest', 2.2 * GB], ['qwen3.8:latest', 17.7 * GB], ['qwen2.5vl:7b', 6.0 * GB],
 ]);
 const ttl = readFileSync(path.join(__dirname, '../../../static/reckons-jobs.ttl'), 'utf8');
@@ -31,6 +31,10 @@ describe('the routing table in the jobs graph', () => {
     const c = table.get('extraction')!.candidates;
     expect(c[0]).toMatchObject({ model: 'gemma3:27b', grade: 'measured' });
     expect(c.find((x) => x.model === 'nuextract:latest')?.grade).toBe('guess');
+  });
+  it('no routed candidate is a model that was uninstalled on 2026-11-13', () => {
+    const names = [...table.values()].flatMap((k) => k.candidates.map((c) => c.model));
+    for (const gone of ['devstral', 'phi4', 'lfm2', 'llama3.2', 'command-r', 'qwen3.6']) expect(names.some((n) => n.startsWith(gone))).toBe(false);
   });
   it('the jobs reader still parses the same graph', () => { expect(parseJobs(ttl).length).toBeGreaterThan(50); });
   it('rejects a route with an unknown kind or no grade', () => {
@@ -59,25 +63,27 @@ describe('modelStartVerdict (the per-model gate)', () => {
 
 describe('chooseRoute', () => {
   const base = { table, sizes: SIZES };
-  it('code-draft with room takes rung 1 (devstral, the smaller code model)', () => {
-    expect(chooseRoute({ ...base, kind: 'code-draft', availMiB: 30000 })).toMatchObject({ ok: true, model: 'devstral-small-2', rung: 1, grade: 'measured' });
+  it('code-draft with room takes qwen3-coder; with 9 GiB free it waits (devstral is gone)', () => {
+    expect(chooseRoute({ ...base, kind: 'code-draft', availMiB: 30000 })).toMatchObject({ ok: true, model: 'qwen3-coder:latest', rung: 1, grade: 'measured' });
+    expect(chooseRoute({ ...base, kind: 'code-draft', availMiB: 9000 })).toMatchObject({ ok: false, code: 'wait' });
   });
-  it('extraction with 20 GiB free uses gemma3:27b; with 12 GiB it falls to phi4:14b (rung 2) and says why', () => {
+  it('extraction with 20 GiB free uses gemma3:27b; with 17 GiB it falls to mistral-small3.2 (rung 2) and says why', () => {
     expect(chooseRoute({ ...base, kind: 'extraction', availMiB: mib(20) })).toMatchObject({ model: 'gemma3:27b', rung: 1 });
-    const r = chooseRoute({ ...base, kind: 'extraction', availMiB: mib(12) });
-    expect(r).toMatchObject({ ok: true, model: 'phi4:14b', rung: 2 });
+    const r = chooseRoute({ ...base, kind: 'extraction', availMiB: mib(17.5) });
+    expect(r).toMatchObject({ ok: true, model: 'mistral-small3.2:24b', rung: 2 });
     expect(r.skipped[0]).toMatch(/gemma3:27b: system RAM available/);
   });
   it('with 4 GiB free extraction runs on nuextract (2.2 GB) as the last rung', () => {
-    expect(chooseRoute({ ...base, kind: 'extraction', availMiB: mib(4.5) })).toMatchObject({ ok: true, model: 'nuextract:latest', rung: 4, grade: 'guess' });
+    expect(chooseRoute({ ...base, kind: 'extraction', availMiB: mib(4.5) })).toMatchObject({ ok: true, model: 'nuextract:latest', rung: 3, grade: 'guess' });
   });
   it('with 1 GiB free nothing starts: it waits and names every model', () => {
     const r = chooseRoute({ ...base, kind: 'extraction', availMiB: 1024 });
     expect(r).toMatchObject({ ok: false, code: 'wait' });
-    expect(!r.ok && r.reason).toMatch(/gemma3:27b.*phi4:14b/);
+    expect(!r.ok && r.reason).toMatch(/gemma3:27b.*mistral-small3\.2:24b/);
   });
-  it('a not-installed rung is skipped, not fatal (summarize: lfm2.5 absent -> phi4:14b)', () => {
-    expect(chooseRoute({ ...base, kind: 'summarize', availMiB: 30000 })).toMatchObject({ ok: true, model: 'phi4:14b', rung: 2 });
+  it('a not-installed rung is skipped, not fatal (a removed model is never called)', () => {
+    const t = new Map(SIZES); t.delete('gemma3:27b');
+    expect(chooseRoute({ ...base, sizes: t, kind: 'extraction', availMiB: 30000 })).toMatchObject({ ok: true, model: 'mistral-small3.2:24b', rung: 2 });
   });
   it('an override is never substituted', () => {
     expect(chooseRoute({ ...base, override: 'qwen3-coder:latest', availMiB: mib(10) })).toMatchObject({ ok: false, code: 'wait' });

@@ -16,7 +16,7 @@
  *             static/starter/everyday-sources/ (the 2026-10-08 F248 decision).
  *
  * Usage: OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/starter/draft-sample-sources.ts
- *          [--model=qwen3.6:latest] [--only=sample-thread] [--out=<dir>] [--attempts=3]
+ *          [--model=qwen3.8:latest] [--only=sample-thread] [--out=<dir>] [--attempts=3]
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';

@@ -790,7 +790,7 @@ job:term-usage rdf:type          ktype:OfflineJob ;
 job:terminology-sweep rdf:type          ktype:OfflineJob ;
     rdfs:label          "terminology-sweep" ;
     skos:prefLabel      "terminology-sweep" ;
-    skos:definition     "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU." ;
+    skos:definition     "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, mistral-small3.2:24b, gemma3:27b; devstral-small-2 was uninstalled 2026-11-13), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU." ;
     kpred:job-tier      "agent" ;
     kpred:emits         "question" ;
     kpred:command       "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
@@ -882,6 +882,8 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
 ## A job declares kpred:job-kind (a schedule or an offline job); scripts/agent/model-routing.ts picks the first
 ## candidate that is installed AND fits the RAM gate (model size + floor). kpred:job-model is an explicit override.
 ## Order = hnav:order. kpred:evidence-grade: measured (a bench or calibration cited in the evidence) or guess (to be measured).
+## INSTALLED SET after Matt's 2026-11-13 cleanup: qwen3.8 (+160k alias), qwen3-coder, mistral-small3.2:24b, gemma3:27b, qwen2.5vl:7b, nuextract, nomic-embed-text.
+## NO SMALL GENERAL MODEL REMAINS: the smallest general model is mistral-small3.2 at 15.2 GB, so "small first" applies only to vision (6 GB), extraction (nuextract, 2.2 GB, unmeasured) and embeddings.
 ## WEAKNESS: only the extraction, visual and code rows rest on a head-to-head bench; the rest are "in use" or guesses.
 ## ---------------------------------------------------------------------------
 
@@ -891,33 +893,17 @@ kind:code-draft rdf:type ktype:JobKind ;
     kpred:route-local "true" .
 
 route:code-draft-1 rdf:type ktype:ModelRoute ;
-    rdfs:label "code-draft 1: devstral-small-2" ;
-    kpred:route-kind kind:code-draft ;
-    kpred:model "devstral-small-2" ;
-    kpred:evidence-grade "measured" ;
-    kpred:evidence "15.2 GB. Co-winner with qwen3-coder on the local coding bench (npm run bench:coding; MEMORY.md: \"qwen3-coder/devstral-small-2 (code)\"); smaller than qwen3-coder, so it starts first. Extraction bench 2026-09-04 shows it is NOT a prose model (56%)." ;
-    hnav:order 1 .
-
-route:code-draft-2 rdf:type ktype:ModelRoute ;
-    rdfs:label "code-draft 2: qwen3-coder:latest" ;
+    rdfs:label "code-draft 1: qwen3-coder:latest" ;
     kpred:route-kind kind:code-draft ;
     kpred:model "qwen3-coder:latest" ;
     kpred:evidence-grade "measured" ;
-    kpred:evidence "18.6 GB. Benchmarked winner for code (tests/bench/run-coding-bench.ts). Needs the most room of the code models, so it is the second rung. Wrong tool for prose: 39% on extraction, kb:extraction-scoring." ;
-    hnav:order 2 .
-
-route:code-draft-3 rdf:type ktype:ModelRoute ;
-    rdfs:label "code-draft 3: phi4:14b" ;
-    kpred:route-kind kind:code-draft ;
-    kpred:model "phi4:14b" ;
-    kpred:evidence-grade "guess" ;
-    kpred:evidence "9.1 GB. Unmeasured for code on this machine; listed so a small-model run can be tried and scored. Move it up only after a bench result." ;
-    hnav:order 3 .
+    kpred:evidence "18.6 GB. Benchmarked winner for code on the local coding bench (tests/bench/run-coding-bench.ts; MEMORY.md \"qwen3-coder (code)\"). The only code model left installed: devstral-small-2, its co-winner and 3 GB smaller, was uninstalled 2026-11-13, so the smaller-first option is gone. Wrong tool for prose: 39% on extraction, kb:extraction-scoring." ;
+    hnav:order 1 .
 
 kind:code-review rdf:type ktype:JobKind ;
     rdfs:label "code-review" ;
     skos:definition "Reviewing a diff for correctness." ;
-    kpred:route-local "false"; 
+    kpred:route-local "false" ;
     kpred:honest-note "No local route. Local code review was retired 2026-10-13 after 0 true findings in 49 (qwen3-coder and devstral-small-2 missed both real bugs in the trial); PR review is a Sonnet or Opus subagent. scripts/offline/code-review.ts stays for hand re-runs only." .
 
 kind:prose-draft rdf:type ktype:JobKind ;
@@ -926,27 +912,27 @@ kind:prose-draft rdf:type ktype:JobKind ;
     kpred:route-local "true" .
 
 route:prose-draft-1 rdf:type ktype:ModelRoute ;
-    rdfs:label "prose-draft 1: qwen3.8:latest" ;
+    rdfs:label "prose-draft 1: gemma3:27b" ;
     kpred:route-kind kind:prose-draft ;
-    kpred:model "qwen3.8:latest" ;
-    kpred:evidence-grade "measured" ;
-    kpred:evidence "17.7 GB. The harness default (DEFAULT_REASONING_MODEL) and the model describe-entities and the docs jobs already run on; no head-to-head prose bench exists, so the grade is for \"in use and gated by a human\", not \"best\"." ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "17.4 GB. The prose model of the kept set: first of six at reading prose (72% extraction recall, kb:extraction-scoring) but never benched at WRITING it, so the grade is a guess for drafting." ;
     hnav:order 1 .
 
 route:prose-draft-2 rdf:type ktype:ModelRoute ;
-    rdfs:label "prose-draft 2: mistral-small3.2:24b" ;
+    rdfs:label "prose-draft 2: qwen3.8:latest" ;
     kpred:route-kind kind:prose-draft ;
-    kpred:model "mistral-small3.2:24b" ;
-    kpred:evidence-grade "guess" ;
-    kpred:evidence "15.2 GB. Unmeasured for drafting here; it was the only model that refused the off-topic quote in the 2026-10-28 verifier calibration (two cases), which says nothing about prose quality." ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. The harness default (DEFAULT_REASONING_MODEL) that describe-entities and the docs jobs already run on; no head-to-head prose bench exists, so the grade means \"in use and gated by a human\", not \"best\"." ;
     hnav:order 2 .
 
 route:prose-draft-3 rdf:type ktype:ModelRoute ;
-    rdfs:label "prose-draft 3: phi4:14b" ;
+    rdfs:label "prose-draft 3: mistral-small3.2:24b" ;
     kpred:route-kind kind:prose-draft ;
-    kpred:model "phi4:14b" ;
+    kpred:model "mistral-small3.2:24b" ;
     kpred:evidence-grade "guess" ;
-    kpred:evidence "9.1 GB. Candidate small model; measure on describe-entities with --limit=10 and a human read before promoting it." ;
+    kpred:evidence "15.2 GB. Smallest general model left. Unmeasured for drafting here." ;
     hnav:order 3 .
 
 kind:extraction rdf:type ktype:JobKind ;
@@ -963,28 +949,20 @@ route:extraction-1 rdf:type ktype:ModelRoute ;
     hnav:order 1 .
 
 route:extraction-2 rdf:type ktype:ModelRoute ;
-    rdfs:label "extraction 2: phi4:14b" ;
+    rdfs:label "extraction 2: mistral-small3.2:24b" ;
     kpred:route-kind kind:extraction ;
-    kpred:model "phi4:14b" ;
+    kpred:model "mistral-small3.2:24b" ;
     kpred:evidence-grade "measured" ;
-    kpred:evidence "9.1 GB. 53% strict recall, 68% loose, 0 invented (2026-09-04 48 GB-class run): the best SMALL model measured, but 19 points under gemma3:27b, so it is a fallback when room is short, not the first rung." ;
+    kpred:evidence "15.2 GB. 53% strict recall, 68% loose, 0 invented (2026-09-04 48 GB-class run): 19 points under gemma3:27b and only 2 GB smaller, so a fallback when room is short by a little, not a small-model answer." ;
     hnav:order 2 .
 
 route:extraction-3 rdf:type ktype:ModelRoute ;
-    rdfs:label "extraction 3: devstral-small-2:latest" ;
-    kpred:route-kind kind:extraction ;
-    kpred:model "devstral-small-2:latest" ;
-    kpred:evidence-grade "measured" ;
-    kpred:evidence "15.2 GB. 56% (2026-09-04 sweep). Fewer points than gemma3:27b and no smaller than mistral-small." ;
-    hnav:order 3 .
-
-route:extraction-4 rdf:type ktype:ModelRoute ;
-    rdfs:label "extraction 4: nuextract:latest" ;
+    rdfs:label "extraction 3: nuextract:latest" ;
     kpred:route-kind kind:extraction ;
     kpred:model "nuextract:latest" ;
     kpred:evidence-grade "guess" ;
-    kpred:evidence "2.2 GB. A model built for structured extraction and the smallest candidate by far, but NOT measured on this repository's extraction bench. Highest-value measurement in this table: if it nears 53%, it is the first rung and extraction stops needing a 17 GB model." ;
-    hnav:order 4 .
+    kpred:evidence "2.2 GB. A model built for structured extraction and the only small model left, but NOT measured on this repository's extraction bench (a 5% figure for it sits in .env.example from an earlier, different setup). Highest-value measurement in this table: if it nears 53% on the current bench it becomes the first rung and extraction stops needing a 15 to 17 GB model." ;
+    hnav:order 3 .
 
 kind:classification-judgment rdf:type ktype:JobKind ;
     rdfs:label "classification-judgment" ;
@@ -996,7 +974,7 @@ route:classification-judgment-1 rdf:type ktype:ModelRoute ;
     kpred:route-kind kind:classification-judgment ;
     kpred:model "qwen3.8:latest" ;
     kpred:evidence-grade "measured" ;
-    kpred:evidence "17.7 GB. The local-panel default model (3 votes); the 2026-09-30 calibration measured its predecessor qwen3.6 at 13/13 unanimous-right on 30 hand-labelled sites (scripts/agent/local-panel.ts header). The qwen3.8 successor has not been re-scored on that fixture." ;
+    kpred:evidence "17.7 GB. The local-panel default model (3 votes); the 2026-09-30 calibration measured its predecessor qwen3.6 at 13/13 unanimous-right on 30 hand-labelled sites (scripts/agent/local-panel.ts header). qwen3.8 has not been re-scored on that fixture, and qwen3.6 is no longer installed." ;
     hnav:order 1 .
 
 route:classification-judgment-2 rdf:type ktype:ModelRoute ;
@@ -1008,20 +986,12 @@ route:classification-judgment-2 rdf:type ktype:ModelRoute ;
     hnav:order 2 .
 
 route:classification-judgment-3 rdf:type ktype:ModelRoute ;
-    rdfs:label "classification-judgment 3: phi4:14b" ;
+    rdfs:label "classification-judgment 3: mistral-small3.2:24b" ;
     kpred:route-kind kind:classification-judgment ;
-    kpred:model "phi4:14b" ;
+    kpred:model "mistral-small3.2:24b" ;
     kpred:evidence-grade "guess" ;
-    kpred:evidence "9.1 GB. Small candidate; fails the 2026-10-28 off-topic-quote check as a verifier (passed an off-topic quote), so it is not for verification." ;
+    kpred:evidence "15.2 GB. Different model family from qwen3.8, so its errors are less correlated; usable as a panel member. WEAKNESS: no small general model remains (llama3.2:3b, phi4:14b and lfm2.5 were uninstalled 2026-11-13), so no coarse-label rung under 15 GB exists to measure." ;
     hnav:order 3 .
-
-route:classification-judgment-4 rdf:type ktype:ModelRoute ;
-    rdfs:label "classification-judgment 4: llama3.2:3b" ;
-    kpred:route-kind kind:classification-judgment ;
-    kpred:model "llama3.2:3b" ;
-    kpred:evidence-grade "guess" ;
-    kpred:evidence "2.0 GB. Cheapest rung; 22% on extraction says it is weak at language tasks, so use only for coarse routing labels, after a measurement." ;
-    hnav:order 4 .
 
 kind:verification rdf:type ktype:JobKind ;
     rdfs:label "verification" ;
@@ -1055,28 +1025,20 @@ kind:summarize rdf:type ktype:JobKind ;
     kpred:route-local "true" .
 
 route:summarize-1 rdf:type ktype:ModelRoute ;
-    rdfs:label "summarize 1: lfm2.5:latest" ;
-    kpred:route-kind kind:summarize ;
-    kpred:model "lfm2.5:latest" ;
-    kpred:evidence-grade "guess" ;
-    kpred:evidence "5.2 GB. Small; 33% on extraction, so unproven for summaries. Measure on kb_local_summarize before use." ;
-    hnav:order 1 .
-
-route:summarize-2 rdf:type ktype:ModelRoute ;
-    rdfs:label "summarize 2: phi4:14b" ;
-    kpred:route-kind kind:summarize ;
-    kpred:model "phi4:14b" ;
-    kpred:evidence-grade "guess" ;
-    kpred:evidence "9.1 GB. Mid-size candidate." ;
-    hnav:order 2 .
-
-route:summarize-3 rdf:type ktype:ModelRoute ;
-    rdfs:label "summarize 3: qwen3.8:latest" ;
+    rdfs:label "summarize 1: qwen3.8:latest" ;
     kpred:route-kind kind:summarize ;
     kpred:model "qwen3.8:latest" ;
     kpred:evidence-grade "measured" ;
-    kpred:evidence "17.7 GB. Default for kb_local_summarize; in use, not benchmarked against the small ones." ;
-    hnav:order 3 .
+    kpred:evidence "17.7 GB. Default for kb_local_summarize; in use, never benchmarked against a smaller model." ;
+    hnav:order 1 .
+
+route:summarize-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 2: mistral-small3.2:24b" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "15.2 GB. The smallest general model left. WEAKNESS: the 5 to 9 GB small summarizers (phi4:14b, lfm2.5) that were candidates were uninstalled 2026-11-13 before being measured." ;
+    hnav:order 2 .
 
 kind:embed rdf:type ktype:JobKind ;
     rdfs:label "embed" ;
@@ -1101,7 +1063,7 @@ route:agentic-deputy-1 rdf:type ktype:ModelRoute ;
     kpred:route-kind kind:agentic-deputy ;
     kpred:model "qwen3.8-160k:latest" ;
     kpred:evidence-grade "measured" ;
-    kpred:evidence "17.7 GB, 160k context. The deputy model (npm run claude:local, AGENTS.md rule 5); no smaller installed model has a long enough context window." ;
+    kpred:evidence "17.7 GB, 160k context. The deputy model (npm run claude:local, AGENTS.md rule 5) until the deputy benchmark (qwen3.8 vs mistral-small3.2:24b, overseer bench, 5 repeats) decides; no smaller installed model has a long enough context window." ;
     hnav:order 1 .
 
 jobset:agent rdf:type      skos:Collection ;

@@ -51,7 +51,7 @@
  * number look better is the failure mode this note exists to prevent.
  *
  *   npx tsx scripts/offline/extraction-score.ts                       one model, no graph context
- *   … --models=qwen3-coder:latest,gemma3:27b,devstral-small-2:latest  compare the local roster
+ *   … --models=qwen3-coder:latest,gemma3:27b,mistral-small3.2:24b compare the local roster
  *   … --graph=none,small,full                                         settle the grounding question
  *   … --pending                                                       queue the findings for review
  *   … --json                                                          machine-readable, for a test
