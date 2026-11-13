@@ -11805,6 +11805,19 @@ kb:ollama-installed-model rdf:type ktype:Feature ;
     kpred:tested-by    "src/lib/integrations/llm/__tests__/model-for-task.test.ts" ;
     kpred:tested-by    "src/lib/stores/__tests__/ollama-model-notice.test.ts" .
 
+# 2026-11-13 — F279.1 NO HARD-CODED DEFAULT OLLAMA MODEL (Matt, in chat with Claude Code).
+kb:ollama-auto-model rdf:type ktype:Feature ;
+    rdfs:label "Ollama picks from what is installed: no model name is the default" ;
+    kpred:feature-id   "F279.1" ;
+    kpred:has-status   "planned" ;
+    skos:broader       kb:ollama-installed-model ;
+    kpred:relates-to   kb:model-routing-ledger ;
+    kpred:relates-to   kb:plugin-library ;
+    kpred:decided      "MATT, 2026-11-13: asked what a fresh install's default Ollama model should be once llama3.2 was uninstalled from the dev machine, chose 'Pick from what is installed': no hard-coded model name; the app chooses from the installed models by role, and the setup guide recommends a small model per role instead of naming one default." ;
+    kpred:description  "A fresh install stores no Ollama model name. Each task resolves its model from the server's installed tags by role (extraction, chat, code), using the same resolver F279 built; a model the person chooses is still never overridden. Settings shows 'Automatic' with the model that would run, and the setup guide and .env.example recommend a small model per role rather than one default." ;
+    kpred:remaining    "The stored default (db.ts ollamaModel), the provider and chat fallbacks ('llama3.2' in providers.ts and turtle-chat.ts), the Settings placeholder and hints, SETUP.md and .env.example still name llama3.2 (counted 2026-11-13)." ;
+    kpred:done-test    "unit tests: with nothing chosen the resolver returns an installed model for each role; with no installed list it returns no name and the caller says to pull a model instead of sending a request that 404s; a chosen installed model is never replaced; svelte-check passes." .
+
 # 2026-11-04 — F281 ASSET QA LOOP (Matt, in chat with Claude Code).
 kb:asset-qa-loop rdf:type ktype:Feature ;
     rdfs:label "Asset QA loop: every generated asset is checked, its flaws are fixed automatically within a budget, and the best draft reaches review with its report" ;
