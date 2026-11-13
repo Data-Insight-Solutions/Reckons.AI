@@ -107,8 +107,14 @@ export function storyAutoPlayRequested(): boolean {
 export function clearStoryAutoPlay() {
   storyAutoPlay = false;
 }
-export function startStory(storyId: string, autoPlay = false) {
+/** The 1-based step a story link asked to open at (`&step=<n>`, F292.2); 1 when the link named none. */
+let storyStartStep = 1;
+export function storyStartStepRequested(): number {
+  return storyStartStep;
+}
+export function startStory(storyId: string, autoPlay = false, step = 1) {
   _storyId = storyId;
+  storyStartStep = Number.isInteger(step) && step >= 1 ? step : 1;
   storyAutoPlay = autoPlay;
   exploring = false;
   chatOpen = true;

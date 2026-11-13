@@ -96,6 +96,12 @@ export async function populateKbFromTtl(
     }));
   }
 
+  // F58.9.20: a splat file in the folder that no live fact names is proposed, never confirmed.
+  if (assets.size > 0 && outSources.length > 0) {
+    const { synthesizeSplatFacts } = await import('../storage/splat-folder');
+    outStatements = [...outStatements, ...synthesizeSplatFacts(outStatements, assets.keys(), outSources[0].id, uuid, now)];
+  }
+
   // Decode binary assets OUTSIDE the transaction (btoa/Blob work is not a Dexie op).
   const decoded: DecodedAsset[] = [];
   if (assets.size > 0) {

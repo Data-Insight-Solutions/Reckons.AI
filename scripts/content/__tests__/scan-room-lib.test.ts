@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import sharp from 'sharp';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
-  chooseFps, detectInput, judgeRegistration, parseOdometry, pathLength, selectSharpest, strayMissing,
+  chooseFps, detectInput, folderContentHash, isCuratedFrames, judgeRegistration, MIN_CURATED_IMAGES, parseOdometry, pathLength, selectSharpest, strayMissing,
   validateReceipt, type ScanReceipt,
 } from '../scan-room-lib';
 
@@ -106,6 +110,23 @@ describe('receipt shape', () => {
     const r = receipt(); r.frames.registered = 201;
     expect(validateReceipt(r).join()).toMatch(/inconsistent/);
   });
+  describe('self-consistency (F74.15)', () => {
+    it('fails a summary that disagrees with the check, naming both values', () => {
+      // The 2026-11-10 incident as a fixture: the summary said 0 while the check measured 193 of 200.
+      const r = receipt();
+      r.frames.registered = 0;
+      r.checks.registration = { pass: true, problems: [], notes: [], measured: { registered: 193, total: 200, fraction: 0.965 } };
+      const p = validateReceipt(r).join('\n');
+      expect(p).toMatch(/frames\.registered is 0/);
+      expect(p).toMatch(/measured 193/);
+    });
+    it('passes a summary that is the check\'s measured value', () => {
+      const r = receipt();
+      r.frames.registered = 193;
+      r.checks.registration = { pass: true, problems: [], notes: [], measured: { registered: 193, total: 200, fraction: 0.965 } };
+      expect(validateReceipt(r)).toEqual([]);
+    });
+  });
   describe('compressed copy (F58.9.11)', () => {
     const withCopy = (): ScanReceipt => ({
       ...receipt(),
@@ -136,6 +157,99 @@ describe('receipt shape', () => {
       expect(p).toMatch(/do not add up|crop counts/);
       expect(p).toMatch(/crop kept 999 Gaussians, output has 1000/);
       expect(p).toMatch(/larger than the raw extent/);
+    });
+  });
+});
+
+// F58.9.6.1: a folder of hand-picked images. Synthetic tiny images in a temp folder only.
+describe('curated image folder', () => {
+  const root = mkdtempSync(join(tmpdir(), 'curated-'));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  const tiny = (shade: number) => sharp({ create: { width: 8, height: 8, channels: 3, background: { r: shade, g: shade, b: shade } } });
+  const make = async (name: string, files: Record<string, number | string>) => {
+    const dir = join(root, name);
+    mkdirSync(dir);
+    for (const [f, v] of Object.entries(files)) {
+      if (typeof v === 'string') writeFileSync(join(dir, f), v);
+      else await (f.endsWith('.png') ? tiny(v).png() : tiny(v).jpeg()).toFile(join(dir, f));
+    }
+    return { dir, listing: readdirSync(dir) };
+  };
+
+  it('treats a folder of jpg and png images as kind images, in name order, ignoring other files', async () => {
+    const { dir, listing } = await make('a', { 'f0002.jpg': 10, 'f0001.png': 20, 'f0003.JPEG': 30, 'notes.txt': 'x' });
+    const r = detectInput(dir, true, listing);
+    expect(r).toEqual({ kind: 'images', dir, images: ['f0001.png', 'f0002.jpg', 'f0003.JPEG'] });
+  });
+  it('still refuses an empty folder and a folder with no images, naming the Stray files it lacks', async () => {
+    const { dir, listing } = await make('b', { 'readme.txt': 'x' });
+    expect(() => detectInput(dir, true, listing)).toThrow(/not a Stray Scanner export \(missing rgb.mp4, odometry.csv, camera_matrix.csv\)/);
+  });
+  it('does not reinterpret a partial Stray export as images, even when it holds a picture', () => {
+    expect(() => detectInput('/x/scan', true, ['rgb.mp4', 'cover.jpg'])).toThrow(/missing odometry.csv, camera_matrix.csv/);
+  });
+  it('leaves video and Stray detection unchanged', () => {
+    expect(detectInput('/x/room.mp4', false)).toEqual({ kind: 'video', video: '/x/room.mp4' });
+    expect(detectInput('/x/scan', true, [...STRAY, 'extra.jpg']).kind).toBe('stray');
+  });
+
+  describe('folder hash', () => {
+    const e = [{ name: 'f1.jpg', sha256: 'a'.repeat(64) }, { name: 'f2.jpg', sha256: 'b'.repeat(64) }];
+    it('is stable under listing order and changes with any name or content change', () => {
+      const h = folderContentHash(e);
+      expect(h).toMatch(/^[0-9a-f]{64}$/);
+      expect(folderContentHash([...e].reverse())).toBe(h);
+      expect(folderContentHash([e[0]])).not.toBe(h);
+      expect(folderContentHash([{ ...e[0], sha256: 'c'.repeat(64) }, e[1]])).not.toBe(h);
+      expect(folderContentHash([{ ...e[0], name: 'f9.jpg' }, e[1]])).not.toBe(h);
+    });
+  });
+
+  describe('receipt for supplied frames', () => {
+    const ok = { pass: true, problems: [], notes: [], measured: { registered: 190, total: 200, fraction: 0.95 } };
+    const hash = 'a'.repeat(64);
+    const curatedReceipt = (): ScanReceipt => ({
+      origin: 'reconstructed',
+      input: { kind: 'images', name: 'frames', sha256: hash, bytes: 10 },
+      frames: { source: 'curated', supplied: 200, kept: 200, registered: 190, folderSha256: hash },
+      tools: { ffmpeg: 'ffmpeg 7', pycolmap: '4.2.1', brush: 'brush-cli 0.3.0' },
+      settings: { totalSteps: 30000 },
+      stagesS: { frames: 1, poses: 2, train: 3 },
+      gaussians: 1000,
+      output: { file: 'splat.ply', sha256: hash, bytes: 99 },
+      checks: { registration: ok, splat: { pass: true, problems: [], notes: [], measured: {} } },
+      ranAt: '2026-11-12T00:00:00Z',
+      notes: [],
+    });
+    it('is accepted with no extraction numbers', () => {
+      const r = curatedReceipt();
+      expect(isCuratedFrames(r.frames)).toBe(true);
+      expect(validateReceipt(r)).toEqual([]);
+    });
+    it('refuses a count that was not used as given, a folder hash that is not the input hash, and too few frames', () => {
+      const r = curatedReceipt();
+      Object.assign(r.frames, { kept: 150 });
+      expect(validateReceipt(r).join()).toMatch(/used as given/);
+      const r2 = curatedReceipt();
+      r2.input.sha256 = 'd'.repeat(64);
+      expect(validateReceipt(r2).join()).toMatch(/input sha256 must be the curated folder hash/);
+      const r3 = curatedReceipt();
+      r3.frames = { source: 'curated', supplied: MIN_CURATED_IMAGES - 1, kept: MIN_CURATED_IMAGES - 1, registered: 5, folderSha256: hash };
+      expect(validateReceipt(r3).join()).toMatch(/need at least/);
+    });
+    it('refuses curated frames on a video input and an image input with extracted numbers', () => {
+      const r = curatedReceipt();
+      r.input.kind = 'video';
+      expect(validateReceipt(r).join()).toMatch(/not an image folder/);
+      const r2 = curatedReceipt();
+      r2.frames = { extracted: 240, kept: 200, registered: 190, fps: 30 };
+      expect(validateReceipt(r2).join()).toMatch(/must record its frames as curated/);
+    });
+    it('still validates an ordinary extracted receipt exactly as before', () => {
+      const r = curatedReceipt();
+      r.input = { kind: 'video', name: 'room.mp4', sha256: hash, bytes: 10 };
+      r.frames = { extracted: 240, kept: 200, registered: 190, fps: 30 };
+      expect(validateReceipt(r)).toEqual([]);
     });
   });
 });

@@ -38,7 +38,7 @@ import { SKOS_BROADER, SKOS_RELATED, NAV_ORDER, NAV_NEXT, NAV_PREV } from '../rd
 const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 
-const TEMPLATES: readonly PageTemplate[] = ['landing', 'doc', 'full', 'sidebar', 'post'];
+const TEMPLATES: readonly PageTemplate[] = ['landing', 'sections', 'doc', 'full', 'sidebar', 'post'];
 const STATUSES: readonly PageStatus[] = ['draft', 'published', 'unlisted'];
 const NAVS: readonly PageNav[] = ['menu', 'sidebar', 'both', 'hidden'];
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

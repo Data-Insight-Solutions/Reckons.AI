@@ -20,6 +20,12 @@ function sh(cwd: string, cmd: string, env: Record<string, string> = {}) {
   const r = spawnSync('bash', ['-c', cmd], { cwd, encoding: 'utf8', env: { ...process.env, RECKONS_ROOT: REAL, GIT_TERMINAL_PROMPT: '0', ...env } });
   return { status: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
+/** A synthetic jobs graph in the static/reckons-jobs.ttl shape (the graph is the source since F216). */
+function jobsTtl(spec: { jobs: { name: string; tier: string; enabled: boolean; blocking: boolean; cmd: string }[] }): string {
+  const head = '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix ktype: <urn:kbase:type/> .\n@prefix kpred: <urn:kbase:predicate/> .\n@prefix hnav: <urn:reckons:nav/> .\n@prefix job: <urn:reckons:job/> .\n';
+  const q = (v: string) => JSON.stringify(v);
+  return head + spec.jobs.map((j, i) => `job:${j.name} a ktype:OfflineJob ; rdfs:label ${q(j.name)} ; kpred:job-tier ${q(j.tier)} ; kpred:emits "nothing" ; kpred:command ${q(j.cmd)} ; kpred:job-enabled ${q(String(j.enabled))} ; kpred:job-blocking ${q(String(j.blocking))} ; hnav:order ${i} .\n`).join('');
+}
 function tempRepo(registry?: object, jobs?: object) {
   const d = mkdtempSync(join(tmpdir(), 'githooks-'));
   made.push(d);
@@ -27,7 +33,7 @@ function tempRepo(registry?: object, jobs?: object) {
   cpSync(join(REAL, '.githooks'), join(d, '.githooks'), { recursive: true });
   sh(d, 'git config core.hooksPath .githooks');
   if (registry) writeFileSync(join(d, 'registry.json'), JSON.stringify(registry));
-  if (jobs) writeFileSync(join(d, 'jobs.json'), JSON.stringify(jobs));
+  if (jobs) writeFileSync(join(d, 'jobs.ttl'), jobsTtl(jobs as { jobs: { name: string; tier: string; enabled: boolean; blocking: boolean; cmd: string }[] }));
   return d;
 }
 const msgFile = (d: string, text: string) => { const f = join(d, '.msg'); writeFileSync(f, text); return f; };
@@ -110,7 +116,7 @@ describe('.githooks/pre-push', () => {
     sh(bare, 'git init -q --bare');
     sh(d, `git remote add origin ${bare}`);
     commit(d, 'fix: a human commit\n');
-    return sh(d, 'git push -q origin dev', { RECKONS_JOBS_FILE: join(d, 'jobs.json') });
+    return sh(d, 'git push -q origin dev', { RECKONS_JOBS_FILE: join(d, 'jobs.ttl') });
   };
   const job = (name: string, cmd: string, blocking: boolean) => ({ name, tier: 'script', enabled: true, blocking, cmd });
   it('refuses on a blocking failure and names the job', () => {

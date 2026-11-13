@@ -101,3 +101,21 @@ export function promptStoryIfPresent(statements: readonly Statement[], graphId: 
   });
   return found;
 }
+
+/**
+ * Start a story from a link (F261): `?story` starts the first story here, `?story=<story IRI>` a named one.
+ *
+ * Matt, 2026-10-27: "Story mode should be started from a query parameter." The one-time notice asks
+ * the reader to find a button; a link that opens straight INTO the story skips that, which is what a
+ * walkthrough opened from Settings or a shared link wants. Returns whether a story started.
+ */
+export function startStoryFromLink(statements: readonly Statement[], param: string | null, stepParam: string | null = null): boolean {
+  if (param === null) return false;
+  const stories = extractStories([...statements]);
+  const story = (param && stories.find((s) => s.id === param)) || stories.find((s) => s.steps.length >= 2);
+  if (!story) return false;
+  const step = Number(stepParam);
+  startStory(story.id, false, Number.isInteger(step) && step >= 1 ? Math.min(step, story.steps.length) : 1);
+  return true;
+}
+

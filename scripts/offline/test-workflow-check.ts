@@ -14,7 +14,7 @@
  *
  * `--pending-ok` turns no-screenshot from a failure into a loud warning. It exists for the window
  * before the first capture and is not meant to stay: the sweep passes it only until the flagship
- * screenshots are committed (see the job in scripts/offline/jobs.json).
+ * screenshots are committed (see the job in static/reckons-jobs.ttl).
  *
  * Usage:
  *   npx tsx scripts/offline/test-workflow-check.ts

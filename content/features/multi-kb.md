@@ -1,7 +1,7 @@
 ---
 title: "Multi-Graph Management"
 slug: "multi-kb"
-order: 1026
+order: 1032
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

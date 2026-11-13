@@ -91,6 +91,7 @@ export function appendFinding(f: Finding, digestPath = DIGEST): string {
       addedByMcp: true,
     };
     queueFindings([entry], {
+      origin: 'note', // an agent's own question or report in a chat, not a JobRun: needs only its space (F89.4.1)
       agent: entry.agent,
       path: PENDING,
       recomputes: false,

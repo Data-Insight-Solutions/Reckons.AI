@@ -36,6 +36,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { transactPendingQueue } from './pending-queue.js';
 import { pendingQueuePath } from './lib/main-workspace.js';
+import { auditRows, CONTRACT_STARTS, type ContractReport } from '../../mcp-server/src/row-contract.js';
 
 export const TYPES = ['observation', 'question', 'suggestion', 'status-update', 'drift-warning'] as const;
 
@@ -143,6 +144,30 @@ export function quarantineQueue(
   });
 }
 
+/**
+ * THE ROW CONTRACT (F89.4.1). Rows dated before CONTRACT_STARTS are LEGACY: counted per missing field
+ * and never failed (rewriting history is not this check's job). A row dated at or after it that
+ * breaks the contract, or carries no `origin` stamp (it bypassed the one append function), FAILS.
+ */
+export function contractOf(text: string): ContractReport {
+  const rows: { index: number; row: Record<string, unknown> }[] = [];
+  text.split('\n').forEach((line, index) => {
+    if (!line.trim()) return;
+    try {
+      const v = JSON.parse(line);
+      if (v && typeof v === 'object' && !Array.isArray(v)) rows.push({ index, row: v as Record<string, unknown> });
+    } catch { /* classified by scanQueue */ }
+  });
+  return auditRows(rows);
+}
+
+export function renderContract(c: ContractReport): string {
+  const out = [`row contract (rows dated from ${CONTRACT_STARTS.slice(0, 10)} must conform): ${c.rows} row(s), ${c.legacy} legacy, ${c.violations.length} violation(s)`];
+  out.push('  legacy rows missing, by field (report only): ' + Object.entries(c.legacyMissing).map(([f, n]) => `${f} ${n}`).join(', '));
+  if (c.violations.length) out.push('  VIOLATIONS (0-based line index: field): ' + c.violations.map((v) => `${v.index}: ${v.field}`).join(', '));
+  return out.join('\n');
+}
+
 export function renderReport(r: ScanResult): string {
   const out = [`queue-integrity: ${r.total} non-empty line(s), ${r.counts.ok} ok, ${r.findings.length} malformed`];
   for (const [cls, n] of Object.entries(r.counts)) if (cls !== 'ok' && n > 0) out.push(`  ${cls}: ${n}`);
@@ -159,8 +184,11 @@ function main(): number {
     console.error(`queue-integrity: ${path} does not exist`);
     return 2;
   }
-  const result = scanQueue(readFileSync(path, 'utf8'));
+  const text = readFileSync(path, 'utf8');
+  const result = scanQueue(text);
   console.log(renderReport(result));
+  const contract = contractOf(text);
+  console.log(renderContract(contract));
   if (process.argv.includes('--quarantine') && result.findings.length > 0) {
     const classes = process.argv.find((a) => a.startsWith('--classes='))?.slice('--classes='.length);
     const only = classes ? new Set(classes.split(',') as LineClass[]) : undefined;
@@ -168,7 +196,7 @@ function main(): number {
     console.log(`quarantined ${q.moved} line(s) to ${q.quarantine}; backup ${q.backup}`);
     return 0;
   }
-  return result.findings.length > 0 ? 1 : 0;
+  return result.findings.length > 0 || contract.violations.length > 0 ? 1 : 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exit(main());

@@ -7,11 +7,13 @@
    *  • "chat"         — free-form Claude conversation that can propose KB changes
    */
   import { onDestroy, onMount, tick } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { goto, replaceState } from '$app/navigation';
+  import { isCompact } from '$lib/stores/viewport.svelte';
   import { confirmedStatements, statements, sources, addStatements, addSource, updateStatement, setStatus } from '$lib/stores/kb.svelte';
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { offerApplied } from '$lib/rdf/story-offers';
   import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
@@ -19,7 +21,7 @@
   import { turtleChat, resolveChatProvider as _resolveProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { Statement, Source } from '$lib/rdf/types';
   import { v4 as uuid } from 'uuid';
-  import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay } from '$lib/stores/shelly-bridge.svelte';
+  import { applyShellyViewAdjust, activeStoryId, stopStory, storyAutoPlayRequested, clearStoryAutoPlay, storyStartStepRequested } from '$lib/stores/shelly-bridge.svelte';
   import { extractStories, type Story, type StoryStep } from '$lib/rdf/story';
   import type { GraphLayout } from '$lib/rdf/view-suggestions';
 
@@ -30,6 +32,11 @@
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import AdaptivePanel from './AdaptivePanel.svelte';
   import GenerationStory from './GenerationStory.svelte';
+  import JobStatusList from './JobStatusList.svelte';
+  import RunnerConnect from './RunnerConnect.svelte';
+  import { GENERATION_ASK } from '$lib/generation/job-plan';
+  import { generationJobs, submitJobs, useGenerationJobs } from '$lib/stores/generation-jobs.svelte';
+  import { describePlan, validateJobPlan } from '$lib/generation/job-plan';
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
@@ -274,7 +281,10 @@
     }
     reviewSteps.sort((a, b) => a.order - b.order);
 
-    return reviewSteps.length ? { ...core, reviewSteps } : core;
+    // F166.1.2: what the person's own runner can make, so Shelly offers only that.
+    const caps = generationJobs.capabilities;
+    const withJobs = caps ? { ...core, localJobs: { stages: caps.stages } } : core;
+    return reviewSteps.length ? { ...withJobs, reviewSteps } : withJobs;
   }
 
   // ── KB query (for query_kb action) ────────────────────────────────────────
@@ -464,6 +474,8 @@
       exploreStarted = true;
       sendExploreMessage(null);
     }
+    // Reads the connected runner's capabilities for Shelly's context; jobs keep polling after close.
+    return useGenerationJobs();
   });
 
   async function sendExploreMessage(userText: string | null) {
@@ -606,8 +618,8 @@
     clearCountdown();
     stopSpeaking();
     if (storyAutoTimer) { clearInterval(storyAutoTimer); storyAutoTimer = null; }
-    // Play step 0 — voice plays only if user has explicitly enabled it
-    if (!story.interaction) playStoryStep(story, 0);
+    // Play the step a link asked for (`&step=<n>`, 1-based), else the first. Voice plays only if the user enabled it.
+    if (!story.interaction) playStoryStep(story, Math.min(Math.max(storyStartStepRequested(), 1), Math.max(story.steps.length, 1)) - 1);
     tab = 'explore';
   }
 
@@ -628,6 +640,7 @@
     if (step.question) msg += `\n\n> ${step.question}`;
 
     storyMessages = [...storyMessages, { role: 'shelly', content: msg, isStep: true, stepIdx: idx }];
+    syncStoryUrl(story.id, idx + 1);
 
     /*
      * A STEP'S OWN LAYOUT WINS. story:layout is what the author chose to answer THIS step's
@@ -644,12 +657,17 @@
     // unknown name would otherwise reach the renderer. An unrecognised layout falls back rather
     // than throwing, so a story from a newer build degrades instead of breaking.
     const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
-    const stepLayout = authored ?? (step.highlights.length <= 2 ? 'focus' : undefined);
+    /*
+     * F292.2, LIGHT WITHOUT MOVING. A step lights its highlights and dims the rest (the canvas draws the
+     * spotlight through the lit-fact mechanism F223.11 built), and it no longer falls back to the
+     * focus layout, which re-arranged every marker on every step. An AUTHORED story:layout still applies.
+     * It SELECTS nothing: selecting a marker re-seats the layout (measured: positions moved about 0.35 units
+     * between steps) and opens a detail sheet that covers the caption on a phone. The markers are lit, not selected.
+     */
     if (step.highlights.length > 0) {
       applyShellyViewAdjust({
-        selectEntity: step.highlights[0],
         spotlight: step.highlights,
-        layout: stepLayout
+        layout: authored
       });
     } else if (authored) {
       applyShellyViewAdjust({ layout: authored });
@@ -660,6 +678,45 @@
     if (ts.voiceEnabled) {
       speakText(`${step.title}. ${step.content}`);
     }
+  }
+
+  /** Keep `?story=<iri>&step=<n>` in the address so a reload (or a copied link) returns to this step. */
+  function syncStoryUrl(storyIri: string | null, step: number) {
+    if (typeof window === 'undefined') return;
+    try {
+      const u = new URL(window.location.href);
+      if (storyIri) { u.searchParams.set('story', storyIri); u.searchParams.set('step', String(step)); }
+      else { u.searchParams.delete('story'); u.searchParams.delete('step'); }
+      replaceState(u, {});
+    } catch { /* the router is not ready yet; the link simply is not updated */ }
+  }
+
+  /** Left and right arrows step the story, unless the person is typing or holding a modifier. */
+  function onStoryArrows(e: KeyboardEvent) {
+    if (!currentStory || currentStory.interaction || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    e.preventDefault();
+    if (e.key === 'ArrowRight') { if (storyStepIdx < currentStory.steps.length - 1) storyNext(); }
+    else storyPrev();
+  }
+
+  onDestroy(() => { if (currentStory) syncStoryUrl(null, 0); });
+
+  /*
+   * ON A PHONE THE WALK IS A SLIM STEP BAR, not the bottom sheet (F292.2, chosen from 390px screenshots of
+   * both, recorded on kb:story-walk-player). The sheet is a modal that takes most of the screen, so the
+   * lit markers it exists to point at were hidden behind it. The bar holds the caption and the controls
+   * over a short strip and leaves the canvas visible and tappable. "chat" brings the sheet back.
+   */
+  let sheetOverride = $state(false);
+  const walkBar = $derived(isCompact() && currentStory !== null && !currentStory.interaction && !sheetOverride);
+  const walkStep = $derived(currentStory && !currentStory.interaction ? currentStory.steps[storyStepIdx] ?? null : null);
+
+  function exitStory() {
+    stopAutoPlay(); stopStory(); currentStory = null;
+    syncStoryUrl(null, 0);
   }
 
   function storyNext() {
@@ -977,6 +1034,12 @@
   // ── Action acceptance ──────────────────────────────────────────────────────
 
   let dismissedActions = $state<Set<string>>(new Set());
+  /** Approved queue_jobs cards, by action key → the request IDs they queued (shown live). */
+  let queuedJobs = $state<Record<string, string[]>>({});
+
+  function asksForGeneration(prev?: { role: string; content: string }): boolean {
+    return prev?.role === 'user' && GENERATION_ASK.test(prev.content);
+  }
 
   function actionKey(msgIdx: number, actionIdx: number) {
     return `${msgIdx}-${actionIdx}`;
@@ -1011,6 +1074,15 @@
         } catch (e) {
           errorMsg = e instanceof Error ? e.message : String(e);
         }
+        return;
+      }
+
+      // queue_jobs: one approval for the whole plan; each job becomes a Job entity in this knowledge base
+      if (action.type === 'queue_jobs') {
+        const plan = validateJobPlan(action.jobs, generationJobs.capabilities);
+        if (!plan.ok) { errorMsg = plan.error; return; }
+        const created = await submitJobs(plan.items, 'shelly');
+        queuedJobs = { ...queuedJobs, [key]: created.map(r => r.id) };
         return;
       }
 
@@ -1217,6 +1289,8 @@
 
 </script>
 
+<svelte:window onkeydown={onStoryArrows} />
+
 <Tabs.Root
   value={tab}
   onValueChange={(v) => {
@@ -1232,7 +1306,7 @@
   }}
 >
 <AdaptivePanel corner="bottom-left" width={360} minWidth={240} maxWidth={800} zIndex={350}
-  title="Shelly" open={true} onOpenChange={(o) => { if (!o) onclose(); }}
+  title="Shelly" open={!walkBar} onOpenChange={(o) => { if (!o && !walkBar) onclose(); }}
   extraStyle={voiceVolume > 0.05 ? `box-shadow: 0 0 ${8 + voiceVolume * 28}px ${2 + voiceVolume * 10}px color-mix(in srgb, #4caf50 ${Math.round(voiceVolume * 55)}%, transparent)` : ''}
 >
   {#snippet header()}
@@ -1414,6 +1488,11 @@
           </div>
         {/if}
 
+        {#if generationJobs.requests.length > 0 || messages.some(m => m.role === 'user' && GENERATION_ASK.test(m.content))}
+          <!-- The runner's state and connect control live with the conversation, not only in the Generated assets story. -->
+          <div class="runner-strip"><RunnerConnect compact /></div>
+        {/if}
+
         {#each messages as msg, msgIdx}
           <div class="msg" class:user={msg.role === 'user'} class:assistant={msg.role === 'assistant'} class:voice-msg={'_voice' in msg && msg._voice}>
             {#if msg.role === 'assistant'}
@@ -1421,6 +1500,11 @@
             {/if}
             <!-- eslint-disable-next-line svelte/no-at-html-tags -->
             <div class="msg-body">{@html renderMarkdown(msg.content)}</div>
+
+            {#if msg.role === 'assistant' && !generationJobs.capabilities && !(msg.actions ?? []).some(a => a.type === 'queue_jobs') && asksForGeneration(messages[msgIdx - 1])}
+              <!-- Whatever the model wrote, an asset request with no runner connected always gets the connect control. -->
+              <RunnerConnect />
+            {/if}
 
             {#if msg.actions && msg.actions.length > 0}
               <div class="actions">
@@ -1467,13 +1551,28 @@
                         <span class="action-badge badge-scrape">scrape URL</span>
                         <span class="action-desc">{action.label}</span>
                         <span class="action-hint">{action.url}</span>
+                      {:else if action.type === 'queue_jobs'}
+                        {@const plan = validateJobPlan(action.jobs, generationJobs.capabilities)}
+                        <span class="action-badge badge-query">local jobs</span>
+                        <span class="action-desc">{action.label}</span>
+                        {#if queuedJobs[key]}
+                          <JobStatusList ids={queuedJobs[key]} />
+                        {:else if plan.ok}
+                          <span class="action-hint">{#each describePlan(plan.items) as line}{line}<br />{/each}runs on your computer, one job at a time; each result is added here for review</span>
+                        {:else}
+                          <span class="action-hint">{plan.error}</span>
+                          {#if !generationJobs.capabilities}<RunnerConnect />{/if}
+                        {/if}
                       {/if}
-                      <div class="action-btns">
-                        <button class="primary sm" onclick={() => acceptAction(action, key)}>
-                          {action.type === 'query_kb' ? 'run' : action.type === 'scrape_url' ? 'scrape' : 'accept'}
-                        </button>
-                        <button class="sm" onclick={() => dismissAction(key)}>dismiss</button>
-                      </div>
+                      {#if !(action.type === 'queue_jobs' && queuedJobs[key])}
+                        <div class="action-btns">
+                          <button class="primary sm" onclick={() => acceptAction(action, key)}
+                            disabled={action.type === 'queue_jobs' && (generationJobs.busy || !validateJobPlan(action.jobs, generationJobs.capabilities).ok)}>
+                            {action.type === 'query_kb' ? 'run' : action.type === 'scrape_url' ? 'scrape' : action.type === 'queue_jobs' ? `queue ${action.jobs?.length ?? 0}` : 'accept'}
+                          </button>
+                          <button class="sm" onclick={() => dismissAction(key)}>dismiss</button>
+                        </div>
+                      {/if}
                     </div>
                   {/if}
                 {/each}
@@ -1589,7 +1688,26 @@
             {#if msg.role === 'shelly'}
               <div class="msg assistant" class:step-msg={msg.isStep}>
                 <img src="/svg/head1.svg" alt="" class="msg-icon" />
-                <div class="msg-body">{@html renderMarkdown(msg.content)}</div>
+                <div class="msg-body">
+                  {@html renderMarkdown(msg.content)}
+                  <!-- F261: what the step offers, one click each. Offered, never applied: the reader's
+                       click is the consent, and story-offers.ts limits what may be offered at all. -->
+                  {#if msg.isStep && msg.stepIdx !== undefined && currentStory?.steps[msg.stepIdx]?.offers?.length}
+                    <div class="step-offers">
+                      {#each currentStory.steps[msg.stepIdx].offers ?? [] as offer (offer.label)}
+                        {#if offer.kind === 'setting'}
+                          {@const done = offerApplied(offer, settings())}
+                          <button class="step-offer" class:done disabled={done}
+                            onclick={() => updateSettings({ [offer.key]: offer.value })}>
+                            {done ? '✓ ' : ''}{offer.label}
+                          </button>
+                        {:else}
+                          <button class="step-offer" onclick={() => goto(offer.path)}>{offer.label} →</button>
+                        {/if}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               </div>
             {:else}
               <div class="msg user">
@@ -1680,7 +1798,7 @@
                 {storyCountdown}s
               </span>
             {/if}
-            <button class="story-btn story-exit" onclick={() => { stopAutoPlay(); stopStory(); currentStory = null; }} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
+            <button class="story-btn story-exit" onclick={exitStory} title="Exit story mode" aria-label="Exit story mode">✕ exit story mode</button>
           </div>
           {#if showVolumeSlider}
             <div class="story-volume-row">
@@ -1812,8 +1930,34 @@
 </AdaptivePanel>
 </Tabs.Root>
 
+{#if walkBar && walkStep && currentStory}
+  <section class="walk-bar" aria-label="Story: {currentStory.label}">
+    <div class="walk-text">
+      <strong class="walk-title">{walkStep.title}</strong>
+      <p class="walk-caption">{walkStep.content}</p>
+    </div>
+    <div class="walk-controls">
+      <span class="story-step-label mono" aria-live="polite">{storyStepIdx + 1} / {currentStory.steps.length}</span>
+      <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0} aria-label="Previous step">←</button>
+      <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1} aria-label="Next step">→</button>
+      <button class="story-btn" onclick={() => (sheetOverride = true)} aria-label="Open Shelly chat">chat</button>
+      <button class="story-btn story-exit" onclick={() => { exitStory(); onclose(); }} aria-label="Exit story mode">✕</button>
+    </div>
+  </section>
+{/if}
+
 
 <style>
+  .walk-bar {
+    position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 58px); z-index: 350;
+    display: flex; flex-direction: column; gap: 0.35rem; padding: 0.55rem 0.75rem;
+    background: color-mix(in srgb, var(--surface, #111) 94%, transparent); border-top: 1px solid var(--line, #333);
+    box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
+  }
+  .walk-text { max-height: 26vh; overflow-y: auto; }
+  .walk-title { color: var(--accent); font-size: 0.9rem; }
+  .walk-caption { margin: 0.2rem 0 0; font-size: 0.82rem; line-height: 1.4; }
+  .walk-controls { display: flex; align-items: center; gap: 0.35rem; justify-content: space-between; }
   /* ── Header ── */
   .panel-header {
     display: flex;
@@ -2430,6 +2574,13 @@
     color: var(--muted);
   }
 
+  .step-offers { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.6rem; }
+  .step-offer {
+    padding: 0.4rem 0.7rem; border-radius: var(--rad-sm); cursor: pointer; font-size: 0.8rem;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+  }
+  .step-offer:hover { background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .step-offer.done { background: transparent; color: var(--muted); border-color: var(--line); cursor: default; }
   .step-msg .msg-body {
     border-left: 2px solid var(--data);
     padding-left: 0.5rem;

@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeAdd, heartbeatFresh, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type QueueJob, type StepInput } from '../session-queue';
+import { afterChain, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
 import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
 
-const MIN = 60_000;
 const job = (name: string, over: Partial<QueueJob> = {}): QueueJob => ({ id: name, name, cwd: '/r', argv: ['x'], addedAt: '2026-09-30T00:00:00Z', ...over });
-const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, heartbeatFresh: true, ollamaUp: true, ...over });
+const base = (over: Partial<StepInput> = {}): StepInput => ({ queue: [job('a')], running: false, ollamaUp: true, ...over });
 
 describe('worker pid ownership', () => {
   const alive = () => true;
@@ -23,33 +22,21 @@ describe('worker pid ownership', () => {
   });
 });
 
-describe('heartbeat freshness', () => {
-  const now = 1_000_000_000;
-  it('is fresh inside the window, stale past it, never fresh when missing', () => {
-    expect(heartbeatFresh(now - 19 * MIN, now)).toBe(true);
-    expect(heartbeatFresh(now - 21 * MIN, now)).toBe(false);
-    expect(heartbeatFresh(undefined, now)).toBe(false);
-    expect(heartbeatFresh(now - 5 * MIN, now, 3)).toBe(false);
-    expect(heartbeatFresh(now + MIN, now)).toBe(true);
-  });
-});
-
 describe('worker state machine', () => {
   it('starts a job only when everything is green', () => {
     expect(workerStep(base())).toEqual({ state: 'working', startJob: true });
   });
-  it('a STALE heartbeat never starts a new job, whatever else is true', () => {
-    for (const queue of [[job('a')], [job('a'), job('b', { gpu: false })]]) {
-      const s = workerStep(base({ queue, heartbeatFresh: false }));
-      expect(s.startJob).toBe(false);
-      expect(s.state).toBe('paused-idle');
-    }
-    // also with the heartbeat computed from an old mtime, and with the GPU gate wide open
-    const fresh = heartbeatFresh(Date.now() - 3 * 3_600_000, Date.now());
-    expect(workerStep(base({ heartbeatFresh: fresh, gpuBlocked: undefined })).startJob).toBe(false);
-  });
-  it('never starts when Ollama is down, and says so', () => {
+  it('never starts a job that uses Ollama while Ollama is down, and says so', () => {
     expect(workerStep(base({ ollamaUp: false }))).toEqual({ state: 'paused-ollama-down', startJob: false });
+  });
+  it('a job that does not use Ollama runs while Ollama is down (generation, 2026-10-23)', () => {
+    const mixed = [job('review'), job('gen', { ollama: false })];
+    expect(workerStep(base({ queue: mixed, ollamaUp: false }))).toEqual({ state: 'working', startJob: true });
+    expect(pickNext(orderQueue(mixed), undefined, [], undefined, false)?.name).toBe('gen');
+    // both gates closed: an Ollama-free GPU job waits for the GPU, not for Ollama
+    expect(workerStep(base({ queue: [job('gen', { ollama: false })], ollamaUp: false, gpuBlocked: 'hot' })))
+      .toEqual({ state: 'paused-resources', startJob: false, reason: 'hot' });
+    expect(workerStep(base({ queue: mixed, ollamaUp: false, gpuBlocked: 'hot' })).state).toBe('paused-ollama-down');
   });
   it('is empty with nothing queued, and never starts a second job while one runs', () => {
     expect(workerStep(base({ queue: [] })).state).toBe('empty');
@@ -68,9 +55,90 @@ describe('worker state machine', () => {
   });
 });
 
+describe('job chains (--after)', () => {
+  const done = (name: string, over: Partial<DoneJob> = {}): DoneJob => ({ ...job(name), finishedAt: '2026-09-30T01:00:00Z', outcome: 'passed' as const, ...over });
+
+  it('a re-queued predecessor WAITS even when an old run of it was blocked (2026-11-10 incident)', () => {
+    // scan-b was --after=scan-a. An OLD done record of scan-a is 'blocked', a NEW run of scan-a is queued.
+    // Re-queueing the predecessor is the user re-running it: waiting, not blocked.
+    const b = job('scan-b', { id: 'bbbb0001', after: ['scan-a'] });
+    const newA = job('scan-a', { id: '56d70f26' });
+    const oldA = done('scan-a', { id: 'aaaa0000', outcome: 'blocked', reason: 'old chain block' });
+    expect(afterChain(b, [newA, b], [oldA])).toEqual({ status: 'waiting', on: ['scan-a'] });
+    expect(chainBlocked([newA, b], [oldA])).toEqual([]);
+    // Once that run finishes unpassed (and nothing is queued), it blocks again.
+    expect(afterChain(b, [b], [oldA]).status).toBe('blocked');
+    // A passed run still satisfies it.
+    expect(afterChain(b, [newA, b], [oldA, done('scan-a', { finishedAt: '2026-09-30T03:00:00Z' })])).toEqual({ status: 'ready' });
+  });
+  it('a job with no after links is ready', () => {
+    expect(afterChain(job('b'), [job('a')], [])).toEqual({ status: 'ready' });
+  });
+  it('one passed run satisfies the link, even if a later run failed', () => {
+    const s = afterChain(job('b', { after: ['a'] }), [], [done('a', { finishedAt: '2026-09-30T01:00:00Z' }), done('a', { finishedAt: '2026-09-30T02:00:00Z', outcome: 'failed' })]);
+    expect(s).toEqual({ status: 'ready' });
+  });
+  it('a predecessor still in the queue is waiting, and the reason shows its name', () => {
+    expect(afterChain(job('b', { after: ['a'] }), [job('a'), job('b', { after: ['a'] })], [])).toEqual({ status: 'waiting', on: ['a'] });
+  });
+  it('a predecessor that finished without passing blocks, naming the outcome and its reason', () => {
+    expect(afterChain(job('b', { after: ['a'] }), [], [done('a', { outcome: 'failed', reason: 'boom' })])).toEqual({ status: 'blocked', reasons: ['after "a" finished "failed" (boom)'] });
+    for (const o of ['dropped', 'refused', 'no-commit'] as const) {
+      expect(afterChain(job('b', { after: ['a'] }), [], [done('a', { outcome: o })]).status).toBe('blocked');
+    }
+  });
+  it('a predecessor that never ran anywhere blocks', () => {
+    const s = afterChain(job('b', { after: ['ghost'] }), [job('b', { after: ['ghost'] })], []);
+    expect(s.status).toBe('blocked');
+    expect(s.reasons[0]).toMatch(/ghost.*never ran/);
+  });
+  it('blocked beats waiting when one link failed and another is still queued', () => {
+    const s = afterChain(job('c', { after: ['a', 'b'] }), [job('a'), job('c', { after: ['a', 'b'] })], [done('b', { outcome: 'no-commit' })]);
+    expect(s.status).toBe('blocked');
+  });
+  it('matches a link by name or by id', () => {
+    const queue = [job('a', { id: '7f3a9c2e' })];
+    expect(afterChain(job('b', { after: ['a'] }), queue, []).status).toBe('waiting');
+    expect(afterChain(job('b', { after: ['7f3a9c2e'] }), queue, []).status).toBe('waiting');
+    expect(afterChain(job('b', { after: ['7f3a9c2e'] }), [], [done('a', { id: '7f3a9c2e' })]).status).toBe('ready');
+  });
+  it('chainBlocked names the queued jobs that can never run, with the full reason', () => {
+    const queue = [job('b', { after: ['a'] }), job('c')];
+    expect(chainBlocked(queue, [done('a', { outcome: 'failed', reason: 'boom' })])).toEqual([{ job: queue[0], reason: 'after "a" finished "failed" (boom)' }]);
+    expect(chainBlocked(queue, [done('a')])).toEqual([]);
+  });
+  it('a cycle is reported as a stall, not spun on; a blocked-only queue is none (the worker drains it)', () => {
+    const queue = [job('a', { after: ['b'] }), job('b', { after: ['a'] })];
+    expect(chainStallReason(queue, [])).toBe('a waiting on b; b waiting on a');
+    expect(chainStallReason([job('b', { after: ['x'] })], [done('x', { outcome: 'failed' })])).toBeUndefined();
+  });
+  it('pickNext skips unready jobs and takes the first the chain allows', () => {
+    const queue = [job('wait', { after: ['prep'] }), job('free')];
+    expect(pickNext(orderQueue(queue), undefined, [], queue)?.name).toBe('free');
+    expect(pickNext(orderQueue(queue), undefined, [done('prep')], queue)?.name).toBe('wait');
+    expect(pickNext(orderQueue([job('wait', { after: ['x'] })]), undefined, [], queue)).toBeUndefined();
+  });
+  it('the state machine refuses to start behind a stalled chain and says so', () => {
+    const queue = [job('a', { after: ['b'] }), job('b', { after: ['a'] })];
+    expect(workerStep(base({ queue, done: [] }))).toEqual({ state: 'paused-broken-chain', startJob: false, reason: 'a waiting on b; b waiting on a' });
+    // a startable sibling beside the cycle still starts
+    expect(workerStep(base({ queue: [...queue, job('free')], done: [] })).startJob).toBe(true);
+  });
+  it('the window and the status bar read the stall as a paused chain', () => {
+    expect(queueView({ queued: 2, worker: { state: 'paused-broken-chain', reason: 'a waiting on b' }, ollamaUp: true })).toEqual({ kind: 'paused-broken-chain', queued: 2, reason: 'a waiting on b' });
+    expect(queueSegment({ kind: 'paused-broken-chain', queued: 2 })).toBe('paused');
+  });
+  it('newJob and the wire format carry the after list only when given', () => {
+    expect(newJob('b', '/r', ['x'], undefined, undefined, ['a', 'b2']).after).toEqual(['a', 'b2']);
+    expect(newJob('b', '/r', ['x']).after).toBeUndefined();
+    expect(parseQueue(serializeQueue([job('b', { after: ['a'] })]))[0].after).toEqual(['a']);
+    expect(parseQueue('{"id":"b","name":"b","cwd":"/r","addedAt":"t","argv":["x"],"after":"nope"}\n')[0].after).toBeUndefined();
+  });
+});
+
 describe('queue parse / order / dedupe', () => {
   it('round-trips and skips malformed lines', () => {
-    const jobs = [job('a', { priority: 2 }), job('b', { gpu: false })];
+    const jobs = [job('a', { priority: 2 }), job('b', { gpu: false }), job('c', { ollama: false })];
     expect(parseQueue(serializeQueue(jobs))).toEqual(jobs);
     expect(parseQueue('not json\n{"id":1}\n{"id":"x","name":"n","cwd":"/","addedAt":"t","argv":[]}\n')).toEqual([]);
   });
@@ -89,11 +157,12 @@ describe('queue parse / order / dedupe', () => {
 });
 
 describe('what agent:watch shows', () => {
-  const v = (o: object) => queueView({ queued: 12, heartbeatFresh: true, ollamaUp: true, ...o });
+  const v = (o: object) => queueView({ queued: 12, ollamaUp: true, ...o });
   it('ready / paused / empty', () => {
     expect(v({})).toEqual({ kind: 'ready', queued: 12 });
-    expect(v({ heartbeatFresh: false }).kind).toBe('paused-idle');
     expect(v({ ollamaUp: false }).kind).toBe('paused-ollama-down');
+    expect(v({ ollamaUp: false, needOllama: 12 }).kind).toBe('paused-ollama-down');
+    expect(v({ ollamaUp: false, needOllama: 10 }).kind).toBe('ready'); // two queued jobs do not need it
     expect(v({ manualPause: true }).kind).toBe('paused-manual');
     expect(v({ queued: 0 }).kind).toBe('empty');
     expect(v({ worker: { state: 'paused-resources', reason: 'hot' } })).toEqual({ kind: 'paused-resources', queued: 12, reason: 'hot' });
@@ -103,7 +172,7 @@ describe('what agent:watch shows', () => {
     expect(w).toMatchObject({ kind: 'working', job: 'describe', index: 3, total: 12 });
     expect(queueSegment(w)).toBe('working 3/12');
     expect(queueSegment({ kind: 'ready', queued: 12 })).toBe('ready 12');
-    expect(queueSegment({ kind: 'paused-idle', queued: 1 })).toBe('paused');
+    expect(queueSegment({ kind: 'paused-manual', queued: 1 })).toBe('paused');
   });
 });
 
@@ -215,11 +284,11 @@ describe('catch-up schedules', () => {
     expect(backlogHolds([agent('sched:docs-review')], open, 49).has('sched:docs-review')).toBe(true);
   });
   it('the monitor shows what the worker holds, with reasons', () => {
-    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, heartbeatFresh: true, ollamaUp: true, manualPause: false });
+    const v = queueView({ queued: 2, worker: { state: 'ready', held: ['layer-classify: 435 unreviewed proposals (limit 50)'] }, ollamaUp: true, manualPause: false });
     expect(v.held).toEqual(['layer-classify: 435 unreviewed proposals (limit 50)']);
     const lines = renderQueue(v, undefined, (_l, t) => t).join('\n');
     expect(lines).toMatch(/held.*layer-classify: 435 unreviewed/);
-    expect(queueView({ queued: 0, worker: { state: 'empty' }, heartbeatFresh: true, ollamaUp: true, manualPause: false }).held).toBeUndefined();
+    expect(queueView({ queued: 0, worker: { state: 'empty' }, ollamaUp: true, manualPause: false }).held).toBeUndefined();
   });
   it('does not enqueue what is queued or running, nor what is not due; carries the gpu flag', () => {
     const statuses = dueAll([rec('a'), rec('b'), rec('c', true), rec('fresh')], { fresh: now }, now);

@@ -3,6 +3,394 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-13 (overnight) — START HERE: v0.2.8 is on staging; promotion to main waits on owed docs
+
+Matt went to bed about 23:20 CST on 2026-11-12, asking for overnight work through overseer subagents and local jobs.
+
+**Release v0.2.8.** On staging (PR #618 merged 2026-11-13 05:03 UTC). PR #624 (staging -> main) is open
+and MATT merges it; it is BLOCKED by `release-notes.ts --check-docs`: 32 features shipped without a docs
+entity. An overseer is writing grouped docs pages on `docs/v028-owed` (worktree tripleNotes-docs-028) ->
+PR into dev -> then a dev -> staging promotion (Claude merges) -> #624 re-runs. Matt reviewed on
+https://claude.ai/artifact/Bnm5TJmJkEjM56j9sZDFXq : 9 pass, 1 fail (Shelly generation: fixed in #620,
+F166.1 recorded in progress until he tries the real folder picker), 2 skip; release, ring link and
+search index all 'yes'. His browser served stale builds twice today (PWA cache): hard reload fixes it.
+
+**After #624 merges (reckons.ai = v0.2.8):** Matt pushes `content/site-pages` in DataInsightSolutions-website
+(local commits: company voice 6edd5f7, ring link 6032fbe, blog covers 02756b1, business-card files when
+that agent lands them); his DIS PR #3 previews through the GitHub workflow; merging it publishes the site.
+Claude cannot push there (matt-roe has no write access; the Data-Insight-Solutions identity is Matt's).
+
+**Live today:** data-insight.solutions and data-insight-solutions.com serve the new site from Cloudflare
+Pages (Matt switched the domains); Microsoft 365 records verified unchanged; the contact form accepts
+both origins. Production currently holds build v8; later work is on the preview only.
+
+**In flight overnight (each opens a PR into dev and stops; none merges to main):**
+- docs owed for v0.2.8 (release-critical, first);
+- DIS business card in the DIS space (front + back WITHOUT the phone, Matt's choice), the print-sheet
+  script, F294.8 'derived outputs regenerate' and F295 Canva integration (plan) — worktree tripleNotes-dis-card;
+- the runner connect popup and on-demand generation services (Matt: no always-on service; the agent
+  watcher starts a service on request, prompts install when missing, services listed separately and not
+  bundled; shaped as plugin records) — worktree tripleNotes-runner-popup, resumes after the docs work;
+- PR #625: F296 plugin library planned for v0.2.9 (everything is a plugin, one filtered library replacing
+  seven settings pages); two open questions for Matt on the entity.
+
+**Local jobs queued:** release-burndown, claim-audit, docs-staleness, describe-entities, proposal-yield.
+The queue had been paused by the RAM guard at 22:59 (a deputy job left 1.0 GiB free); resumed at 23:25
+with 13 GiB available.
+
+**Business cards:** the print sheet is ~/Documents/DIS-business-cards-letter-duplex-v3.pdf (from the design as
+Matt last edited it). Overnight inputs are in ~/.local/share/reckons/overnight-2026-11-12/.
+
+## 2026-11-12 (night) — START HERE: what ran overnight while Matt slept (Claude Code, Opus 5.5, with Sonnet agents)
+
+Matt went to bed about 00:40 CST after answering four questions (recorded as `kpred:decided` on the entities):
+story mode is an IN-APP GUIDED WALK first; a CONTEXT PACKAGE is the shareable form of a space (F107.3.1);
+'expired cert check' meant CREDENTIALS ON THE ABOUT PAGE (F293); and for the ring, "keyframes should be manually
+review[ed] to get the most crisp, not blurry image frames of differing angles."
+
+**Local `dev` (ahead of origin/dev; PR #610 carries it, unmerged on GitHub) now also holds:** the site generator
+work (animated inline mark, guided-scroll control, card diagrams, employer logos with a notice, version stamps on
+scripts and styles, the `sections` template for About and Services); F293 facts that expire (site:build refuses a
+page stating an expired fact; `scripts/offline/fact-expiry.ts`); F292.1 the generated 'How this website was made'
+story in the Data Insight Solutions space; F292.2 the guided-walk player (step links, lighting without moving,
+a slim bar on phones, arrow keys; e2e 3/3 in Chrome only); the scan's new curated-frames input (F58.9.6.1);
+PR #604 (safety attestation now 6/6, circuit reset); a lossless fix for statement ids containing '|' that broke
+generated-assets.ttl (the existing workspace file stays broken until the app rewrites it).
+
+**Website preview** https://launch-preview.data-insight-solutions.pages.dev (noindex) was redeployed after each pass.
+The site repository branch `content/site-pages` has local commits only (never pushed): the About edits, the
+mark, diagrams, logos, softer contact wording, and the AWS credential marked `valid-until: 2027-12-01` (the page
+says "valid to December 2027"; the earliest day of that month is used). Its EARLIER local commit 7824b24 contains
+the n8n webhook address: rewrite it out before that branch is ever pushed. The n8n contact workflow is PUBLISHED
+and tested (one test email sent); preview origins were added to its allowed list.
+
+**Ring:** 189 of 373 candidate frames kept after a frame-by-frame review (`~/.local/state/reckons/ring-scan/frame-review.md`);
+two scans queued on GPU 1 (variant 2 = full-resolution square crops, because at the pipeline's 900x1600 the ring is
+~200 px wide). Nothing goes on the website until Matt has looked. Check the agent's result in the private notes.
+
+**Hume:** 23 narration clips banked in the demo cache plus 10 Kokoro versions and a blind A/B page at
+`~/.local/share/reckons/private-workspace/2026-11-12-voices/listen.html`. The '13 Nov shutdown of TTS and EVI'
+comes only from search summaries; Hume's current changelog does not mention it and the API still worked.
+
+**Deputy sizes (F289):** qwen3.8, the current deputy, is 27.3B, above Matt's 24B line. Candidates within it that can
+run the harness: devstral-small-2, mistral-small3.2:24b, lfm2.5, llama3.2:3b. Review and plan in
+`~/.local/share/reckons/private-workspace/2026-11-12-reports/`.
+
+**Open for Matt:** the three article drafts (`workspace/drafts/blog/` in the site repository); the shortened posts;
+which address the site lives at; whether the walk may show per-post claim lists; the producer-states thresholds
+(branch held); running the deputy benchmark.
+
+## 2026-11-11 (evening, wrap-up) — QUEUE MANAGED + RING TASK GROUNDED, not executed — for the next Claude/Opus session
+
+Matt asked the deputy (qwen3.8-160k) to "manage job queue this evening, claude is back after midnight," then gave the ring task, DIS feedback, and called the wrap. **Nothing here is a decision by Matt beyond what is quoted.**
+
+**Queue (live, ~/.local/state/reckons/jobs/):** worker pid 2860949 healthy, was at 131/140 running `deputy-f74-14-request-validation` at wrap.
+- **DROPPED 4 stale garden jobs** (44c0f170 image-overview; 0ebf89dd/ed155755/a7f00635 scan slots) — all pointed at
+  `tripleNotes-examples`, which is now on `fix/site-landing-mark` and has **neither** `scripts/review-spaces/` **nor**
+  `reckons-workspace/` (the garden space TTL was not found anywhere under /home/matt/Github). They would all have
+  failed. The `feat/review-story-garden` branch still has the scripts; the space data is gone — decide whether to rebuild the
+  garden demo or let the ring/DIS story replace it.
+- **HOLDS (unchanged, do not ignore):** docs-review 55 and docs-expand 62 unreviewed proposals (limit 50) — release by
+  reviewing; safety-attestation circuit OPEN (3 strikes) — **do NOT reset before it passes 6/6** (fix the classification
+  of the unclassified path first, per the 2026-11-11 midday entry).
+- A local-work-reviewer batch (≤10) was dispatched before the wrap to cut the docs-review/docs-expand counts —
+  **outcome NOT confirmed by the deputy at wrap** (subagent had not reported back).
+- `deputy-f287-4-default-arrange-order` failed 01:16 with a transient gateway 500 (U+FFFF XML error from
+  localhost:11434); worker retries on backoff — **not re-confirmed at wrap**.
+
+**Ring task (Matt: "Make a space and try to generate the ring") — GROUNDED ONLY, no space built, no job queued:**
+- Video: `/home/matt/Downloads/IMG_1257.MOV` (also `/home/matt/Videos/IMG_1257.MOV`) — 4K HEVC, 53 s, 120 fps,
+  filmed on a **checkerboard/ArUco-style scan board** (deliberate photogrammetry setup). Ring: silver championship-style,
+  faceted diamond crown, red gem center, black panels engraved "ROE". Frames: `~/.local/state/reckons/ring-frames/` (f5–f48).
+- Paths available: (a) generative prompt→image(zimage)→splat(TripoSplat) — wrapper on branch `feat/review-story-garden`
+  (`scripts/review-spaces/generate-assets.ts`, pattern: `--slot=… --stages=image,splat --workspace=…`, image before splat,
+  GPU1); (b) reconstruction — `scripts/content/scan_colmap.py` + `scan-attach.ts` from real frames (the checkerboard
+  suggests Matt intends this one); F58.9.19 multi-scan fusion decided but NOT built.
+- **HONESTY REQUIREMENT (honest-status):** an asset made from a text prompt is NOT his ring — label origin "generated"
+  and make the story say exactly which pipeline produced it. Story goal (Matt): "how did I make this ring digital asset
+  from a real object"; if it looks really good → DIS About page, linked to the space.
+
+**Matt's decisions/feedback this evening — ALL recorded in the review queue as kb_add_note (agent local-deputy:qwen3.8-160k):**
+(1) "Built with Reckons.AI" must be a kickass experience INSIDE Reckons.AI: story mode of the site-generation process,
+why it made the info clear/organized/referenced, cross-page instant editing, staleness detection ("expired cert check?"),
+tie DIS to Reckons.AI as the tool for publishing great web content. (2) Ring → DIS About page + linked space + story.
+(3) Landing: "very clear by language that this is a 1 person company. It may not be forever, so landing should be less
+blunt" (roadmap precedent: the SOLO wording becomes false if the team expands — scope-decision ~line 1367).
+(4) About + Services pages "very bland at the moment" — need better layouts. (5) Harness warning: auto mode not working,
+harness may be acting up; keep deputy work on the plain tool path.
+
+**Unverified / still open at wrap:** reviewer-batch outcome; f287-4 retry; the TTL parse failure at
+`reckons-workspace/kbs/generated-assets/generated-assets.ttl:1128` (sched:offer-tasks skipped 4 notes because of it —
+the failing block is structurally identical to its neighbours; root cause not found, deputy's n3 repro attempt failed).
+
+## 2026-11-11 (midday) — Data Insight Solutions site: build diagnosed, launch path ready — for Fable (local deputy qwen3.8, Matt asked for Fable handoff)
+
+**The right repo is `/home/matt/Github/DataInsightSolutions-website`** (github.com/Data-Insight-Solutions/DataInsightSolutions-website),
+NOT `data-insight-solutions.com` (the old Netlify site, still in DNS). Matt: old one first, then the redesign —
+**deploy the redesign on Cloudflare, over the existing Pages project `data-insight-solutions`
+(preview `data-insight-solutions.pages.dev`), noindex until Matt cuts DNS over.** Launch date **2026-11-14
+(AI Reality Check talk) confirmed by Matt this session.** Scope: brand + landing + reviewed blog +
+pre-built HTML; NO engine package. Blog pipeline approved: Triple Check (facts settled) → shorten all 8
+posts, every change a review-queue proposal (claims format already exists in
+`workspace/drafts/reckons-ai.claims.md`, 0 ungrounded as of 2026-11-10).
+
+**BUILD "GAPS" — all three explained, none is a bug (diagnosed this session, Fable to use as-is):**
+- `2024-ai-video-editing` is NOT dropped — it IS the current `index.html`. All 4 core pages
+  (index/services/about/contact) are `status: draft`; `publishablePages` (src/lib/rdf/page.ts:194) keeps
+  only published|unlisted, so the 8 published blog posts are the whole site and `pickHome`
+  (src/lib/publish/site-generator.ts:107) fell back to lowest-order root page → that post became home.
+- services/about/contact missing = **correct by design** (AGENTS.md: "A page is public only after the
+  owner approves and publishes it"). The launch blocker is simply: Matt publishes the 4 core pages
+  (flip `status: draft` → `published` in their frontmatter) — then index.md (template: landing) becomes
+  the real home and displaces the post.
+- Output has **no noindex/robots.txt** — expected; add it at deploy time (write `robots.txt`
+  `User-agent: * / Disallow: /` into the output dir after `site:build`, before `wrangler pages deploy`).
+
+**Verified working this session:** `npm run site:build -- --site=/home/matt/Github/DataInsightSolutions-website
+--out=…` → 8 pages, 31 files, 19 assets, clean import (12 files / 182 statements / 0 warnings), output at
+`~/.local/state/reckons/site-builds/data-insight-solutions`. Wrangler auth via `CLOUDFLARE_API_TOKEN` (never
+print it). Two small fixes for the final build: pass `--title="Data Insight Solutions"` (default
+"Reckons.AI site" leaked into the post-home's <title>), and the robots.txt above.
+
+**Not done (Fable's, or Opus's, call to make — deputy has no push/deploy authority anyway):** publish the
+4 core pages, rebuild with title + noindex, `wrangler pages deploy` over `data-insight-solutions`, verify
+the pages.dev preview, queue the blog Triple-Check+shorten. Unverified: that Matt wants ALL 4 core pages
+public at 11-14 (he approved the deploy, but per AGENTS.md the status flip is the owner's act).
+
+## 2026-11-11 (early) — STATUS CHECK for Opus/Fable (flagged by local deputy qwen3.8; Matt asked "did the deputy crash?")
+
+**Answer: NO, the local deputy did not crash.** The job that just ended, `deputy-local-f89-4-5-sampler`,
+finished clean: `queue.done.jsonl` shows `outcome: passed, exitCode 0`; the worker log says "Sampler script
+implemented, 6/6 tests pass, committed to `agent/local-f89-4-5-sampler`"; head moved `cf657102 → d88659e9`.
+The worker then advanced to `deputy-local-f89-4-4-run-tree` (alive); ollama is up with `qwen3.8:latest`
+answering in ~5s; no OOM in `dmesg`, no zombies. **Do not chase a phantom crash.**
+
+**What likely looked alarming:** the worker *self-pauses on GPU heat* — `queue-worker: paused — GPU 0 at
+91 C >= 83 C; N queued` — then resumes. That is expected thermal throttling (GPU at 91°C ≥ 83°C threshold),
+not a fault. If jobs feel slow, that is the reason.
+
+**RESOLVED during this session (Matt chose, deputy did):**
+- **`dev:test` server on `localhost:5174`** — was DOWN (visual gate blind: *"dev server connection refused at
+  localhost:5174, 0 gates evaluated"*). **Now RESTORED:** `npm run dev:test` running, serving **HTTP 200**
+  (verified 127.0.0.1:5174, ~232 KB, ~0.13 s) → the Space visual gate (`sched:visual-tests`) now has a target.
+  **Caveat:** it runs as a background process in *this* deputy session — if this session ends first, restart with
+  `npm run dev:test` (port 5174) before running the visual gate.
+- **`deputy-local-f74-15-receipt-check`** — Matt chose "drop it." Clarification for the record: it was a
+  **one-shot deputy draft, not recurring** (not in `static/reckons-jobs.ttl`) and was **already out of the active
+  queue** — no entry in `queue.jsonl`, only a single failed record in `queue.done.jsonl` (exit 143 / SIGTERM,
+  2026-11-10T23:30Z). It sits in a 30-min retry backoff but will **not auto re-fire** (nothing schedules it). So
+  there was nothing in the live queue to drop; if the F74.15 receipt-check draft is still wanted, re-brief it.
+
+**STILL OPEN (needs a triage decision — not a crash):**
+- **Review queue is over limit and holding jobs** (`worker.json` → `held`):
+  - `docs-review`: 53 unreviewed proposals (limit 50)
+  - `docs-expand`: 62 unreviewed proposals (limit 50)
+  - `safety-attestation`: **circuit OPEN** (3×). Root cause found (ran the attestation inline — 5/6 controls
+    pass): the one failing control is the unclassified generative path `src/lib/integrations/llm/triple-check.ts`
+    (F100.1, deliberately local-only). Most likely a classification-REGISTRATION gap (that path is a local-only,
+    structured-output prompt that per `kb:tenet-private` does not carry the preamble), **not** a real safety hole —
+    but Opus to confirm. **Do NOT reset the circuit before it passes**: fix the classification, re-run
+    `npx tsx scripts/offline/safety-attestation.ts` (want 6/6), then
+    `npx tsx scripts/agent/job-watch.ts --name=sched:safety-attestation --reset`.
+  - `visual-tests`: **RAM guard** (not a bug) — it loads the VLM (~16 GB) on top of the deputy's resident qwen3.8
+    (23 GB); the ~39 GB spill tripped the guard and self-paused. Needs the VLM to fit (fewer co-resident models)
+    or a deliberate guard-limit decision.
+  Triage decisions for Opus/Matt: review some proposals down under 50 to release `docs-review`/`docs-expand`;
+  confirm + fix the safety classification before resetting its circuit.
+
+**Unverified / awaiting a decision (not done):** the pending deputy memory change
+`~/.config/reckons/local-claude/memory-written/20261111T004402Z/changes.patch` is **not merged** — review and
+merge or reject it (it is a proposal, per the deputy contract).
+
+**What Matt decided (this session):** (a) **start 5174** — done, serving HTTP 200; (b) **drop f74‑15** — done,
+it was already out of the active queue (one-shot, not recurring). **Still open for Opus/Fable:** the over-limit
+review queue (docs-review / docs-expand) and the safety-attestation circuit reset, plus the unmerged memory patch
+below.
+
+## 2026-11-10 (night) — START HERE: build wave merged into LOCAL dev; one batch PR open (Fable 5.2 + Sonnet overseers)
+
+**Local `dev` is AHEAD of `origin/dev`.** It equals branch `integration/2026-11-10` (PR #610, base dev, NOT merged
+on GitHub; it contains the commits of #608 and #609). Matt, 2026-11-10: dev integrates through local git; GitHub
+gets one batched PR. How it was done: each stream pushed a branch with no PR, one integrator merged them into
+`integration/2026-11-10`, ran the checks on the COMBINED tree, then fast-forwarded local dev.
+
+**Local deputy first drafts queued 2026-11-10 (evening), for sub-agents to pick up:** seven unchained jobs, each
+on its own local branch `agent/local-*` cut from local dev (not pushed), each told to commit (a subject starting
+`WIP:` means a check failed): F74.15 receipt check, F89.4.5 sampler, F89.4.4 run tree, F58.9.19.2 similarity fit,
+F58.9.19.1 capture links, F269.2 device leap helpers, F286.7 self-settlement check. `git branch --list 'agent/local-f*'`
+and `npx tsx scripts/agent/queue.ts list` show them. Judge each by its diff against its entity's done-test, never by
+the queue's "passed". The queue worker was restarted from the main checkout the same evening: it had been running
+from a worktree that was removed, and scheduled jobs failed for about two hours.
+
+**In the batch (statuses are on the entities; read their dated honest-notes):** F58.9.20 scan auto-attach
+(scaffolded: attach-only mode, backfill of a missing splat file on poll, explicit link flags, a question when no
+link is given); the architecture plan and Matt's decisions (#608); F286.1/.3/.6 trust checks (built, wired into
+nothing yet); F269.1 device job records (scaffolded; the device space itself does not exist); F89.4.3 lanes and
+F89.4.1 row contract (hand runs mint `hand:<job>:<time>`; contract date 2026-11-11); F223.9/.10 standing drawn,
+F223.11 filters partly built (no link from a Reckoning option, no 3D exact filtering).
+
+**Checked on the combined tree 2026-11-10:** svelte-check 0 errors; scoped vitest (scripts, rdf, stores, storage,
+3d, mcp-server, cli) 3,924 passed; graph-lint 0 errors; blocking script tier 9 of 9; md-align aligned. NOT run:
+the full unit suite, the e2e suite, the build.
+
+**HELD, do not merge without Matt:** `feat/f89-4-6-producer-state` (F89.4.6). Merged, the worker would skip 15
+producers' schedules on thresholds that are only proposed (yield 0.3, decidability 0.5).
+
+**Not done:** the queue worker still runs the code it started with; restart it from the main checkout to pick up
+the job-watch and worker changes. A finished job records its space as a folder name, so a run's leap to its space
+cannot be made yet (record the space's stable id too). The local deputy queue blocks a job chained `--after` a
+job that ends without a commit; queue deputy drafts unchained.
+
+**Rules learned today:** never `git stash` in a worktree (the stash is shared; one stream took another's work);
+never raise a ratchet baseline to pass (reword prose, or stop and report); ratchets do not compose, so re-run
+`term-usage --check` on the combined tree.
+
+## 2026-11-10 (later) — architecture pass: review overhaul, asset goal, job channel, fusion, trust contract, release (Fable 5.2)
+
+**This PR (branch `chore/architecture-pass-2026-11-10`, roadmap only, NOTHING BUILT):** plans written into
+`static/reckons-roadmap.ttl` as `planned` entities with done-tests. Recommendations are `kpred:proposed`;
+what only Matt can decide is a `kpred:open-question` starting `FOR MATT`. Query by id:
+- **Review overhaul** `kb:loop-job-grouping` (now F89.4), phases F89.4.1–.7 in build order: row contract
+  (space + run + lane), one ledger per workspace, lanes (findings leave the person's queue), run as a set,
+  sample gate, producer states by yield and decidability, inline answers.
+- **Asset goal** `kb:asset-run-review-loop` (the loop and the build order), F284.0 data model, F285.0 free
+  layout. F284, F285, F223.5/.6/.8 were copied to dev from `agent/local-v028-jobs`.
+- **Job-to-space channel** F74.14 and the run receipt F74.15 (F58.9.20, F74.12, F74.13 now depend on them).
+- **Fusion** F58.9.19.1–.5. **Offline trust contract** F286 (.1–.9). **Release** notes on 0.2.7 and 0.2.8.
+- **Proposals and questions drawn apart** F223.9–.11 (Matt, 2026-11-10): a statement's standing, the canvas drawing by it, and filters exact to the statement with a focus on one proposal's option.
+- **Jobs in This device** F269.1–.2 (Matt, 2026-11-10): every job detailed in the device space; the space a job runs for holds its definition with a leap that names no device.
+
+**When `agent/local-v028-jobs` is rebased:** (1) drop its own copies of `kb:guided-asset-refine` and its four
+phases, `kb:interactive-space` and its three phases, `kb:proposal-outcome-assets`, `kb:reckon-an-asset`,
+`kb:reckoning-outcome-review`; dev's are the same text. Then restore the two links this PR left out because
+their targets live only on that branch (`guided-how-to-generate → generation-catalog`,
+`proposal-outcome-assets → demo-composite-asset`). (2) Renumber its two entities that claim F58.9.19 and
+F58.9.20 (`showcase-assets-refresh`, `one-prompt-every-asset`): dev gave those ids to multi-scan
+reconstruction and scan auto-attach; graph-lint's duplicate-id will fail otherwise. (3) Its 0.2.8 re-cut
+(the `has-part` moves) is still the only place the decided 0.2.8 scope exists as edges; until it lands,
+`release:burndown` for 0.2.8 measures the replaced list (0 of 14 on 2026-11-10).
+
+**Decided by Matt 2026-11-10 (each recorded as `kpred:decided` on the entity named):** findings leave Review
+(`kb:review-lanes`); run grouping now, in the current Review page, as the default (`kb:loop-job-grouping`);
+hold 0.2.8 for its headline, no end date yet (`kb:release-0-2-8`); walk the scanned place first
+(`kb:asset-run-review-loop`); a gap closes by measure, with a recorded waiver (`kb:asset-data-model`); the
+plan's first rendering is a top-down drawing (`kb:landscaping-plan-space`). **Still only proposed:** where the
+four unfinished 0.2.7 parts go, F286 as a part of 0.2.9, and the yield and decidability thresholds.
+
+**Checked 2026-11-10 in the branch's worktree:** graph-lint 0 errors; blocking script tier 9 of 9 after
+regenerating `static/review-0.2.7.ttl` (the new F89.4 id changed one generated name); md-align aligned; the
+8 unit files that read the roadmap pass (84 tests). NOT run: the full unit suite, e2e, build. Failing on dev
+before this branch and unchanged by it: repo-hygiene, naming-ratchet, taxonomy-current, safety-attestation
+(#604 is its fix), perf-crawl.
+
+## 2026-11-10 — GPU pin and chain fix landed; scan-fusion approach decided (Claude Code, Opus + Sonnet overseer)
+
+**This PR (branch `agent/local-gpu-pin`):** (1) the deputy env sanitizer drops a `GIT_CONFIG_*` group whole;
+(2) F74.7 GPU pin: `queue.ts add --gpu=<n>` runs a job on one card and the gate judges only that card;
+(3) chain fix in `afterChain`: a predecessor that is currently queued is WAITING even if an older run of it
+is blocked in the done log (re-queueing it is the user re-running it). After merge, restart the queue worker
+from the main checkout. Details of the private multi-capture scan trial live in the private workspace
+HANDOFF (outside git), not here.
+
+**Decisions Matt made today in chat:** (a) the deputy's 6 attach rows for one finished scan named no space and
+were deleted (Matt approved); Matt drag-drops finished splats through the scan-import UI until automatic
+attach is built. (b) Fusion approach: one COLMAP layout over pooled frames with cross-session matching, then
+a fused splat for preview and a mesh from depth maps for Blender (not built; plan in the graph first).
+(c) The GPU-contention question is answered by the pin. (d) "Auto mode not working" is in the local deputy
+(`npm run claude:local`), under investigation.
+
+## 2026-11-04 (evening) — START HERE: everything open merged; asset QA loop in (Claude Code, Opus)
+
+**Merged into dev today (verified as one tree, #587, CI 16/16 green at 4ce0a5f7, dev a1a46707):** #585 queue
+RAM guard; then #486, #533, #534, #501, #513, #536, #527, #586 (F281 asset QA loop), #473, #375, #413, #539 (jobs graph
+is the source; jobs.json deleted). Closed: #532 (stale handoff), #538 (superseded). Cross-PR conflicts and how
+they were resolved are in #587's description.
+
+**The 12:39 CST crash was Ollama, not Chrome**: llama-server started without CUDA and loaded ~17 GB into RAM
+(evidence on `kb:queue-ram-guard`, F74.11). The queue is RESUMED and guarded.
+
+- **Done:** the systemd-oomd / MemoryMax drop-in for ollama.service, applied by Matt and verified 2026-11-04 evening (details on `kb:queue-ram-guard`).
+- **Matt, numbering:** collisions renumbered — taxonomy-current F263->F280, bench review F183.3->F183.5,
+  local-overseer-model F268->F282.
+- **#527 removed the session-heartbeat gate** (Matt, 2026-10-23): the queue worker now runs jobs without an active
+  Claude session. Expect jobs to start whenever the worker is up.
+- **F281 asset QA loop:** checks (image, video, splat, PDF, SVG), qwen2.5vl review as advice, reseed-and-keep-best
+  in the generation runner, `npm run asset:qa -- <file>`. NEXT: a bench of the vision reviewer on labelled
+  generated assets (it rejected a bad page with the wrong defect names, and missed a style mismatch), then F281.4
+  page remedies once the F277 layout engine exists, and F281.5 (QA verdict in review).
+- **Local-only e2e failure:** `generated-assets-story.test.ts:220` (Shelly queues a chain) fails on this machine,
+  also on #527's own branch, and passes in CI. Not chased.
+- **Still open:** #502 (vitest 5, mcp-server) and #583 (22 dev deps) — major bumps failing CI; #562 waits on
+  Dependabot's transformers exclusion.
+
+## 2026-11-04 (early) — START HERE: overnight queue triaged and merged (Claude Code, Opus)
+
+**Done (each checked as stated, 2026-11-04 ~07:00 UTC).** #556 (v0.2.7) reached staging 01:59 UTC,
+which unfroze dev. Merged into dev: the held PRs #565 (MCP serves the main checkout's build from
+worktrees, the cause of every deputy's CONNECTION_CLOSED), #566, #554, #564, #567, #559, #561; and
+six overnight deputy branches, each reviewed by a Sonnet overseer against its brief's done-tests:
+#568 ollama-default, #569 import-mixed, #570 typing-undeclared, #571 typing-llm-custom,
+#572 ratchet-paths, #573 dead-weight-alias. #574 fixed the term ratchet (below).
+
+**What went wrong, so it is not repeated:**
+- Two deputy reports said "run-all 9/9" when codebase-coverage was failing (new test file unlinked:
+  #569, #571). The overseer caught both. Read deputy "all green" lines as unverified.
+- #569 broke e2e `sync-preservation`: the new unrecorded-triple import turned the sync layer's
+  `urn:kbase:asset/*` reference lines into pending facts. Fixed (b88588d5) by excluding that
+  namespace; legacy icon2d/glbModel predicates still import as statements.
+- Merging #568-#573 back to back, each green alone, put dev over the "graph" term ratchet
+  (3281 vs 3279) and turned dev's script tier red. #574 reworded six uses; no baseline raised.
+  When landing several PRs, re-run term-usage on the combined tree between merges.
+
+**Still open:**
+- **Matt:** v0.2.7 is on staging; no staging → main PR exists yet. Claude can open one for him.
+- **Matt:** #568 now replaces a chosen Ollama model that is not installed with the best installed
+  one, as its brief asked; only the ingest ledger shows the swap. Two-line change if he wants an
+  explicit choice to fail loudly instead.
+- #537 Triple Check: dev merged in (6ca52752); still not reviewed (4.3k lines). The merge moved
+  `settings/device` onto SettingsHeader — needs a visual check. Two `dependency-overrides` test
+  failures seen locally are probably that worktree's stale node_modules; CI decides.
+- Queue: night-queue-chains running (started 06:08 UTC, on a worktree fast-forwarded to include
+  #565), then night-job-plan-space, then the two gpt-oss benches. Triage both deputy branches the
+  same way when they finish.
+- Review queue: one batch of 5 dead-weight sweep questions, all deferred to Matt (no claim to
+  check). Suggestion filed on job-dead-weight: drop symbols that no longer exist before asking.
+  docs-expand is held by the backlog limit (62 unreviewed > 50), by design.
+
+## 2026-11-03 (evening) — review the overnight deputy queue (Claude Code, Opus) — DONE 2026-11-04, see above
+
+**Your first job is triage, not new work.** Eight local deputy jobs (qwen3.8) were queued 2026-11-03
+about 20:00 CST to run overnight, one at a time, each on its own `agent/local-*` branch in its own
+worktree under `.claude/worktrees/`. None is pushed. For each: read the job log
+(`~/.local/state/reckons/jobs/night-*.log`), check the branch head (a job can exit 0 with nothing
+committed; the queue records exit 0 as "passed"), run its done-tests yourself, then push and open a
+PR to dev, or reject it out loud. A Sonnet overseer only for the importer job (core code).
+
+| Priority | Branch | Fixes | Graph note |
+|---|---|---|---|
+| 10 | `agent/local-ollama-default` | default Ollama model is bare `llama3.2` (fails without `:3b`); resolve installed tags and pick the best installed model by this machine's benches (mistral-small3.2:24b: 0 invented facts) | Matt, 2026-11-03 |
+| 9 | `agent/local-import-mixed` | import-ttl drops plain triples in annotated files; parseAssetRefs matches only full-IRI lines | drift-warning on workspace-sync |
+| 8 | `agent/local-typing-undeclared` | surveyTypes counts undeclared rdf:type as typed; "a audience" | drift-warning on entity-typing |
+| 7 | `agent/local-typing-llm-custom` | LLM entity-types prompt ignores a space's custom types | same note |
+| 6 | `agent/local-ratchet-paths` | term-usage path exemption too loose | suggestion on term-ratchet |
+| 5 | `agent/local-dead-weight-alias` | dead-weight.ts misses `$lib` imports | drift-warning on job-dead-weight |
+| 4 | `agent/local-queue-chains` | `queue.ts add --after=<job>` chains; a deputy job whose branch head did not move is recorded `no-commit`, not `passed` | Matt, 2026-11-03: "craft local job chains" |
+| 3 | `agent/local-job-plan-space` | the queue written as a real, annotated `job-plan` space in the app's workspace every 10 min, so the plan is visible with no Claude tokens | Matt, 2026-11-03 |
+| -1, -2 | gpt-oss:120b benches | orchestrator, and overseer at 32k context x3; need 24 GB free RAM, give up after 4 h | compare with the 2026-10-28 table |
+
+**Dev is frozen** until Matt merges #556 (dev to staging, v0.2.7; CI green). Held PRs, all base dev,
+merge only after #556: #559 (v0.2.9 plan), #561 (deputy env secrets), #564 (F274.4.1, stacked on
+#554), #565 (MCP from worktrees), #566 (F277 asset matrix and F278 hub assets plan), and this one.
+Merged into dev today: #558 (v0.2.7 closeout), #560 (glob/minimatch advisories). Triple Check #537
+has its e2e fix and href/redirect hardening pushed; CI not re-checked since.
+
+**Asset-generation demo.** The first real use of F277 is a private community-program space kept
+outside this repository, with its own repo and its own `HANDOFF.md` (path in Matt's private notes,
+not here). Two app bugs found there are the top two overnight jobs. Nothing from it belongs here.
+
+**Matt decides:** F277.5 logo source (form upload recommended, or web search); F278 on by default or
+opt-in per space; and the open questions recorded on F277 and F278 in the roadmap.
+
 ## 2026-11-01 — v0.2.7 closeout and demo research (Codex, reviewed by Claude Code 2026-11-03)
 
 Branch: `fix/v027-release-closeout`, based on `origin/dev` aa4bd10b. The existing

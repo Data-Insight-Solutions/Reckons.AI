@@ -5,6 +5,7 @@ import type { ExtractionRun, Statement, Source, ReviewStatus } from '../rdf/type
 import { isIRI, termKey, hasLeakedTermKey } from '../rdf/types';
 import { labelFromIRI } from '../rdf/semantic-diff';
 import { gateFactWrite } from '../rdf/agent-edit-boundary';
+import { priorOrganizationStatus } from '../rdf/purpose-organization';
 import type { ChangeLogEntry, TrustEvent } from '../storage/types';
 import { computeTrustScore } from '../storage/trust';
 import { scheduleAutoSave } from '../storage/backup';
@@ -550,6 +551,29 @@ export async function persistSourceBatch(
   return committedPlan.statements;
 }
 
+/** Atomically replace only the organization produced by purpose-based Analyze. */
+export async function persistPurposeOrganization(source: Source, changes: Statement[], initial: Statement[]) {
+  if (isReadOnly() || !source.uri.startsWith('analysis://purpose/')) throw new Error('Cannot apply purpose organization here.');
+  const plan = await prepareStatementsForWrite(changes, source.id);
+  if (plan.blocked.length || plan.statements.length !== changes.length) throw new Error('Organization did not pass statement admission; nothing changed.');
+  await db.transaction('rw', db.sources, db.statements, db.changelog, async () => {
+    if (isReadOnly()) throw new Error('The active space changed; nothing was applied.');
+    const current = await db.statements.bulkGet(initial.map(s => s.id));
+    if (current.some((s, i) => !s || JSON.stringify(s) !== JSON.stringify(initial[i]))) throw new Error('Statements changed while Analyze was running. Please retry.');
+    const priorSources = new Set((await db.sources.toArray()).filter(s => s.uri.startsWith('analysis://purpose/')).map(s => s.id));
+    const previous = (await db.statements.toArray()).filter(s => priorSources.has(s.sourceId) && priorOrganizationStatus(s.status) !== null);
+    await db.sources.put(source);
+    await db.statements.bulkPut(plan.statements);
+    await writeStatementChangeLog(plan, source.id);
+    for (const statement of previous) {
+      const next = priorOrganizationStatus(statement.status)!;
+      await db.statements.put({ ...statement, status: next, updatedAt: Date.now() });
+      await logChange({ action: next === 'superseded' ? 'supersede' : 'propose-removal', statementId: statement.id, sourceId: statement.sourceId, before: JSON.stringify({ status: statement.status }), after: JSON.stringify({ status: next }) });
+    }
+  });
+  await loadAll(); scheduleAutoSave(); scheduleWorkspaceTtlExport(); scheduleDrivePush();
+}
+
 /**
  * Ingest's terminal write boundary. It deliberately consumes a plan produced by the same
  * admission funnel as addStatements(), so content and archive policy cannot be bypassed merely
@@ -688,7 +712,7 @@ export async function setStatuses(
         statementId: before.id,
         sourceId: before.sourceId,
         before: JSON.stringify({ status: before.status }),
-        after: JSON.stringify({ status: after.status }),
+        after: JSON.stringify({ status: after.status, ...(after.settledByDecision ? { note: after.settledByDecision } : {}) }),
       });
 
       if ((after.status === 'confirmed' || after.status === 'refined') && before.status === 'pending') {

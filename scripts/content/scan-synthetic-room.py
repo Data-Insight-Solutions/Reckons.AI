@@ -13,7 +13,8 @@ structure-from-motion would mistake for texture). Set CYCLES_DEVICE=CUDA/OPTIX/C
 CUDA_VISIBLE_DEVICES picks the GPU. Textures carry detail at several scales on purpose:
 structure-from-motion needs something to match, and a splat of a flat colour has nothing to learn.
 """
-import sys, math, random, os
+import sys, math, random, os, json, hashlib
+from pathlib import Path
 import numpy as np
 import bpy
 
@@ -32,6 +33,7 @@ scene = bpy.context.scene
 scene.render.engine = 'CYCLES'
 scene.cycles.samples = samples
 scene.cycles.use_denoising = True
+scene.cycles.seed = seed
 scene.cycles.denoiser = 'OPENIMAGEDENOISE'
 scene.cycles.max_bounces = 4
 dev = os.environ.get('CYCLES_DEVICE', 'CUDA')
@@ -364,6 +366,30 @@ for f in range(frames):
 scene.render.image_settings.file_format = 'PNG'
 scene.render.filepath = out.rstrip('/') + '/f_'
 only = os.environ.get('FRAME_ONLY')
+if os.environ.get('ROOM_BENCHMARK') == '1':
+    # Known poses isolate splat training from COLMAP pose errors. Every eighth view is
+    # held out, spanning both turns; Brush reads this separate test split directly.
+    if only or frames < 32:
+        raise ValueError('ROOM_BENCHMARK needs the full animation and at least 32 frames')
+    Path(out).mkdir(parents=True, exist_ok=True)
+    splits = {'train': [], 'test': []}
+    for f in range(frames):
+        scene.frame_set(f + 1)
+        splits['test' if f % 8 == 0 else 'train'].append({
+            'file_path': 'f_%04d.png' % (f + 1),
+            'transform_matrix': [list(row) for row in cam.matrix_world],
+        })
+    for split, views in splits.items():
+        (Path(out) / ('transforms_%s.json' % split)).write_text(json.dumps({
+            'camera_angle_x': cam_data.angle_x, 'w': width, 'h': height, 'frames': views,
+        }, indent=2) + '\n')
+    (Path(out) / 'benchmark.json').write_text(json.dumps({
+        'schema': 1, 'scene': 'reckons-synthetic-room', 'synthetic': True,
+        'generatorSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        'blender': bpy.app.version_string, 'seed': seed, 'frames': frames,
+        'samples': samples, 'width': width, 'height': height, 'evalEvery': 8,
+        'cameraConvention': 'Blender camera-to-world, right-handed, +Y up, -Z forward',
+    }, indent=2) + '\n')
 if only:                                               # a single still, to look at before committing to a render
     scene.frame_set(int(only))
     scene.render.filepath = out.rstrip('/') + '/still_%04d.png' % int(only)

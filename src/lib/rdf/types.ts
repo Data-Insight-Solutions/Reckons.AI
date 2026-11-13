@@ -283,6 +283,16 @@ export type Statement = {
    */
   findingClass?: 'form' | 'drift' | 'defect';
   /**
+   * Which option of a reckoning's proposal this fact belongs to (F223.9 / kb:fact-standing).
+   *
+   * Stamped when the fact is `pending` AND part of a proposed option — that is what separates
+   * PROPOSED from PENDING, with no new review status. Recorded the same way F89.4.4 records its
+   * run: a stamp on the portable record, so an option is a group whose members are DERIVED
+   * (`standingOf` in rdf/fact-standing.ts), not listed — no membership edges to keep in sync.
+   * Survives a round trip through the portable record, via portable metadata (rdf/portable-metadata.ts).
+   */
+  proposalOption?: string;
+  /**
    * HOW could this fact be checked — and therefore WHO is competent to approve it (F88).
    *
    * `code` | `test` a script or a suite settles it; the user need not be asked at all.
@@ -448,6 +458,25 @@ export const PROV_PREFIX = 'http://www.w3.org/ns/prov#';
 /** Statement-reification subjects (urn:kbase:stmt/{id}) — the id-nodes provenance hangs off. */
 export const STMT_PREFIX = 'urn:kbase:stmt/';
 
+/** Characters a Turtle IRI cannot hold; a fact id such as `currents|s|p|v` carries them. */
+const IRI_UNSAFE = /[|"<>{}\\^`\s]/;
+const STMT_ID_MARK = '~';
+/**
+ * A fact id as it is written inside <urn:kbase:stmt/{id}>. An id with nothing an IRI cannot hold (a uuid, an
+ * archive id, anything written before) is written exactly as it is. Any other id is written with a leading `~`
+ * (no generated id starts with one; an id that does is marked too) and `%` plus every unsafe character
+ * percent-encoded, so reading it back is lossless.
+ */
+export const stmtIdToIriPart = (id: string): string =>
+  IRI_UNSAFE.test(id) || id.startsWith(STMT_ID_MARK)
+    ? STMT_ID_MARK + id.replace(/[%|"<>{}\\^`\s]/g, (c) => encodeURIComponent(c))
+    : id;
+/** The inverse of stmtIdToIriPart. Only a marked id is decoded; an unmarked one, even with a literal %7C, is taken as written. */
+export const stmtIdFromIriPart = (part: string): string => {
+  if (!part.startsWith(STMT_ID_MARK)) return part;
+  try { return decodeURIComponent(part.slice(1)); } catch { return part; }
+};
+
 /** Automated test/crawl telemetry (button-crawl findings, route probes).
  *
  * These are OBSERVATIONS ABOUT A TEST RUN, not knowledge the graph is about. Their objects are UI
@@ -472,6 +501,17 @@ export const GENERATION_PROVENANCE_PREDICATES = [
   'urn:kbase:predicate/generated-gaussians',
 ] as const;
 
+/** F166.1.2: what a Job entity records about itself. Attributes in the detail panel, never value
+ *  vertices (a bare "queued" or "image" floating on the canvas would say nothing). The edges waits-for
+ *  and produced stay visible: they are the chain. */
+export const JOB_ATTRIBUTE_PREDICATES = [
+  'urn:kbase:predicate/job-stage',
+  'urn:kbase:predicate/job-state',
+  'urn:kbase:predicate/job-error',
+  'urn:kbase:predicate/requested-by',
+  'urn:kbase:predicate/queued-at',
+] as const;
+
 /** Predicates whose object is a presentation asset (2D icon / photo / video).
  * They're consumed directly by the icon/preview maps; as edges they'd render
  * the raw data-URI or URL as a junk literal node, so they're metadata here.
@@ -492,6 +532,10 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   // nodes: a bare "42" or "49" in the graph meant nothing (Matt, 2026-10-14: "whats the 49, 42,
   // and 7?"). Entity-to-entity links (made-from, license) stay visible edges and are NOT listed.
   ...GENERATION_PROVENANCE_PREDICATES,
+  // F183.5 bench review: what a bench branch differs by and what was measured, literal attributes of the branch entity.
+  ...['differs-by', 'seconds', 'peak-vram-mib', 'peak-ram-mib', 'output-bytes', 'checks-passed', 'checks-failed', 'fps', 'vision-hint', 'scene-file']
+    .map((n) => `urn:kbase:predicate/${n}`),
+  ...JOB_ATTRIBUTE_PREDICATES,
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
 ]);
@@ -513,6 +557,13 @@ export const TYPE_PRESENTATION_PREDICATES = new Set([
   'urn:kbase:predicate/meshy-status',
 ]);
 
+/**
+ * What a story step OFFERS the reader (F261): a setting to apply or a page to open. Player config,
+ * like the presentation predicates above; drawn, they would put "tripleCheckEnabled=true" on the canvas.
+ * Whether story STRUCTURE (steps, order, text) should be drawn is a separate, open question.
+ */
+export const STORY_OFFER_PREDICATES = new Set(['urn:reckons:story/offerSetting', 'urn:reckons:story/openPage']);
+
 /** Returns true if the predicate is metadata (should not render as a graph edge/node) */
 export function isMetaPredicate(predicateIri: string): boolean {
   if (predicateIri.startsWith(META_PREFIX)) return true;
@@ -521,6 +572,7 @@ export function isMetaPredicate(predicateIri: string): boolean {
   if (PRESENTATION_IMAGE_PREDICATES.has(predicateIri)) return true;
   // Entity-type presentation config (geometry name, hex colour, …) is not a fact about anything.
   if (TYPE_PRESENTATION_PREDICATES.has(predicateIri)) return true;
+  if (STORY_OFFER_PREDICATES.has(predicateIri)) return true;
   // nav:order and nav:layer are node metadata, not graph edges
   if (predicateIri === `${NAV_PREFIX}order` || predicateIri === `${NAV_PREFIX}layer`) return true;
   // page:* are per-page publishing metadata (literals) — the site tree still renders

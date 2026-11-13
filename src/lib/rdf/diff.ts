@@ -1,15 +1,23 @@
 import type { Statement, Term } from './types';
 import { termKey, tripleKey } from './types';
+import { predicateArity, measuredPlural, isSingleValued, localName, type Arity } from './predicate-arity';
 
 /**
  * When new statements come in from a document, we classify each one against
  * the existing KB. The user can then accept, refine, or reject the diff.
  */
 export type DiffEntry =
-  | { kind: 'new'; incoming: Statement }
+  /**
+   * `siblings`: live facts with the same subject and predicate but another object, when the predicate
+   * ACCUMULATES (or is not known to be single-valued). They are not a conflict; the card may still
+   * offer an explicit "replaces" for a person who means it.
+   */
+  | { kind: 'new'; incoming: Statement; siblings?: Statement[] }
   | { kind: 'duplicate'; incoming: Statement; existing: Statement }
   | { kind: 'reinforces'; incoming: Statement; existing: Statement[] } // same (s,p,o), different graph
-  | { kind: 'conflicts'; incoming: Statement; existing: Statement[] }   // same (s,p), different o
+  | { kind: 'conflicts'; incoming: Statement; existing: Statement[]; possible?: boolean }   // same (s,p), different o; `possible`: arity not yet known
+  // Same origin, demonstrably later: an UPDATE, applied without review (Matt, 2026-11-12). Never a question.
+  | { kind: 'updates'; incoming: Statement; existing: Statement[] }
   | { kind: 'refines'; incoming: Statement; existing: Statement[] }     // existing was rougher
   // Exact triple the user has already settled and dismissed — see indexExisting.
   | { kind: 'returned'; incoming: Statement; existing: Statement[]; priorStatus: 'rejected' | 'superseded' }
@@ -26,6 +34,8 @@ export type Diff = {
     reinforces: number;
     conflicts: number;
     refines: number;
+    /** Same origin, newer value: applied automatically and recorded, not asked. */
+    updates?: number;
     /** Exact triples the user already rejected or superseded, offered again by a re-read. */
     returned: number;
     // Semantic counts — 0 until semanticEnrichDiff runs
@@ -86,10 +96,24 @@ function isRefinementOf(incoming: Term, existing: Term): boolean {
   return a.includes(b) && a.length > b.length + 4;
 }
 
-export function computeDiff(incoming: Statement[], existing: Statement[]): Diff {
+export function computeDiff(
+  incoming: Statement[],
+  existing: Statement[],
+  opts: { /** Where a fact came from, so a re-ingested or refreshed origin counts as the same one (default: its sourceId). */ sourceKey?: (st: Statement) => string; /** Override the measured arity (a test, or a caller that knows better). */ arity?: ReadonlyMap<string, Arity> } = {},
+): Diff {
   const { byTriple, bySp, settled } = indexExisting(existing);
+  // A different object for the same subject and predicate: where the predicate is MEASURED single-valued it
+  // is a disagreement; where it is MEASURED plural it is simply new (accepting keeps the others); where
+  // arity is not yet known it is held back as a POSSIBLE disagreement and the person chooses
+  // (Matt, 2026-11-12). Nothing is superseded unless they pick replace.
+  const settledTriples = existing
+    .filter((st) => st.status !== 'rejected' && st.status !== 'superseded' && st.status !== 'pending' && st.o.kind !== undefined && !st.needsObject)
+    .map((st) => ({ subject: termKey(st.s), predicate: st.p.value, object: termKey(st.o) }));
+  const arity = opts.arity ?? predicateArity(settledTriples);
+  const plural = measuredPlural(settledTriples);
+  const isMulti = (p: string) => plural.has(localName(p)) || (opts.arity !== undefined && arity.get(localName(p)) === 'multi');
   const entries: DiffEntry[] = [];
-  const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
+  const summary = { new: 0, duplicate: 0, reinforces: 0, conflicts: 0, refines: 0, updates: 0, returned: 0, nearDuplicate: 0, synonymReinforces: 0, antonymConflicts: 0 };
 
   for (const inc of incoming) {
     // Partial facts (F32): the object is an unfilled placeholder, so structural
@@ -136,6 +160,27 @@ export function computeDiff(incoming: Statement[], existing: Statement[]): Diff 
       continue;
     }
 
+    // Same origin, and this observation is demonstrably LATER than every value it would sit beside: the
+    // origin itself changed its mind (20 tests passed, now 22). That is verifiable from the record, so it
+    // is an update, not a question, whichever direction the number moved. Missing or equal timestamps,
+    // or any other origin, fall through to the arity rules below.
+    const keyOf = opts.sourceKey ?? ((st: Statement) => st.sourceId);
+    if (
+      sameSp.length > 0 &&
+      keyOf(inc) &&
+      sameSp.every((ex) => keyOf(ex) === keyOf(inc) && Number.isFinite(ex.createdAt) && Number.isFinite(inc.createdAt) && inc.createdAt > ex.createdAt)
+    ) {
+      entries.push({ kind: 'updates', incoming: inc, existing: sameSp });
+      summary.updates++;
+      continue;
+    }
+
+    if (sameSp.length > 0 && !isSingleValued(arity, inc.p.value) && isMulti(inc.p.value)) {
+      entries.push({ kind: 'new', incoming: inc, siblings: sameSp });
+      summary.new++;
+      continue;
+    }
+
     if (sameSp.length > 0) {
       const refines = sameSp.filter((s) => isRefinementOf(inc.o, s.o));
       const conflicts = sameSp.filter((s) => !isRefinementOf(inc.o, s.o));
@@ -143,7 +188,9 @@ export function computeDiff(incoming: Statement[], existing: Statement[]): Diff 
         entries.push({ kind: 'refines', incoming: inc, existing: refines });
         summary.refines++;
       } else {
-        entries.push({ kind: 'conflicts', incoming: inc, existing: sameSp });
+        entries.push(isSingleValued(arity, inc.p.value)
+          ? { kind: 'conflicts', incoming: inc, existing: sameSp }
+          : { kind: 'conflicts', incoming: inc, existing: sameSp, possible: true });
         summary.conflicts++;
       }
       continue;
@@ -154,4 +201,24 @@ export function computeDiff(incoming: Statement[], existing: Statement[]): Diff 
   }
 
   return { entries, summary };
+}
+
+/**
+ * What choosing replace / keep both / reject does to a held-back disagreement, as status changes.
+ * replace supersedes exactly the existing facts it conflicts with; keep both supersedes nothing;
+ * reject turns the incoming value down and leaves what you have confirmed.
+ */
+export function resolveConflict(
+  entry: { incoming: Statement; existing: Statement[] },
+  choice: 'replace' | 'keep-both' | 'reject',
+): { id: string; status: 'superseded' | 'refined' | 'confirmed' | 'rejected' }[] {
+  if (choice === 'replace') return [...entry.existing.map((e) => ({ id: e.id, status: 'superseded' as const })), { id: entry.incoming.id, status: 'refined' as const }];
+  if (choice === 'keep-both') return [{ id: entry.incoming.id, status: 'confirmed' }];
+  return [...entry.existing.map((e) => ({ id: e.id, status: 'confirmed' as const })), { id: entry.incoming.id, status: 'rejected' }];
+}
+
+/** The recorded reason for an automatic update, shown wherever history is shown. */
+export function describeUpdate(entry: { incoming: Statement; existing: Statement[] }): string {
+  const val = (t: Term) => t.value ?? termKey(t);
+  return `updated from ${entry.existing.map((e) => val(e.o)).join(', ')} to ${val(entry.incoming.o)}, same origin, newer`;
 }

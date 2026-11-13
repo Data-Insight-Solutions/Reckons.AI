@@ -3,7 +3,7 @@
  * that any static host serves with no framework and no build step (Matt, 2026-07-16: pre-built HTML).
  *
  * Distinct from site-export.ts, which emits the CONTENT SOURCE (content/*.md + Sveltia admin) that
- * the main app's SvelteKit build renders at /docs. That source is not viewable on its own. This
+ * the main app's SvelteKit build renders at /docs. Those files are not viewable on their own. This
  * produces the finished site: one HTML file per page (marked-rendered body + nav + prev/next), one
  * stylesheet, and graph.json — droppable onto Cloudflare Pages, Netlify, GitHub/GitLab Pages, or a
  * folder, and reachable by the `reckons publish` CLI which then runs the host's deploy tool.
@@ -16,12 +16,102 @@ import { buildSitePages, publishablePages, slugify, type SitePage } from '../rdf
 import { buildGraphJson } from './site-export';
 import { assertSitePath } from './output-path';
 import { localImageUrl, sanitizePageHtml, STATIC_SITE_CSP, themeColor, themeFont } from './output-policy';
+import type { SiteConfig } from './site-config';
+import { landingCss, landingJs, renderLandingPage, renderShellPage } from './site-landing';
 
 marked.setOptions({ gfm: true, breaks: false });
 
 export interface GenerateSiteOptions {
   siteTitle?: string;
   siteDescription?: string;
+  /** F274.4.2: blog behavior (index, categories, post extras), built by site-blog.ts. */
+  extension?: SiteExtension;
+  /**
+   * LOCAL PREVIEW ONLY (F274.4.2): include draft pages with a visible "Draft" marker and a noindex
+   * meta on every page. Never turn this on for a build that will be deployed; site-build.ts stamps the
+   * output so the publish paths can refuse it.
+   */
+  includeDrafts?: boolean;
+  /** F274.4.3: from <site>/site.config.json. When present, every page uses the configured shell
+   *  (header, navigation, footer, palettes) and `landing` pages the landing layout. */
+  siteConfig?: SiteConfig;
+  /** Default true. False: the build writes no knowledge.ttl, so no page links to it (F274.4.6). */
+  knowledgeTtl?: boolean;
+}
+
+/** A page the extension adds that is not a WebPage (the blog index, a category page). */
+export interface ExtraPage {
+  /** Output file path, e.g. 'blog/index.html'. */
+  path: string;
+  title: string;
+  description?: string;
+  /** TRUSTED html, already escaped/sanitized by the extension. */
+  html: string;
+}
+
+/**
+ * Hooks a feature module registers with the generator without the generator knowing its
+ * rules (the blog is the first user). Every html string returned is trusted: the extension
+ * must escape and sanitize what it builds.
+ */
+export interface SiteExtension {
+  /** Called once with the pages about to be rendered; may return them with prev/next rewritten. */
+  preparePages?(pages: SitePage[]): SitePage[];
+  /** Pages left out of the sidebar nav (e.g. posts). */
+  hiddenFromNav?(page: SitePage): boolean;
+  /** Extra sidebar links, shown after the pages. */
+  navLinks?(): Array<{ href: string; label: string }>;
+  /** Html placed between the page's date line and its body. */
+  beforeBody?(page: SitePage): string;
+  /** Html placed after the page body, still inside the article. */
+  afterBody?(page: SitePage): string;
+  /** Extra generated pages. */
+  extraPages?(pages: SitePage[]): ExtraPage[];
+  /** Extra CSS appended to styles.css. */
+  css?(): string;
+  /** URL the root redirects to when no non-post page can be the home (e.g. '/blog/'). */
+  rootRedirect?(): string | null;
+}
+
+/** F274.4.3 registration point: a configured site renders through site-landing.ts, others through renderPage.
+ *  F274.4.2 blog hooks and the draft marker are carried into the configured shell as well. */
+/** An 8-hex content hash (FNV-1a): a changed file gets a new address, an unchanged one keeps it. Cache-busting, not security. */
+export function contentStamp(text: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+const stampCache = new WeakMap<GenerateSiteOptions, Record<string, string>>();
+function stampsFor(opts: GenerateSiteOptions): Record<string, string> {
+  let st = stampCache.get(opts);
+  if (!st) {
+    st = {};
+    for (const [name, text] of Object.entries(configuredSiteFiles(opts))) st[name] = contentStamp(text);
+    stampCache.set(opts, st);
+  }
+  return st;
+}
+
+function renderForSite(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions, extra?: { html: string }): string {
+  if (!opts.siteConfig) return renderPage(page, pages, homeIri, theme, opts, extra);
+  const ctx = { config: opts.siteConfig, currentUrl: pageUrl(page, homeIri), stamps: stampsFor(opts), knowledgeTtl: opts.knowledgeTtl };
+  const ext = opts.extension;
+  const shellExtra = {
+    html: extra?.html,
+    before: (page.status === 'draft' && opts.includeDrafts ? '<p class="draft-banner">Draft: local preview only, not published.</p>' : '') + (extra ? '' : ext?.beforeBody?.(page) ?? ''),
+    after: extra ? '' : ext?.afterBody?.(page) ?? '',
+  };
+  const html = (page.template === 'landing' || page.template === 'sections') ? renderLandingPage(page, ctx) : renderShellPage(page, ctx, shellExtra);
+  return opts.includeDrafts ? html.replace('<head>\n', '<head>\n<meta name="robots" content="noindex, nofollow">\n') : html;
+}
+
+/** The configured site's extra files (stylesheet and script shared by every page). */
+function configuredSiteFiles(opts: GenerateSiteOptions): Record<string, string> {
+  if (!opts.siteConfig) return {};
+  const files: Record<string, string> = { 'landing.css': landingCss(opts.siteConfig) + (opts.extension?.css?.() ?? ''), 'landing.js': landingJs() };
+  if (opts.siteConfig.extraCss !== null) files['site-extra.css'] = opts.siteConfig.extraCss;
+  return files;
 }
 
 const SITE = 'urn:reckons:site/';
@@ -85,7 +175,7 @@ export interface GeneratedSite {
   homeIri: string | null;
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
@@ -104,7 +194,9 @@ function pagePath(page: SitePage, homeIri: string | null): string {
 }
 
 /** The home page: the first 'landing'-template page, else the lowest-order root page, else first. */
-function pickHome(pages: SitePage[]): SitePage | null {
+function pickHome(allPages: SitePage[]): SitePage | null {
+  // A post is never the home page (F274.4.2): the blog index lives at /blog/, not at '/'.
+  const pages = allPages.filter((p) => p.template !== 'post');
   if (pages.length === 0) return null;
   return (
     pages.find((p) => p.template === 'landing') ??
@@ -113,10 +205,11 @@ function pickHome(pages: SitePage[]): SitePage | null {
   );
 }
 
-function navHtml(pages: SitePage[], current: SitePage, homeIri: string | null): string {
+function navHtml(pages: SitePage[], current: SitePage, homeIri: string | null, ext?: SiteExtension): string {
   // Group by section; ungrouped first. Ordered by page.order within a section.
   const sections = new Map<string, SitePage[]>();
   for (const p of [...pages].sort((a, b) => a.order - b.order)) {
+    if (ext?.hiddenFromNav?.(p)) continue;
     const key = p.section || '';
     (sections.get(key) ?? sections.set(key, []).get(key)!).push(p);
   }
@@ -128,12 +221,25 @@ function navHtml(pages: SitePage[], current: SitePage, homeIri: string | null): 
       parts.push(`<a href="${pageUrl(p, homeIri)}"${active}>${escapeHtml(p.title)}</a>`);
     }
   }
+  for (const l of ext?.navLinks?.() ?? []) {
+    const active = current.slug === 'blog' && current.section === '' && l.href === '/blog/' ? ' class="active"' : '';
+    parts.push(`<a href="${escapeHtml(l.href)}"${active}>${escapeHtml(l.label)}</a>`);
+  }
   return parts.join('\n');
 }
 
-function renderPage(page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions): string {
+function renderPage(
+  page: SitePage, pages: SitePage[], homeIri: string | null, theme: SiteTheme, opts: GenerateSiteOptions,
+  extra?: { html: string },
+): string {
+  const ext = opts.extension;
   const byIri = new Map(pages.map((p) => [p.iri, p]));
-  const body = page.body?.trim() ? sanitizePageHtml(marked.parse(page.body) as string) : `<p>${escapeHtml(page.excerpt)}</p>`;
+  const body = extra
+    ? extra.html
+    : page.body?.trim() ? sanitizePageHtml(marked.parse(page.body) as string) : `<p>${escapeHtml(page.excerpt)}</p>`;
+  const draftBanner = page.status === 'draft' && opts.includeDrafts
+    ? '<p class="draft-banner">Draft: local preview only, not published.</p>' : '';
+  const robots = opts.includeDrafts ? '<meta name="robots" content="noindex, nofollow">' : '';
   const prev = page.prev ? byIri.get(page.prev) : null;
   const next = page.next ? byIri.get(page.next) : null;
   const nav = `
@@ -153,34 +259,37 @@ function renderPage(page: SitePage, pages: SitePage[], homeIri: string | null, t
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="${STATIC_SITE_CSP}">
 <meta name="referrer" content="no-referrer">
+${robots}
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(page.title)} · ${siteTitle}</title>
 ${page.excerpt ? `<meta name="description" content="${escapeHtml(page.excerpt)}">` : ''}
-<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">
-<link rel="stylesheet" href="/styles.css">
+${opts.knowledgeTtl === false ? '' : '<link rel="alternate" type="text/turtle" href="/knowledge.ttl" title="This site as a knowledge graph">\n'}<link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="layout">
   <aside class="sidebar">
     <a class="site-title" href="/">${brand}</a>
-    <nav class="site-nav">${navHtml(pages, page, homeIri)}</nav>
+    <nav class="site-nav">${navHtml(pages, page, homeIri, ext)}</nav>
   </aside>
   <main id="main" class="content template-${page.template}">
     <article>
+      ${draftBanner}
       <h1>${escapeHtml(page.title)}</h1>
       ${dateLine}
+      ${extra ? '' : ext?.beforeBody?.(page) ?? ''}
       ${body}
+      ${extra ? '' : ext?.afterBody?.(page) ?? ''}
     </article>
     ${prev || next ? nav : ''}
   </main>
 </div>
-<footer class="site-footer">Published from a <a href="/knowledge.ttl">knowledge graph</a> with Reckons.AI.</footer>
+<footer class="site-footer">Published from a ${opts.knowledgeTtl === false ? 'knowledge graph' : '<a href="/knowledge.ttl">knowledge graph</a>'} with Reckons.AI.</footer>
 </body>
 </html>`;
 }
 
-function stylesFor(theme: SiteTheme): string {
+function stylesFor(theme: SiteTheme, extraCss = ''): string {
   return `:root{--bg:${theme.bg};--surface:${theme.surface};--ink:${theme.ink};--muted:${theme.muted};--line:${theme.line};--accent:${theme.accent}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 ${theme.font}}
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
@@ -197,15 +306,57 @@ a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 .pager{display:flex;justify-content:space-between;gap:1rem;margin-top:3rem;padding-top:1rem;border-top:1px solid var(--line)}
 .site-footer{text-align:center;color:var(--muted);font-size:.8rem;padding:2rem;border-top:1px solid var(--line)}
 .site-logo{max-width:160px;max-height:64px;margin-bottom:.75rem;display:block}
-@media(max-width:720px){.layout{flex-direction:column}.sidebar{width:auto;flex:none;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line)}.content{padding:1.5rem}}`;
+@media(max-width:720px){.layout{flex-direction:column}.sidebar{width:auto;flex:none;height:auto;position:static;border-right:none;border-bottom:1px solid var(--line)}.content{padding:1.5rem}}${extraCss ? '\n' + extraCss : ''}`;
+}
+
+/** The root page of a site with no home page: a redirect to the blog index, or a plain page list. */
+function rootStub(pages: SitePage[], redirect: string | null, theme: SiteTheme, opts: GenerateSiteOptions): string {
+  const siteTitle = escapeHtml(theme.title ?? opts.siteTitle ?? 'Reckons.AI site');
+  const refresh = redirect ? `<meta http-equiv="refresh" content="0; url=${escapeHtml(redirect)}">` : '';
+  const robots = opts.includeDrafts ? '<meta name="robots" content="noindex, nofollow">' : '';
+  const list = redirect
+    ? `<p><a href="${escapeHtml(redirect)}">Continue to the blog</a></p>`
+    : `<ul>${pages.map((p) => `<li><a href="${pageUrl(p, null)}">${escapeHtml(p.title)}</a></li>`).join('')}</ul>`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${STATIC_SITE_CSP}">
+<meta name="referrer" content="no-referrer">
+${robots}
+${refresh}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${siteTitle}</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main class="content"><h1>${siteTitle}</h1>${list}</main>
+</body>
+</html>`;
 }
 
 /**
  * Build the finished static site from the graph. `home` picks the landing page; every published
  * WebPage becomes a clean-URL HTML file; one stylesheet and graph.json round it out.
  */
+/**
+ * A page shows its title as the one h1, so a body that opens with its own h1 would show a second.
+ * A leading h1 equal to the title is dropped; a different one is kept as an h2 (nothing is lost).
+ */
+export function normalizeLeadingHeading(body: string, title: string): string {
+  const m = /^\s*#[ \t]+(.+?)[ \t]*#*[ \t]*(?:\r?\n|$)/.exec(body);
+  if (!m) return body;
+  const same = m[1].trim().toLowerCase() === title.trim().toLowerCase();
+  const rest = body.slice(m[0].length);
+  return same ? rest.replace(/^\s*\n/, '') : '## ' + m[1].trim() + '\n' + rest;
+}
+
 export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions = {}): GeneratedSite {
-  const pages = publishablePages(buildSitePages(stmts));
+  const all = buildSitePages(stmts);
+  const ext = opts.extension;
+  const selected = opts.includeDrafts ? all : publishablePages(all);
+  const prepared = ext?.preparePages ? ext.preparePages(selected) : selected;
+  const pages = prepared.map((p) => (p.template === 'landing' || p.template === 'sections' || !p.body ? p : { ...p, body: normalizeLeadingHeading(p.body, p.title) }));
   const home = pickHome(pages);
   const homeIri = home?.iri ?? null;
   const theme = extractTheme(stmts);
@@ -214,13 +365,24 @@ export function generateStaticSite(stmts: Statement[], opts: GenerateSiteOptions
   for (const page of pages) {
     const output = pagePath(page, homeIri);
     if (Object.hasOwn(files, output)) throw new Error('Duplicate site output path');
-    files[output] = renderPage(page, pages, homeIri, theme, opts);
+    files[output] = renderForSite(page, pages, homeIri, theme, opts);
   }
-  // If there is no landing page at all, still guarantee an index.html so the site has a root.
+  for (const x of ext?.extraPages?.(pages) ?? []) {
+    if (Object.hasOwn(files, x.path)) throw new Error('Duplicate site output path');
+    const synthetic: SitePage = {
+      iri: 'urn:reckons:site-extra/' + x.path, title: x.title, slug: x.path.replace(/\/?index\.html$/, '').replace(/\//g, '-'),
+      section: '', order: 0, parent: null, template: 'full', status: 'published', nav: 'hidden',
+      excerpt: x.description ?? '', body: '', related: [], next: null, prev: null, date: null,
+    };
+    files[x.path] = renderForSite(synthetic, pages, homeIri, theme, opts, { html: x.html });
+  }
+  // No home (a site of only posts): '/' is never a post. Send it to the blog index when there is
+  // one, else to a plain list, so the site still has a root.
   if (!files['index.html'] && pages.length > 0) {
-    files['index.html'] = renderPage(pages[0], pages, pages[0].iri, theme, opts);
+    files['index.html'] = rootStub(pages, ext?.rootRedirect?.() ?? null, theme, opts);
   }
-  files['styles.css'] = stylesFor(theme);
+  files['styles.css'] = stylesFor(theme, ext?.css?.());
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
 
   return { files, pageCount: pages.length, homeIri };
@@ -266,10 +428,11 @@ export function regenerateChangedPages(
   for (const page of pages) {
     if (!changed.has(page.iri)) continue;
     const path = pagePath(page, homeIri);
-    files[path] = renderPage(page, pages, homeIri, theme, opts);
+    files[path] = renderForSite(page, pages, homeIri, theme, opts);
     regenerated.push(path);
   }
   // graph.json describes the whole site's pages — keep it current whenever anything is republished.
+  Object.assign(files, configuredSiteFiles(opts));
   files['graph.json'] = JSON.stringify(buildGraphJson(pages), null, 2);
   return { files, regenerated };
 }

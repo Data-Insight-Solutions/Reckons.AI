@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Statement } from '$lib/rdf/types';
   import { isIRI, isLit, termKey } from '$lib/rdf/types';
+  import { sources } from '$lib/stores/kb.svelte';
 
   let {
     statement,
@@ -79,7 +80,8 @@
   </div>
   <div class="meta">
     {#if showGraph}
-      <span class="meta-item mono">⊳ {short(statement.g.value)}</span>
+      <!-- The source's NAME: its graph IRI ends in an internal id ("d5bcd700-…"), which told a reviewer nothing. -->
+      <span class="meta-item mono" title={statement.g.value}>⊳ {sources().find((s) => s.id === statement.sourceId)?.title ?? short(statement.g.value)}</span>
     {/if}
     <span class="meta-item mono">c={statement.confidence.toFixed(2)}</span>
     <span class="meta-item tag {statement.status}">{statement.status}</span>

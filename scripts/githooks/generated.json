@@ -1,8 +1,6 @@
 [
-  { "name": "ci-graph", "triggers": ["static/reckons-ci.ttl", ".github/workflows/", "package.json", "scripts/offline/jobs.json"],
+  { "name": "ci-graph", "triggers": ["static/reckons-ci.ttl", ".github/workflows/", "package.json", "static/reckons-jobs.ttl"],
     "check": "npx tsx scripts/ci-graph.ts --check", "fix": "npx tsx scripts/ci-graph.ts" },
-  { "name": "jobs-graph", "triggers": ["static/reckons-jobs.ttl", "scripts/offline/jobs.json"],
-    "check": "npx tsx scripts/jobs-graph.ts --check", "fix": "npm run jobs:graph" },
   { "name": "docs-search-index", "triggers": ["static/docs-search-index.json", "content/"],
     "check": "npx tsx scripts/docs-search-index.ts --check", "fix": "npm run docs:search-index" },
   { "name": "release-review-space", "triggers": ["static/review-", "static/reckons-roadmap.ttl", "static/docs-testing.ttl"],

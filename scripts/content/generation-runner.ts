@@ -1,11 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
  * Optional, per-user file-queue adapter. No HTTP listener and no general shell execution.
- * npm run gen:serve -- --workspace=/path/to/private-workspace
- * The browser must connect the same folder. Each job runs in a separate process so synchronous
- * generation commands cannot prevent heartbeat updates or cancellation of their process group.
+ * npm run gen:serve -- --workspace=/path/to/private-workspace   (= agent:queue-worker with a workspace)
+ * The browser must connect the same folder. The queue worker ticks GenerationRunner, which feeds
+ * checked requests into the shared local-job queue (scripts/agent/session-queue.ts); each job runs as
+ * `--job=<folder>`, which supervises the generation in its own process group so cancellation reaches
+ * the tool.
  */
-import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   closeSync, copyFileSync, existsSync, openSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
@@ -17,6 +19,9 @@ import {
   validJobId, validateReceipt, type GenerationJob, type GenerationRequest,
 } from '../../src/lib/generation/protocol.js';
 import { generationAvailability, generateStage } from './gen-assets.js';
+import { addJobs, mutateQueue, newJob, readQueue } from '../agent/session-queue.js';
+import { improve, qaBudget } from './asset-qa.js';
+import { reviewAsset } from './asset-review.js';
 
 function json(path: string): unknown {
   const bytes = readFileSync(path);
@@ -56,22 +61,50 @@ export function prepareParent(jobs: string, request: GenerationRequest, director
   copyFileSync(source, join(directory, OUTPUT_FILES.image));
 }
 
-async function worker(directory: string) {
+/** One job, in its own process (main --worker=). Exported for the QA loop test. */
+export async function worker(directory: string) {
   const request = parseRequest(json(join(directory, 'request.json')));
   if (request.id !== directory.split('/').pop()) throw new Error('Job directory does not match request');
   const save = (job: GenerationJob) => atomic(join(directory, 'status.json'), job);
   try {
     prepareParent(dirname(directory), request, directory);
-    if (existsSync(join(directory, 'cancel.json'))) { save({ request, state: 'cancelled' }); return; }
-    const receipt = await generateStage(request.stage, {
-      slug: request.id, label: 'Generated asset', imagePrompt: request.prompt, videoPrompt: request.prompt,
-      seed: request.seed, gaussians: 32768, role: 'node',
-    }, directory);
+    const cancelled = () => existsSync(join(directory, 'cancel.json'));
+    if (cancelled()) { save({ request, state: 'cancelled' }); return; }
+    // F281.3 FIX LOOP: each attempt runs in its own folder with the next seed; a failed check or a
+    // defect the vision model names earns another attempt, up to the budget; the best one becomes the
+    // job's output. The prompt is the person's and is never rewritten.
+    const attempts = join(directory, 'attempts');
+    const { qa, best } = await improve({
+      seed: request.seed, budget: qaBudget(), cancelled,
+      attempt: async (seed, i) => {
+        const dir = join(attempts, String(i));
+        safeDirectory(attempts); safeDirectory(dir);
+        if (request.parentId) copyFileSync(join(directory, OUTPUT_FILES.image), join(dir, OUTPUT_FILES.image));
+        const r = await generateStage(request.stage, {
+          slug: request.id, label: 'Generated asset', imagePrompt: request.prompt, videoPrompt: request.prompt,
+          seed, gaussians: 32768, role: 'node',
+        }, dir);
+        return { file: join(dir, r.output.file), check: r.check, payload: { r, dir } };
+      },
+      review: (file) => reviewAsset(file, request.prompt),
+    });
+    if (qa.verdict === 'failed') {
+      const why = best.check.problems.slice(0, 3).join('; ') || 'no attempt passed its checks';
+      throw new Error(`All ${qa.attempts.length} attempt(s) failed their checks: ${why}`);
+    }
+    // The chosen attempt's files replace the job folder's (the parent image copy is identical).
+    for (const f of readdirSync(best.payload.dir)) {
+      const from = join(best.payload.dir, f);
+      if (lstatSync(from).isFile()) copyFileSync(from, join(directory, f));
+    }
+    rmSync(attempts, { recursive: true, force: true });
+    const receipt = { ...best.payload.r, qa };
     validateReceipt(receipt, request);
     verifiedBytes(join(directory, receipt.output.file), receipt);
     if (existsSync(join(directory, 'cancel.json'))) save({ request, state: 'cancelled' });
     else save({ request, state: 'completed', receipt });
   } catch (e) {
+    rmSync(join(directory, 'attempts'), { recursive: true, force: true });
     // Full tool output stays private beside the request, never in a graph or public artifact.
     writeFileSync(join(directory, 'error.log'), String(e), { mode: 0o600 });
     const stderr = String((e as { stderr?: unknown })?.stderr ?? '').trim().split('\n').pop();
@@ -80,12 +113,23 @@ async function worker(directory: string) {
   }
 }
 
-type Running = { process: ChildProcess; request: GenerationRequest; directory: string };
+/** The shared-queue job name for one request. Unique per request, so the circuit breaker never
+ *  confuses two prompts, and free of the prompt, which stays in the private workspace. */
+export const queueJobName = (request: GenerationRequest) => `gen-${request.stage}-${request.id.slice(0, 8)}`;
+const repoRoot = resolve(dirname(import.meta.filename), '..', '..');
+const ENQUEUED = 'enqueued.json';
+
+/**
+ * The bridge between the browser's private file queue and the shared local-job queue (F166.1.2).
+ * It does not run generation: each checked request becomes one fixed-argv job in the queue, so the
+ * GPU gate, the circuit breaker and agent:watch cover generation as they cover every other local
+ * job. It lives inside agent:queue-worker (one command, not two). Only typed request fields cross
+ * from the browser; the argv is built here and names a job folder, never a prompt or a tool.
+ */
 export class GenerationRunner {
   readonly root: string;
   readonly jobs: string;
   readonly workspaceId: string;
-  private running?: Running;
   private stopping = false;
   constructor(workspace: string) {
     const folder = realpathSync(workspace);
@@ -106,7 +150,7 @@ export class GenerationRunner {
     const identity = json(identityPath);
     if (!validJobId(identity)) throw new Error('Invalid generation workspace identity');
     this.workspaceId = identity;
-    // Atomic directory creation prevents two runners from taking the same queue/GPU.
+    // Atomic directory creation prevents two queue workers from feeding one workspace twice.
     const lock = join(this.root, 'runner.lock');
     try { mkdirSync(lock, { mode: 0o700 }); }
     catch (e) {
@@ -115,23 +159,22 @@ export class GenerationRunner {
       // 2026-10-22: gen:serve then refused to start until the folder was deleted by hand.
       let pid: unknown;
       try { pid = (JSON.parse(readFileSync(join(lock, 'owner.json'), 'utf8')) as { pid?: unknown }).pid; } catch { /* no owner recorded */ }
-      if (lockOwnerAlive(pid)) throw new Error(`Another generation runner (pid ${pid}) is using this workspace. Stop it first.`);
+      if (lockOwnerAlive(pid)) throw new Error(`Another queue worker (pid ${pid}) is already serving this workspace. Stop it first.`);
       rmSync(lock, { recursive: true, force: true });
       mkdirSync(lock, { mode: 0o700 });
     }
     writeFileSync(join(lock, 'owner.json'), JSON.stringify({ pid: process.pid }), { mode: 0o600 });
   }
 
-  tick(): void {
-    if (this.stopping) return;
+  /** One pass. Returns true when it added a job, so the worker can start it without waiting a poll. */
+  tick(): boolean {
+    if (this.stopping) return false;
     atomic(join(this.root, 'capabilities.json'), {
       version: 1, workspaceId: this.workspaceId, heartbeat: Date.now(),
       stages: GENERATION_STAGES.map(stage => ({ stage, ...generationAvailability(stage) })),
     });
-    if (this.running) {
-      if (existsSync(join(this.running.directory, 'cancel.json'))) this.cancelRunning('cancelled');
-      return;
-    }
+    const queued = new Set(readQueue().map(job => job.name));
+    let added = false;
     for (const id of readdirSync(this.jobs).sort()) {
       if (!validJobId(id)) continue;
       const directory = join(this.jobs, id);
@@ -142,82 +185,88 @@ export class GenerationRunner {
         if (request.id !== id) continue;
       } catch { continue; } // The browser may still be closing its atomic writable.
       const statusPath = join(directory, 'status.json');
+      const name = queueJobName(request);
+      let state: GenerationJob['state'] = 'queued';
       if (existsSync(statusPath)) {
-        let job: GenerationJob;
-        try { job = parseJob(json(statusPath), request); }
+        try { state = parseJob(json(statusPath), request).state; }
         catch {
           // A broken receipt must not block every later request or trigger an automatic rerun.
           atomic(statusPath, { request, state: 'failed', error: 'Job metadata is invalid. Retry to create a new job.' });
           continue;
         }
-        if (job.state === 'running') {
-          atomic(statusPath, { request, state: 'failed', error: 'Runner interrupted. Retry to create a new job.' });
+      }
+      if (state !== 'queued' && state !== 'running') continue;
+      const enqueued = existsSync(join(directory, ENQUEUED));
+      if (state === 'running' || enqueued) {
+        // The queue worker removes a job only after its process exits, and the job writes its final
+        // status before exiting. Gone from the queue but not final means it died or was refused.
+        if (queued.has(name)) {
+          if (state === 'queued' && existsSync(join(directory, 'cancel.json'))) this.drop(request, statusPath);
+          continue;
         }
-        if (job.state !== 'queued') continue;
+        atomic(statusPath, { request, state: 'failed', error: state === 'running'
+          ? 'Runner interrupted. Retry to create a new job.'
+          : 'The local job queue did not run this job (dropped or refused by its circuit breaker). See agent:watch.' });
+        continue;
       }
       if (existsSync(join(directory, 'cancel.json'))) {
         atomic(statusPath, { request, state: 'cancelled' });
         continue;
+      }
+      if (request.parentId) {
+        // A derivation enters the queue only once its source image is done, so the queue itself
+        // needs no notion of dependencies and a failed image never reaches a GPU twice.
+        const parent = this.parentState(request.parentId);
+        if (parent === 'queued' || parent === 'running') continue;
+        if (parent !== 'completed') {
+          atomic(statusPath, { request, state: 'failed', error: 'Its source image did not complete, so this derivation was not run.' });
+          continue;
+        }
       }
       const capability = generationAvailability(request.stage);
       if (!capability.available) {
         atomic(statusPath, { request, state: 'failed', error: capability.reason });
         continue;
       }
-      atomic(statusPath, { request, state: 'running' });
-      // The worker's output stays in its private job folder: with stdio ignored, a crash such as a
-      // missing package left only "exited without a checked result" and nothing to act on.
-      const log = openSync(join(directory, 'worker.log'), 'w', 0o600);
-      const child = spawn(process.execPath, ['--import', 'tsx', import.meta.filename, `--worker=${directory}`], {
-        detached: true, stdio: ['ignore', log, log],
-      });
-      closeSync(log);
-      const running: Running = { process: child, request, directory };
-      this.running = running;
-      child.once('error', () => this.finish(running));
-      child.once('exit', () => this.finish(running));
-      break;
+      addJobs([newJob(name, repoRoot, [process.execPath, '--import', 'tsx', import.meta.filename, `--job=${directory}`], undefined, true, undefined, undefined, false)]);
+      atomic(join(directory, ENQUEUED), { name, at: new Date().toISOString() });
+      added = true;
     }
+    return added;
   }
-  private finish(running: Running) {
-    if (this.running !== running) return;
-    const path = join(running.directory, 'status.json');
-    let current: GenerationJob | null = null;
-    try { current = parseJob(json(path), running.request); } catch { /* missing/broken worker receipt */ }
-    if (!current || current.state === 'running') {
-      const reason = lastErrorLine(join(running.directory, 'worker.log'));
-      atomic(path, {
-        request: running.request, state: 'failed',
-        error: `Generation process exited without a checked result${reason ? `: ${reason}` : '.'} (log: worker.log in this job's folder)`,
-      });
-    }
-    this.running = undefined;
+  private parentState(id: string): GenerationJob['state'] | 'missing' {
+    try {
+      const dir = join(this.jobs, id);
+      const parent = parseRequest(json(join(dir, 'request.json')));
+      if (existsSync(join(dir, 'cancel.json'))) return 'cancelled';
+      return existsSync(join(dir, 'status.json')) ? parseJob(json(join(dir, 'status.json')), parent).state : 'queued';
+    } catch { return 'missing'; }
   }
-  private cancelRunning(state: 'cancelled' | 'failed') {
-    const running = this.running;
-    if (!running) return;
-    // SIGKILL reaches sd-cli / Python descendants as well as the worker.
-    if (running.process.pid) {
-      try { process.kill(-running.process.pid, 'SIGKILL'); } catch { /* already exited */ }
-    }
-    atomic(join(running.directory, 'status.json'), {
-      request: running.request, state,
-      ...(state === 'failed' ? { error: 'Runner stopped. Retry when it is connected.' } : {}),
+  private drop(request: GenerationRequest, statusPath: string) {
+    const name = queueJobName(request);
+    mutateQueue((jobs) => {
+      const gone = jobs.filter(job => job.name === name);
+      return {
+        jobs: jobs.filter(job => job.name !== name),
+        done: gone.map(job => ({ ...job, finishedAt: new Date().toISOString(), outcome: 'dropped' as const })),
+        result: undefined,
+      };
     });
-    // Wait for exit before another job may start.
+    atomic(statusPath, { request, state: 'cancelled' });
   }
   close() {
     if (this.stopping) return;
     this.stopping = true;
-    this.cancelRunning('failed');
+    // Jobs already in the shared queue keep running; their results stay readable from the folder.
     rmSync(join(this.root, 'capabilities.json'), { force: true });
     rmSync(join(this.root, 'runner.lock'), { recursive: true, force: true });
   }
 }
 
 /**
- * Whether the pid recorded in a runner lock is still a generation runner. Linux reuses pids, so a live
- * pid counts only if its command line still names the runner (the session-queue workerPidAlive rule).
+ * Whether the pid recorded in a runner lock is still serving generation: the queue worker since
+ * F166.1.2, or an older standalone generation runner. Linux reuses pids, so a live pid counts only if
+ * its command line still names one of them (the session-queue workerPidAlive rule).
  * Without /proc (macOS) liveness alone decides. EPERM means alive but not ours to signal.
  */
 export function lockOwnerAlive(
@@ -229,8 +278,56 @@ export function lockOwnerAlive(
   if (typeof pid !== 'number' || !Number.isInteger(pid) || pid <= 0) return false;
   if (pid === process.pid) return true;
   if (!alive(pid)) return false;
-  try { return readCmdline(pid).includes('generation-runner'); }
+  try { const cmd = readCmdline(pid); return cmd.includes('queue-worker') || cmd.includes('generation-runner'); }
   catch (e) { return (e as NodeJS.ErrnoException).code !== 'ENOENT' || !hasProc(); }
+}
+
+/**
+ * One queue job: run one request in a child process group and supervise it. The child does the
+ * work; this process stays responsive so a cancel.json written by the browser can stop the tool
+ * mid-stage. Prints no prompt: job-watch keeps this output in the host's run log. Exit 0 = completed
+ * or cancelled, 1 = failed, so the circuit breaker counts real failures.
+ */
+export async function runQueuedJob(directory: string): Promise<number> {
+  const request = parseRequest(json(join(directory, 'request.json')));
+  if (request.id !== directory.split('/').pop()) throw new Error('Job directory does not match request');
+  const statusPath = join(directory, 'status.json');
+  const say = (state: string) => console.log(`generation ${request.id.slice(0, 8)} ${request.stage}: ${state}`);
+  if (existsSync(statusPath) && parseJob(json(statusPath), request).state !== 'queued') { say('already handled'); return 0; }
+  if (existsSync(join(directory, 'cancel.json'))) { atomic(statusPath, { request, state: 'cancelled' }); say('cancelled'); return 0; }
+  const capability = generationAvailability(request.stage);
+  if (!capability.available) { atomic(statusPath, { request, state: 'failed', error: capability.reason }); say('failed'); return 1; }
+  atomic(statusPath, { request, state: 'running' });
+  say('running');
+  // The worker's output stays in its private job folder: with stdio ignored, a crash such as a
+  // missing package left only "exited without a checked result" and nothing to act on.
+  const log = openSync(join(directory, 'worker.log'), 'w', 0o600);
+  const child = spawn(process.execPath, ['--import', 'tsx', import.meta.filename, `--worker=${directory}`], {
+    detached: true, stdio: ['ignore', log, log],
+  });
+  closeSync(log);
+  const exited = new Promise<void>(done => { child.once('exit', () => done()); child.once('error', () => done()); });
+  const kill = () => { if (child.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already exited */ } } };
+  process.once('SIGTERM', kill);
+  process.once('SIGINT', kill);
+  let cancelled = false;
+  const watch = setInterval(() => {
+    // SIGKILL reaches sd-cli / Python descendants as well as the worker.
+    if (!cancelled && existsSync(join(directory, 'cancel.json'))) { cancelled = true; kill(); }
+  }, 1000);
+  await exited;
+  clearInterval(watch);
+  let current: GenerationJob | null = null;
+  try { current = parseJob(json(statusPath), request); } catch { /* missing/broken worker receipt */ }
+  if (cancelled && current?.state !== 'completed') current = { request, state: 'cancelled' };
+  if (!current || current.state === 'running') {
+    const reason = lastErrorLine(join(directory, 'worker.log'));
+    current = { request, state: 'failed',
+      error: `Generation process exited without a checked result${reason ? `: ${reason}` : '.'} (log: worker.log in this job's folder)` };
+  }
+  atomic(statusPath, current);
+  say(current.state);
+  return current.state === 'failed' ? 1 : 0;
 }
 
 /** The most useful single line of a worker log: the last line naming an error, else the last line. */
@@ -246,19 +343,9 @@ async function main() {
   const arg = (key: string) => process.argv.find(v => v.startsWith(`--${key}=`))?.slice(key.length + 3);
   const workerDir = arg('worker');
   if (workerDir) { await worker(resolve(workerDir)); return; }
-  const workspace = arg('workspace');
-  if (!workspace) throw new Error('Usage: npm run gen:serve -- --workspace=/path/to/private-workspace');
-  const runner = new GenerationRunner(workspace);
-  const timer = setInterval(() => {
-    try { runner.tick(); } catch (e) { console.error(String(e)); }
-  }, 2000);
-  console.log('Local generation runner ready. Connect this workspace folder in Reckons.AI.');
-  const stop = () => { clearInterval(timer); runner.close(); };
-  process.once('SIGINT', stop);
-  process.once('SIGTERM', stop);
-  process.once('SIGHUP', stop); // the terminal was closed
-  process.once('exit', () => runner.close());
-  runner.tick();
+  const jobDir = arg('job');
+  if (jobDir) { process.exitCode = await runQueuedJob(resolve(jobDir)); return; }
+  throw new Error('Usage: generation-runner.ts --job=<folder> | --worker=<folder>. To serve a workspace: npm run gen:serve -- --workspace=<folder>');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename)) {

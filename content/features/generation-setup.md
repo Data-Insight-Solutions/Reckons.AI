@@ -1,7 +1,7 @@
 ---
 title: "Generation tools and setup"
 slug: "generation-setup"
-order: 1015
+order: 1017
 section: "Features"
 parent: "story-system"
 template: doc
@@ -63,7 +63,7 @@ npm ci
 
 #### Step 3. Install the generation tools and models
 
-Read [the setup script](https://github.com/Data-Insight-Solutions/Reckons.AI/blob/main/scripts/content/gen-setup.sh) first; it is short. Then run `bash scripts/content/gen-setup.sh`. It checks your system, says what is missing and how to install it, and stops before downloading anything it cannot use. It installs into `~/.local/share/reckons/gen`, outside the Reckons.AI folder; set `RECKONS_GEN_HOME` to choose another place and use the same value when you start the runner. The programs it downloads from GitHub are checked against pinned fingerprints (SHA-256); the model files from Hugging Face are not checked yet. If it stops part-way, run it again: it resumes and skips what is already there.
+Read [the setup script](https://github.com/Data-Insight-Solutions/Reckons.AI/blob/dev/scripts/content/gen-setup.sh) first; it is short. Then run `bash scripts/content/gen-setup.sh`. It checks your system, says what is missing and how to install it, and stops before downloading anything it cannot use. It installs into `~/.local/share/reckons/gen`, outside the Reckons.AI folder; set `RECKONS_GEN_HOME` to choose another place and use the same value when you start the runner. The programs it downloads from GitHub are checked against pinned fingerprints (SHA-256); the model files from Hugging Face are not checked yet. If it stops part-way, run it again: it resumes and skips what is already there.
 
 On a Mac it installs the Apple Silicon (Metal) build of stable-diffusion.cpp for pictures and video, and Brush and COLMAP for room scans, and skips the splat model, about 4.5 GB less. On Linux it installs the Vulkan build, the CUDA version of PyTorch and the splat model as well.
 
@@ -114,6 +114,20 @@ Send it to whoever invited you, or open an issue at [github.com/Data-Insight-Sol
 
 The connected runner reports which stages have their tool and model files installed. Installed files do not guarantee enough GPU memory or a compatible driver; runtime failures are shown. Prompts, requests, receipts and outputs remain in `.reckons-generation` in the private workspace. Stop the runner with Ctrl+C or by closing its terminal. Closing Shelly leaves an active job running; Cancel generation prevents attachment and asks the runner to stop the process. If a runner was killed without stopping cleanly, the next one to start takes over its lock once it finds that runner is gone; it refuses while another runner is still running on the same workspace.
 
+### What it takes: measured, per stage
+
+Measured on 2x RTX 3090 (24 GB each, one card used per run), driver 575.57.08, Ryzen 9 3900X with 31 GB RAM, Ubuntu 24.04, on 2026-10-20. GPU memory is the peak held by the run's own processes (nvidia-smi), not the whole card. System RAM is the peak resident size of the largest process. Time is wall clock from start to file, and the model-loading part is included.
+
+| Stage | Peak GPU memory | Peak system RAM | Time | Weights to download (on disk) |
+| --- | --- | --- | --- | --- |
+| Image, standard (768 px, 8 steps) | 11,992 MiB (11.7 GiB) | 1.2 GiB | 15.6 s | 11.2 GB (Z-Image-Turbo weights) |
+| Image, showcase (1024 px, 8 steps) | 13,258 MiB (12.9 GiB) | 1.2 GiB | 19.5 s | the same files |
+| Video (49 frames, 512 px, 20 steps) | 17,356 MiB (16.9 GiB) | 1.5 GiB | 58.8 s | 12.9 GB (Wan2.2 weights) |
+| Splat, standard (32,768 Gaussians, 20 steps) | 6,998 MiB (6.8 GiB) | 5.3 GiB | 31.5 s (11.2 s load + 20.3 s generate) | 4.5 GB (TripoSplat weights) |
+| Splat, showcase (262,144 Gaussians, 20 steps) | 7,000 MiB (6.8 GiB) | 5.3 GiB | 33.7 s (11.0 s load + 22.7 s generate) | the same files |
+
+All three models' weights together are 28.5 GB. Smaller GPUs are untested: nothing here was run on a card below 24 GB, so no minimum is claimed. The splat stage's peak is about 7 GB at both quality levels, because the Gaussian count only changes how many points the decoder writes out, so the video stage (about 17 GB) is the one a smaller card is most likely to fail. The image numbers include 1024 px because the splat model resizes its input to 1024 px anyway. System RAM was read as the largest single process, so a machine that also runs a browser and other tools needs more than this column alone.
+
 ### Tools and integration guides
 
 - [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) and [Z-Image-Turbo weights](https://huggingface.co/leejet/Z-Image-Turbo-GGUF).
@@ -124,9 +138,13 @@ The connected runner reports which stages have their tool and model files instal
 
 A local language model does not automatically supply image/video/splat generation. Those are distinct tools with separate model files. The universal integration/plugin SDK and in-app agent management are planned; this guide does not imply that either is available today.
 
-<p class="derived">This is built and working. It has one part below.</p>
+<p class="derived">This is built and working. It has 2 parts below, 1 of which is not built yet.</p>
 
 ## In this section
+
+**[Generated media: checks, retries, settings and what it costs](../features/generation-quality)** — **scaffolded**
+
+Everything a local generation run produces can be checked.
 
 **[Turn a phone scan of a room into a splat, on your own machine](../features/room-scan)**
 

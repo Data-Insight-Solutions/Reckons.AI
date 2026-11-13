@@ -3,14 +3,21 @@
  * folder validation, odometry.csv parsing, frame selection, the registration check and the receipt shape.
  * No file, ffmpeg or GPU access here, so tests run anywhere; scripts/content/scan-room.ts does the work.
  */
+import { createHash } from 'node:crypto';
 import type { Check } from './asset-checks.js';
+import { validateMulti, type MultiRecord } from './scan-multi-lib.js';
 
 export type ScanInput =
   | { kind: 'stray'; dir: string; video: string; files: string[] }
-  | { kind: 'video'; video: string };
+  | { kind: 'video'; video: string }
+  /** A folder of still images the owner chose (and reviewed) by hand: used as given, no extraction, no automatic selection. */
+  | { kind: 'images'; dir: string; images: string[] };
 
 export const VIDEO_EXT = /\.(mp4|mov|m4v|webm|mkv)$/i;
 /** What a Stray Scanner export must contain for us to treat a folder as one. depth/ is recorded, not required. */
+export const IMAGE_EXT = /\.(jpe?g|png)$/i;
+/** Fewest curated images the pipeline will take: COLMAP and a splat need overlap, and extraction asks for the same floor. */
+export const MIN_CURATED_IMAGES = 20;
 export const STRAY_REQUIRED = ['rgb.mp4', 'odometry.csv', 'camera_matrix.csv'];
 
 /** Which of the required Stray Scanner entries are absent from a directory listing. */
@@ -28,6 +35,12 @@ export function detectInput(path: string, isDir: boolean, listing: string[] = []
     return { kind: 'video', video: path };
   }
   const missing = strayMissing(listing);
+  // A folder that shares NOTHING with a Stray export but holds images is a curated set. A partial Stray export
+  // (some of its files, not all) is still refused by name, never reinterpreted as images.
+  if (missing.length === STRAY_REQUIRED.length) {
+    const images = listing.filter((f) => IMAGE_EXT.test(f)).sort();
+    if (images.length) return { kind: 'images', dir: path, images };
+  }
   if (missing.length) throw new Error(`not a Stray Scanner export (missing ${missing.join(', ')}): ${path}`);
   return { kind: 'stray', dir: path, video: `${path.replace(/\/$/, '')}/rgb.mp4`, files: listing };
 }
@@ -97,16 +110,37 @@ export function judgeRegistration(registered: number, total: number, minFraction
   return { pass: problems.length === 0, problems, notes: [], measured: { registered, total, fraction: Number(fraction.toFixed(3)) } };
 }
 
+/**
+ * One hash for a folder of images: sha256 over `name NUL file-sha256 LF` lines in name order, so it changes when
+ * a frame is added, removed, renamed or edited, and not with timestamps or the folder's own path.
+ */
+export function folderContentHash(entries: { name: string; sha256: string }[]): string {
+  const h = createHash('sha256');
+  for (const e of [...entries].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) h.update(`${e.name}\0${e.sha256}\n`);
+  return h.digest('hex');
+}
+
+/** Extracted from a video by this pipeline, or supplied by the owner (F58.9.6.1: reviewed by hand, used as given). */
+export type FramesRecord =
+  | { extracted: number; kept: number; registered: number; fps: number }
+  | { source: 'curated'; supplied: number; kept: number; registered: number; folderSha256: string };
+
+export function isCuratedFrames(f: FramesRecord): f is Extract<FramesRecord, { source: 'curated' }> {
+  return (f as { source?: string }).source === 'curated';
+}
+
 export interface ScanReceipt {
   origin: 'reconstructed';
   input: { kind: ScanInput['kind']; name: string; sha256: string; bytes: number };
-  frames: { extracted: number; kept: number; registered: number; fps: number };
+  frames: FramesRecord;
   tools: Record<string, string>;
   settings: Record<string, string | number>;
   stagesS: Record<string, number>;
   gaussians: number;
   output: { file: string; sha256: string; bytes: number };
   checks: { registration: Check; splat: Check };
+  /** F58.9.19: set when several captures were pooled into one COLMAP model: per-capture accounting and which matcher ran. */
+  multi?: MultiRecord;
   /** Set when the INPUT video is itself synthetic (a rendered made-up room): what made it. */
   synthetic?: { note: string; generator: string };
   /** Set on a receipt published into the repository: the PLY is NOT committed (too large), only these files. */
@@ -136,6 +170,23 @@ export function validateReceipt(r: ScanReceipt): string[] {
   if (!SHA.test(r.output?.sha256 ?? '')) p.push('output sha256 missing or malformed');
   if (!(r.gaussians > 0)) p.push('no Gaussians recorded');
   if (!(r.frames?.registered >= 0) || r.frames.registered > r.frames.kept) p.push('registered count is inconsistent with kept frames');
+  if (r.input?.kind === 'images' && !(r.frames && isCuratedFrames(r.frames))) p.push('an image-folder input must record its frames as curated (supplied), not extracted');
+  if (r.frames && isCuratedFrames(r.frames)) {
+    if (r.input?.kind !== 'images') p.push('curated frames are recorded, but the input is not an image folder');
+    if (!(r.frames.supplied >= MIN_CURATED_IMAGES)) p.push(`only ${r.frames.supplied} curated frames supplied, need at least ${MIN_CURATED_IMAGES}`);
+    if (r.frames.kept !== r.frames.supplied) p.push(`curated frames are used as given: kept ${r.frames.kept} must equal supplied ${r.frames.supplied}`);
+    if (!SHA.test(r.frames.folderSha256 ?? '')) p.push('curated folder sha256 missing or malformed');
+    else if (r.input?.sha256 && r.input.sha256 !== r.frames.folderSha256) p.push('input sha256 must be the curated folder hash');
+  }
+  // ONE MEASURE, ONE FIELD (F74.15): when the check measured a registered count, the top-level
+  // summary figure may not have drifted from it (2026-11-10: the summary said 0 while the check
+  // had measured 193 of 200). The check's measured value is the truth; receipts written before it
+  // carried no measured count and are not contradicted by their own summary.
+  const measuredRegistered = r.checks?.registration?.measured?.registered;
+  if (typeof measuredRegistered === 'number' && measuredRegistered !== r.frames.registered) {
+    p.push(`frames.registered is ${r.frames.registered}, but the registration check measured ${measuredRegistered} (the check's value is the truth)`);
+  }
+  if (r.multi) p.push(...validateMulti(r.multi, isCuratedFrames(r.frames) ? r.frames.supplied : r.frames.kept, r.frames.registered));
   for (const k of ['ffmpeg', 'pycolmap', 'brush']) if (!r.tools?.[k]) p.push(`tool version missing: ${k}`);
   for (const k of ['frames', 'poses', 'train']) if (!(r.stagesS?.[k] >= 0)) p.push(`stage duration missing: ${k}`);
   if (!r.checks?.registration?.pass) p.push('registration check did not pass');

@@ -1,5 +1,5 @@
 {
-  "built": 193,
+  "built": 206,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -494,7 +494,7 @@
       "factHash": "55f776935b6b145b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "374530bcd83f7984"
+      "pageHash": "8a3bb27f514aff0f"
     },
     {
       "path": "features/agent-setup",
@@ -506,13 +506,22 @@
       "pageHash": "41bcd2d98f44eba7"
     },
     {
+      "path": "features/agent-trust-checks",
+      "entity": "urn:reckons:feature/AgentTrustChecks",
+      "graph": "docs-features.ttl",
+      "factHash": "6f6558b79e598689",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "11ecbd22fe89f023"
+    },
+    {
       "path": "features/compare",
       "entity": "urn:reckons:feature/Compare",
       "graph": "docs-features.ttl",
       "factHash": "9082d5e08b414bce",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "4fa9163cbab61ac5"
+      "pageHash": "9cdce6d7970cb9bf"
     },
     {
       "path": "features/confluence-migration",
@@ -521,7 +530,7 @@
       "factHash": "6825436a7a3c00a8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "311709792766ce78"
+      "pageHash": "c2d37466e7cea982"
     },
     {
       "path": "features/content-safety-features",
@@ -530,7 +539,7 @@
       "factHash": "8864e8485e60cd0d",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "4f4b751b8c4c73d2"
+      "pageHash": "93f21aaa140a3a08"
     },
     {
       "path": "features/context-compression-features",
@@ -539,7 +548,7 @@
       "factHash": "f1d29c766b723688",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "30e085ccbc7212a4"
+      "pageHash": "0d47a4e43b73f90e"
     },
     {
       "path": "features/currents",
@@ -548,7 +557,7 @@
       "factHash": "3705d78a5b264ee1",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "5691116a2e441efd"
+      "pageHash": "dae93a9394f00712"
     },
     {
       "path": "features/entity-normalization",
@@ -557,16 +566,25 @@
       "factHash": "81b1bc0dcf6fad53",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "c80ffe5f345ee330"
+      "pageHash": "df31be544eef9547"
+    },
+    {
+      "path": "features/generation-quality",
+      "entity": "urn:reckons:feature/GenerationQuality",
+      "graph": "docs-features.ttl",
+      "factHash": "44243121d2729914",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "b6509dd89d90e42d"
     },
     {
       "path": "features/generation-setup",
       "entity": "urn:reckons:feature/GenerationSetup",
       "graph": "docs-features.ttl",
-      "factHash": "548ab5b74af298b4",
+      "factHash": "84f8311d6cf6c7a5",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "a6401ba3f3457e91"
+      "pageHash": "8672c01490f55f66"
     },
     {
       "path": "features/git-analysis-features",
@@ -575,7 +593,7 @@
       "factHash": "21eb340da27155d8",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "e4e2b77c2997f5d0"
+      "pageHash": "3ba6ca8392c62566"
     },
     {
       "path": "features/graph3-d",
@@ -587,13 +605,22 @@
       "pageHash": "907507a40589319a"
     },
     {
+      "path": "features/guided-walks",
+      "entity": "urn:reckons:feature/GuidedWalks",
+      "graph": "docs-features.ttl",
+      "factHash": "090c5163536b7efd",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "e273b04f2c522966"
+    },
+    {
       "path": "features/ingest",
       "entity": "urn:reckons:feature/Ingest",
       "graph": "docs-features.ttl",
       "factHash": "465581c742fbaec0",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "995924d1ff141a33"
+      "pageHash": "e7f7cdc4492a0572"
     },
     {
       "path": "features/kb-leap",
@@ -602,7 +629,7 @@
       "factHash": "26d2975f30496e90",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "f4e83a3ef7f469ee"
+      "pageHash": "a1fc8c447100c13a"
     },
     {
       "path": "features/llm-backends",
@@ -611,7 +638,25 @@
       "factHash": "44b5418ac77aa8f1",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "aa50368ba2889612"
+      "pageHash": "45dc7a9afb0d1fdf"
+    },
+    {
+      "path": "features/local-jobs-mcp",
+      "entity": "urn:reckons:feature/LocalJobsMCP",
+      "graph": "docs-features.ttl",
+      "factHash": "939a8a1e87f10625",
+      "factCount": 2,
+      "floor": "evidence",
+      "pageHash": "8e9847ba51e4be93"
+    },
+    {
+      "path": "features/local-jobs-on-this-device",
+      "entity": "urn:reckons:feature/LocalJobsOnThisDevice",
+      "graph": "docs-features.ttl",
+      "factHash": "743fd69ceaabdfa1",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "831fc9fee81e44b2"
     },
     {
       "path": "features/mcp-workspace",
@@ -620,7 +665,7 @@
       "factHash": "b0d43d673c1331e6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "12f26b260cc5b4b7"
+      "pageHash": "72685706d867672c"
     },
     {
       "path": "features/multi-kb",
@@ -629,7 +674,7 @@
       "factHash": "c9cf93810fcba2ca",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "bab24f409c3728f4"
+      "pageHash": "88117e1521b1ce30"
     },
     {
       "path": "features/node-sources",
@@ -638,7 +683,7 @@
       "factHash": "1b7e729ec7434ee5",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "421800fcd6536213"
+      "pageHash": "94c5d0bd41ea2c95"
     },
     {
       "path": "features/open-in-source",
@@ -647,7 +692,7 @@
       "factHash": "52683461601a8e0f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "6064b2f30ea7ddfa"
+      "pageHash": "df9d2965e04f5efd"
     },
     {
       "path": "features/passage-grounding",
@@ -656,7 +701,7 @@
       "factHash": "d505068e4efd1090",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "9333d43d8a246a40"
+      "pageHash": "9787d5d4c7e073ae"
     },
     {
       "path": "features/physical-scene-simulator",
@@ -665,7 +710,7 @@
       "factHash": "81cf4041f76dca8e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "594b043abaa05a43"
+      "pageHash": "462765d9ca8a2543"
     },
     {
       "path": "features/pod-view",
@@ -674,7 +719,7 @@
       "factHash": "44fa9a8f91722fe6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b8121a57424763df"
+      "pageHash": "ed63809702664a2e"
     },
     {
       "path": "features/prefer-local",
@@ -683,7 +728,7 @@
       "factHash": "cd3c8fce000a8bae",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "1e3a6000a1ab610c"
+      "pageHash": "1821650fddc5ed0b"
     },
     {
       "path": "features/proposals",
@@ -692,7 +737,7 @@
       "factHash": "f5d268d7ae20bcb4",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "525072f963a01d96"
+      "pageHash": "ddd1a6f1331e5d8d"
     },
     {
       "path": "features/published-docs",
@@ -701,7 +746,7 @@
       "factHash": "59ce634b4e121abf",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "2cc303dd02215abb"
+      "pageHash": "fd95a1d58e957d2d"
     },
     {
       "path": "features/question-presettle",
@@ -710,7 +755,7 @@
       "factHash": "4d516eeec2b131ac",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "4f0d1f852bcef14e"
+      "pageHash": "eb9885ec05e28e6a"
     },
     {
       "path": "features/reckoning-simulator",
@@ -719,7 +764,16 @@
       "factHash": "590d782e12de88d8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "53d11c397766a626"
+      "pageHash": "bca6f76ae9fd6bf9"
+    },
+    {
+      "path": "features/review-row-lanes",
+      "entity": "urn:reckons:feature/ReviewRowLanes",
+      "graph": "docs-features.ttl",
+      "factHash": "af285a97577ad8fb",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "0fe505f5657e1b12"
     },
     {
       "path": "features/review-system",
@@ -728,7 +782,7 @@
       "factHash": "97e2d75b4c9ee768",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "89248ab73a7b3386"
+      "pageHash": "cd1b1051c6375534"
     },
     {
       "path": "features/review-workbench",
@@ -737,7 +791,7 @@
       "factHash": "56028d3c8e0a96e8",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "ba21d3592402fb3e"
+      "pageHash": "4a5b431edf1a75a6"
     },
     {
       "path": "features/room-scan",
@@ -746,7 +800,16 @@
       "factHash": "33d530c7b9161261",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "18f898063343358f"
+      "pageHash": "f1cdb68a11a4eaaa"
+    },
+    {
+      "path": "features/scan-real-objects",
+      "entity": "urn:reckons:feature/ScanRealObjects",
+      "graph": "docs-features.ttl",
+      "factHash": "c6016081367c8c54",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "b6cbbd49c3902e73"
     },
     {
       "path": "features/shelly",
@@ -755,7 +818,16 @@
       "factHash": "9ce7701798b1640b",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "82e60fd3be79c171"
+      "pageHash": "3b6f81592fa14799"
+    },
+    {
+      "path": "features/site-builder",
+      "entity": "urn:reckons:feature/SiteBuilder",
+      "graph": "docs-features.ttl",
+      "factHash": "a78ce7e98030d8d4",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "1044bda12957bf26"
     },
     {
       "path": "features/source-refresh",
@@ -764,7 +836,7 @@
       "factHash": "7c2f9667eaeaf25a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b7049966536c9610"
+      "pageHash": "cc2679147a2a10bf"
     },
     {
       "path": "features/space-background",
@@ -794,13 +866,22 @@
       "pageHash": "1b14f71905e16db4"
     },
     {
+      "path": "features/standing-on-canvas",
+      "entity": "urn:reckons:feature/StandingOnCanvas",
+      "graph": "docs-features.ttl",
+      "factHash": "c18cf3a022acc0ba",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "ce7479ee1005b475"
+    },
+    {
       "path": "features/starter-reviewed",
       "entity": "urn:reckons:feature/StarterReviewed",
       "graph": "docs-features.ttl",
       "factHash": "f48817b2179270b0",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "5f3f18251880d964"
+      "pageHash": "bf7b1024b862ca46"
     },
     {
       "path": "features/story-system",
@@ -809,7 +890,7 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "117f5189b0999927"
+      "pageHash": "e6a6722ce905dfa4"
     },
     {
       "path": "features/text-chunking",
@@ -818,7 +899,7 @@
       "factHash": "cbb1c67122d6a9f6",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "b92f5519b4f61f2b"
+      "pageHash": "37c44f11c95aa152"
     },
     {
       "path": "features/threejs-examples",
@@ -827,7 +908,25 @@
       "factHash": "4f7c66244d33d12f",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "ae6578bedecc7036"
+      "pageHash": "72faf2460c5b9a0f"
+    },
+    {
+      "path": "features/triple-check",
+      "entity": "urn:reckons:feature/TripleCheck",
+      "graph": "docs-features.ttl",
+      "factHash": "be3ef735790510fb",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "76e9ec89778d26f1"
+    },
+    {
+      "path": "features/triple-check-local-search",
+      "entity": "urn:reckons:feature/TripleCheckLocalSearch",
+      "graph": "docs-features.ttl",
+      "factHash": "05a704b1b2b1dbb9",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "8098e827da200453"
     },
     {
       "path": "features/ttl-export",
@@ -836,7 +935,7 @@
       "factHash": "6c90aecf25a1fd5a",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "f904fbe615f262c8"
+      "pageHash": "2741e1093aaafff5"
     },
     {
       "path": "features/your-room",
@@ -845,7 +944,7 @@
       "factHash": "6c58358b0db864a8",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "cf1dd2d15cfa36b9"
+      "pageHash": "11ac9a92cb1de0be"
     },
     {
       "path": "guide/getting-started",
@@ -872,7 +971,7 @@
       "factHash": "e6132748e97861b7",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "56339ca71aac197c"
+      "pageHash": "9aa168683ebf86e8"
     },
     {
       "path": "guide/who-makes-this",
@@ -914,10 +1013,10 @@
       "path": "integrations-tech/mcp-server",
       "entity": "urn:reckons:integration/MCPServer",
       "graph": "docs-integrations-tech.ttl",
-      "factHash": "72ac30d4ad86b720",
+      "factHash": "c27a4486c99cb057",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "eb751f7f75339394"
+      "pageHash": "4aff01a6bc1fe506"
     },
     {
       "path": "integrations-tech/n8n-cloud-sync",
@@ -1088,7 +1187,7 @@
       "factHash": "009c37c94770182f",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "bd600bdb13d37d02"
+      "pageHash": "ae9ccb55583ba032"
     },
     {
       "path": "project/where-it-is-going",
@@ -1106,7 +1205,7 @@
       "factHash": "8c57311d6bb0d074",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "d352db7432169727"
+      "pageHash": "4674cc845e9468ad"
     },
     {
       "path": "testing/graph-review-story",
@@ -1124,7 +1223,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "448263b0ead0a671"
+      "pageHash": "176ec7c685beb325"
     },
     {
       "path": "testing/release-review-spaces",
@@ -1142,7 +1241,16 @@
       "factHash": "88d6ec7a008531ca",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "4c1b1979ec0defd6"
+      "pageHash": "356c2dd12e116349"
+    },
+    {
+      "path": "testing/synthetic-room-benchmark",
+      "entity": "urn:reckons:test/SyntheticRoomBenchmark",
+      "graph": "docs-testing.ttl",
+      "factHash": "e1e80cd0e03a4e84",
+      "factCount": 5,
+      "floor": "evidence",
+      "pageHash": "184cb3d27a2af430"
     },
     {
       "path": "testing/test-suite",
@@ -1151,7 +1259,7 @@
       "factHash": "b43fc161af718225",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "94e7dc34ab70e10e"
+      "pageHash": "850610b9cdb33ff3"
     },
     {
       "path": "testing/test-workflows",
@@ -1160,7 +1268,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "d54e52f0f940376c"
+      "pageHash": "8555ea144e253314"
     },
     {
       "path": "testing/three-example-nodes",
@@ -1169,7 +1277,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "1d7f9072d7037d56"
+      "pageHash": "637c018a8ece6608"
     },
     {
       "path": "testing/visual-tests",
@@ -1178,7 +1286,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "54f163c0625e8091"
+      "pageHash": "6f66b09e3a95399a"
     },
     {
       "path": "testing/vlm-workflow-streams",
@@ -1187,7 +1295,16 @@
       "factHash": "663a738d5de199f8",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "fee0d96fd1702fab"
+      "pageHash": "5e89125ea4a87b4f"
+    },
+    {
+      "path": "testing/workflow-build-change",
+      "entity": "urn:reckons:test/Workflow-BuildChange",
+      "graph": "docs-testing.ttl",
+      "factHash": "cda7009c6ebe907b",
+      "factCount": 6,
+      "floor": "evidence",
+      "pageHash": "d5c0d8aa786bed71"
     },
     {
       "path": "testing/workflow-generated-assets",
@@ -1196,7 +1313,7 @@
       "factHash": "962e39450ad27746",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "eacab62c1b2385a6"
+      "pageHash": "5149ad34272204ba"
     },
     {
       "path": "testing/workflow-readme-path",
@@ -1205,7 +1322,7 @@
       "factHash": "b3958864258797fb",
       "factCount": 6,
       "floor": "evidence",
-      "pageHash": "83420fa8198e48bc"
+      "pageHash": "66aa434f0aef0b23"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

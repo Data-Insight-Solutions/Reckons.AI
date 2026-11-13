@@ -3,6 +3,8 @@
   // Tailwind v4 utilities for shadcn-svelte components only — imported WITHOUT
   // preflight so global.css base styles are untouched (see tailwind.css header).
   import '$lib/styles/tailwind.css';
+  import { settings as tripleCheckSettings } from '$lib/stores/settings.svelte';
+  import { startTripleCheck } from '$lib/stores/triple-check.svelte';
   import { onMount } from 'svelte';
   import { page } from '$app/state';
 
@@ -32,6 +34,7 @@
   import ArchiveReferenceDialog from '$lib/components/ArchiveReferenceDialog.svelte';
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
+  import { initOllamaModelNotice } from '$lib/stores/ollama-model-notice';
   import { initViewport } from '$lib/stores/viewport.svelte';
   import { readCurrentsSettings } from '$lib/rdf/currents';
   import { startCurrentsPolling } from '$lib/integrations/n8n/currents-poll';
@@ -42,6 +45,11 @@
   // Client-only readiness prevents an SSR process's module-level store state from exposing route
   // controls before this browser has loaded its own IndexedDB state.
   let clientReady = $state(false);
+  $effect(() => {
+    if (!clientReady || !settingsLoaded() || officialKbActive() || !tripleCheckSettings().tripleCheckEnabled) return;
+    return startTripleCheck();
+  });
+
   // Document/form routes scroll inside a viewport that ends above the fixed
   // mobile nav. Full-bleed graph/workspace routes keep owning the viewport.
   const reservedNavRoutes = ['/notes', '/ingest', '/kb', '/settings', '/reckoning', '/analyze', '/compare', '/about'];
@@ -89,6 +97,8 @@
   onMount(async () => {
     // Register download consent handlers before any model loading can occur
     initDownloadConsent();
+    // Before any Ollama call: a chosen model that is not installed must never be swapped silently
+    initOllamaModelNotice();
 
     // Load in background; show UI immediately for testing
     Promise.all([loadAll(), loadSettings(), loadTurtleSettings(), loadGlbOverrides(), loadGifOverrides(), loadIcon2dOverrides()]).then(async () => {
@@ -107,7 +117,11 @@
        */
       const { promptStoryIfPresent } = await import('$lib/stores/story-prompt.svelte');
       const { getCurrentKbId } = await import('$lib/storage/kb-registry');
-      promptStoryIfPresent(statements(), getCurrentKbId());
+      // ?story starts the story outright (F261); otherwise the one-time notice offers it.
+      const { startStoryFromLink } = await import('$lib/stores/story-prompt.svelte');
+      if (!startStoryFromLink(statements(), new URL(window.location.href).searchParams.get('story'), new URL(window.location.href).searchParams.get('step'))) {
+        promptStoryIfPresent(statements(), getCurrentKbId());
+      }
       // Apply embedding model from settings
       const { setEmbeddingModel } = await import('$lib/embed');
       const s = settings();
