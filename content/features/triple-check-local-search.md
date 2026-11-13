@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # Triple Check with your own search server
 
+> **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.
+
 Triple Check can use a third way to search the web: a SearXNG server you run yourself, which needs no account and no key. The claim being checked is still sent from your machine to public search engines, so this keeps it from a search company's account but is not offline.
+
+<p class="derived">This exists in outline, with gaps.</p>
 
 ## Why it is this way
 

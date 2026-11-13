@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # Trust checks for work done by a local helper
 
+> **Functional** — built and working, with rough edges still being smoothed.
+
 Three scripts, each a rule a computer can check, so they cost no model time. Evidence: every claim in a helper's report that something works, passed or exists must carry, on the same line, the command, its exit code and the log line; a script marks a claim without them UNVERIFIED. Privacy: before a branch is merged, a script scans its changes, commit messages and branch name against a list of private terms you keep outside any repository, and prints counts and positions, never the terms. Cost: a passing job that needs no model is summarized from its exit code, duration and pass/fail lines, and a model reads a log only for a failure or a model-driven job; a second script fails if a passed rule-based run in the last day names a model.
+
+<p class="derived">This is built and working.</p>
 
 ## Why it is this way
 

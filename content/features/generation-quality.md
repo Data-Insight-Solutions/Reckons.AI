@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # Generated media: checks, retries, settings and what it costs
 
+> **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.
+
 Everything a local generation run produces can be checked. Rule-based checks cover images, video and splats and now also PDFs (blank page, missing phrase, unembedded font, wrong page size, text off the page) and SVG drawings (does it render). A vision model on your machine can then review the asset and name defects from a fixed list; video is judged by its middle frame and a PDF by its first pages, and with no local model connected the report says the review was not run, not that the asset is clean. If a check fails or a defect is named, the runner tries again with the next seed within a budget, keeps the best attempt and records every attempt's seed, problems and score in the receipt. A private review collection compares generation settings: one prompt at the root and a branch for each setting, with the same seeds on each, so you can judge them side by side. A showcase splat was generated at the highest quality the local pipeline reached, with each run's settings, peak graphics memory, time and size recorded, and shrunk to a size the app can ship. A table in the generation setup guide lists, per stage (image, video, splat), peak graphics memory, RAM, disk for the model files and time, each measured on a named machine.
+
+<p class="derived">This exists in outline, with gaps.</p>
 
 ## Why it is this way
 

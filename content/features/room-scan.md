@@ -17,7 +17,7 @@ generated: "docs-kb"
 
 With the generation tools installed (see Generation tools and setup), npm run scan:room -- &lt;folder or video&gt; turns a phone recording of a room into a splat: it pulls frames from the video, works out where the camera was for each one, and trains the splat. The result and a receipt stay on your machine, outside the project. npm run scan:quality says how good a recording is (too fast, too shaky, too dark, parts of the room not covered) with one plain tip for each problem. npm run splat:compress makes a splat much smaller in the SPZ or SOG format, checks the copy against the original, and records that the copy is lossy.
 
-<p class="derived">This is built and working. It has one part below.</p>
+<p class="derived">This is built and working. It has one part below, 1 of which is not built yet.</p>
 
 ## Why it is this way
 
@@ -27,6 +27,6 @@ MEASURED ON ONE MACHINE. A 300-frame phone recording took about 19 minutes on on
 
 ## In this section
 
-**[Scanning real objects and places, more carefully](../features/scan-real-objects)**
+**[Scanning real objects and places, more carefully](../features/scan-real-objects)** — **scaffolded**
 
 Three additions to the phone-scan pipeline, all run from the command line on your own machine.

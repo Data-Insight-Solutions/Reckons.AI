@@ -138,11 +138,11 @@ All three models' weights together are 28.5 GB. Smaller GPUs are untested: nothi
 
 A local language model does not automatically supply image/video/splat generation. Those are distinct tools with separate model files. The universal integration/plugin SDK and in-app agent management are planned; this guide does not imply that either is available today.
 
-<p class="derived">This is built and working. It has 2 parts below.</p>
+<p class="derived">This is built and working. It has 2 parts below, 1 of which is not built yet.</p>
 
 ## In this section
 
-**[Generated media: checks, retries, settings and what it costs](../features/generation-quality)**
+**[Generated media: checks, retries, settings and what it costs](../features/generation-quality)** — **scaffolded**
 
 Everything a local generation run produces can be checked.
 

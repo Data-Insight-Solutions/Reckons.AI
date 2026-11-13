@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # Where a machine's row goes in Review: claim, question or finding
 
+> **Functional** — built and working, with rough edges still being smoothed.
+
 Every row a local job writes for you to review is stamped when it is written with the collection it belongs to, the run that made it, the job's name and a lane. The lane says what accepting it would do: a CLAIM writes a fact when accepted; a QUESTION wants an answer; a FINDING is a machine's note that something needs doing (a file, a page, a commit), so accepting writes nothing, which is why a finding can be rejected or put off but never settled. Findings are kept out of your review queue. A row missing its collection, run or lane is refused at write time with the missing field named. If a person runs a job by hand there is no run to name, so the row is stamped with a made-up run id of the form hand:&lt;job&gt;:&lt;time&gt; and a line says so. Rows your own notes make need only a collection. If the app has to keep back a row that names no collection, it now says how many and why.
+
+<p class="derived">This is built and working.</p>
 
 ## Why it is this way
 

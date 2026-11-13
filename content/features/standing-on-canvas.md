@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # How held facts, proposals and questions look on the canvas
 
+> **Functional** — built and working, with rough edges still being smoothed.
+
 Every fact has a standing, worked out from fields it already has: HELD (you confirmed it), PENDING (waiting for your review), PROPOSED (waiting, and part of one option of a proposal) or QUESTION (its object is not known yet). The canvas draws each differently, in 2D and 3D: held facts as before; proposed facts as dashed lines in the proposal's own color, with an entity that exists only in a proposal drawn hollow with a dashed ring; a question as a half-strength line ending in a hollow circle marked '?'. The legend names the four, and the difference is carried by line style and shape, not color alone, so it still reads in a grey printout. A question is drawn so it cannot be mistaken for something a filter has dimmed. A related script finds the gaps between your situation and your target: each unmet requirement and each open question about the situation becomes a ranked list, every gap a question with its subject and predicate known and its object open.
+
+<p class="derived">This is built and working.</p>
 
 ## Why it is this way
 

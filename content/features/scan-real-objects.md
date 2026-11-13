@@ -13,7 +13,11 @@ generated: "docs-kb"
 
 # Scanning real objects and places, more carefully
 
+> **Scaffolded** — the structure exists, but it is incomplete. Expect gaps.
+
 Three additions to the phone-scan pipeline, all run from the command line on your own machine. Picking frames: npm run scan:keyframes reads a video, scores each frame by how sharp the OBJECT is (a box you give it, or a track of where the object is over time), splits the video into equal stretches so every stretch of the orbit keeps its sharpest frame, and writes the kept frames plus a report listing every frame's score and any stretch left with no good frame. Several captures of one place: the aim is one splat of a place made from several recordings. Only the first step is built: one capture becomes one splat. Attaching the result: scan:room can be told which collection the result belongs to, copy the finished splat into that collection's folder and queue a review row linking it; the row is refused if it names no collection, so a scan can never land in whichever collection happens to be open.
+
+<p class="derived">This exists in outline, with gaps.</p>
 
 ## Why it is this way
 
