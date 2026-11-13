@@ -188,4 +188,11 @@ describe('F279.1: no default model name', () => {
     await expect(resolveOllamaModelOrThrow(undefined, 'http://x')).resolves.toBe('gemma3:4b');
     await expect(resolveOllamaModelOrThrow('mine:1', 'http://x')).resolves.toBe('mine:1');
   });
+
+  it('a server that is down is reported as unreachable, not as "pull a model"', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('fetch failed'); }));
+    await expect(resolveOllamaModelOrThrow(undefined, 'http://x')).rejects.toThrow(/not reachable at http:\/\/x/);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 502, json: async () => ({}) })));
+    await expect(resolveOllamaModelOrThrow(undefined, 'http://x')).rejects.not.toThrow(/ollama pull/);
+  });
 });

@@ -195,7 +195,17 @@ function promptSize(messages: ChatMessage[], system: string): number {
  */
 export async function resolveOllamaModelOrThrow(model: string | undefined, baseUrl: string): Promise<string> {
   if (model && model.trim()) return model;
-  const installed = await listOllamaModels(baseUrl);
+  // Not listOllamaModels: it answers [] for a server that is down, and "pull a model" is the
+  // wrong fix for that. Unreachable and nothing-installed get different messages.
+  let installed: string[];
+  try {
+    const res = await fetch(`${baseUrl}/api/tags`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    installed = (data.models ?? []).map((m: { name: string }) => m.name);
+  } catch {
+    throw new Error(`Ollama is not reachable at ${baseUrl} — start it with \`ollama serve\`, or check the address in Settings → Ollama.`);
+  }
   const picked = pickDefaultOllamaModel(installed);
   if (!picked) throw new Error(NO_OLLAMA_MODEL_MESSAGE);
   return picked;
