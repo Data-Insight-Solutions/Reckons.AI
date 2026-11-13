@@ -24,6 +24,8 @@ business card in the DIS space (design versions, print sheets v1-v3 derived from
 rule, story step 3) + `npm run print:sheet` with a receipt and --check + F294.8 and F295 (Canva) plans;
 #625 F296 plugin library planned for v0.2.9 (two open questions for Matt on the entity); #626 this handoff.
 
+**Dev regression found and fixed overnight:** after #623, generated-assets-story.test.ts:179 failed 3/3 on dev (staging and #624 do not contain #623, so v0.2.8 is unaffected). Cause: a race in GenerationStory.svelte — the Reconnect button stayed until the next 2 s poll after the folder was linked; fixed in #630 (connect as soon as the workspace reports connected; no connect buttons while connecting) with a test that the button goes within 1.5 s. Still open: 'Shelly queues a chain as ONE approval' (story file ~line 236) fails locally on dev before and after the fix and intermittently in CI — filed high-priority; likely a test-order race, unconfirmed.
+
 **Local jobs (05:33-05:36 UTC):** burndown 23 of 36 v0.2.8 parts functional; claim-audit 6 findings, all
 pre-existing in SAFETY.md / COUNSEL-BRIEF.md (absolute statements without a pinning test — Matt's legal
 wording, left for him); describe-entities 3 drafts already awaiting review.
