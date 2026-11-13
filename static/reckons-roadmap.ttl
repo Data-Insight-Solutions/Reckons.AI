@@ -13133,7 +13133,11 @@ kb:site-after-publish rdf:type ktype:Phase ;
     rdfs:label "F294.6 — website outcome after publishing: it keeps checking" ;
     kpred:feature-id   "F294.6" ;
     kpred:part-of      kb:outcome-reckoning ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
+    kpred:has-file     "scripts/offline/site-live.ts", "src/lib/publish/site-build.ts" ;
+    kpred:tested-by    "scripts/offline/__tests__/site-live.test.ts", "src/lib/publish/__tests__/site-build.test.ts" ;
+    kpred:measured     "2026-11-13 first real run of scripts/offline/site-live.ts against https://data-insight.solutions: 39 pages read, 19 internal files and link targets checked, 103 external links counted and not fetched, 0 findings, 1 unknown (freshness: the live build serves no reckons-build.json because the site's deploy workflow pins Reckons.AI v0.2.8, which predates the stamp). Mail DNS baseline recorded on that run; a second run showed 0 changes. This is a single run, not a track record." ;
+    kpred:remaining    "2026-11-13: not built: the form endpoint CORS check (that the endpoint still grants the site's origins); findings arriving in the site space for review (today they go to the run log and a private report only); freshness stays UNKNOWN on the DIS site until its deploy workflow pins a Reckons.AI that writes reckons-build.json, a change in the site repository that is not made here; the daily schedule sched:dis-site-live is added but has run only by hand." ;
     kpred:description  "Scheduled local checks on the live site: facts approaching their valid-until date, links that stopped resolving, the form endpoint still granting the site's origins, and pages whose underlying facts moved since they were built. Findings arrive in the site space for review." .
 
 kb:site-space-assets rdf:type ktype:Phase ;

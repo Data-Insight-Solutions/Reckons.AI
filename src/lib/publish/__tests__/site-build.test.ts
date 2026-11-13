@@ -20,7 +20,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildSite } from '../site-build';
+import { execFileSync } from 'node:child_process';
+import { cpSync } from 'node:fs';
+import { buildSite, BUILD_STAMP_FILE } from '../site-build';
 
 const FIXTURE_SITE = join(process.cwd(), 'src/lib/publish/__tests__/fixtures/fixture-site');
 if (!existsSync(join(FIXTURE_SITE, 'content'))) {
@@ -116,9 +118,10 @@ describe('site:build (F274.4.1)', () => {
 
   it('a second run into the same output directory is byte-identical', () => {
     const out = makeTmp('site-build-');
-    buildSite({ site: FIXTURE_SITE, out });
+    const now = new Date('2026-11-13T00:00:00Z');
+    buildSite({ site: FIXTURE_SITE, out, now });
     const first = readTree(out);
-    buildSite({ site: FIXTURE_SITE, out });
+    buildSite({ site: FIXTURE_SITE, out, now });
     expectSameTree(out, first);
   });
 
@@ -147,5 +150,46 @@ describe('site:build (F274.4.1)', () => {
     writeFileSync(join(target, 'secret.txt'), 'outside the site\n');
     symlinkSync(join(target, 'secret.txt'), join(site, 'assets', 'evil'));
     expect(() => buildSite({ site, out: makeTmp('site-build-') })).toThrow(/symlink/i);
+  });
+});
+
+describe('F294.6 build stamp', () => {
+  it('writes reckons-build.json with a null commit when the site is not a git checkout of its own', () => {
+    const site = makeTmp('site-stamp-');
+    cpSync(FIXTURE_SITE, site, { recursive: true });
+    const out = makeTmp('site-stamp-out-');
+    buildSite({ site, out: join(out, 'dist') });
+    const stamp = JSON.parse(readFileSync(join(out, 'dist', BUILD_STAMP_FILE), 'utf8'));
+    expect(Object.keys(stamp).sort()).toEqual(['builtAt', 'generator', 'siteCommit', 'version']);
+    expect(stamp.generator).toBe('Reckons.AI');
+    expect(stamp.siteCommit).toBeNull();
+    expect(typeof stamp.version).toBe('string');
+    expect(Number.isNaN(Date.parse(stamp.builtAt))).toBe(false);
+  });
+
+  it('records the site repository HEAD when the site is a git checkout', () => {
+    const site = makeTmp('site-stamp-git-');
+    cpSync(FIXTURE_SITE, site, { recursive: true });
+    const git = (...a: string[]) => execFileSync('git', ['-C', site, '-c', 'user.name=t', '-c', 'user.email=t@t.test', ...a], { encoding: 'utf8' }).trim();
+    git('init', '-q');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'fixture');
+    const head = git('rev-parse', 'HEAD');
+    const out = makeTmp('site-stamp-out-');
+    const res = buildSite({ site, out: join(out, 'dist') });
+    expect(res.files).toContain(BUILD_STAMP_FILE);
+    expect(JSON.parse(readFileSync(join(out, 'dist', BUILD_STAMP_FILE), 'utf8')).siteCommit).toBe(head);
+  });
+
+  it('carries no secret: no webhook, no config path', () => {
+    const out = makeTmp('site-stamp-out-');
+    buildSite({ site: FIXTURE_SITE, out: join(out, 'dist') });
+    expect(readFileSync(join(out, 'dist', BUILD_STAMP_FILE), 'utf8')).not.toMatch(/webhook|https?:/i);
+  });
+
+  it('is absent from a draft preview', () => {
+    const out = makeTmp('site-stamp-out-');
+    buildSite({ site: FIXTURE_SITE, out: join(out, 'dist'), includeDrafts: true });
+    expect(existsSync(join(out, 'dist', BUILD_STAMP_FILE))).toBe(false);
   });
 });
