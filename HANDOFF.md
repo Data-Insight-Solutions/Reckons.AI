@@ -3,43 +3,35 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-13 (overnight) — START HERE: v0.2.8 is on staging; promotion to main waits on owed docs
+## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
-Matt went to bed about 23:20 CST on 2026-11-12, asking for overnight work through overseer subagents and local jobs.
+**Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs
+gate passes after #627 (nine plain-language pages covering the 32 undocumented features) was promoted
+through #628. One E2E test flaked and passed on re-run: generated-assets-story.test.ts:220 'Shelly queues a
+chain as ONE approval' — third failure in three days, timeouts were raised without a diagnosed cause; filed
+high-priority in the review queue. MATT merges #624 (production deploys from main).
 
-**Release v0.2.8.** On staging (PR #618 merged 2026-11-13 05:03 UTC). PR #624 (staging -> main) is open
-and MATT merges it; it is BLOCKED by `release-notes.ts --check-docs`: 32 features shipped without a docs
-entity. An overseer is writing grouped docs pages on `docs/v028-owed` (worktree tripleNotes-docs-028) ->
-PR into dev -> then a dev -> staging promotion (Claude merges) -> #624 re-runs. Matt reviewed on
-https://claude.ai/artifact/Bnm5TJmJkEjM56j9sZDFXq : 9 pass, 1 fail (Shelly generation: fixed in #620,
-F166.1 recorded in progress until he tries the real folder picker), 2 skip; release, ring link and
-search index all 'yes'. His browser served stale builds twice today (PWA cache): hard reload fixes it.
+**Then the DIS site:** Matt pushes `content/site-pages` in DataInsightSolutions-website (local commits: company
+voice 6edd5f7, ring link 6032fbe, blog covers 02756b1, business card a8af730 — the back WITHOUT the phone,
+checked as text and by eye) and merges his DIS PR #3; its GitHub workflow builds and deploys.
 
-**After #624 merges (reckons.ai = v0.2.8):** Matt pushes `content/site-pages` in DataInsightSolutions-website
-(local commits: company voice 6edd5f7, ring link 6032fbe, blog covers 02756b1, business-card files when
-that agent lands them); his DIS PR #3 previews through the GitHub workflow; merging it publishes the site.
-Claude cannot push there (matt-roe has no write access; the Data-Insight-Solutions identity is Matt's).
+**Merged into dev overnight (v0.2.9):** #623 runner connect popup + on-demand generation services (the
+agent watcher serves ~/Documents/reckons-assets plus folders listed once in
+~/.config/reckons/generation-folders.json; starts a service on request, 'needs install' when missing, idle
+stop after 600 s; services are plugin-shaped records in src/lib/generation/services.ts; per-service installer
+NOT built, planned F58.9.21; no real request has gone through the watcher to the GPU yet); #622 the DIS
+business card in the DIS space (design versions, print sheets v1-v3 derived from them, the regenerate
+rule, story step 3) + `npm run print:sheet` with a receipt and --check + F294.8 and F295 (Canva) plans;
+#625 F296 plugin library planned for v0.2.9 (two open questions for Matt on the entity); #626 this handoff.
 
-**Live today:** data-insight.solutions and data-insight-solutions.com serve the new site from Cloudflare
-Pages (Matt switched the domains); Microsoft 365 records verified unchanged; the contact form accepts
-both origins. Production currently holds build v8; later work is on the preview only.
+**Local jobs (05:33-05:36 UTC):** burndown 23 of 36 v0.2.8 parts functional; claim-audit 6 findings, all
+pre-existing in SAFETY.md / COUNSEL-BRIEF.md (absolute statements without a pinning test — Matt's legal
+wording, left for him); describe-entities 3 drafts already awaiting review.
 
-**In flight overnight (each opens a PR into dev and stops; none merges to main):**
-- docs owed for v0.2.8 (release-critical, first);
-- DIS business card in the DIS space (front + back WITHOUT the phone, Matt's choice), the print-sheet
-  script, F294.8 'derived outputs regenerate' and F295 Canva integration (plan) — worktree tripleNotes-dis-card;
-- the runner connect popup and on-demand generation services (Matt: no always-on service; the agent
-  watcher starts a service on request, prompts install when missing, services listed separately and not
-  bundled; shaped as plugin records) — worktree tripleNotes-runner-popup, resumes after the docs work;
-- PR #625: F296 plugin library planned for v0.2.9 (everything is a plugin, one filtered library replacing
-  seven settings pages); two open questions for Matt on the entity.
-
-**Local jobs queued:** release-burndown, claim-audit, docs-staleness, describe-entities, proposal-yield.
-The queue had been paused by the RAM guard at 22:59 (a deputy job left 1.0 GiB free); resumed at 23:25
-with 13 GiB available.
-
-**Business cards:** the print sheet is ~/Documents/DIS-business-cards-letter-duplex-v3.pdf (from the design as
-Matt last edited it). Overnight inputs are in ~/.local/share/reckons/overnight-2026-11-12/.
+**Open for Matt:** merge #624; push the DIS branch and merge DIS #3; the F296 questions (what stays core;
+whether entity types and Triple Check fold in); try Shelly generation with the real folder picker and a
+real local model (F166.1 stays in progress until then); his browser serves stale builds after deploys (PWA
+cache) — the app should offer 'a new version is ready, reload' (offered, not planned yet).
 
 ## 2026-11-12 (night) — START HERE: what ran overnight while Matt slept (Claude Code, Opus 5.5, with Sonnet agents)
 
