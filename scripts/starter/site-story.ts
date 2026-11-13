@@ -16,7 +16,17 @@ const XSD_INT = 'http://www.w3.org/2001/XMLSchema#integer';
 
 export interface StoryFact { iri: string; label: string; validUntil: string | null; pageCount: number }
 
+/** Who is behind the site, as the About and Services pages state it; counts come from the build. */
+export interface StoryWho {
+  personIri: string; personName: string; role: string; titles: string[];
+  orgIri: string; orgName: string | null; formed: string | null; place: string | null;
+  services: number; credentials: number; recognition: number;
+  highlights: string[];
+}
+
 export interface StoryInput {
+  /** Present when the About page names a person; adds the step that introduces them. */
+  who?: StoryWho;
   storyIri: string;
   stepIri: (n: number) => string;
   siteName: string;
@@ -35,6 +45,7 @@ export interface StoryInput {
 
 export type StoryTriple = { s: string; p: string; o: { iri: string } | { text: string } | { integer: number } };
 
+const STEP_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const n = (count: number, one: string, many: string): string => count + ' ' + (count === 1 ? one : many);
 
 export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[] }[] {
@@ -46,7 +57,16 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
     : 'Some things stop being true on a known day. ' + (dated.length ? n(dated.length, 'fact on this site carries', 'facts on this site carry') + ' an end date: ' + dated.map((f) => f.label + ' (valid until ' + f.validUntil + ')').join('; ') + '. ' : '')
       + (open.length ? n(open.length, 'fact has', 'facts have') + ' no date yet, so each is an open question for its owner rather than a guess: ' + open.map((f) => f.label).join('; ') + '. ' : '')
       + 'On every build the check lists anything past its date, warns 60 days ahead, and refuses to publish a page that states an expired fact, naming the fact and the page.';
-  return [
+  const w = i.who;
+  const whoStep = w ? [{
+    title: 'Who is behind the site',
+    content: w.personName + ' is the ' + w.role + ' of ' + (w.orgName ?? i.siteName) + (w.formed ? ', formed in ' + w.formed : '') + (w.place ? ', in ' + w.place : '')
+      + '.' + (w.titles.length ? ' The About page describes the work as ' + w.titles.join(' and ') + '.' : '') + ' From the About and Services pages this example holds '
+      + n(w.services, 'service', 'services') + ', ' + n(w.credentials, 'credential', 'credentials') + (w.recognition ? ', ' + n(w.recognition, 'recognition', 'recognitions') : '')
+      + ', each one marked with the page that states it. Open the person or the company to see them connected to the services, the posts that cover them and the dated credential.',
+    highlights: w.highlights,
+  }] : [];
+  const steps = [
     {
       title: 'Where the content came from',
       content: 'This example is the published website of ' + i.siteName + ', read in as sources: ' + n(i.pages, 'page', 'pages') + ' and ' + n(i.posts, 'blog post', 'blog posts') + ', ' + total + ' in all. The owner also kept private notes, which were used to check claims on the site but are not part of this example, and no content from them is included here.',
@@ -73,13 +93,14 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
       highlights: [i.siteIri],
     },
   ];
+  return [steps[0], ...whoStep, ...steps.slice(1)];
 }
 
 export function storyTriples(i: StoryInput): StoryTriple[] {
   const out: StoryTriple[] = [
     { s: i.storyIri, p: RDF_TYPE, o: { iri: STORY + 'Story' } },
     { s: i.storyIri, p: RDFS_LABEL, o: { text: 'How this website was made' } },
-    { s: i.storyIri, p: STORY + 'description', o: { text: 'How the content, the pages and the checks behind this website came together, in five short steps.' } },
+    { s: i.storyIri, p: STORY + 'description', o: { text: 'How the content, the pages and the checks behind this website came together, in ' + STEP_WORDS[storySteps(i).length] + ' short steps.' } },
     { s: i.storyIri, p: STORY + 'autoplay', o: { text: 'false' } },
   ];
   storySteps(i).forEach((st, k) => {

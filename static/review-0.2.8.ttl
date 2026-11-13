@@ -98,7 +98,7 @@ rev:gap-f274-4-3 rdf:type ktype:Concept ;
 
 rev:gap-f274-7 rdf:type ktype:Concept ;
     rdfs:label "F274.7 F274.7 — the Data Insight Solutions website as a space, shown as a Reckons.AI example" ;
-    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, scripts/starter/__tests__/site-profile.test.ts)." .
 
 rev:gap-f292-2 rdf:type ktype:Concept ;
     rdfs:label "F292.2 F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas" ;
