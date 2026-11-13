@@ -122,6 +122,17 @@ export const newJob = (name: string, cwd: string, argv: string[], priority?: num
   ({ id: randomUUID().slice(0, 8), name, cwd, argv, addedAt: new Date().toISOString(), ...(priority !== undefined ? { priority } : {}), ...(gpu === false ? { gpu: false } : {}), ...(typeof gpuIndex === 'number' ? { gpuIndex } : {}), ...(after?.length ? { after: [...after] } : {}), ...(ramSpill ? { ramSpill: true } : {}), ...(ollama === false ? { ollama: false } : {}), ...(kind ? { kind } : {}), ...(model ? { model } : {}) });
 
 export const isGpuJob = (j: Pick<QueueJob, 'gpu'>): boolean => j.gpu !== false;
+
+/**
+ * The tier job-watch is told. A script-tier job (gpu:false — a `kpred:tier "script"` schedule or a --cpu
+ * add) or one that never touches Ollama is 'script', so a PASSED run is summarized by rule and only a
+ * failure gets a model read (job-watch modelMayRead, F286.6). 2026-11-13: the worker keyed this on
+ * needsOllama alone, so every passed script schedule (claim-audit, docs-staleness, ...) loaded the
+ * 16 GB reasoning model to write "completed successfully in 3.3s" — which also took ~5 GiB of system
+ * RAM and held the rest of the queue under the start gate.
+ */
+export const jobWatchTier = (j: Pick<QueueJob, 'gpu' | 'ollama'>): 'script' | undefined =>
+  j.gpu === false || j.ollama === false ? 'script' : undefined;
 export const needsOllama = (j: Pick<QueueJob, 'ollama'>): boolean => j.ollama !== false;
 
 export const isPaused = (): boolean => existsSync(pausePath());
@@ -262,7 +273,10 @@ export function workerStep(i: StepInput): Step {
   if (pickNext(orderQueue(i.queue), i.gpuBlocked, i.done ?? [], i.queue, i.ollamaUp)) return { state: 'working', startJob: true };
   if (!i.ollamaUp && (!i.gpuBlocked || i.queue.some(needsOllama))) return { state: 'paused-ollama-down', startJob: false };
   const stall = chainStallReason(i.queue, i.done ?? []);
-  if (stall) return { state: 'paused-broken-chain', startJob: false, reason: stall };
+  // A resource gate that is closed is the blocker to name: a chain's head waiting for room is not a
+  // broken chain (2026-11-13: the status read "deputy-bench-mistral waiting on deputy-bench-qwen3-8"
+  // while every job, chained or not, was waiting for RAM).
+  if (stall && !i.gpuBlocked) return { state: 'paused-broken-chain', startJob: false, reason: stall };
   return { state: 'paused-resources', startJob: false, reason: i.gpuBlocked };
 }
 
