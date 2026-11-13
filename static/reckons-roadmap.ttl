@@ -13155,3 +13155,20 @@ kb:settings-unified-integrations kpred:decided "MATT, 2026-11-12: one cohesive p
     kpred:open-question "FOR MATT: which settings are core rather than plugins (display, identity, backup and export, reset — anything else)? And do the entity-types and Triple Check pages fold in as plugins, or stay separate pages linked from the library?" .
 
 kb:release-0-2-9 kpred:has-part kb:settings-unified-integrations .
+
+## 2026-11-12 — Matt: the plugin library (new, v0.2.9).
+kb:plugin-library rdf:type ktype:Feature ;
+    rdfs:label "F296 — Plugin library: every service, provider and integration as a plugin in one filtered library" ;
+    kpred:feature-id   "F296" ;
+    kpred:has-status   "planned" ;
+    kpred:priority     "high" ;
+    kpred:relates-to   kb:integration-plugin-sdk, kb:settings-unified-integrations, kb:service-catalog, kb:shelly-job-queue, kb:llm-providers ;
+    kpred:decided      "MATT, 2026-11-12 (chat): 'I think we need to simplify settings to plugins. All local services, cloud services, LLM services, everything is a damn plugin. We need a single cohesive plugin library, with filters, not a sprawling list vertical in an unreadable page. We could probably consolidate multiple settings pages with this strategy?' Then: 'No the plugin library is new, but for 0.2.9. Related settings and integrations features can be in that release also.'" ;
+    kpred:description  "One library replaces the vertical settings list. A plugin is any of: an LLM provider, a cloud service, a local service the agent watcher starts on demand (image generation, splat generation, video and the rest, each separate, none bundled, nothing always on — Matt's decisions the same day), an integration (Canva, n8n, Google, Indico), or a data source. Each declares its kind, locality (this device, local network, cloud), purposes, requirements, status (needs setup, installed, enabled, connected, running, idle) and its own settings, which open in the plugin's panel. The library shows plugins as cards with filters for kind, locality, status and purpose, and search. Settings pages whose content is plugin settings consolidate into it; what is not a plugin (display, identity, backup and export, reset) stays a short core preferences section." ;
+    kpred:principle    "ONE LIBRARY, FILTERED, NOT ONE LONG PAGE. A person finds a plugin by what it is, where it runs, whether it is ready and what it is for, not by scrolling." ;
+    kpred:measured     "2026-11-12, the settings surface it replaces: seven pages. settings/ is 2,345 lines with 21 sections and 41 controls (provider status, AI backend and one section per LLM provider, display, OCR, Meshy, Google Workspace, re-analysis, source refresh, defaults, identity, extension highlights, backup and export, local workspace, reset); integrations/ 1,250 lines, 7 sections, 10 controls; turtle/ 1,007 lines, 8 sections, 21 controls; entity-types/ 547 lines; device/ 427 lines (the agent watcher, where local services are being added as plugin-shaped records); publishing/ 70; triple-check/ 63. Counted from the source files (h2/h3 headings and form controls), not measured on screen." ;
+    kpred:open-question "FOR MATT: which settings are core rather than plugins (display, identity, backup and export, reset — anything else)? And do the entity-types and Triple Check pages fold in as plugins, or stay separate pages linked from the library?" .
+
+kb:release-0-2-9 kpred:has-part kb:plugin-library, kb:settings-unified-integrations .
+kb:settings-unified-integrations kpred:relates-to kb:plugin-library .
+kb:integration-plugin-sdk kpred:relates-to kb:plugin-library .
