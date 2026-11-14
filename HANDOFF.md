@@ -3,6 +3,40 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-13 (daytime) — START HERE: F297 monetization roadmap entry, on agent/local-monetization-roadmap
+
+**Branch `agent/local-monetization-roadmap` (worktree `tripleNotes-monetization`, off origin/dev e2ec131b).**
+One commit, one file changed (`static/reckons-roadmap.ttl`), appending Matt's 2026-11-13 monetization
+decisions verbatim: new feature **F297 `kb:monetization`** (speculative) — the custom trained model behind
+MCP is the selling point (links `kb:model-training` F13), optional with Reckons.AI usage, no forced payment,
+no excessive ads; enterprise = fixed-rate contracts, not per-use metering, with cost limits baked in on
+Matt's end; metered path = Cloudflare Monetization Gateway (access requested 2026-11-13, under Cloudflare
+review); domain split tentative (aiteams.us = US enterprise, rooted domains = personal, "not concrete");
+gated on working Google Workspace + Microsoft 365 tools OR serious personal-assistant features. Also two
+lines on **F13 `kb:model-training`**: Matt's decision to start testing "the trainable MoE model I mentioned
+a few days ago", the stated struggle (robust spaces, multiple functional layouts, rich entity types and
+attributes), and open questions (which MoE base; train on what; where testing runs — MoE is new to F13,
+whose target models are small dense ones). Two open questions for Matt are on F297 (GA/MS365 gate entity?;
+domain split is a working read).
+
+**Verified 2026-11-13:** graph-lint 0 errors / 15 warnings (same baseline as dev); tracked-ttl-parses
+84/84; `F297` and `kb:monetization` each appear exactly once in static/; no generated content page embeds
+feature numbers, so no md-align drift. **NOT run:** the full CI suite (`npm run check`, unit suite) — it
+runs on the PR; nothing here touches code, so that is the expected delta.
+
+**UNVERIFIED / BLOCKED:** the branch is NOT pushed and NO PR is open. `git push` was denied repeatedly in
+auto mode (the server-side safety check cannot be reached through the local gateway; the allow rules
+`Bash(git push *)` / `Bash(gh pr create *)` in `~/.claude/settings.json` are set aside in auto mode).
+Whoever continues: push `agent/local-monetization-roadmap`, open the PR against **dev** (title suggestion:
+"roadmap: F297 monetization — custom model behind MCP, enterprise contracts first, gated on working tools"),
+do not merge. The same push block holds `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`,
+otherwise done; PR body drafted in its HANDOFF entry).
+
+**Matt's decisions (2026-11-13, all recorded as `kpred:decided` on the entities):** selling point = custom
+model behind MCP, optional, no forced payment/ads; gate = GA/MS365 tools or serious PA features first;
+enterprise = fixed-rate contracts with his own cost limits baked in; domain split tentative; start testing
+the trainable MoE now.
+
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
 **Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs
