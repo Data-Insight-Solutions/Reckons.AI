@@ -53,7 +53,34 @@ SELLING POINT (conditional): multi-modal asset generation context + game experie
 plain English statements. Matching open questions added on **F74.1 `kb:asset-generation`** (what "make that
 work" requires; which entity owns the game experiences — no entity does yet). UNVERIFIED items flagged as
 such on the entities: no iOS-app entity (nearest kb:ios-note-capture, unmerged branch), no Orange Logic or
-Stray scanner entity.
+Stray scanner entity. Two more same-evening decisions: **ComfyUI** named as a possibly-important integration
+while Matt thinks about critical integrations (decided on F297 + open question on F58.2 `kb:mvg-image-gen`,
+where it is already a candidate runtime behind stable-diffusion.cpp/Diffusers); and the active **reckons.\*
+domain inventory** (reckons.ai/.app/.solutions/.space/.tech/.us with expiry dates, "not implemented" partly)
+recorded on F297 next to the rooted/aiteams.us split — no domain-to-purpose mapping exists yet.
+
+**Final wave (recorded 2026-11-13, this entry's own commit):** new feature **F298 `kb:theming`**
+(speculative, low priority, roadmap entry only) — Matt: "We need to start themeing… a way to change theme
+to 'forest' away from the default 'ocean'… green and earth tones instead of deep teals and blues… make
+Shelly into a Sloth. Named Sherril or something clever. The tree roots could be a great analogy to the
+rooting of AI agent usage to your personal context." Open questions on the entity: switch-with-ocean-default
+vs rebrand (his call), the sloth's name, and what his sister's three.js work covers (mascot asset under
+F74.1 vs theme chrome under F37 `kb:undersea-pod-ui`; collaboration or hand-off). Linked
+`kb:undersea-pod-ui`, `kb:currents`, `kb:minimal-ontology`. And on **`kb:minimal-ontology`** (the
+"small context packages" concept) — Matt's pairing, verbatim: context PACKAGING is a sharing mechanism,
+context ROOTING is "the concept of connecting to your existing files (sources), and knowledge
+(statements)"; open question for Opus: does rooting become its own named concept or stay a facet here?
+
+**Verification (all green in `tripleNotes-monetization`, 2026-11-13):** graph-lint 0 errors / 15 warnings
+(dev baseline); tracked-ttl-parses 84/84; `kb:theming` and `F298` each appear exactly once in `static/`.
+One parse bug found and fixed on this branch: three statement blocks (ComfyUI, domain inventory,
+mvg-image-gen) had been ended with `;` instead of `.` — lenient N3 accepted it, but graph-lint's strict
+TriG parse rejected it (166 errors); all three now end with `.`. **NOT run:** the full CI suite — it runs
+on the PR; nothing here touches code.
+
+**Still pending (same as above):** push `agent/local-monetization-roadmap`, open the PR against **dev**,
+do not merge; `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`) is blocked on the same
+push permission.
 
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
