@@ -112,6 +112,36 @@ on the PR; nothing here touches code.
 do not merge; `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`) is blocked on the same
 push permission.
 
+## 2026-11-13 (local deputy, qwen3.8-160k) — jobs: schedule never-run script checks; route the last untagged model jobs
+
+**Branch `chore/schedule-script-jobs` (worktree ../tripleNotes-sched-jobs), 1 commit 53cbae2b, base origin/dev.**
+TTL only: `reckons-workspace/schedules.ttl`, +81 lines, nothing else touched.
+
+- **Task A (done):** `kpred:job-kind` added to the two model schedules that lacked one — `sched:visual-tests`
+  ("visual", runs space-visual-gate on qwen2.5vl:7b) and `sched:terminology-sweep` ("classification-judgment",
+  runs term-senses over the local panel; it stays disabled — only the tag was added). `sched:offline-all-agent`
+  deliberately left untagged: it bundles several kinds.
+- **Task B (done, 8 of 12 candidates scheduled):** each candidate's `kpred:command` was run once in this clean
+  worktree; scheduled only the ones that exited 0, finished <2 min, and wrote no line to
+  `reckons-workspace/knowledge.pending.jsonl` (file absent before and after). Scheduled, all `session-worker`
+  + `script` tier like `sched:dis-fact-expiry`: published-graph-guard (1d), version-align (1d), commit-trailers
+  (1d, 22.3 s run), landing-data-align (1d), set-integrity (1d), anchor-resolution (1d), csp-origin-audit (7d),
+  ci-graph (7d).
+- **NOT scheduled — findings for Matt, with first error line each (full runs in /tmp/jobout_*.log, 2026-11-13):**
+  - `queue-integrity` exit 1 (0.8 s): "VIOLATIONS (0-based line index: field): 1585: origin, 1598: origin, …" — 15 rows on `kb:review-queue`-shaped entries missing `origin`.
+  - `repo-hygiene` exit 1 (0.5 s): "tracked-but-ignored (2): tests/bench/results/overseer-2026-10-28.jsonl, …10-29.jsonl — matches a .gitignore pattern and is tracked anyway".
+  - `taxonomy-current` exit 1 (0.7 s): "type-no-term urn:kbase:type/GaussianSplat: built-in type 'Gaussian splat' has no term or vocabulary class" (4 such).
+  - `graph-lint --pending` exit 1 (1.2 s): lint itself says "0 error(s), 15 warning(s)", then the `--pending` writer CRASHES — "RowContractError: row refused: missing kb on a machine row about 'urn:kbase:predicate/'" (mcp-server/src/row-contract.ts:93). Plain `graph-lint.ts` is already scheduled as `sched:graph-lint`, so only the `--pending` path is the bug.
+- **Unverified:** I could not run `npm run align` against a live CI context, and the queue worker did not
+  actually EXECUTE the new schedules (no worker pickup while I worked) — the parse tests
+  (`tracked-ttl-parses`, 83 files) plus `agent:queue -- list` printing the queue cover the 2026-11-13 crash class.
+- **Done-test (all pass, 2026-11-13):** vitest scripts/agent + tracked-ttl-parses: 41 files, 525 passed;
+  graph-lint: 0 errors / 15 warnings; release-review-space --check: ok ×3; `npm run check`: 0 ERRORS;
+  `agent:queue -- list`: prints the queue.
+- **Matt's decisions here were the tasking itself** (criteria above); nothing else was decided. **BLOCKED:** the
+  environment denied `git push` for this session — the commit is ready on the branch; someone with credentials
+  pushes it and opens the PR to `dev` (title/body drafted in chat 2026-11-13). Do not merge to main.
+
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
 **Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs
