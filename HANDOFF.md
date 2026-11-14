@@ -37,6 +37,24 @@ model behind MCP, optional, no forced payment/ads; gate = GA/MS365 tools or seri
 enterprise = fixed-rate contracts with his own cost limits baked in; domain split tentative; start testing
 the trainable MoE now.
 
+**Follow-up wave (recorded 2026-11-13, uncommitted at time of writing):** on **F13 `kb:model-training`** —
+model training is CRITICAL; build many immaculate spaces BY HAND as training data; fine-tune a granite/base
+model with a thorough BAKED KNOWLEDGE of the Reckons platform; the re-learning pain (asking multiple times
+for previews, repeatedly stating entity typing should happen) is the problem the training fixes; training
+compute NOT SELECTED, locally would be ideal (graph's energy-bench hardware is a 2x RTX 3090); MULTIPLE open
+source bases should be trained/compared — an MoE may lift the generalist base but size may be a problem.
+Priority raised to high. On **F296 `kb:plugin-library`** — each plugin OWNS ITS SERIES OF FEATURES
+(Google Suite / Microsoft Suite plugins); a separate plugin when the product differs (SharePoint legacy vs
+new SharePoint); suite feature series not yet scoped (they ARE the F297 gate's tools). On **F297** — GATE
+ALTERNATIVE: the iOS suite may make more sense than office applications (spatial computing push from Apple;
+Matt sold Orange Logic to people there; WebXR/Web App ecosystems adopted slowly; their app store expensive
+to publish into; ring-scan workflow — a Stray scanner, attributed, built into a Reckons.AI iOS app); SECOND
+SELLING POINT (conditional): multi-modal asset generation context + game experiences defined by editable
+plain English statements. Matching open questions added on **F74.1 `kb:asset-generation`** (what "make that
+work" requires; which entity owns the game experiences — no entity does yet). UNVERIFIED items flagged as
+such on the entities: no iOS-app entity (nearest kb:ios-note-capture, unmerged branch), no Orange Logic or
+Stray scanner entity.
+
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
 **Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs
