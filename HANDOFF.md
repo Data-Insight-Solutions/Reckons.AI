@@ -7,15 +7,25 @@ the graph holds what was decided.
 
 **Matt: "I'm going to bed, schedule and monitor jobs."** Done as of 2026-11-14 ~01:30 UTC:
 
-- **Queue is draining.** The `agent:watch` worker was `paused-resources` on the 16 GiB RAM start gate —
-  which on this machine can never open (desktop baseline holds ~19 of 32 GiB; MemAvailable ~13 GiB).
-  Fix: `~/.config/reckons/device.ttl` (private, 0600, outside git) overrides `ramStartAvailMiB` 16→8 GiB.
-  Rationale + the PROPOSAL flag are in the file's comments and a `kb:queue-ram-guard` status-update in the
-  review queue (agent `local-deputy:qwen3.8-160k`). **Opus: confirm or restore 16384.** The running-job
-  guards (6 GiB spill / 2 GiB floor, session-ram.ts) are unchanged and still stop a job that spills.
-  After the override: job-plan and pull-notes passed; `sched:offline-all-agent` is running (docs-expand
-  drafting with qwen3.8, proposals → `knowledge.pending.jsonl`). GPU start gate (83 C) is doing normal
-  cooldown-waits between jobs on the two 3090s — not a defect.
+- **Queue result: `sched:offline-all-agent` RAN and passed 4/4** (2026-11-15 01:29→01:56 UTC, exit 0):
+  describe-entities (3 already queued), **docs-expand (875.7s — clears the 24d-overdue run; 116 thin
+  entities, 110 already queued, 10 drafted and ALL rejected by the validator: "inline markdown" /
+  "unexplained jargon: ttl")**, docs-review (7 proposals queued), space-visual-gate (32/51 gates passed,
+  19 failures → 8 new pending findings; receipt `reckons-workspace/runs/space-visual-gate_2026-11-15T01-55-34-130Z.json`).
+  Plus job-plan and pull-notes passed. Findings are proposals in the review queue — Opus triages.
+- **Then the RAM guard did its job.** The standalone `sched:docs-review` (started 1 s after the suite, with
+  the 27.3B qwen3.8-160k model still resident from the suite) drove system RAM to **0.9 GiB available
+  (floor 2 GiB)**; the F74.11 guard (session-ram.ts) STOPPED the job, UNLOADED the model, and PAUSED the
+  queue fail-closed (PAUSE file). The machine did not OOM — that is the guard working as Matt specified.
+  Swap was already exhausted (~184 kB free), so a second such race could have hurt. **I reverted my override:
+  `~/.config/reckons/device.ttl` deleted, `ramStartAvailMiB` back to the 16384 default (verified).**
+  **Queue is PAUSED and I am leaving it paused.** 11 jobs remain queued (incl. the held docs-review,
+  30-min retry backoff). The 16 GiB gate structurally blocks this machine overnight (desktop baseline
+  ~19 GiB) — that is the point of the gate. **Opus: decide** — resume (`npx tsx scripts/agent/queue.ts resume`)
+  only after apps close / RAM settles, or adjust the gate with full incident context (kb notes on
+  `kb:queue-ram-guard`, agent `local-deputy:qwen3.8-160k`). Root cause is back-to-back model loads with
+  exhausted swap, not a broken guard.
+- GPU start gate (83 C) is doing normal cooldown-waits between jobs on the two 3090s — not a defect.
 - **5174 mock dev server started** (`npm run dev:test`, log `/tmp/devtest-5174.log`) for
   `sched:visual-tests`. Probe with `127.0.0.1:5174` — `localhost` times out in the sandbox but the server is up.
 - **Still BLOCKED (unchanged):** both branches unpushed, no PRs. Push commands for Matt:
