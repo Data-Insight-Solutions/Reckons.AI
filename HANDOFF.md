@@ -3,7 +3,27 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-13 (daytime) — START HERE: F297 monetization roadmap entry, on agent/local-monetization-roadmap
+## 2026-11-14 (night) — START HERE: overnight jobs scheduled and draining; two branches still unpushed
+
+**Matt: "I'm going to bed, schedule and monitor jobs."** Done as of 2026-11-14 ~01:30 UTC:
+
+- **Queue is draining.** The `agent:watch` worker was `paused-resources` on the 16 GiB RAM start gate —
+  which on this machine can never open (desktop baseline holds ~19 of 32 GiB; MemAvailable ~13 GiB).
+  Fix: `~/.config/reckons/device.ttl` (private, 0600, outside git) overrides `ramStartAvailMiB` 16→8 GiB.
+  Rationale + the PROPOSAL flag are in the file's comments and a `kb:queue-ram-guard` status-update in the
+  review queue (agent `local-deputy:qwen3.8-160k`). **Opus: confirm or restore 16384.** The running-job
+  guards (6 GiB spill / 2 GiB floor, session-ram.ts) are unchanged and still stop a job that spills.
+  After the override: job-plan and pull-notes passed; `sched:offline-all-agent` is running (docs-expand
+  drafting with qwen3.8, proposals → `knowledge.pending.jsonl`). GPU start gate (83 C) is doing normal
+  cooldown-waits between jobs on the two 3090s — not a defect.
+- **5174 mock dev server started** (`npm run dev:test`, log `/tmp/devtest-5174.log`) for
+  `sched:visual-tests`. Probe with `127.0.0.1:5174` — `localhost` times out in the sandbox but the server is up.
+- **Still BLOCKED (unchanged):** both branches unpushed, no PRs. Push commands for Matt:
+  `! git -C /home/matt/Github/tripleNotes-monetization push -u origin agent/local-monetization-roadmap`
+  `! git -C /home/matt/Github/tripleNotes-sched-jobs push -u origin chore/schedule-script-jobs`
+  then PR both against **dev**, no merge.
+
+## 2026-11-13 (daytime) — F297 monetization roadmap entry, on agent/local-monetization-roadmap
 
 **Branch `agent/local-monetization-roadmap` (worktree `tripleNotes-monetization`, off origin/dev e2ec131b).**
 One commit, one file changed (`static/reckons-roadmap.ttl`), appending Matt's 2026-11-13 monetization
