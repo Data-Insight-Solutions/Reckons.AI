@@ -2600,6 +2600,23 @@ kb:blender-mcp rdf:type        ktype:Phase ;
                kpred:progress     "2026-07-23: GLB export built (`--format glb`), with checkGlb as its acceptance gate. The predicted failure reproduced exactly — an empty scene made Blender write a VALID .glb and exit 0; the guard rejected it on zero meshes. checkGlb reads the glTF JSON chunk and rejects bad magic, non-2.0 versions, truncated files (declared length > bytes on disk), zero meshes, and meshes with zero POSITION vertices. It does NOT validate binary buffer contents — an accessor could still lie about its data. Exported models carry NO camera and NO lights: the app lights its own scene. 18 tests." ;
                kpred:remaining    "mcp-server: blender_render (scene entity -> image/GLB), blender_inspect (what is actually IN this file). Scene vocabulary: ktype:Scene, kpred:has-object / material / camera / light. Generate the .py FROM the graph; never hand-maintain the script. Then the app path: write the GLB into the workspace as assets/models/<slug>.glb + a kasset:model triple, which kb-assets already round-trips and the 3D view already renders — so no new backend is required for a first cut." .
 
+kb:cad-creation rdf:type ktype:Feature ;
+               rdfs:label   "F299 — CAD creation: exact parametric parts from a spec in the graph (build123d, then Blender), in the Generated assets example" ;
+               kpred:feature-id   "F299" ;
+               kpred:has-status   "planned" ;
+               kpred:priority     "high" ;
+               kpred:depends-on   kb:blender-mcp ;
+               kpred:relates-to   kb:content-orchestration ;
+               kpred:relates-to   kb:mvg-3d-gen ;
+               kpred:relates-to   kb:generated-assets-story ;
+               kpred:relates-to   kb:multi-scan-reconstruction ;
+               kpred:decided      "MATT, 2026-11-17 (chat): 'I'm thinking we need to add CAD creation with blender MCP or other open source emthods, into the asset generation example space.' Then (AskUserQuestion) 'build123d + Blender', chosen over Blender alone, the community blender-mcp addon driving a live Blender window, and OpenSCAD." ;
+               kpred:description  "A part is described in the graph as a part kind and named parameters (dimensions, counts, fillets, holes). A deterministic generator turns that description into a build123d script. build123d (Apache-2.0, Python over the OpenCascade kernel) builds the exact solid and writes STEP and STL. The existing headless Blender path (kb:blender-mcp) gives it a material, renders a turntable and exports GLB for the 3D viewer. Every output carries a receipt (parameter hash, tool versions, volume, bounding box, file hashes), so the part can be made again from the graph and checked against its record. A text-to-3D model guesses a shape; this path makes the exact shape that was asked for, which is the point of a CAD part." ;
+               kpred:principle    "EXACT, NOT GUESSED. A CAD part's dimensions are facts in the graph, and the solid is checked against them (bounding box and volume within tolerance). Its origin is labeled 'modelled from parameters', never 'scanned' and never 'generated from a picture'." ;
+               kpred:honest-note  "PLANNED, NOTHING BUILT (2026-11-17). build123d is not installed on this machine; Blender 5.3 is (the kb:blender-mcp scaffold was verified on 5.2). The headless render and GLB export exist in scripts/content/blender-render.ts, but they are not an MCP tool and are not driven from the graph." ;
+               kpred:remaining    "F299.1 part spec, build123d generator and receipt. F299.2 Blender material, turntable render and GLB from the solid. F299.3 a CAD chain in the Generated assets example with its story step. F299.4 the same as a tool Shelly can call (kb:shelly-generation-jobs). F299.5 a CAD part as the subject of the synthetic multi-capture test (F58.9.19.6)." ;
+               kpred:done-test    "From one part spec in the graph: STEP, STL and GLB files exist; the solid's bounding box matches the spec within 0.1 mm; the receipt's hashes match the files; and the part shows in the Generated assets example's 3D viewer with its spec beside it." .
+
 kb:visual-acceptance rdf:type  ktype:Phase ;
                rdfs:label   "Phase 2 — done-when for things that have no exit code" ;
                kpred:part-of      kb:content-orchestration ;
@@ -12586,6 +12603,29 @@ kb:fusion-better-test rdf:type ktype:Phase ;
     kpred:description  "Against each capture's own single-scan receipt. (1) JOINED: one model holds every capture. (2) NOTHING LOST: each capture's registered share is no more than 5 points under its single-scan share. (3) SEES AT LEAST AS WELL: each capture's held-back frames, rendered by the fused splat, score no worse than the same frames rendered by that capture's own splat. (4) SEES FURTHER, measured once on the trial and not on every job: with one capture left out of training, the fused splat still renders that capture's frames, which no single scan can do at all. (5) ONE SCALE: the scale estimates across captures agree within 2%, and the phone's depth is within 5 cm of the layout's points at 2 m." ;
     kpred:honest-note  "The numbers 5 points, 2% and 5 cm are PROPOSED STARTING VALUES, not measurements. The first real run records what it finds and the bars are then set from it." ;
     kpred:done-test    "A script reads the fused receipt and the single-scan receipts and prints the five results with their numbers, exiting non-zero when any fails. It is run on the trial and its output is recorded on kb:multi-scan-reconstruction." .
+
+kb:fusion-synthetic-captures rdf:type ktype:Phase ;
+    rdfs:label "F58.9.19.6 — synthetic captures with known camera poses: multi-scan registration measured against the truth" ;
+    kpred:feature-id   "F58.9.19.6" ;
+    kpred:part-of      kb:multi-scan-reconstruction ;
+    kpred:has-status   "planned" ;
+    kpred:order        6 ;
+    kpred:relates-to   kb:cad-creation ;
+    kpred:relates-to   kb:fusion-better-test ;
+    kpred:decided      "MATT, 2026-11-17 (AskUserQuestion): 'Synthetic now, rings later': run multi-scan first on rendered captures with known poses, then on his separately filmed ring videos once he has them." ;
+    kpred:description  "Headless Blender renders one object as several separate captures, each a frame folder or short video with its own camera path, focal length and lighting, and writes the true camera pose of every frame. scan:multi runs on those captures as if they had been filmed. Because the true poses are known, registration is measured instead of inferred: frames registered per capture; the rotation and position error of each registered camera after a similarity alignment to the truth; and whether the captures joined into one model. Captures can be made deliberately hard (a different zoom, different light, one side only) to find where joining fails." ;
+    kpred:honest-note  "A rendered object is easier than a filmed one: no motion blur, no rolling shutter, and no reflections unless they are modelled. A pass here shows the pooling and joining logic is right. It does not show that real videos will join; the ring videos stay the real test (kpred:decided on kb:multi-scan-reconstruction, 2026-11-12)." ;
+    kpred:done-test    "A script renders at least three captures of one object, runs scan:multi on them, and prints each capture's registered frames plus the median rotation error (degrees) and position error (as a share of the object's size) against the true poses. It exits non-zero when the captures do not join. Its numbers are recorded on kb:multi-scan-reconstruction." .
+
+kb:release-0-2-9 kpred:decided "MATT, 2026-11-17 (chat): 'Lets see how far we can get with demo videos today, and multi-scan 3d reconstruction. I'm thinking we need to add CAD creation with blender MCP or other open source emthods, into the asset generation example space. I think those are more critical than my personal usecases that we have outlined. Multi-camera digital twin security footage centralized events, SDR and LORA, pet watcher sensors, etc.'" ;
+    kpred:headline kb:demo-videos ;
+    kpred:headline kb:multi-scan-reconstruction ;
+    kpred:headline kb:cad-creation ;
+    kpred:has-part kb:multi-scan-reconstruction ;
+    kpred:has-part kb:cad-creation ;
+    kpred:proposed "AGENT (Opus), 2026-11-17, NOT DECIDED: following Matt's priority above, move the personal use cases out of v0.2.9 to a later release: F258 time series and F259 enclosure monitoring (the pet watcher), with their alert, camera-event and radio work. The v0.2.9 burndown would then measure the three headline parts. F258's first slice (PR #646, forecast baselines) can still merge without the release." .
+
+kb:demo-videos kpred:decided "MATT, 2026-11-17 (AskUserQuestion): 'Approve, Hume Shelly V1'. The six narration lines of the generated-assets workflow are approved as written (PR #592), spoken in the account's custom Hume voice 'Shelly V1'. If Hume's text-to-speech API has ended, that is reported and the local Kokoro voice is the fallback." .
 
 # ── E. THE OFFLINE TRUST CONTRACT (proposed as a part of v0.2.9) ─────────────────────────────────
 kb:offline-trust-contract rdf:type ktype:Feature ;
