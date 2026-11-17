@@ -9,13 +9,14 @@
 @prefix p:     <urn:kbase:predicate/> .
 @prefix schema: <https://schema.org/> .
 @prefix story: <urn:reckons:story/> .
+@prefix kmeta: <urn:kbase:meta/> .
 
 ## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.
 
 kb:generated-assets rdf:type ktype:Concept ;
     rdfs:label "Generated on this machine" ;
     rdfs:comment "Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real." ;
-    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt, kb:gen-ornate-music-box-prompt .
+    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt, kb:gen-ornate-music-box-prompt, kb:gen-cad-l-bracket-60-spec .
 
 story:create-generated-asset rdf:type story:Story ;
     rdfs:label "Create an asset with Shelly" ;
@@ -148,3 +149,30 @@ kb:gen-ornate-music-box-splat rdf:type ktype:GaussianSplat ;
     p:generated-gaussians "262144" ;
     rdfs:comment "Invented from one picture by TripoSplat: the far side is a guess." ;
     p:generated-at "2026-10-21" .
+
+## CAD parts (F299, kb:cad-creation): modelled from parameters with build123d, checked against their spec.
+
+kb:gen-cad-l-bracket-60-spec rdf:type ktype:Concept ;
+    rdfs:label "Part spec: l-bracket-60" ;
+    rdfs:comment "A part described as numbers, in millimetres. The solid below was built from exactly these and its measured bounding box (60 x 35 x 40 mm) was checked against them within 0.1 mm." ;
+    p:part-kind "bracket" ;
+    p:param-depth-mm "35" ;
+    p:param-fillet-mm "6" ;
+    p:param-height-mm "40" ;
+    p:param-hole-count "2" ;
+    p:param-hole-diameter-mm "5" ;
+    p:param-thickness-mm "4" ;
+    p:param-width-mm "60" ;
+    p:spec-sha256 "ff435a88293dec8bbdaffad597887011c6eee12251e49cd76f01f065c525ec5d" ;
+    p:has kb:gen-cad-l-bracket-60-part .
+
+kb:gen-cad-l-bracket-60-part rdf:type ktype:Model3D ;
+    rdfs:label "Part: l-bracket-60" ;
+    kmeta:glbModel "/generated/cad-l-bracket-60/part.glb" ;
+    p:photo "/generated/cad-l-bracket-60/turntable-0.png" ;
+    p:made-from kb:gen-cad-l-bracket-60-spec ;
+    p:origin-label "modelled from parameters" ;
+    p:generated-with "build123d 0.13.0 (OpenCascade 8.0.1.1) and Blender 5.3.0" ;
+    p:volume-mm3 "17346.5" ;
+    rdfs:comment "Modelled from parameters: an exact solid, not a scan and not a picture-to-3D guess. STEP and STL files sit beside the GLB at /generated/cad-l-bracket-60/." ;
+    p:generated-at "2026-11-17" .

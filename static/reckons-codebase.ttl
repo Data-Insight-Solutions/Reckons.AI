@@ -24,6 +24,20 @@ code:room-benchmark
     kpred:has-file "scripts/content/scan-synthetic-room.py", "scripts/content/room-bench.ts", "scripts/content/room-bench-lib.ts" ;
     kpred:tested-by "scripts/content/__tests__/room-bench.test.ts" .
 
+code:cad-creation
+    rdf:type ktype:Concept ;
+    rdfs:label "CAD creation (F299)" ;
+    skos:definition "A part spec (kind plus named millimetre parameters) becomes a deterministic build123d script; the runner writes STEP and STL outside the repository with a receipt that checks the measured bounding box against the spec within 0.1 mm; the existing headless Blender path adds a material, turntable frames and GLB; the receipt feeds one CAD chain in the Generated assets example. build123d is an optional local tool in its own virtualenv, never a dependency of the app or CI." ;
+    kpred:has-file "scripts/content/cad/spec.ts" ;
+    kpred:has-file "scripts/content/cad/generate.ts" ;
+    kpred:has-file "scripts/content/cad/receipt.ts" ;
+    kpred:has-file "scripts/content/cad/run.ts" ;
+    kpred:has-file "scripts/content/cad/example-ttl.ts" ;
+    kpred:has-file "scripts/content/cad/specs-example.json" ;
+    kpred:has-file "static/generated/cad-l-bracket-60/cad-receipt.json" ;
+    kpred:tested-by "scripts/content/cad/__tests__/cad.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/blender-render.test.ts" .
+
 code:generation
     rdf:type ktype:Concept ;
     rdfs:label "Local generation story and workspace queue" ;
