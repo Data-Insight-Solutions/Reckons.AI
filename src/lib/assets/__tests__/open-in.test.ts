@@ -26,26 +26,22 @@ describe('open-in resolver', () => {
 
   it('should find GIMP for PNG files', () => {
     const apps = appsFor('test.png');
-    expect(apps).toHaveLength(1);
-    expect(apps[0].id).toBe('gimp');
+    expect(apps.map((a) => a.id)).toEqual(['gimp', 'artcraft']);
   });
 
   it('should find GIMP for JPG files', () => {
     const apps = appsFor('test.jpg');
-    expect(apps).toHaveLength(1);
-    expect(apps[0].id).toBe('gimp');
+    expect(apps.map((a) => a.id)).toEqual(['gimp', 'artcraft']);
   });
 
   it('should find GIMP for JPEG files', () => {
     const apps = appsFor('test.jpeg');
-    expect(apps).toHaveLength(1);
-    expect(apps[0].id).toBe('gimp');
+    expect(apps.map((a) => a.id)).toEqual(['gimp', 'artcraft']);
   });
 
   it('should find Blender for GLB files', () => {
     const apps = appsFor('test.glb');
-    expect(apps).toHaveLength(1);
-    expect(apps[0].id).toBe('blender');
+    expect(apps.map((a) => a.id)).toEqual(['blender', 'artcraft']);
   });
 
   it('should find ArtCraft for MP4 files', () => {
@@ -60,9 +56,14 @@ describe('open-in resolver', () => {
   });
 
   it('should respect user defaults when the app handles the type', () => {
-    const defaults = { svg: 'gimp' }; // User prefers GIMP for SVG
-    const app = defaultAppFor('test.svg', defaults);
-    expect(app?.id).toBe('gimp');
+    const defaults = { png: 'artcraft' }; // ArtCraft handles png, so it wins over GIMP
+    const app = defaultAppFor('test.png', defaults);
+    expect(app?.id).toBe('artcraft');
+  });
+
+  it('ignores a per-person default for an app that does not handle the type', () => {
+    const app = defaultAppFor('test.svg', { svg: 'gimp' }); // GIMP does not open svg
+    expect(app?.id).toBe('inkscape');
   });
 
   it('should fall back to first available app when user default is not available', () => {
@@ -80,6 +81,17 @@ describe('open-in resolver', () => {
   it('should return the first app when no defaults are provided', () => {
     const app = defaultAppFor('test.svg', {});
     expect(app?.id).toBe('inkscape');
+  });
+
+  it('treats a bare name equal to an extension as having none', () => {
+    expect(appsFor('svg')).toEqual([]);
+    expect(appsFor('.svg')).toEqual([]);
+    expect(appsFor('trailing.')).toEqual([]);
+  });
+
+  it('honors the order of a custom app list', () => {
+    const rev = [...KNOWN_APPS].reverse();
+    expect(appsFor('a.png', rev).map((a) => a.id)).toEqual(['artcraft', 'gimp']);
   });
 
   it('should handle paths with spaces and quotes correctly in command generation', () => {

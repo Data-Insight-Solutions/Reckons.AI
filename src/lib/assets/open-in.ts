@@ -38,6 +38,13 @@ export const KNOWN_APPS: OpenInApp[] = [
   }
 ];
 
+/** Lowercase extension without the dot; undefined when the name has none. */
+function extensionOf(fileName: string): string | undefined {
+  const dot = fileName.lastIndexOf('.');
+  if (dot <= 0 || dot === fileName.length - 1) return undefined;
+  return fileName.slice(dot + 1).toLowerCase();
+}
+
 /**
  * Find all applications that can handle a given file name
  * @param fileName - The name of the file to check
@@ -45,15 +52,10 @@ export const KNOWN_APPS: OpenInApp[] = [
  * @returns Array of apps that can handle the file extension, or empty array if none
  */
 export function appsFor(fileName: string, apps: OpenInApp[] = KNOWN_APPS): OpenInApp[] {
-  const extension = fileName.split('.').pop()?.toLowerCase();
-
-  if (!extension) {
-    return [];
-  }
-
-  // Return only the first app that handles this extension (in KNOWN_APPS order)
-  const matchingApps = apps.filter(app => app.handles.includes(extension));
-  return matchingApps.length > 0 ? [matchingApps[0]] : [];
+  const extension = extensionOf(fileName);
+  if (!extension) return [];
+  // Every app that handles the extension, in the order of `apps`.
+  return apps.filter((app) => app.handles.includes(extension));
 }
 
 /**
@@ -68,7 +70,7 @@ export function defaultAppFor(
   defaults: Record<string, string>,
   apps: OpenInApp[] = KNOWN_APPS
 ): OpenInApp | undefined {
-  const extension = fileName.split('.').pop()?.toLowerCase();
+  const extension = extensionOf(fileName);
 
   if (!extension) {
     return undefined;
