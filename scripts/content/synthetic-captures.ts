@@ -7,7 +7,10 @@
  *        [--samples 24] [--mesh model.glb --object-size 2.6] [--run-dir <dir>] [--no-render]
  *
  * Output goes OUTSIDE the repo (default ~/.local/state/reckons/synthetic-captures/<run>/). With --no-render and an existing
- * --run-dir the renders are reused. Exit 0 only when every capture joined one model; the numbers are printed either way.
+ * --run-dir the renders are reused. Exit 0 only when every capture joined one model AND each capture's median rotation error is at most MAX_MEDIAN_ROTATION_DEG (2 deg)
+ * and median position error at most MAX_MEDIAN_POSITION_SHARE (5% of object size). Those two bars are PROPOSED STARTING VALUES from one good
+ * run, not measured limits. Joining alone is not enough: a first attempt registered every frame and was still 31 degrees out.
+ * The numbers are printed either way.
  * HONEST LIMIT: a rendered object has no motion blur, rolling shutter or sensor noise, so this is EASIER than filmed
  * video. It checks that pooling and joining are right; the ring videos remain the real test.
  */
@@ -16,7 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { scanMulti } from './scan-multi.js';
-import { formatMeasurement, measure, parseArgs, planCaptures, type RegisteredCamera, type TruePoses } from './synthetic-captures-lib.js';
+import { formatMeasurement, judgeRun, MAX_MEDIAN_POSITION_SHARE, MAX_MEDIAN_ROTATION_DEG, measure, parseArgs, planCaptures, type RegisteredCamera, type TruePoses } from './synthetic-captures-lib.js';
 
 const HERE = import.meta.dirname;
 const GEN = process.env.RECKONS_GEN_HOME ?? join(homedir(), '.local/share/reckons/gen');
@@ -77,7 +80,10 @@ export async function syntheticCaptures(argv: string[]): Promise<number> {
   writeFileSync(join(run, 'measurement.json'), JSON.stringify(m, null, 2) + '\n');
   console.log(`\nMEASURED ${new Date().toISOString().slice(0, 10)}, rendered captures with known poses (easier than filmed video):`);
   console.log(formatMeasurement(m));
-  return m.allJoined && m.failures.length === 0 ? 0 : 1;
+  const problems = judgeRun(m);
+  for (const x of problems) console.log(`  FAIL ${x}`);
+  console.log(problems.length ? 'RESULT: FAIL' : `RESULT: pass (median rotation <= ${MAX_MEDIAN_ROTATION_DEG} deg, median position <= ${MAX_MEDIAN_POSITION_SHARE * 100}% of object size)`);
+  return problems.length ? 1 : 0;
 }
 
 if (process.argv[1] && /synthetic-captures\.ts$/.test(process.argv[1])) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { frameName } from '../scan-multi-lib.js';
-import { measure, mulMM, parseArgs, planCaptures, rng, rotationErrorDeg, umeyama, type Mat3, type RegisteredCamera, type TruePoses, type Vec3 } from '../synthetic-captures-lib.js';
+import { judgeRun, measure, mulMM, parseArgs, planCaptures, rng, rotationErrorDeg, umeyama, type Mat3, type RegisteredCamera, type TruePoses, type Vec3 } from '../synthetic-captures-lib.js';
 
 const rotZ = (deg: number): Mat3 => { const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t); return [[c, -s, 0], [s, c, 0], [0, 0, 1]]; };
 const rotX = (deg: number): Mat3 => { const t = (deg * Math.PI) / 180, c = Math.cos(t), s = Math.sin(t); return [[1, 0, 0], [0, c, -s], [0, s, c]]; };
@@ -96,4 +96,21 @@ describe('planCaptures and parseArgs', () => {
     expect(() => parseArgs(['--captures', '1'])).toThrow(/at least 2/);
     expect(() => parseArgs(['--wat'])).toThrow(/unknown/);
   });
+});
+
+describe('judgeRun', () => {
+  const cap = (name: string, rot: number | null, pos: number | null, joined = true) => ({ name, rendered: 64, registered: joined ? 64 : 0, joined, medianRotationDeg: rot, maxRotationDeg: rot, medianPositionShare: pos, maxPositionShare: pos });
+  const run = (captures: ReturnType<typeof cap>[], allJoined = true, failures: string[] = []) => ({ captures, modelsFound: 1, allJoined, alignedCameras: 100, scaleToTruth: 1, failures });
+  it('passes numbers shaped like the good run', () => {
+    expect(judgeRun(run([cap('a', 0.32, 0.0036), cap('b', 0.31, 0.0054), cap('c', 0.32, 0.0079)]))).toEqual([]);
+  });
+  it('fails numbers shaped like the first attempt: every capture joined, geometry wrong', () => {
+    const p = judgeRun(run([cap('a', 30.9, 0.5855), cap('b', 31.3, 0.3886), cap('c', 113.2, 1.154)]));
+    expect(p.length).toBeGreaterThanOrEqual(3);
+    expect(p.join(' ')).toMatch(/rotation error 30\.90 deg is over 2/);
+  });
+  it('fails a missing capture', () => {
+    expect(judgeRun(run([cap('a', 0.3, 0.004), cap('b', null, null, false)], false, ['capture "b" did not join the model']))[0]).toMatch(/not every capture joined/);
+  });
+  it('fails on position alone', () => expect(judgeRun(run([cap('a', 0.3, 0.06), cap('b', 0.3, 0.01)])).join()).toMatch(/position error 6\.0%/));
 });

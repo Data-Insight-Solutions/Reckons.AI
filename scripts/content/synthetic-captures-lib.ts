@@ -225,6 +225,27 @@ export function measure(truth: TruePoses, cameras: RegisteredCamera[], models: s
   return { captures: out, modelsFound: verdict.modelsFound, allJoined: verdict.singleModel, alignedCameras: pairs.length, scaleToTruth: sim ? sim.scale : null, failures };
 }
 
+/**
+ * PROPOSED STARTING BARS from one good run (median rotation 0.3 deg, median position under 1% of object size), NOT measured
+ * limits. Registering every frame is not registering them correctly: a run whose captures all joined with 31 degree rotation
+ * errors must still fail. The bars are to be set from more runs, as F58.9.19.5 does.
+ */
+export const MAX_MEDIAN_ROTATION_DEG = 2;
+export const MAX_MEDIAN_POSITION_SHARE = 0.05;
+
+/** Why the run fails, empty when it passes: not joined, an alignment failure, or any capture's median error over the bars. */
+export function judgeRun(m: Measurement): string[] {
+  const p: string[] = [];
+  if (!m.allJoined) p.push('not every capture joined one model');
+  p.push(...m.failures);
+  for (const c of m.captures) {
+    if (c.medianRotationDeg === null || c.medianPositionShare === null) { if (c.joined) p.push(`capture ${c.name} has no measurable cameras`); continue; }
+    if (c.medianRotationDeg > MAX_MEDIAN_ROTATION_DEG) p.push(`capture ${c.name}: median rotation error ${c.medianRotationDeg.toFixed(2)} deg is over ${MAX_MEDIAN_ROTATION_DEG}`);
+    if (c.medianPositionShare > MAX_MEDIAN_POSITION_SHARE) p.push(`capture ${c.name}: median position error ${(c.medianPositionShare * 100).toFixed(1)}% of object size is over ${MAX_MEDIAN_POSITION_SHARE * 100}%`);
+  }
+  return [...new Set(p)];
+}
+
 export function formatMeasurement(m: Measurement): string {
   const f = (x: number | null, d: number, unit = '') => (x === null ? 'n/a' : `${x.toFixed(d)}${unit}`);
   const lines = m.captures.map((c) => `  ${c.name}: registered ${c.registered}/${c.rendered}${c.joined ? '' : '  DID NOT JOIN'}; rotation median ${f(c.medianRotationDeg, 3, ' deg')} max ${f(c.maxRotationDeg, 3, ' deg')}; position median ${f(c.medianPositionShare === null ? null : c.medianPositionShare * 100, 2, '%')} of object size, max ${f(c.maxPositionShare === null ? null : c.maxPositionShare * 100, 2, '%')}`);
