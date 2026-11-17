@@ -12439,6 +12439,30 @@ kb:demo-tts-bench rdf:type ktype:Phase ;
     kpred:description  "Install the three candidates outside the repository (the local stack, upgraded by Claude per the opposite-side rule), add each as a provider-qualified voice (qwen3tts:<voice description>, chatterbox:<ref>, vibevoice:<speaker>) to the narration synthesizer, and render the generated-assets lines with each. Matt listens to them beside the Hume clips. Each records license, time per line, peak memory and GPU." ;
     kpred:done-test    "for each candidate: the six main lines and five lead-ins exist as clips under the cache with the provider-qualified key; a comparison page or folder plays them side by side with Hume's; license and commercial terms recorded from the model's own license file; Hume Audio Decisions scores recorded for every clip beside Matt's ranking (F275.21); Matt's ranking recorded on kb:demo-narration-provider." .
 
+kb:docs-page-videos rdf:type ktype:Phase ;
+    rdfs:label "F275.22 — a narrated video on the documentation pages, from the test workflows" ;
+    kpred:feature-id   "F275.22" ;
+    kpred:part-of      kb:demo-videos ;
+    kpred:has-status   "planned" ;
+    kpred:depends-on   kb:demo-narration-provider ;
+    kpred:decided      "MATT, 2026-11-17 (chat): 'We should make a bunch of videos for different documentation pages.' Then (AskUserQuestion): first batch '2 existing + 4 new' (chosen over only the two existing workflows and over a video for every feature page), hosted 'In the site's static files' (chosen over a Cloudflare R2 bucket and over unlisted YouTube)." ;
+    kpred:description  "A documentation video is a test workflow with a narration line per step, spoken by Kokoro (kb:demo-narration-provider), rendered by npm run demo:render. It plays at the top of the workflow's own page in the Testing section and on the feature pages that workflow documents, with captions from the same lines. The files live in static/video/demos/ and deploy with the site, so every video is permanent public git history: each is compressed for the web and must stay under 10 MB (Cloudflare Pages refuses files over 25 MiB). Every script reaches Matt as audio on a listening page before its video is rendered (his 2026-11-11 standard)." ;
+    kpred:principle    "A docs video shows the real app doing the thing the page describes, driven by the same test that checks it, so a video cannot show a feature that does not work. Narration follows kb:docs-audience: plain words for a first-time reader, a storyline across the steps, and never Matt's own statements read out verbatim." ;
+    kpred:done-test    "Six videos (the two existing workflows plus four new ones) each play on their pages in the built site, each under 10 MB with captions, each script approved by Matt before rendering, and the generated pages come from the graph (no hand-edited content/)." .
+
+kb:docs-video-embed rdf:type ktype:Phase ;
+    rdfs:label "F275.22.1 — the page shows the video: kpred:video on a workflow, a size budget, captions" ;
+    kpred:feature-id "F275.22.1" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:description "scripts/docs-pages.ts renders <video controls preload=metadata> with a poster frame and a captions <track> for a ktype:TestWorkflow that carries kpred:video, on its own page and on each feature page it documents. demo:render gains a docs output (H.264, web-compressed, faststart) and refuses to write one over 10 MB." .
+kb:docs-video-existing rdf:type ktype:Phase ;
+    rdfs:label "F275.22.2 — narrate and render the two existing workflows: build-and-change, and the README path" ;
+    kpred:feature-id "F275.22.2" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 2 ;
+    kpred:description "Draft one narration line per step for Workflow-BuildChange (6 steps) and Workflow-ReadmePath (5 steps), synthesize them with Kokoro (demo:render --narrate-only), and send them to Matt on a listening page. Render each video once he has approved its lines." .
+kb:docs-video-new-workflows rdf:type ktype:Phase ;
+    rdfs:label "F275.22.3 — four new test workflows for the pages readers reach next: Reckoning, Compare, Guided walks, moving between spaces" ;
+    kpred:feature-id "F275.22.3" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 3 ;
+    kpred:description "Each is a ktype:TestWorkflow in static/docs-testing.ttl with ordered steps and screenshots, and an e2e test that names every step (test-workflow-check enforces both), on synthetic data only. Then each follows F275.22.2: draft lines, Kokoro audio, Matt's approval, render." .
+
 kb:demo-narration-provider kpred:decided "MATT, 2026-11-17 (chat, after his blind ranking): 'Yeah Kokoro should work well, I think I must've been listening to a different voice or different settings in the past.' Kokoro af_heart narrates new and changed demo lines. A workflow's own kpred:narrator still wins, so the generated-assets demo keeps its cached Hume 'Shelly V1' clips." ;
     kpred:has-status "functional" ;
     kpred:progress "2026-11-17: done-test met. Clips from three candidates beside Hume's (F275.8.3). Licenses recorded: Kokoro is Apache-2.0 for code and weights (kokoro-js 1.2.1; hexgrad/Kokoro-82M and its ONNX build); TADA is on kb:gen-tada. Matt's choice is above. scripts/demo/render.ts synthesizes kokoro:<voice> (parseVoice in narration-plan.ts names the known providers), and the default narrator is kokoro:af_heart: `npm run demo:render -- --workflow=generated-assets --voice=kokoro:af_heart --narrate-only` synthesized all 11 lines into the clip cache." .
