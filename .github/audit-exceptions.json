@@ -36,6 +36,15 @@
       "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Pin 2.70.3 + 2 more exceptions', chosen over skipping to SvelteKit 3 (#649) and over keeping 2.70.4 and fixing the tests.",
       "expires": "2026-12-15",
       "removeWhen": "@sveltejs/kit is on 2.70.4+ with the e2e suite green, or on 3.2.0+"
+    },
+    {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "severity": "high",
+      "reason": "ReDoS when an attacker supplies a glob such as +(*). picomatch is a development-only dependency in the root and mcp-server lockfiles (through vite, vitest, svelte-check, tinyglobby and the PWA build tooling), it is not in the shipped app, our code never calls it, and the only patterns it parses come from our own build and test configuration (checked 2026-11-17). No patched version exists: 4.0.7, the latest, is affected.",
+      "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Dated exception until a fix', chosen over no longer blocking on development-only dependencies and over waiting for a picomatch fix.",
+      "expires": "2026-12-15",
+      "removeWhen": "picomatch publishes a fixed version and the lockfiles move to it"
     }
   ]
 }
