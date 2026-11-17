@@ -3,6 +3,58 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+
+Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
+
+**Waiting on Matt:**
+1. Review the seven docs-video scripts on the private "Docs Video Scripts" page. Its link is in this session. The page shows each step's screenshot, its Kokoro line and Play all; verdicts save to the page's `scripts` collection, read back with ArtifactData. Nothing renders until he approves a script. Matt (2026-11-17): drafts are first passes and he will rework the flow ("it can be difficult to automatically generate a compelling story").
+2. The service-worker finding, queued as a high drift-warning on `kb:offline-first`. No page registers `/sw.js`, and registered by hand it fails to install on dev (kit 2.70.3) and on #649 (kit 3), so the PWA offline mode does not work today. Whether offline page loading is a promise the app makes is his call.
+3. Rights to clone the Hume "Shelly V1" voice (`kb:narration-kokoro-vs-tada` honest-note). This is moot for now, because Kokoro won.
+
+**Held PRs, in merge order:** #592 (F275, rendered generated-assets video; lead-ins kept for now) → #652 (Kokoro provider and narrator, F275.8 functional, the blind ranking, the F275.22 plan) → #655 (docs page `<video>` embed with a 10 MB cap; drafts for build-change and readme-path) → #656 (Guided walk and Between spaces workflows) and #657 (Reckoning and Compare workflows). #656 and #657 change the same term-ratchet baseline lines, so the second to merge adds both raises. Then #649 (SvelteKit 3.2.1, e2e green): rebase it and remove all five audit exceptions, which kit 3 fixes, except picomatch. The picomatch one stays until picomatch ships a fix.
+
+**Merged to dev today:** #642, #643 (the deputy's blocked branches), #644, #645, #646 (deputy drafts after Sonnet review), #647 and #654 (named, dated audit exceptions, all expiring 2026-12-15; Matt chose each), #648 (plan), #650 (F299 CAD, scaffolded), #651 (F58.9.19.6 synthetic captures, functional; exits 1 on wrong geometry, not only on a failed join).
+
+**Measured today:** v0.2.9 burndown, 0 of 31 parts functional (headline: F275 planned on dev, F58.9.19 and F299 scaffolded). Narration benchmark: Matt's blind ranking put Kokoro af_heart first on 7 of 11 lines (TADA-3B: 0.27x real time, 15.7 GB VRAM). His first ranking was lost to a bug in the page Opus built. The page was fixed, tested against an echoing stub store, and he ranked again. Hume's TTS and EVI APIs are gone (404); the new `@humeai/audio-decisions` SDK scores audio but does not synthesize it, and needs a key from the new Hume Platform.
+
+**Not done:** no docs video rendered; the CAD part has not been looked at in the app's 3D viewer; multi-scan has not been tried on separately filmed real videos; dev CI on the last merges was still running when this was written.
+
+## 2026-11-16 (deputy, local qwen3.8-160k) — START HERE: handoff + two new asks
+
+**What I did this window (verified against the file, not the recap):**
+- The MCP review queue is `mcp-workspace/kbs/<kb>/pending.jsonl` — that is where kb_add_note writes
+  (NOT reckons-workspace/knowledge.pending.jsonl, a different app-side store). I first grepped the
+  wrong file and nearly re-reported "lost" notes; all four new notes ARE present in
+  `mcp-workspace/kbs/architecture/pending.jsonl` (device-capability-gating, a private-space note,
+  own-trained-models, demo-videos); the shelly-job-queue correction + local-orchestration build-map are
+  in the queue too. LESSON: verify against the store the tool actually writes to, not the one you assume.
+- Captured Matt's new "This device" asks as a grounded proposal — `device-capability-gating` (part-of
+  `device-space`): environmental settings leap to the This-device space; its device-only status is what
+  makes it diff-detectable against all spaces; a Generation space should clearly BLOCK + explain a
+  regenerate whose install/hardware requirement This device does not meet.
+- Flagged a program in one of Matt's private spaces (NOT in my KBs; named there, not here) as time-sensitive — due
+  dates coming soon; I cannot generate from here (no access to the space + the pipeline is the
+  local-stack lane).
+
+**CORRECTION I owe (so it doesn't repeat):** I had queued a note calling `shelly-job-queue` "not built".
+WRONG — it is `functional` (F166.1.2, measured 2026-10-23). A high-priority correction is in the queue
+telling Opus to reject the bad note. Root cause: I asserted a feature status from memory. LESSON:
+**ground every status claim against the graph before asserting it, and verify your own prior "queued"
+claims against the pending store — my recap was wrong about 2 of 4 notes having landed.**
+
+**Build-map (recommended order, on `local-orchestration`):** F286.4 worker-outlives-session (reproduced
+failure 2026-11-10; script-verified done-test on record) → F81 web-runtime (a Web Worker drains the
+in-graph queue — the real "within the app" gap) → F166.1.2 `.remaining` (a REAL model emitting a valid
+`queue_jobs` block; only mock tested today) → F64 (speculative, gated on F61). LANE: F286.4 + the F81
+worker/runner are Opus/Matt's builds (opposite-side rule); my part is the grounded map + the in-app proposals.
+
+**Honest limits of this session:** I cannot push / open PRs / merge (no GitHub credential) — so a local
+Opus session reads this HANDOFF.md from the working tree; commit it as you see fit. I cannot see the
+private space named there. I cannot run the generation pipeline (local-stack lane). The next session
+(Opus) is the final triage authority on the provisional review verdicts (one batch settled this window:
+5 accept / 5 reject / 0 defer, all reversible).
+
 ## 2026-11-14 (night) — START HERE: overnight jobs scheduled and draining; two branches still unpushed
 
 **Matt: "I'm going to bed, schedule and monitor jobs."** Done as of 2026-11-14 ~01:30 UTC:
