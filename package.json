@@ -86,6 +86,7 @@
     "splat:compress": "npx tsx scripts/content/splat-compress.ts",
     "print:sheet": "npx tsx scripts/content/print-sheet.ts",
     "scan:multi": "npx tsx scripts/content/scan-multi.ts",
+    "scan:synthetic": "npx tsx scripts/content/synthetic-captures.ts",
     "scan:keyframes": "npx tsx scripts/content/select-keyframes.ts",
     "scan:quality": "npx tsx scripts/content/scan-quality.ts",
     "bench:room": "npx tsx scripts/content/room-bench.ts",

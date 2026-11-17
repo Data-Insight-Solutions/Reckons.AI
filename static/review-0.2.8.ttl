@@ -230,5 +230,5 @@ rev:gap-f183-3 rdf:type ktype:Concept ;
 
 rev:gap-f58-9-19 rdf:type ktype:Concept ;
     rdfs:label "F58.9.19 F58.9.19 — multi-scan reconstruction: a splat of one place from several captures of it" ;
-    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-multi-lib.test.ts)." .
+    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-multi-lib.test.ts, scripts/content/__tests__/synthetic-captures-lib.test.ts)." .
 
