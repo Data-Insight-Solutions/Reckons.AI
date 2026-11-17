@@ -76,7 +76,6 @@ code:repo  rdf:type     ktype:Concept ;
            skos:definition "Root of the Reckons.AI monorepo. 721 git-tracked files." ;
            kpred:has-file "package.json" ;
            kpred:has-file "vite.config.ts" ;
-           kpred:has-file "svelte.config.js" ;
            kpred:has-file "tsconfig.json" ;
            kpred:has-file "vitest.config.ts" ;
            kpred:has-file "CLAUDE.md" ;
