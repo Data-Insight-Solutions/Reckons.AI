@@ -1,7 +1,7 @@
 ---
 title: "Build a space from a note, then change it with another"
 slug: "workflow-build-change"
-order: 1007
+order: 1009
 section: "Testing"
 parent: "test-workflows"
 template: doc

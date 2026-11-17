@@ -847,6 +847,213 @@ test:Workflow-BuildChange-Step6
     skos:definition     "Open the graph and select the garden. Its facts are listed under the note each came from: 16 raised beds and Marco Ruiz as coordinator from the meeting, the rain barrel from the first note. The replaced values are kept on record but are no longer part of the space." ;
     kpred:assertion     "The space holds the new values and keeps the old ones as replaced; the garden's panel lists 16 raised beds under the meeting note and no 12." .
 
+test:Workflow-Reckoning
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Ask for a reckoning on a space" ;
+    skos:definition     """A reckoning is the question you put to what you have already confirmed. You say where you are and where you want to get to, check what it will draw on, and a proposal comes back that you weigh yourself. It is the page the Learn section calls a reckoning, run start to finish on the Getting started space.
+
+### What is built, and what is not claimed
+
+The proposal card says how many confirmed facts the reckoning is based on, and the reckoning is given only your confirmed facts. This workflow does not show a proposal listing, option by option, the exact facts it used: the page describes that as the intent, and the card today shows the count only.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Every step runs on the **Getting started** sample, in which two people, Alex and Jordan, plan a camping weekend. Everything in it is invented.
+
+**What is scripted.** The test uses no language model. The reckoning in the last step is a fixed reply written in advance to read like a real one, so the pictures show what each screen looks like and that it responds. They do not show how good a real model's proposal would be, which is measured separately.""" ;
+    kpred:workflow-id   "reckoning" ;
+    kpred:narration-status "draft" ;
+    kpred:narration-storyline "A reckoning is a question you put to what you have already confirmed: you say where you are, then where you want to get to, see what it may draw on, and receive a proposal that you weigh yourself." ;
+    kpred:relates-to    <urn:reckons:feature/Reckoning> ;
+    kpred:test-file     "tests/e2e/workflow-reckoning.test.ts" ;
+    kpred:tested-by     "tests/e2e/workflow-reckoning.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-Reckoning-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Open the Reckon tab on a space with facts" ;
+    kpred:part-of       test:Workflow-Reckoning ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "open-reckon" ;
+    kpred:narration     "A reckoning starts from a space that already holds confirmed facts. Open the Reckon tab, and the first question is waiting." ;
+    kpred:short-label   "Open the Reckon tab" ;
+    kpred:box-label     "Situation" ;
+    kpred:box-target    "the Situation box, the first of the questions" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning/01-open-reckon.webp" ;
+    kpred:page-name     "the Reckon tab" ;
+    skos:definition     "Open the Reckon tab while you are working in a space that holds confirmed facts. The page asks for a situation first. A space with no facts shows an invitation to add a source instead, because the proposal draws only on facts you have confirmed." ;
+    kpred:assertion     "On the Getting started space the Reckon tab shows the Situation box and no invitation to add a source first." .
+
+test:Workflow-Reckoning-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Describe the situation" ;
+    kpred:part-of       test:Workflow-Reckoning ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "situation" ;
+    kpred:narration     "First, say where you are. Write the situation in plain sentences, the way you would explain it to a friend." ;
+    kpred:short-label   "Describe the situation" ;
+    kpred:box-label     "Where you are now" ;
+    kpred:box-target    "the Situation box with the made-up camping situation typed in" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning/02-situation.webp" ;
+    kpred:page-name     "the Reckon tab" ;
+    skos:definition     "Type where you are now and what the context is. Next stays disabled until there are at least ten characters, so a one-word answer cannot be sent." ;
+    kpred:assertion     "Next is disabled for an empty situation and becomes enabled once the situation is typed in." .
+
+test:Workflow-Reckoning-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Say what you want to reach" ;
+    kpred:part-of       test:Workflow-Reckoning ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "target" ;
+    kpred:narration     "Then say where you want to get to. That target is the outcome the proposal will aim for." ;
+    kpred:short-label   "Say what you want" ;
+    kpred:box-label     "Where you want to get to" ;
+    kpred:box-target    "the Target box with the made-up goal typed in" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning/03-target.webp" ;
+    kpred:page-name     "the Reckon tab" ;
+    skos:definition     "Press Next, then describe the outcome you are trying to reach. Situation and target are the two halves of the question: where you are, and where you want to be." ;
+    kpred:assertion     "Pressing Next reveals the Target box, and Next is enabled once the target is typed in." .
+
+test:Workflow-Reckoning-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Check what the reckoning will use" ;
+    kpred:part-of       test:Workflow-Reckoning ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "check-inputs" ;
+    kpred:narration     "Before anything runs, you see both answers again, and how many confirmed facts the reckoning is allowed to use." ;
+    kpred:short-label   "Check the inputs" ;
+    kpred:box-label     "Confirm" ;
+    kpred:box-target    "the Confirm card, which repeats the situation and target and counts the facts it will use" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning/04-check-inputs.webp" ;
+    kpred:page-name     "the Reckon tab" ;
+    skos:definition     "Press Next again. The Confirm card repeats your situation and target and says how many facts are in your space. The proposal draws only on those confirmed facts. You can go back and edit, or press the button to reckon." ;
+    kpred:assertion     "The Confirm card shows the typed situation and target and a count of the facts in the space, and offers the reckon button." .
+
+test:Workflow-Reckoning-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Read the proposal" ;
+    kpred:part-of       test:Workflow-Reckoning ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "proposal" ;
+    kpred:narration     "Back comes a proposal, built from those facts. It only suggests; weighing it and deciding stay with you." ;
+    kpred:short-label   "Read the proposal" ;
+    kpred:box-label     "Proposal" ;
+    kpred:box-target    "the proposal card, which says how many verified facts it is based on" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning/05-proposal.webp" ;
+    kpred:page-name     "the Reckon tab" ;
+    skos:definition     "Press reckon. A proposal card comes back with an overview, options and a recommendation, and says how many verified facts it is based on. It is a proposal to weigh, not an answer to trust, and nothing is changed in your space. Show technical details and Refine inputs are offered below it." ;
+    kpred:assertion     "A proposal card appears saying how many verified facts it is based on. The reply in this run is scripted; the test does not judge a real model's wording. The card does not list which facts each option used." .
+
+test:Workflow-Compare
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Compare a new note against your space before keeping it" ;
+    skos:definition     """New claims never go straight into your space. After a note is read, Compare lays its claims next to what you already hold, labels each one, and lets you keep all of them, only the new ones, or none. It is the page the Features section describes as Compare, run on the Getting started space.
+
+### What is built, and what is not claimed
+
+This workflow compares a note's incoming claims against the facts already in one space. Putting two whole spaces side by side, and the model-written summary of the differences, are not shown: the summary needs a language model and this test uses none.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Every step runs on the **Getting started** sample, in which two people, Alex and Jordan, plan a camping weekend. The note typed in step 1 is made up.
+
+**What is scripted.** The test uses no language model. A stand-in reader returns placeholder claims for the note, so the labels in the pictures show how Compare sorts claims, not how good a real reader's claims are. All three placeholder claims come out as new, so no picture shows a duplicate, reinforcing or conflicting claim; those kinds are exercised by the diff engine's own unit tests.""" ;
+    kpred:workflow-id   "compare" ;
+    kpred:narration-status "draft" ;
+    kpred:narration-storyline "Nothing a note proposes goes straight into your space: Compare first sets the new claims against what you already hold, labels each one, and lets you keep only what you choose." ;
+    kpred:relates-to    <urn:reckons:feature/Compare> ;
+    kpred:relates-to    kb:diff-engine ;
+    kpred:test-file     "tests/e2e/workflow-compare.test.ts" ;
+    kpred:tested-by     "tests/e2e/workflow-compare.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-Compare-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Add a new note" ;
+    kpred:part-of       test:Workflow-Compare ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "add-note" ;
+    kpred:narration     "Say you have a new note. Paste it in and press Extract facts. It is read, but nothing is kept yet." ;
+    kpred:short-label   "Add a new note" ;
+    kpred:box-label     "Extract facts" ;
+    kpred:box-target    "the Extract facts button, under the note's title and text" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/compare/01-add-note.webp" ;
+    kpred:page-name     "the Add tab" ;
+    skos:definition     "On the Add tab, give a made-up note a title and a few sentences and press Extract facts. The claims it proposes are held as pending, outside your space, and the page opens Compare for them." ;
+    kpred:assertion     "Pressing Extract facts leaves the Add tab and opens Compare." .
+
+test:Workflow-Compare-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the new claims against your space" ;
+    kpred:part-of       test:Workflow-Compare ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "see-comparison" ;
+    kpred:narration     "Compare opens with the note's claims set against your space, and a count of how many are new." ;
+    kpred:short-label   "See the comparison" ;
+    kpred:box-label     "How the claims relate" ;
+    kpred:box-target    "the row of counts under the heading, one for each kind of claim" ;
+    kpred:page          "/compare" ;
+    kpred:screenshot    "/workflows/compare/02-see-comparison.webp" ;
+    kpred:page-name     "the Compare page" ;
+    skos:definition     "The page is headed incoming vs. graph and names the note. It draws the new claims and the facts they touch, and counts the claims by kind: new, duplicate, reinforcing, conflicting or refining." ;
+    kpred:assertion     "The Compare page names the note and shows at least one count." .
+
+test:Workflow-Compare-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Read each claim's label" ;
+    kpred:part-of       test:Workflow-Compare ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "read-labels" ;
+    kpred:narration     "Below, each claim carries a label. Here all three are new, so your space holds nothing like them yet." ;
+    kpred:short-label   "Read the labels" ;
+    kpred:box-label     "One claim, one label" ;
+    kpred:box-target    "the list of claims, each with its kind and accept and reject buttons" ;
+    kpred:page          "/compare" ;
+    kpred:screenshot    "/workflows/compare/03-read-labels.webp" ;
+    kpred:page-name     "the Compare page" ;
+    skos:definition     "Each incoming claim is listed with its kind. A conflicting or refining claim also shows the value your space already holds, so you can see what it would change before deciding." ;
+    kpred:assertion     "Every pending claim is listed with a kind and its own accept and reject buttons." .
+
+test:Workflow-Compare-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Keep only what you choose" ;
+    kpred:part-of       test:Workflow-Compare ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "choose" ;
+    kpred:narration     "Now choose. Keep everything, keep only the new claims, or drop the repeats. Until you do, your space stays unchanged." ;
+    kpred:short-label   "Choose what to keep" ;
+    kpred:box-label     "Your choice" ;
+    kpred:box-target    "the row of buttons: accept all, accept new only, drop duplicates and reject all" ;
+    kpred:page          "/compare" ;
+    kpred:screenshot    "/workflows/compare/04-choose.webp" ;
+    kpred:page-name     "the Compare page" ;
+    skos:definition     "Accept all, accept only the new claims, drop the duplicates, or reject all. You can also decide one claim at a time. The test presses accept all." ;
+    kpred:assertion     "Pressing accept all settles every pending claim, and the page then says no pending claims remain for the note." .
+
+test:Workflow-Compare-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the accepted claims in your space" ;
+    kpred:part-of       test:Workflow-Compare ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "see-in-space" ;
+    kpred:narration     "The claims you accepted are now facts in your space, and its fact count has gone up." ;
+    kpred:short-label   "See it in your space" ;
+    kpred:box-label     "Your space" ;
+    kpred:box-target    "the card marked current, which shows how many facts it holds" ;
+    kpred:page          "/kb" ;
+    kpred:screenshot    "/workflows/compare/05-see-in-space.webp" ;
+    kpred:page-name     "the Spaces tab" ;
+    skos:definition     "Open Spaces. The space marked current holds more facts than before, because the claims you accepted became facts. Rejected or unsettled claims stay out." ;
+    kpred:assertion     "The current space holds more facts than it did before the claims were accepted." .
+
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Add a source, review it, see it in a space, ask for a reckoning" ;

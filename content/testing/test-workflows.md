@@ -29,7 +29,7 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.
 
-<p class="derived">It has 4 parts below.</p>
+<p class="derived">It has 6 parts below.</p>
 
 ## In this section
 
@@ -41,9 +41,17 @@ Each release gets a space of its own for the person who approves it.
 
 The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled.
 
+**[Ask for a reckoning on a space](../testing/workflow-reckoning)**
+
+A reckoning is the question you put to what you have already confirmed.
+
 **[Build a space from a note, then change it with another](../testing/workflow-build-change)**
 
 Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change.
+
+**[Compare a new note against your space before keeping it](../testing/workflow-compare)**
+
+New claims never go straight into your space.
 
 **[Make pictures, clips and 3D splats on your own machine, and see them in a space](../testing/workflow-generated-assets)**
 
