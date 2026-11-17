@@ -94,11 +94,11 @@ describe('open-in resolver', () => {
     expect(appsFor('a.png', rev).map((a) => a.id)).toEqual(['artcraft', 'gimp']);
   });
 
-  it('should handle paths with spaces and quotes correctly in command generation', () => {
+  it('should handle paths with blanks and quotes correctly in command generation', () => {
     const app = KNOWN_APPS.find(a => a.id === 'inkscape')!;
-    const command = openInCommand(app, '/path/with spaces/and "quotes".svg');
+    const command = openInCommand(app, '/path/with blank/and "quotes".svg');
     expect(command.command).toBe('inkscape');
-    expect(command.args).toEqual(['/path/with spaces/and "quotes".svg']);
+    expect(command.args).toEqual(['/path/with blank/and "quotes".svg']);
   });
 
   it('should return undefined for files with no extension when checking defaults', () => {
