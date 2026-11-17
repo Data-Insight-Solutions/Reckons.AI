@@ -877,6 +877,7 @@ test:Workflow-Reckoning-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "open-reckon" ;
     kpred:narration     "A reckoning starts from a space that already holds confirmed facts. Open the Reckon tab, and the first question is waiting." ;
+    kpred:narration-lead "Before you decide anything, what do you actually know?" ;
     kpred:short-label   "Open the Reckon tab" ;
     kpred:box-label     "Situation" ;
     kpred:box-target    "the Situation box, the first of the questions" ;
@@ -909,6 +910,7 @@ test:Workflow-Reckoning-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "target" ;
     kpred:narration     "Then say where you want to get to. That target is the outcome the proposal will aim for." ;
+    kpred:narration-lead "Where do you want this to end up?" ;
     kpred:short-label   "Say what you want" ;
     kpred:box-label     "Where you want to get to" ;
     kpred:box-target    "the Target box with the made-up goal typed in" ;
@@ -941,6 +943,7 @@ test:Workflow-Reckoning-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "proposal" ;
     kpred:narration     "Back comes a proposal, built from those facts. It only suggests; weighing it and deciding stay with you." ;
+    kpred:narration-lead "Would you trust a plan more if you could see what it rests on?" ;
     kpred:short-label   "Read the proposal" ;
     kpred:box-label     "Proposal" ;
     kpred:box-target    "the proposal card, which says how many verified facts it is based on" ;
@@ -981,6 +984,7 @@ test:Workflow-Compare-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "add-note" ;
     kpred:narration     "Say you have a new note. Paste it in and press Extract facts. It is read, but nothing is kept yet." ;
+    kpred:narration-lead "When a new note arrives, how much of it is actually new to you?" ;
     kpred:short-label   "Add a new note" ;
     kpred:box-label     "Extract facts" ;
     kpred:box-target    "the Extract facts button, under the note's title and text" ;
@@ -1013,6 +1017,7 @@ test:Workflow-Compare-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "read-labels" ;
     kpred:narration     "Below, each claim carries a label. Here all three are new, so your space holds nothing like them yet." ;
+    kpred:narration-lead "Is each claim new, something you already knew, or a contradiction?" ;
     kpred:short-label   "Read the labels" ;
     kpred:box-label     "One claim, one label" ;
     kpred:box-target    "the list of claims, each with its kind and accept and reject buttons" ;
@@ -1029,6 +1034,7 @@ test:Workflow-Compare-Step4
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "choose" ;
     kpred:narration     "Now choose. Keep everything, keep only the new claims, or drop the repeats. Until you do, your space stays unchanged." ;
+    kpred:narration-lead "Should anything change what you know without your say?" ;
     kpred:short-label   "Choose what to keep" ;
     kpred:box-label     "Your choice" ;
     kpred:box-target    "the row of buttons: accept all, accept new only, drop duplicates and reject all" ;
