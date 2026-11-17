@@ -12439,6 +12439,8 @@ kb:demo-tts-bench rdf:type ktype:Phase ;
     kpred:description  "Install the three candidates outside the repository (the local stack, upgraded by Claude per the opposite-side rule), add each as a provider-qualified voice (qwen3tts:<voice description>, chatterbox:<ref>, vibevoice:<speaker>) to the narration synthesizer, and render the generated-assets lines with each. Matt listens to them beside the Hume clips. Each records license, time per line, peak memory and GPU." ;
     kpred:done-test    "for each candidate: the six main lines and five lead-ins exist as clips under the cache with the provider-qualified key; a comparison page or folder plays them side by side with Hume's; license and commercial terms recorded from the model's own license file; Hume Audio Decisions scores recorded for every clip beside Matt's ranking (F275.21); Matt's ranking recorded on kb:demo-narration-provider." .
 
+kb:demo-videos kpred:decided "MATT, 2026-11-17 (chat, asked whether to keep the five unapproved lead-in questions in the generated-assets video): 'Keep the extra statements for now. We will need to improve the flow of all videos after my review. I think like documentation pages, it can be difficult to automatically generate a compelling story with multiple elements that flow and make sense together.' So the lead-ins stay, every video's narration is a first pass until he has reviewed its flow, and each workflow now carries a one-sentence kpred:narration-storyline that the lines serve." .
+
 kb:docs-page-videos rdf:type ktype:Phase ;
     rdfs:label "F275.22 — a narrated video on the documentation pages, from the test workflows" ;
     kpred:feature-id   "F275.22" ;
