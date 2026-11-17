@@ -5,7 +5,7 @@
  * `ktype:WebPage` nodes to `content/<section>/<slug>.md` (YAML frontmatter + a
  * markdown body — see `pageToMarkdown`). This module is the read side: it globs
  * those files at build time (mdsvex compiles `.md` into Svelte components per
- * `svelte.config.js`), exposes their frontmatter for navigation, and resolves a
+ * `vite.config.ts`), exposes their frontmatter for navigation, and resolves a
  * single page by its `[...slug]` route param.
  *
  * Leading underscore keeps this directory out of SvelteKit's route tree.

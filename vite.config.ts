@@ -1,10 +1,13 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import { SvelteKitPWA } from '@vite-pwa/sveltekit';
+import { withPwa } from '@vite-pwa/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import fs from 'node:fs';
 import path from 'path';
-import { deviceBridge } from './scripts/dev-server/device-bridge';
+import adapter from '@sveltejs/adapter-static';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+import { mdsvex } from 'mdsvex';
+import { deviceBridge } from './scripts/dev-server/device-bridge.ts';
 
 /**
  * THE VERSION HAS ONE SOURCE, AND IT IS package.json.
@@ -79,10 +82,27 @@ export default defineConfig({
     tailwindcss(),
     // Settings → This Device: agent watch, host specs, installed models. Dev server only.
     deviceBridge(),
-    sveltekit(),
-    SvelteKitPWA({
+    ...withPwa(
+    // F27 Phase 2 (Graph Publishing): mdsvex compiles content/**/*.md (frontmatter + markdown
+    // body written by src/lib/publish/site-export.ts) into Svelte components so the /docs route
+    // group can import them directly via import.meta.glob. SvelteKit 3 no longer reads
+    // svelte.config.js, so the configuration lives here. Adapter stays adapter-static.
+    {
+      extensions: ['.svelte', '.md'],
+      preprocess: [vitePreprocess(), mdsvex({ extension: '.md' })],
+      adapter: adapter({
+        pages: 'build',
+        assets: 'build',
+        fallback: 'index.html',
+        precompress: false,
+        strict: true
+      }),
+      alias: { $lib: './src/lib' }
+    },
+    {
       strategies: 'generateSW',
       registerType: 'autoUpdate',
+      maximumFileSizeToCacheInBytes: 50_000_000,
       manifest: {
         name: 'Reckons.AI',
         short_name: 'Reckons',
@@ -98,9 +118,8 @@ export default defineConfig({
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
-      workbox: {
+      generateSW: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'],
-        maximumFileSizeToCacheInBytes: 50_000_000,
         manifestTransforms: [async (entries) => ({
           manifest: entries.flatMap((entry) => {
             if (isOptInRuntimeAsset(entry.url)) return [];
@@ -145,7 +164,8 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }
+    )
   ],
   resolve: {
     alias: {

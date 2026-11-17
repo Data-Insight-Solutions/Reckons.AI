@@ -86,7 +86,7 @@
   import { cubicOut } from 'svelte/easing';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import { replaceState } from '$app/navigation';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import type { GraphFilter } from '$lib/types/turtle-chat';
   import { standingOf } from '$lib/rdf/statement-standing';
   import { passesStandingFilters, statementNodeKeys, focusOption, type OptionFocus } from '$lib/rdf/standing-filter';
@@ -138,7 +138,7 @@
    * the note on `visible` below). An explicit parameter cannot be reached by accident, is
    * bookmarkable, and touches no stored data.
    */
-  const showWelcome = $derived($page.url.searchParams.has('welcome'));
+  const showWelcome = $derived(page.url.searchParams.has('welcome'));
 
 
   let provenanceControls = $state(createProvenanceControls());
@@ -421,7 +421,7 @@
   let cameraSpec = $state<CameraSpec | null>(null);
 
   onMount(async () => {
-    const params = $page.url.searchParams;
+    const params = page.url.searchParams;
     if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
@@ -523,7 +523,7 @@
      * looked at. Opening a link to a specific graph and then touching any view control silently
      * rewrote the URL to one that no longer said which graph it was.
      *
-     * READ IT UNTRACKED. `replaceState` below updates `$page.url`, so reading the store's params
+     * READ IT UNTRACKED. `replaceState` below updates `page.url`, so reading the store's params
      * reactively made this effect its own trigger: write URL -> store changes -> effect reruns ->
      * write URL. The graph still painted, so it did not look like a loop — it looked like a hang.
      * Caught by the deploy gate ("docs graph never laid out nodes") and measured at a 42,868 ms
@@ -531,7 +531,7 @@
      *
      * The current params are an INPUT to the write, never a reason to write again.
      */
-    const params = new URLSearchParams(untrack(() => $page.url.searchParams));
+    const params = new URLSearchParams(untrack(() => page.url.searchParams.toString()));
     if (perspective === 'sources') params.set('perspective', perspective);
     else params.delete('perspective');
     if (layout !== 'force') params.set('layout', layout);
@@ -547,7 +547,7 @@
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
     if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
     const qs = params.toString();
-    replaceState(qs ? `?${qs}` : '?', { ...untrack(() => $page.state), graphPerspective: perspective });
+    replaceState(qs ? `?${qs}` : '?', { ...untrack(() => page.state), graphPerspective: perspective });
   });
   // Auto-populate nodeOrder when switching to order layout
   $effect(() => {
@@ -826,7 +826,7 @@
   // The altitude floor rides HERE rather than in `visible` on purpose. Splicing statements out
   // of `visible` is the mistake documented above: it empties the topology, and an empty
   // `visible` draws the marketing landing page over the user's own graph.
-  const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === $page.url.searchParams.get('view')));
+  const activeSpaceView = $derived(settings().researchViews?.find(v => v.id === page.url.searchParams.get('view')));
   // NO GENERIC CAP (Matt, 2026-10-27: "a generic load limit is not effective"). A saved view narrows
   // the canvas to what it names; otherwise everything the filters allow is drawn, and when that is
   // slow the performance notice below offers the hubs filter, which the reader can see and undo.
@@ -2065,7 +2065,7 @@
   // Opened from the nav's add quick menu (/?add=set). A set is made from nodes chosen here, so
   // there is no form to open — say how, once, where the nodes are.
   $effect(() => {
-    if ($page.url.searchParams.get('add') !== 'set') return;
+    if (page.url.searchParams.get('add') !== 'set') return;
     untrack(() => pushNotification({
       id: 'add-set-hint',
       type: 'info',
@@ -2547,7 +2547,7 @@
   <!-- Saved views only: with none saved, a picker with one choice explained nothing (Matt, 2026-10-27). -->
   {#if (settings().researchViews ?? []).length > 0}
     <div class="focused-view-controls">
-      <label>Saved view<select aria-label="Saved view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams($page.url.searchParams); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, $page.state); }}>
+      <label>Saved view<select aria-label="Saved view" value={activeSpaceView?.id ?? ''} onchange={e => { const params = new URLSearchParams(page.url.searchParams.toString()); if (e.currentTarget.value) params.set('view', e.currentTarget.value); else params.delete('view'); replaceState(`?${params}`, page.state); }}>
         <option value="">Whole space</option>{#each settings().researchViews ?? [] as view}<option value={view.id}>{view.name}</option>{/each}
       </select></label>
       {#if activeSpaceView}

@@ -309,7 +309,7 @@ for (const [iri, files] of filesOf) {
       }
     };
     for (const r of ['src', 'scripts', 'cli', 'mcp-server/src', 'tests']) if (existsSync(r)) walk(r);
-    for (const f of ['vite.config.ts', 'svelte.config.js', 'playwright.config.ts', 'tailwind.config.ts']) {
+    for (const f of ['vite.config.ts', 'playwright.config.ts', 'tailwind.config.ts']) {
       if (existsSync(f)) { try { haystack += readFileSync(f, 'utf8'); } catch { /* skip */ } }
     }
     for (const dep of deps) {

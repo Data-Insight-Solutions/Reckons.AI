@@ -1,11 +1,11 @@
 <script lang="ts">
   import '$lib/styles/global.css';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
   let { data, children } = $props();
 
   let currentLocation = $derived.by(() => {
-    const pathname = $page.url.pathname.replace(/\/+$/, '') || '/';
+    const pathname = page.url.pathname.replace(/\/+$/, '') || '/';
 
     for (const { section, docs } of data.sections) {
       const doc = docs.find(({ path }) => `/docs/${path}` === pathname);
@@ -39,8 +39,8 @@
               <li>
                 <a
                   href={`/docs/${doc.path}`}
-                  class:active={$page.url.pathname === `/docs/${doc.path}`}
-                  aria-current={$page.url.pathname === `/docs/${doc.path}` ? 'page' : undefined}
+                  class:active={page.url.pathname === `/docs/${doc.path}`}
+                  aria-current={page.url.pathname === `/docs/${doc.path}` ? 'page' : undefined}
                 >
                   {doc.metadata.title}
                   {#if doc.metadata.template === 'post' && doc.metadata.date}
@@ -73,8 +73,8 @@
                 <li>
                   <a
                     href={`/docs/${doc.path}`}
-                    class:active={$page.url.pathname === `/docs/${doc.path}`}
-                    aria-current={$page.url.pathname === `/docs/${doc.path}` ? 'page' : undefined}
+                    class:active={page.url.pathname === `/docs/${doc.path}`}
+                    aria-current={page.url.pathname === `/docs/${doc.path}` ? 'page' : undefined}
                   >
                     {doc.metadata.title}
                     {#if doc.metadata.template === 'post' && doc.metadata.date}

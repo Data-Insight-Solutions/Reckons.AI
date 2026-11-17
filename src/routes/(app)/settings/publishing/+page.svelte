@@ -1,6 +1,6 @@
 <script lang="ts">
   import SettingsHeader from '$lib/components/SettingsHeader.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { settings } from '$lib/stores/settings.svelte';
   import { exportJsonLd, exportLlmsTxt } from '$lib/storage/semantic-export';
 
