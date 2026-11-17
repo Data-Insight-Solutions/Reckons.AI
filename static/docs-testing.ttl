@@ -782,6 +782,7 @@ test:Workflow-BuildChange-Step2
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "accept-source" ;
     kpred:narration     "Its four facts wait for you. Nothing is kept until you say so, so we accept them with one press." ;
+    kpred:narration-lead "When a tool reads your notes, who decides what counts as known?" ;
     kpred:short-label   "Accept by source" ;
     kpred:box-label     "Accept 4" ;
     kpred:box-target    "the note's card in Review grouped by source, and its accept button with the count it will accept" ;
@@ -814,6 +815,7 @@ test:Workflow-BuildChange-Step4
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "see-held-back" ;
     kpred:narration     "Three new facts clash with what we already hold, so they wait, each beside the old one it would replace." ;
+    kpred:narration-lead "What should happen when new information disagrees with what you already have?" ;
     kpred:short-label   "See the disagreements" ;
     kpred:box-label     "Held back" ;
     kpred:box-target    "the change note's card, with its facts held back and the reason above each" ;
@@ -830,6 +832,7 @@ test:Workflow-BuildChange-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "keep-new" ;
     kpred:narration     "We decide each one. Keeping the new value replaces the old, which stays on record as replaced." ;
+    kpred:narration-lead "If you change something, can you still see what it said before?" ;
     kpred:short-label   "Keep the new values" ;
     kpred:box-label     "Keep new" ;
     kpred:box-target    "the keep new button on a held-back fact" ;
@@ -846,6 +849,7 @@ test:Workflow-BuildChange-Step6
     kpred:step-order    "6"^^xsd:integer ;
     kpred:step-id       "see-changed-space" ;
     kpred:narration     "On the map, the garden now shows sixteen beds and a new coordinator, each under its source note." ;
+    kpred:narration-lead "Can you still tell which note each fact came from?" ;
     kpred:short-label   "See the changed space" ;
     kpred:box-label     "The garden's facts" ;
     kpred:box-target    "the garden's facts in its panel, under the note each came from" ;
@@ -899,6 +903,7 @@ test:Workflow-ReadmePath-Step2
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "review-claims" ;
     kpred:narration     "Reckons proposes claims, each shown with the passage it came from, so you can check it against the original." ;
+    kpred:narration-lead "If a tool pulls claims out of your writing, how would you check it read them right?" ;
     kpred:short-label   "Review the claims" ;
     kpred:box-label     "A claim waiting" ;
     kpred:box-target    "one claim card: the claim, the passage it was taken from, and its accept, refine and reject buttons" ;
@@ -914,7 +919,7 @@ test:Workflow-ReadmePath-Step3
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "confirm-claims" ;
-    kpred:narration     "The claims that match their source, we accept one by one. Anything left waiting stays out of your knowledge." ;
+    kpred:narration     "We accept each claim that matches its source. Anything we leave waiting stays out of your space." ;
     kpred:short-label   "Confirm what is right" ;
     kpred:box-label     "Accept" ;
     kpred:box-target    "the accept button on the first claim card" ;
@@ -931,6 +936,7 @@ test:Workflow-ReadmePath-Step4
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "see-in-space" ;
     kpred:narration     "Those accepted claims are now facts in your space, and its card shows how many facts it holds." ;
+    kpred:narration-lead "What is the difference between something you read and something you know?" ;
     kpred:short-label   "See it in your space" ;
     kpred:box-label     "Your space" ;
     kpred:box-target    "the card marked current, which shows its name and how many facts it holds" ;
@@ -947,6 +953,7 @@ test:Workflow-ReadmePath-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "reckoning" ;
     kpred:narration     "Finally, we ask for a reckoning. It proposes options from your own facts, for you to weigh, not to trust blindly." ;
+    kpred:narration-lead "With only what you have confirmed, what could you decide next?" ;
     kpred:short-label   "Ask for a reckoning" ;
     kpred:box-label     "Proposal" ;
     kpred:box-target    "the proposal card, which says how many facts it is based on" ;
@@ -1033,7 +1040,7 @@ test:Workflow-GeneratedAssets-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "picture" ;
     kpred:narration     "This picture came from a written prompt, made earlier on this computer with an open model. The app checks it against a saved record of how it was made." ;
-    kpred:narration-lead "What would it take to make a picture without sending your words to anyone?" ;
+    kpred:narration-lead "Where was this picture actually made?" ;
     kpred:short-label   "Picture from a prompt" ;
     kpred:box-label     "Made by Z-Image-Turbo" ;
     kpred:box-target    "the enlarged picture" ;
@@ -1050,7 +1057,7 @@ test:Workflow-GeneratedAssets-Step4
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "video" ;
     kpred:narration     "Next, a short clip made from that same picture. Its record measures how much it moves, so a clip where nothing happens would be flagged, not called fine." ;
-    kpred:narration-lead "Can one still picture learn to move?" ;
+    kpred:narration-lead "How would you know a generated clip really moves?" ;
     kpred:short-label   "Clip from the picture" ;
     kpred:box-label     "Made by Wan2.2" ;
     kpred:box-target    "the clip, paused part way through" ;
