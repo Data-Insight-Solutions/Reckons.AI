@@ -12460,7 +12460,8 @@ kb:docs-video-existing rdf:type ktype:Phase ;
     kpred:description "Draft one narration line per step for Workflow-BuildChange (6 steps) and Workflow-ReadmePath (5 steps), synthesize them with Kokoro (demo:render --narrate-only), and send them to Matt on a listening page. Render each video once he has approved its lines." .
 kb:docs-video-new-workflows rdf:type ktype:Phase ;
     rdfs:label "F275.22.3 — four new test workflows for the pages readers reach next: Reckoning, Compare, Guided walks, moving between spaces" ;
-    kpred:feature-id "F275.22.3" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 3 ;
+    kpred:feature-id "F275.22.3" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "in-progress" ; kpred:order 3 ;
+    kpred:progress "2026-11-17: Reckoning and Compare built (five steps each, e2e specs pass, screenshots committed, draft Kokoro lines synthesized with a storyline per workflow, for Matt to rework). Guided walks and moving between spaces are not part of this branch. Honest limits: the Compare screenshots show only new claims (the stand-in reader returns placeholders), and the reckoning proposal card shows a fact count, not the facts behind each option, so neither workflow claims more." ;
     kpred:description "Each is a ktype:TestWorkflow in static/docs-testing.ttl with ordered steps and screenshots, and an e2e test that names every step (test-workflow-check enforces both), on synthetic data only. Then each follows F275.22.2: draft lines, Kokoro audio, Matt's approval, render." .
 
 kb:demo-narration-provider kpred:decided "MATT, 2026-11-17 (chat, after his blind ranking): 'Yeah Kokoro should work well, I think I must've been listening to a different voice or different settings in the past.' Kokoro af_heart narrates new and changed demo lines. A workflow's own kpred:narrator still wins, so the generated-assets demo keeps its cached Hume 'Shelly V1' clips." ;
