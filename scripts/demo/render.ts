@@ -27,12 +27,12 @@
  */
 import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { loadWorkflowsFromFile, ROOT, TESTING_TTL } from '../lib/test-workflow';
 import { synthesizeHumeSpeech } from '../../src/lib/integrations/hume/tts';
-import { holdMs, planNarration, type NarrationDeps } from './narration-plan';
+import { holdMs, parseVoice, planNarration, type NarrationDeps } from './narration-plan';
 import { assembleArgs, buildCues, buildReceipt, compressFilter, compressQuiet, ffmpegArgs, mapTime, shiftCues, toVtt, type Segment } from './mux';
 import { cardHtml, endCardLines, renderCards } from './cards';
 import type { DemoMarksFile } from '../../tests/e2e/demo-recorder';
@@ -41,7 +41,9 @@ const QUIET_CAP_MS = 5000; // a silence longer than this plays faster (at most 6
 const LEAD = '~lead';     // clip id suffix for a step's lead-in question
 const TITLE_MS = 3500; // title card
 const END_MS = 6000;   // end card with the credits
-const DEFAULT_VOICE = 'hume:a623d3ed-612c-413b-b09f-e0a379a317f0'; // 'Warm Female Assistant Voice' (Matt, 2026-11-05)
+// Matt, 2026-11-17, after a blind ranking (F275.8.3): Kokoro af_heart for new and changed lines. A workflow's own
+// kpred:narrator still wins, so the generated-assets demo keeps its cached Hume 'Shelly V1' clips.
+const DEFAULT_VOICE = 'kokoro:af_heart';
 
 const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const has = (name: string) => process.argv.includes(`--${name}`);
@@ -76,9 +78,30 @@ function secret(...names: string[]): string | null {
   return null;
 }
 
+// Loaded once per render, on the first line that needs it.
+let kokoroTts: Promise<{ generate(text: string, o: { voice: never }): Promise<{ audio: Float32Array; sampling_rate?: number }> }> | null = null;
+
+/** Kokoro on the CPU (kokoro-js, Apache-2.0 code and weights): raw float samples -> MP3 at -16 LUFS. */
+async function synthKokoro(text: string, voiceId: string): Promise<Uint8Array> {
+  kokoroTts ??= import('kokoro-js').then(({ KokoroTTS }) =>
+    KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: 'q8', device: 'cpu' as never }) as never);
+  const a = await (await kokoroTts).generate(text, { voice: voiceId as never });
+  const dir = mkdtempSync(join(tmpdir(), 'reckons-kokoro-'));
+  try {
+    const raw = join(dir, 'clip.f32');
+    const mp3 = join(dir, 'clip.mp3');
+    writeFileSync(raw, Buffer.from(a.audio.buffer, a.audio.byteOffset, a.audio.byteLength));
+    execFileSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', '-f', 'f32le', '-ar', String(a.sampling_rate ?? 24000),
+      '-ac', '1', '-i', raw, '-af', 'loudnorm=I=-16:TP=-1.5', '-ar', '24000', '-c:a', 'libmp3lame', '-b:a', '192k', mp3]);
+    return new Uint8Array(readFileSync(mp3));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 async function synth(text: string, voice: string): Promise<Uint8Array> {
-  const [provider, id] = [voice.slice(0, voice.indexOf(':')), voice.slice(voice.indexOf(':') + 1)];
-  if (provider !== 'hume') throw new Error(`no synthesizer for voice provider "${provider}" (F275.8 adds the next one)`);
+  const { provider, id } = parseVoice(voice);
+  if (provider === 'kokoro') return synthKokoro(text, id);
   const key = secret('VITE_HUME_API_KEY', 'HUME_API_KEY');
   if (!key) throw new Error('a hume: voice needs VITE_HUME_API_KEY or HUME_API_KEY');
   const blob = await synthesizeHumeSpeech({ text, voiceId: id, auth: { header: 'X-Hume-Api-Key', value: key } });

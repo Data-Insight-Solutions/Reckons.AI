@@ -12439,6 +12439,12 @@ kb:demo-tts-bench rdf:type ktype:Phase ;
     kpred:description  "Install the three candidates outside the repository (the local stack, upgraded by Claude per the opposite-side rule), add each as a provider-qualified voice (qwen3tts:<voice description>, chatterbox:<ref>, vibevoice:<speaker>) to the narration synthesizer, and render the generated-assets lines with each. Matt listens to them beside the Hume clips. Each records license, time per line, peak memory and GPU." ;
     kpred:done-test    "for each candidate: the six main lines and five lead-ins exist as clips under the cache with the provider-qualified key; a comparison page or folder plays them side by side with Hume's; license and commercial terms recorded from the model's own license file; Hume Audio Decisions scores recorded for every clip beside Matt's ranking (F275.21); Matt's ranking recorded on kb:demo-narration-provider." .
 
+kb:demo-narration-provider kpred:decided "MATT, 2026-11-17 (chat, after his blind ranking): 'Yeah Kokoro should work well, I think I must've been listening to a different voice or different settings in the past.' Kokoro af_heart narrates new and changed demo lines. A workflow's own kpred:narrator still wins, so the generated-assets demo keeps its cached Hume 'Shelly V1' clips." ;
+    kpred:has-status "functional" ;
+    kpred:progress "2026-11-17: done-test met. Clips from three candidates beside Hume's (F275.8.3). Licenses recorded: Kokoro is Apache-2.0 for code and weights (kokoro-js 1.2.1; hexgrad/Kokoro-82M and its ONNX build); TADA is on kb:gen-tada. Matt's choice is above. scripts/demo/render.ts synthesizes kokoro:<voice> (parseVoice in narration-plan.ts names the known providers), and the default narrator is kokoro:af_heart: `npm run demo:render -- --workflow=generated-assets --voice=kokoro:af_heart --narrate-only` synthesized all 11 lines into the clip cache." .
+
+kb:demo-videos kpred:decided "MATT, 2026-11-17 (chat): 'We should make a bunch of videos for different documentation pages.' This relaxes his 2026-11-11 'no batch of feature videos' now that narration runs locally (Kokoro, kb:demo-narration-provider). His 2026-11-11 standard still applies to each video: a script is reviewed before its video is rendered." .
+
 kb:demo-narration-provider kpred:measured "2026-11-17, MATT'S BLIND RANKING (F275.8.3, the 18:07 run, 11 lines, three anonymous takes per line, all loudness-matched to -16 LUFS, Hume Shelly V1 as a labelled reference; the take-to-voice key was opened only after his ranking was saved). Kokoro af_heart: first on 7 of 11 lines, mean rank 1.55, mean naturalness 3.45 of 5, flags pace 4 and robotic 2. TADA-3B cloned from one Shelly V1 clip: first on 3, mean rank 1.91, naturalness 3.00, flags robotic 5 and pace 3. TADA-1B cloned the same way: first on 1, last on 7, mean rank 2.55, naturalness 2.73, flags robotic 6, pace 3, glitch 1, not Shelly 1. One listener and 11 lines: Kokoro ranked above TADA-3B on 7 of 11 lines (directional, not significant on a sign test), above TADA-1B on 9 of 11. Untested: TADA with more flow-matching steps or a longer voice prompt." ;
     kpred:proposed "AGENT (Opus), 2026-11-17, NOT DECIDED: on Matt's blind ranking, narrate new and changed demo lines with Kokoro af_heart, the voice the app already uses, which runs locally on the CPU with no account and no upload. Cached Hume clips stay valid for lines already rendered. TADA stays installed as a local candidate, not the default." .
 
@@ -13547,7 +13553,6 @@ kb:demo-videos kpred:decided "MATT, 2026-11-05: 'Warm Female Assistant Voice is 
 kb:demo-narration-provider rdf:type ktype:Phase ;
     rdfs:label "F275.8 — narration after Hume: a listening comparison on the same lines, then a provider chosen" ;
     kpred:part-of      kb:demo-videos ;
-    kpred:has-status   "planned" ;
     kpred:depends-on   kb:demo-narration-audio ;
     kpred:relates-to   kb:nemo-speech ;
     kpred:relates-to   kb:kokoro-tts ;

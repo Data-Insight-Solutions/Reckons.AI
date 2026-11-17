@@ -48,6 +48,24 @@ export const MIN_HOLD_MS = 2500;
 /** Breathing room after a line ends, before the next step starts. */
 export const PAD_MS = 600;
 
+/** Voice providers the renderer can synthesize with. Hume's TTS ended 2026-11-13, so a hume: voice renders
+ * only lines already in the cache; kokoro: (local, CPU, Apache-2.0) is the narrator Matt chose on 2026-11-17. */
+export const VOICE_PROVIDERS = ['hume', 'kokoro'] as const;
+export type VoiceProvider = (typeof VOICE_PROVIDERS)[number];
+
+/** Split a provider-qualified voice such as "kokoro:af_heart". Refuses an unknown provider or an empty id,
+ * so a typo fails before any recording starts instead of after it. */
+export function parseVoice(voice: string): { provider: VoiceProvider; id: string } {
+  const i = voice.indexOf(':');
+  const provider = i > 0 ? voice.slice(0, i) : '';
+  const id = i > 0 ? voice.slice(i + 1).trim() : '';
+  if (!provider || !id) throw new Error(`voice "${voice}" is not provider-qualified (for example kokoro:af_heart)`);
+  if (!(VOICE_PROVIDERS as readonly string[]).includes(provider)) {
+    throw new Error(`no synthesizer for voice provider "${provider}"; known: ${VOICE_PROVIDERS.join(', ')}`);
+  }
+  return { provider: provider as VoiceProvider, id };
+}
+
 export function cacheKey(voice: string, text: string): string {
   return createHash('sha256').update(`${voice}\n${text.trim()}`).digest('hex');
 }

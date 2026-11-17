@@ -75,3 +75,21 @@ describe('planNarration', () => {
     await expect(planNarration('wf', [{ id: 'intro', narration: 'Hi.' }], VOICE, d)).rejects.toThrow(/step "intro" failed: HTTP 401/);
   });
 });
+
+describe('parseVoice', () => {
+  it('splits a provider-qualified voice', async () => {
+    const { parseVoice } = await import('../narration-plan');
+    expect(parseVoice('kokoro:af_heart')).toEqual({ provider: 'kokoro', id: 'af_heart' });
+    expect(parseVoice('hume:a623d3ed-612c-413b-b09f-e0a379a317f0').provider).toBe('hume');
+  });
+  it('refuses an unknown provider before anything is recorded', async () => {
+    const { parseVoice } = await import('../narration-plan');
+    expect(() => parseVoice('tada:shelly')).toThrow(/no synthesizer for voice provider "tada"/);
+  });
+  it('refuses a voice with no provider or no id', async () => {
+    const { parseVoice } = await import('../narration-plan');
+    expect(() => parseVoice('af_heart')).toThrow(/not provider-qualified/);
+    expect(() => parseVoice('kokoro:')).toThrow(/not provider-qualified/);
+    expect(() => parseVoice(':af_heart')).toThrow(/not provider-qualified/);
+  });
+});
