@@ -235,6 +235,16 @@ async function main() {
   ].join('\n') + '\n');
   console.log(JSON.stringify(summary, null, 2));
   console.log(`run folder: ${OUT}`);
+  // A run where a requested arm failed is not a passed run. The queue reads the exit code, and on 2026-11-17
+  // a run whose two TADA arms both failed exited 0 and was recorded as passed.
+  const failedArms = armsWanted.filter((a) => {
+    const ms = metrics.filter((m) => m.arm === a);
+    return ms.length === 0 || ms.some((m) => !m.ok);
+  });
+  if (failedArms.length) {
+    console.error(`FAILED arms: ${failedArms.join(', ')} (see results.json); the clips that did render are kept`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

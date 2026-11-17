@@ -10,8 +10,8 @@ import sys
 import time
 import traceback
 
+import soundfile
 import torch
-import torchaudio
 
 from tada.modules.encoder import Encoder
 from tada.modules.tada import TadaForCausalLM
@@ -27,8 +27,10 @@ def main(job_path: str) -> None:
     encoder = Encoder.from_pretrained("HumeAI/tada-codec").to(device)
     prompts = {}
     for p in job["prompts"]:
-        audio, sr = torchaudio.load(p["wav"])
-        audio = audio.mean(dim=0, keepdim=True)
+        # soundfile, not torchaudio.load: torchaudio 2.9+ hands loading to torchcodec, which this venv lacks
+        # (the 2026-11-17 18:01 run failed on exactly that import).
+        data, sr = soundfile.read(p["wav"], dtype="float32", always_2d=True)  # (frames, channels)
+        audio = torch.from_numpy(data.T.copy()).mean(dim=0, keepdim=True)
         audio = (audio / audio.abs().max()).to(device)
         prompts[p["id"]] = encoder(audio, text=[p["text"]], sample_rate=sr)
     del encoder
@@ -52,7 +54,7 @@ def main(job_path: str) -> None:
             wav = res.audio[0].detach().float().cpu()
             if wav.dim() == 1:
                 wav = wav.unsqueeze(0)
-            torchaudio.save(it["out"], wav, 24000)
+            soundfile.write(it["out"], wav.squeeze(0).numpy(), 24000)
             out["items"].append({
                 "id": it["id"],
                 "wall_seconds": round(wall, 3),
