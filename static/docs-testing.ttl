@@ -767,6 +767,7 @@ test:Workflow-GuidedWalk-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "open-walk" ;
     kpred:narration     "A guided walk is a short tour through your own space. It opens on step one of three, ready to go forward." ;
+    kpred:narration-lead "How do you walk someone through what you know without losing them?" ;
     kpred:short-label   "Open the walk" ;
     kpred:box-label     "Step counter and Back" ;
     kpred:box-target    "the step counter and the Back and Next buttons" ;
@@ -783,6 +784,7 @@ test:Workflow-GuidedWalk-Step2
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "lit-items" ;
     kpred:narration     "Each step lights only the items it is talking about, and the rest fade back, so your eye knows where to look." ;
+    kpred:narration-lead "When everything is on screen at once, where should the eye go?" ;
     kpred:short-label   "Items lit, the rest faded" ;
     kpred:box-label     "Lit items" ;
     kpred:box-target    "the graph, where only the first step's two items are drawn bright" ;
@@ -831,6 +833,7 @@ test:Workflow-GuidedWalk-Step5
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "step-link" ;
     kpred:narration     "Every step has its own link, so reloading or opening that link lands you on step three, the last one." ;
+    kpred:narration-lead "Could you send someone straight to one stop on the tour?" ;
     kpred:short-label   "Reopen at a step" ;
     kpred:box-label     "Step three of three" ;
     kpred:box-target    "the counter at the last step, where Next is switched off" ;
@@ -866,6 +869,7 @@ test:Workflow-BetweenSpaces-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "two-spaces" ;
     kpred:narration     "You can keep more than one space. Here are two, a garden plans space and a seed library, and you are in the first." ;
+    kpred:narration-lead "Does everything you know belong in one place?" ;
     kpred:short-label   "Your spaces" ;
     kpred:box-label     "Garden plans, current" ;
     kpred:box-target    "the card for the space you are in, with the other space listed below" ;
@@ -898,6 +902,7 @@ test:Workflow-BetweenSpaces-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "find-jump" ;
     kpred:narration     "Inside the garden space, the tomato item carries a jump. It names the seed library as its destination." ;
+    kpred:narration-lead "When two collections touch, how do you cross from one to the other?" ;
     kpred:short-label   "Find the jump" ;
     kpred:box-label     "Jump to Seed library" ;
     kpred:box-target    "the jump row in the details of the selected item" ;
