@@ -664,6 +664,8 @@ kb:ref-cores3 rdf:type ktype:Reference ;
     kpred:evidence "https://docs.m5stack.com/en/core/CoreS3 and https://devices.esphome.io/devices/m5stack-cores3/ ." .
 
 kb:time-series-planning kpred:relates-to kb:enclosure-monitoring .
+kb:time-series-planning kpred:has-file "src/lib/rdf/forecast-baselines.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/forecast-baselines.test.ts" .
 kb:int-homeassistant kpred:relates-to kb:enclosure-monitoring ;
     kpred:proposed "2026-10-16: F259.2 is the first narrowly scoped sensor-state/event delivery slice for enclosure monitoring. It may proceed alongside F115; camera event ingest remains independent of HA and no general integration SDK is a prerequisite for the bounded adapter." .
 kb:currents kpred:relates-to kb:live-sensor-currents .
