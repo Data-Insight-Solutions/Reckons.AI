@@ -38,6 +38,13 @@ code:cad-creation
     kpred:tested-by "scripts/content/cad/__tests__/cad.test.ts" ;
     kpred:tested-by "scripts/content/__tests__/blender-render.test.ts" .
 
+code:synthetic-captures
+    rdf:type ktype:Concept ;
+    rdfs:label "Synthetic multi-scan captures with known poses" ;
+    skos:definition "Headless Blender renders several separate captures of one textured object on a checkerboard, each with its own camera path, focal length and light, and writes every frame's true camera pose. scan:multi runs on them and a pure measurement library aligns COLMAP's registered cameras to the truth with a similarity fit, reporting rotation and position error per capture and whether all captures joined one model. Rendered captures are easier than filmed video; the ring videos remain the real test." ;
+    kpred:has-file "scripts/content/synthetic-captures.ts", "scripts/content/synthetic-captures-lib.ts", "scripts/content/synthetic_captures.py", "scripts/content/synthetic_export_poses.py" ;
+    kpred:tested-by "scripts/content/__tests__/synthetic-captures-lib.test.ts" .
+
 code:generation
     rdf:type ktype:Concept ;
     rdfs:label "Local generation story and workspace queue" ;
