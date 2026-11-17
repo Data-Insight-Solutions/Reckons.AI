@@ -1,0 +1,41 @@
+{
+  "_doc": "Read by scripts/offline/audit-gate.mjs in .github/workflows/dependency-audit.yml. Each entry accepts ONE advisory on ONE package until its expiry date; after that it blocks again. Add one only with a written reason and the decision that allowed it. Remove an entry once no audited lockfile (root, mcp-server, cli) matches it any more.",
+  "exceptions": [
+    {
+      "id": "GHSA-3r8g-jcqq-3p5j",
+      "package": "@sveltejs/kit",
+      "severity": "high",
+      "reason": "DoS while parsing form data from a remote functions `form`. Reckons.AI builds with adapter-static and has no server, no *.remote.ts file, no $app/server import and no remoteFunctions option (checked 2026-11-17), so the vulnerable code path does not run. Fixed only in @sveltejs/kit 3.2.0, which fails our build today (Dependabot #641).",
+      "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Named exception + migrate' — exception for this advisory id only, and the SvelteKit 3 migration starts on its own branch.",
+      "expires": "2026-12-15",
+      "removeWhen": "@sveltejs/kit is on 3.2.0 or later"
+    },
+    {
+      "id": "GHSA-6cf5-gc4q-fm3x",
+      "package": "@sveltejs/kit",
+      "severity": "moderate",
+      "reason": "Private `query.batch` remote functions could collide. Reckons.AI defines no remote functions (static build; checked 2026-11-17). Fixed only in @sveltejs/kit 3.2.0.",
+      "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Named exception + migrate'.",
+      "expires": "2026-12-15",
+      "removeWhen": "@sveltejs/kit is on 3.2.0 or later"
+    },
+    {
+      "id": "GHSA-mw6w-2fmv-pvw3",
+      "package": "@sveltejs/kit",
+      "severity": "moderate",
+      "reason": "adapter-node crashes on malformed pathnames rewritten by `reroute`. Reckons.AI builds with adapter-static and has no reroute hook, so no adapter-node server exists to crash (checked 2026-11-17). @sveltejs/kit 2.70.4 fixes it, but on 2026-11-17 2.70.4 failed three e2e tests on PR #647 (generated-assets-story 'reload resumes one job' 3 of 3 tries, the 'Shelly queues a chain' test, and story-walk 'the step link survives a reload') while 2.70.3 passed the same suite on #648 and #642 that day; kit stays pinned at 2.70.3 until the SvelteKit 3 migration (#649).",
+      "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Pin 2.70.3 + 2 more exceptions', chosen over skipping to SvelteKit 3 (#649) and over keeping 2.70.4 and fixing the tests.",
+      "expires": "2026-12-15",
+      "removeWhen": "@sveltejs/kit is on 2.70.4+ with the e2e suite green, or on 3.2.0+"
+    },
+    {
+      "id": "GHSA-rqp5-r3wg-vg35",
+      "package": "@sveltejs/kit",
+      "severity": "moderate",
+      "reason": "A protocol-relative module import during SERVER-SIDE route resolution. The shipped site is static files with no server, so production cannot reach it. It CAN apply to a local development server (npm run dev) if a crafted URL reaches that server; that is the remaining exposure until the upgrade. @sveltejs/kit 2.70.4 fixes it, but on 2026-11-17 2.70.4 failed three e2e tests on PR #647 (generated-assets-story 'reload resumes one job' 3 of 3 tries, the 'Shelly queues a chain' test, and story-walk 'the step link survives a reload') while 2.70.3 passed the same suite on #648 and #642 that day; kit stays pinned at 2.70.3 until the SvelteKit 3 migration (#649).",
+      "decided": "MATT, 2026-11-17 (AskUserQuestion): 'Pin 2.70.3 + 2 more exceptions', chosen over skipping to SvelteKit 3 (#649) and over keeping 2.70.4 and fixing the tests.",
+      "expires": "2026-12-15",
+      "removeWhen": "@sveltejs/kit is on 2.70.4+ with the e2e suite green, or on 3.2.0+"
+    }
+  ]
+}
