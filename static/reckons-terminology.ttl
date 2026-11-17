@@ -543,10 +543,10 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
 # scripts/offline/term-usage.ts --check (script tier, blocking). Lower a baseline in the same
 # commit as a cleanup; raise one only with a reason in the commit message.
 <urn:kbase:vocabulary/terminology>
-    kpred:term-ratchet "graph/prose/3292" ;
+    kpred:term-ratchet "graph/prose/3300" ;
     kpred:term-ratchet "statement/prose/1017" ;
     kpred:term-ratchet "source/prose/1521" ;
-    kpred:term-ratchet "space/prose/637" ;
+    kpred:term-ratchet "space/prose/701" ;
     kpred:term-ratchet "node/prose/1258" ;
     kpred:term-ratchet "export/prose/252" ;
     kpred:term-ratchet "share/prose/144" ;
@@ -585,6 +585,7 @@ kterm:access-link a skos:Concept ; skos:inScheme <urn:kbase:vocabulary/terminolo
         "roundtrip", "round-trip", "ontology", "schema.org", "SKOS", "PROV-O" .
 # Baselines measured 2026-10-07 on dev (before #386 fixed /kb). The ratchet lets them fall, never rise.
 <urn:kbase:vocabulary/terminology> kpred:ui-term-ratchet "jargon/43", "graph-as-space/73" .
+<urn:kbase:vocabulary/terminology> kpred:measured "2026-11-17 (F275.22.3): the term-ratchet baselines were raised by two workflow pages. graph 3292 to 3300 and space 637 to 701, attributed to the two new generated pages (content/testing/workflow-guided-walk.md and workflow-between-spaces.md; the space count by the term-usage file listing, the graph count not itemized), where \"space\" is the user word the pages are about and \"graph\" names the app view in the step text. No existing wording was edited." .
 # A feature name containing a jargon word is the name, not the word (ui-terms.ts skips it). Matt named
 # Triple Check (F100, 2026-10-25): a play on words, since to triple-check something is diligence (Matt,
 # 2026-10-27). Its settings page tripped the "triple" jargon rule on every heading.
