@@ -97,6 +97,7 @@ sched:visual-tests rdf:type      ktype:Schedule ;
     kpred:first-pass "true" ;
     kpred:command   "npm run offline:all -- --only=space-visual-gate" ;
     kpred:tier      "agent" ;
+    kpred:job-kind  "visual" ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "true" ;
     kpred:description "Run space-visual-gate on the running dev server (port 5174). visual-diff is not here: it compares two deployed sites over the network, not the local server. Agent tier: needs Ollama + qwen2.5vl:7b. Runs immediately when the session first becomes active, then every 2 hours while active. Results appear in agent:watch under VISUAL TESTS." .
@@ -269,6 +270,7 @@ sched:terminology-sweep rdf:type ktype:Schedule ;
     rdfs:label      "Which meaning each ambiguous word carries" ;
     kpred:every     "7d" ;
     kpred:command   "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
+    kpred:job-kind  "classification-judgment" ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "false" ;
     kpred:description "term-senses over every word with two or more meanings, three model families voting; only disagreements reach the review queue. Weekly. A GPU job (no kpred:tier), so the worker's GPU gate applies. DISABLED 2026-11-13 (overseer, Matt: 'aim for improvement of outcomes, not needless compute'): every term-senses producer shows 0% accepted (about 190 ruled); see the fix-or-deprecate suggestion in the review queue." .
@@ -326,6 +328,85 @@ sched:release-review-space rdf:type ktype:Schedule ;
     kpred:harness   "session-worker" ;
     kpred:enabled   "true" ;
     kpred:description "F34.5. Guards each static/review-<version>.ttl against the roadmap's release parts and the Testing graph's workflows it is generated from. Exits 1 on a difference. It also runs inside sched:offline-script-tier; this separate entry gives it its own last-success so a stale review space is visible on its own." .
+
+# -- Never-run script checks, scheduled 2026-11-13 (local deputy). Each was run once in a clean worktree of
+# origin/dev before scheduling: exit 0, under 2 minutes, and no line written to reckons-workspace/knowledge.pending.jsonl.
+# All script tier, session-worker harness like the other guards above. The four candidates that did NOT pass
+# (queue-integrity: 15 row-contract violations, exit 1; repo-hygiene: 2 tracked-but-ignored files, exit 1;
+# taxonomy-current: 4 type-no-term findings, exit 1; graph-lint --pending: RowContractError crash in the
+# --pending writer) are reported in the PR, not scheduled.
+
+sched:published-graph-guard rdf:type ktype:Schedule ;
+    rdfs:label      "Public graph intact and clean" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/published-graph-guard.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "static/knowledge.ttl is the public graph served at /knowledge.ttl; it was once found gutted from 1032 to 45 statements by a single git add ., so the check that it still parses, is not suddenly empty, and holds no test debris runs daily with everything else the branch can change." .
+
+sched:version-align rdf:type ktype:Schedule ;
+    rdfs:label      "Version, build, and graph agree" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/version-align.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "package.json, the matching ktype:Release entity and every source file must name the same version; a version bump lands in a commit, and a wrong version on the landing page is a claim to every visitor, so the check that the three cannot disagree runs daily." .
+
+sched:commit-trailers rdf:type ktype:Schedule ;
+    rdfs:label      "Agent commits carry Model: and Intent: trailers" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/commit-trailers.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F254.1. Agent commits must self-attest with non-empty Model: and Intent: trailers; agents keep landing commits on dev, so the scan of origin/dev..HEAD runs daily. It catches forgetting, not lying, and the trailer CI gate only sees commits after the fact." .
+
+sched:csp-origin-audit rdf:type ktype:Schedule ;
+    rdfs:label      "Every fetched origin is in the CSP allowlist" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/offline/csp-origin-audit.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "Every origin reached by fetch or WebSocket in src/ must be present in the connect-src allowlist, because a CSP refusal happens before the request is sent and no Node test can see it; new integrations are the only thing that breaks it, so a weekly audit is the right cadence." .
+
+sched:landing-data-align rdf:type ktype:Schedule ;
+    rdfs:label      "Landing page matches the graph" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/landing-data-align.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "The public landing page duplicates the tenets and advertises the roadmap, and both can drift from the graph in any branch that touches either side; the check that it never says more than the graph supports runs daily." .
+
+sched:set-integrity rdf:type ktype:Schedule ;
+    rdfs:label      "Set membership names only real entities" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/set-integrity.ts" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F187: every skos:member must resolve to something that exists, because a dangling member reads as a promise instead of an error; the five-move sets once named three entities that did not exist, and graph entities are added and renamed on any branch, so the check runs daily." .
+
+sched:ci-graph rdf:type ktype:Schedule ;
+    rdfs:label      "CI graph matches the real workflows" ;
+    kpred:every     "7d" ;
+    kpred:command   "npx tsx scripts/ci-graph.ts --check" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F33.2: static/reckons-ci.ttl must match the GitHub workflows and the ruleset, so the graph answers what actually stops a bad merge; workflows change only when CI itself is touched, so a weekly audit is the right cadence and a stale graph is fixed by regenerating, not by blocking." .
+
+sched:anchor-resolution rdf:type ktype:Schedule ;
+    rdfs:label      "Every fact anchor resolves to a stored chunk" ;
+    kpred:every     "1d" ;
+    kpred:command   "npx tsx scripts/offline/anchor-resolution.ts --quiet" ;
+    kpred:tier      "script" ;
+    kpred:harness   "session-worker" ;
+    kpred:enabled   "true" ;
+    kpred:description "F122.1.2: a citation that cannot be opened is reported, never dropped or guessed; space files gain and re-chunk anchors as content lands on any branch, so the check that every stored anchor still names a chunk in its own file runs daily." .
 
 # PLANNED, not scheduled: the business-card print sheet. `npm run print:sheet -- --check` compares a sheet's receipt with its
 # design export, but it needs the front, back and sheet paths as arguments and the card design export lives in the
