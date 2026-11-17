@@ -81,6 +81,11 @@ describe('oddKinds', () => {
     expect(oddKinds(row)).toEqual(['needs-answer', 'disagrees', 'low-confidence']);
   });
 
+  it('a held value equal to the object does not disagree', () => {
+    const row: TestRow = { id: 'r', subject: 's', predicate: 'p', object: 'same', heldValue: 'same' };
+    expect(oddKinds(row)).toEqual([]);
+  });
+
   it('confidence exactly 0.5 is not low-confidence', () => {
     const row: TestRow = {
       id: 'row1',

@@ -7,9 +7,9 @@
  *   - confidence under 0.5 (when confidence is a number under 0.5)
  *   - a rival pending value from another source (when rivalSource is set)
  *
- * Plus two that only a run can show:
- *   - a predicate used by fewer than 1 in 20 of the run's rows
- *   - a subject outside the scope the job declares
+ * NOT BUILT here: two further kinds that only a whole run can show (a predicate used by fewer
+ * than 1 in 20 of the run's rows; a subject outside the scope the job declares). They need the
+ * run's rows, not one row, so oddKinds cannot find them.
  */
 
 export type OddKind = 'needs-answer' | 'disagrees' | 'low-confidence' | 'rival-value';
