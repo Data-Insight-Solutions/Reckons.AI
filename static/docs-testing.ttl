@@ -742,6 +742,203 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.""" ;
     skos:broader        test:TestSuite .
 
+test:Workflow-GuidedWalk
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Follow a guided walk through a space, step by step" ;
+    skos:definition     """A guided walk is a short tour stored inside a space. You open it, and the app shows which step you are on (step N of M), lights the items that step is about, and fades the rest. Next and Back move between steps, and every step has a link that reopens the walk there. A browser test follows a three-step tour of a small community garden, and the player's finer behavior (items never move, arrow keys, the phone layout) is checked separately by `tests/e2e/story-walk.test.ts`.""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** A made-up space about a community garden with a three-step walk, written by the test itself, never anyone's real notes.
+
+**What is not shown.** The walk's optional buttons (open a page, change one setting) and the spoken narration are not part of this workflow.""" ;
+    kpred:workflow-id   "guided-walk" ;
+    kpred:narration-storyline "A guided walk is a tour you control: it tells you where you are in it, lights only what each step is about, lets you step forward and back, and can be reopened at any step from its link." ;
+    kpred:narration-status "draft" ;
+    kpred:relates-to    kb:story-walk-player ;
+    kpred:test-file     "tests/e2e/workflow-guided-walk.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-GuidedWalk-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Open a walk and see step one of three" ;
+    kpred:part-of       test:Workflow-GuidedWalk ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "open-walk" ;
+    kpred:narration     "A guided walk is a short tour through your own space. It opens on step one of three, ready to go forward." ;
+    kpred:short-label   "Open the walk" ;
+    kpred:box-label     "Step counter and Back" ;
+    kpred:box-target    "the step counter and the Back and Next buttons" ;
+    kpred:page          "/?story=" ;
+    kpred:screenshot    "/workflows/guided-walk/01-open-walk.webp" ;
+    kpred:page-name     "the graph with the walk controls" ;
+    skos:definition     "Open a story from its link and the walk starts on step one. The controls show how far along you are, and Back is switched off because there is nowhere earlier to go." ;
+    kpred:assertion     "The counter reads 1 / 3 and the Back button is disabled." .
+
+test:Workflow-GuidedWalk-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the items a step is about" ;
+    kpred:part-of       test:Workflow-GuidedWalk ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "lit-items" ;
+    kpred:narration     "Each step lights only the items it is talking about, and the rest fade back, so your eye knows where to look." ;
+    kpred:short-label   "Items lit, the rest faded" ;
+    kpred:box-label     "Lit items" ;
+    kpred:box-target    "the graph, where only the first step's two items are drawn bright" ;
+    kpred:page          "/?story=" ;
+    kpred:screenshot    "/workflows/guided-walk/02-lit-items.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Step one is about seedlings and beds. Those two are drawn bright and every other item is dimmed. Nothing moves; the walk only changes what stands out." ;
+    kpred:assertion     "Every label drawn bright is one of the step's own items, at least one is drawn, and other labels are dimmed. Where the items sit is shown by the screenshot, not measured here." .
+
+test:Workflow-GuidedWalk-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Go to the next step" ;
+    kpred:part-of       test:Workflow-GuidedWalk ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "next-step" ;
+    kpred:narration     "Press Next and the tour moves on. Step two lights a different pair of items, compost and the rain barrel." ;
+    kpred:short-label   "Next step" ;
+    kpred:box-label     "Step two" ;
+    kpred:box-target    "the counter after pressing Next" ;
+    kpred:page          "/?story=" ;
+    kpred:screenshot    "/workflows/guided-walk/03-next-step.webp" ;
+    kpred:page-name     "the graph with the walk controls" ;
+    skos:definition     "Next moves to step two, and the web address now carries step 2. The brightness moves to the new step's items." ;
+    kpred:assertion     "The counter reads 2 / 3, the lit labels are the second step's items, and the address holds step=2." .
+
+test:Workflow-GuidedWalk-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Go back a step" ;
+    kpred:part-of       test:Workflow-GuidedWalk ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "back-step" ;
+    kpred:narration     "Changed your mind? Back returns to step one, with its first items lit again." ;
+    kpred:short-label   "Back one step" ;
+    kpred:box-label     "Back to step one" ;
+    kpred:box-target    "the counter after pressing Back" ;
+    kpred:page          "/?story=" ;
+    kpred:screenshot    "/workflows/guided-walk/04-back-step.webp" ;
+    kpred:page-name     "the graph with the walk controls" ;
+    skos:definition     "Back returns to step one, and the first step's items are lit again exactly as before." ;
+    kpred:assertion     "The counter reads 1 / 3 again and the lit labels are the first step's items." .
+
+test:Workflow-GuidedWalk-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Reopen the walk at step three from its link" ;
+    kpred:part-of       test:Workflow-GuidedWalk ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "step-link" ;
+    kpred:narration     "Every step has its own link, so reloading or opening that link lands you on step three, the last one." ;
+    kpred:short-label   "Reopen at a step" ;
+    kpred:box-label     "Step three of three" ;
+    kpred:box-target    "the counter at the last step, where Next is switched off" ;
+    kpred:page          "/?story=&step=3" ;
+    kpred:screenshot    "/workflows/guided-walk/05-step-link.webp" ;
+    kpred:page-name     "the graph with the walk controls" ;
+    skos:definition     "Open the walk's link with step=3 and it starts on the last step, with that step's items lit and Next switched off." ;
+    kpred:assertion     "The counter reads 3 / 3, Next is disabled and the lit labels are the third step's items." .
+
+test:Workflow-BetweenSpaces
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Move between spaces: see them, follow a jump, and come back" ;
+    skos:definition     """Spaces are separate collections kept on one device. This workflow shows the whole trip: the list of your spaces, the map that draws a line between spaces that are linked, an item that carries a jump to another space, following that jump, and switching back from the list. Each space keeps its own items; a jump is just a link stored with an item (a leap, in the app's own word).""" ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Two made-up spaces, a garden-plans space and a seed library, written by the test into its own empty browser. The tomato item in the garden space carries a jump to the seed library.
+
+**What is not shown.** Jumps to a web address or an app page, and opening an example space from the About page, are not part of this workflow.""" ;
+    kpred:workflow-id   "between-spaces" ;
+    kpred:narration-storyline "Spaces are separate collections that can point at each other: you see them together, see the line between them, follow an item's jump into another space, and switch back whenever you like." ;
+    kpred:narration-status "draft" ;
+    kpred:relates-to    kb:multi-kb ;
+    kpred:relates-to    kb:meta-graph-view ;
+    kpred:test-file     "tests/e2e/workflow-between-spaces.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-BetweenSpaces-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See your spaces in a list" ;
+    kpred:part-of       test:Workflow-BetweenSpaces ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "two-spaces" ;
+    kpred:narration     "You can keep more than one space. Here are two, a garden plans space and a seed library, and you are in the first." ;
+    kpred:short-label   "Your spaces" ;
+    kpred:box-label     "Garden plans, current" ;
+    kpred:box-target    "the card for the space you are in, with the other space listed below" ;
+    kpred:page          "/kb" ;
+    kpred:screenshot    "/workflows/between-spaces/01-two-spaces.webp" ;
+    kpred:page-name     "the Spaces page" ;
+    skos:definition     "The Spaces page lists every space on this device. The one you are working in is marked as current, and the other waits below it." ;
+    kpred:assertion     "Both spaces appear in the list and the garden plans space is the current one." .
+
+test:Workflow-BetweenSpaces-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See how the spaces connect" ;
+    kpred:part-of       test:Workflow-BetweenSpaces ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "spaces-map" ;
+    kpred:narration     "The map draws a line between spaces that are linked, so you can see how your collections connect." ;
+    kpred:short-label   "The map of spaces" ;
+    kpred:box-label     "A line between spaces" ;
+    kpred:box-target    "the map, with one line between the two spaces" ;
+    kpred:page          "/kb" ;
+    kpred:screenshot    "/workflows/between-spaces/02-spaces-map.webp" ;
+    kpred:page-name     "the Spaces page" ;
+    skos:definition     "Above the list, the map draws each space as a shape and a line between spaces where an item jumps from one to the other. It reads the spaces in the background; nothing needs pressing." ;
+    kpred:assertion     "The garden space reports one connected space and the map draws exactly one line." .
+
+test:Workflow-BetweenSpaces-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Find an item that carries a jump" ;
+    kpred:part-of       test:Workflow-BetweenSpaces ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "find-jump" ;
+    kpred:narration     "Inside the garden space, the tomato item carries a jump. It names the seed library as its destination." ;
+    kpred:short-label   "Find the jump" ;
+    kpred:box-label     "Jump to Seed library" ;
+    kpred:box-target    "the jump row in the details of the selected item" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/between-spaces/03-find-jump.webp" ;
+    kpred:page-name     "the graph" ;
+    skos:definition     "Search for the tomato item and select it. Its details show a jump row, labelled with the space it leads to." ;
+    kpred:assertion     "After searching for tomato and selecting it, the details show a jump labelled Seed library." .
+
+test:Workflow-BetweenSpaces-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Follow the jump into the other space" ;
+    kpred:part-of       test:Workflow-BetweenSpaces ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "take-jump" ;
+    kpred:narration     "Follow the jump and you land in the seed library. It is now your current space." ;
+    kpred:short-label   "Follow the jump" ;
+    kpred:box-label     "Now in Seed library" ;
+    kpred:box-target    "the card of the space you are now in" ;
+    kpred:page          "/kb" ;
+    kpred:screenshot    "/workflows/between-spaces/04-take-jump.webp" ;
+    kpred:page-name     "the Spaces page" ;
+    skos:definition     "Choosing the jump reloads the app into the target space. The Spaces page then shows the seed library as the current space." ;
+    kpred:assertion     "After choosing the jump, the current space in the list is Seed library." .
+
+test:Workflow-BetweenSpaces-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Switch back to the first space" ;
+    kpred:part-of       test:Workflow-BetweenSpaces ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "switch-back" ;
+    kpred:narration     "To return, press switch on garden plans in the list, and you are back where you started." ;
+    kpred:short-label   "Switch back" ;
+    kpred:box-label     "Back in Garden plans" ;
+    kpred:box-target    "the card of the space you are now in again" ;
+    kpred:page          "/kb" ;
+    kpred:screenshot    "/workflows/between-spaces/05-switch-back.webp" ;
+    kpred:page-name     "the Spaces page" ;
+    skos:definition     "Each space card has a switch button. Pressing it on the garden plans space makes that the current space again." ;
+    kpred:assertion     "After pressing switch on Garden plans, it is the current space." .
+
 test:Workflow-BuildChange
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Build a space from a note, then change it with another" ;

@@ -29,7 +29,7 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.
 
-<p class="derived">It has 4 parts below.</p>
+<p class="derived">It has 6 parts below.</p>
 
 ## In this section
 
@@ -45,6 +45,14 @@ The path the README describes, start to finish: put a short note into Reckons.AI
 
 Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change.
 
+**[Follow a guided walk through a space, step by step](../testing/workflow-guided-walk)**
+
+A guided walk is a short tour stored inside a space.
+
 **[Make pictures, clips and 3D splats on your own machine, and see them in a space](../testing/workflow-generated-assets)**
 
 Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture.
+
+**[Move between spaces: see them, follow a jump, and come back](../testing/workflow-between-spaces)**
+
+Spaces are separate collections kept on one device.

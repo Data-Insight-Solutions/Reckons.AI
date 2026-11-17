@@ -13,17 +13,74 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.8" ;
-    rdfs:comment "The visual tests of v0.2.8, in the order a person would review them. 1 of this release's 36 parts have a TestWorkflow (6 steps, each a screenshot and what the test checks); 35 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: functional." ;
+    rdfs:comment "The visual tests of v0.2.8, in the order a person would review them. 2 of this release's 36 parts have a TestWorkflow (11 steps, each a screenshot and what the test checks); 33 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: functional." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
-    p:has rev:wf-generated-assets, rev:gap .
+    p:has rev:wf-guided-walk, rev:wf-generated-assets, rev:gap .
 
-rev:wf-generated-assets rdf:type ktype:Concept ;
-    rdfs:label "1. Make pictures, clips and 3D splats on your own machine, and see them in a space" ;
-    rdfs:comment "Part of v0.2.8: F58.9.2 F58.9.2 — a node can carry a Gaussian splat, seen in the 3D graph and in the asset viewer (status: functional). Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture. You can turn a splat and look at it from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space. Run by tests/e2e/workflow-generated-assets.test.ts." ;
+rev:wf-guided-walk rdf:type ktype:Concept ;
+    rdfs:label "1. Follow a guided walk through a space, step by step" ;
+    rdfs:comment "Headline part of v0.2.8: F292.2 F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas (status: functional). A guided walk is a short tour stored inside a space. You open it, and the app shows which step you are on (step N of M), lights the items that step is about, and fades the rest. Next and Back move between steps, and every step has a link that reopens the walk there. A browser test follows a three-step tour of a small community garden, and the player's finer behavior (items never move, arrow keys, the phone layout) is checked separately by `tests/e2e/story-walk.test.ts`. Run by tests/e2e/workflow-guided-walk.test.ts. Also covers: F292 Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted." ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
+    hnav:next rev:wf-generated-assets ;
+    p:has rev:wf-guided-walk-01-open-walk, rev:wf-guided-walk-02-lit-items, rev:wf-guided-walk-03-next-step, rev:wf-guided-walk-04-back-step, rev:wf-guided-walk-05-step-link .
+
+rev:wf-guided-walk-01-open-walk rdf:type ktype:Concept ;
+    rdfs:label "1. Open a walk and see step one of three" ;
+    rdfs:comment "Open a story from its link and the walk starts on step one. The controls show how far along you are, and Back is switched off because there is nowhere earlier to go.\n\nWhere: the graph with the walk controls (/?story=).\n\nThe test checks: The counter reads 1 / 3 and the Back button is disabled." ;
+    p:photo "/workflows/guided-walk/01-open-walk.webp" ;
+    hnav:order "1"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-guided-walk-02-lit-items ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-guided-walk-02-lit-items rdf:type ktype:Concept ;
+    rdfs:label "2. See the items a step is about" ;
+    rdfs:comment "Step one is about seedlings and beds. Those two are drawn bright and every other item is dimmed. Nothing moves; the walk only changes what stands out.\n\nWhere: the graph (/?story=).\n\nThe test checks: Every label drawn bright is one of the step's own items, at least one is drawn, and other labels are dimmed. Where the items sit is shown by the screenshot, not measured here." ;
+    p:photo "/workflows/guided-walk/02-lit-items.webp" ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-guided-walk-03-next-step ;
+    hnav:prev rev:wf-guided-walk-01-open-walk ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-guided-walk-03-next-step rdf:type ktype:Concept ;
+    rdfs:label "3. Go to the next step" ;
+    rdfs:comment "Next moves to step two, and the web address now carries step 2. The brightness moves to the new step's items.\n\nWhere: the graph with the walk controls (/?story=).\n\nThe test checks: The counter reads 2 / 3, the lit labels are the second step's items, and the address holds step=2." ;
+    p:photo "/workflows/guided-walk/03-next-step.webp" ;
+    hnav:order "3"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-guided-walk-04-back-step ;
+    hnav:prev rev:wf-guided-walk-02-lit-items ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-guided-walk-04-back-step rdf:type ktype:Concept ;
+    rdfs:label "4. Go back a step" ;
+    rdfs:comment "Back returns to step one, and the first step's items are lit again exactly as before.\n\nWhere: the graph with the walk controls (/?story=).\n\nThe test checks: The counter reads 1 / 3 again and the lit labels are the first step's items." ;
+    p:photo "/workflows/guided-walk/04-back-step.webp" ;
+    hnav:order "4"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-guided-walk-05-step-link ;
+    hnav:prev rev:wf-guided-walk-03-next-step ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-guided-walk-05-step-link rdf:type ktype:Concept ;
+    rdfs:label "5. Reopen the walk at step three from its link" ;
+    rdfs:comment "Open the walk's link with step=3 and it starts on the last step, with that step's items lit and Next switched off.\n\nWhere: the graph with the walk controls (/?story=&step=3).\n\nThe test checks: The counter reads 3 / 3, Next is disabled and the lit labels are the third step's items." ;
+    p:photo "/workflows/guided-walk/05-step-link.webp" ;
+    hnav:order "5"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:prev rev:wf-guided-walk-04-back-step ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-generated-assets rdf:type ktype:Concept ;
+    rdfs:label "2. Make pictures, clips and 3D splats on your own machine, and see them in a space" ;
+    rdfs:comment "Part of v0.2.8: F58.9.2 F58.9.2 — a node can carry a Gaussian splat, seen in the 3D graph and in the asset viewer (status: functional). Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture. You can turn a splat and look at it from any side. The results open as their own space, where each one sits on its own node, linked to what it was made from, and one splat can become the background of the space. Run by tests/e2e/workflow-generated-assets.test.ts." ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
     hnav:next rev:gap ;
+    hnav:prev rev:wf-guided-walk ;
     p:has rev:wf-generated-assets-01-open-example, rev:wf-generated-assets-02-see-pipeline, rev:wf-generated-assets-03-picture, rev:wf-generated-assets-04-video, rev:wf-generated-assets-05-splat, rev:wf-generated-assets-06-background .
 
 rev:wf-generated-assets-01-open-example rdf:type ktype:Concept ;
@@ -86,11 +143,11 @@ rev:wf-generated-assets-06-background rdf:type ktype:Concept ;
 
 rev:gap rdf:type ktype:Concept ;
     rdfs:label "No visual test yet" ;
-    rdfs:comment "35 part(s) of v0.2.8 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
-    hnav:order "2"^^xsd:integer ;
+    rdfs:comment "33 part(s) of v0.2.8 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
+    hnav:order "3"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
     hnav:prev rev:wf-generated-assets ;
-    p:has rev:gap-f274-4-3, rev:gap-f274-7, rev:gap-f292-2, rev:gap-f274-4-1, rev:gap-f274-4-2, rev:gap-f274-4-6, rev:gap-f223-9, rev:gap-f223-10, rev:gap-f89-4-1, rev:gap-f89-4-3, rev:gap-f286-1, rev:gap-f286-3, rev:gap-f286-6, rev:gap-f281-1-deterministic-checks-for-pdf-and-svg-beside-image-video-and-splat, rev:gap-f281-2-visual-review-the-visual-testing-vision-model-names-defects-in-a-generated-asset, rev:gap-f281-3-fix-loop-for-generated-media-reseed-within-a-budget-keep-the-best-attempt, rev:gap-f268-1, rev:gap-f74-11, rev:gap-f279, rev:gap-f74-7, rev:gap-f292, rev:gap-f292-1, rev:gap-f292-3, rev:gap-f293, rev:gap-f58-9-6-1, rev:gap-f58-9-6-2, rev:gap-f294-7, rev:gap-f58-9-20, rev:gap-f269-1, rev:gap-f166-1, rev:gap-f100-1, rev:gap-f223-11, rev:gap-f58-9-17, rev:gap-f183-3, rev:gap-f58-9-19 .
+    p:has rev:gap-f274-4-3, rev:gap-f274-7, rev:gap-f274-4-1, rev:gap-f274-4-2, rev:gap-f274-4-6, rev:gap-f223-9, rev:gap-f223-10, rev:gap-f89-4-1, rev:gap-f89-4-3, rev:gap-f286-1, rev:gap-f286-3, rev:gap-f286-6, rev:gap-f281-1-deterministic-checks-for-pdf-and-svg-beside-image-video-and-splat, rev:gap-f281-2-visual-review-the-visual-testing-vision-model-names-defects-in-a-generated-asset, rev:gap-f281-3-fix-loop-for-generated-media-reseed-within-a-budget-keep-the-best-attempt, rev:gap-f268-1, rev:gap-f74-11, rev:gap-f279, rev:gap-f74-7, rev:gap-f292-1, rev:gap-f292-3, rev:gap-f293, rev:gap-f58-9-6-1, rev:gap-f58-9-6-2, rev:gap-f294-7, rev:gap-f58-9-20, rev:gap-f269-1, rev:gap-f166-1, rev:gap-f100-1, rev:gap-f223-11, rev:gap-f58-9-17, rev:gap-f183-3, rev:gap-f58-9-19 .
 
 rev:gap-f274-4-3 rdf:type ktype:Concept ;
     rdfs:label "F274.4.3 F274.4.3 — the landing layout: the approved mock-up as a generic template" ;
@@ -99,10 +156,6 @@ rev:gap-f274-4-3 rdf:type ktype:Concept ;
 rev:gap-f274-7 rdf:type ktype:Concept ;
     rdfs:label "F274.7 F274.7 — the Data Insight Solutions website as a space, shown as a Reckons.AI example" ;
     rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, scripts/starter/__tests__/site-profile.test.ts)." .
-
-rev:gap-f292-2 rdf:type ktype:Concept ;
-    rdfs:label "F292.2 F292.2 — the guided walk: step N of M, Next and Back, lighting each step's nodes on the canvas" ;
-    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts)." .
 
 rev:gap-f274-4-1 rdf:type ktype:Concept ;
     rdfs:label "F274.4.1 F274.4.1 — site:build: a site repository's content/ into static HTML with the Reckons.AI engine" ;
@@ -171,10 +224,6 @@ rev:gap-f279 rdf:type ktype:Concept ;
 rev:gap-f74-7 rdf:type ktype:Concept ;
     rdfs:label "F74.7 Local panel — judgments handed to local models mid-session, only disagreements come back" ;
     rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/watch-restart.test.ts, scripts/agent/__tests__/device-config.test.ts, scripts/offline/__tests__/tracked-ttl-parses.test.ts, scripts/agent/__tests__/local-panel.test.ts, scripts/agent/__tests__/local-activity.test.ts, scripts/agent/__tests__/watch-render.test.ts, scripts/offline/__tests__/term-senses.test.ts, scripts/offline/lib/__tests__/ollama-stream.test.ts, scripts/offline/lib/__tests__/gpu-wait.test.ts, scripts/agent/__tests__/queue-chains.test.ts, scripts/agent/__tests__/session-gpu-pin.test.ts, scripts/agent/__tests__/session-queue.test.ts)." .
-
-rev:gap-f292 rdf:type ktype:Concept ;
-    rdfs:label "F292 Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts, src/lib/storage/__tests__/example-kbs.test.ts)." .
 
 rev:gap-f292-1 rdf:type ktype:Concept ;
     rdfs:label "F292.1 F292.1 — the site space generator emits the 'how this site was made' story from the build" ;

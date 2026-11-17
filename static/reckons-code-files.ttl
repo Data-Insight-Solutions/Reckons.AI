@@ -8304,6 +8304,30 @@
     kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> ;
     dcterms:requires pkg:_playwright_test .
 
+<urn:reckons:file/tests/e2e/workflow-between-spaces.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "workflow-between-spaces.test.ts" ;
+    kpred:path "tests/e2e/workflow-between-spaces.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/scripts/lib/test-workflow.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/workflow-harness.ts> ;
+    dcterms:requires pkg:_playwright_test ;
+    dcterms:requires pkg:child_process ;
+    dcterms:requires pkg:fs ;
+    dcterms:requires pkg:path .
+
+<urn:reckons:file/tests/e2e/workflow-guided-walk.test.ts> rdf:type ktype:SourceFile ;
+    rdfs:label "workflow-guided-walk.test.ts" ;
+    kpred:path "tests/e2e/workflow-guided-walk.test.ts" ;
+    kpred:is-test "true" ;
+    kpred:imports <urn:reckons:file/scripts/lib/test-workflow.ts> ;
+    kpred:imports <urn:reckons:file/tests/e2e/helpers.ts> ;
+    kpred:imports <urn:reckons:file/tests/visual/workflow-harness.ts> ;
+    dcterms:requires pkg:_playwright_test ;
+    dcterms:requires pkg:child_process ;
+    dcterms:requires pkg:fs ;
+    dcterms:requires pkg:path .
+
 <urn:reckons:file/tests/e2e/workflow-generated-assets.test.ts> rdf:type ktype:SourceFile ;
     rdfs:label "workflow-generated-assets.test.ts" ;
     kpred:path "tests/e2e/workflow-generated-assets.test.ts" ;

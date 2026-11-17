@@ -9917,7 +9917,7 @@ kb:rapier-phase-4 rdf:type ktype:Phase ;
     kpred:description "The same physics world is what kb:game-engine-bridge exports into a TypeScript engine, since kb:ref-three-game-engine also uses Rapier. One physics dependency serves the canvas and the engine export, rather than two." .
 
 kb:game-engine-bridge kpred:relates-to kb:rapier-physics .
-kb:meta-graph-view kpred:tested-by "tests/e2e/spaces-map.test.ts" ;
+kb:meta-graph-view kpred:tested-by "tests/e2e/spaces-map.test.ts", "tests/e2e/workflow-between-spaces.test.ts" ;
     kpred:measured "2026-09-30, THE FIRST BROWSER TEST: tests/e2e/spaces-map.test.ts writes two spaces the way the app does (registry entry plus each space's own database, through the app's own modules) with one jump between them, and one space registered with no database here. It checks that the line is drawn with no button pressed and carries a count per direction, that the space not on this device is described as not read rather than as unconnected, that selecting a space lists its connections and a connection selects that space, and keyboard selection. 4 tests, 12/12 over three repeats locally. NOT COVERED: grouping into tide pools by set, phone width, and the label size the 2026-09-29 note records as ~10px on a phone." .
 
 # =============================================================================
@@ -12458,6 +12458,8 @@ kb:docs-video-existing rdf:type ktype:Phase ;
     rdfs:label "F275.22.2 — narrate and render the two existing workflows: build-and-change, and the README path" ;
     kpred:feature-id "F275.22.2" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 2 ;
     kpred:description "Draft one narration line per step for Workflow-BuildChange (6 steps) and Workflow-ReadmePath (5 steps), synthesize them with Kokoro (demo:render --narrate-only), and send them to Matt on a listening page. Render each video once he has approved its lines." .
+kb:docs-video-new-workflows kpred:progress "2026-11-17 (Sonnet build agent), TWO OF FOUR BUILT on branch feat/f275-22-3-walks-spaces: test:Workflow-GuidedWalk (5 steps, tests/e2e/workflow-guided-walk.test.ts) and test:Workflow-BetweenSpaces (5 steps, tests/e2e/workflow-between-spaces.test.ts), each with a kpred:narration-storyline and draft kpred:narration lines (narration-status draft), screenshots under static/workflows/. Both e2e specs passed on a mock-backend dev server. NOT DONE: Reckoning and Compare (another agent), Matt's review of the storylines and lines, rendering the videos. The screenshot of the walk's step counter crops the counter's first digit; the assertion on it passes." .
+
 kb:docs-video-new-workflows rdf:type ktype:Phase ;
     rdfs:label "F275.22.3 — four new test workflows for the pages readers reach next: Reckoning, Compare, Guided walks, moving between spaces" ;
     kpred:feature-id "F275.22.3" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 3 ;
@@ -13282,6 +13284,7 @@ kb:story-walk-player rdf:type ktype:Phase ;
     kpred:progress     "2026-11-12 (Sonnet overseer), BUILT on branch feat/f292-f293-site-story-expiry: (1) ?story=<iri>&step=<n> opens a story at that step (1-based, clamped) and the address follows the step, so a reload returns to it; (2) a step lights its highlights and dims everything else through the canvas's lit-fact and dim path (edges that touch a lit node stay lit), with no focus layout and nothing selected; positions are measured equal before and after a step (the canvas exposes __markerPositions for that; selecting a marker had moved them about 0.35 units, which is why a step no longer selects); (3) on a phone the slim bar above, with no detail sheet; (4) left and right arrows step the story unless focus is in a text field or a modifier is held, and the canvas's own arrow navigation yields while a story plays. E2E tests/e2e/story-walk.test.ts, three tests on a synthetic three-step space, pass on desktop chromium (1280 and 390 wide). Looked at on the Data Insight Solutions example at 1440 and 390. NOT TRUE YET: an authored story:layout still switches the layout (by design); with the caption area dim, a step whose highlights have no drawn label shows no label for them (labels are hidden by overlap); only Chromium was run; the desktop panel does not always scroll the new step's caption into view at once; not in production." ;
     kpred:has-file     "src/lib/components/TurtleChatPanel.svelte" ;
     kpred:tested-by    "tests/e2e/story-walk.test.ts" ;
+    kpred:tested-by    "tests/e2e/workflow-guided-walk.test.ts" ;
     kpred:tested-by    "src/lib/stores/__tests__/story-prompt.test.ts" .
 
 kb:ring-scan-space rdf:type ktype:Phase ;

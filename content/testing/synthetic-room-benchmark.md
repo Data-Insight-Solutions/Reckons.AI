@@ -1,7 +1,7 @@
 ---
 title: "Synthetic room reconstruction quality"
 slug: "synthetic-room-benchmark"
-order: 1030
+order: 1042
 section: "Testing"
 parent: "test-suite"
 template: doc
