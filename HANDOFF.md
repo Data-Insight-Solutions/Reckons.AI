@@ -3,6 +3,115 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-14 (night) — START HERE: overnight jobs scheduled and draining; two branches still unpushed
+
+**Matt: "I'm going to bed, schedule and monitor jobs."** Done as of 2026-11-14 ~01:30 UTC:
+
+- **Queue result: `sched:offline-all-agent` RAN and passed 4/4** (2026-11-15 01:29→01:56 UTC, exit 0):
+  describe-entities (3 already queued), **docs-expand (875.7s — clears the 24d-overdue run; 116 thin
+  entities, 110 already queued, 10 drafted and ALL rejected by the validator: "inline markdown" /
+  "unexplained jargon: ttl")**, docs-review (7 proposals queued), space-visual-gate (32/51 gates passed,
+  19 failures → 8 new pending findings; receipt `reckons-workspace/runs/space-visual-gate_2026-11-15T01-55-34-130Z.json`).
+  Plus job-plan and pull-notes passed. Findings are proposals in the review queue — Opus triages.
+- **Then the RAM guard did its job.** The standalone `sched:docs-review` (started 1 s after the suite, with
+  the 27.3B qwen3.8-160k model still resident from the suite) drove system RAM to **0.9 GiB available
+  (floor 2 GiB)**; the F74.11 guard (session-ram.ts) STOPPED the job, UNLOADED the model, and PAUSED the
+  queue fail-closed (PAUSE file). The machine did not OOM — that is the guard working as Matt specified.
+  Swap was already exhausted (~184 kB free), so a second such race could have hurt. **I reverted my override:
+  `~/.config/reckons/device.ttl` deleted, `ramStartAvailMiB` back to the 16384 default (verified).**
+  **Queue is PAUSED and I am leaving it paused.** 11 jobs remain queued (incl. the held docs-review,
+  30-min retry backoff). The 16 GiB gate structurally blocks this machine overnight (desktop baseline
+  ~19 GiB) — that is the point of the gate. **Opus: decide** — resume (`npx tsx scripts/agent/queue.ts resume`)
+  only after apps close / RAM settles, or adjust the gate with full incident context (kb notes on
+  `kb:queue-ram-guard`, agent `local-deputy:qwen3.8-160k`). Root cause is back-to-back model loads with
+  exhausted swap, not a broken guard.
+- GPU start gate (83 C) is doing normal cooldown-waits between jobs on the two 3090s — not a defect.
+- **5174 mock dev server started** (`npm run dev:test`, log `/tmp/devtest-5174.log`) for
+  `sched:visual-tests`. Probe with `127.0.0.1:5174` — `localhost` times out in the sandbox but the server is up.
+- **Still BLOCKED (unchanged):** both branches unpushed, no PRs. Push commands for Matt:
+  `! git -C /home/matt/Github/tripleNotes-monetization push -u origin agent/local-monetization-roadmap`
+  `! git -C /home/matt/Github/tripleNotes-sched-jobs push -u origin chore/schedule-script-jobs`
+  then PR both against **dev**, no merge.
+
+## 2026-11-13 (daytime) — F297 monetization roadmap entry, on agent/local-monetization-roadmap
+
+**Branch `agent/local-monetization-roadmap` (worktree `tripleNotes-monetization`, off origin/dev e2ec131b).**
+One commit, one file changed (`static/reckons-roadmap.ttl`), appending Matt's 2026-11-13 monetization
+decisions verbatim: new feature **F297 `kb:monetization`** (speculative) — the custom trained model behind
+MCP is the selling point (links `kb:model-training` F13), optional with Reckons.AI usage, no forced payment,
+no excessive ads; enterprise = fixed-rate contracts, not per-use metering, with cost limits baked in on
+Matt's end; metered path = Cloudflare Monetization Gateway (access requested 2026-11-13, under Cloudflare
+review); domain split tentative (aiteams.us = US enterprise, rooted domains = personal, "not concrete");
+gated on working Google Workspace + Microsoft 365 tools OR serious personal-assistant features. Also two
+lines on **F13 `kb:model-training`**: Matt's decision to start testing "the trainable MoE model I mentioned
+a few days ago", the stated struggle (robust spaces, multiple functional layouts, rich entity types and
+attributes), and open questions (which MoE base; train on what; where testing runs — MoE is new to F13,
+whose target models are small dense ones). Two open questions for Matt are on F297 (GA/MS365 gate entity?;
+domain split is a working read).
+
+**Verified 2026-11-13:** graph-lint 0 errors / 15 warnings (same baseline as dev); tracked-ttl-parses
+84/84; `F297` and `kb:monetization` each appear exactly once in static/; no generated content page embeds
+feature numbers, so no md-align drift. **NOT run:** the full CI suite (`npm run check`, unit suite) — it
+runs on the PR; nothing here touches code, so that is the expected delta.
+
+**UNVERIFIED / BLOCKED:** the branch is NOT pushed and NO PR is open. `git push` was denied repeatedly in
+auto mode (the server-side safety check cannot be reached through the local gateway; the allow rules
+`Bash(git push *)` / `Bash(gh pr create *)` in `~/.claude/settings.json` are set aside in auto mode).
+Whoever continues: push `agent/local-monetization-roadmap`, open the PR against **dev** (title suggestion:
+"roadmap: F297 monetization — custom model behind MCP, enterprise contracts first, gated on working tools"),
+do not merge. The same push block holds `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`,
+otherwise done; PR body drafted in its HANDOFF entry).
+
+**Matt's decisions (2026-11-13, all recorded as `kpred:decided` on the entities):** selling point = custom
+model behind MCP, optional, no forced payment/ads; gate = GA/MS365 tools or serious PA features first;
+enterprise = fixed-rate contracts with his own cost limits baked in; domain split tentative; start testing
+the trainable MoE now.
+
+**Follow-up wave (recorded 2026-11-13, uncommitted at time of writing):** on **F13 `kb:model-training`** —
+model training is CRITICAL; build many immaculate spaces BY HAND as training data; fine-tune a granite/base
+model with a thorough BAKED KNOWLEDGE of the Reckons platform; the re-learning pain (asking multiple times
+for previews, repeatedly stating entity typing should happen) is the problem the training fixes; training
+compute NOT SELECTED, locally would be ideal (graph's energy-bench hardware is a 2x RTX 3090); MULTIPLE open
+source bases should be trained/compared — an MoE may lift the generalist base but size may be a problem.
+Priority raised to high. On **F296 `kb:plugin-library`** — each plugin OWNS ITS SERIES OF FEATURES
+(Google Suite / Microsoft Suite plugins); a separate plugin when the product differs (SharePoint legacy vs
+new SharePoint); suite feature series not yet scoped (they ARE the F297 gate's tools). On **F297** — GATE
+ALTERNATIVE: the iOS suite may make more sense than office applications (spatial computing push from Apple;
+Matt sold Orange Logic to people there; WebXR/Web App ecosystems adopted slowly; their app store expensive
+to publish into; ring-scan workflow — a Stray scanner, attributed, built into a Reckons.AI iOS app); SECOND
+SELLING POINT (conditional): multi-modal asset generation context + game experiences defined by editable
+plain English statements. Matching open questions added on **F74.1 `kb:asset-generation`** (what "make that
+work" requires; which entity owns the game experiences — no entity does yet). UNVERIFIED items flagged as
+such on the entities: no iOS-app entity (nearest kb:ios-note-capture, unmerged branch), no Orange Logic or
+Stray scanner entity. Two more same-evening decisions: **ComfyUI** named as a possibly-important integration
+while Matt thinks about critical integrations (decided on F297 + open question on F58.2 `kb:mvg-image-gen`,
+where it is already a candidate runtime behind stable-diffusion.cpp/Diffusers); and the active **reckons.\*
+domain inventory** (reckons.ai/.app/.solutions/.space/.tech/.us with expiry dates, "not implemented" partly)
+recorded on F297 next to the rooted/aiteams.us split — no domain-to-purpose mapping exists yet.
+
+**Final wave (recorded 2026-11-13, this entry's own commit):** new feature **F298 `kb:theming`**
+(speculative, low priority, roadmap entry only) — Matt: "We need to start themeing… a way to change theme
+to 'forest' away from the default 'ocean'… green and earth tones instead of deep teals and blues… make
+Shelly into a Sloth. Named Sherril or something clever. The tree roots could be a great analogy to the
+rooting of AI agent usage to your personal context." Open questions on the entity: switch-with-ocean-default
+vs rebrand (his call), the sloth's name, and what his sister's three.js work covers (mascot asset under
+F74.1 vs theme chrome under F37 `kb:undersea-pod-ui`; collaboration or hand-off). Linked
+`kb:undersea-pod-ui`, `kb:currents`, `kb:minimal-ontology`. And on **`kb:minimal-ontology`** (the
+"small context packages" concept) — Matt's pairing, verbatim: context PACKAGING is a sharing mechanism,
+context ROOTING is "the concept of connecting to your existing files (sources), and knowledge
+(statements)"; open question for Opus: does rooting become its own named concept or stay a facet here?
+
+**Verification (all green in `tripleNotes-monetization`, 2026-11-13):** graph-lint 0 errors / 15 warnings
+(dev baseline); tracked-ttl-parses 84/84; `kb:theming` and `F298` each appear exactly once in `static/`.
+One parse bug found and fixed on this branch: three statement blocks (ComfyUI, domain inventory,
+mvg-image-gen) had been ended with `;` instead of `.` — lenient N3 accepted it, but graph-lint's strict
+TriG parse rejected it (166 errors); all three now end with `.`. **NOT run:** the full CI suite — it runs
+on the PR; nothing here touches code.
+
+**Still pending (same as above):** push `agent/local-monetization-roadmap`, open the PR against **dev**,
+do not merge; `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`) is blocked on the same
+push permission.
+
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
 **Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs
