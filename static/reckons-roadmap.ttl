@@ -12533,8 +12533,8 @@ kb:demo-audio-judge rdf:type ktype:Phase ;
 
 # ── Example spaces worth showing ─────────────────────────────────────────────────────────────────
 kb:showcase-assets-refresh rdf:type ktype:Phase ;
-    rdfs:label "F58.9.19 — the Generated assets example remade at showcase quality" ;
-    kpred:feature-id   "F58.9.19" ;
+    rdfs:label "F58.9.22 — the Generated assets example remade at showcase quality" ;
+    kpred:feature-id   "F58.9.22" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:gen-video-quality ;
@@ -12542,8 +12542,8 @@ kb:showcase-assets-refresh rdf:type ktype:Phase ;
     kpred:done-test    "every asset in the example has a receipt with the new settings and a passing QA report; the generated-assets workflow test passes with the new hashes; Matt has picked the set from at least two candidate sets." .
 
 kb:one-prompt-every-asset rdf:type ktype:Phase ;
-    rdfs:label "F58.9.20 — 'one prompt, every asset': the LinkedIn story as an example space" ;
-    kpred:feature-id   "F58.9.20" ;
+    rdfs:label "F58.9.23 — 'one prompt, every asset': the LinkedIn story as an example space" ;
+    kpred:feature-id   "F58.9.23" ;
     kpred:part-of      kb:gen-video-to-splat ;
     kpred:has-status   "planned" ;
     kpred:depends-on   kb:showcase-assets-refresh ;
@@ -13537,7 +13537,7 @@ kb:demo-narration-provider rdf:type ktype:Phase ;
     kpred:done-test    "the first demo's lines exist as clips from at least two candidates beside the Hume clips; each candidate's license and commercial terms are recorded; Matt's choice is recorded on this entity; the narration plan accepts the chosen provider's voice string." .
 
 kb:demo-first-render kpred:measured "2026-11-05, FIRST RENDER, THIS MACHINE: npm run demo:render -- --workflow=generated-assets made a 63.4 s MP4 (1920x1080 H.264, AAC 62.8 s), WebVTT captions and a receipt whose output hash matches the file. Six Hume lines of 9.1-10.2 s, synthesized once and now cached; each step held 9.7-10.8 s. The workflow test passed in demo mode and, separately, unchanged without it (2 passed, 44 s). NOT YET: Matt's verdict on the video and on the six DRAFT lines (drafted by a Sonnet subagent, claims checked against the receipts)." ;
-    kpred:honest-note "The six narration lines are DRAFTS until Matt approves them. Hume's TTS ends 2026-11-13 (kb:int-hume): any line he changes must be re-synthesized before then, or wait for F275.8." .
+    kpred:honest-note "MATT APPROVED THE SIX NARRATION LINES AS WRITTEN on 2026-11-17 (they were drafts from 2026-11-05); the workflow's kpred:narration-status is now approved. The five lead-in questions are NOT covered by that approval. Hume's TTS API ended 2026-11-13 and answers 404 (checked 2026-11-17, kb:int-hume): every line of this script is already in the local clip cache, so the render works from the cache, but any changed or new line cannot be synthesized with Hume and waits for F275.8." .
 
 # 2026-11-05 — Matt reviews the first demo; three follow-ups (in chat with Claude Code).
 kb:demo-first-render kpred:evidence "MATT, 2026-11-05, after watching it: 'That demo video was pretty good. The receipt comments are a bit ambigious, but more importantly the first steps loading the graph did not visually match the description of going to the about page.' Causes found the same day: step 1 passes through loading, the example list (about 2 s), the map of spaces and loading again, so a line about the About page played mostly over other screens; and the test's own 1280x800 viewport overrode the demo's 1920x1080, leaving grey margins in every frame (not reported by Matt; seen in sampled frames). Fixed: the line now follows the screens, 'receipt' became 'a saved record of how it was made', and a demo render keeps 1920x1080." .
@@ -13592,3 +13592,6 @@ kb:demo-narration-provider kpred:evidence "2026-11-05, HUGGING FACE, trending te
 
 # The 2026-11-06 re-cut assigned these demo and reckoning parts to v0.2.8. v0.2.8 shipped 2026-11-12 with a different scope (above), so that release assignment is NOT carried over; which release takes the demo and reckoning parts is Matt's decision.
 
+
+kb:int-hume kpred:measured "2026-11-17, SUNSET CONFIRMED: a one-word synthesis request to api.hume.ai/v0/tts with the account's key and the narrator voice returned HTTP 404, as did the voice-list endpoint. The TTS API is gone, as the notice said it would be." .
+kb:demo-videos kpred:honest-note "VOICE NAME, UNVERIFIED (2026-11-17): Matt calls the narrator voice 'Shelly V1', but the F275 default and the cached clips use id a623d3ed-612c-413b-b09f-e0a379a317f0, which the 2026-11-05 note names 'Warm Female Assistant Voice'. The Hume voice list now answers 404, so the name behind that id could not be checked. The approved lines were rendered from the cached clips of that id." .

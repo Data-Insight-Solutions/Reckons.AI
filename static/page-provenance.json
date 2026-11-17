@@ -1310,10 +1310,10 @@
       "path": "testing/workflow-generated-assets",
       "entity": "urn:reckons:test/Workflow-GeneratedAssets",
       "graph": "docs-testing.ttl",
-      "factHash": "c94569e3615714cb",
-      "factCount": 7,
+      "factHash": "27726f73d9064c58",
+      "factCount": 8,
       "floor": "evidence",
-      "pageHash": "5149ad34272204ba"
+      "pageHash": "e9f4bbd6ce04c2b8"
     },
     {
       "path": "testing/workflow-readme-path",
