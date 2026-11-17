@@ -1,6 +1,6 @@
 <script lang="ts">
   import SettingsHeader from '$lib/components/SettingsHeader.svelte';
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
   import { onMount } from 'svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
   import type { SettingsRecord } from '$lib/storage/db';
