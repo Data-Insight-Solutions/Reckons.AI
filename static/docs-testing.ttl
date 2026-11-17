@@ -744,6 +744,8 @@ Screenshots are taken on synthetic example data, never on anyone's real notes. A
 
 test:Workflow-BuildChange
     rdf:type            ktype:TestWorkflow ;
+    kpred:narration-status "draft" ;
+    kpred:narration-storyline "A viewer comes to understand that a note becomes facts only once you accept them, and that a later note which contradicts those facts is held back beside the old ones, so you choose each change and the old values stay on record." ;
     rdfs:label          "Build a space from a note, then change it with another" ;
     skos:definition     """Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change. The second half is where a space goes wrong quietly: a new value that replaces an old one has to be noticed and decided, not accepted in a batch. A browser test runs these steps, and you can run the same steps by hand with your own model (F183.3).""" ;
     kpred:shots-note    """## How these screenshots were made
@@ -763,6 +765,7 @@ test:Workflow-BuildChange-Step1
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "add-first-note" ;
+    kpred:narration     "Meet the garden. We paste a short note about a community garden, and ask Reckons to read it." ;
     kpred:short-label   "Add the first note" ;
     kpred:box-label     "Extract facts" ;
     kpred:box-target    "the Extract facts button, under the note's title and text" ;
@@ -778,6 +781,7 @@ test:Workflow-BuildChange-Step2
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "accept-source" ;
+    kpred:narration     "Its four facts wait for you. Nothing is kept until you say so, so we accept them with one press." ;
     kpred:short-label   "Accept by source" ;
     kpred:box-label     "Accept 4" ;
     kpred:box-target    "the note's card in Review grouped by source, and its accept button with the count it will accept" ;
@@ -793,6 +797,7 @@ test:Workflow-BuildChange-Step3
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "add-change-note" ;
+    kpred:narration     "Later, a meeting changes things. We paste a second note, and again ask Reckons to read it." ;
     kpred:short-label   "Add the change" ;
     kpred:box-label     "Extract facts" ;
     kpred:box-target    "the Extract facts button, with the change note filled in" ;
@@ -808,6 +813,7 @@ test:Workflow-BuildChange-Step4
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "see-held-back" ;
+    kpred:narration     "Three new facts clash with what we already hold, so they wait, each beside the old one it would replace." ;
     kpred:short-label   "See the disagreements" ;
     kpred:box-label     "Held back" ;
     kpred:box-target    "the change note's card, with its facts held back and the reason above each" ;
@@ -823,6 +829,7 @@ test:Workflow-BuildChange-Step5
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "keep-new" ;
+    kpred:narration     "We decide each one. Keeping the new value replaces the old, which stays on record as replaced." ;
     kpred:short-label   "Keep the new values" ;
     kpred:box-label     "Keep new" ;
     kpred:box-target    "the keep new button on a held-back fact" ;
@@ -838,6 +845,7 @@ test:Workflow-BuildChange-Step6
     kpred:part-of       test:Workflow-BuildChange ;
     kpred:step-order    "6"^^xsd:integer ;
     kpred:step-id       "see-changed-space" ;
+    kpred:narration     "On the map, the garden now shows sixteen beds and a new coordinator, each under its source note." ;
     kpred:short-label   "See the changed space" ;
     kpred:box-label     "The garden's facts" ;
     kpred:box-target    "the garden's facts in its panel, under the note each came from" ;
@@ -849,6 +857,8 @@ test:Workflow-BuildChange-Step6
 
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
+    kpred:narration-status "draft" ;
+    kpred:narration-storyline "A viewer comes to understand the whole loop in five steps: a note becomes claims you check against the original, the ones you confirm become facts in your space, and a reckoning then proposes options from only what you settled." ;
     rdfs:label          "Add a source, review it, see it in a space, ask for a reckoning" ;
     skos:definition     """The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled. It is the whole point of the product in five steps, and a browser test runs it on every change.""" ;
     kpred:shots-note    """## How these screenshots were made
@@ -872,6 +882,7 @@ test:Workflow-ReadmePath-Step1
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "add-source" ;
+    kpred:narration     "It starts with a note. Give it a title, paste a few sentences, and ask Reckons to read it." ;
     kpred:short-label   "Add a source" ;
     kpred:box-label     "Extract facts" ;
     kpred:box-target    "the Extract facts button, under the note's title and text" ;
@@ -887,6 +898,7 @@ test:Workflow-ReadmePath-Step2
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "2"^^xsd:integer ;
     kpred:step-id       "review-claims" ;
+    kpred:narration     "Reckons proposes claims, each shown with the passage it came from, so you can check it against the original." ;
     kpred:short-label   "Review the claims" ;
     kpred:box-label     "A claim waiting" ;
     kpred:box-target    "one claim card: the claim, the passage it was taken from, and its accept, refine and reject buttons" ;
@@ -902,6 +914,7 @@ test:Workflow-ReadmePath-Step3
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "confirm-claims" ;
+    kpred:narration     "The claims that match their source, we accept one by one. Anything left waiting stays out of your knowledge." ;
     kpred:short-label   "Confirm what is right" ;
     kpred:box-label     "Accept" ;
     kpred:box-target    "the accept button on the first claim card" ;
@@ -917,6 +930,7 @@ test:Workflow-ReadmePath-Step4
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "4"^^xsd:integer ;
     kpred:step-id       "see-in-space" ;
+    kpred:narration     "Those accepted claims are now facts in your space, and its card shows how many facts it holds." ;
     kpred:short-label   "See it in your space" ;
     kpred:box-label     "Your space" ;
     kpred:box-target    "the card marked current, which shows its name and how many facts it holds" ;
@@ -932,6 +946,7 @@ test:Workflow-ReadmePath-Step5
     kpred:part-of       test:Workflow-ReadmePath ;
     kpred:step-order    "5"^^xsd:integer ;
     kpred:step-id       "reckoning" ;
+    kpred:narration     "Finally, we ask for a reckoning. It proposes options from your own facts, for you to weigh, not to trust blindly." ;
     kpred:short-label   "Ask for a reckoning" ;
     kpred:box-label     "Proposal" ;
     kpred:box-target    "the proposal card, which says how many facts it is based on" ;

@@ -13,6 +13,10 @@
  *   --workflow=<id>     kpred:workflow-id in static/docs-testing.ttl (required)
  *   --voice=<p:id>      override the workflow's kpred:narrator (provider-qualified, e.g. hume:<id>)
  *   --narrate-only      stop after step 1 (synthesize and cache the lines, nothing recorded)
+ *   --format=docs       also write the web-sized copy for the documentation pages: H.264 CRF 30 (--crf=N),
+ *                       AAC 96k, faststart, 1280 px wide, plus <workflow>.vtt and a .webp poster, under
+ *                       <out>/docs/. REFUSES (exit 1) a result over 10 MB. Copy the three files to
+ *                       static/video/demos/ only after Matt approved the script as audio.
  *   --burn-captions     burn the captions into the picture as well as writing the .vtt
  *
  * Everything written lives OUTSIDE the repository (XDG directories), because a render is output,
@@ -34,6 +38,7 @@ import { loadWorkflowsFromFile, ROOT, TESTING_TTL } from '../lib/test-workflow';
 import { synthesizeHumeSpeech } from '../../src/lib/integrations/hume/tts';
 import { holdMs, parseVoice, planNarration, type NarrationDeps } from './narration-plan';
 import { assembleArgs, buildCues, buildReceipt, compressFilter, compressQuiet, ffmpegArgs, mapTime, shiftCues, toVtt, type Segment } from './mux';
+import { DOCS_MAX_BYTES, docsEncodeArgs, docsSizeProblem, posterArgs } from './docs-output';
 import { cardHtml, endCardLines, renderCards } from './cards';
 import type { DemoMarksFile } from '../../tests/e2e/demo-recorder';
 
@@ -229,6 +234,20 @@ async function main() {
   await renderCards([{ html: cardHtml(titleCard, ROOT), out: titlePng }, { html: cardHtml(endCard, ROOT), out: endPng }]);
   const fin = spawnSync('ffmpeg', assembleArgs({ title: { png: titlePng, ms: TITLE_MS }, body, end: { png: endPng, ms: END_MS }, vtt, out: mp4 }), { stdio: ['ignore', 'ignore', 'inherit'] });
   if (fin.status !== 0) fail(`ffmpeg (title, body, end) failed (exit ${fin.status})`);
+
+  if (arg('format') === 'docs') {
+    const dir = join(out, 'docs');
+    mkdirSync(dir, { recursive: true });
+    const web = join(dir, `${workflowId}.mp4`);
+    const enc = spawnSync('ffmpeg', docsEncodeArgs({ input: mp4, out: web, crf: Number(arg('crf') ?? 30) }), { stdio: ['ignore', 'ignore', 'inherit'] });
+    if (enc.status !== 0) fail(`ffmpeg (web copy) failed (exit ${enc.status})`);
+    const problem = docsSizeProblem(statSync(web).size, `${workflowId}.mp4`);
+    if (problem) { rmSync(web); fail(problem); }
+    writeFileSync(join(dir, `${workflowId}.vtt`), readFileSync(vtt));
+    const pst = spawnSync('ffmpeg', posterArgs({ input: web, out: join(dir, `${workflowId}.webp`), atMs: TITLE_MS + 1500 }), { stdio: ['ignore', 'ignore', 'inherit'] });
+    if (pst.status !== 0) fail(`ffmpeg (poster) failed (exit ${pst.status})`);
+    console.log(`\ndocs: ${web} (${(statSync(web).size / 1e6).toFixed(1)} MB of ${DOCS_MAX_BYTES / 1e6} MB allowed)`);
+  }
 
   const commit = version('git', ['-C', ROOT, 'rev-parse', 'HEAD']);
   const dirty = version('git', ['-C', ROOT, 'status', '--porcelain', '--', 'static', 'src', 'tests', 'scripts']) !== '';

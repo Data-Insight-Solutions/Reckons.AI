@@ -55,6 +55,14 @@ export const P = {
   narrator: `${KPRED}narrator`,
   /** F275: a short question or bridge spoken as the step begins, before the screen changes. */
   narrationLead: `${KPRED}narration-lead`,
+  /** F275.22: the rendered video this workflow's pages play, a site-root path under /video/demos/. */
+  video: `${KPRED}video`,
+  videoCaptions: `${KPRED}video-captions`,
+  videoPoster: `${KPRED}video-poster`,
+  /** The entity a workflow documents: its page shows the workflow's video too. */
+  relatesTo: `${KPRED}relates-to`,
+  /** F275.22.2: one sentence on what the viewer understands by the end and how the steps build. */
+  narrationStoryline: `${KPRED}narration-storyline`,
 } as const;
 
 export interface WorkflowStep {
@@ -95,6 +103,12 @@ export interface Workflow {
   testFile: string;
   /** F275.1: the Hume voice its demo is narrated in, or null for the render's default. */
   narrator: string | null;
+  /** F275.22: site-root paths of the rendered video, its captions and its poster, or null. */
+  video: string | null;
+  videoCaptions: string | null;
+  videoPoster: string | null;
+  /** Entities this workflow documents (kpred:relates-to). */
+  relatesTo: string[];
   steps: WorkflowStep[];
 }
 
@@ -161,6 +175,10 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
       shotsNote: lit(iri, P.shotsNote) ?? '',
       testFile: need(iri, P.testFile, 'kpred:test-file'),
       narrator: lit(iri, P.narrator)?.trim() || null,
+      video: lit(iri, P.video)?.trim() || null,
+      videoCaptions: lit(iri, P.videoCaptions)?.trim() || null,
+      videoPoster: lit(iri, P.videoPoster)?.trim() || null,
+      relatesTo: (bySubject.get(iri) ?? []).filter((q) => q.predicate.value === P.relatesTo && q.object.termType === 'NamedNode').map((q) => q.object.value),
       steps,
     });
   }

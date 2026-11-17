@@ -1301,8 +1301,8 @@
       "path": "testing/workflow-build-change",
       "entity": "urn:reckons:test/Workflow-BuildChange",
       "graph": "docs-testing.ttl",
-      "factHash": "cda7009c6ebe907b",
-      "factCount": 6,
+      "factHash": "96357e0fc36d1976",
+      "factCount": 8,
       "floor": "evidence",
       "pageHash": "d5c0d8aa786bed71"
     },
@@ -1313,14 +1313,14 @@
       "factHash": "27726f73d9064c58",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "e9f4bbd6ce04c2b8"
+      "pageHash": "5149ad34272204ba"
     },
     {
       "path": "testing/workflow-readme-path",
       "entity": "urn:reckons:test/Workflow-ReadmePath",
       "graph": "docs-testing.ttl",
-      "factHash": "b3958864258797fb",
-      "factCount": 6,
+      "factHash": "544233fab594d838",
+      "factCount": 8,
       "floor": "evidence",
       "pageHash": "66aa434f0aef0b23"
     },

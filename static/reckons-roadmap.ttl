@@ -12452,11 +12452,15 @@ kb:docs-page-videos rdf:type ktype:Phase ;
 
 kb:docs-video-embed rdf:type ktype:Phase ;
     rdfs:label "F275.22.1 — the page shows the video: kpred:video on a workflow, a size budget, captions" ;
-    kpred:feature-id "F275.22.1" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:feature-id "F275.22.1" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "scaffolded" ; kpred:order 1 ;
+    kpred:has-file "scripts/lib/docs-video.ts" ; kpred:has-file "scripts/demo/docs-output.ts" ; kpred:has-file "scripts/demo/render.ts" ; kpred:has-file "scripts/docs-pages.ts" ;
+    kpred:tested-by "scripts/__tests__/test-workflow.test.ts" ; kpred:tested-by "scripts/demo/__tests__/docs-output.test.ts" ;
+    kpred:progress "2026-11-17: scaffolded, not functional. Built and unit-tested: kpred:video / video-captions / video-poster on a ktype:TestWorkflow render a captioned <video> at the top of the workflow's page and of every page it kpred:relates-to (a path outside /video/demos/, or a file missing from static/, fails the page build); demo:render --format=docs writes the 1280-px H.264/AAC faststart copy, captions and poster, and refuses over 10 MB. NOT yet done: no video file exists, so the embed has only been exercised by unit tests and never on a built site, and --format=docs has never been run end to end (it needs a full recording, which waits for Matt's audio approval of the scripts)." ;
     kpred:description "scripts/docs-pages.ts renders <video controls preload=metadata> with a poster frame and a captions <track> for a ktype:TestWorkflow that carries kpred:video, on its own page and on each feature page it documents. demo:render gains a docs output (H.264, web-compressed, faststart) and refuses to write one over 10 MB." .
 kb:docs-video-existing rdf:type ktype:Phase ;
     rdfs:label "F275.22.2 — narrate and render the two existing workflows: build-and-change, and the README path" ;
     kpred:feature-id "F275.22.2" ; kpred:part-of kb:docs-page-videos ; kpred:has-status "planned" ; kpred:order 2 ;
+    kpred:progress "2026-11-17: first-draft lines written (kpred:narration-status draft, plus a kpred:narration-storyline per workflow) for Workflow-BuildChange (6) and Workflow-ReadmePath (5), and synthesized with Kokoro af_heart into the clip cache. Drafts are not approval and Matt expects to rework the flow; still planned until he approves the audio and the videos are rendered." ;
     kpred:description "Draft one narration line per step for Workflow-BuildChange (6 steps) and Workflow-ReadmePath (5 steps), synthesize them with Kokoro (demo:render --narrate-only), and send them to Matt on a listening page. Render each video once he has approved its lines." .
 kb:docs-video-new-workflows rdf:type ktype:Phase ;
     rdfs:label "F275.22.3 — four new test workflows for the pages readers reach next: Reckoning, Compare, Guided walks, moving between spaces" ;

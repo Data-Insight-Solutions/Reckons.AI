@@ -106,9 +106,3 @@ Where: the graph (`/`).
 This workflow is run by `tests/e2e/workflow-generated-assets.test.ts`, which reads the steps above from the same list.
 
 <p class="derived">It has 6 parts below.</p>
-
-## Detail
-
-**Narration Status**
-
-approved
