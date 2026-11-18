@@ -132,7 +132,7 @@ test('accepting option A confirms its statement, queues its job once, supersedes
   // the confirm step says what will happen before anything changes
   await cards.first().getByTestId('accept-option').click();
   const confirm = cards.first().getByTestId('accept-confirm');
-  await expect(confirm).toContainText(/confirm \d+ statements?/);
+  await expect(confirm).toContainText('confirm 1 statement,');
   await expect(confirm).toContainText('queue 1 job in one approval');
   await expect(confirm).toContainText(/superseded/);
   await expect(confirm).toContainText('1 missing-input question stays open');

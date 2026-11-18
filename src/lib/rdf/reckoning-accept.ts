@@ -89,6 +89,12 @@ export type AcceptPlan = {
   confirm: string[];
   /** Rows of every other option that become superseded: they stay readable. */
   supersede: string[];
+  /**
+   * What the person is told about, counted in their terms. `confirm` and `supersede` are ROWS, and most rows of an
+   * option are its own record (type, label, rationale, citations) or its jobs' records; counting those as statements
+   * told the person 'confirm 11 statements' for an option holding one (found 2026-11-18 by the v0.2.9 visual test).
+   */
+  counts: { statements: number; otherOptions: number; otherStatements: number };
   /** Missing-input questions of the accepted option: left open, still asking. */
   stillOpen: string[];
   /** The accepted option's proposed jobs: hand `items` to submitJobs as one batch. */
@@ -115,6 +121,18 @@ function plannedJobs(rows: readonly Statement[]): { jobs: PlannedJob[]; skipped:
 }
 
 /**
+ * The proposed statements among an option's rows: not the option's own record, not a job's record, not a
+ * missing-input question. Record rows are found by their subject: the option entity (it has the ProposalOption
+ * type row) and each job entity (it has the proposed job-state row).
+ */
+function proposedStatements(rows: readonly Statement[]): Statement[] {
+  const records = new Set(rows
+    .filter((st) => (st.p.value === RDF_TYPE && st.o.value === PROPOSAL_OPTION_TYPE) || isProposedJobState(st))
+    .map((st) => st.s.value));
+  return rows.filter((st) => !st.needsObject && !records.has(st.s.value));
+}
+
+/**
  * The exact changes of accepting one option. Refuses when the proposal is not waiting for a decision, when the
  * option is not one of its options, or when a proposed job record cannot be read back (nothing is half-accepted).
  */
@@ -130,12 +148,18 @@ export function acceptOption(proposal: Proposal, optionId: string, all: readonly
   if (skipped.length > 0) return { ok: false, message: 'A proposed job could not be read back, so nothing was accepted.' };
   const jobStateRows = new Set(jobs.map((j) => j.stateRowId));
   const stillOpen = mine.filter((st) => st.needsObject).map((st) => st.id);
+  const others = all.filter((st) => st.proposalOption && st.proposalOption !== optionId && optionIds.has(st.proposalOption) && st.status === 'pending');
   return {
     ok: true,
     plan: {
       proposal: advanced.proposal,
       confirm: mine.filter((st) => !st.needsObject && !jobStateRows.has(st.id)).map((st) => st.id),
-      supersede: all.filter((st) => st.proposalOption && st.proposalOption !== optionId && optionIds.has(st.proposalOption) && st.status === 'pending').map((st) => st.id),
+      supersede: others.map((st) => st.id),
+      counts: {
+        statements: proposedStatements(mine).length,
+        otherOptions: new Set(others.map((st) => st.proposalOption)).size,
+        otherStatements: proposedStatements(others).length,
+      },
       stillOpen, jobs, statusRowId,
     },
   };
@@ -153,11 +177,15 @@ export function rejectOption(proposal: Proposal, optionId: string, all: readonly
 /** What the person is told before they confirm. */
 export function describeAccept(plan: AcceptPlan): string {
   const n = (c: number, one: string, many = `${one}s`) => `${c} ${c === 1 ? one : many}`;
+  const { statements, otherOptions, otherStatements } = plan.counts;
   const parts = [
-    `confirm ${n(plan.confirm.length, 'statement')}`,
+    `confirm ${n(statements, 'statement')}`,
     plan.jobs.length ? `queue ${n(plan.jobs.length, 'job')} in one approval` : 'queue no jobs',
-    `mark ${n(plan.supersede.length, 'statement')} of the other options as superseded (they stay readable)`,
   ];
+  if (otherOptions > 0) {
+    const which = otherOptions === 1 ? 'the other option' : `the other ${otherOptions} options`;
+    parts.push(`mark ${which} (${n(otherStatements, 'statement')}) as superseded (${otherOptions === 1 ? 'it stays' : 'they stay'} readable)`);
+  }
   const open = plan.stillOpen.length ? ` ${n(plan.stillOpen.length, 'missing-input question')} stay${plan.stillOpen.length === 1 ? 's' : ''} open until you answer.` : '';
   return `This will ${parts.join(', ')}.${open}`;
 }

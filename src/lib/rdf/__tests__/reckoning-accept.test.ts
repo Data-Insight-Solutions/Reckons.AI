@@ -95,6 +95,14 @@ describe('acceptOption', () => {
     expect(text).toMatch(/superseded/);
     expect(text).toMatch(/1 missing-input question stays open/);
   });
+  it('counts statements in the person\'s terms, not the option\'s record rows or its job rows', () => {
+    // the mock reply gives each option one statement, one job and one missing input
+    expect(plan.counts).toEqual({ statements: 1, otherOptions: 1, otherStatements: 1 });
+    expect(plan.confirm.length).toBeGreaterThan(plan.counts.statements); // the record rows are still confirmed
+    const text = describeAccept(plan);
+    expect(text).toMatch(/confirm 1 statement,/);
+    expect(text).toMatch(/mark the other option \(1 statement\) as superseded \(it stays readable\)/);
+  });
   it('refuses a proposal already decided, and an option that is not one of its options', () => {
     const active = advanceProposal(stored.proposal, ACTION_STATUS.active, { person: true });
     if (!active.ok) throw new Error('setup');
