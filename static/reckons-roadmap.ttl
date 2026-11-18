@@ -13535,3 +13535,53 @@ kb:airoot-shared-web rdf:type ktype:Feature ;
     kpred:principle    "THE MACHINERY LARGELY EXISTS IN PLAN. Signed, content-hashed, immutable publications and identity by declared key plus endorsement (F196) are what a reviewed, citable shared web and a peer-reviewed eligibility to vote need; Currents (F29) is the pull-down subscription; review before anything is kept is how the product already works." ;
     kpred:honest-note  "SPECULATIVE: A DIRECTION, NOT A DESIGN (2026-11-17). Nothing is built, the governance is unspecified, and anonymisation that actually protects people is hard: it must be measured, not asserted, before any share-up exists." ;
     kpred:open-question "FOR MATT: the rule that separates a useful local-retailer suggestion from advertising; who counts as an expert and how peer review makes someone eligible to vote; what anonymised means here and how it is tested; and which root domains besides airoot.app belong to this." .
+
+# ── 2026-11-17 DESIGN (Opus, head session; Matt chose Opus as architect when Fable needed usage credits) ──
+# Grounded in a code map of the same day: statement standing (src/lib/rdf/statement-standing.ts) already
+# draws proposed and question statements, but nothing writes Statement.proposalOption; src/lib/rdf/proposal.ts
+# and reckoning-gaps.ts model proposals and gaps and are imported by nothing; job entities exist
+# (src/lib/generation/job-node.ts); the Reckoning page writes nothing back. Compare: /compare and the Review
+# tab's compare mode overlap, neither applies semanticEnrichDiff, both draw a separate 3D force graph.
+
+kb:reckoning-select-situation rdf:type ktype:Phase ;
+    rdfs:label "F223.12.1 — the situation is chosen: pick statements on the canvas or from a list, free text added on top" ;
+    kpred:feature-id "F223.12.1" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:description "On the Reckoning page the situation step lists the space's statements by standing (held, pending, question) with search, and accepts a selection made on the canvas (select, then 'Reckon with these'). The free-text box stays as an addition. A Reckoning entity is written to the space (type Reckoning, a label, kpred:situation-statement for each chosen statement, kpred:situation-note for the text), so the reckoning itself is a fact the space keeps." ;
+    kpred:done-test "Selecting three statements and adding a sentence writes one Reckoning entity with three situation-statement links and the note; reloading the page shows the same selection; vitest for the entity builder; svelte-check 0 errors." .
+kb:reckoning-select-target rdf:type ktype:Phase ;
+    rdfs:label "F223.12.2 — the target is chosen: a question statement, an asset to generate, or a written outcome" ;
+    kpred:feature-id "F223.12.2" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "planned" ; kpred:order 2 ; kpred:depends-on kb:reckoning-select-situation ;
+    kpred:description "The target step offers the space's question statements (needsObject, drawn hollow), asset-generation targets (an Image, Video, Model3D or GaussianSplat entity to make, or a generation prompt), or free text. The choice is written on the Reckoning entity (kpred:target-statement, kpred:target-asset or kpred:target-note) and becomes the proposal's TargetShape (proposal.ts), so targetReached can later tell when it is done." ;
+    kpred:done-test "Choosing a question statement as the target yields a TargetShape whose requirement is that statement's missing object; choosing an asset yields a requirement that the asset exists; unit tests on the mapping." .
+kb:reckoning-proposal-in-space rdf:type ktype:Phase ;
+    rdfs:label "F223.12.3 — the proposal is written into the space: proposed statements, proposed jobs and missing sources, per option" ;
+    kpred:feature-id "F223.12.3" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "planned" ; kpred:order 3 ; kpred:depends-on kb:reckoning-select-target ;
+    kpred:description "The model is asked for a STRUCTURED proposal (2 to 4 options, validated by validateProposal), not prose. Each option writes, as pending statements carrying Statement.proposalOption = the option id: new statements it proposes (drawn dashed by the existing standing code), job nodes for any asset or work it needs (job-node.ts, in a proposed state that queues nothing until accepted), and MISSING SOURCES as partial facts (needsObject, object '?', a question such as 'Upload an image of the logo'), drawn hollow like any question. Every option cites the statements it rests on (resolveCitations); computeGaps lists what is still missing. filterBlockedStatements vets every written statement. The summary card stays, but it now points at the entities, not instead of them." ;
+    kpred:principle "AN AGENT MAY NOT SETTLE ITS OWN PROPOSAL (advanceProposal). Everything the reckoning writes is pending until a person accepts an option." ;
+    kpred:done-test "With the mock provider returning a fixed structured proposal: two options appear on the canvas, one dashed statement, one proposed job and one hollow missing-source question per option, each citing a selected statement; nothing is confirmed and no job is queued; vitest for parsing, validation and the statement builder." .
+kb:reckoning-accept-option rdf:type ktype:Phase ;
+    rdfs:label "F223.12.4 — weigh and accept one option in place; the proposal closes when its target is reached" ;
+    kpred:feature-id "F223.12.4" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "planned" ; kpred:order 4 ; kpred:depends-on kb:reckoning-proposal-in-space ;
+    kpred:description "Focusing one option lights its statements and the held statements it cites (standing-filter focusOption, already built). Accepting an option confirms its statements, queues its jobs as one approval (the F166.1.2 pattern) and leaves its missing-source questions open until answered; the other options are superseded and stay on record. closeIfReached marks the proposal completed once targetReached holds over reviewed facts." ;
+    kpred:done-test "Accepting option A confirms its statements, queues its job once, supersedes option B's statements, and leaves the missing-source question open; answering that question then closes the proposal; e2e on the mock provider." .
+
+kb:compare-one-flow rdf:type ktype:Phase ;
+    rdfs:label "F264.1 — one compare, inside Review, in the words people use: statements, not facts" ;
+    kpred:feature-id "F264.1" ; kpred:part-of kb:review-compare-overlay-fix ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:description "Today /compare (reached after 'Extract facts' on the Add page) and the Review tab's compare mode show the same diff two ways, and neither applies semanticEnrichDiff, so near-duplicates, synonyms and contradicting antonyms are never labelled. One compare flow, opened from Add and from Review: a source's incoming statements against the space, every diff kind including the semantic ones, the bulk actions that exist today, and 'statements' in every label and button ('Extract statements'). Where the two screens converge is Matt's call (open question below)." ;
+    kpred:done-test "A note that contains one repeat, one near-duplicate, one contradiction and one new statement shows exactly those four labels after extraction; the Add page's button and the compare labels say statements; e2e with a mock reader that returns those four (today's mock returns only new placeholders)." .
+kb:compare-on-canvas rdf:type ktype:Phase ;
+    rdfs:label "F264.2 — see the comparison on the space itself: incoming statements drawn over the canvas by what they would do" ;
+    kpred:feature-id "F264.2" ; kpred:part-of kb:review-compare-overlay-fix ; kpred:has-status "planned" ; kpred:order 2 ; kpred:depends-on kb:compare-one-flow ;
+    kpred:description "Instead of a separate three-colour 3D force graph (CompareScene), the incoming source is drawn over the person's own canvas with the existing ghost-graph preview (rdf/ghost-graph.ts): new statements as ghosts where they would attach, repeats folded onto the statement they repeat, reinforcements thickening it, and each contradiction as a pair side by side with both sources. The visual answers 'what would this note change in my space?' at a glance." ;
+    kpred:done-test "With the four-label note: the canvas shows one ghost, one folded repeat, one thickened statement and one contradiction pair, and nothing in the space changes until a choice is made; a visual test (npm run visual:local) of the canvas in compare mode." .
+kb:compare-decide-in-place rdf:type ktype:Phase ;
+    rdfs:label "F264.3 — decide each contradiction in place; what is replaced stays on record" ;
+    kpred:feature-id "F264.3" ; kpred:part-of kb:review-compare-overlay-fix ; kpred:has-status "planned" ; kpred:order 3 ; kpred:depends-on kb:compare-on-canvas ;
+    kpred:description "A contradiction pair offers keep mine, take the new one, or keep both, each showing its passage (F9 grounding). Taking the new value supersedes the old, which stays on record as replaced (as the build-and-change workflow already shows)." ;
+    kpred:done-test "Taking the new value of a contradiction confirms it and marks the old one superseded, both still readable with their sources; e2e." .
+
+kb:reckoning-selections kpred:open-question "FOR MATT (2026-11-17 design): where is the situation chosen: on the canvas (select, then 'Reckon with these'), in a list on the Reckoning page, or both? Opus recommends both, the canvas as the natural start and the list for precision." ;
+    kpred:open-question "FOR MATT: does accepting an option queue its jobs at once, as one approval (the F166.1.2 Shelly chain pattern), or create them waiting for a second approval? Opus recommends one approval: accepting the option is the decision." .
+kb:review-compare-overlay-fix kpred:open-question "FOR MATT (2026-11-17 design): converge /compare and the Review tab's compare mode into one flow inside Review (Opus recommends; no new tab, it is where review already happens), or keep both?" ;
+    kpred:open-question "FOR MATT: the Review tab's overlay mode (one space against another) is a different job from comparing a source. Fix it here, move it to the Spaces view as cross-space alignment later, or remove it from Review now? Opus recommends moving it to the Spaces view later and removing it from Review now." .
