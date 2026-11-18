@@ -79,6 +79,7 @@
     "workflow:shots": "npx tsx scripts/workflow-shots.ts",
     "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
+    "assets:hubs": "tsx scripts/content/gen-hub-assets.ts",
     "gen:serve": "npx tsx scripts/agent/queue-worker.ts",
     "asset:qa": "npx tsx scripts/content/asset-qa.ts",
     "gen:check": "npx tsx scripts/content/gen-assets.ts --check",
