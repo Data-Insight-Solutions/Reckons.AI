@@ -15,7 +15,8 @@
  *
  * FIRST DRAFT, for an overseer to review. The calls it leaves to that review: which finished
  * outcomes read as 'done' and which as 'failed' (here: 'passed' is done, everything the done log
- * records otherwise is failed, carrying its reason), and the target's priority order (the one its
+ * records otherwise is failed, carrying its reason; a dropped or refused run therefore reads as
+ * failed, which is coarse), and the target's priority order (the one its
  * result names first, then the one declared on the record).
  */
 import type { CurrentJob } from '../job-state.js';
@@ -41,7 +42,14 @@ export type JobStatusEntry = {
 };
 
 /** What the status file holds for one workspace: who is alive, and the jobs that concern it. */
-export type SpaceStatus = { workersAlive: number; jobs: JobStatusEntry[] };
+export type SpaceStatus = {
+  workersAlive: number;
+  /** Jobs queued, running or held. */
+  active: number;
+  /** Finished runs that passed, among those kept in `jobs`. */
+  done: number;
+  jobs: JobStatusEntry[];
+};
 
 export type SpaceStatusInput = {
   /** The worker's own record; its `at` field is its last heartbeat. Absent = no worker. */
@@ -62,10 +70,8 @@ export type SpaceStatusInput = {
 };
 
 /** The target declared on a record, when the record carries one (the declared-target field). */
-const declaredTarget = (record: QueueJob): string | undefined => {
-  const v = (record as QueueJob & { space?: unknown }).space;
-  return typeof v === 'string' && v.length > 0 ? v : undefined;
-};
+const declaredTarget = (record: QueueJob): string | undefined =>
+  typeof record.space === 'string' && record.space.length > 0 ? record.space : undefined;
 
 /** A run's target: the one its result names first, then the one declared on the record, if any. */
 const targetOf = (record: QueueJob & { result?: Record<string, unknown> }): string | undefined => {
@@ -162,5 +168,7 @@ export function buildSpaceStatus(i: SpaceStatusInput): SpaceStatus {
   const at = Date.parse(i.worker?.at ?? '');
   if (Number.isFinite(at) && i.now.getTime() - at <= HEARTBEAT_STALE_MS) workersAlive = 1;
 
-  return { workersAlive, jobs };
+  const active = jobs.filter((j) => j.state !== 'done' && j.state !== 'failed').length;
+  const done = jobs.filter((j) => j.state === 'done').length;
+  return { workersAlive, active, done, jobs };
 }

@@ -1,149 +1,167 @@
 /**
- * F74.14 — the pure half of the request file: validate a request and turn it into an argument
- * list, never a command string.
+ * F74.14 — the pure half of the request file: validate a request against the DEFINED job kinds and
+ * turn it into an argument list built from that kind's own template, never from request text.
  *
- * F74.14 in the roadmap (the job-to-workspace channel) fixes the design: one request file per
- * ask, written by the app when a person asks for a job (regenerate from the start, resume from a
- * stage) and answered by the host beside it. A request "names a job from the defined list and its
- * arguments, never a command". The done-test for that half is: a request naming a job that is not
- * defined is refused, and no test can make the request text reach a shell string.
+ * A request is the content of one file a writer (the app, or any device that shares the folder)
+ * drops in the workspace's request area. It names a job kind from CHANNEL_JOBS and gives typed
+ * parameters; it never carries a command. Done-test: a request naming an undefined kind is refused
+ * with a reason, and no request text can reach a shell string or change the command.
  *
- * This module is that half as a pure function. It receives the already-parsed request (the content
- * of one request file) and the list of defined job names, and it decides accept or refuse. It reads
- * no files and runs nothing. The host that later spawns the job is a separate piece (a later
- * branch): it calls `validateJobRequest`, and only on `ok` builds the argument list with `toArgv`
- * and spawns that LIST — it never concatenates the parts into one string and hands it to a shell.
+ * HOW THAT HOLDS (the draft this replaces used a forbidden-character list over free strings, which
+ * is a blacklist; this is a whitelist):
+ *   - the command (`argv`) belongs to the defined job and is fixed; a request supplies only values
+ *     for the parameters that job declares, and each value is checked against its declared type;
+ *   - there is no free-text parameter type: integers within bounds, booleans, one of a listed set
+ *     of words, or a short lowercase word. None of those can contain a space, quote or metacharacter;
+ *   - a parameter the job does not declare is refused, not ignored;
+ *   - toArgv returns a LIST (`--flag=value` items appended to the template), and the host spawns
+ *     that list without a shell, so even a value that slipped through could not be re-parsed.
  *
- * REFUSE, in the order checked here:
- *   1. a job name that is not one of the defined job names;
- *   2. a missing or empty target (the request's `space` field);
- *   3. an id that carries anything but letters, digits, dash or underscore;
- *   4. args that are not a flat object of strings, numbers and booleans;
- *   5. a string argument that carries any forbidden character (FORBIDDEN_IN_ARG).
+ * This module reads no files and runs nothing. The host (scripts/agent/space-channel.ts) calls
+ * validateJobRequest, and only on `ok` builds the list with toArgv.
  *
- * STATE IS SHOWN, NEVER PROPOSED (the F74.14 principle) does not bind this pure check, but it sets
- * the register: the output is data for the host, not a line a person is asked to accept.
- *
- * FIRST DRAFT, for an overseer to review. The calls it leaves to that review:
- *   - the exact forbidden list (FORBIDDEN_IN_ARG) — a newline and its carriage-return partner are
- *     both refused, on top of the semicolon, pipe, backtick, `$(` and `&&` the roadmap names;
- *   - whether the target itself must also be an identifier here (it is only required to be
- *     present and non-empty, because the target's own shape is settled elsewhere);
- *   - how a boolean argument renders in the argv (`--key=true`, not a bare `--key`), chosen to
- *     keep every item in one `--key=value` shape;
- *   - that the job name and the target are NOT folded into the argv: they are separate fields the
- *     host already holds, so the list is the arguments alone.
+ * WEAKNESS, said here: CHANNEL_JOBS is a table in this file, not derived from static/reckons-jobs.ttl,
+ * because that file stores each command as a bash string, which cannot be safely templated. Adding a
+ * kind is a code change that needs review, which is deliberate; it also means the two lists can drift.
  */
 
-/** The shape of the parsed content of one request file. Values are unknown on purpose: this
- *  function is the gate that decides which of them are trustworthy. */
-export type JobRequest = {
-  id: unknown;
-  job: unknown;
-  args?: unknown;
-  space: unknown;
+/** One typed parameter of a defined job kind. */
+export type ParamSpec =
+  | { type: 'int'; min: number; max: number; required?: boolean }
+  | { type: 'bool' }
+  | { type: 'enum'; values: readonly string[]; required?: boolean }
+  | { type: 'word'; required?: boolean };
+
+/** A job kind a request may name. */
+export type ChannelJob = {
+  /** What it does, one line, for the status view. */
+  does: string;
+  /** The fixed command. A request can add `--flag=value` items after it and change nothing else. */
+  argv: readonly string[];
+  /** Declared parameters: name -> its type. The flag is `--<name>`. */
+  params: Readonly<Record<string, ParamSpec>>;
+  /** Queue gating: false = script tier (no GPU, no Ollama). */
+  gpu: boolean;
+  ollama: boolean;
 };
 
-/** A flat object of strings, numbers and booleans: the only argument values the host may pass on. */
+/** The job kinds the channel accepts. Script tier only: nothing here needs a model or a GPU. */
+export const CHANNEL_JOBS: Readonly<Record<string, ChannelJob>> = {
+  'graph-lint': {
+    does: 'check the plan graphs parse and keep their invariants',
+    argv: ['npx', 'tsx', 'scripts/offline/graph-lint.ts'],
+    params: { pending: { type: 'bool' } },
+    gpu: false,
+    ollama: false,
+  },
+  'term-usage': {
+    does: 'count the retired and ambiguous words against their baselines',
+    argv: ['npx', 'tsx', 'scripts/offline/term-usage.ts'],
+    params: { check: { type: 'bool' } },
+    gpu: false,
+    ollama: false,
+  },
+};
+
+/** The parsed content of one request file. Values are unknown on purpose: this is the gate. */
+export type JobRequest = { id: unknown; job: unknown; space: unknown; args?: unknown };
+
 export type JobArgs = Record<string, string | number | boolean>;
 
-/** The accepted request, with its parts separated and its args normalized (absent args = `{}`). */
-export type ValidatedJobRequest = {
-  ok: true;
-  job: string;
-  args: JobArgs;
-  space: string;
-};
-
-/** A refused request and the single reason it was refused. */
-export type RequestRefusal = {
-  ok: false;
-  reason: string;
-};
-
+export type ValidatedJobRequest = { ok: true; id: string; job: string; space: string; args: JobArgs };
+export type RequestRefusal = { ok: false; reason: string };
 export type ValidationResult = ValidatedJobRequest | RequestRefusal;
 
-/**
- * Substrings a string argument must never carry: they are shell metacharacters, so a value with
- * one could break out of its own argument if it were ever interpolated into a command line.
- * The newline and its carriage-return partner are both refused, because either one can split a
- * value across lines; the rest are the semicolon, the pipe, the backtick, command substitution
- * (`$(`) and the AND list (`&&`).
- */
-export const FORBIDDEN_IN_ARG = ['\n', '\r', ';', '|', '`', '$(', '&&'] as const;
+const ID_CHARS = /^[A-Za-z0-9_-]{1,64}$/;
+const WORD_CHARS = /^[a-z][a-z0-9-]{0,31}$/;
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+const refuse = (reason: string): RequestRefusal => ({ ok: false, reason });
 
-const ID_CHARS = /^[A-Za-z0-9_-]+$/;
+export type ValidateOptions = {
+  /** When given, the target must be one of these (the spaces in this workspace). */
+  spaces?: readonly string[];
+};
 
 /**
- * Validate one request against the list of defined job names. Pure: the same inputs give the same
- * result, and nothing here reads a file, spawns a process or touches the network.
- *
- * The refusal `reason` is a stable, human-readable sentence (it names the offending key or value)
- * so the host can record which rule refused the ask without re-deriving it.
+ * Validate one request. Pure: same inputs, same result. The refusal reason is a stable sentence
+ * naming the rule, and never echoes a free-form value back unbounded (it is truncated).
  */
 export function validateJobRequest(
   request: JobRequest,
-  definedJobs: readonly string[],
+  jobs: Readonly<Record<string, ChannelJob>> = CHANNEL_JOBS,
+  options: ValidateOptions = {},
 ): ValidationResult {
-  // A request file must parse to an object; a bare string or null has none of the required parts.
-  if (typeof request !== 'object' || request === null) {
-    return { ok: false, reason: 'a request must be an object with id, job, space and optional args' };
+  if (typeof request !== 'object' || request === null || Array.isArray(request)) {
+    return refuse('a request must be an object with id, job, space and optional args');
   }
+  const show = (v: unknown): string => JSON.stringify(v)?.slice(0, 40) ?? 'undefined';
 
-  // 1. The job must be one of the defined job names. Missing, not a string, or not in the list —
-  //    all read as "not a defined job" and are refused the same way.
-  const job = request.job;
-  if (typeof job !== 'string' || job.length === 0 || !definedJobs.includes(job)) {
-    return { ok: false, reason: `job '${String(job)}' is not one of the defined jobs` };
-  }
-
-  // 2. The target must be present and non-empty. Its own shape is settled elsewhere, so here only
-  //    "a string of at least one character" is required.
-  const space = request.space;
-  if (typeof space !== 'string' || space.length === 0) {
-    return { ok: false, reason: 'the target (the request space) is missing or empty' };
-  }
-
-  // 3. The id must be letters, digits, dash or underscore only, at least one of them.
-  const id = request.id;
+  const { id, job, space } = request;
   if (typeof id !== 'string' || !ID_CHARS.test(id)) {
-    return { ok: false, reason: `id '${String(id)}' must be letters, digits, dash or underscore only` };
+    return refuse(`id ${show(id)} must be 1 to 64 letters, digits, dash or underscore`);
+  }
+  if (typeof job !== 'string' || !own(jobs, job)) {
+    return refuse(`job ${show(job)} is not one of the defined jobs`);
+  }
+  if (typeof space !== 'string' || !ID_CHARS.test(space)) {
+    return refuse('the target space is missing or not a plain identifier');
+  }
+  if (options.spaces && !options.spaces.includes(space)) {
+    return refuse(`the target space ${show(space)} is not in this workspace`);
   }
 
-  // 4 and 5. args are optional; when present they must be a flat object of strings, numbers and
-  // booleans, and no string value may carry a forbidden character. Absent args normalize to {}.
-  const argsRaw = request.args;
-  if (argsRaw === undefined) {
-    return { ok: true, job, args: {}, space };
+  const spec = jobs[job]!;
+  const raw = request.args === undefined ? {} : request.args;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return refuse('args must be an object of typed values');
   }
-  if (typeof argsRaw !== 'object' || argsRaw === null || Array.isArray(argsRaw)) {
-    return { ok: false, reason: 'args must be a flat object of strings, numbers and booleans' };
-  }
-
+  const given = raw as Record<string, unknown>;
   const args: JobArgs = {};
-  for (const [key, value] of Object.entries(argsRaw)) {
-    if (typeof value === 'string') {
-      if (FORBIDDEN_IN_ARG.some((f) => value.includes(f))) {
-        return { ok: false, reason: `argument '${key}' carries a forbidden character` };
-      }
-      args[key] = value;
-    } else if (typeof value === 'number' || typeof value === 'boolean') {
-      args[key] = value;
-    } else {
-      return { ok: false, reason: `argument '${key}' must be a string, number or boolean` };
-    }
+
+  for (const key of Object.keys(given)) {
+    if (!own(spec.params, key)) return refuse(`argument ${show(key)} is not a parameter of ${job}`);
   }
-  return { ok: true, job, args, space };
+  for (const [name, p] of Object.entries(spec.params)) {
+    const v = own(given, name) ? given[name] : undefined;
+    if (v === undefined) {
+      if ('required' in p && p.required) return refuse(`argument '${name}' is required`);
+      continue;
+    }
+    if (p.type === 'int') {
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < p.min || v > p.max) {
+        return refuse(`argument '${name}' must be a whole number from ${p.min} to ${p.max}`);
+      }
+    } else if (p.type === 'bool') {
+      if (typeof v !== 'boolean') return refuse(`argument '${name}' must be true or false`);
+    } else if (p.type === 'enum') {
+      if (typeof v !== 'string' || !p.values.includes(v)) {
+        return refuse(`argument '${name}' must be one of: ${p.values.join(', ')}`);
+      }
+    } else if (typeof v !== 'string' || !WORD_CHARS.test(v)) {
+      return refuse(`argument '${name}' must be a short lowercase word`);
+    }
+    args[name] = v as string | number | boolean;
+  }
+  return { ok: true, id, job, space, args };
 }
 
 /**
- * Build the argument list for a validated request: one `--key=value` item per argument, in sorted
- * key order so the result is deterministic. It returns a LIST, not a single string — the host
- * passes each item as its own argument to the process it spawns, so no item can be read as a
- * joined command and no value can break out of its slot.
+ * The argument list for a validated request: the defined job's fixed command, then one item per
+ * given parameter, in the job's declared order (deterministic). `true` adds a bare `--name`;
+ * `false` adds nothing. A LIST, so each item is its own argument to the spawned process.
  */
-export function toArgv(validated: ValidatedJobRequest): string[] {
-  return Object.keys(validated.args)
-    .sort()
-    .map((key) => `--${key}=${validated.args[key]}`);
+export function toArgv(
+  validated: ValidatedJobRequest,
+  jobs: Readonly<Record<string, ChannelJob>> = CHANNEL_JOBS,
+): string[] {
+  if (!own(jobs, validated.job)) throw new Error(`not a defined job: ${validated.job}`);
+  const spec = jobs[validated.job]!;
+  const out = [...spec.argv];
+  for (const [name, p] of Object.entries(spec.params)) {
+    if (!own(validated.args, name)) continue;
+    const v = validated.args[name]!;
+    if (p.type === 'bool') { if (v === true) out.push(`--${name}`); }
+    else out.push(`--${name}=${String(v)}`);
+  }
+  return out;
 }

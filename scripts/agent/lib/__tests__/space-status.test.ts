@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import type { CurrentJob } from '../../job-state.js';
-import type { DoneJob, QueueJob } from '../../session-queue.js';
+import { parseQueue, serializeQueue, type DoneJob, type QueueJob } from '../../session-queue.js';
 import { FINISHED_KEPT, buildSpaceStatus, type SpaceStatusInput } from '../space-status.js';
 
 const NOW = new Date('2026-11-11T12:00:00.000Z');
@@ -15,7 +15,7 @@ const base = (name: string): QueueJob =>
   ({ id: `id-${name}`, name, cwd: 'work/tree-a', argv: ['echo', 'ok'], addedAt: '2026-11-11T11:00:00.000Z' });
 
 /** A queued record declaring its target (the declared-target field F74.14 allows on a record). */
-const queuedFor = (name: string, target: string): QueueJob => ({ ...base(name), space: target } as QueueJob);
+const queuedFor = (name: string, target: string): QueueJob => ({ ...base(name), space: target });
 
 const finished = (name: string, at: string, outcome: DoneJob['outcome'], extra: Partial<DoneJob> = {}): DoneJob =>
   ({ ...base(name), finishedAt: at, outcome, ...extra });
@@ -53,9 +53,18 @@ const input = (over: Partial<SpaceStatusInput> = {}): SpaceStatusInput => ({
 });
 
 describe('buildSpaceStatus (F74.14)', () => {
+  it('keeps the target on a queue record through parse and serialize, so the view can scope by it', () => {
+    const rec = queuedFor('x', 'kb-a');
+    expect(parseQueue(serializeQueue([rec]))[0]?.space).toBe('kb-a');
+    expect(parseQueue(serializeQueue([base('y')]))[0]).not.toHaveProperty('space');
+  });
+
   it('reports the active, held, done and failed jobs, each held with its reason', () => {
     const v = buildSpaceStatus(input());
     expect(v.workersAlive).toBe(1);
+    // 4 queued, held or running (scan-room, two held, describe-entities), 1 done; the other workspace's run is left out.
+    expect(v.active).toBe(4);
+    expect(v.done).toBe(1);
     // scan-room is both queued and running; the running state must win.
     expect(v.jobs.map((j) => `${j.name}:${j.state}`)).toEqual([
       'scan-room:running',
