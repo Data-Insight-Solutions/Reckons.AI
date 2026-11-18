@@ -23,7 +23,8 @@
   import { loaded } from '$lib/stores/kb.svelte';
   import { groupByStanding, newReckoningId, readReckoning, questionTargets, TARGET_ASSET_TYPES, type ReckoningTarget } from '$lib/rdf/reckoning-entity';
   import { labelFromIRI } from '$lib/rdf/semantic-diff';
-  import { saveReckoning } from '$lib/stores/reckoning.svelte';
+  import { saveReckoning, saveProposal } from '$lib/stores/reckoning.svelte';
+  import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
   type Mode = 'form' | 'voice';
@@ -135,6 +136,11 @@
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
   let proposal = $state('');
+  /** F223.12.3: what the structured proposal wrote into the knowledge base, kept so the card can point at it. */
+  type WrittenOption = { id: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
+  let written = $state<{ options: WrittenOption[]; blocked: string[]; warnings: string[]; rows: number } | null>(null);
+  /** Filled when the structured path was not usable and the prose below is the fallback. */
+  let proseReason = $state<string | null>(null);
   let technicalDetail = $state('');
   let busy = $state(false);
   let error = $state<string | null>(null);
@@ -266,13 +272,56 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
     busy = true;
     error = null;
     proposal = '';
+    written = null;
+    proseReason = null;
     step = 'proposal';
 
     try {
       const prov = getProvider();
       const kbContext = buildKBContext();
 
-      // Inject the reckoning prompt as a custom prompt override
+      // The structured path: ask for JSON, refuse anything malformed, write pending rows.
+      const numbered = chosenRows.map((st) => `{{${st.id}}} ${describe(st)}`).join('\n');
+      const structured = await turtleChat({
+        ...prov,
+        messages: [{
+          role: 'user',
+          content: `SITUATION STATEMENTS:\n${numbered || '(none chosen)'}\n\nSITUATION NOTE:\n${situation.trim() || '(none)'}\n\nTARGET:\n${targetText}\n\nReply with the JSON object only.`
+        }],
+        kbContext,
+        customPrompt: PROPOSAL_SYSTEM_PROMPT,
+        purpose: PROPOSAL_PURPOSE,
+      });
+      const parsed = parseProposalReply(structured.message, chosen);
+      let reason: string | null = null;
+      if (parsed.ok) {
+        const id = reckoningId ?? newReckoningId();
+        if (!reckoningId) {
+          const saved = await saveReckoning(id, chosen, situation, targetChoice);
+          if (saved) reckoningId = id;
+        }
+        const result = reckoningId ? await saveProposal(reckoningId, parsed.proposal, parsed.warnings) : null;
+        if (result) {
+          written = {
+            options: parsed.proposal.options.map((o, i) => {
+              const po = result.proposal.options[i];
+              return { id: po.id, label: o.label, rationale: o.rationale, recommended: po.id === result.proposal.recommendedId,
+                statements: o.statements.length, jobs: o.jobs.length, missing: o.missingInputs.length, cites: o.citations };
+            }),
+            blocked: result.blocked.map((b) => `${b.what}: ${b.reasons.join(', ')}`),
+            warnings: result.warnings.map((w) => w.message),
+            rows: result.written,
+          };
+          step = 'done';
+          return;
+        }
+        reason = 'This data is read-only, so nothing could be written.';
+      } else {
+        reason = parsed.reason;
+      }
+
+      // Fallback: the model's reply could not be used as a proposal, so say why and offer the prose summary instead.
+      proseReason = reason;
       const result = await turtleChat({
         ...prov,
         messages: [{
@@ -393,6 +442,8 @@ Do NOT include <kb-actions> blocks.`;
     targetStatementId = null;
     targetAssetType = null;
     proposal = '';
+    written = null;
+    proseReason = null;
     technicalDetail = '';
     conversation = [];
     voiceInput = '';
@@ -597,6 +648,34 @@ Do NOT include <kb-actions> blocks.`;
     </section>
   {/if}
 
+  {#if step === 'done' && written}
+    <section class="card proposal-card" data-testid="proposal-written" transition:fade={{ duration: 200 }}>
+      <div class="stp-header">
+        <span class="stp-num ok mono">✓</span>
+        <div>
+          <h3>Proposal</h3>
+          <p class="stp-desc">{written.options.length} options are now in your data as proposals. Nothing is confirmed and no job has been queued.</p>
+        </div>
+      </div>
+      <div class="proposal-body">
+        {#each written.options as o (o.id)}
+          <div class="proposal-option" data-testid="proposal-option">
+            <p class="proposal-section">{o.label}{o.recommended ? ' (recommended)' : ''}</p>
+            <p class="proposal-text">{o.rationale}</p>
+            <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing input{o.missing === 1 ? '' : 's'}</p>
+            <a class="btn-technical" href={`/?focus=${encodeURIComponent(o.id)}${o.cites.length ? `&cite=${o.cites.map(encodeURIComponent).join(',')}` : ''}`}>Show on the canvas</a>
+          </div>
+        {/each}
+        {#each written.warnings as w}<p class="proposal-detail mono">{w}</p>{/each}
+        {#each written.blocked as b}<p class="error-msg">Not written (content safety): {b}</p>{/each}
+      </div>
+      <div class="btn-row">
+        <button class="btn-back" onclick={reset}>New Reckoning</button>
+        <button class="btn-next" onclick={() => { step = 'confirm'; written = null; }}>Refine inputs →</button>
+      </div>
+    </section>
+  {/if}
+
   {#if (step === 'done' || step === 'technical') && proposal}
     <section class="card proposal-card" transition:fade={{ duration: 200 }}>
       <div class="stp-header">
@@ -606,6 +685,9 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">Based on {kbSize} verified statements.</p>
         </div>
       </div>
+      {#if proseReason}
+        <p class="error-msg" data-testid="prose-fallback">Written summary only: nothing was added to your data. The model's structured reply was not usable ({proseReason})</p>
+      {/if}
 
       <div class="proposal-body">
         {#each proposal.split('\n') as line}
