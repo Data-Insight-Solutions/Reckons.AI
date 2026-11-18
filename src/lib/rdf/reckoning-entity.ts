@@ -31,13 +31,13 @@ export const statementIdOfIri = (iri: string): string | null =>
 
 export function reckoningSource(id: string, note: string, at: number): Source {
   return {
-    id: reckoningSourceId(id), title: `Reckoning: ${(note.trim() || 'chosen facts').slice(0, 80)}`,
+    id: reckoningSourceId(id), title: `Reckoning: ${(note.trim() || 'chosen statements').slice(0, 80)}`,
     uri: `note://reckoning/${id}`, kind: 'note', ingestedAt: at,
   };
 }
 
 const label = (note: string, count: number) =>
-  `Reckoning: ${note.trim().slice(0, 60) || `${count} chosen fact${count === 1 ? '' : 's'}`}`;
+  `Reckoning: ${note.trim().slice(0, 60) || `${count} chosen statement${count === 1 ? '' : 's'}`}`;
 
 /** Every row of one Reckoning. Ids are stable, so a later save differs only where the choice changed. */
 export function reckoningStatements(id: string, statementIds: readonly string[], note: string, at: number): Statement[] {

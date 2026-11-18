@@ -308,7 +308,7 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
     label: 'Reckoning',
     geometry: 'box', // no unused shape left (F58.9.5); told apart by color and the scales icon
     color: '#f59e0b',
-    description: 'A situation you chose to reckon with: the facts you picked and the sentence you added',
+    description: 'A situation you chose to reckon with: the statements you picked and the sentence you added',
     icon2d: '⚖️',
     schemaPredicates: [RECKONING_PREDICATES.situationStatement, RECKONING_PREDICATES.situationNote],
     builtIn: true

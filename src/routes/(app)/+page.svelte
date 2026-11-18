@@ -2104,7 +2104,7 @@
   async function reckonWithIris(iris: string[]) {
     const rows = statementsTouching(statements(), new Set(iris));
     if (rows.length === 0) {
-      pushNotification({ id: 'reckon-empty', type: 'info', title: 'Nothing to reckon with', body: 'No facts touch what you selected.' });
+      pushNotification({ id: 'reckon-empty', type: 'info', title: 'Nothing to reckon with', body: 'No statements touch what you selected.' });
       return;
     }
     const id = newReckoningId();
@@ -2780,7 +2780,7 @@
         showRelationUI = true;
       }}>+ relate</button>
       <button class="np-act-btn np-act-primary" onclick={() => reckonWithIris(multiSelectedList.map((n) => n.iri))}
-        title="open the Reckoning page with the facts about these chosen">⚖ Reckon with these</button>
+        title="open the Reckoning page with the statements about these chosen">⚖ Reckon with these</button>
       <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
@@ -3154,7 +3154,7 @@
             <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
             <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
             <button class="np-act-btn" onclick={() => reckonWithIris([selectedIri!])}
-              title="open the Reckoning page with the facts about this chosen">⚖ Reckon with these</button>
+              title="open the Reckoning page with the statements about this chosen">⚖ Reckon with these</button>
           {/if}
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
         </div>
