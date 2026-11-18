@@ -5,10 +5,8 @@
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import type { ComponentProps } from 'svelte';
-  import CompareGraph from '$lib/components/CompareGraph.svelte';
+  import CompareFlow from '$lib/components/CompareFlow.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
-  import OverlayGraph from '$lib/components/OverlayGraph.svelte';
-  import OverlayGraph3D from '$lib/components/OverlayGraph3D.svelte';
   import DiffEntry from '$lib/components/DiffEntry.svelte';
   import StatementCard from '$lib/components/StatementCard.svelte';
   import SwipeCard from '$lib/components/SwipeCard.svelte';
@@ -58,7 +56,6 @@
     BASIS_META, type FactCluster, type CascadeAction,
   } from '$lib/rdf/fact-aggregation';
   import { settings } from '$lib/stores/settings.svelte';
-  import { parseMultipleGraphs, MEMBERSHIP_PREDICATES, MEMBERSHIP_LABELS, isProjectIri, type OverlayData, type GraphDef } from '$lib/rdf/multi-graph-parse';
   import {
     RDF_TYPE, KB_URL, KB_LOCAL_PATH,
     KB_ICON2D, KB_ICON3D, KB_MESHY_TASK_ID, KB_MESHY_STATUS,
@@ -108,7 +105,7 @@
   let waitingElsewhere = $state<{ byGraph: Array<{ kb: string; count: number }>; unaddressed: number } | null>(null);
 
   // ── Graph view mode ───────────────────────────────────────────────────────
-  type GraphMode = 'preview' | 'compare' | 'overlay';
+  type GraphMode = 'preview' | 'compare';
   let graphMode = $state<GraphMode>('preview');
   let use2D = $state(settings().prefer2D ?? false);
   let graphSettled = $state(false);
@@ -1154,193 +1151,28 @@
   }
 
   // ── Compare mode ──────────────────────────────────────────────────────────
+  // The one compare flow lives in CompareFlow (F264.1); this page only says which source it shows.
   let compareSourceId = $state<string | null>(null);
-  const compareIncoming = $derived(
-    compareSourceId ? statementsForSource(compareSourceId).filter(s => s.status === 'pending') : incoming
-  );
-  const compareExisting = $derived(confirmedStatements().filter(s => s.sourceId !== compareSourceId));
-  const compareLegend = $derived.by(() => {
-    const inKeys = new Set(compareIncoming.flatMap(s => [s.s.value, s.o.value]));
-    const exKeys = new Set(compareExisting.flatMap(s => [s.s.value, s.o.value]));
-    let n = 0, sh = 0, kb = 0;
-    for (const k of new Set([...inKeys, ...exKeys])) {
-      if (inKeys.has(k) && exKeys.has(k)) sh++;
-      else if (inKeys.has(k)) n++;
-      else kb++;
-    }
-    return { newCount: n, sharedCount: sh, kbOnlyCount: kb };
-  });
-  const compareRelevantExisting = $derived.by(() => {
-    const inValues = new Set(compareIncoming.flatMap(s => [s.s.value, s.o.value]));
-    return compareExisting.filter(s => inValues.has(s.s.value) || inValues.has(s.o.value));
-  });
   const pendingSourceIds = $derived(
     [...new Set(pendingStatements().map(s => s.sourceId))].filter(Boolean) as string[]
   );
-
-  // ── Overlay mode ──────────────────────────────────────────────────────────
-  import { KBaseDB } from '$lib/storage/db';
-  import { toTurtle } from '$lib/rdf/serialize';
-
-  let overlayData = $state<OverlayData | null>(null);
-  let overlayLoading = $state(false);
-  let overlayActiveGraphIds = $state(new Set<string>());
-  const OVERLAY_STRUCTURAL = new Set([
-    'urn:reckons:ontology/componentUses',
-    'urn:reckons:ontology/relatedTo',
-    'urn:reckons:ontology/evolvedInto',
-  ]);
-  let overlayActivePredicates = $state(new Set<string>([...MEMBERSHIP_PREDICATES, ...OVERLAY_STRUCTURAL]));
-  let overlaySelectedKey = $state<string | null>(null);
-  let overlayViewIs3D = $state(false);
-
-  /** Node details for OVERLAY mode — the clicked node in the combined multi-graph view. Mirrors
-   *  the preview `nodeDetails` shape, but reads from overlayData (which spans several graphs) since
-   *  the overlay's nodes are not all in the current KB's statement list. */
-  const overlayNodeDetails = $derived.by(() => {
-    if (graphMode !== 'overlay' || !overlaySelectedKey || !overlayData) return null;
-    const node = overlayData.nodes.get(overlaySelectedKey);
-    if (!node) return null;
-    const related = overlayData.edges
-      .filter((e) => e.sourceKey === overlaySelectedKey || e.targetKey === overlaySelectedKey)
-      .map((e, i) => {
-        const isSubject = e.sourceKey === overlaySelectedKey;
-        const otherKey = isSubject ? e.targetKey : e.sourceKey;
-        const other = overlayData!.nodes.get(otherKey);
-        const fallback = otherKey.startsWith('i:') ? (otherKey.slice(2).split('/').pop() ?? otherKey) : otherKey;
-        return {
-          id: `${e.sourceKey}|${e.predicateIri}|${e.targetKey}|${i}`,
-          predicate: e.predicate,
-          isSubject,
-          otherLabel: other?.label ?? fallback,
-          pending: false,
-          status: 'confirmed' as const,
-        };
-      })
-      .slice(0, 40);
-    const typeLabel = node.rdfType ? (node.rdfType.split('/').pop() ?? node.rdfType) : null;
-    return { label: node.label, typeLabel, related };
+  // Opened without a source (the Review tab's own compare button): start on the first one waiting.
+  $effect(() => {
+    if (graphMode === 'compare' && !compareSourceId && pendingSourceIds.length > 0) compareSourceId = pendingSourceIds[0];
   });
+  function chooseCompareSource(srcId: string) {
+    compareSourceId = srcId;
+    const url = new URL(window.location.href);
+    url.searchParams.set('source', srcId);
+    replaceState(url, {});
+  }
 
-  /** The details the node panel shows — preview OR overlay, whichever mode is active. */
-  const panelDetails = $derived(
-    graphMode === 'overlay' ? overlayNodeDetails : graphMode === 'preview' ? nodeDetails : null,
-  );
+  /** The details the node panel shows (preview mode only). */
+  const panelDetails = $derived(graphMode === 'preview' ? nodeDetails : null);
 
-  /** Close the node panel, clearing whichever selection drives the active mode. */
+  /** Close the node panel, clearing the selection that drives it. */
   function closeNodePanel() {
-    if (graphMode === 'overlay') overlaySelectedKey = null;
-    else { selected = null; focusedEdge = null; }
-  }
-
-  // KB-based overlay sources
-  let overlayKbEntries = $state(getRegistry());
-  let overlaySelectedKbIds = $state(new Set<string>());
-  let overlayKbTtlCache = new Map<string, string>();
-  let overlayLoadingKbIds = $state(new Set<string>());
-
-  // Bundled examples (collapsed by default)
-  let overlayShowExamples = $state(false);
-  let overlaySelectedExampleIds = $state(new Set<string>());
-  const overlayBundledFiles = (() => {
-    const mods = import.meta.glob('/docs/reckons-knowledge-graphs/*.ttl', {
-      query: '?raw', import: 'default', eager: true
-    }) as Record<string, string>;
-    return Object.entries(mods).map(([path, content]) => ({
-      id: path.split('/').pop()!.replace('.ttl', ''),
-      content: content as string
-    }));
-  })();
-
-  async function loadOverlayKbAsTtl(entry: import('$lib/storage/kb-registry').KbEntry): Promise<string> {
-    if (overlayKbTtlCache.has(entry.id)) return overlayKbTtlCache.get(entry.id)!;
-    const tempDb = new KBaseDB(entry.id);
-    try {
-      const stmts = await tempDb.statements.toArray();
-      const confirmed = stmts.filter(s => s.status === 'confirmed' || s.status === 'refined');
-      if (confirmed.length === 0) return '';
-      const ttl = toTurtle(confirmed, { header: entry.name });
-      overlayKbTtlCache.set(entry.id, ttl);
-      return ttl;
-    } finally {
-      tempDb.close();
-    }
-  }
-
-  async function rebuildOverlay() {
-    const files: Array<{ id: string; content: string }> = [];
-
-    // Add selected KBs
-    for (const kbId of overlaySelectedKbIds) {
-      const entry = overlayKbEntries.find(e => e.id === kbId);
-      if (!entry) continue;
-      overlayLoadingKbIds = new Set([...overlayLoadingKbIds, kbId]);
-      try {
-        const ttl = await loadOverlayKbAsTtl(entry);
-        if (ttl) files.push({ id: entry.name || entry.id, content: ttl });
-      } catch (e) { console.warn(`Failed to load KB "${entry.name}":`, e); }
-      overlayLoadingKbIds = new Set([...overlayLoadingKbIds].filter(id => id !== kbId));
-    }
-    overlayLoadingKbIds = new Set();
-
-    // Add selected bundled examples
-    if (overlayShowExamples) {
-      for (const ex of overlayBundledFiles) {
-        if (overlaySelectedExampleIds.has(ex.id)) files.push(ex);
-      }
-    }
-
-    if (files.length === 0) { overlayData = null; return; }
-
-    overlayLoading = true;
-    try {
-      overlayData = await parseMultipleGraphs(files);
-      overlayActiveGraphIds = new Set(overlayData.graphs.map(g => g.id));
-    } catch (e) { console.warn('Overlay parse error:', e); }
-    finally { overlayLoading = false; }
-  }
-
-  async function toggleOverlayKb(kbId: string) {
-    const next = new Set(overlaySelectedKbIds);
-    if (next.has(kbId)) next.delete(kbId); else next.add(kbId);
-    overlaySelectedKbIds = next;
-    await rebuildOverlay();
-  }
-
-  function toggleOverlayExample(exId: string) {
-    const next = new Set(overlaySelectedExampleIds);
-    if (next.has(exId)) next.delete(exId); else next.add(exId);
-    overlaySelectedExampleIds = next;
-    rebuildOverlay();
-  }
-
-  function toggleOverlayShowExamples() {
-    overlayShowExamples = !overlayShowExamples;
-    if (!overlayShowExamples) {
-      overlaySelectedExampleIds = new Set();
-      rebuildOverlay();
-    }
-  }
-
-  function initOverlay() {
-    overlayKbEntries = getRegistry();
-    // Auto-select current KB if not already loaded
-    if (overlaySelectedKbIds.size === 0) {
-      overlaySelectedKbIds = new Set([currentKbId]);
-      rebuildOverlay();
-    }
-  }
-
-  function toggleOverlayGraph(id: string) {
-    const next = new Set(overlayActiveGraphIds);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    overlayActiveGraphIds = next;
-  }
-
-  function toggleOverlayPredicate(iri: string) {
-    const next = new Set(overlayActivePredicates);
-    if (next.has(iri)) next.delete(iri); else next.add(iri);
-    overlayActivePredicates = next;
+    selected = null; focusedEdge = null;
   }
 
   // ── Merge execution ───────────────────────────────────────────────────────
@@ -1578,8 +1410,11 @@
       activeTab = tabParam as Tab;
     }
     const viewParam = params.get('view');
-    if (viewParam === 'compare') { graphMode = 'compare'; }
-    else if (viewParam === 'overlay') { graphMode = 'overlay'; initOverlay(); }
+    if (viewParam === 'compare') {
+      graphMode = 'compare';
+      const srcParam = params.get('source');
+      if (srcParam) compareSourceId = srcParam;
+    }
 
     const layoutParam = params.get('layout');
     if (layoutParam && PREVIEW_LAYOUTS.includes(layoutParam as PreviewLayout)) {
@@ -1638,22 +1473,12 @@
       <button class="mode-btn" class:active={graphMode === 'compare'} aria-pressed={graphMode === 'compare'} onclick={() => { graphMode = 'compare'; setViewParam('compare'); }}>
         <span class="mode-lbl mono">compare</span>
       </button>
-      <button class="mode-btn" class:active={graphMode === 'overlay'} aria-pressed={graphMode === 'overlay'} onclick={() => { graphMode = 'overlay'; initOverlay(); setViewParam('overlay'); }}>
-        <span class="mode-lbl mono">overlay</span>
-      </button>
       <span class="mode-spacer"></span>
       {#if graphMode === 'preview'}
         <button class="mode-btn dim-toggle" class:active={!use2D} onclick={() => { graphSettled = false; use2D = !use2D; }}
           aria-pressed={!use2D}
           title="Switch between 2D and 3D">
           <span class="mode-lbl mono">{use2D ? '2D' : '3D'}</span>
-        </button>
-      {/if}
-      {#if graphMode === 'overlay'}
-        <button class="mode-btn dim-toggle" class:active={overlayViewIs3D} onclick={() => overlayViewIs3D = !overlayViewIs3D}
-          aria-pressed={overlayViewIs3D}
-          title="Switch between 2D and 3D">
-          <span class="mode-lbl mono">{overlayViewIs3D ? '3D' : '2D'}</span>
         </button>
       {/if}
     </div>
@@ -1756,69 +1581,6 @@
       </div>
     </div>
 
-    <!-- Overlay controls strip (when overlay mode) -->
-    {#if graphMode === 'overlay'}
-      <div class="overlay-controls">
-        <!-- KB picker row -->
-        <div class="ov-row">
-          <span class="ov-label mono">Graphs</span>
-          {#each overlayKbEntries as entry}
-            {@const isActive = overlaySelectedKbIds.has(entry.id)}
-            <button
-              class="ov-chip"
-              class:active={isActive}
-              onclick={() => toggleOverlayKb(entry.id)}
-              disabled={overlayLoadingKbIds.has(entry.id)}
-            >
-              {isActive ? '\u2713 ' : ''}{entry.name.length > 16 ? entry.name.slice(0, 14) + '..' : entry.name}
-              {#if entry.statementCount}<span class="ov-count">{entry.statementCount}</span>{/if}
-              {#if entry.id === currentKbId}<span class="ov-current">*</span>{/if}
-            </button>
-          {/each}
-          <!-- Examples dropdown -->
-          <button class="ov-chip" class:active={overlayShowExamples} onclick={toggleOverlayShowExamples}>
-            {overlayShowExamples ? '\u25BE' : '\u25B8'} examples
-          </button>
-        </div>
-        {#if overlayShowExamples}
-          <div class="ov-row">
-            <span class="ov-label mono"></span>
-            {#each overlayBundledFiles as ex}
-              <button class="ov-chip" class:active={overlaySelectedExampleIds.has(ex.id)} onclick={() => toggleOverlayExample(ex.id)}>
-                {ex.id.length > 16 ? ex.id.slice(0, 14) + '..' : ex.id}
-              </button>
-            {/each}
-          </div>
-        {/if}
-        {#if overlayData}
-          <!-- Predicate filters -->
-          <div class="ov-row">
-            <span class="ov-label mono">show</span>
-            {#each [...MEMBERSHIP_PREDICATES] as pred}
-              <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)}>
-                {MEMBERSHIP_LABELS[pred] ?? pred.split('/').pop()}
-              </button>
-            {/each}
-            {#each [...OVERLAY_STRUCTURAL] as pred}
-              <button class="ov-chip" class:active={overlayActivePredicates.has(pred)} onclick={() => toggleOverlayPredicate(pred)} style="font-style:italic">
-                {pred.split('/').pop()}
-              </button>
-            {/each}
-          </div>
-          <!-- Graph toggles -->
-          <div class="ov-row">
-            <span class="ov-label mono">graphs</span>
-            {#each overlayData.graphs as g}
-              <button class="ov-chip" class:active={overlayActiveGraphIds.has(g.id)} onclick={() => toggleOverlayGraph(g.id)}>
-                <span class="ov-dot" style="background:{g.color}"></span>
-                {g.id.length > 14 ? g.id.slice(0, 12) + '..' : g.id}
-              </button>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    {/if}
-
     <!-- Compare source picker (when compare mode) -->
     {#if graphMode === 'compare'}
       <div class="overlay-controls">
@@ -1826,7 +1588,7 @@
           <span class="ov-label mono">source</span>
           {#each pendingSourceIds as srcId}
             {@const src = sources().find(s => s.id === srcId)}
-            <button class="ov-chip" class:active={compareSourceId === srcId} onclick={() => compareSourceId = srcId}>
+            <button class="ov-chip" class:active={compareSourceId === srcId} onclick={() => chooseCompareSource(srcId)}>
               {src ? (src.title.length > 18 ? src.title.slice(0, 16) + '..' : src.title) : srcId}
             </button>
           {/each}
@@ -1845,7 +1607,7 @@
         <span class="focus-badge" title={activeGroup.label}>reviewing {activeGroup.label}</span>
       {/if}
 
-      <!-- Node details (left) + scoped chat — shown when a node is selected in preview OR overlay -->
+      <!-- Node details (left) + scoped chat — shown when a node is selected in preview -->
       {#if panelDetails}
         <div class="node-details-pane">
           <div class="ndp-header">
@@ -1904,45 +1666,7 @@
           </GraphCanvas>
         {/if}
       {:else if graphMode === 'compare'}
-        {#if compareIncoming.length > 0}
-          <CompareGraph
-            incoming={compareIncoming}
-            existing={compareRelevantExisting}
-            newCount={compareLegend.newCount}
-            sharedCount={compareLegend.sharedCount}
-            kbOnlyCount={compareLegend.kbOnlyCount}
-          />
-        {:else}
-          <div class="graph-empty">
-            <p class="mono">select a source above to compare</p>
-          </div>
-        {/if}
-      {:else if graphMode === 'overlay'}
-        {#if overlayData}
-          {#if overlayViewIs3D}
-            <OverlayGraph3D
-              graphs={overlayData.graphs}
-              nodes={overlayData.nodes}
-              edges={overlayData.edges}
-              activeGraphIds={overlayActiveGraphIds}
-              activePredicates={overlayActivePredicates}
-            />
-          {:else}
-            <OverlayGraph
-              graphs={overlayData.graphs}
-              nodes={overlayData.nodes}
-              edges={overlayData.edges}
-              activeGraphIds={overlayActiveGraphIds}
-              activePredicates={overlayActivePredicates}
-              selectedKey={overlaySelectedKey}
-              onselect={(key) => { overlaySelectedKey = key; }}
-            />
-          {/if}
-        {:else}
-          <div class="graph-empty">
-            <p class="mono">{overlayLoading ? 'loading...' : 'select graphs above to compare'}</p>
-          </div>
-        {/if}
+        <CompareFlow sourceId={compareSourceId} />
       {/if}
 
       <!-- 3D node labels via the SHARED GraphLabels overlay (F92) — same component the main graph

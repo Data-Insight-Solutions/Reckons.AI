@@ -21,7 +21,7 @@
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { loaded } from '$lib/stores/kb.svelte';
-  import { groupByStanding, newReckoningId, readReckoning } from '$lib/rdf/reckoning-entity';
+  import { groupByStanding, newReckoningId, readReckoning, questionTargets, TARGET_ASSET_TYPES, type ReckoningTarget } from '$lib/rdf/reckoning-entity';
   import { labelFromIRI } from '$lib/rdf/semantic-diff';
   import { saveReckoning } from '$lib/stores/reckoning.svelte';
 
@@ -41,6 +41,14 @@
   let saveNote = $state<string | null>(null);
   let restored = false;
 
+  // F223.12.2: the target is a question to answer, an asset to make, or free text. Kept on the same entity.
+  type TargetKind = 'question' | 'asset' | 'text';
+  let targetKind = $state<TargetKind>('text');
+  let targetStatementId = $state<string | null>(null);
+  let targetAssetType = $state<string | null>(null);
+  let targetSearch = $state('');
+  let target = $state('');
+
   const entityLabels = $derived.by(() => {
     const m = new Map<string, string>();
     for (const st of statements()) {
@@ -59,6 +67,27 @@
     [...chosenRows.map((st) => `- ${describe(st)}`), situation.trim()].filter(Boolean).join('\n')
   );
 
+  const questions = $derived(questionTargets(statements(), targetSearch, labelOf));
+  const targetQuestion = $derived(targetStatementId ? statements().find((st) => st.id === targetStatementId) ?? null : null);
+  const assetLabel = $derived(TARGET_ASSET_TYPES.find((a) => a.iri === targetAssetType)?.label ?? '');
+  /** What is saved on the Reckoning entity: only the kind the person is on counts. */
+  const targetChoice = $derived<ReckoningTarget>({
+    statementId: targetKind === 'question' ? targetStatementId : null,
+    assetType: targetKind === 'asset' ? targetAssetType : null,
+    note: target.trim(),
+  });
+  const targetReady = $derived(
+    targetKind === 'question' ? !!targetQuestion : targetKind === 'asset' ? !!targetAssetType : target.trim().length >= 10
+  );
+  /** The target as the proposal prompt reads it. */
+  const targetText = $derived(
+    [
+      targetKind === 'question' && targetQuestion ? `Answer this open question: ${targetQuestion.question ?? describe(targetQuestion)}` : '',
+      targetKind === 'asset' && assetLabel ? `Make this asset: ${assetLabel}` : '',
+      target.trim(),
+    ].filter(Boolean).join('\n')
+  );
+
   function toggle(id: string) {
     chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
   }
@@ -68,13 +97,18 @@
     if (chosen.length === 0) return;
     const id = reckoningId ?? newReckoningId();
     try {
-      const ok = await saveReckoning(id, chosen, situation);
+      const ok = await saveReckoning(id, chosen, situation, targetChoice);
       if (!ok) { saveNote = 'This data is read-only, so the Reckoning was not saved.'; return; }
       reckoningId = id;
       await goto(`?r=${id}`, { replaceState: true, keepFocus: true, noScroll: true });
     } catch (e) {
       saveNote = `The Reckoning could not be saved: ${e instanceof Error ? e.message : String(e)}`;
     }
+  }
+
+  async function continueToConfirm() {
+    if (reckoningId) await keepSituation();
+    step = 'confirm';
   }
 
   async function continueToTarget() {
@@ -92,10 +126,14 @@
     reckoningId = id;
     chosen = found.statementIds.filter((sid) => statements().some((st) => st.id === sid));
     situation = found.note;
+    target = found.target.note;
+    targetStatementId = found.target.statementId;
+    targetAssetType = found.target.assetType;
+    targetKind = found.target.statementId ? 'question' : found.target.assetType ? 'asset' : 'text';
+    if (found.target.statementId || found.target.assetType || found.target.note) step = 'target';
     const missing = found.statementIds.length - chosen.length;
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
-  let target = $state('');
   let proposal = $state('');
   let technicalDetail = $state('');
   let busy = $state(false);
@@ -239,7 +277,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
         ...prov,
         messages: [{
           role: 'user',
-          content: `SITUATION:\n${situationText}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+          content: `SITUATION:\n${situationText}\n\nTARGET:\n${targetText}\n\nPlease generate a structured proposal based on my graph.`
         }],
         kbContext,
         customPrompt: RECKONING_SYSTEM_PROMPT
@@ -285,7 +323,7 @@ Do NOT include <kb-actions> blocks.`;
         messages: [
           {
             role: 'user',
-            content: `SITUATION:\n${situationText}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+            content: `SITUATION:\n${situationText}\n\nTARGET:\n${targetText}\n\nPlease generate a structured proposal based on my graph.`
           },
           { role: 'assistant', content: proposal },
           { role: 'user', content: 'show technical details' }
@@ -351,6 +389,9 @@ Do NOT include <kb-actions> blocks.`;
     chosen = [];
     reckoningId = null;
     target = '';
+    targetKind = 'text';
+    targetStatementId = null;
+    targetAssetType = null;
     proposal = '';
     technicalDetail = '';
     conversation = [];
@@ -449,17 +490,51 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">What outcome are you trying to reach?</p>
         </div>
       </div>
+      {#if step === 'target'}
+        <div class="kind-row" role="radiogroup" aria-label="Kind of target">
+          <label><input type="radio" name="target-kind" value="question" bind:group={targetKind} /> Answer a question</label>
+          <label><input type="radio" name="target-kind" value="asset" bind:group={targetKind} /> Make an asset</label>
+          <label><input type="radio" name="target-kind" value="text" bind:group={targetKind} /> Write the outcome</label>
+        </div>
+        {#if targetKind === 'question'}
+          <div class="pick" data-testid="target-picker">
+            <input class="pick-search" type="search" placeholder="Search questions…" aria-label="Search questions" bind:value={targetSearch} />
+            <ul class="pick-list">
+              {#each questions.slice(0, 40) as st (st.id)}
+                <li>
+                  <label class="pick-row">
+                    <input type="radio" name="target-question" checked={targetStatementId === st.id} onchange={() => (targetStatementId = st.id)} />
+                    <span>{st.question ?? describe(st)}</span>
+                  </label>
+                </li>
+              {/each}
+            </ul>
+            {#if questions.length === 0}<p class="stp-desc">No open questions match.</p>{/if}
+            {#if questions.length > 40}<p class="stp-desc">Showing 40 of {questions.length}. Search to narrow them.</p>{/if}
+          </div>
+        {:else if targetKind === 'asset'}
+          <div class="kind-row" role="radiogroup" aria-label="Kind of asset">
+            {#each TARGET_ASSET_TYPES as a (a.iri)}
+              <label><input type="radio" name="target-asset" value={a.iri} bind:group={targetAssetType} /> {a.label}</label>
+            {/each}
+          </div>
+        {/if}
+      {:else if targetKind === 'question' && targetQuestion}
+        <p class="stp-desc">Answer: {targetQuestion.question ?? describe(targetQuestion)}</p>
+      {:else if targetKind === 'asset' && assetLabel}
+        <p class="stp-desc">Make: {assetLabel}</p>
+      {/if}
       <textarea
         class="stp-input"
         bind:value={target}
-        placeholder="e.g. Choose the framework that minimises engineering risk while giving us the best long-term scalability for 10M+ users."
+        placeholder={targetKind === 'asset' ? 'Describe what it should show (this becomes the generation prompt).' : targetKind === 'question' ? 'Anything that helps answer it (optional).' : 'e.g. Choose the framework that minimises engineering risk while giving us the best long-term scalability for 10M+ users.'}
         rows="3"
         disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'target'}
         <div class="btn-row">
           <button class="btn-back" onclick={() => step = 'situation'}>← Back</button>
-          <button class="btn-next" disabled={target.trim().length < 10} onclick={() => step = 'confirm'}>
+          <button class="btn-next" disabled={!targetReady} onclick={continueToConfirm}>
             Review →
           </button>
         </div>
@@ -484,7 +559,7 @@ Do NOT include <kb-actions> blocks.`;
         </div>
         <div class="confirm-row">
           <span class="confirm-label mono">target</span>
-          <p>{target}</p>
+          <p>{targetText}</p>
         </div>
         <div class="confirm-row">
           <span class="confirm-label mono">graph context</span>
@@ -630,6 +705,8 @@ Do NOT include <kb-actions> blocks.`;
 <style>
   .pick { max-height: 18rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--rad-sm); padding: 0.6rem; margin-bottom: 0.6rem; background: var(--surface-2); }
   .pick-search { width: 100%; box-sizing: border-box; padding: 0.4rem 0.6rem; margin-bottom: 0.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad-sm); color: var(--ink); }
+  .kind-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 0.6rem; font-size: 0.85rem; color: var(--ink); }
+  .kind-row label { display: flex; gap: 0.35rem; align-items: center; cursor: pointer; }
   .pick-head { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); margin: 0.6rem 0 0.2rem; }
   .pick-list { list-style: none; margin: 0 0 0.6rem; padding: 0; }
   .pick-row { display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.2rem 0; font-size: 0.85rem; color: var(--ink); cursor: pointer; }
