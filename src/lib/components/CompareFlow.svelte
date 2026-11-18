@@ -16,7 +16,8 @@
   import { semanticEnrichDiff } from '$lib/rdf/semantic-diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { settings } from '$lib/stores/settings.svelte';
-  import CompareGraph from '$lib/components/CompareGraph.svelte';
+  import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import { compareOverlay, toCanvasOverlay, localLabel as overlayLabel } from '$lib/rdf/compare-overlay';
 
   let { sourceId }: { sourceId: string | null } = $props();
 
@@ -81,22 +82,17 @@
     kindOrder.map((kind) => ({ kind, n: diff.entries.filter((e) => e.kind === kind).length })).filter((c) => c.n > 0)
   );
 
-  const legendCounts = $derived.by(() => {
-    const inKeys = new Set(incoming.flatMap((s) => [s.s.value, s.o.value]));
-    const exKeys = new Set(confirmedElsewhere.flatMap((s) => [s.s.value, s.o.value]));
-    let n = 0, sh = 0, kb = 0;
-    for (const k of new Set([...inKeys, ...exKeys])) {
-      if (inKeys.has(k) && exKeys.has(k)) sh++;
-      else if (inKeys.has(k)) n++;
-      else kb++;
-    }
-    return { newCount: n, sharedCount: sh, kbOnlyCount: kb };
+  // ── the incoming note drawn over the person's own canvas (F264.2) ─────────
+  // Nothing here writes: the picture is a reading of the diff, and what you hold stays as it is until a choice.
+  const canvasStatements = $derived(confirmedElsewhere);
+  const sourceTitle = $derived.by(() => {
+    const t = new Map(sources().map((src) => [src.id, src.title || src.uri || src.id]));
+    return (st: { sourceId: string }) => t.get(st.sourceId) ?? st.sourceId;
   });
-  // Only what shares an entity with the incoming rows, so the picture is not flooded.
-  const relevantExisting = $derived.by(() => {
-    const inValues = new Set(incoming.flatMap((s) => [s.s.value, s.o.value]));
-    return confirmedElsewhere.filter((s) => inValues.has(s.s.value) || inValues.has(s.o.value));
-  });
+  const overlay = $derived(compareOverlay(diff.entries, canvasStatements, { sourceLabel: sourceTitle }));
+  const canvasOverlay = $derived(toCanvasOverlay(overlay));
+  const triple = (st: { s: { value: string }; p: { value: string }; o: { value: string } }) =>
+    `${overlayLabel(st.s.value)} · ${overlayLabel(st.p.value)} · ${overlayLabel(st.o.value)}`;
 
   // ── difference summary ─────────────────────────────────────────────────────
   let diffSummary = $state<DiffSummary | null>(null);
@@ -161,13 +157,33 @@
 <div class="compare-flow" data-testid="compare-flow">
   {#if source}<p class="src-label mono">{source.title}</p>{/if}
 
-  <CompareGraph
-    {incoming}
-    existing={relevantExisting}
-    newCount={legendCounts.newCount}
-    sharedCount={legendCounts.sharedCount}
-    kbOnlyCount={legendCounts.kbOnlyCount}
-  />
+  <div class="overlay-canvas" data-testid="compare-canvas">
+    <KnowledgeGraph2D statements={canvasStatements} sources={sources()} compareOverlay={canvasOverlay} />
+    <div class="overlay-legend mono" data-testid="overlay-legend">
+      <span class="lg ghost">{overlay.ghosts.length} new, drawn as ghosts</span>
+      <span class="lg">{overlay.folded.length} repeat{overlay.folded.length === 1 ? '' : 's'}, folded onto what you hold</span>
+      <span class="lg">{overlay.thickened.length} reinforcing, thickening what you hold</span>
+      <span class="lg conflict">{overlay.contradictions.length} contradiction{overlay.contradictions.length === 1 ? '' : 's'}</span>
+      {#if canvasStatements.length === 0}<span class="lg">nothing confirmed yet to draw over</span>{/if}
+    </div>
+  </div>
+
+  {#if overlay.contradictions.length > 0}
+    <div class="pairs" data-testid="contradiction-pairs">
+      {#each overlay.contradictions as c (c.id)}
+        <div class="pair" data-testid="contradiction-pair">
+          <div class="side held"><span class="side-tag mono">you hold</span>
+            {#each c.held as h (h.id)}<div class="mono">{triple(h)}</div>{/each}
+            <span class="src mono">from {c.heldSources.join(', ')}</span></div>
+          <div class="vs mono">{c.opposite ? 'opposes' : 'contradicts'}</div>
+          <div class="side arriving"><span class="side-tag mono">arriving</span>
+            <div class="mono">{triple(c.incoming)}</div>
+            <span class="src mono">from {c.incomingSource}</span></div>
+          {#if c.note}<div class="pair-note mono">{c.note}</div>{/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <div class="summary-row" data-testid="compare-chips">
     {#each chips as c (c.kind)}
@@ -239,6 +255,18 @@
 
 <style>
   .compare-flow { display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto; height: 100%; padding: 0.5rem 0.25rem; }
+  .overlay-canvas { position: relative; width: 100%; height: 360px; flex: none; border: 1px solid var(--line); border-radius: var(--rad); overflow: hidden; background: var(--surface); }
+  .overlay-legend { position: absolute; left: 0.5rem; bottom: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; font-size: 0.65rem; color: var(--muted); background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 0.25rem 0.6rem; border-radius: 999px; pointer-events: none; }
+  .lg.ghost { color: #b97a05; }
+  .lg.conflict { color: var(--danger); }
+  .pairs { display: flex; flex-direction: column; gap: 0.5rem; }
+  .pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0.5rem 0.8rem; align-items: stretch; border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--line)); border-radius: var(--rad-sm); padding: 0.6rem 0.8rem; background: var(--surface); font-size: 0.75rem; }
+  .side { display: flex; flex-direction: column; gap: 0.2rem; }
+  .side-tag { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .side.arriving .side-tag { color: #b97a05; }
+  .src { color: var(--muted); font-size: 0.68rem; }
+  .vs { align-self: center; color: var(--danger); font-size: 0.7rem; }
+  .pair-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.68rem; }
   .src-label { color: var(--muted); font-size: 0.8rem; margin: 0; }
   .summary-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
   .pill { padding: 0.25rem 0.7rem; border-radius: 999px; border: 1px solid; font-size: 0.72rem; text-transform: lowercase; }
