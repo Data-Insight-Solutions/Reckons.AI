@@ -183,10 +183,16 @@ jobs:
           APP_URL_MAIN: ${{ vars.APP_URL_MAIN }}
           APP_URL_STAGING: ${{ vars.APP_URL_STAGING }}
           APP_URL_DEV: ${{ vars.APP_URL_DEV }}
+          # The report quotes commit and PR text, which anyone opening a PR controls. It reaches the
+          # script ONLY as data through env: substituting it into the script body made a backtick or
+          # ${...} in a commit message run as JavaScript (found 2026-11-18, when a commit saying
+          # `npm ci` broke this step with "SyntaxError: Unexpected identifier 'npm'").
+          ALIGN_REPORT: ${{ steps.align.outputs.report }}
+          ALIGN_EXIT_CODE: ${{ steps.align.outputs.exit_code }}
         with:
           script: |
-            const report = `${{ steps.align.outputs.report }}`;
-            const exitCode = parseInt('${{ steps.align.outputs.exit_code }}');
+            const report = process.env.ALIGN_REPORT ?? '';
+            const exitCode = parseInt(process.env.ALIGN_EXIT_CODE ?? '', 10);
             const status = exitCode === 0 ? 'aligned' : 'drift detected';
             const emoji = exitCode === 0 ? ':white_check_mark:' : ':warning:';
 
