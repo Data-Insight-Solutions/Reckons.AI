@@ -1268,7 +1268,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "80a52f58b37e9da3"
+      "pageHash": "07ea9cf13d413370"
     },
     {
       "path": "testing/three-example-nodes",
@@ -1310,10 +1310,10 @@
       "path": "testing/workflow-compare-v029",
       "entity": "urn:reckons:test/Workflow-CompareV029",
       "graph": "docs-testing.ttl",
-      "factHash": "b3ba9866b9632245",
+      "factHash": "2f88f54cd3635798",
       "factCount": 7,
       "floor": "evidence",
-      "pageHash": "745938e9d6ff89d8"
+      "pageHash": "0b5554021e03ac12"
     },
     {
       "path": "testing/workflow-generated-assets",
@@ -1337,10 +1337,10 @@
       "path": "testing/workflow-reckoning-v029",
       "entity": "urn:reckons:test/Workflow-ReckoningV029",
       "graph": "docs-testing.ttl",
-      "factHash": "a3cd3404ced51252",
+      "factHash": "6078067f04c18852",
       "factCount": 7,
       "floor": "evidence",
-      "pageHash": "8dc91a90a411453d"
+      "pageHash": "8e67a70d607d04a0"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

@@ -7,13 +7,13 @@ parent: "test-workflows"
 template: doc
 status: published
 nav: sidebar
-excerpt: "A Reckoning helps you decide something using what your space already holds."
+excerpt: "A Reckoning helps you decide something using what your knowledge base already holds."
 generated: "docs-kb"
 ---
 
 # Reckon with chosen statements, then accept one option
 
-A Reckoning helps you decide something using what your space already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question the space has, or an asset to make), and Reckons.AI writes two options into your space as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something the space does not know yet, it is held as an open question; answering it finishes the proposal.
+A Reckoning helps you decide something using what your knowledge base already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal.
 
 A browser test runs these steps on every change. It replaces the earlier Reckoning workflow, which described a three-box form that no longer exists.
 
@@ -21,7 +21,7 @@ A browser test runs these steps on every change. It replaces the earlier Reckoni
 
 ## How these screenshots were made
 
-**What they show.** A space made from one invented note about a fictional company, Company Alpha, with its statements already confirmed, and one invented open question, "What does Sample Company still need?". Nothing here is anyone's real notes.
+**What they show.** A knowledge base made from one invented note about a fictional company, Company Alpha, with its statements already confirmed, and one invented open question, "What does Sample Company still need?". Nothing here is anyone's real notes.
 
 **What is scripted.** The test uses no language model: a stand-in reader returns the statements of the note, and the proposal is a fixed reply written in advance (two options, each with a statement, a picture job and a missing-input question). The job queue is a stand-in too: the test counts the request written for the job and never runs a model. So the pictures show what each screen does and that the standings change as described. They do not show how good a real model's options are.
 
@@ -41,7 +41,7 @@ Where: the canvas (`/`).
 
 ### 2. Choose the situation from the list
 
-On the Reckoning page the statements the space holds are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: "We need to decide how to refresh the company logo." The count says how many are chosen. Press Continue: the situation is saved in your space as a Reckoning of its own, so reloading the page shows the same choice.
+On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: "We need to decide how to refresh the company logo." The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice.
 
 Where: the Reckoning page (`/reckoning`).
 
@@ -51,21 +51,21 @@ Where: the Reckoning page (`/reckoning`).
 
 ### 3. Choose the target: a question to answer
 
-Choose Answer a question. The questions your space is waiting on are listed; pick "What does Sample Company still need?". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have.
+Choose Answer a question. The questions you still have open are listed; pick "What does Sample Company still need?". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have.
 
 Where: the Reckoning page (`/reckoning`).
 
-<figure class="workflow-shot"><img src="/workflows/reckoning-v029/03-choose-target.webp" width="1280" height="800" alt="Screenshot of step 3, Choose the target: a question to answer. A pink box labelled &quot;Open question&quot; marks the open question chosen as the target, among the questions the space holds." loading="lazy" decoding="async" /><figcaption>The pink box marks the open question chosen as the target, among the questions the space holds.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/reckoning-v029/03-choose-target.webp" width="1280" height="800" alt="Screenshot of step 3, Choose the target: a question to answer. A pink box labelled &quot;Open question&quot; marks the open question chosen as the target, among the open questions you hold." loading="lazy" decoding="async" /><figcaption>The pink box marks the open question chosen as the target, among the open questions you hold.</figcaption></figure>
 
 **What the test checks.** The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload.
 
-### 4. Generate a proposal that is written into the space
+### 4. Generate a proposal that is written into your knowledge base
 
-Press Review, then Generate proposal. Two options appear. Each is already in your space as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued.
+Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued.
 
 Where: the Reckoning page (`/reckoning`).
 
-<figure class="workflow-shot"><img src="/workflows/reckoning-v029/04-generate-proposal.webp" width="1280" height="800" alt="Screenshot of step 4, Generate a proposal that is written into the space. A pink box labelled &quot;Two options&quot; marks the two option cards, each listing its statement, its job and its open question." loading="lazy" decoding="async" /><figcaption>The pink box marks the two option cards, each listing its statement, its job and its open question.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/reckoning-v029/04-generate-proposal.webp" width="1280" height="800" alt="Screenshot of step 4, Generate a proposal that is written into your knowledge base. A pink box labelled &quot;Two options&quot; marks the two option cards, each listing its statement, its job and its open question." loading="lazy" decoding="async" /><figcaption>The pink box marks the two option cards, each listing its statement, its job and its open question.</figcaption></figure>
 
 **What the test checks.** Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question.
 

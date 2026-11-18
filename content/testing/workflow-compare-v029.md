@@ -7,13 +7,13 @@ parent: "test-workflows"
 template: doc
 status: published
 nav: sidebar
-excerpt: "Adding a second note to a space that already holds a first one is where a space goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new."
+excerpt: "Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new."
 generated: "docs-kb"
 ---
 
 # Read a note against what you hold, see it on the canvas, decide a contradiction
 
-Adding a second note to a space that already holds a first one is where a space goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new. Here the note is read and lands in Review's compare flow, where each statement is labeled by what it would do. The same comparison is drawn over your own canvas, and the one contradiction is decided on its own card, with the replaced statement kept on record.
+Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new. Here the note is read and lands in Review's compare flow, where each statement is labeled by what it would do. The same comparison is drawn over your own canvas, and the one contradiction is decided on its own card, with the replaced statement kept on record.
 
 A browser test runs these steps on every change. It replaces the earlier Compare workflow, which described two separate screens that are now one flow.
 
@@ -21,17 +21,17 @@ A browser test runs these steps on every change. It replaces the earlier Compare
 
 ## How these screenshots were made
 
-**What they show.** Two invented notes about a fictional cider cooperative (`tests/fixtures/compare-demo/notes.json`). The first is accepted so the space holds it. The second repeats one thing, rewords one, contradicts one (forty members against fifty-two) and adds one.
+**What they show.** Two invented notes about a fictional cider cooperative (`tests/fixtures/compare-demo/notes.json`). The first is accepted so your knowledge base holds it. The second repeats one thing, rewords one, contradicts one (forty members against fifty-two) and adds one.
 
 **What is scripted.** The test uses no language model: a stand-in reader returns the statements written down for each note. The near-duplicate label uses a test stand-in for the embedding model, so the picture proves the wiring and not how well the real model judges similar wording.
 
-**What is not shown.** How well a real model reads either note, and comparing a whole space against another space, which is no longer part of Review.
+**What is not shown.** How well a real model reads either note, and comparing one whole knowledge base against another, which is no longer part of Review.
 
 ## The steps
 
 ### 1. Extract statements from a second note
 
-The space already holds the first orchard note, accepted. On the Add page title the second note "Orchard meeting" and paste: "Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof." Press Extract statements. You land in Review's compare flow, not in a separate screen.
+Your knowledge base already holds the first orchard note, accepted. On the Add page title the second note "Orchard meeting" and paste: "Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof." Press Extract statements. You land in Review's compare flow, not in a separate screen.
 
 Where: the Add page (`/ingest`).
 
@@ -51,7 +51,7 @@ Where: the Review page (`/review`).
 
 ### 3. See the comparison on your own canvas
 
-The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with their sources. The legend counts each. Nothing has been written to your space yet.
+The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with the notes they came from. The legend counts each. Nothing has been written to your knowledge base yet.
 
 Where: the Review page (`/review`).
 
@@ -67,7 +67,7 @@ Where: the Review page (`/review`).
 
 <figure class="workflow-shot"><img src="/workflows/compare-v029/04-decide-contradiction.webp" width="1280" height="800" alt="Screenshot of step 4, Decide the contradiction where it is. A pink box labelled &quot;take the new one&quot; marks the contradiction's own card, with the held and the arriving passage and its three choices." loading="lazy" decoding="async" /><figcaption>The pink box marks the contradiction's own card, with the held and the arriving passage and its three choices.</figcaption></figure>
 
-**What the test checks.** Both passages are readable on the card; after take the new one, 52 is part of the space and 40 is marked replaced.
+**What the test checks.** Both passages are readable on the card; after take the new one, 52 is part of what you hold and 40 is marked replaced.
 
 ### 5. See the replaced statement still on record
 
@@ -77,7 +77,7 @@ Where: the Review page (`/review`).
 
 <figure class="workflow-shot"><img src="/workflows/compare-v029/05-see-on-record.webp" width="1280" height="800" alt="Screenshot of step 5, See the replaced statement still on record. A pink box labelled &quot;replaced, still on record&quot; marks the settled pair, which says the old statement was replaced and is still on record." loading="lazy" decoding="async" /><figcaption>The pink box marks the settled pair, which says the old statement was replaced and is still on record.</figcaption></figure>
 
-**What the test checks.** The settled pair reads replaced, still on record, shows both statements and both sources, and the stored rows are 40 superseded and 52 refined, each keeping its passage.
+**What the test checks.** The settled pair reads replaced, still on record, shows both statements and the note each came from, and the stored rows are 40 superseded and 52 refined, each keeping its passage.
 
 This workflow is run by `tests/e2e/workflow-compare-v029.test.ts`, which reads the steps above from the same list.
 

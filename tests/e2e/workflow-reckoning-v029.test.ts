@@ -8,7 +8,7 @@ import type { Workflow } from '../../scripts/lib/test-workflow';
 
 /**
  * TEST WORKFLOW: RECKONING (v0.2.9; F223.12.1 to F223.12.4). Choose the situation (canvas and list),
- * choose the target, generate a proposal that is written into the space, look at an option on the
+ * choose the target, generate a proposal that is written into the knowledge base, look at an option on the
  * canvas, accept one, answer its missing input.
  *
  * As in workflow-build-change.test.ts the steps are the ktype:TestStep triples of

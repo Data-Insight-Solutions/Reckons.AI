@@ -7,7 +7,7 @@ import { boxTarget } from '../visual/workflow-harness';
 import type { Workflow } from '../../scripts/lib/test-workflow';
 
 /**
- * TEST WORKFLOW: COMPARE (v0.2.9; F264.1 to F264.3). A second note is read against what the space
+ * TEST WORKFLOW: COMPARE (v0.2.9; F264.1 to F264.3). A second note is read against what your knowledge base
  * holds, lands in Review's compare flow with a label on each statement, is drawn over the canvas,
  * and its one contradiction is decided in place with the replaced statement still on record.
  *
@@ -152,7 +152,7 @@ test('the notes quoted in the graph are the fixture notes', () => {
 test(`${workflow.title}`, async ({ page }) => {
   test.setTimeout(150_000);
   if (CAPTURE_DIR) mkdirSync(CAPTURE_DIR, { recursive: true });
-  // Setup, not a step: the first note is read and accepted so the space holds it.
+  // Setup, not a step: the first note is read and accepted so the knowledge base holds it.
   const first = await fillNote(page, demo.seed.title, demo.seed.text);
   await first.click();
   await landed(page);

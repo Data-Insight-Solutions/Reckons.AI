@@ -51,8 +51,8 @@ Write a prompt, and three local models turn it into a picture, then a short clip
 
 **[Read a note against what you hold, see it on the canvas, decide a contradiction](../testing/workflow-compare-v029)**
 
-Adding a second note to a space that already holds a first one is where a space goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new.
+Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new.
 
 **[Reckon with chosen statements, then accept one option](../testing/workflow-reckoning-v029)**
 
-A Reckoning helps you decide something using what your space already holds.
+A Reckoning helps you decide something using what your knowledge base already holds.

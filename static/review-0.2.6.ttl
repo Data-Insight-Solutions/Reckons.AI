@@ -20,7 +20,7 @@ rev:release rdf:type ktype:Concept ;
 
 rev:wf-reckoning-v029 rdf:type ktype:Concept ;
     rdfs:label "1. Reckon with chosen statements, then accept one option" ;
-    rdfs:comment "Headline part of v0.2.6: F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer (status: planned). A Reckoning helps you decide something using what your space already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question the space has, or an asset to make), and Reckons.AI writes two options into your space as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something the space does not know yet, it is held as an open question; answering it finishes the proposal. Run by tests/e2e/workflow-reckoning-v029.test.ts." ;
+    rdfs:comment "Headline part of v0.2.6: F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer (status: planned). A Reckoning helps you decide something using what your knowledge base already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal. Run by tests/e2e/workflow-reckoning-v029.test.ts." ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
     hnav:next rev:wf-readme-path ;
@@ -37,7 +37,7 @@ rev:wf-reckoning-v029-01-select-on-canvas rdf:type ktype:Concept ;
 
 rev:wf-reckoning-v029-02-choose-situation rdf:type ktype:Concept ;
     rdfs:label "2. Choose the situation from the list" ;
-    rdfs:comment "On the Reckoning page the statements the space holds are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved in your space as a Reckoning of its own, so reloading the page shows the same choice.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." ;
+    rdfs:comment "On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." ;
     p:photo "/workflows/reckoning-v029/02-choose-situation.webp" ;
     hnav:order "2"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;
@@ -47,7 +47,7 @@ rev:wf-reckoning-v029-02-choose-situation rdf:type ktype:Concept ;
 
 rev:wf-reckoning-v029-03-choose-target rdf:type ktype:Concept ;
     rdfs:label "3. Choose the target: a question to answer" ;
-    rdfs:comment "Choose Answer a question. The questions your space is waiting on are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." ;
+    rdfs:comment "Choose Answer a question. The questions you still have open are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." ;
     p:photo "/workflows/reckoning-v029/03-choose-target.webp" ;
     hnav:order "3"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;
@@ -56,8 +56,8 @@ rev:wf-reckoning-v029-03-choose-target rdf:type ktype:Concept ;
     kmeta:review-verdict "unreviewed" .
 
 rev:wf-reckoning-v029-04-generate-proposal rdf:type ktype:Concept ;
-    rdfs:label "4. Generate a proposal that is written into the space" ;
-    rdfs:comment "Press Review, then Generate proposal. Two options appear. Each is already in your space as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." ;
+    rdfs:label "4. Generate a proposal that is written into your knowledge base" ;
+    rdfs:comment "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." ;
     p:photo "/workflows/reckoning-v029/04-generate-proposal.webp" ;
     hnav:order "4"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;
