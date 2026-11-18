@@ -1,6 +1,7 @@
 import type { Source, Statement } from './types';
 import { STMT_PREFIX, stmtIdFromIriPart, stmtIdToIriPart } from './types';
 import { standingOf, type Standing } from './statement-standing';
+import type { TargetShape } from './proposal';
 
 /**
  * F223.12.1: a Reckoning is an entity the knowledge base keeps. The person chose a situation (facts, plus an
@@ -21,7 +22,31 @@ const LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 export const RECKONING_PREDICATES = {
   situationStatement: 'urn:kbase:predicate/situation-statement',
   situationNote: `${P}situation-note`,
+  /** F223.12.2: the question (an open fact) the person wants answered, by its reification IRI. */
+  targetStatement: `${P}target-statement`,
+  /** F223.12.2: the kind of asset to make (an Image, Video, Model3D or GaussianSplat type IRI). */
+  targetAsset: `${P}target-asset`,
+  /** F223.12.2: a written outcome, or the generation prompt that goes with an asset target. */
+  targetNote: `${P}target-note`,
 } as const;
+
+/** Asset kinds a Reckoning can aim to make, in the order the target step offers them. */
+export const TARGET_ASSET_TYPES = [
+  { iri: 'urn:kbase:type/Image', label: 'Image' },
+  { iri: 'urn:kbase:type/Video', label: 'Video' },
+  { iri: 'urn:kbase:type/Model3D', label: '3D model' },
+  { iri: 'urn:kbase:type/GaussianSplat', label: 'Gaussian splat' },
+] as const;
+
+/**
+ * What the person is aiming at. At most one of statementId / assetType; `note` is free text on its own, or the
+ * outcome or generation prompt that goes with the other two. All empty means no target chosen yet.
+ */
+export type ReckoningTarget = { statementId: string | null; assetType: string | null; note: string };
+export const NO_TARGET: ReckoningTarget = { statementId: null, assetType: null, note: '' };
+
+/** The entity the asset target stands for; it does not exist until the asset is made. */
+export const targetAssetEntity = (id: string) => `urn:kbase:concept/reckoning-${id}-asset`;
 
 export const reckoningEntity = (id: string) => `urn:kbase:concept/reckoning-${id}`;
 export const reckoningSourceId = (id: string) => `reckoning-${id}`;
@@ -40,7 +65,9 @@ const label = (note: string, count: number) =>
   `Reckoning: ${note.trim().slice(0, 60) || `${count} chosen statement${count === 1 ? '' : 's'}`}`;
 
 /** Every row of one Reckoning. Ids are stable, so a later save differs only where the choice changed. */
-export function reckoningStatements(id: string, statementIds: readonly string[], note: string, at: number): Statement[] {
+export function reckoningStatements(
+  id: string, statementIds: readonly string[], note: string, at: number, target: ReckoningTarget = NO_TARGET,
+): Statement[] {
   const entity = reckoningEntity(id);
   const sourceId = reckoningSourceId(id);
   const unique = [...new Set(statementIds)];
@@ -56,10 +83,14 @@ export function reckoningStatements(id: string, statementIds: readonly string[],
   add('label', LABEL, label(note, unique.length));
   if (note.trim()) add('note', RECKONING_PREDICATES.situationNote, note.trim());
   for (const sid of unique) add(`sit-${stmtIdToIriPart(sid)}`, RECKONING_PREDICATES.situationStatement, reckoningStatementIri(sid), true);
+  // Only one of question or asset is kept; the note goes with either, or stands alone.
+  if (target.statementId) add('target-statement', RECKONING_PREDICATES.targetStatement, reckoningStatementIri(target.statementId), true);
+  else if (target.assetType) add('target-asset', RECKONING_PREDICATES.targetAsset, target.assetType, true);
+  if (target.note.trim()) add('target-note', RECKONING_PREDICATES.targetNote, target.note.trim());
   return rows;
 }
 
-export type ReadReckoning = { id: string; label: string; note: string; statementIds: string[] };
+export type ReadReckoning = { id: string; label: string; note: string; statementIds: string[]; target: ReckoningTarget };
 
 /** Read one Reckoning back. Null when no entity with that id has a Reckoning type row. */
 export function readReckoning(all: readonly Statement[], id: string): ReadReckoning | null {
@@ -75,6 +106,11 @@ export function readReckoning(all: readonly Statement[], id: string): ReadReckon
     label: own.find((s) => s.p.value === LABEL)?.o.value ?? '',
     note: own.find((s) => s.p.value === RECKONING_PREDICATES.situationNote)?.o.value ?? '',
     statementIds,
+    target: {
+      statementId: statementIdOfIri(own.find((s) => s.p.value === RECKONING_PREDICATES.targetStatement)?.o.value ?? ''),
+      assetType: own.find((s) => s.p.value === RECKONING_PREDICATES.targetAsset)?.o.value ?? null,
+      note: own.find((s) => s.p.value === RECKONING_PREDICATES.targetNote)?.o.value ?? '',
+    },
   };
 }
 
@@ -115,4 +151,33 @@ export function statementsTouching(all: readonly Statement[], entityIris: Readon
     .filter((st) => isChoosable(st) && ((st.s.kind === 'iri' && entityIris.has(st.s.value)) || (st.o.kind === 'iri' && entityIris.has(st.o.value))))
     .sort((a, b) => Number(standingOf(a) !== 'held') - Number(standingOf(b) !== 'held'))
     .slice(0, limit);
+}
+
+/** Open questions a person can choose as the target: partial facts that are still live, held by no answer yet. */
+export function questionTargets(all: readonly Statement[], query: string, labelOf: (iri: string) => string): Statement[] {
+  const q = query.trim().toLowerCase();
+  return all.filter((st) => {
+    if (!isChoosable(st) || standingOf(st) !== 'question') return false;
+    if (!q) return true;
+    return `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.question ?? ''}`.toLowerCase().includes(q);
+  });
+}
+
+/**
+ * The target as a TargetShape for the proposal (proposal.ts), or null when only free text was written (a written
+ * outcome has no requirement a rule can check, so it never closes a proposal by itself).
+ * Question: the question's subject and predicate must be held with any object, which an answer provides.
+ * Asset: the asset entity must exist, typed as the chosen kind.
+ * Null too when the chosen question is gone from the statements, so a stale choice cannot pass for a target.
+ */
+export function targetShapeFor(reckoning: Pick<ReadReckoning, 'id' | 'target'>, all: readonly Statement[]): TargetShape | null {
+  const { statementId, assetType } = reckoning.target;
+  const id = `reckoning-${reckoning.id}-target`;
+  if (statementId) {
+    const q = all.find((st) => st.id === statementId);
+    if (!q || q.s.kind !== 'iri') return null;
+    return { id, requirements: [{ s: q.s.value, p: q.p.value }] };
+  }
+  if (assetType) return { id, requirements: [{ s: targetAssetEntity(reckoning.id), p: RDF_TYPE, o: assetType }] };
+  return null;
 }

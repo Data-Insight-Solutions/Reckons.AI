@@ -64,7 +64,7 @@ test('ingest form is usable on all screen sizes', async ({ page }) => {
   await bodyInput.fill('A note to test form usability across device sizes.');
 
   // Submit button must be accessible
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
 });
 

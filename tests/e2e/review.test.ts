@@ -13,10 +13,10 @@ async function seedPendingStatement(page: Page) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Company Alpha');
   await page.locator('textarea').first().fill('Company Alpha has 50 employees and was founded in 2020.');
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
-  // Mock backend completes fast and navigates to /compare.
+  // Mock backend completes fast and navigates to Review's compare mode.
   // Wait for the URL to change away from /ingest.
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
 }
@@ -150,7 +150,7 @@ async function seedBookkeepingFacts(page: Page) {
     'The package upgrade shipped on 2026-08-16. The lint fix shipped on 2026-08-16. ' +
     'The test refresh shipped on 2026-08-16. The build guard shipped on 2026-08-16.',
   );
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });

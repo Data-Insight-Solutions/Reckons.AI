@@ -141,7 +141,7 @@ test('manual Facts workflow produces strict, reviewable evidence', async ({ page
   await addToGraph.evaluate((element) => element.scrollIntoView({ block: 'center' }));
   await expect(addToGraph).toBeVisible();
   await addToGraph.click({ timeout: 10_000 });
-  await page.waitForURL(/\/compare/, { timeout: 20_000 });
+  await page.waitForURL(/\/review\?view=compare/, { timeout: 20_000 });
   await expect.poll(() => countStatements(page), { timeout: 15_000 }).toBeGreaterThanOrEqual(3);
   const compareAudit = await page.evaluate(() => ({
     overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
