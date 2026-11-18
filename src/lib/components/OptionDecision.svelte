@@ -1,6 +1,6 @@
 <script lang="ts">
   /**
-   * F223.12.4: weigh one option of a Reckoning's proposal: accept it, set it aside, or (once accepted) answer its
+   * F223.12.4: weigh one option of a Reckoning's proposal: accept it, put it aside, or (once accepted) answer its
    * missing-input questions. Used on the Reckoning card and on the canvas beside the option being shown, so both
    * places say the same thing and change the same rows.
    *
@@ -39,7 +39,7 @@
     working = true; message = '';
     const out = await rejectProposalOption(reckoningId, optionId);
     working = false;
-    if (out.ok) { confirming = null; message = 'Set aside. Its statements stay readable.'; }
+    if (out.ok) { confirming = null; message = 'Rejected. Its statements stay readable.'; }
     else message = out.message;
   }
   async function answer(id: string) {
@@ -68,7 +68,7 @@
         </div>
       {:else}
         <div class="confirm" data-testid="reject-confirm">
-          <p>This sets this option's statements aside as rejected. They stay readable, and no job is queued.</p>
+          <p>This marks this option's statements as rejected. They stay readable, and no job is queued.</p>
           <div class="row">
             <button class="d-btn" data-testid="reject-confirm-yes" disabled={working} onclick={reject}>{working ? 'Working…' : 'Yes, reject'}</button>
             <button class="d-btn" disabled={working} onclick={() => (confirming = null)}>Cancel</button>

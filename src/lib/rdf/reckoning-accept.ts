@@ -143,7 +143,7 @@ export function acceptOption(proposal: Proposal, optionId: string, all: readonly
 
 export type RejectPlan = { reject: string[] };
 
-/** Setting one option aside: all of its pending rows become rejected (readable, never deleted). The proposal stays as it was. */
+/** Rejecting one option: all of its pending rows become rejected (readable, never deleted). The proposal stays as it was. */
 export function rejectOption(proposal: Proposal, optionId: string, all: readonly Statement[]): { ok: true; plan: RejectPlan } | { ok: false; message: string } {
   if (!proposal.options.some((o) => o.id === optionId)) return { ok: false, message: 'That is not one of this proposal\'s options.' };
   if (proposal.status !== ACTION_STATUS.potential) return { ok: false, message: 'This proposal has already been decided.' };

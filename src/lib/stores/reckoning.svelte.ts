@@ -1,5 +1,5 @@
 import { persistSourceBatch, prepareStatementsForWrite, statements, deleteStatement, updateStatement, setStatuses } from '$lib/stores/kb.svelte';
-import { submitJobs } from '$lib/stores/generation-jobs.svelte';
+import { submitJobs, connectJobs, generationJobs } from '$lib/stores/generation-jobs.svelte';
 import { jobEntity } from '$lib/generation/job-node';
 import type { Statement } from '$lib/rdf/types';
 import { acceptOption, rejectOption, readStoredProposal, settleIfReached, type StoredProposal } from '$lib/rdf/reckoning-accept';
@@ -92,6 +92,8 @@ export async function acceptProposalOption(reckoningId: string, optionId: string
   const { plan } = result;
   let created: { id: string }[] = [];
   if (plan.jobs.length > 0) {
+    // The page may have been opened before the runner was reachable: look once more, without asking for a folder.
+    if (!generationJobs.capabilities) await connectJobs();
     try { created = await submitJobs(plan.jobs.map((j) => j.item), 'shelly'); }
     catch (e) { return { ok: false, message: `Nothing was changed: ${e instanceof Error ? e.message : String(e)}` }; }
   }
@@ -118,7 +120,7 @@ export async function acceptProposalOption(reckoningId: string, optionId: string
   return { ok: true, queued: created.length, closed };
 }
 
-/** Set one option aside. Its rows become rejected (still readable); the proposal stays waiting. */
+/** Put one option aside. Its rows become rejected (still readable); the proposal stays waiting. */
 export async function rejectProposalOption(reckoningId: string, optionId: string): Promise<{ ok: true } | { ok: false; message: string }> {
   if (officialKbActive()) return { ok: false, message: 'This data is read-only, so nothing was changed.' };
   const stored = readStoredProposal(statements(), reckoningId);
