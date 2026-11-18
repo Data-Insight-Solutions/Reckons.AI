@@ -24,7 +24,7 @@
   import { groupByStanding, newReckoningId, readReckoning, questionTargets, TARGET_ASSET_TYPES, type ReckoningTarget } from '$lib/rdf/reckoning-entity';
   import { labelFromIRI } from '$lib/rdf/semantic-diff';
   import { saveReckoning, saveProposal } from '$lib/stores/reckoning.svelte';
-  import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT } from '$lib/rdf/reckoning-proposal';
+  import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
   type Mode = 'form' | 'voice';
@@ -136,10 +136,10 @@
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
   let proposal = $state('');
-  /** F223.12.3: what the structured proposal wrote into the space, kept so the card can point at it. */
+  /** F223.12.3: what the structured proposal wrote into the knowledge base, kept so the card can point at it. */
   type WrittenOption = { id: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
   let written = $state<{ options: WrittenOption[]; blocked: string[]; warnings: string[]; rows: number } | null>(null);
-  /** Set when the structured path was not usable and the prose below is the fallback. */
+  /** Filled when the structured path was not usable and the prose below is the fallback. */
   let proseReason = $state<string | null>(null);
   let technicalDetail = $state('');
   let busy = $state(false);
@@ -280,7 +280,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
       const prov = getProvider();
       const kbContext = buildKBContext();
 
-      // The structured path: ask for JSON, refuse anything malformed, write pending rows into the space.
+      // The structured path: ask for JSON, refuse anything malformed, write pending rows.
       const numbered = chosenRows.map((st) => `{{${st.id}}} ${describe(st)}`).join('\n');
       const structured = await turtleChat({
         ...prov,
@@ -290,7 +290,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
         }],
         kbContext,
         customPrompt: PROPOSAL_SYSTEM_PROMPT,
-        purpose: 'structured',
+        purpose: PROPOSAL_PURPOSE,
       });
       const parsed = parseProposalReply(structured.message, chosen);
       let reason: string | null = null;
@@ -306,7 +306,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
             options: parsed.proposal.options.map((o, i) => {
               const po = result.proposal.options[i];
               return { id: po.id, label: o.label, rationale: o.rationale, recommended: po.id === result.proposal.recommendedId,
-                statements: o.statements.length, jobs: o.jobs.length, missing: o.missingSources.length, cites: o.citations };
+                statements: o.statements.length, jobs: o.jobs.length, missing: o.missingInputs.length, cites: o.citations };
             }),
             blocked: result.blocked.map((b) => `${b.what}: ${b.reasons.join(', ')}`),
             warnings: result.warnings.map((w) => w.message),
@@ -662,7 +662,7 @@ Do NOT include <kb-actions> blocks.`;
           <div class="proposal-option" data-testid="proposal-option">
             <p class="proposal-section">{o.label}{o.recommended ? ' (recommended)' : ''}</p>
             <p class="proposal-text">{o.rationale}</p>
-            <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing source{o.missing === 1 ? '' : 's'}</p>
+            <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing input{o.missing === 1 ? '' : 's'}</p>
             <a class="btn-technical" href={`/?focus=${encodeURIComponent(o.id)}${o.cites.length ? `&cite=${o.cites.map(encodeURIComponent).join(',')}` : ''}`}>Show on the canvas</a>
           </div>
         {/each}

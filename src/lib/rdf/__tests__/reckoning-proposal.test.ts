@@ -20,7 +20,7 @@ const option = (extra: Record<string, unknown> = {}) => ({
   label: 'Try a wordmark', rationale: 'Quick to test.',
   statements: [{ s: 'Sample Company', p: 'brand direction', o: 'Wordmark' }],
   jobs: [{ kind: 'image', params: { prompt: 'A simple wordmark' } }],
-  missingSources: [{ about: 'Sample Company', question: 'Upload an image of the logo' }],
+  missingInputs: [{ about: 'Sample Company', question: 'Upload an image of the logo' }],
   citations: ['st-1'], ...extra,
 });
 const reply = (over: Record<string, unknown> = {}) => JSON.stringify({ recommended: 'a', options: [option(), option({ label: 'Refresh it' })], ...over });
@@ -41,7 +41,7 @@ describe('parseProposalReply', () => {
     ['five options', JSON.stringify({ recommended: 'a', options: [1, 2, 3, 4, 5].map(() => option()) }), /5 options|at most 4/],
     ['no recommendation', JSON.stringify({ options: [option(), option()] }), /recommended/i],
     ['recommendation not an option', reply({ recommended: 'd' }), /not one of the options/],
-    ['an option that proposes nothing', reply({ options: [option(), option({ statements: [], jobs: [], missingSources: [] })] }), /proposes nothing/],
+    ['an option that proposes nothing', reply({ options: [option(), option({ statements: [], jobs: [], missingInputs: [] })] }), /proposes nothing/],
     ['an unknown job kind', reply({ options: [option(), option({ jobs: [{ kind: 'shell', params: { prompt: 'rm -rf' } }] })] }), /kind "shell"/],
     ['a job with no prompt', reply({ options: [option(), option({ jobs: [{ kind: 'image', params: {} }] })] }), /prompt/],
     ['a citation outside the situation', reply({ options: [option(), option({ citations: ['st-99'] })] }), /not one of the chosen/],
@@ -92,14 +92,14 @@ describe('buildProposalRows', () => {
     }
     expect(b.rows.some((r) => r.p.value.endsWith('/job-state') && r.o.value === 'queued')).toBe(false);
   });
-  it('writes each missing source as an open question, a partial fact', () => {
+  it('writes each missing input as an open question, a partial fact', () => {
     const q = ofOption('a').filter((r) => r.needsObject);
     expect(q).toHaveLength(1);
     expect(q[0].o).toEqual({ kind: 'literal', value: '?' });
     expect(q[0].question).toBe('Upload an image of the logo');
     expect(standingOf(q[0])).toBe('question');
   });
-  it('gives the rows the Reckoning source and an id prefix the choice save leaves alone', () => {
+  it('gives the rows the Reckoning record and an id prefix the choice save leaves alone', () => {
     expect(b.rows.every((r) => r.sourceId === 'reckoning-r1' && r.id.startsWith(proposalRowPrefix('r1')))).toBe(true);
   });
   it('keeps the proposal potential, proposed by an agent, with resolvable citations', () => {

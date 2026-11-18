@@ -437,8 +437,8 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     // Deterministic browser-test backend. `mock` is already a supported SettingsRecord value and
     // is selected by the E2E server environment; routing it to Claude/WASM made "mock" workflows
     // unexpectedly request credentials or a model download.
-    // F223.12.3: a structured-proposal request gets the fixed, valid proposal, citing the first situation id it was shown.
-    raw = customPrompt?.includes(STRUCTURED_PROPOSAL_MARKER)
+    // F223.12.3: unless a test scripted a reply, a structured-proposal request gets the fixed, valid proposal, citing the first situation id it was shown.
+    raw = customPrompt?.includes(STRUCTURED_PROPOSAL_MARKER) && !(globalThis as { __RECKONS_MOCK_REPLY__?: unknown }).__RECKONS_MOCK_REPLY__
       ? mockProposalReply([...messages.map((m) => m.content).join('\n').matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1]))
       : mockChatReply(kbContext.statementCount);
   } else {

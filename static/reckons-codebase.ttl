@@ -671,6 +671,9 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "tests/e2e/reckoning-situation.test.ts" ;
              kpred:has-file "src/lib/rdf/__tests__/reckoning-target.test.ts" ;
              kpred:has-file "tests/e2e/reckoning-target.test.ts" ;
+             kpred:has-file "src/lib/rdf/reckoning-proposal.ts" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-proposal.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-proposal.test.ts" ;
              kpred:has-file "src/routes/(app)/overlay/+page.svelte" ;
              kpred:has-file "src/routes/(app)/mobile/+page.svelte" .
 

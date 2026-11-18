@@ -16,7 +16,7 @@ export async function saveReckoning(id: string, statementIds: readonly string[],
   const sourceId = reckoningSourceId(id);
   const proposalPrefix = proposalRowPrefix(id);
   for (const old of statements().filter((s) => s.sourceId === sourceId)) {
-    // The proposal's rows share this source but are not part of the choice; saving the choice leaves them be.
+    // The proposal's rows carry the same origin but are not part of the choice; saving the choice leaves them be.
     if (old.id.startsWith(proposalPrefix)) continue;
     if (!wanted.has(old.id)) await deleteStatement(old.id);
   }
@@ -30,7 +30,7 @@ export async function saveReckoning(id: string, statementIds: readonly string[],
 }
 
 /**
- * Write a proposal into the space (F223.12.3): every row pending, option rows stamped with proposalOption, a
+ * Write a proposal into the knowledge base (F223.12.3): every row pending, option rows stamped with proposalOption, a
  * proposed job recorded but never queued (nothing here calls submitJobs). Replaces an earlier proposal of the
  * same Reckoning. Returns what was written and what the safety filter refused, or null when read-only.
  */

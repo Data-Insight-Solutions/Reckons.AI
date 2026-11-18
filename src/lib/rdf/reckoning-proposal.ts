@@ -6,11 +6,11 @@ import { JOB_TYPE, JOB_PREDICATES } from '../generation/job-node';
 import { filterBlockedStatements } from '../safety/content-policy';
 
 /**
- * F223.12.3: the proposal of a Reckoning is written into the space, as pending statements.
+ * F223.12.3: the proposal of a Reckoning is written into the knowledge base, as pending statements.
  *
- * Matt, 2026-11-17: "The summary of Reckoning should be proposing new statements, potentially job nodes, and
- * detailing its proposal, in the space's graph. The sources could also have suggestions, like 'input image of
- * logo' or other pending sources."
+ * Matt, 2026-11-17 (quoted in full in the roadmap entry for this phase): the summary should
+ * propose new statements, possibly jobs, and detail its proposal in the data itself, with suggestions for
+ * missing inputs such as an image of the logo.
  *
  * Two pure halves, no model and no storage:
  *   parseProposalReply  the model's JSON reply, or a stated reason why it is refused (nothing is written).
@@ -21,11 +21,11 @@ import { filterBlockedStatements } from '../safety/content-policy';
  * reads: it queues only what submitJobs is given, and nothing here calls it.
  */
 
-export const PROPOSAL_LIMITS = { statements: 6, jobs: 3, missingSources: 3, text: 300 } as const;
+export const PROPOSAL_LIMITS = { statements: 6, jobs: 3, missingInputs: 3, text: 300 } as const;
 
 export type ProposedStatement = { s: string; p: string; o: string };
 export type ProposedJob = { kind: GenerationStage; prompt: string };
-export type MissingSource = { about: string; question: string };
+export type MissingInput = { about: string; question: string };
 export type ParsedOption = {
   /** 'a', 'b', ... in the order the model gave them. */
   key: string;
@@ -33,7 +33,7 @@ export type ParsedOption = {
   rationale: string;
   statements: ProposedStatement[];
   jobs: ProposedJob[];
-  missingSources: MissingSource[];
+  missingInputs: MissingInput[];
   /** Ids of statements from the chosen situation. */
   citations: string[];
 };
@@ -53,7 +53,7 @@ export const PROPOSAL_REPLY_SHAPE = `{
       "rationale": "one or two sentences: why this option, and its main tradeoff",
       "statements": [ { "s": "an entity name", "p": "a relationship name", "o": "a value or entity name" } ],
       "jobs": [ { "kind": "image | video | splat", "params": { "prompt": "what to generate" } } ],
-      "missingSources": [ { "about": "an entity name", "question": "what is missing, e.g. Upload an image of the logo" } ],
+      "missingInputs": [ { "about": "an entity name", "question": "what is missing, e.g. Upload an image of the logo" } ],
       "citations": [ "ids copied from the numbered situation statements, e.g. st-1" ]
     }
   ]
@@ -69,10 +69,10 @@ Shape:
 ${PROPOSAL_REPLY_SHAPE}
 Rules:
 - "recommended" is the letter of one option: a, b, c or d, in the order listed.
-- Each option proposes at least one of: statements, jobs, missingSources. Up to ${PROPOSAL_LIMITS.statements} statements, ${PROPOSAL_LIMITS.jobs} jobs, ${PROPOSAL_LIMITS.missingSources} missing sources.
+- Each option proposes at least one of: statements, jobs, missingInputs. Up to ${PROPOSAL_LIMITS.statements} statements, ${PROPOSAL_LIMITS.jobs} jobs, ${PROPOSAL_LIMITS.missingInputs} missing inputs.
 - "statements" are NEW claims the option would add. They are proposals; a person decides.
 - "jobs" are work the option needs. Kinds: ${GENERATION_STAGES.join(', ')}. Each needs a prompt.
-- "missingSources" name what you would need but do not have (an image, a document, a figure) as a question.
+- "missingInputs" name what you would need but do not have (an image, a document, a figure) as a question.
 - "citations" are ids written in {{ }} before each situation statement. Cite only those.
 - Every text is under ${PROPOSAL_LIMITS.text} characters. Plain language, no raw IRIs.`;
 
@@ -108,7 +108,7 @@ function jsonOf(raw: string): unknown {
  * Read the model's reply. Refuses, with a reason a person can read, anything that is not a well-formed proposal:
  * wrong option count, missing recommendation, an option that proposes nothing, a job kind that does not exist,
  * a citation that is not one of the chosen situation statements. It never repairs: a partly good reply is
- * refused whole, so nothing half-formed reaches the space.
+ * refused whole, so nothing half-formed reaches the knowledge base.
  */
 export function parseProposalReply(raw: string, situationIds: readonly string[]): ParseResult {
   try {
@@ -134,20 +134,20 @@ export function parseProposalReply(raw: string, situationIds: readonly string[])
         const params = isObj(x.params) ? x.params : {};
         return { kind: x.kind as GenerationStage, prompt: text(params.prompt, `${where} job ${j + 1} prompt`) };
       });
-      const missingSources = list(o.missingSources, `${where} missing sources`, PROPOSAL_LIMITS.missingSources).map((x, j): MissingSource => {
-        if (!isObj(x)) throw new Refusal(`${where} missing source ${j + 1} is not an object.`);
-        const about = text(x.about, `${where} missing source ${j + 1} subject`);
-        if (!slugOf(about)) throw new Refusal(`${where} missing source ${j + 1} has a subject with no letters or digits.`);
-        return { about, question: text(x.question, `${where} missing source ${j + 1} question`) };
+      const missingInputs = list(o.missingInputs, `${where} missing inputs`, PROPOSAL_LIMITS.missingInputs).map((x, j): MissingInput => {
+        if (!isObj(x)) throw new Refusal(`${where} missing input ${j + 1} is not an object.`);
+        const about = text(x.about, `${where} missing input ${j + 1} subject`);
+        if (!slugOf(about)) throw new Refusal(`${where} missing input ${j + 1} has a subject with no letters or digits.`);
+        return { about, question: text(x.question, `${where} missing input ${j + 1} question`) };
       });
-      if (statements.length + jobs.length + missingSources.length === 0) throw new Refusal(`${where} proposes nothing: no statements, jobs or missing sources.`);
+      if (statements.length + jobs.length + missingInputs.length === 0) throw new Refusal(`${where} proposes nothing: no statements, jobs or missing inputs.`);
       const citations = list(o.citations, `${where} citations`, 20).map((c, j) => {
         if (typeof c !== 'string' || !known.has(c)) throw new Refusal(`${where} citation ${j + 1} is not one of the chosen situation statements.`);
         return c;
       });
       return {
         key: KEYS[i] ?? String(i), label: text(o.label, `${where} label`), rationale: text(o.rationale, `${where} rationale`),
-        statements, jobs, missingSources, citations: [...new Set(citations)],
+        statements, jobs, missingInputs, citations: [...new Set(citations)],
       };
     });
     const recommendedKey = typeof root.recommended === 'string' ? root.recommended.trim().toLowerCase() : '';
@@ -174,13 +174,20 @@ const LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const COMMENT = 'http://www.w3.org/2000/01/rdf-schema#comment';
 export const PROPOSAL_TYPE = 'urn:kbase:type/Proposal';
 export const PROPOSAL_OPTION_TYPE = 'urn:kbase:type/ProposalOption';
+/**
+ * Preamble policy (ethicsPreambleFor in safety/content-policy.ts): the reply is DATA that parseProposalReply
+ * validates and buildProposalRows filters with filterBlockedStatements, so this request is the `structured`
+ * purpose and omits the ethics preamble. HONEST LIMIT: the model is not asked to refuse; its output is filtered.
+ */
+export const PROPOSAL_PURPOSE = 'structured' as const;
+
 export const PROPOSAL_PREDICATES = {
   proposal: `${P}proposal`,
   hasOption: `${P}has-option`,
   recommended: `${P}recommended-option`,
   rationale: `${P}rationale`,
   cites: `${P}cites`,
-  needsSource: `${P}needs-source`,
+  needsInput: `${P}needs-input`,
   proposesJob: `${P}proposes-job`,
 } as const;
 /** The state a proposed job is recorded in; JOB_STATES (the queue's states) does not include it, so nothing runs it. */
@@ -269,10 +276,10 @@ export function buildProposalRows(
         ],
       });
     });
-    o.missingSources.forEach((m, i) => {
+    o.missingInputs.forEach((m, i) => {
       groups.push({
-        what: `a missing source of option ${k.toUpperCase()}`,
-        rows: [row(k, `missing-${i}`, entityFor(m.about), PROPOSAL_PREDICATES.needsSource, { literal: '?' }, { needsObject: true, question: m.question, gloss: m.question })],
+        what: `a missing input of option ${k.toUpperCase()}`,
+        rows: [row(k, `missing-${i}`, entityFor(m.about), PROPOSAL_PREDICATES.needsInput, { literal: '?' }, { needsObject: true, question: m.question, gloss: m.question })],
       });
     });
   }
@@ -305,14 +312,14 @@ export function mockProposalReply(citations: readonly string[]): string {
         label: 'Start from a new logo', rationale: 'Quickest to try; the cost is that it ignores the older marks.',
         statements: [{ s: 'Sample Company', p: 'brand direction', o: 'Modern wordmark' }],
         jobs: [{ kind: 'image', params: { prompt: 'A simple modern wordmark logo for a sample company' } }],
-        missingSources: [{ about: 'Sample Company', question: 'Upload an image of the current logo' }],
+        missingInputs: [{ about: 'Sample Company', question: 'Upload an image of the current logo' }],
         citations: cite,
       },
       {
         label: 'Refresh the existing logo', rationale: 'Keeps recognition; the cost is a smaller change.',
         statements: [{ s: 'Sample Company', p: 'brand direction', o: 'Refreshed existing mark' }],
         jobs: [{ kind: 'image', params: { prompt: 'A refreshed version of a simple existing logo' } }],
-        missingSources: [{ about: 'Sample Company', question: 'Add the brand colors that must stay' }],
+        missingInputs: [{ about: 'Sample Company', question: 'Add the brand colors that must stay' }],
         citations: cite,
       },
     ],

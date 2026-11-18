@@ -2,9 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 import { clearStorage, waitForApp } from './helpers';
 
 /**
- * F223.12.3: a Reckoning's proposal is written into the space. Mock backend returns a fixed, valid, synthetic
+ * F223.12.3: a Reckoning's proposal is written into the knowledge base. Mock backend returns a fixed, valid, synthetic
  * proposal of two options. Each option must hold one proposed statement, one proposed job and one open
- * missing-source question; nothing is confirmed and no job is queued.
+ * missing-input question; nothing is confirmed and no job is queued.
  */
 async function seed(page: Page) {
   await page.goto('/ingest');
@@ -45,7 +45,7 @@ test.beforeEach(async ({ page }) => {
   await waitForApp(page);
 });
 
-test('a reckoning writes two pending options into the space: a dashed statement, an unqueued job and a hollow question each', async ({ page }) => {
+test('a reckoning writes two pending options into the knowledge base: a dashed statement, an unqueued job and a hollow question each', async ({ page }) => {
   await seed(page);
   await page.goto('/reckoning');
   const boxes = page.locator('[data-testid="situation-picker"] input[type="checkbox"]');
