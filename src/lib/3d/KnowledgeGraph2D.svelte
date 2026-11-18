@@ -20,6 +20,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
+  import type { CanvasOverlay } from '$lib/rdf/compare-overlay';
 
   let {
     statements = [],
@@ -44,6 +45,7 @@
     ghostGraph = null as GhostGraph | null,
     ghostAnchorKey = null as string | null,
     flyToGhost = false,
+    compareOverlay = null as CanvasOverlay | null,
     podMode = false,
     focusKey = null as string | null,
     highlightedEdges = [] as Array<{ s: string; o: string; p?: string }>,
@@ -106,6 +108,8 @@
     ghostGraph?: GhostGraph | null;
     ghostAnchorKey?: string | null;
     flyToGhost?: boolean;
+    /** F264.2: an incoming note drawn over this canvas (ghosts where they would attach; repeats thicken a held edge). Draws only; changes nothing. */
+    compareOverlay?: CanvasOverlay | null;
     podMode?: boolean;
     /** When set/changed, the camera flies to center this node (review-item focus). */
     focusKey?: string | null;
@@ -1291,6 +1295,46 @@
       ctx2d.globalAlpha = (isEdgeHL ? 1 : edgeLive ? baseAlpha : GHOST_ALPHA * baseAlpha) * (eSt && eSt.colorVar ? Math.max(strength, 0.85) : strength);
       ctx2d.stroke();
       ctx2d.setLineDash([]);
+    }
+
+    // Compare on the canvas (F264.2): the incoming note over the person's own marks, in the ghost amber.
+    if (compareOverlay) {
+      const AMBER = '#f59e0b';
+      const lw = (v: number) => v / camScale * 40;
+      // A held statement that something repeats or reinforces is drawn thicker (one step per repeat).
+      for (const w of compareOverlay.weighted) {
+        for (const e of edges) {
+          if (!(((e.a.key === w.s && e.b.key === w.o) || (e.a.key === w.o && e.b.key === w.s)) && e.predicate === w.p)) continue;
+          ctx2d.beginPath(); ctx2d.moveTo(e.a.x, e.a.y); ctx2d.lineTo(e.b.x, e.b.y);
+          ctx2d.strokeStyle = AMBER; ctx2d.lineWidth = lw(0.035 + 0.05 * w.weight);
+          ctx2d.globalAlpha = 0.55 * baseAlpha; ctx2d.stroke();
+        }
+      }
+      // Ghosts fan out from the mark they attach to; unattached ones wait in a row at the top-left of it all.
+      const perAnchor = new Map<string, number>();
+      let loose = 0;
+      for (const g of compareOverlay.ghosts) {
+        const anchor = g.attachKey ? nodes.find((n) => n.key === g.attachKey) : null;
+        const idx = g.attachKey ? (perAnchor.get(g.attachKey) ?? 0) : loose++;
+        if (g.attachKey) perAnchor.set(g.attachKey, idx + 1);
+        const theta = -Math.PI / 4 + idx * 0.9;
+        const gx = anchor ? anchor.x + 2.6 * Math.cos(theta) : -8 + idx * 2;
+        const gy = anchor ? anchor.y + 2.6 * Math.sin(theta) : -8;
+        const r = 0.45;
+        const col = g.contradiction ? houseColor('--danger', '#e5484d') : AMBER;
+        if (anchor) {
+          ctx2d.beginPath(); ctx2d.moveTo(anchor.x, anchor.y); ctx2d.lineTo(gx, gy);
+          ctx2d.setLineDash([0.45, 0.3]); ctx2d.strokeStyle = col; ctx2d.lineWidth = lw(0.04);
+          ctx2d.globalAlpha = 0.7 * baseAlpha; ctx2d.stroke(); ctx2d.setLineDash([]);
+        }
+        ctx2d.beginPath(); ctx2d.arc(gx, gy, r, 0, Math.PI * 2);
+        ctx2d.fillStyle = AMBER; ctx2d.globalAlpha = GHOST_ALPHA * baseAlpha; ctx2d.fill();
+        ctx2d.strokeStyle = col; ctx2d.lineWidth = lw(0.05); ctx2d.globalAlpha = 0.85 * baseAlpha; ctx2d.stroke();
+        ctx2d.fillStyle = col; ctx2d.globalAlpha = 0.9 * baseAlpha;
+        ctx2d.font = `${r * 1.6}px sans-serif`; ctx2d.textAlign = 'center'; ctx2d.textBaseline = 'top';
+        ctx2d.fillText(g.label, gx, gy + r * 1.3);
+      }
+      ctx2d.globalAlpha = baseAlpha;
     }
 
     // Ghost graph preview — target KB rendered in the distance, fades in smoothly
