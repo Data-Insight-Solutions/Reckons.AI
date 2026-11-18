@@ -9,7 +9,7 @@ async function seed(page: Page) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Company Alpha');
   await page.locator('textarea').first().fill('Company Alpha has 50 employees, was founded in 2020 by Jane Doe in Seattle, and makes battery software.');
-  const submit = page.getByRole('button', { name: /extract facts/i });
+  const submit = page.getByRole('button', { name: /extract (facts|statements)/i });
   await expect(submit).not.toBeDisabled({ timeout: 5_000 });
   await submit.click();
   await page.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 30_000 });
