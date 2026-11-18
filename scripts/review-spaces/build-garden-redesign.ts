@@ -17,6 +17,7 @@
  *          <workspace>/.reckons-generation/jobs/ and lets the repository's own GenerationRunner enqueue them in the
  *          local job queue. NOTHING RUNS INLINE. Ids are derived from the slot, so a second run adds nothing.
  * --cad    builds the corner bracket from its part spec with scripts/content/cad (build123d, then Blender).
+ * The splat is enqueued only by a runner pass after the garden picture is done: run --queue again then.
  * Re-run without flags after the jobs finish: each completed, receipt-checked picture is copied in and linked.
  * A slot whose job has not finished is LEFT EMPTY and reported; no placeholder is ever made.
  *
