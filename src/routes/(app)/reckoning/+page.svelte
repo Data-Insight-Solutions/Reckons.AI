@@ -18,6 +18,12 @@
   import type { KBContext } from '$lib/types/turtle-chat';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import { fade } from 'svelte/transition';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { loaded } from '$lib/stores/kb.svelte';
+  import { groupByStanding, newReckoningId, readReckoning } from '$lib/rdf/reckoning-entity';
+  import { labelFromIRI } from '$lib/rdf/semantic-diff';
+  import { saveReckoning } from '$lib/stores/reckoning.svelte';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
   type Mode = 'form' | 'voice';
@@ -26,6 +32,69 @@
   let step = $state<Step>('situation');
 
   let situation = $state('');
+
+  // F223.12.1: the situation is chosen from facts (here, or on the canvas) and a sentence is added.
+  // The choice is kept as a Reckoning entity, named in the address as ?r=, so a reload restores it.
+  let chosen = $state<string[]>([]);
+  let reckoningId = $state<string | null>(null);
+  let search = $state('');
+  let saveNote = $state<string | null>(null);
+  let restored = false;
+
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of statements()) {
+      if (st.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && st.s.kind === 'iri' && st.status !== 'rejected') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+  const labelOf = (iri: string) => entityLabels.get(iri) ?? labelFromIRI(iri);
+  const groups = $derived(groupByStanding(statements(), search, labelOf));
+  const chosenRows = $derived(chosen.map((id) => statements().find((st) => st.id === id)).filter((st) => !!st));
+  const describe = (st: (typeof chosenRows)[number]) =>
+    `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.o.kind === 'iri' ? labelOf(st.o.value) : st.o.value}`;
+  const canContinue = $derived(chosen.length > 0 || situation.trim().length >= 10);
+  /** The situation as the proposal prompt reads it: the chosen facts, then the sentence. */
+  const situationText = $derived(
+    [...chosenRows.map((st) => `- ${describe(st)}`), situation.trim()].filter(Boolean).join('\n')
+  );
+
+  function toggle(id: string) {
+    chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
+  }
+
+  async function keepSituation() {
+    saveNote = null;
+    if (chosen.length === 0) return;
+    const id = reckoningId ?? newReckoningId();
+    try {
+      const ok = await saveReckoning(id, chosen, situation);
+      if (!ok) { saveNote = 'This data is read-only, so the Reckoning was not saved.'; return; }
+      reckoningId = id;
+      await goto(`?r=${id}`, { replaceState: true, keepFocus: true, noScroll: true });
+    } catch (e) {
+      saveNote = `The Reckoning could not be saved: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  async function continueToTarget() {
+    await keepSituation();
+    step = 'target';
+  }
+
+  // Restore from the entity once your facts have loaded (the canvas action and a reload both arrive here).
+  $effect(() => {
+    const id = $page.url.searchParams.get('r');
+    if (restored || !id || !loaded()) return;
+    restored = true;
+    const found = readReckoning(statements(), id);
+    if (!found) { saveNote = 'That Reckoning was not found.'; return; }
+    reckoningId = id;
+    chosen = found.statementIds.filter((sid) => statements().some((st) => st.id === sid));
+    situation = found.note;
+    const missing = found.statementIds.length - chosen.length;
+    if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
+  });
   let target = $state('');
   let proposal = $state('');
   let technicalDetail = $state('');
@@ -170,7 +239,7 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
         ...prov,
         messages: [{
           role: 'user',
-          content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+          content: `SITUATION:\n${situationText}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
         }],
         kbContext,
         customPrompt: RECKONING_SYSTEM_PROMPT
@@ -216,7 +285,7 @@ Do NOT include <kb-actions> blocks.`;
         messages: [
           {
             role: 'user',
-            content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+            content: `SITUATION:\n${situationText}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
           },
           { role: 'assistant', content: proposal },
           { role: 'user', content: 'show technical details' }
@@ -279,6 +348,8 @@ Do NOT include <kb-actions> blocks.`;
 
   function reset() {
     situation = '';
+    chosen = [];
+    reckoningId = null;
     target = '';
     proposal = '';
     technicalDetail = '';
@@ -330,6 +401,29 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">Where are you now? What's the context?</p>
         </div>
       </div>
+      {#if step === 'situation'}
+        <div class="pick" data-testid="situation-picker">
+          <input class="pick-search" type="search" placeholder="Search statements…" aria-label="Search statements" bind:value={search} />
+          {#each groups as g (g.standing)}
+            <h4 class="pick-head mono">{g.label} ({g.rows.length})</h4>
+            <ul class="pick-list">
+              {#each g.rows.slice(0, 40) as st (st.id)}
+                <li>
+                  <label class="pick-row">
+                    <input type="checkbox" checked={chosen.includes(st.id)} onchange={() => toggle(st.id)} />
+                    <span>{describe(st)}</span>
+                  </label>
+                </li>
+              {/each}
+            </ul>
+            {#if g.rows.length > 40}<p class="stp-desc">Showing 40 of {g.rows.length}. Search to narrow them.</p>{/if}
+          {/each}
+          {#if groups.length === 0}<p class="stp-desc">No statements match.</p>{/if}
+        </div>
+        <p class="stp-desc" data-testid="chosen-count">{chosen.length} statement{chosen.length === 1 ? '' : 's'} chosen. Add a sentence below if it helps.</p>
+      {:else if chosenRows.length > 0}
+        <ul class="pick-list">{#each chosenRows as st (st.id)}<li class="pick-row"><span>{describe(st)}</span></li>{/each}</ul>
+      {/if}
       <textarea
         class="stp-input"
         bind:value={situation}
@@ -338,9 +432,10 @@ Do NOT include <kb-actions> blocks.`;
         disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'situation'}
-        <button class="btn-next" disabled={situation.trim().length < 10} onclick={() => step = 'target'}>
+        <button class="btn-next" disabled={!canContinue} onclick={continueToTarget}>
           Next: Target →
         </button>
+        {#if saveNote}<p class="error-msg">{saveNote}</p>{/if}
       {/if}
     </section>
   {/if}
@@ -385,7 +480,7 @@ Do NOT include <kb-actions> blocks.`;
       <div class="confirm-preview">
         <div class="confirm-row">
           <span class="confirm-label mono">situation</span>
-          <p>{situation}</p>
+          <p>{situationText}</p>
         </div>
         <div class="confirm-row">
           <span class="confirm-label mono">target</span>
@@ -533,6 +628,12 @@ Do NOT include <kb-actions> blocks.`;
 {/if}
 
 <style>
+  .pick { max-height: 18rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--rad-sm); padding: 0.6rem; margin-bottom: 0.6rem; background: var(--surface-2); }
+  .pick-search { width: 100%; box-sizing: border-box; padding: 0.4rem 0.6rem; margin-bottom: 0.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad-sm); color: var(--ink); }
+  .pick-head { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); margin: 0.6rem 0 0.2rem; }
+  .pick-list { list-style: none; margin: 0 0 0.6rem; padding: 0; }
+  .pick-row { display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.2rem 0; font-size: 0.85rem; color: var(--ink); cursor: pointer; }
+
   .head { margin-bottom: 2rem; }
   .kicker { font-size: 0.7rem; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 0.3rem; font-family: var(--font-mono); }
   h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 0.4rem; }
