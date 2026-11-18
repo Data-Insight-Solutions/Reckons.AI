@@ -11,6 +11,7 @@
 @prefix klayer: <urn:kbase:type/layer/> .
 @prefix kshape: <urn:kbase:shape/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix story:  <urn:reckons:story/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
@@ -678,3 +679,51 @@ kpred:raised-by kpred:layer klayer:provenance .
 kpred:moved-to kpred:layer klayer:provenance .
 kpred:tested-by kpred:layer klayer:provenance .
 kpred:open-question kpred:layer klayer:question .
+
+# ── STORY STEP TERMS (F300.1, kb:story-step-vocabulary) ──────────────────────
+# One vocabulary for a guided sequence, read by src/lib/rdf/story-steps.ts for the in-app player, the docs
+# pages, the e2e tests and the demo recorder. The older story terms (title, order, partOf, highlight, layout,
+# openPage, offerSetting, prompt, autoplay, pace) are declared by use in the starter stories; these are the
+# ones the unified step adds. DEFINED, NOT YET ENFORCED by a SHACL shape: the reader refuses an unknown
+# action or expect kind today; nothing performs an action yet (F300.2+).
+
+story:content a rdf:Property ;
+    rdfs:label "story:content" ;
+    skos:definition "What the step says: the text the player shows and a narrator speaks. A legacy test step's kpred:narration maps here." .
+
+story:question a rdf:Property ;
+    rdfs:label "story:question" ;
+    skos:definition "The lead-in question: interactive mode asks it, passive mode speaks it before the step. Legacy kpred:narration-lead maps here." .
+
+story:storyline a rdf:Property ;
+    rdfs:label "story:storyline" ;
+    skos:definition "Story level: the single storyline a multi-topic story follows. Legacy kpred:narration-storyline maps here." .
+
+story:narrator a rdf:Property ;
+    rdfs:label "story:narrator" ;
+    skos:definition "Story level: who speaks the story. Legacy kpred:narrator maps here." .
+
+story:target a rdf:Property ;
+    rdfs:label "story:target" ;
+    skos:definition "A region of the screen the step points at: a stable test id, optionally followed by ' :: ' and a short label. Legacy kpred:box-target and kpred:box-label map here." .
+
+story:action a rdf:Property ;
+    rdfs:label "story:action" ;
+    skos:definition "One thing that happens at the step, as a JSON object so a player and a test can both perform it: kind open-page (path), select (entities), click (target), type (target, text) or run-job (a defined job kind name and typed params, never a command). Any other kind is refused with a reason." .
+
+story:expect a rdf:Property ;
+    rdfs:label "story:expect" ;
+    skos:definition "One thing that must be true after the step, as a JSON object: kind visible (target), count (type, n), standing (subject, predicate, object, optional status) or note (plain words a human judges). A test fails on any, a passive player warns. Legacy kpred:assertion maps to note." .
+
+story:needs a rdf:Property ;
+    rdfs:label "story:needs" ;
+    skos:definition "A capability term (static capability vocabulary, F269) the step requires; a device lacking it plays the recorded segment instead (F300.4)." .
+
+story:media a rdf:Property ;
+    rdfs:label "story:media" ;
+    skos:definition "The step's recorded clip, captions or poster, written by the recorder and never by hand. Legacy kpred:screenshot maps here." .
+
+story:stepId a rdf:Property ;
+    rdfs:label "story:stepId" ;
+    skos:definition "A stable key for a step, so a test can implement it by name. Legacy kpred:step-id maps here." .
+
