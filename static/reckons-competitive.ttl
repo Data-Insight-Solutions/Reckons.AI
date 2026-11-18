@@ -1029,3 +1029,15 @@ kb:ref-cyber-ocean rdf:type    ktype:Reference ;
                kpred:relates-to   kb:currents ;
                kpred:relates-to   kb:rapier-physics ;
                kpred:relates-to   kb:one-graph-canvas .
+
+kb:ref-trust-alliance-nz rdf:type        ktype:Reference ;
+               rdfs:label   "Trust Alliance New Zealand (TANZ) — agricultural identity, data governance and AI agents" ;
+               kpred:part-of      kb:competitive-landscape ;
+               hnav:order   42 ;
+               kpred:relates-to   kb:nanopub-alignment ;
+               kpred:relates-to   kb:tanz-interop ;
+               kpred:repo-url     "https://github.com/TrustAllianceNZ" ;
+               kpred:license      "GPL-3.0 (most public repositories); some Unlicense" ;
+               kpred:copy-permitted "no — GPL-3.0 code cannot be incorporated into this MIT app; interoperating by protocol is fine" ;
+               kpred:description  "Read 2026-11-17 from trustalliance.co.nz. A non-profit, member-governed industry consortium in New Zealand (an incorporated society) whose mission is trusted digital identity, data governance and interoperability across agriculture: self-sovereign identity, farmer data sovereignty including Indigenous data rights, permissioned data exchange, and responsible deployment of AI agents. Members span meat and dairy processors, a bank, fertiliser, a council, law, research and identity firms. Public research projects include agricultural data definitions (Link Aotearoa), a Digital Farm Wallet prototype (a registry of 1,204 Selwyn District farming enterprises linked to resource consents, completed December 2025), an AI-assisted permit and consent pilot, and Canterbury Freshwater (2026). Its commercial platform FarmID is built by two members on a persistent agricultural knowledge graph with agents, and connects to enterprise systems through APIs and Model Context Protocol (MCP) connections." ;
+               kpred:evidence     "2026-11-17: github.com/TrustAllianceNZ has 11 repositories, last updated March 2022, from the blockchain era (Substrate and Rust, IPFS, a TypeScript trust-sdk), mostly GPL-3.0. Nothing public covers FarmID or the 2025-26 work. The site publishes no API, schema, credential format or developer specification, and does not say whether its verifiable credentials follow W3C VC or DID standards. Project IP stays with the members who build it, unless released as open source." .
