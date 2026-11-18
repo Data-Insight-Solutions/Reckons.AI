@@ -34,6 +34,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Parser } from 'n3';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import { readMeasuredSpace, type Measured } from './device-capabilities.js';
+import { deviceMeasuredPath } from './device-space-paths.js';
 
 const KPRED = 'urn:kbase:predicate/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -199,6 +201,19 @@ export function loadDeviceConfig(root: string = mainCheckoutRoot(), host: string
   return value;
 }
 
+/**
+ * The capabilities this device MEASURED (F269), from the private device space written by
+ * `npm run device:measure`; undefined when none was measured yet or the file does not parse (named on
+ * stderr, never fatal). The job runtime and the MCP job tools read the device through this, so what
+ * the device adds is seen once, the same way, by both.
+ */
+export function loadDeviceCapabilities(env: NodeJS.ProcessEnv = process.env): Measured | undefined {
+  const file = deviceMeasuredPath(env);
+  if (!existsSync(file)) return undefined;
+  try { return readMeasuredSpace(readFileSync(file, 'utf8')); }
+  catch (e) { console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring the device space`); return undefined; }
+}
+
 let hinted = false;
 /** One stderr hint when a legacy watch.json exists and device.ttl does not. Never converts silently. */
 export function legacyHint(): void {
@@ -220,7 +235,8 @@ function main(): void {
     chmodSync(devicePath(), 0o600);
     console.log(`created ${devicePath()} (0600)`);
   } else if (cmd === 'show') {
-    console.log(JSON.stringify(loadDeviceConfig(), null, 2));
+    const caps = loadDeviceCapabilities();
+    console.log(JSON.stringify({ ...loadDeviceConfig(), capabilityTerms: caps ? Object.keys(caps.values).sort() : null, measuredAt: caps?.measuredAt ?? null }, null, 2));
   } else {
     console.error('Usage: device-config.ts migrate | init | show');
     process.exit(2);

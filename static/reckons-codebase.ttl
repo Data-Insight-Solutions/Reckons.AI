@@ -1189,6 +1189,13 @@ code:job-plan-space rdf:type ktype:Concept ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space-device.test.ts" .
 
+# This device's measured space (F269, F303.2): what the device measured, never shown outside it.
+code:device-space-measure rdf:type ktype:Concept ;
+    rdfs:label "This device: measured capabilities and the match" ;
+    kpred:description "measure-device.ts probes memory, GPU memory, free disk, installed models and tools (no sudo, no changes); device-space-build.ts writes them as capability terms into a private device-only space under the XDG state folder (mode 0600, outside Git, random stable id kept by device-space-paths.ts); device-capabilities.ts holds the terms, the reader and the pure matchCapabilities (can-run or cannot-run with reasons); device-config.ts exposes loadDeviceCapabilities to the job runtime and mcp-server local-jobs.ts lists what the device adds. Terms are defined in static/reckons-capabilities.ttl; no device value is in the repository." ;
+    kpred:has-file "scripts/agent/measure-device.ts", "scripts/agent/device-space-build.ts", "scripts/agent/device-space-paths.ts", "scripts/agent/device-capabilities.ts", "scripts/agent/device-config.ts", "mcp-server/src/local-jobs.ts", "static/reckons-capabilities.ttl" ;
+    kpred:tested-by "scripts/agent/__tests__/device-capabilities.test.ts", "scripts/agent/__tests__/device-config.test.ts", "mcp-server/src/__tests__/local-jobs.test.ts" .
+
 # Triple Check and focused research views (2026-10-26).
 code:rdf kpred:has-file "src/lib/rdf/triple-check.ts", "src/lib/rdf/statement-chunks.ts", "src/lib/rdf/space-view.ts", "src/lib/rdf/repository-comparison.ts", "src/lib/rdf/purpose-organization.ts" .
 code:storage kpred:has-file "src/lib/storage/triple-check.ts" .
