@@ -8884,7 +8884,7 @@ kb:nanopub-alignment rdf:type ktype:Feature ;
                rdfs:label   "Nanopublications — borrow the reasoning, then interoperate" ;
                kpred:description  "Aligning with the nanopublication ecosystem: first by adopting the pattern that a statement travels with its provenance and its publication info as separate named graphs, then by exporting and importing real nanopublications, and possibly by being a friendlier interface onto a network whose reference client is AGPL." ;
                kpred:feature-id   "F196" ;
-               kpred:has-status   "speculative" ;
+               kpred:has-status   "planned" ;
                kpred:priority     "low" ;
                kpred:decided      "MATT, 2026-09-13: science and nanopublication integration come after everyday users. Preserve this as optional future interoperability; it must not gate note-taking, free organization, assistance, scheduling or ownership of personal data. The personal knowledge graph remains the common foundation." ;
                kpred:depends-on   kb:relation-layers ;
@@ -13472,3 +13472,35 @@ kb:reckoning-selections kpred:priority "high" ;
 
 kb:review-compare-overlay-fix kpred:priority "high" ;
     kpred:decided "MATT, 2026-11-17 (AskUserQuestion, build order): 'Features first'. F264's rework is built before F300 and the docs-video stories." .
+
+kb:nanopub-alignment kpred:decided "MATT, 2026-11-17: 'https://nanodash.knowledgepixels.com/ is a knowledge graph sharing site, I would like to imitate it in some ways for the publishing side of Reckons.AI. Not for its UI...' Then (AskUserQuestion, all four chosen): signed, content-hashed units; immutable versions with supersede and retract; the claim / provenance / pubinfo split; and interoperating with their network, adding: 'Yes, this is such a specific space to be in, and they seem to be a robust organization.' He also sent https://nanopub.net/docs/architecture. His 2026-09-13 rule still holds: publishing never gates everyday use." ;
+    kpred:measured "2026-11-17, READ FROM nanopub.net/docs/architecture AND trustyuri.net (spec v1, 2015-02-23): three layers. A client signs a nanopublication and POSTs it to any Nanopub Registry (MIT, self-hostable with Docker); registries replicate peer to peer; Nanopub Query nodes load from registries and serve SPARQL and a REST API; apps read through Query and publish through a Registry. A Trusty URI (module RA, several named graphs) is SHA-256 over a canonical serialization: blank nodes skolemized, the artifact code blanked out of URIs, quads sorted by graph, subject, predicate, object (URIs before literals), each part followed by a newline, literals written as ^datatype or @lang plus an escaped label; the hash is URL-safe Base64 with two zero bits appended, prefixed RA. A public test suite exists (github.com/trustyuri/trustyuri-testsuite); no JavaScript implementation is listed, nanopub-js (MIT, n3-based) is the nearest reference. Identity: an RSA key, a declaration nanopublication binding an agent IRI (typically an ORCID) to it, and an endorsement (npx:approvesOf) by an already-trusted agent; a registry's quota comes from that trust, so a brand-new key has none until endorsed. NOT ANSWERED by those pages: whether a browser may call registries or Query across origins (CORS); the exact signing canonicalization and order; the supersede and retract predicates beyond npx:invalidates; the index format." ;
+    kpred:remaining "F196.1 to F196.5 below. F196.1 is useful on its own and checkable against a public test suite; F196.4 waits on F194 (relation layers, scaffolded); F196.5 waits on a CORS test and on Matt choosing between Knowledge Pixels' registries and a self-hosted one." .
+
+kb:nanopub-trusty-ids rdf:type ktype:Phase ;
+    rdfs:label "F196.1 — content-hash identifiers (Trusty URI, module RA) for anything Reckons.AI publishes" ;
+    kpred:feature-id "F196.1" ; kpred:part-of kb:nanopub-alignment ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:description "Port the Trusty URI RA algorithm (trustyuri.net spec v1) to TypeScript over n3 quads: skolemize blank nodes, blank the artifact code, sort and serialize quads canonically, SHA-256, URL-safe Base64 with two zero bits, prefix RA. Give every published unit (a space package, a story, a statement set) an identifier that changes if one triple changes, and a verify function. Valuable without joining any network: an export re-imported anywhere keeps its identity." ;
+    kpred:done-test "Passes the RA cases of github.com/trustyuri/trustyuri-testsuite in vitest, and produces the same artifact code as nanopub-js or nanopub-java for one real nanopublication fetched from w3id.org/np/." .
+kb:nanopub-signing rdf:type ktype:Phase ;
+    rdfs:label "F196.2 — sign what is published, with a key that never leaves the device" ;
+    kpred:feature-id "F196.2" ; kpred:part-of kb:nanopub-alignment ; kpred:has-status "planned" ; kpred:order 2 ; kpred:depends-on kb:nanopub-trusty-ids ;
+    kpred:description "An RSA key pair made and kept locally (WebCrypto, non-extractable where possible), signature triples in the publication info exactly as nanopublications carry them (npx:hasAlgorithm, npx:hasPublicKey, npx:hasSignature, npx:hasSignatureTarget, npx:signedBy), and verification of any received unit. The exact signing canonicalization and order are not on nanopub.net's pages: take them from nanopub-js or nanopub-java and pin them with test vectors before trusting either." ;
+    kpred:done-test "A unit signed in Reckons.AI verifies with nanopub-js (or the np CLI's check, 'trusty with signature'); one changed triple fails verification." .
+kb:nanopub-immutable-versions rdf:type ktype:Phase ;
+    rdfs:label "F196.3 — published versions never change: a change supersedes, a withdrawal retracts, the old one stays readable" ;
+    kpred:feature-id "F196.3" ; kpred:part-of kb:nanopub-alignment ; kpred:has-status "planned" ; kpred:order 3 ; kpred:depends-on kb:nanopub-signing ; kpred:relates-to kb:graph-publishing ;
+    kpred:description "What Reckons.AI publishes (graph publishing, shared stories, context packages) stops being edited in place. Republishing creates a new signed version that names the one it supersedes; withdrawing publishes a retraction. Readers see the newest valid version and can open the history. The private space stays mutable; only the published copy is immutable." ;
+    kpred:done-test "Publishing twice yields two identifiers, the second superseding the first; a retraction hides the unit from 'latest' but the original still resolves and verifies." .
+kb:nanopub-three-parts rdf:type ktype:Phase ;
+    rdfs:label "F196.4 — each published unit carries its claim, its provenance and its publication info as separate parts" ;
+    kpred:feature-id "F196.4" ; kpred:part-of kb:nanopub-alignment ; kpred:has-status "planned" ; kpred:order 4 ; kpred:depends-on kb:relation-layers ;
+    kpred:description "Derive the four named graphs from the layer split (F194): claim-layer triples become the assertion, provenance-layer triples and each statement's provenance fields the provenance, standing plus creator, date and licence the publication info, and a generated head. Only confirmed claims are publishable; the question layer has no nanopublication form and stays local (constraint above)." ;
+    kpred:done-test "An exported unit passes the nanopublication well-formedness rules (one head, exactly one assertion, provenance and pubinfo graph, provenance names the assertion, pubinfo names the nanopublication)." .
+kb:nanopub-network rdf:type ktype:Phase ;
+    rdfs:label "F196.5 — interoperate: publish to and read from the nanopublication network, opt-in" ;
+    kpred:feature-id "F196.5" ; kpred:part-of kb:nanopub-alignment ; kpred:has-status "planned" ; kpred:order 5 ;
+    kpred:depends-on kb:nanopub-three-parts ;
+    kpred:description "Opt-in, per publication: publish a signed unit to a Nanopub Registry and read nanopublications from Nanopub Query into a space as sourced statements. Identity follows their flow (a key declaration bound to an agent IRI, endorsed by a trusted agent); Reckons.AI never publishes for a person without their action. First measure whether a browser can reach the registries and Query directly; if not, route through the person's own integration (F61) or a self-hosted registry." ;
+    kpred:open-question "FOR MATT: publish to Knowledge Pixels' public registries (needs an endorsement before a new key gets any quota), run a Reckons.AI registry with its own trust setting (MIT, Docker), or both? And per-unit or per-space opt-in (the open question above)." ;
+    kpred:done-test "One confirmed statement set from an example space is published to the test registry (test.registry.knowledgepixels.com), fetched back by its w3id.org/np/ URI, verified, and imported into another space with its provenance intact." .
