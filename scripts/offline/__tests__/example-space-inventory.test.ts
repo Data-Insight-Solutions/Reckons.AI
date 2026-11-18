@@ -67,3 +67,13 @@ describe('inventorySpace', () => {
     expect(isImageFile('/a/b.png')).toBe(true);
   });
 });
+
+describe('F263 scope (Matt, 2026-11-17)', () => {
+  it('leaves the review release spaces out, by id, and keeps unlisted real examples', async () => {
+    const { inF263Scope } = await import('../example-space-inventory');
+    expect(inF263Scope('review-0.2.8')).toBe(false);
+    expect(inF263Scope('review-0.2.6')).toBe(false);
+    expect(inF263Scope('ring-scan')).toBe(true);
+    expect(inF263Scope('quickstart')).toBe(true);
+  });
+});

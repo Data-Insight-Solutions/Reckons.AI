@@ -42,6 +42,13 @@ export const hasReceipt = (assetPath: string): boolean => {
 
 export type Row = { id: string; file: string; listed: boolean; unlisted: boolean; inv: SpaceInventory };
 
+/**
+ * F263 SCOPE (Matt, 2026-11-17, relayed by the local deputy): the review-0.2.x release spaces are NOT example
+ * spaces; their home is the workspace, so they stay out of this inventory. Filter by the review- id, NOT by
+ * `unlisted`: ring-scan is also unlisted but is a real example (F292.3, linked from a published site).
+ */
+export const inF263Scope = (id: string): boolean => !/^review-/.test(id);
+
 export function collect(): Row[] {
   const rows: Row[] = [];
   const seen = new Set<string>();
@@ -49,11 +56,11 @@ export function collect(): Row[] {
     const file = e.file.replace(/^\//, '');
     const full = path.join(STATIC, file);
     seen.add(file);
-    if (!existsSync(full)) continue;
+    if (!existsSync(full) || !inF263Scope(e.id)) continue;
     rows.push({ id: e.id, file, listed: !e.unlisted, unlisted: !!e.unlisted, inv: inventorySpace(readTriples(full), { hasReceipt }) });
   }
   for (const f of readdirSync(STATIC).filter((n) => /^starter.*\.ttl$/.test(n)).sort()) {
-    if (seen.has(f)) continue;
+    if (seen.has(f) || !inF263Scope(f.replace(/\.ttl$/, ''))) continue;
     rows.push({ id: f.replace(/\.ttl$/, ''), file: f, listed: false, unlisted: false, inv: inventorySpace(readTriples(path.join(STATIC, f)), { hasReceipt }) });
   }
   return rows;
