@@ -47,6 +47,7 @@
   let targetStatementId = $state<string | null>(null);
   let targetAssetType = $state<string | null>(null);
   let targetSearch = $state('');
+  let target = $state('');
 
   const entityLabels = $derived.by(() => {
     const m = new Map<string, string>();
@@ -133,7 +134,6 @@
     const missing = found.statementIds.length - chosen.length;
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
-  let target = $state('');
   let proposal = $state('');
   let technicalDetail = $state('');
   let busy = $state(false);
