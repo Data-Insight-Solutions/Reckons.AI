@@ -34,7 +34,7 @@ test('three chosen statements and a sentence become one Reckoning entity, and a 
   const boxes = page.locator('[data-testid="situation-picker"] input[type="checkbox"]');
   await expect(boxes.nth(2)).toBeVisible({ timeout: 10_000 });
   for (const i of [0, 1, 2]) await boxes.nth(i).check();
-  await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
+  await expect(page.getByTestId('chosen-count')).toContainText('3 facts chosen');
   await page.getByPlaceholder(/evaluating/i).fill('We need to decide about the vendor.');
   await page.locator('.btn-next').click();
   await expect(page).toHaveURL(/[?&]r=/);
@@ -60,7 +60,7 @@ test('three chosen statements and a sentence become one Reckoning entity, and a 
   expect(rows.filter((r) => r.o === 'urn:kbase:type/Reckoning')).toHaveLength(1);
 
   await page.reload();
-  await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen', { timeout: 10_000 });
+  await expect(page.getByTestId('chosen-count')).toContainText('3 facts chosen', { timeout: 10_000 });
   await expect(page.getByPlaceholder(/evaluating/i)).toHaveValue('We need to decide about the vendor.');
 });
 
@@ -87,5 +87,5 @@ test('"Reckon with these" on the canvas opens the Reckoning page with the statem
   await expect(action).toBeVisible({ timeout: 15_000 });
   await action.click();
   await page.waitForURL(/\/reckoning\?r=/);
-  await expect(page.getByTestId('chosen-count')).not.toContainText('0 statements', { timeout: 10_000 });
+  await expect(page.getByTestId('chosen-count')).not.toContainText('0 facts', { timeout: 10_000 });
 });

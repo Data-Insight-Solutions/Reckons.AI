@@ -38,8 +38,8 @@ describe('reckoning entity', () => {
     ];
     const groups = groupByStanding(all, '', (i) => i);
     expect(groups.map((g) => g.standing)).toEqual(['held', 'pending', 'question']);
-    expect(groups.flatMap((g) => g.statements).some((s) => s.sourceId === 'reckoning-r')).toBe(false);
-    expect(groupByStanding(all, 'alpha', (i) => i).flatMap((g) => g.statements).map((s) => s.id)).toEqual(['1']);
+    expect(groups.flatMap((g) => g.rows).some((s) => s.sourceId === 'reckoning-r')).toBe(false);
+    expect(groupByStanding(all, 'alpha', (i) => i).flatMap((g) => g.rows).map((s) => s.id)).toEqual(['1']);
   });
   it('finds facts touching picked entities, held first', () => {
     const all = [st('1', 'urn:x:a', 'v', { status: 'pending' }), st('2', 'urn:x:a', 'w'), st('3', 'urn:x:z', 'q')];

@@ -93,7 +93,7 @@
     chosen = found.statementIds.filter((sid) => statements().some((st) => st.id === sid));
     situation = found.note;
     const missing = found.statementIds.length - chosen.length;
-    if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
+    if (missing > 0) saveNote = `${missing} chosen fact${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
   let target = $state('');
   let proposal = $state('');
@@ -403,11 +403,11 @@ Do NOT include <kb-actions> blocks.`;
       </div>
       {#if step === 'situation'}
         <div class="pick" data-testid="situation-picker">
-          <input class="pick-search" type="search" placeholder="Search statements…" aria-label="Search statements" bind:value={search} />
+          <input class="pick-search" type="search" placeholder="Search facts…" aria-label="Search facts" bind:value={search} />
           {#each groups as g (g.standing)}
-            <h4 class="pick-head mono">{g.label} ({g.statements.length})</h4>
+            <h4 class="pick-head mono">{g.label} ({g.rows.length})</h4>
             <ul class="pick-list">
-              {#each g.statements.slice(0, 40) as st (st.id)}
+              {#each g.rows.slice(0, 40) as st (st.id)}
                 <li>
                   <label class="pick-row">
                     <input type="checkbox" checked={chosen.includes(st.id)} onchange={() => toggle(st.id)} />
@@ -416,11 +416,11 @@ Do NOT include <kb-actions> blocks.`;
                 </li>
               {/each}
             </ul>
-            {#if g.statements.length > 40}<p class="stp-desc">Showing 40 of {g.statements.length}. Search to narrow them.</p>{/if}
+            {#if g.rows.length > 40}<p class="stp-desc">Showing 40 of {g.rows.length}. Search to narrow them.</p>{/if}
           {/each}
-          {#if groups.length === 0}<p class="stp-desc">No statements match.</p>{/if}
+          {#if groups.length === 0}<p class="stp-desc">No facts match.</p>{/if}
         </div>
-        <p class="stp-desc" data-testid="chosen-count">{chosen.length} statement{chosen.length === 1 ? '' : 's'} chosen. Add a sentence below if it helps.</p>
+        <p class="stp-desc" data-testid="chosen-count">{chosen.length} fact{chosen.length === 1 ? '' : 's'} chosen. Add a sentence below if it helps.</p>
       {:else if chosenRows.length > 0}
         <ul class="pick-list">{#each chosenRows as st (st.id)}<li class="pick-row"><span>{describe(st)}</span></li>{/each}</ul>
       {/if}

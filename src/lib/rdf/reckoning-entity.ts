@@ -19,7 +19,7 @@ const P = 'urn:kbase:predicate/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 export const RECKONING_PREDICATES = {
-  situationStatement: `${P}situation-statement`,
+  situationStatement: 'urn:kbase:predicate/situation-statement',
   situationNote: `${P}situation-note`,
 } as const;
 
@@ -31,13 +31,13 @@ export const statementIdOfIri = (iri: string): string | null =>
 
 export function reckoningSource(id: string, note: string, at: number): Source {
   return {
-    id: reckoningSourceId(id), title: `Reckoning: ${(note.trim() || 'chosen statements').slice(0, 80)}`,
+    id: reckoningSourceId(id), title: `Reckoning: ${(note.trim() || 'chosen facts').slice(0, 80)}`,
     uri: `note://reckoning/${id}`, kind: 'note', ingestedAt: at,
   };
 }
 
 const label = (note: string, count: number) =>
-  `Reckoning: ${note.trim().slice(0, 60) || `${count} chosen statement${count === 1 ? '' : 's'}`}`;
+  `Reckoning: ${note.trim().slice(0, 60) || `${count} chosen fact${count === 1 ? '' : 's'}`}`;
 
 /** Every row of one Reckoning. Ids are stable, so a later save differs only where the choice changed. */
 export function reckoningStatements(id: string, statementIds: readonly string[], note: string, at: number): Statement[] {
@@ -88,7 +88,7 @@ export function isChoosable(st: Statement): boolean {
   return st.p.value !== RDF_TYPE;
 }
 
-export type StandingGroup = { standing: Standing; label: string; statements: Statement[] };
+export type StandingGroup = { standing: Standing; label: string; rows: Statement[] };
 const GROUPS: { standing: Standing; label: string }[] = [
   { standing: 'held', label: 'Held' },
   { standing: 'pending', label: 'Pending' },
@@ -105,8 +105,8 @@ export function groupByStanding(
   return GROUPS.map((g) => ({
     ...g,
     // proposed is pending that names an option; the list offers it with the pending ones
-    statements: pool.filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; }),
-  })).filter((g) => g.statements.length > 0);
+    rows: pool.filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; }),
+  })).filter((g) => g.rows.length > 0);
 }
 
 /** The facts that touch the given entities, offered as a situation when entities are picked on the canvas. */
