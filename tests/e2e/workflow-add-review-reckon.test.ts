@@ -19,7 +19,7 @@ async function addNote(page: Page, title: string, body: string) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill(title);
   await page.locator('textarea').first().fill(body);
-  const submit = page.getByRole('button', { name: /extract facts/i });
+  const submit = page.getByRole('button', { name: /extract statements/i });
   await expect(submit).not.toBeDisabled({ timeout: 5_000 });
   await submit.click();
   await page.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 30_000 });

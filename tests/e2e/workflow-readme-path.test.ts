@@ -119,7 +119,7 @@ const impls: Record<string, StepImpl> = {
     await page.goto('/ingest');
     await page.getByPlaceholder(/what is this about/i).first().fill(NOTE_TITLE);
     await page.locator('textarea').first().fill(NOTE_BODY);
-    const submit = page.getByRole('button', { name: /extract facts/i });
+    const submit = page.getByRole('button', { name: /extract statements/i });
     await expect(submit).not.toBeDisabled({ timeout: 5_000 });
     await snap(submit);
     await submit.click();

@@ -164,7 +164,7 @@ test.describe('multi-tab: same graph, concurrent facts', () => {
     await tabA.locator('textarea').first().fill(
       'Multi Session Co has 42 employees and was founded in 2021 in Bristol.'
     );
-    const submit = tabA.getByRole('button', { name: /extract facts/i });
+    const submit = tabA.getByRole('button', { name: /extract statements/i });
     await expect(submit).not.toBeDisabled({ timeout: 5_000 });
     await submit.click();
     await tabA.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 30_000 });

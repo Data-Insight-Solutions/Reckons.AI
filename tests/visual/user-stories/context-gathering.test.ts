@@ -61,7 +61,7 @@ test.describe('Context Gathering', () => {
     });
 
     await test.step('extract facts (mock) and land on compare', async () => {
-      await page.getByRole('button', { name: /extract facts/i }).click();
+      await page.getByRole('button', { name: /extract statements/i }).click();
       // Semantic dedup wants to download an embedding model on first use. Decline
       // it — the pipeline falls back to the structural path, so the workflow stays
       // offline and deterministic. (No dialog if the model is already cached.)
@@ -69,7 +69,7 @@ test.describe('Context Gathering', () => {
         .getByRole('button', { name: /not now/i })
         .click({ timeout: 15_000 })
         .catch(() => {});
-      await page.waitForURL(/\/compare/, { timeout: 20_000 });
+      await page.waitForURL(/\/review\?view=compare/, { timeout: 20_000 });
       await page.waitForTimeout(2000);
       await screenshotTo(page, 'context-gathering', '02-compare-extracted');
       expect(await countStatements(page)).toBeGreaterThan(0);
@@ -112,7 +112,7 @@ test.describe('Context Gathering', () => {
 
     await test.step('add to graph and land on compare', async () => {
       await page.getByRole('button', { name: /add to graph/i }).click();
-      await page.waitForURL(/\/compare/, { timeout: 20_000 });
+      await page.waitForURL(/\/review\?view=compare/, { timeout: 20_000 });
       await page.waitForTimeout(1500);
       await screenshotTo(page, 'context-gathering', '05-facts-compare');
       expect(await countStatements(page)).toBeGreaterThanOrEqual(3);
