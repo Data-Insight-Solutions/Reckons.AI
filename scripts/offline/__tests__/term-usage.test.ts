@@ -368,3 +368,23 @@ describe('the ratchet counts prose only (kb:term-ratchet-prose-only, Matt 2026-1
     expect(ratchetFails(checkTermRatchets([u], [{ token: 'source', binding: 'prose', max: 40 }]))).toBe(true);
   });
 });
+
+describe('retired tokens (kpred:term-ratchet-retired)', () => {
+  it('reads retired tokens from the vocabulary', async () => {
+    const { readRetiredTerms } = await import('../term-usage');
+    expect([...readRetiredTerms('<v> kpred:term-ratchet-retired "statement" .')]).toEqual(['statement']);
+    expect(readRetiredTerms('<v> kpred:term-ratchet "node/prose/3" .').size).toBe(0);
+  });
+  it('a retired token is reported, never failed, and never called stale', async () => {
+    const { checkTermRatchets, ratchetFails } = await import('../term-usage');
+    const u = { token: 'statement', meanings: ['a', 'b'], freeProse: 5000, binding: { free: 0, contract: 0, foreign: 0 } } as never;
+    const rows = checkTermRatchets([u], [{ token: 'statement', binding: 'prose', max: 1 }], new Set(['statement']));
+    expect(rows).toEqual([{ kind: 'retired', token: 'statement', actual: 5000 }]);
+    expect(ratchetFails(rows)).toBe(false);
+  });
+  it('a word that is not retired still fails when it rises', async () => {
+    const { checkTermRatchets, ratchetFails } = await import('../term-usage');
+    const u = { token: 'node', meanings: ['a', 'b'], freeProse: 11, binding: { free: 0, contract: 0, foreign: 0 } } as never;
+    expect(ratchetFails(checkTermRatchets([u], [{ token: 'node', binding: 'prose', max: 10 }], new Set(['statement'])))).toBe(true);
+  });
+});
