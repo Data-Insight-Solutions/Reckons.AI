@@ -4,6 +4,7 @@ import { chatWithWasm } from './wasm';
 import { installedOllamaModels, preferLocalBackendSync } from './prefer-local';
 import type { KBAction, KBContext, TurtleChatResponse } from '$lib/types/turtle-chat';
 import { ethicsPreambleFor, localityOf } from '../../safety/content-policy';
+import { STRUCTURED_PROPOSAL_MARKER, mockProposalReply } from '../../rdf/reckoning-proposal';
 
 const SYSTEM_PROMPT = `You are Shelly, a friendly low-poly turtle companion for Reckons.AI — a personal knowledge base tool built on RDF Turtle format (.ttl).
 
@@ -320,6 +321,8 @@ export interface TurtleChatOptions {
   customPrompt?: string;
   /** When true, wraps all prompts with an immutable ethics preamble (for published/shared KBs) */
   publishedMode?: boolean;
+  /** 'structured': the reply is data a caller validates and filters (F223.12.3), not prose. Default 'converse'. */
+  purpose?: 'converse' | 'structured';
 }
 
 /**
@@ -351,6 +354,7 @@ export function assembleSystemPrompt(opts: {
   publishedMode?: boolean;
   /** Which backend will run this. Local providers skip the preamble (Matt, 2026-08-14). */
   provider?: string;
+  purpose?: 'converse' | 'structured';
 }): string {
   const { kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider } = opts;
   // A visual-test story (reviewSteps present) reviews screen-by-screen; a normal
@@ -370,7 +374,7 @@ export function assembleSystemPrompt(opts: {
   //                    spending ~121 tokens per call to lecture someone in their own notebook
   //                    is a cost without a beneficiary.
   basePrompt =
-    ethicsPreambleFor(publishedMode ? 'share' : 'converse', localityOf(provider)) + basePrompt;
+    ethicsPreambleFor(publishedMode ? 'share' : (opts.purpose ?? 'converse'), localityOf(provider)) + basePrompt;
   return basePrompt;
 }
 
@@ -413,7 +417,7 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
    */
   const NO_MODEL_PROVIDERS = new Set(['mock', 'manual']);
   if (!NO_MODEL_PROVIDERS.has(provider) && opts.consent !== 'granted') throw new AiConsentRequiredError();
-  const system = assembleSystemPrompt({ kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider })
+  const system = assembleSystemPrompt({ kbContext, exploreMode, voiceMode, customPrompt, publishedMode, provider, purpose: opts.purpose })
     + buildContextSection(kbContext);
 
   let raw: string;
@@ -433,7 +437,10 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     // Deterministic browser-test backend. `mock` is already a supported SettingsRecord value and
     // is selected by the E2E server environment; routing it to Claude/WASM made "mock" workflows
     // unexpectedly request credentials or a model download.
-    raw = mockChatReply(kbContext.statementCount);
+    // F223.12.3: a structured-proposal request gets the fixed, valid proposal, citing the first situation id it was shown.
+    raw = customPrompt?.includes(STRUCTURED_PROPOSAL_MARKER)
+      ? mockProposalReply([...messages.map((m) => m.content).join('\n').matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1]))
+      : mockChatReply(kbContext.statementCount);
   } else {
     raw = await chatClaude(messages, system, apiKey, model ?? 'claude-haiku-4-5-20251001');
   }
