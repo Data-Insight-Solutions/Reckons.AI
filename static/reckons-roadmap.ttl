@@ -13464,3 +13464,11 @@ kb:example-space-review kpred:decided "MATT, 2026-11-17, reviewing the docs-vide
 
 kb:demo-videos kpred:decided "MATT, 2026-11-17, after reviewing all seven scripts: 'I think we need more lead in statements in the other demos, they can really prompt the user to think a little bit, before then showing the way reckons does it. Some of the generated asset lead ins are too corny, or a bit odd.' Flagged lead-ins: before the picture step 'lead in here is weird'; before the clip step 'Lead in is too corny here.' Flow scores: Generated assets 4, Build and change 3, README path 3, Guided walk 3, Between spaces 3, Reckoning 2, Compare 2 (of 5). README path step 3: \'one by one\' and \'out of your\' pacing." ;
     kpred:progress "2026-11-17, WHAT EACH DOCS VIDEO WAITS FOR after Matt's script review: Generated assets: two rewritten lead-ins (Hume's TTS is gone, so any rewritten line is Kokoro). Build and change: richer example data (entity types, people with profile pictures, kb:example-space-review). README path: the reckoning step waits on F223.12. Reckoning: F223.12. Compare: F264's rework. Guided walk and Between spaces: generated 3D assets and pictures in the example spaces (kb:example-space-review, kb:hub-default-assets). Every script gets lead-in questions in a second draft." .
+
+kb:one-story-three-modes kpred:decided "MATT, 2026-11-17 (AskUserQuestion): demo stories live 'In the example spaces', chosen over the testing graph: each demo is a story inside the example space it walks, and static/docs-testing.ttl keeps only a pointer to the story and its test file. Build order 'Features first', chosen over the story vocabulary plus visuals first and over story unification first: the Reckoning redesign (F223.12) and the Compare rework (F264) come before F300 and before the example-space visuals." .
+
+kb:reckoning-selections kpred:priority "high" ;
+    kpred:decided "MATT, 2026-11-17 (AskUserQuestion, build order): 'Features first'. F223.12 is built before F300 and the docs-video stories." .
+
+kb:review-compare-overlay-fix kpred:priority "high" ;
+    kpred:decided "MATT, 2026-11-17 (AskUserQuestion, build order): 'Features first'. F264's rework is built before F300 and the docs-video stories." .
