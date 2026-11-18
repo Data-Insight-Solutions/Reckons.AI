@@ -15,6 +15,7 @@
   import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import OptionDecision from '$lib/components/OptionDecision.svelte';
   import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
@@ -2632,6 +2633,7 @@
         <button class="chip active" onclick={() => { focusOptionId = null; focusCited = []; }} title="Stop showing one proposal option">
           <span class="lbl mono">option {focusOptionId} ✕</span>
         </button>
+        <OptionDecision optionId={focusOptionId} />
       {/if}
       <!-- Sources filter chip -->
       <Popover.Root bind:open={showSourceFilter} onOpenChange={(o) => { if (o) showTypeFilter = false; }}>
