@@ -31,7 +31,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from '
 import { claimLive, newClaim, parseClaim, renewClaim, resolveClaims, LEASE_MS, type Claim } from './lib/job-claims.js';
 import { readCapabilityTerms, validateCrossDeviceRequest, type CapabilityTerms } from './lib/cross-device-request.js';
 import { matchCapabilities, type Measured } from './device-capabilities.js';
-import { verifyInputs } from './cross-device-inputs.js';
+import { INPUT_WAIT_MS, verifyInputs } from './cross-device-inputs.js';
 import { dirname, join, resolve } from 'node:path';
 import { atomic, safeDirectory } from '../content/generation-runner.js';
 import { CHANNEL_JOBS, toArgv, validateJobRequest, type ChannelJob } from './lib/job-request.js';
@@ -204,6 +204,21 @@ export class JobChannel {
       const match = matchCapabilities(verdict.needs, device.capabilities);
       if (match.verdict === 'cannot-run') { writeAnswer(id, { state: 'cannot-run', reasons: match.reasons }); continue; }
 
+      // INPUTS: sync delivers large files in pieces, so a missing file or a hash that differs NOW is a
+      // state to wait in, not a refusal, until the deadline (INPUT_WAIT_MS from createdAt). No claim is
+      // taken while waiting (another device may already have the file). A link, a directory or a path
+      // leaving the workspace never resolves by waiting and is refused at once.
+      const inputs = verifyInputs(this.workspace, verdict.inputs);
+      if (!inputs.ok) {
+        if (!inputs.waiting) { writeAnswer(id, { state: 'refused', reason: inputs.reason }); continue; }
+        if (now.getTime() > Date.parse(verdict.createdAt) + INPUT_WAIT_MS) {
+          writeAnswer(id, { state: 'refused', reason: `${inputs.reason}; still not matching after the ${INPUT_WAIT_MS / 60_000} minute wait` });
+        } else {
+          writeAnswer(id, { state: 'waiting-for-input', path: inputs.path, expected: inputs.expected, ...(inputs.actual ? { actual: inputs.actual } : { actual: 'missing' }) });
+        }
+        continue;
+      }
+
       // CLAIM: write or renew only our own file, then read everyone's and apply the fixed rule.
       let claims = this.readClaims(id, now);
       const own = claims.find((c) => c.device === device.id);
@@ -218,14 +233,7 @@ export class JobChannel {
       if (res.winner.device !== device.id) { writeAnswer(id, { state: 'backed-off', reason: res.winner.finished ? 'another device already ran this request' : 'another device holds this request' }); continue; }
       if (now.getTime() - Date.parse(res.winner.claimedAt) < settleMs) { writeAnswer(id, { state: 'claimed' }); continue; }
 
-      // WINNER: only now touch the input files, then queue as an ordinary local job.
-      const inputs = verifyInputs(this.workspace, verdict.inputs);
-      if (!inputs.ok) {
-        if (inputs.reason.endsWith('was not found')) { writeAnswer(id, { state: 'claimed', reason: `waiting for sync: ${inputs.reason}` }); continue; }
-        writeAnswer(id, { state: 'refused', reason: inputs.reason });
-        writeClaim({ ...res.winner, finished: true });
-        continue;
-      }
+      // WINNER: the inputs were verified before claiming; queue as an ordinary local job.
       const spec = jobs[verdict.job]!;
       const name = channelJobName(verdict.job, verdict.id);
       const job: QueueJob = { ...newJob(name, repoRoot, toArgv(verdict, jobs), undefined, spec.gpu, undefined, undefined, spec.ollama), space: verdict.space };

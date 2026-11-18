@@ -80,14 +80,14 @@ describe('verifyInputs', () => {
   };
   it('accepts a file whose hash matches', () => withDir((d) => expect(verifyInputs(d, [{ path: 'assets/a.bin', sha256: sha }])).toEqual({ ok: true })));
   it('refuses a request whose input hash does not match the file it finds', () => withDir((d) => {
-    expect(verifyInputs(d, [{ path: 'assets/a.bin', sha256: SHA }])).toEqual({ ok: false, reason: 'input assets/a.bin does not match its sha256' });
+    expect(verifyInputs(d, [{ path: 'assets/a.bin', sha256: SHA }])).toMatchObject({ ok: false, waiting: true, expected: SHA, actual: sha, reason: 'input assets/a.bin does not match its sha256' });
   }));
   it('refuses missing files, directories and symbolic links', () => withDir((d) => {
     writeFileSync(path.join(os.tmpdir(), 'inputs-outside.txt'), 'x');
     symlinkSync(path.join(os.tmpdir(), 'inputs-outside.txt'), path.join(d, 'assets', 'link.bin'));
-    expect(verifyInputs(d, [{ path: 'assets/none.bin', sha256: sha }])).toMatchObject({ ok: false, reason: expect.stringContaining('not found') });
-    expect(verifyInputs(d, [{ path: 'assets', sha256: sha }])).toMatchObject({ ok: false, reason: expect.stringContaining('not a plain file') });
-    expect(verifyInputs(d, [{ path: 'assets/link.bin', sha256: sha }])).toMatchObject({ ok: false, reason: expect.stringContaining('symbolic link') });
+    expect(verifyInputs(d, [{ path: 'assets/none.bin', sha256: sha }])).toMatchObject({ ok: false, waiting: true, reason: expect.stringContaining('not found') });
+    expect(verifyInputs(d, [{ path: 'assets', sha256: sha }])).toMatchObject({ ok: false, waiting: false, reason: expect.stringContaining('not a plain file') });
+    expect(verifyInputs(d, [{ path: 'assets/link.bin', sha256: sha }])).toMatchObject({ ok: false, waiting: false, reason: expect.stringContaining('symbolic link') });
     rmSync(path.join(os.tmpdir(), 'inputs-outside.txt'), { force: true });
   }));
 });

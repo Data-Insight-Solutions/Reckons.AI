@@ -4,10 +4,11 @@
  * so each device has its own list and nothing touches a live queue.
  */
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, symlinkSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { INPUT_WAIT_MS } from '../cross-device-inputs.js';
 import { JobChannel, loadCapabilityTerms, type ChannelRecords } from '../space-channel.js';
 import type { QueueJob } from '../session-queue.js';
 import type { Measured } from '../device-capabilities.js';
@@ -87,24 +88,40 @@ describe('two devices over one shared channel folder', () => {
     expect(queues[GPU]).toHaveLength(1);
   });
 
-  it('refuses a request whose input hash does not match, and runs one whose hash does', () => {
-    writeFileSync(path.join(shared, 'in.bin'), 'synthetic');
-    request('bad', { needs: [], inputs: [{ path: 'in.bin', sha256: 'f'.repeat(64) }] });
-    request('good', { needs: [], inputs: [{ path: 'in.bin', sha256: createHash('sha256').update('synthetic').digest('hex') }] });
-    const d = device(GPU, withGpu);
-    expect(d.tick()).toBe(true);
-    expect(answer(GPU, 'bad')).toMatchObject({ state: 'refused', reason: expect.stringContaining('does not match') });
-    expect(answer(GPU, 'good').state).toBe('queued');
-    expect(queues[GPU].map((j) => j.name)).toEqual(['chan-graph-lint-good']);
-  });
-
-  it('a request still waiting for its input to sync is not refused, and runs once it arrives', () => {
-    request('late', { needs: [], inputs: [{ path: 'late.bin', sha256: createHash('sha256').update('x').digest('hex') }] });
+  it('a hash mismatch or missing input is waiting-for-input, takes no claim, and queues once the file completes', () => {
+    const want = createHash('sha256').update('synthetic').digest('hex');
+    request('big', { needs: [], inputs: [{ path: 'in.bin', sha256: want }] });
     const d = device(GPU, withGpu);
     expect(d.tick()).toBe(false);
-    expect(answer(GPU, 'late').state).toBe('claimed');
-    writeFileSync(path.join(shared, 'late.bin'), 'x');
+    expect(answer(GPU, 'big')).toMatchObject({ state: 'waiting-for-input', path: 'in.bin', expected: want, actual: 'missing' });
+    writeFileSync(path.join(shared, 'in.bin'), 'synth');
+    expect(d.tick()).toBe(false);
+    expect(answer(GPU, 'big')).toMatchObject({ state: 'waiting-for-input', expected: want, actual: createHash('sha256').update('synth').digest('hex') });
+    expect(existsSync(path.join(shared, 'job-channel', 'claims'))).toBe(false);
+    writeFileSync(path.join(shared, 'in.bin'), 'synthetic');
     expect(d.tick()).toBe(true);
+    expect(answer(GPU, 'big').state).toBe('queued');
+    expect(queues[GPU].map((j) => j.name)).toEqual(['chan-graph-lint-big']);
+  });
+
+  it('a request still mismatching after the deadline is refused with a reason', () => {
+    request('stale', { needs: [], inputs: [{ path: 'in.bin', sha256: 'f'.repeat(64) }] });
+    writeFileSync(path.join(shared, 'in.bin'), 'synthetic');
+    const d = device(GPU, withGpu);
+    d.tick();
+    expect(answer(GPU, 'stale').state).toBe('waiting-for-input');
+    clock = new Date(T0.getTime() + INPUT_WAIT_MS + 1000);
+    d.tick();
+    expect(answer(GPU, 'stale')).toMatchObject({ state: 'refused', reason: expect.stringContaining('after the 120 minute wait') });
+    expect(queues[GPU]).toHaveLength(0);
+  });
+
+  it('a symbolic link input is refused at once, not waited on', () => {
+    writeFileSync(path.join(tmp, 'outside.bin'), 'x');
+    symlinkSync(path.join(tmp, 'outside.bin'), path.join(shared, 'link.bin'));
+    request('lnk', { needs: [], inputs: [{ path: 'link.bin', sha256: 'f'.repeat(64) }] });
+    device(GPU, withGpu).tick();
+    expect(answer(GPU, 'lnk')).toMatchObject({ state: 'refused', reason: expect.stringContaining('symbolic link') });
   });
 
   it('refuses another device\'s request even though this device can run it', () => {
