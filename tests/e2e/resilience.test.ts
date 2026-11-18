@@ -30,7 +30,7 @@ async function goIngestNote(page: Page, title: string, body: string) {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill(title);
   await page.locator('textarea').first().fill(body);
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 }
@@ -46,9 +46,10 @@ test('mock backend completes ingest without any API key', async ({ page }) => {
   // Default dev server already has VITE_INGEST_BACKEND=mock
   await goIngestNote(page, 'Fallback Corp', 'Fallback Corp was founded in 2021 with 100 employees.');
 
-  // Mock backend completes fast and navigates to /compare
+  // Mock backend completes fast and navigates to Review's compare mode
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
-  expect(page.url()).toContain('/compare');
+  expect(new URL(page.url()).pathname).toBe('/review');
+  expect(page.url()).toContain('view=compare');
 
   // No error message visible
   await expect(page.getByText(/failed|error|unavailable/i)).not.toBeVisible();
@@ -63,7 +64,7 @@ test('WASM failure falls back to mock extraction', async ({ page }) => {
 
   await goIngestNote(page, 'WASM Fail Corp', 'A company that tests WASM resilience.');
 
-  // WASM extraction fails → falls back to mock → navigates to /compare.
+  // WASM extraction fails → falls back to mock → navigates to Review's compare mode.
   // Wait for completion (nav visible + no crash overlay).
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
 
@@ -81,7 +82,7 @@ test('cloud backend with no key auto-falls back to wasm/mock', async ({ page }) 
   await page.getByPlaceholder(/what is this about/i).first().fill('No Key Test');
   await page.locator('textarea').first().fill('Testing fallback when no claude key is configured.');
 
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 
@@ -151,9 +152,9 @@ test('notification shows when backend degrades', async ({ page }) => {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Notify Test');
   await page.locator('textarea').first().fill('Testing fallback notification.');
-  await page.getByRole('button', { name: /extract facts/i }).click();
+  await page.getByRole('button', { name: /extract statements/i }).click();
 
-  // WASM fails → mock fallback → navigates to /compare. Wait for completion.
+  // WASM fails → mock fallback → navigates to Review's compare mode. Wait for completion.
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
 
   // Nav must still be visible — app is alive

@@ -190,7 +190,7 @@
         statements: stmts,
       });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${source.id}`);
+      goto(`/review?view=compare&source=${source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -232,7 +232,7 @@
         statements: stmts,
       });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${source.id}`);
+      goto(`/review?view=compare&source=${source.id}`);
     } catch (e) {
       if (e instanceof Error && e.message === 'Cancelled') return;
       error = e instanceof Error ? e.message : String(e);
@@ -340,7 +340,7 @@
       // try again, and clearing the form would throw away the text the user was about to edit.
       if (result.phase === 'cancelled') return;
       clearDraft(); // extraction succeeded — the note is safely in the graph now
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       // An aborted fetch surfaces as AbortError. That is the user's own instruction carried out,
       // not a fault, so it must never be shown in the error banner.
@@ -529,7 +529,7 @@
       }
       pendingGlbImports = new Map();
 
-      goto(`/compare?source=${sourceId}`);
+      goto(`/review?view=compare&source=${sourceId}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -702,7 +702,7 @@
       };
       const result = await ingest(input, (p) => { phase = p.phase; });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -777,7 +777,7 @@
           calImportCount = 0;
           return;
         }
-        goto(`/compare?source=${firstSourceId}`);
+        goto(`/review?view=compare&source=${firstSourceId}`);
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -1114,7 +1114,7 @@
       );
       if (result.phase === 'cancelled') return;
       repoDone = true;
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -1218,7 +1218,7 @@
                 <span class="vault-error">{item.error}</span>
               {/if}
               {#if item.sourceId}
-                <a class="vault-review" href="/compare?source={item.sourceId}">review →</a>
+                <a class="vault-review" href="/review?view=compare&source={item.sourceId}">review →</a>
               {/if}
             </div>
             <span class="vault-status mono">{item.status}</span>
@@ -1364,7 +1364,7 @@
           title="Build the prompt and paste the response from any LLM — no API key needed"
         >use any LLM</button>
         <button class="primary" onclick={submit} disabled={!canSubmit}>
-          {busy ? 'extracting…' : 'extract facts →'}
+          {busy ? 'extracting…' : 'extract statements →'}
         </button>
         {#if busy}
           <button class="btn-cancel mono" onclick={cancelIngest} disabled={cancelling}>
