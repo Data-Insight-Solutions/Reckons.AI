@@ -171,6 +171,7 @@
     "agent:watch": "npx tsx scripts/agent/watch.ts",
     "agent:queue": "npx tsx scripts/agent/queue.ts",
     "agent:queue-worker": "npx tsx scripts/agent/queue-worker.ts",
+    "device:measure": "npx tsx scripts/agent/measure-device.ts",
     "agent:device": "npx tsx scripts/agent/device-config.ts",
     "agent:panel": "npx tsx scripts/agent/local-panel.ts",
     "prepare": "git config core.hooksPath .githooks || true",

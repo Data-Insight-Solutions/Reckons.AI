@@ -45,6 +45,7 @@ import { fileURLToPath } from 'node:url';
 import { Parser } from 'n3';
 import { pidAlive, slug } from './job-state.js';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import { deviceJobRecordsPath, deviceStableId } from './device-space-paths.js';
 
 // ── vocabulary ─────────────────────────────────────────────────────────────
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -114,7 +115,7 @@ function lit(value: string, dt?: string): string {
 }
 
 /** A reified fact. `created` is the deterministic dc:created for its block. */
-type Fact = { s: string; p: string; o: string; dt?: string; created: string };
+export type Fact = { s: string; p: string; o: string; dt?: string; created: string };
 
 /** Deterministic statement id: sha1 of the fact, formatted as a UUID (8-4-4-4-12). */
 function factId(f: Fact): string {
@@ -184,7 +185,7 @@ export function buildSpaceText(records: JobRecord[], nowMs: number): string {
 }
 
 /** Serialize facts as the app's annotated export: every fact a confirmed, derived reification block. */
-function renderSpace(facts: Fact[], nowMs: number, id: { stableId: string; sourceIri: string; sourceTitle: string }): string {
+export function renderSpace(facts: Fact[], nowMs: number, id: { stableId: string; sourceIri: string; sourceTitle: string; deviceOnly?: boolean }): string {
   const srcShort = shorten(id.sourceIri);
   const lines: string[] = [];
   lines.push(`# generated ${new Date(nowMs).toISOString()}`);
@@ -195,6 +196,8 @@ function renderSpace(facts: Fact[], nowMs: number, id: { stableId: string; sourc
 
   lines.push('# ---- kb identity ----');
   lines.push(`<urn:reckons:kb> <urn:reckons:meta/kbStableId> "${id.stableId}" .`);
+  // Device-only (F269): never shared, published or synced. The marker travels in the file itself.
+  if (id.deviceOnly) lines.push(`<urn:reckons:kb> <urn:reckons:meta/deviceOnly> "true" .`);
   lines.push('');
 
   lines.push('# ---- sources ----');
@@ -377,6 +380,7 @@ export function buildRecords(dir: string, nowMs: number, opts: BuildOpts = {}): 
 
 // ── device space: the full per-job record (F269.1) ─────────────────────────
 
+/** Fallback for pure callers and tests only; the real id is generated once per device (device-space-paths.ts). */
 const DEVICE_STABLE_ID = 'b1b1b1b1-2c2c-4d3d-8e4e-5f6f708192a4';
 const DEVICE_SOURCE_IRI = 'urn:kbase:source/device-job-records';
 const DEVICE_SOURCE_TITLE = 'Local job records (derived by script)';
@@ -455,7 +459,7 @@ const cardOf = (q?: { gpu?: boolean; gpuIndex?: number }): string | undefined =>
  * `# generated` line. Every fact is confirmed and derived from one named source: nothing here is a
  * proposal.
  */
-export function buildDeviceSpaceText(input: DeviceInput, nowMs: number): string {
+export function buildDeviceSpaceText(input: DeviceInput, nowMs: number, stableId: string = DEVICE_STABLE_ID): string {
   const defs = new Map(input.defs.map((d) => [d.key, d]));
   const jobIri = (key: string): string => `urn:kbase:concept/device-job-${key}`;
   const runsBy = new Map<string, RawRun[]>();
@@ -532,7 +536,7 @@ export function buildDeviceSpaceText(input: DeviceInput, nowMs: number): string 
       F(`${P}has-run`, rIri);
     }
   }
-  return renderSpace(facts, nowMs, { stableId: DEVICE_STABLE_ID, sourceIri: DEVICE_SOURCE_IRI, sourceTitle: DEVICE_SOURCE_TITLE });
+  return renderSpace(facts, nowMs, { stableId, sourceIri: DEVICE_SOURCE_IRI, sourceTitle: DEVICE_SOURCE_TITLE, deviceOnly: true });
 }
 
 /** Read the worker's own files (and the two definition files) into a DeviceInput. Nothing is written. */
@@ -604,8 +608,7 @@ export function writeAtomic(p: string, text: string): void {
   renameSync(tmp, p);
 }
 
-const defaultDeviceOut = (): string =>
-  path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'reckons', 'device-space', 'kbs', 'this-device', 'job-records.ttl');
+const defaultDeviceOut = (): string => deviceJobRecordsPath();
 const readOr = (p: string): string => { try { return readFileSync(p, 'utf8'); } catch { return ''; } };
 
 function main(): void {
@@ -628,7 +631,7 @@ function main(): void {
     const schedulesTtl = readOr(flag('schedules') ?? path.join(mainCheckoutRoot(), 'reckons-workspace', 'schedules.ttl'));
     const dev = readDeviceInput(dir, { jobsTtl, schedulesTtl });
     const devOut = flag('device-out') ?? defaultDeviceOut();
-    writeAtomic(devOut, buildDeviceSpaceText(dev, nowMs));
+    writeAtomic(devOut, buildDeviceSpaceText(dev, nowMs, flag('device-out') ? undefined : deviceStableId()));
     console.log(`device jobs: ${dev.done.length} run record(s), ${dev.queued.length} queued → ${devOut}`);
   }
   const records = buildRecords(dir, nowMs);
