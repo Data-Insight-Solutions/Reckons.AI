@@ -28,11 +28,11 @@ function json(path: string): unknown {
   if (bytes.length > 100_000) throw new Error('Generation metadata is too large');
   return JSON.parse(bytes.toString('utf8'));
 }
-function atomic(path: string, value: unknown) {
+export function atomic(path: string, value: unknown) {
   writeFileSync(`${path}.tmp`, JSON.stringify(value), { mode: 0o600 });
   renameSync(`${path}.tmp`, path);
 }
-function safeDirectory(path: string) {
+export function safeDirectory(path: string) {
   mkdirSync(path, { recursive: true, mode: 0o700 });
   if (lstatSync(path).isSymbolicLink()) throw new Error('Generation directories must not be symlinks');
 }

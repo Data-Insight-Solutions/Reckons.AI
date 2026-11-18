@@ -58,6 +58,7 @@ import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readOllamaResidency, r
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 import { loadDeviceConfig } from './device-config.js';
 import { GenerationRunner } from '../content/generation-runner.js';
+import { JobChannel } from './space-channel.js';
 import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -168,8 +169,11 @@ async function main(): Promise<void> {
   // Ticks on its own timer: the browser rejects a capability heartbeat older than 30 s, and the main
   // loop can be busy for minutes running a job.
   const generation = workspace ? new GenerationRunner(path.resolve(workspace)) : undefined;
+  // F74.14: the job-request channel in the same folder, ticked with generation; one writer per file.
+  const channel = workspace ? new JobChannel(path.resolve(workspace)) : undefined;
   const genTimer = generation ? setInterval(() => {
     try { if (generation.tick()) wakeNow?.(); } catch (e) { console.error(`queue-worker: generation: ${String(e)}`); }
+    try { if (channel?.tick()) wakeNow?.(); } catch (e) { console.error(`queue-worker: job channel: ${String(e)}`); }
   }, 2000) : undefined;
   if (generation) { generation.tick(); console.log(`queue-worker: serving local generation for ${path.resolve(workspace!)} — connect that folder in Reckons.AI`); }
   let finished = 0;
