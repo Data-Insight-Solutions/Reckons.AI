@@ -13545,7 +13545,10 @@ kb:airoot-shared-web rdf:type ktype:Feature ;
 
 kb:reckoning-select-situation rdf:type ktype:Phase ;
     rdfs:label "F223.12.1 — the situation is chosen: pick statements on the canvas or from a list, free text added on top" ;
-    kpred:feature-id "F223.12.1" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "planned" ; kpred:order 1 ;
+    kpred:feature-id "F223.12.1" ; kpred:part-of kb:reckoning-selections ; kpred:has-status "functional" ; kpred:order 1 ;
+    kpred:has-file "src/lib/rdf/reckoning-entity.ts", "src/lib/stores/reckoning.svelte.ts", "src/routes/(app)/reckoning/+page.svelte", "src/routes/(app)/+page.svelte" ;
+    kpred:tested-by "src/lib/rdf/__tests__/reckoning-entity.test.ts", "tests/e2e/reckoning-situation.test.ts" ;
+    kpred:progress-note "2026-11-17: built on branch feat/f223-12-1-reckon-situation. The Reckoning page lists statements by standing (held, pending, question) with search; the canvas has a Reckon with these action on a selected entity or a multi-selection (it takes the statements that touch the chosen entities, up to 40, held first); a Reckoning entity (urn:kbase:type/Reckoning) is written confirmed, and the page restores it from ?r=. Not built: the target step (F223.12.2); picking on the canvas chooses entities, not individual statements; the voice mode does not use the list; the Reckoning entity is not yet drawn or filtered specially on the canvas." ;
     kpred:description "On the Reckoning page the situation step lists the space's statements by standing (held, pending, question) with search, and accepts a selection made on the canvas (select, then 'Reckon with these'). The free-text box stays as an addition. A Reckoning entity is written to the space (type Reckoning, a label, kpred:situation-statement for each chosen statement, kpred:situation-note for the text), so the reckoning itself is a fact the space keeps." ;
     kpred:done-test "Selecting three statements and adding a sentence writes one Reckoning entity with three situation-statement links and the note; reloading the page shows the same selection; vitest for the entity builder; svelte-check 0 errors." .
 kb:reckoning-select-target rdf:type ktype:Phase ;
