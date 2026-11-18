@@ -65,7 +65,7 @@ async function startIngest(page: Page, title = 'First Run Co', body = 'First Run
   await gotoRetry(page, '/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill(title);
   await page.locator('textarea').first().fill(body);
-  const submit = page.getByRole('button', { name: /extract facts/i });
+  const submit = page.getByRole('button', { name: /extract statements/i });
   await expect(submit).not.toBeDisabled({ timeout: 10_000 });
   await submit.click();
 }

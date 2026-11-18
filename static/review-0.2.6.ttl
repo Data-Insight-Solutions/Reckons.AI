@@ -28,7 +28,7 @@ rev:wf-readme-path rdf:type ktype:Concept ;
 
 rev:wf-readme-path-01-add-source rdf:type ktype:Concept ;
     rdfs:label "1. Add a source" ;
-    rdfs:comment "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.\n\nWhere: the Add tab (/ingest).\n\nThe test checks: The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." ;
+    rdfs:comment "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract statements. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.\n\nWhere: the Add tab (/ingest).\n\nThe test checks: The Extract statements button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." ;
     p:photo "/workflows/readme-path/01-add-source.webp" ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;

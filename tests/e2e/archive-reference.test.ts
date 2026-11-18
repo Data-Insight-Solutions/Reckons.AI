@@ -71,7 +71,7 @@ async function submitMatchingMockIngest(page: Page): Promise<void> {
   await page.goto('/ingest');
   await page.getByPlaceholder(/what is this about/i).first().fill('Archived Match');
   await page.locator('textarea').first().fill('This note mentions the mock test source.');
-  await page.getByRole('button', { name: /extract facts/i }).click();
+  await page.getByRole('button', { name: /extract statements/i }).click();
   await expect(page.getByRole('dialog', { name: /archived entity mentioned/i })).toBeVisible({
     timeout: 15_000,
   });
@@ -157,7 +157,7 @@ test('manual facts shares the archive boundary and cancellation writes nothing',
 test('restore journals the decision, restores the archived fact, then completes ingest', async ({ page }) => {
   await submitMatchingMockIngest(page);
   await page.getByRole('button', { name: /restore archived/i }).click();
-  await page.waitForURL((url) => url.pathname === '/compare', { timeout: 30_000 });
+  await page.waitForURL((url) => url.pathname === '/review' && url.searchParams.get('view') === 'compare', { timeout: 30_000 });
 
   const state = await page.evaluate(async ({ archiveDbName, archivedEntity }) => {
     const runtimeImport = (path: string) => import(/* @vite-ignore */ path);

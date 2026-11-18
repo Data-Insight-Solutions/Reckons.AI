@@ -764,12 +764,12 @@ test:Workflow-BuildChange-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "add-first-note" ;
     kpred:short-label   "Add the first note" ;
-    kpred:box-label     "Extract facts" ;
-    kpred:box-target    "the Extract facts button, under the note's title and text" ;
+    kpred:box-label     "Extract statements" ;
+    kpred:box-target    "the Extract statements button, under the note's title and text" ;
     kpred:page          "/ingest" ;
     kpred:screenshot    "/workflows/build-change/01-add-first-note.webp" ;
     kpred:page-name     "the Add tab" ;
-    skos:definition     "Open the Add tab, title the note \"Garden notes\" and paste: \"The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed.\" Then press Extract facts. Every fact it reads arrives waiting for your decision." ;
+    skos:definition     "Open the Add tab, title the note \"Garden notes\" and paste: \"The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed.\" Then press Extract statements. Every fact it reads arrives waiting for your decision." ;
     kpred:assertion     "Reading the note leaves the Add tab and puts its facts in Review, each waiting." .
 
 test:Workflow-BuildChange-Step2
@@ -794,12 +794,12 @@ test:Workflow-BuildChange-Step3
     kpred:step-order    "3"^^xsd:integer ;
     kpred:step-id       "add-change-note" ;
     kpred:short-label   "Add the change" ;
-    kpred:box-label     "Extract facts" ;
-    kpred:box-target    "the Extract facts button, with the change note filled in" ;
+    kpred:box-label     "Extract statements" ;
+    kpred:box-target    "the Extract statements button, with the change note filled in" ;
     kpred:page          "/ingest" ;
     kpred:screenshot    "/workflows/build-change/03-add-change-note.webp" ;
     kpred:page-name     "the Add tab" ;
-    skos:definition     "Back on the Add tab, title it \"Garden meeting\" and paste: \"Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen.\" Press Extract facts." ;
+    skos:definition     "Back on the Add tab, title it \"Garden meeting\" and paste: \"Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen.\" Press Extract statements." ;
     kpred:assertion     "Reading the change note leaves the Add tab and puts its facts in Review." .
 
 test:Workflow-BuildChange-Step4
@@ -873,13 +873,13 @@ test:Workflow-ReadmePath-Step1
     kpred:step-order    "1"^^xsd:integer ;
     kpred:step-id       "add-source" ;
     kpred:short-label   "Add a source" ;
-    kpred:box-label     "Extract facts" ;
-    kpred:box-target    "the Extract facts button, under the note's title and text" ;
+    kpred:box-label     "Extract statements" ;
+    kpred:box-target    "the Extract statements button, under the note's title and text" ;
     kpred:page          "/ingest" ;
     kpred:page-name     "the Add tab" ;
     kpred:screenshot    "/workflows/readme-path/01-add-source.webp" ;
-    skos:definition     "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision." ;
-    kpred:assertion     "The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." .
+    skos:definition     "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract statements. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision." ;
+    kpred:assertion     "The Extract statements button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." .
 
 test:Workflow-ReadmePath-Step2
     rdf:type            ktype:TestStep ;

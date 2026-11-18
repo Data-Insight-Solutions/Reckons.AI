@@ -28,7 +28,7 @@ const ROUTES = [
   { label: 'reckoning', path: '/reckoning' },
   { label: 'kb', path: '/kb' },
   { label: 'analyze', path: '/analyze' },
-  { label: 'compare', path: '/compare' },
+  { label: 'compare', path: '/review?view=compare' },
   { label: 'history', path: '/history' },
   { label: 'about', path: '/about' },
   { label: 'case-study', path: '/about/case-study-0' },

@@ -68,10 +68,12 @@ test('history page loads', async ({ page }) => {
   await expect(page.locator('h1, h2, .kicker, main').first()).toBeVisible({ timeout: 8_000 });
 });
 
-test('compare page loads', async ({ page }) => {
+test('the old compare link opens Review compare mode', async ({ page }) => {
   await waitForApp(page);
-  await page.goto('/compare');
-  await expect(page.locator('h1, h2, .kicker, main').first()).toBeVisible({ timeout: 8_000 });
+  await page.goto('/compare?source=missing-source');
+  await page.waitForURL((url) => url.pathname === '/review' && url.searchParams.get('view') === 'compare', { timeout: 8_000 });
+  expect(new URL(page.url()).searchParams.get('source')).toBe('missing-source');
+  await expect(page.getByTestId('compare-flow')).toBeVisible({ timeout: 8_000 });
 });
 
 test('404 does not crash the app', async ({ page }) => {

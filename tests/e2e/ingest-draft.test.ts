@@ -34,7 +34,7 @@ test('a typed note survives a reload (crash-safe draft)', async ({ page }) => {
 test('the draft is cleared once the note is extracted', async ({ page }) => {
   await fillNote(page, 'Note to extract', 'This becomes facts.');
 
-  await page.getByRole('button', { name: /extract facts/i }).click();
+  await page.getByRole('button', { name: /extract statements/i }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
 
   // Back on /ingest, the fields must be empty — the draft was cleared on success.
