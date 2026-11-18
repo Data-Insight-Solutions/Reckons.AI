@@ -189,6 +189,10 @@ export const PROPOSAL_PREDICATES = {
   cites: `${P}cites`,
   needsInput: `${P}needs-input`,
   proposesJob: `${P}proposes-job`,
+  /** F223.12.4: the proposal's action status (schema.org), moved by the person's acceptance and by closeIfReached. */
+  actionStatus: `${P}action-status`,
+  /** F223.12.4: a proposed job record -> the real job that accepting its option queued. */
+  queuedAs: `${P}queued-as`,
 } as const;
 /** The state a proposed job is recorded in; JOB_STATES (the queue's states) does not include it, so nothing runs it. */
 export const PROPOSED_JOB_STATE = 'proposed';
@@ -241,6 +245,7 @@ export function buildProposalRows(
   for (const o of options) {
     head.push(row(null, `has-${o.key}`, proposalIri, PROPOSAL_PREDICATES.hasOption, { iri: optionEntity(reckoning.id, o.key) }));
   }
+  head.push(row(null, 'status', proposalIri, PROPOSAL_PREDICATES.actionStatus, { iri: ACTION_STATUS.potential }));
   head.push(row(null, 'recommended', proposalIri, PROPOSAL_PREDICATES.recommended, { iri: optionEntity(reckoning.id, parsed.recommendedKey) }));
   groups.push({ what: 'the proposal record', rows: head });
 
