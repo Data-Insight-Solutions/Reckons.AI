@@ -647,7 +647,7 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/review/link-landing.ts" ;
              kpred:has-file "src/lib/review/__tests__/link-landing.test.ts" ;
              kpred:has-file "src/routes/(app)/ingest/+page.svelte" ;
-             kpred:has-file "src/routes/(app)/compare/+page.svelte", "src/routes/(app)/compare/+page.ts", "src/lib/components/CompareFlow.svelte", "src/lib/rdf/compare-overlay.ts", "src/lib/rdf/__tests__/compare-overlay.test.ts", "tests/e2e/compare-on-canvas.test.ts" ;
+             kpred:has-file "src/routes/(app)/compare/+page.svelte", "src/routes/(app)/compare/+page.ts", "src/lib/components/CompareFlow.svelte", "src/lib/rdf/compare-overlay.ts", "src/lib/rdf/__tests__/compare-overlay.test.ts", "tests/e2e/compare-on-canvas.test.ts", "src/lib/rdf/compare-decide.ts", "src/lib/rdf/__tests__/compare-decide.test.ts", "tests/e2e/compare-decide-in-place.test.ts" ;
              kpred:has-file "src/routes/(app)/kb/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/entity-types/+page.svelte" ;

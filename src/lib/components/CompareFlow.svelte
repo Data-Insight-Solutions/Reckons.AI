@@ -10,13 +10,17 @@
     statements,
     statementsForSource,
     sources,
-    setStatus
+    setStatus,
+    setStatuses,
+    updateStatement
   } from '$lib/stores/kb.svelte';
   import { computeDiff, type Diff } from '$lib/rdf/diff';
   import { semanticEnrichDiff } from '$lib/rdf/semantic-diff';
   import { generateDiffSummary, type DiffSummary } from '$lib/rdf/diff-summary';
   import { settings } from '$lib/stores/settings.svelte';
   import KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
+  import { decideContradiction, knownDisagreements, type ContradictionChoice } from '$lib/rdf/compare-decide';
+  import type { Statement } from '$lib/rdf/types';
   import { compareOverlay, toCanvasOverlay, localLabel as overlayLabel } from '$lib/rdf/compare-overlay';
 
   let { sourceId }: { sourceId: string | null } = $props();
@@ -93,6 +97,36 @@
   const canvasOverlay = $derived(toCanvasOverlay(overlay));
   const triple = (st: { s: { value: string }; p: { value: string }; o: { value: string } }) =>
     `${overlayLabel(st.s.value)} · ${overlayLabel(st.p.value)} · ${overlayLabel(st.o.value)}`;
+
+  // ── deciding a contradiction in place (F264.3) ─────────────────────────────
+  // A choice is applied through the same store path as the review queue; the pair then leaves the
+  // overlay (the incoming statement is no longer pending) and is recorded below, with both passages.
+  type Decided = { id: string; choice: ContradictionChoice; incoming: Statement; held: Statement[]; incomingSource: string; heldSources: string[] };
+  let decided = $state<Decided[]>([]);
+  let deciding = $state<string | null>(null);
+  let decideError = $state<string | null>(null);
+  const choiceWords: Record<ContradictionChoice, string> = {
+    'keep-mine': 'kept what you hold; the arriving statement was rejected',
+    'take-new': 'took the arriving statement; what you held is marked replaced and stays on record',
+    'keep-both': 'kept both, marked as a known disagreement'
+  };
+  async function decide(c: (typeof overlay.contradictions)[number], choice: ContradictionChoice) {
+    deciding = c.id;
+    decideError = null;
+    try {
+      const d = decideContradiction({ incoming: c.incoming, held: c.held }, choice);
+      await setStatuses(d.statuses);
+      for (const m of d.marks) await updateStatement(m.id, { knownDisagreement: m.disagreesWith });
+      decided = [...decided, { id: c.id, choice, incoming: c.incoming, held: c.held, incomingSource: c.incomingSource, heldSources: c.heldSources }];
+    } catch (e) {
+      decideError = e instanceof Error ? e.message : String(e);
+    } finally {
+      deciding = null;
+    }
+  }
+  const disagreements = $derived(knownDisagreements(statements()));
+  /** The passage a statement was read from, when it carries one that was checked against its source. */
+  const passageOf = (st: Statement) => (st.excerpt && st.grounded !== false ? st.excerpt : null);
 
   // ── difference summary ─────────────────────────────────────────────────────
   let diffSummary = $state<DiffSummary | null>(null);
@@ -173,13 +207,51 @@
       {#each overlay.contradictions as c (c.id)}
         <div class="pair" data-testid="contradiction-pair">
           <div class="side held"><span class="side-tag mono">you hold</span>
-            {#each c.held as h (h.id)}<div class="mono">{triple(h)}</div>{/each}
+            {#each c.held as h (h.id)}<div class="mono">{triple(h)}</div>
+              {#if passageOf(h)}<q class="passage" data-testid="passage-held">{passageOf(h)}</q>{/if}{/each}
             <span class="src mono">from {c.heldSources.join(', ')}</span></div>
           <div class="vs mono">{c.opposite ? 'opposes' : 'contradicts'}</div>
           <div class="side arriving"><span class="side-tag mono">arriving</span>
             <div class="mono">{triple(c.incoming)}</div>
+            {#if passageOf(c.incoming)}<q class="passage" data-testid="passage-incoming">{passageOf(c.incoming)}</q>{/if}
             <span class="src mono">from {c.incomingSource}</span></div>
           {#if c.note}<div class="pair-note mono">{c.note}</div>{/if}
+          <div class="pair-actions">
+            <button disabled={deciding === c.id} onclick={() => decide(c, 'keep-mine')} title="What you hold stays; the arriving statement is rejected.">keep mine</button>
+            <button class="primary" disabled={deciding === c.id} onclick={() => decide(c, 'take-new')} title="The arriving statement is taken; what you hold is marked replaced and stays on record.">take the new one</button>
+            <button disabled={deciding === c.id} onclick={() => decide(c, 'keep-both')} title="Both stand, marked as a known disagreement.">keep both</button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if decideError}<p class="summary-err">{decideError}</p>{/if}
+  {#if decided.length > 0}
+    <div class="pairs decided" data-testid="decided-pairs">
+      {#each decided as d (d.id)}
+        <div class="pair settled" data-testid="decided-pair" data-choice={d.choice}>
+          <div class="side held"><span class="side-tag mono">{d.choice === 'take-new' ? 'replaced, still on record' : 'you held'}</span>
+            {#each d.held as h (h.id)}<div class="mono">{triple(h)}</div>
+              {#if passageOf(h)}<q class="passage">{passageOf(h)}</q>{/if}{/each}
+            <span class="src mono">from {d.heldSources.join(', ')}</span></div>
+          <div class="vs mono">{d.choice === 'keep-both' ? 'disagree' : '→'}</div>
+          <div class="side arriving"><span class="side-tag mono">{d.choice === 'keep-mine' ? 'rejected' : 'arrived'}</span>
+            <div class="mono">{triple(d.incoming)}</div>
+            {#if passageOf(d.incoming)}<q class="passage">{passageOf(d.incoming)}</q>{/if}
+            <span class="src mono">from {d.incomingSource}</span></div>
+          <div class="pair-note mono">{choiceWords[d.choice]}</div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+  {#if disagreements.length > 0}
+    <div class="pairs" data-testid="known-disagreements">
+      {#each disagreements as d (d.a.id + d.b.id)}
+        <div class="pair settled" data-testid="known-disagreement">
+          <div class="side"><span class="side-tag mono">known disagreement, seen</span><div class="mono">{triple(d.a)}</div><span class="src mono">from {sourceTitle(d.a)}</span></div>
+          <div class="vs mono">and</div>
+          <div class="side"><div class="mono">{triple(d.b)}</div><span class="src mono">from {sourceTitle(d.b)}</span></div>
         </div>
       {/each}
     </div>
@@ -266,6 +338,9 @@
   .side.arriving .side-tag { color: #b97a05; }
   .src { color: var(--muted); font-size: 0.68rem; }
   .vs { align-self: center; color: var(--danger); font-size: 0.7rem; }
+  .pair-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .pair.settled { border-color: var(--line); }
+  .passage { font-size: 0.7rem; color: var(--ink-2); font-style: italic; }
   .pair-note { grid-column: 1 / -1; color: var(--muted); font-size: 0.68rem; }
   .src-label { color: var(--muted); font-size: 0.8rem; margin: 0; }
   .summary-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
