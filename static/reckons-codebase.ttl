@@ -665,6 +665,10 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/analyze/+page.svelte" ;
              kpred:has-file "src/routes/(app)/history/+page.svelte" ;
              kpred:has-file "src/routes/(app)/reckoning/+page.svelte" ;
+             kpred:has-file "src/lib/rdf/reckoning-entity.ts" ;
+             kpred:has-file "src/lib/stores/reckoning.svelte.ts" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-entity.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-situation.test.ts" ;
              kpred:has-file "src/routes/(app)/overlay/+page.svelte" ;
              kpred:has-file "src/routes/(app)/mobile/+page.svelte" .
 
