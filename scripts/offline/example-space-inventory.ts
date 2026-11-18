@@ -64,7 +64,7 @@ function table(rows: Row[]): string {
   const body = rows.map((r) => {
     const i = r.inv;
     return [
-      r.id, r.listed ? 'listed' : r.unlisted ? 'unlisted' : 'not an example', String(i.statements), String(i.entities), `${i.typedPercent}%`,
+      r.id, r.listed ? 'listed' : r.unlisted ? 'unlisted' : 'bundled only', String(i.statements), String(i.entities), `${i.typedPercent}%`,
       `${i.builtInUsed.length}/${i.builtInAvailable}`, `${i.people}(${i.peopleWithoutImage.length})`, `${i.hubs}(${i.hubsWithoutAsset.length})`,
       `${i.assets.references}(${i.assets.receipted}/${i.assets.credited}/${i.assets.unrecorded})`, `${i.story.stories}(${i.story.steps})`, `${i.sources.review}/${i.sources.total}`,
     ];

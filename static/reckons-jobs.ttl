@@ -870,6 +870,17 @@ job:version-align rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "true" ;
     hnav:order          8 .
 
+job:example-space-inventory rdf:type          ktype:OfflineJob ;
+    rdfs:label          "example-space-inventory" ;
+    skos:prefLabel      "example-space-inventory" ;
+    skos:definition     "F263 phase 1. Counts every bundled example space: statements, typed vs untyped entities, built-in entity types used against those available, people without a picture, hubs (the app's own hubNodeKeys rule) without a picture, splat or 3D model, assets with and without generation receipts, story and step counts, sources by review status. --pending writes ONE summary proposal per space naming its gaps, recomputed each run. It reports; it changes nothing." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "finding" ;
+    kpred:command       "npx tsx scripts/offline/example-space-inventory.ts --pending" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          101 .
+
 job:visual-diff rdf:type          ktype:OfflineJob ;
     rdfs:label          "visual-diff" ;
     skos:prefLabel      "visual-diff" ;
@@ -1092,9 +1103,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:site-live, job:site-space-check, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:example-space-inventory, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:site-live, job:site-space-check, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 76 of them, 63 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 77 of them, 64 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .
