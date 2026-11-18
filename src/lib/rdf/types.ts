@@ -196,6 +196,11 @@ export type Statement = {
   confidence: number;
   /** Statement this one supersedes (if a refinement of an earlier one) */
   supersedes?: string;
+  /**
+   * Ids of held statements this one was SEEN to disagree with and the person chose to keep both
+   * (F264.3). The disagreement is recorded, not resolved: neither side is replaced.
+   */
+  knownDisagreement?: string[];
   /** Human-readable rendering produced at extraction time */
   gloss?: string;
   /**

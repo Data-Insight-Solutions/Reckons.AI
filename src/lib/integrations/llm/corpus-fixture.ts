@@ -14,7 +14,7 @@
  */
 import type { ExtractedTriple } from './extractor';
 
-type MockTriple = { s: string; p: string; o: string; literal?: boolean };
+type MockTriple = { s: string; p: string; o: string; literal?: boolean; excerpt?: string };
 type CorpusEntry = { mockMatch?: string; expected?: { mock?: MockTriple }[] };
 
 /** The compare flow's synthetic notes (F264.1): one seed, one change that yields all four labels. */
@@ -24,7 +24,7 @@ async function compareDemoTriples(text: string): Promise<ExtractedTriple[] | nul
     if (typeof entry !== 'object' || !entry.mockMatch || !text.includes(entry.mockMatch)) continue;
     return (entry.mock ?? []).map((mock) => ({
       subject: mock.s, predicate: mock.p, object: mock.o, objectIsLiteral: mock.literal === true,
-      gloss: `${mock.s} ${mock.p} ${mock.o}`.replace(/-/g, ' '), confidence: 0.95,
+      gloss: `${mock.s} ${mock.p} ${mock.o}`.replace(/-/g, ' '), confidence: 0.95, excerpt: mock.excerpt,
     }));
   }
   return null;
