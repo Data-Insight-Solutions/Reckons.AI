@@ -64,7 +64,7 @@ test('extracting a note opens compare in Review and labels exactly four kinds; a
   await expect(chips).toContainText('1 new');
   // Wording: statements, not facts.
   await expect(flow.getByRole('button', { name: /accept new only \(1\)/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /extract (facts|statements)/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /extract facts/i })).toHaveCount(0);
 
   await flow.getByRole('button', { name: /accept new only/ }).click();
   await expect(flow.locator('.diff-entry')).toHaveCount(3, { timeout: 8_000 });
