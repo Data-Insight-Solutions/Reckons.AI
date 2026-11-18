@@ -13504,3 +13504,15 @@ kb:nanopub-network rdf:type ktype:Phase ;
     kpred:description "Opt-in, per publication: publish a signed unit to a Nanopub Registry and read nanopublications from Nanopub Query into a space as sourced statements. Identity follows their flow (a key declaration bound to an agent IRI, endorsed by a trusted agent); Reckons.AI never publishes for a person without their action. First measure whether a browser can reach the registries and Query directly; if not, route through the person's own integration (F61) or a self-hosted registry." ;
     kpred:open-question "FOR MATT: publish to Knowledge Pixels' public registries (needs an endorsement before a new key gets any quota), run a Reckons.AI registry with its own trust setting (MIT, Docker), or both? And per-unit or per-space opt-in (the open question above)." ;
     kpred:done-test "One confirmed statement set from an example space is published to the test registry (test.registry.knowledgepixels.com), fetched back by its w3id.org/np/ URI, verified, and imported into another space with its provenance intact." .
+
+kb:tanz-interop rdf:type ktype:Feature ;
+    rdfs:label "Interoperate with agricultural knowledge sharing (Trust Alliance New Zealand), if an open interface exists" ;
+    kpred:feature-id   "F301" ;
+    kpred:has-status   "speculative" ;
+    kpred:priority     "low" ;
+    kpred:relates-to   kb:ref-trust-alliance-nz ;
+    kpred:relates-to   kb:nanopub-alignment ;
+    kpred:decided      "MATT, 2026-11-17, after a conversation with Trust Alliance New Zealand (his rough summary): government and large corporations often make knowledge sharing about regulation and revenue, and the knowledge sharing UP from farms and DOWN from centralised data such as GIS and government needs an agentic assistant. 'Just reference the real information of their website, and/or Github. Again if we can interoperate, we likely should.'" ;
+    kpred:description  "Knowledge moving both ways between people on the ground and centralised sources, with an agent doing the carrying: a farm (or any person) keeps its own knowledge in its own space and shares chosen parts upward; authoritative data (GIS layers, council consents, government records) comes down into the space as sourced statements; an assistant does the translation in both directions. This is the shape Reckons.AI already has locally (sourced statements, review before anything is kept, an MCP server); the question is whether there is anything to interoperate WITH." ;
+    kpred:honest-note  "SPECULATIVE BECAUSE THERE IS NOTHING OPEN TO CONNECT TO YET (2026-11-17). TANZ publishes no API, schema or credential format, its public code is GPL-3.0 from 2021-22, and its current platform (FarmID) is commercial and member-owned. The nearest route is MCP, which FarmID says it uses and Reckons.AI already serves, but that needs a partnership conversation, not code." ;
+    kpred:open-question "FOR MATT: pursue a conversation about connecting over MCP (FarmID's stated integration path), or wait for TANZ to publish open definitions (Link Aotearoa) or credential formats?" .
