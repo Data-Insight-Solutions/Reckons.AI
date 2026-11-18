@@ -12,12 +12,12 @@
   },
   "change": {
     "title": "Orchard meeting",
-    "text": "Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperatives keep a stone cellar. The cider press shed has a slate roof.",
+    "text": "Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.",
     "mockMatch": "Notes from the orchard meeting: the cooperative still presses on Thursdays.",
     "mock": [
       { "s": "larkspur-orchard-cooperative", "p": "press-day", "o": "Thursday", "literal": true },
       { "s": "larkspur-orchard-cooperative", "p": "members", "o": "52", "literal": true },
-      { "s": "larkspur-orchard-cooperatives", "p": "has-cellar", "o": "stone-cellar" },
+      { "s": "larkspur-orchard-cooperative-society", "p": "has-cellar", "o": "stone-cellar" },
       { "s": "cider-press-shed", "p": "has-roof", "o": "slate", "literal": true }
     ]
   }

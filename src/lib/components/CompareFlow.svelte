@@ -1,8 +1,8 @@
 <script lang="ts">
   /**
-   * THE ONE COMPARE FLOW (F264.1). A source's incoming statements against what the space holds, with
+   * THE ONE COMPARE FLOW (F264.1). What a note would add, against what is already held, with
    * every label the diff can give (including the semantic ones), the bulk decisions, and a decision
-   * per statement. It used to live on /compare, with a second, graph-only copy inside Review; both
+   * per row. It used to live on /compare, with a second, picture-only copy inside Review; both
    * are now this, shown in Review's compare mode.
    */
   import {
@@ -22,14 +22,14 @@
 
   const source = $derived(sources().find((s) => s.id === sourceId));
 
-  /** Incoming = this source's pending statements. */
+  /** Incoming = the pending rows of the chosen note. */
   const incoming = $derived(
     sourceId ? statementsForSource(sourceId).filter((s) => s.status === 'pending') : []
   );
 
   /**
-   * What the incoming statements are weighed against: everything already settled, from any other
-   * source. Rejected and superseded rows stay in so a statement the person already dismissed is
+   * What the incoming rows are weighed against: everything already settled, from any other
+   * source. Rejected and superseded rows stay in so a claim the person already dismissed is
    * recognised as 'returned' instead of reading as news (F122, as in the Review queue).
    */
   const settled = $derived(
@@ -72,7 +72,7 @@
     return { entries, count };
   });
 
-  /** One chip per label that has at least one statement, in the order a person weighs them. */
+  /** One chip per label that has at least one row, in the order a person weighs them. */
   const kindOrder = [
     'new', 'reinforces', 'synonym-reinforces', 'near-duplicate', 'duplicate',
     'conflicts', 'antonym-conflicts', 'refines', 'returned'
@@ -92,7 +92,7 @@
     }
     return { newCount: n, sharedCount: sh, kbOnlyCount: kb };
   });
-  // Only what shares an entity with the incoming statements, so the picture is not flooded.
+  // Only what shares an entity with the incoming rows, so the picture is not flooded.
   const relevantExisting = $derived.by(() => {
     const inValues = new Set(incoming.flatMap((s) => [s.s.value, s.o.value]));
     return confirmedElsewhere.filter((s) => inValues.has(s.s.value) || inValues.has(s.o.value));
@@ -226,13 +226,13 @@
           {/if}
         {/if}
         <div class="entry-actions">
-          <button class="sm" aria-label="accept this statement" onclick={() => setStatus(entry.incoming.id, 'confirmed')}>✓</button>
-          <button class="sm danger" aria-label="reject this statement" onclick={() => setStatus(entry.incoming.id, 'rejected')}>✗</button>
+          <button class="sm" aria-label="accept this one" onclick={() => setStatus(entry.incoming.id, 'confirmed')}>✓</button>
+          <button class="sm danger" aria-label="reject this one" onclick={() => setStatus(entry.incoming.id, 'rejected')}>✗</button>
         </div>
       </div>
     {/each}
     {#if diff.entries.length === 0}
-      <div class="empty">{sourceId ? 'no pending statements for this source.' : 'choose a source above to compare its statements with your space.'}</div>
+      <div class="empty">{sourceId ? 'no pending statements for this source.' : 'choose a source above to compare its statements with what you hold.'}</div>
     {/if}
   </div>
 </div>

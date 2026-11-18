@@ -4,7 +4,7 @@ import { clearStorage, waitForApp } from './helpers';
 
 /**
  * ONE COMPARE FLOW (F264.1). Extracting a note lands in Review's compare mode, which shows each
- * statement against what the space already holds with its own label, and "accept new only" settles
+ * statement against what is already held with its own label, and "accept new only" settles
  * just the new one. The notes are synthetic (tests/fixtures/compare-demo) and the mock reader
  * returns their statements; the similar-wording label uses the test embedder seam in embed.ts
  * (flag `reckons-test-embedder`), so it proves the wiring, not the real model's judgment.
@@ -29,7 +29,9 @@ async function statusesByPredicate(page: Page) {
     const runtimeImport = (p: string) => import(/* @vite-ignore */ p);
     const { db } = await runtimeImport('/src/lib/storage/db.ts');
     const rows = (await db.statements.toArray()) as { p: { value: string }; o: { value: string }; status: string }[];
-    return Object.fromEntries(rows.map((r) => [`${r.p.value.split('/').pop()}=${r.o.value.split('/').pop()}`, r.status]));
+    const out: Record<string, string[]> = {};
+    for (const r of rows) (out[`${r.p.value.split('/').pop()}=${r.o.value.split('/').pop()}`] ??= []).push(r.status);
+    return out;
   });
 }
 
@@ -40,7 +42,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('extracting a note opens compare in Review and labels exactly four kinds; accept new only settles the new one', async ({ page }) => {
-  // Seed the space: read the first note, accept everything it says.
+  // Seed: read the first note, accept everything it says.
   await addNote(page, demo.seed.title, demo.seed.text);
   const flow = page.getByTestId('compare-flow');
   await expect(flow).toBeVisible({ timeout: 10_000 });
@@ -67,9 +69,9 @@ test('extracting a note opens compare in Review and labels exactly four kinds; a
   await flow.getByRole('button', { name: /accept new only/ }).click();
   await expect(flow.locator('.diff-entry')).toHaveCount(3, { timeout: 8_000 });
   const held = await statusesByPredicate(page);
-  expect(held['has-roof=slate']).toBe('confirmed');
-  expect(held['press-day=Thursday']).toBe('confirmed'); // the seed's own
-  for (const key of ['members=52', 'has-cellar=stone-cellar']) expect(held[key], key).toBe('pending');
+  expect(held['has-roof=slate']).toEqual(['confirmed']);
+  expect(held['press-day=Thursday'].sort()).toEqual(['confirmed', 'pending']); // the seed's own, and the untouched repeat
+  for (const key of ['members=52', 'has-cellar=stone-cellar']) expect(held[key], key).toEqual(['pending']);
 });
 
 test('the Review tab no longer offers overlay mode', async ({ page }) => {

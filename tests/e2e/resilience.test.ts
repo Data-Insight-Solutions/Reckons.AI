@@ -68,7 +68,7 @@ test('WASM failure falls back to mock extraction', async ({ page }) => {
   // Wait for completion (nav visible + no crash overlay).
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
 
-  await expect(page.locator('nav')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 10_000 });
 
   // No uncaught exception overlay from SvelteKit
   await expect(page.getByText(/unhandled.*exception|unexpected.*error/i)).not.toBeVisible();
@@ -158,5 +158,5 @@ test('notification shows when backend degrades', async ({ page }) => {
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 }).catch(() => {});
 
   // Nav must still be visible — app is alive
-  await expect(page.locator('nav')).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 10_000 });
 });

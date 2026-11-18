@@ -215,7 +215,7 @@ async function loadEmbedder(): Promise<FeatureExtractionPipeline> {
 /**
  * TEST SEAM (F264.1). A browser test cannot download a 33 MB model, and the compare flow's semantic
  * labels (near-duplicate, synonym, antonym) need vectors. Under the mock ingest build (only the
- * Playwright config sets it) AND an explicit `reckons-test-embedder` browser flag, letters are
+ * Playwright config turns it on) AND an explicit `reckons-test-embedder` browser flag, letters are
  * hashed into a fixed-size vector so similar spellings score close. It is never active in a real
  * build or without the flag, and it says nothing about how well the real model performs.
  */
