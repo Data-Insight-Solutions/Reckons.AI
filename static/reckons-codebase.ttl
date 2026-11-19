@@ -63,6 +63,10 @@ code:generation
     kpred:has-file "scripts/agent/gen-watch-core.ts" ;
     kpred:has-file "scripts/agent/gen-watch.ts" ;
     kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:has-file "scripts/content/hub-assets.ts" ;
+    kpred:has-file "scripts/content/gen-hub-assets.ts" ;
+    kpred:tested-by "scripts/content/__tests__/hub-assets.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/hub-attach.test.ts" ;
     kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
