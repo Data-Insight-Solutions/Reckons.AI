@@ -1067,6 +1067,245 @@ test:Workflow-GeneratedAssets-Step6
     kpred:assertion     "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .
 
 
+test:Workflow-ReckoningV029
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Reckon with chosen statements, then accept one option" ;
+    skos:definition     """A Reckoning helps you decide something using what your knowledge base already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal.
+
+A browser test runs these steps on every change. It replaces the earlier Reckoning workflow, which described a three-box form that no longer exists.""" ;
+    kpred:narration-storyline "You pick what the decision is about, say what you want out of it, and get options you can inspect before anything is confirmed or run." ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** A knowledge base made from one invented note about a fictional company, Company Alpha, with its statements already confirmed, and one invented open question, "What does Sample Company still need?". Nothing here is anyone's real notes.
+
+**What is scripted.** The test uses no language model: a stand-in reader returns the statements of the note, and the proposal is a fixed reply written in advance (two options, each with a statement, a picture job and a missing-input question). The job queue is a stand-in too: the test counts the request written for the job and never runs a model. So the pictures show what each screen does and that the standings change as described. They do not show how good a real model's options are.
+
+**What is not shown.** Running the queued picture job, and the weather-style context blocks a later phase adds to the situation.""" ;
+    kpred:workflow-id   "reckoning-v029" ;
+    kpred:relates-to    kb:reckoning-selections ;
+    kpred:relates-to    kb:reckoning-select-situation ;
+    kpred:relates-to    kb:reckoning-select-target ;
+    kpred:relates-to    kb:reckoning-proposal-in-space ;
+    kpred:relates-to    kb:reckoning-accept-option ;
+    kpred:test-file     "tests/e2e/workflow-reckoning-v029.test.ts" ;
+    kpred:tested-by     "tests/e2e/workflow-reckoning-v029.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-ReckoningV029-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Select statements on the canvas and reckon with them" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "select-on-canvas" ;
+    kpred:short-label   "Select on the canvas" ;
+    kpred:box-label     "Reckon with these" ;
+    kpred:box-target    "the Reckon with these button, shown once something on the canvas is selected" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/reckoning-v029/01-select-on-canvas.webp" ;
+    kpred:page-name     "the canvas" ;
+    kpred:narration-lead "When a decision starts from something you are already looking at, how do you tell the tool what the decision is about?" ;
+    skos:definition     "Open the canvas and select Company Alpha. A Reckon with these button appears in its panel. Press it: the Reckoning page opens with the statements that touch Company Alpha already chosen." ;
+    kpred:assertion     "With one entity selected the canvas offers Reckon with these, and pressing it opens the Reckoning page with at least one statement already chosen." .
+
+test:Workflow-ReckoningV029-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Choose the situation from the list" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "choose-situation" ;
+    kpred:short-label   "Choose the situation" ;
+    kpred:box-label     "Statements chosen" ;
+    kpred:box-target    "the list of statements with their checkboxes and the count of how many are chosen" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning-v029/02-choose-situation.webp" ;
+    kpred:page-name     "the Reckoning page" ;
+    skos:definition     "On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice." ;
+    kpred:assertion     "Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." .
+
+test:Workflow-ReckoningV029-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Choose the target: a question to answer" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "choose-target" ;
+    kpred:short-label   "Choose the target" ;
+    kpred:box-label     "Open question" ;
+    kpred:box-target    "the open question chosen as the target, among the open questions you hold" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning-v029/03-choose-target.webp" ;
+    kpred:page-name     "the Reckoning page" ;
+    kpred:narration-lead "Is a target a sentence you type, or something your knowledge base might already know it is missing?" ;
+    skos:definition     "Choose Answer a question. The questions you still have open are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have." ;
+    kpred:assertion     "The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." .
+
+test:Workflow-ReckoningV029-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Generate a proposal that is written into your knowledge base" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "generate-proposal" ;
+    kpred:short-label   "Generate the proposal" ;
+    kpred:box-label     "Two options" ;
+    kpred:box-target    "the two option cards, each listing its statement, its job and its open question" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning-v029/04-generate-proposal.webp" ;
+    kpred:page-name     "the Reckoning page" ;
+    kpred:narration-lead "What should a tool that suggests things be allowed to change before you have said yes?" ;
+    skos:definition     "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued." ;
+    kpred:assertion     "Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." .
+
+test:Workflow-ReckoningV029-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Look at an option on the canvas" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "show-on-canvas" ;
+    kpred:short-label   "Show on the canvas" ;
+    kpred:box-label     "Stop showing one proposal option" ;
+    kpred:box-target    "the control that stops showing one proposal option, over the canvas that is drawing it" ;
+    kpred:page          "/" ;
+    kpred:screenshot    "/workflows/reckoning-v029/05-show-on-canvas.webp" ;
+    kpred:page-name     "the canvas" ;
+    skos:definition     "On an option's card press Show on the canvas. The canvas opens on that option alone, its proposed statements drawn dashed so they cannot be mistaken for what you hold. Use the control that stops showing one option to come back." ;
+    kpred:assertion     "The address carries the option's focus, and the control that stops showing one proposal option is on the page." .
+
+test:Workflow-ReckoningV029-Step6
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Accept one option" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "6"^^xsd:integer ;
+    kpred:step-id       "accept-option" ;
+    kpred:short-label   "Accept one option" ;
+    kpred:box-label     "Confirm" ;
+    kpred:box-target    "the confirm step under the option card, which says what accepting will change" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning-v029/06-accept-option.webp" ;
+    kpred:page-name     "the Reckoning page" ;
+    kpred:narration-lead "If you accept one option, what should happen to the other, and to the job it wanted to run?" ;
+    skos:definition     "Back on the Reckoning page press Accept on the first option. Before anything changes, a confirm step says how many statements will be confirmed, that one job will be queued in one approval, that the other option's rows will be marked superseded, and that one missing-input question stays open. Press the confirm button. The card says Accepted by you." ;
+    kpred:assertion     "The confirm step names the statement count, one job in one approval, the superseded rows and the open question; after it the accepted option's statement is confirmed, exactly one job request exists, and every row of the other option is superseded." .
+
+test:Workflow-ReckoningV029-Step7
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Answer the missing input" ;
+    kpred:part-of       test:Workflow-ReckoningV029 ;
+    kpred:step-order    "7"^^xsd:integer ;
+    kpred:step-id       "answer-missing-input" ;
+    kpred:short-label   "Answer the missing input" ;
+    kpred:box-label     "Completed" ;
+    kpred:box-target    "the proposal's standing, which reads Completed once the open question is answered" ;
+    kpred:page          "/reckoning" ;
+    kpred:screenshot    "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
+    kpred:page-name     "the Reckoning page" ;
+    skos:definition     "The accepted option still has its open question. Type \"logo.png\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued." ;
+    kpred:assertion     "After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." .
+
+test:Workflow-CompareV029
+    rdf:type            ktype:TestWorkflow ;
+    rdfs:label          "Read a note against what you hold, see it on the canvas, decide a contradiction" ;
+    skos:definition     """Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new. Here the note is read and lands in Review's compare flow, where each statement is labeled by what it would do. The same comparison is drawn over your own canvas, and the one contradiction is decided on its own card, with the replaced statement kept on record.
+
+A browser test runs these steps on every change. It replaces the earlier Compare workflow, which described two separate screens that are now one flow.""" ;
+    kpred:narration-storyline "A new note is read against what you already hold, shown on your own canvas, and nothing is written until you decide." ;
+    kpred:shots-note    """## How these screenshots were made
+
+**What they show.** Two invented notes about a fictional cider cooperative (`tests/fixtures/compare-demo/notes.json`). The first is accepted so your knowledge base holds it. The second repeats one thing, rewords one, contradicts one (forty members against fifty-two) and adds one.
+
+**What is scripted.** The test uses no language model: a stand-in reader returns the statements written down for each note. The near-duplicate label uses a test stand-in for the embedding model, so the picture proves the wiring and not how well the real model judges similar wording.
+
+**What is not shown.** How well a real model reads either note, and comparing one whole knowledge base against another, which is no longer part of Review.""" ;
+    kpred:workflow-id   "compare-v029" ;
+    kpred:relates-to    kb:review-compare-overlay-fix ;
+    kpred:relates-to    kb:compare-one-flow ;
+    kpred:relates-to    kb:compare-on-canvas ;
+    kpred:relates-to    kb:compare-decide-in-place ;
+    kpred:test-file     "tests/e2e/workflow-compare-v029.test.ts" ;
+    kpred:tested-by     "tests/e2e/workflow-compare-v029.test.ts" ;
+    kpred:render-inline "true" ;
+    kpred:children-label "The steps" ;
+    skos:broader        test:TestWorkflows .
+
+test:Workflow-CompareV029-Step1
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Extract statements from a second note" ;
+    kpred:part-of       test:Workflow-CompareV029 ;
+    kpred:step-order    "1"^^xsd:integer ;
+    kpred:step-id       "extract-note" ;
+    kpred:short-label   "Extract from a note" ;
+    kpred:box-label     "Extract statements" ;
+    kpred:box-target    "the Extract statements button, under the note's title and text" ;
+    kpred:page          "/ingest" ;
+    kpred:screenshot    "/workflows/compare-v029/01-extract-note.webp" ;
+    kpred:page-name     "the Add page" ;
+    skos:definition     "Your knowledge base already holds the first orchard note, accepted. On the Add page title the second note \"Orchard meeting\" and paste: \"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.\" Press Extract statements. You land in Review's compare flow, not in a separate screen." ;
+    kpred:assertion     "Extracting leaves the Add page and opens Review in compare mode." .
+
+test:Workflow-CompareV029-Step2
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See each statement labeled by what it would do" ;
+    kpred:part-of       test:Workflow-CompareV029 ;
+    kpred:step-order    "2"^^xsd:integer ;
+    kpred:step-id       "see-labels" ;
+    kpred:short-label   "See the labels" ;
+    kpred:box-label     "1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
+    kpred:box-target    "the row of labels counting each kind of statement the note brought" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/compare-v029/02-see-labels.webp" ;
+    kpred:page-name     "the Review page" ;
+    kpred:narration-lead "When a second note says mostly the same things, how would you know which sentences are really new?" ;
+    skos:definition     "Review shows the four statements the note brought, each against what you hold. One is a repeat of something you have, one is a near-duplicate worded differently, one contradicts a statement you hold, and one is new. The button says Accept new only, with the count of what it would settle." ;
+    kpred:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
+
+test:Workflow-CompareV029-Step3
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the comparison on your own canvas" ;
+    kpred:part-of       test:Workflow-CompareV029 ;
+    kpred:step-order    "3"^^xsd:integer ;
+    kpred:step-id       "see-on-canvas" ;
+    kpred:short-label   "See it on the canvas" ;
+    kpred:box-label     "Ghosts, folded repeat, contradiction" ;
+    kpred:box-target    "the legend over the canvas that says what is drawn as ghosts, what is folded onto what you hold, and the contradiction" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/compare-v029/03-see-on-canvas.webp" ;
+    kpred:page-name     "the Review page" ;
+    kpred:narration-lead "What would it look like if a new note were laid over what you already know, without changing it?" ;
+    skos:definition     "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with the notes they came from. The legend counts each. Nothing has been written to your knowledge base yet." ;
+    kpred:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still three confirmed and four pending." .
+
+test:Workflow-CompareV029-Step4
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "Decide the contradiction where it is" ;
+    kpred:part-of       test:Workflow-CompareV029 ;
+    kpred:step-order    "4"^^xsd:integer ;
+    kpred:step-id       "decide-contradiction" ;
+    kpred:short-label   "Decide the contradiction" ;
+    kpred:box-label     "take the new one" ;
+    kpred:box-target    "the contradiction's own card, with the held and the arriving passage and its three choices" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/compare-v029/04-decide-contradiction.webp" ;
+    kpred:page-name     "the Review page" ;
+    kpred:narration-lead "When two notes disagree about a number, which one should the tool believe, and who decides?" ;
+    skos:definition     "The contradiction has a card of its own: forty members from the first note against fifty-two from the second, each with the passage it came from. Choose take the new one, keep mine, or keep both. Take the new one confirms fifty-two." ;
+    kpred:assertion     "Both passages are readable on the card; after take the new one, 52 is part of what you hold and 40 is marked replaced." .
+
+test:Workflow-CompareV029-Step5
+    rdf:type            ktype:TestStep ;
+    rdfs:label          "See the replaced statement still on record" ;
+    kpred:part-of       test:Workflow-CompareV029 ;
+    kpred:step-order    "5"^^xsd:integer ;
+    kpred:step-id       "see-on-record" ;
+    kpred:short-label   "Still on record" ;
+    kpred:box-label     "replaced, still on record" ;
+    kpred:box-target    "the settled pair, which says the old statement was replaced and is still on record" ;
+    kpred:page          "/review" ;
+    kpred:screenshot    "/workflows/compare-v029/05-see-on-record.webp" ;
+    kpred:page-name     "the Review page" ;
+    skos:definition     "The decided pair stays on the page, marked replaced, still on record: members 40 from the first note and members 52 from the second, with the old passage. Keep mine would have rejected the arriving one instead, and keep both leaves the pair marked as a known disagreement." ;
+    kpred:assertion     "The settled pair reads replaced, still on record, shows both statements and the note each came from, and the stored rows are 40 superseded and 52 refined, each keeping its passage." .
+
+
 ## =============================================================================
 ## Generation bench tasks (F183.2, kb:gen-bench-in-graph)
 ## =============================================================================
