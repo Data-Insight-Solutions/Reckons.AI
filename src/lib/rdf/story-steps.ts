@@ -10,9 +10,11 @@
  * PURE: no n3, no Dexie, no filesystem. It takes quad-shaped objects (an n3 Quad, or a Statement
  * adapted by story.ts), so the app and the scripts import the same file.
  *
- * WHAT IS BUILT: reading, plus parsing `story:action` and `story:expect` into typed, declarative
- * shapes. WHAT IS NOT: nothing performs an action or checks an expectation yet (F300.2+), and no
- * existing workflow has been converted to a story.
+ * WHAT IS BUILT: reading, parsing `story:action` and `story:expect` into typed, declarative
+ * shapes, and (F300.3, 2026-11-18) a page runner that performs them: src/lib/rdf/story-ops.ts maps
+ * each kind to an operation and tests/e2e/story-runner.ts plays a story with recording off or on.
+ * WHAT IS NOT: the in-app passive player does not perform actions yet (F300.2), `run-job` has no
+ * page operation, and only the generated-assets walk plays through the runner so far.
  *
  * `story:action` and `story:expect` are JSON literals, because a typed shape is unambiguous where
  * a micro-syntax is not. An unknown kind, a missing field or a command-shaped value is REFUSED with
@@ -126,6 +128,8 @@ export interface UnifiedStep {
   prompt?: string;
   /** SHOWN */
   target?: StepTarget;
+  /** The element to point at while the line plays, by data-testid. On a legacy step it is the optional story:target beside the box-target words. */
+  focus?: StepTarget;
   openPage?: string;
   layout?: string;
   highlights: string[];
@@ -311,6 +315,7 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         question: lit(sIri, S.question) ?? undefined,
         prompt: lit(sIri, S.prompt) ?? undefined,
         target: tgt === null ? undefined : parseTarget(tgt),
+        focus: tgt === null ? undefined : parseTarget(tgt),
         openPage: offers.find((o) => o.kind === 'page')?.value,
         layout: lit(sIri, S.layout) ?? undefined,
         offers,
@@ -360,6 +365,7 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         detail,
         question: lit(sIri, L.narrationLead) ?? undefined,
         target: { ref: target, label: lit(sIri, L.boxLabel) ?? title },
+        focus: lit(sIri, S.target) === null ? undefined : parseTarget(lit(sIri, S.target) as string),
         openPage: page,
         highlights: c.highlights,
         offers: [],

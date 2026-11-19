@@ -203,3 +203,6 @@ static/bench-generation
 
 # A persistent flock inode (scripts/agent/state-file.ts); its existence means nothing.
 /mcp-workspace.lock
+
+# F300.3: the story recorder's output (npm run demo:story): video, audio, captions, posters. Never committed; Matt reviews scripts before anything ships (F300.5).
+/demo-out/

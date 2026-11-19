@@ -2913,6 +2913,7 @@
        measured each time rather than hardcoded to the 360/320 defaults. -->
   <div
     class="asset-large"
+    data-testid="asset-large"
     class:placing-hidden={!!placementMode.iri}
     style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
     transition:fade={{ duration: 140 }}

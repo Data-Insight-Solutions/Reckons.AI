@@ -1014,6 +1014,9 @@ test:Workflow-GeneratedAssets-Step1
     kpred:screenshot    "/workflows/generated-assets/01-open-example.webp" ;
     kpred:page-name     "the About page" ;
     skos:definition     "Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
+    story:target        "starter-card-generated-assets :: Generated assets" ;
+    story:action        '{"kind":"open-page","path":"/about"}' ;
+    story:action        '{"kind":"click","target":"starter-card-generated-assets"}' ;
     kpred:assertion     "The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space." .
 
 test:Workflow-GeneratedAssets-Step2
@@ -1031,6 +1034,7 @@ test:Workflow-GeneratedAssets-Step2
     kpred:screenshot    "/workflows/generated-assets/02-see-pipeline.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
+    story:action        '{"kind":"open-page","path":"/"}' ;
     kpred:assertion     "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
 
 test:Workflow-GeneratedAssets-Step3
@@ -1048,6 +1052,7 @@ test:Workflow-GeneratedAssets-Step3
     kpred:screenshot    "/workflows/generated-assets/03-picture.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
+    story:expect        '{"kind":"visible","target":"asset-large"}' ;
     kpred:assertion     "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
 
 test:Workflow-GeneratedAssets-Step4
@@ -1065,6 +1070,7 @@ test:Workflow-GeneratedAssets-Step4
     kpred:screenshot    "/workflows/generated-assets/04-video.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
+    story:expect        '{"kind":"visible","target":"asset-large"}' ;
     kpred:assertion     "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
 
 test:Workflow-GeneratedAssets-Step5
@@ -1082,6 +1088,7 @@ test:Workflow-GeneratedAssets-Step5
     kpred:screenshot    "/workflows/generated-assets/05-splat.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
+    story:expect        '{"kind":"visible","target":"asset-large"}' ;
     kpred:assertion     "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
 
 test:Workflow-GeneratedAssets-Step6
