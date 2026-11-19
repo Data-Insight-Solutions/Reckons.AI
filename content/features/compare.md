@@ -23,6 +23,8 @@ Put two graphs side by side and see what is new, what agrees, and what conflicts
 
 <p class="in-sets">Part of Ask it things.</p>
 
+THE COMPARE HAS ONE HOME NOW: THE REVIEW TAB. Opening a compare from the Review tab, from the old /compare address, or from the Add page, all lands in the same view. When you add a new piece of knowledge, the button on the Add page takes you to that same view and says what it will do — Extract statements — and every label and button on the compare says statements, the word people use, not facts. When the small model that spots near-misses is already on your device, the differences carry richer labels — new, repeat, near-duplicate, contradiction — alongside the plain structural ones. If it is not on the device, you get the plain labels alone, and the view is still complete: it just cannot tell you that two sentences are near duplicates.
+
 ## At a glance
 
 **Audience**
@@ -40,6 +42,10 @@ Anyone who has to reconcile what they know with what somebody else knows.
 **Constraint**
 
 IT CAN ONLY COMPARE WHAT WAS WRITTEN DOWN. Two graphs that use different words for the same relation will show as disagreeing when they agree, and the fix is the same vocabulary work as everywhere else here — there is no clever matching that removes it.
+
+**Honest Note**
+
+TWO HONEST NOTES. The four richer labels were tested with a model that gives fixed, repeatable answers, not with the small model that would run on a real device — the machinery is proven, the real model's exact judgement is not yet measured. And the compare that draws the incoming statements over the canvas, so you can see where they would land against what you hold, is still being built and is not merged yet.
 
 ## Detail
 
