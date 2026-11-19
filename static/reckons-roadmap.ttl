@@ -14079,3 +14079,6 @@ kb:release-0-2-9 kpred:progress "2026-11-18: a crafted REVIEW SPACE for the v0.2
 
 kb:reckoning-selections kpred:tested-by "tests/e2e/workflow-reckoning-v029.test.ts" .
 kb:review-compare-overlay-fix kpred:tested-by "tests/e2e/workflow-compare-v029.test.ts" .
+
+## 2026-11-17 decision carried from #652 (its last commit never reached dev; recovered 2026-11-18 when #652 closed as superseded).
+kb:demo-videos kpred:decided "MATT, 2026-11-17 (chat, asked whether to keep the five unapproved lead-in questions in the generated-assets video): 'Keep the extra statements for now. We will need to improve the flow of all videos after my review. I think like documentation pages, it can be difficult to automatically generate a compelling story with multiple elements that flow and make sense together.' So the lead-ins stay, every video's narration is a first pass until he has reviewed its flow, and each workflow now carries a one-sentence kpred:narration-storyline that the lines serve." .
