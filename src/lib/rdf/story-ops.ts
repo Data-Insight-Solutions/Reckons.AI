@@ -26,9 +26,9 @@ export interface StoryPage {
   selectEntity(iri: string): Promise<void>;
   /** Throws unless the element with this data-testid is visible. */
   expectVisible(testId: string): Promise<void>;
-  /** How many entities of a type the open space holds; absent when the page has no probe. */
+  /** How many entities of a type are open; absent when the page has no probe. */
   countEntities?(type: string): Promise<number>;
-  /** Whether a statement stands in the open space; absent when the page has no probe. */
+  /** Whether a statement stands in the open data; absent when the page has no probe. */
   hasStanding?(s: { subject: string; predicate: string; object: string; status?: string }): Promise<boolean>;
 }
 

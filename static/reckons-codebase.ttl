@@ -1253,3 +1253,9 @@ code:splat-embed-viewer
     skos:definition "Builds a self-contained folder (page, bundled three.js viewer, the splat, an optional poster) that floats one Gaussian splat and turns it by drag; F294.7." ;
     kpred:has-file "scripts/site/splat-embed.ts", "scripts/site/splat-embed-lib.ts", "scripts/site/check-embed.ts", "scripts/site/check-motion.ts" ;
     kpred:tested-by "scripts/site/__tests__/splat-embed.test.ts" .
+
+# The story runner (F300.3).
+code:rdf kpred:has-file "src/lib/rdf/story-ops.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/story-ops.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/story-runner.ts", "tests/e2e/demo-recorder.ts", "tests/e2e/workflow-generated-assets.test.ts" .
+code:scripts kpred:has-file "scripts/workflow-steps.ts" .
