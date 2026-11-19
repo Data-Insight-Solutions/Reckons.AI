@@ -2079,6 +2079,7 @@
     onstatus={(l, f) => {
       if (!renderer) return;
       renderer.domElement.dataset.splats = `${l}/${f}`;
+      renderer.domElement.dataset.testid = 'graph-canvas'; // lets a story's expectation name the canvas (F300.3)
       // Read by tests/e2e/splat-occlusion.test.ts to probe pixels; nothing in the app reads it.
       (renderer.domElement as unknown as { __rk?: unknown }).__rk = { scene: threeScene, getCamera: () => camera.current, renderer };
     }}

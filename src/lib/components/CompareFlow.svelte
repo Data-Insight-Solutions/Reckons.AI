@@ -296,7 +296,7 @@
 
   <div class="diff-list">
     {#each diff.entries as entry (entry.incoming.id)}
-      <div class="diff-entry" data-kind={entry.kind}>
+      <div class="diff-entry" data-testid="diff-entry" data-kind={entry.kind}>
         <span class="badge mono" style="color: {kindColor[entry.kind]}">{kindLabel[entry.kind] ?? entry.kind}</span>
         <div class="triple mono">
           <span class="term s">{localLabel(entry.incoming.s.value)}</span>

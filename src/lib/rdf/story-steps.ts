@@ -13,8 +13,10 @@
  * WHAT IS BUILT: reading, parsing `story:action` and `story:expect` into typed, declarative
  * shapes, and (F300.3, 2026-11-18) a page runner that performs them: src/lib/rdf/story-ops.ts maps
  * each kind to an operation and tests/e2e/story-runner.ts plays a story with recording off or on.
- * WHAT IS NOT: the in-app passive player does not perform actions yet (F300.2), `run-job` has no
- * page operation, and only the generated-assets walk plays through the runner so far.
+ * WHAT IS NOT: the in-app passive player does not perform actions yet (F300.2); `run-job` is
+ * performed only by the e2e page (a synthetic file-queue runner, never a command), not by the app.
+ * Expectation kinds: visible, text, attr, elements, media, receipt, count, standing, note. See kb:story-recorder
+ * for which walks play through the runner and which steps are still named exceptions.
  *
  * `story:action` and `story:expect` are JSON literals, because a typed shape is unambiguous where
  * a micro-syntax is not. An unknown kind, a missing field or a command-shaped value is REFUSED with
@@ -96,6 +98,8 @@ export type StepAction =
   | { kind: 'select'; entities: string[] }
   | { kind: 'click'; target: string }
   | { kind: 'type'; target: string; text: string }
+  /** Press one key (Escape, Enter, Tab, ArrowDown...), as a person closing a panel does. */
+  | { kind: 'press'; key: string }
   /** A defined job kind with typed parameters (the F303 request rules): never a command. */
   | { kind: 'run-job'; job: string; params: Record<string, Param> };
 
@@ -103,6 +107,16 @@ export type StepExpect =
   | { kind: 'visible'; target: string }
   | { kind: 'count'; type: string; n: number }
   | { kind: 'standing'; subject: string; predicate: string; object: string; status?: string }
+  /** The element with this test id shows this text. */
+  | { kind: 'text'; target: string; contains: string }
+  /** The element with this test id carries this attribute value (for example data-splat-status = ready). */
+  | { kind: 'attr'; target: string; name: string; value: string }
+  /** The generated file served for this asset is the one its receipt describes (SHA-256), its check accepted it and its models' licenses are open. */
+  | { kind: 'receipt'; slug: string; stage: 'image' | 'video' | 'splat' }
+  /** The picture or clip with this test id has loaded and is this many pixels wide. */
+  | { kind: 'media'; target: string; width: number }
+  /** n elements carry this test id, optionally only those whose attribute `attr` is `is`. */
+  | { kind: 'elements'; target: string; n: number; attr?: string; is?: string }
   /** Plain words a human judges; what a legacy kpred:assertion becomes. Not machine-checkable. */
   | { kind: 'note'; text: string };
 
@@ -195,6 +209,8 @@ export function parseAction(raw: string): { ok: true; action: StepAction } | { o
       return nonEmpty(o.target) && typeof o.text === 'string'
         ? { ok: true, action: { kind: 'type', target: o.target, text: o.text } }
         : { ok: false, reason: 'type needs a target and text' };
+    case 'press':
+      return nonEmpty(o.key) && /^[A-Za-z0-9]{1,12}$/.test(o.key) ? { ok: true, action: { kind: 'press', key: o.key } } : { ok: false, reason: 'press needs one key name (Escape, Enter, Tab...)' };
     case 'run-job': {
       if (!nonEmpty(o.job) || !JOB_KIND.test(o.job)) return { ok: false, reason: 'run-job needs a job kind name (lowercase letters, digits, hyphens)' };
       if ('command' in o || 'cmd' in o || 'args' in o) return { ok: false, reason: 'run-job never takes a command; name a defined job kind and typed params' };
@@ -227,6 +243,24 @@ export function parseExpect(raw: string): { ok: true; expect: StepExpect } | { o
       return nonEmpty(o.subject) && nonEmpty(o.predicate) && nonEmpty(o.object)
         ? { ok: true, expect: { kind: 'standing', subject: o.subject, predicate: o.predicate, object: o.object, ...(nonEmpty(o.status) ? { status: o.status } : {}) } }
         : { ok: false, reason: 'standing needs subject, predicate and object' };
+    case 'text':
+      return nonEmpty(o.target) && nonEmpty(o.contains) ? { ok: true, expect: { kind: 'text', target: o.target, contains: o.contains } } : { ok: false, reason: 'text needs a target and the words it contains' };
+    case 'attr':
+      return nonEmpty(o.target) && nonEmpty(o.name) && typeof o.value === 'string'
+        ? { ok: true, expect: { kind: 'attr', target: o.target, name: o.name, value: o.value } }
+        : { ok: false, reason: 'attr needs a target, an attribute name and a value' };
+    case 'elements':
+      if (!(nonEmpty(o.target) && Number.isInteger(o.n) && (o.n as number) >= 0)) return { ok: false, reason: 'elements needs a target and a non-negative whole number n' };
+      if ((o.attr === undefined) !== (o.is === undefined) || (o.attr !== undefined && !(nonEmpty(o.attr) && typeof o.is === 'string'))) return { ok: false, reason: 'elements takes attr and is together' };
+      return { ok: true, expect: { kind: 'elements', target: o.target, n: o.n as number, ...(o.attr !== undefined ? { attr: o.attr as string, is: o.is as string } : {}) } };
+    case 'receipt':
+      return nonEmpty(o.slug) && ['image', 'video', 'splat'].includes(o.stage as string)
+        ? { ok: true, expect: { kind: 'receipt', slug: o.slug, stage: o.stage as 'image' | 'video' | 'splat' } }
+        : { ok: false, reason: 'receipt needs a slug and a stage (image, video or splat)' };
+    case 'media':
+      return nonEmpty(o.target) && Number.isInteger(o.width) && (o.width as number) > 0
+        ? { ok: true, expect: { kind: 'media', target: o.target, width: o.width as number } }
+        : { ok: false, reason: 'media needs a target and a width in pixels' };
     case 'note':
       return nonEmpty(o.text) ? { ok: true, expect: { kind: 'note', text: o.text } } : { ok: false, reason: 'note needs text' };
     default:

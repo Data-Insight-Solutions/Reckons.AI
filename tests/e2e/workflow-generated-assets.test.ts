@@ -35,44 +35,6 @@ const story = JSON.parse(
   execFileSync('npx', ['tsx', 'scripts/workflow-steps.ts', `--story=${WORKFLOW_ID}`], { encoding: 'utf8' }),
 ) as UnifiedStory;
 
-/** The receipt says the stage was accepted, and the served file hashes to what the receipt recorded. */
-async function expectMatchesReceipt(page: Page, slug: string, stage: 'image' | 'video' | 'splat') {
-  const result = await page.evaluate(async ({ slug, stage }) => {
-    const receipt = await (await fetch(`/generated/${slug}/receipt.json`)).json();
-    const r = receipt.stages[stage];
-    const bytes = await (await fetch(`/generated/${slug}/${r.output.file}`)).arrayBuffer();
-    const digest = await crypto.subtle.digest('SHA-256', bytes);
-    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-    return { accepted: r.check.pass as boolean, matches: hex === r.output.sha256, generated: receipt.generated as boolean, licenses: r.models.map((m: { license: string }) => m.license) as string[] };
-  }, { slug, stage });
-  expect(result.generated, 'the receipt marks the asset as generated').toBe(true);
-  expect(result.accepted, `the ${stage} check accepted it when it was generated`).toBe(true);
-  expect(result.matches, `the served ${stage} is the file its receipt describes`).toBe(true);
-  for (const l of result.licenses) expect(l).toMatch(/^(MIT|Apache-2\.0)$/);
-}
-
-const thumb = (page: Page, label: RegExp) => page.getByRole('button', { name: label });
-
-/**
- * Open a node's asset the way a person finds a node they cannot see: search for it, pick it, then
- * open the preview the selected node always shows. Clicking a "preview all" thumbnail directly was
- * flaky (1 run in 3): the force layout sometimes puts a node where its preview is not drawn.
- */
-async function openAsset(page: Page, label: string) {
-  // Search finds an entity by its IRI slug (kb:gen-<slug>-<kind>); its rdfs:label is only a value
-  // node, and picking THAT opens a panel with no preview, which was the "1 in 3" flake.
-  const [kind, name] = label.split(': ');
-  const slug = `gen-${/turtle/.test(name) ? 'carved-turtle' : 'lighthouse-island'}-${kind.toLowerCase()}`;
-  await page.keyboard.press('Escape');
-  await page.getByPlaceholder('search nodes or facts…').fill(slug);
-  await page.locator('.sb-node-row').filter({ has: page.locator('.sb-node-iri') }).filter({ hasText: slug }).first().click();
-  const escaped = label.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
-  const t = thumb(page, new RegExp('open asset for ' + escaped, 'i'));
-  await expect(t).toBeVisible({ timeout: 15_000 });
-  await t.click();
-}
-const closeLarge = (page: Page) => page.locator('.asset-large .asset-controls button[title="Close"]').click();
-
 /** Collapse the notification stack so it does not cover the graph in the screenshots. */
 async function quietToasts(page: Page) {
   const collapse = page.getByRole('button', { name: /^collapse notifications$/i });
@@ -87,21 +49,18 @@ async function previewAll(page: Page) {
 }
 
 /**
- * NAMED EXCEPTIONS (F300.3). Everything a story step can declare is declared in the graph (open a page,
- * click a card, "the asset viewer is visible"). These are the parts it cannot yet, each kept as code with
- * its reason, so the gap stays visible:
- *   - the receipt check: fetch + SHA-256 in the page. There is no expectation kind for "a served file
- *     matches its receipt" (a candidate kind for F300.1's vocabulary).
- *   - finding a node by searching for its IRI slug, then opening its preview: `select` can pick the node
- *     but "open its asset preview" is not an action kind.
- *   - reading page state that has no data-testid yet: image width, video metadata, the splat status
- *     attribute, the number of splats loaded in the 3D canvas (`data-splats`).
- *   - landing on the graph, and the Spaces tab showing the new space as current (no testids).
- *   - the toast stack and settings the harness quiets so they do not cover the picture.
+ * NAMED EXCEPTIONS (F300.3). Steps 3 to 6 are declared in the graph in full (select the node, open its asset,
+ * the receipt check, the served file, its width, the viewer status, the background and the splat counter), so they
+ * need no code. What a story cannot declare yet stays here as code with its reason, so the gap stays visible:
+ *   - open-example: landing on the graph and then visiting the Spaces tab inside one step (a second page
+ *     visit after a click that navigates on its own) is not an action sequence the runner can order safely.
+ *   - see-pipeline: switching previews on goes through chips and buttons with no testid, and "at least three
+ *     previews are on screen" is not an expectation kind (the count depends on where the layout puts nodes).
+ *   - video: showing a frame from the middle of the clip means seeking it; there is no seek action.
  */
 const exceptions: Record<string, StepException> = {
   'open-example': {
-    why: 'the card text and the post-click landing (graph canvas, Spaces tab) have no testid or expectation kind',
+    why: 'landing on the graph then visiting the Spaces tab inside one step is a second page visit after a click that navigates on its own',
     before: async (page) => {
       const card = page.getByTestId('starter-card-generated-assets');
       await expect(card).toBeVisible({ timeout: 10_000 });
@@ -119,7 +78,7 @@ const exceptions: Record<string, StepException> = {
   },
 
   'see-pipeline': {
-    why: 'preview toggling, the preview count and the 3D canvas splat counter have no testid or expectation kind',
+    why: 'preview toggling and the on-screen preview count have no testid or expectation kind; the splat counter is declared in the background step',
     perform: async (page, snap) => {
       await page.waitForTimeout(3_000);
       await quietToasts(page);
@@ -130,74 +89,20 @@ const exceptions: Record<string, StepException> = {
         .toBeGreaterThanOrEqual(3);
       // Both node splats have loaded into the 3D graph (the canvas reports "loaded/failed").
       // The showcase music box is over the Gaussian budget and waits to be loaded (step load-showcase).
-      await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '2/0', { timeout: 30_000 });
+      await expect(page.getByTestId('graph-canvas')).toHaveAttribute('data-splats', '2/0', { timeout: 30_000 });
       await page.waitForTimeout(1_500);
       await snap(page.locator('main canvas').first());
     },
-  },
-
-  picture: {
-    why: 'the receipt check, the search-then-open-preview path and the image width are not declarable yet',
-    perform: async (page, snap) => {
-      await expectMatchesReceipt(page, 'carved-turtle', 'image');
-      await openAsset(page, 'Image: carved wooden sea turtle');
-      const img = page.locator('.asset-large img');
-      await expect(img).toHaveAttribute('src', '/generated/carved-turtle/image.webp');
-      await expect.poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(768);
-      await snap(img);
-    },
-    after: closeLarge,
   },
 
   video: {
-    why: 'the receipt check, the search-then-open-preview path and the video metadata are not declarable yet',
-    perform: async (page, snap) => {
-      await expectMatchesReceipt(page, 'carved-turtle', 'video');
-      await openAsset(page, 'Video: carved wooden sea turtle');
-      const video = page.locator('.asset-large video.asset-media');
-      await expect(video).toHaveAttribute('src', '/generated/carved-turtle/video.webm');
-      await expect.poll(() => video.evaluate((v) => ({
-        ready: (v as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_METADATA,
-        width: (v as HTMLVideoElement).videoWidth,
-      }))).toMatchObject({ ready: true, width: 512 });
+    why: 'showing a frame from the middle of the clip needs a seek, which is not an action kind',
+    perform: async (page) => {
       // Show a frame from the middle of the clip rather than the first one, which is the picture itself.
+      const video = page.getByTestId('asset-video');
+      await expect.poll(() => video.evaluate((v) => (v as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_METADATA)).toBe(true);
       await video.evaluate((v) => { (v as HTMLVideoElement).currentTime = 1.5; });
       await page.waitForTimeout(600);
-      await snap(video);
-    },
-    after: closeLarge,
-  },
-
-  splat: {
-    why: 'the receipt check, the search-then-open-preview path and the splat status attribute are not declarable yet',
-    perform: async (page, snap) => {
-      await expectMatchesReceipt(page, 'carved-turtle', 'splat');
-      await openAsset(page, 'Splat: carved wooden sea turtle');
-      const viewer = page.locator('.asset-large .asset-splat');
-      await expect(viewer.locator('canvas')).toBeVisible({ timeout: 10_000 });
-      await expect(viewer.locator('[data-splat-status]')).toHaveAttribute('data-splat-status', 'ready', { timeout: 30_000 });
-      await page.waitForTimeout(1_500);
-      await snap(viewer);
-    },
-    after: closeLarge,
-  },
-
-  background: {
-    why: 'the whole step is state with no testid: Set/Clear background buttons, the viewer closing and the splat counter',
-    perform: async (page, snap) => {
-      await expectMatchesReceipt(page, 'lighthouse-island', 'splat');
-      await openAsset(page, 'Splat: lighthouse island diorama');
-      const set = page.getByRole('button', { name: /^set as background$/i });
-      await expect(set).toBeVisible({ timeout: 10_000 });
-      await set.click();
-      // The setting is written to the space: the same control now offers to clear it.
-      await expect(page.getByRole('button', { name: /^clear background$/i })).toBeVisible({ timeout: 5_000 });
-      await closeLarge(page);
-      await page.keyboard.press('Escape'); // close the node's details so the backdrop is visible
-      // The island has loaded into the 3D graph as a third splat, behind the two entity splats.
-      await expect(page.locator('main canvas[data-splats]').first()).toHaveAttribute('data-splats', '3/0', { timeout: 30_000 });
-      await page.waitForTimeout(1_500);
-      await snap(page.locator('main canvas').first());
     },
   },
 };
