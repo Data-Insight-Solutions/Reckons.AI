@@ -50,6 +50,35 @@ F263; which F303 phone transport comes first; the F196.5 registry; F301 and F302
 **Not verified:** the garden space has not been opened in the app; no generated asset in it has been looked
 at; #678's screenshots other than two have not been looked at; the #671 e2e change ran only in CI.
 
+## 2026-11-18 (deputy, local qwen3.8-160k) — v0.2.9 docs pages: five pages covering the nine undocumented features
+
+**Overseer note (Sonnet, 2026-11-18):** this draft was reviewed, rebased on dev and corrected before it merged. #671 had landed, so the Reckoning page now describes accepting an option as built (F223.12.4), and F278.1–.3 got a short developer-facing page. About 70% of the deputy's sentences survived unchanged.
+
+**What I did (branch `agent/local-0-2-9-docs`, one commit):** wrote the five documentation pages the
+job brief asked for, from each feature's own roadmap status and remaining notes:
+- Reckoning (F223.12.1–.3 together): three-step flow + "accepting an option is planned, not built"
+- Compare in Review (F264.1): one flow, the four labels, "labels tested with a fixed-answer model"
+- New page "Making assets" (F299 CAD + F166.1.3 connect popup + F58.9.19.6 synthetic captures)
+- Local models page extended for F279.1 (automatic model choice; role lists are judgment, not re-measured)
+- Site page extended for F274.4.5 (workflow in the site repo; preview URL unverified, nothing in production)
+
+**DONE WHEN verified:** release-notes --check-docs no longer lists these nine (the remaining four
+rows — F278.1–.3 and F223.12.4 — are other jobs' scope); graph-lint 0 errors; term-usage --check
+green (no baseline raised); the docs-expand jargon gate run over every new block passes; docs-status
+consistent. All facts were read from `static/reckons-roadmap.ttl` this session, not from memory.
+
+**Unverified (says so on the pages):** the CAD bracket never opened in the app's 3D viewer; the
+connect popup never seen with a real folder picker or real job; the multi-scan pass limits are
+proposed starting values from one good run; the F264.1 labels tested with a deterministic embedder,
+not the real model; the site preview URL unverified and nothing deployed to production.
+
+**One house-rule finding for the overseer:** `scripts/docs-pages.ts` sorts `skos:broadMatch` target
+IRIs alphabetically (line ~359 `arr.sort()`), so "first match link in file order wins" (the house
+comment on the Owed pages) is not how the status banner resolves — for feat:SiteBuilder I therefore
+kept only the least finished feature (deploy, scaffolded) as the broadMatch status carrier, with the
+build linked via `kpred:relates-to` (the gate counts that). Banner now reads Scaffolded. No Matt
+decisions were made with me in this window, so nothing was queued via kb_add_note.
+
 ## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 
 Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
