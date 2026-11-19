@@ -24,6 +24,11 @@
   import { groupByStanding, newReckoningId, readReckoning, questionTargets, TARGET_ASSET_TYPES, type ReckoningTarget } from '$lib/rdf/reckoning-entity';
   import { labelFromIRI } from '$lib/rdf/semantic-diff';
   import { saveReckoning, saveProposal } from '$lib/stores/reckoning.svelte';
+  import { onMount } from 'svelte';
+  import { useGenerationJobs } from '$lib/stores/generation-jobs.svelte';
+  import OptionDecision from '$lib/components/OptionDecision.svelte';
+  import { readStoredProposal } from '$lib/rdf/reckoning-accept';
+  import { ACTION_STATUS } from '$lib/rdf/proposal';
   import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
@@ -135,7 +140,17 @@
     const missing = found.statementIds.length - chosen.length;
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
+  // Accepting an option may queue jobs: find the local runner while this page is open.
+  onMount(() => useGenerationJobs());
   let proposal = $state('');
+  /** The proposal's own state, read from its stored rows so it stays right after a reload and after each decision. */
+  const proposalLine = $derived.by(() => {
+    const stored = reckoningId ? readStoredProposal(statements(), reckoningId) : null;
+    const n = written?.options.length ?? 0;
+    if (stored?.proposal.status === ACTION_STATUS.completed) return 'Completed: the target is reached by statements you confirmed.';
+    if (stored?.proposal.status === ACTION_STATUS.active) return 'You accepted an option. This proposal is active until its target is reached.';
+    return `${n} options are now in your data as proposals. Nothing is confirmed and no job has been queued.`;
+  });
   /** F223.12.3: what the structured proposal wrote into the knowledge base, kept so the card can point at it. */
   type WrittenOption = { id: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
   let written = $state<{ options: WrittenOption[]; blocked: string[]; warnings: string[]; rows: number } | null>(null);
@@ -654,7 +669,7 @@ Do NOT include <kb-actions> blocks.`;
         <span class="stp-num ok mono">✓</span>
         <div>
           <h3>Proposal</h3>
-          <p class="stp-desc">{written.options.length} options are now in your data as proposals. Nothing is confirmed and no job has been queued.</p>
+          <p class="stp-desc" data-testid="proposal-status">{proposalLine}</p>
         </div>
       </div>
       <div class="proposal-body">
@@ -664,6 +679,7 @@ Do NOT include <kb-actions> blocks.`;
             <p class="proposal-text">{o.rationale}</p>
             <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing input{o.missing === 1 ? '' : 's'}</p>
             <a class="btn-technical" href={`/?focus=${encodeURIComponent(o.id)}${o.cites.length ? `&cite=${o.cites.map(encodeURIComponent).join(',')}` : ''}`}>Show on the canvas</a>
+            <OptionDecision optionId={o.id} />
           </div>
         {/each}
         {#each written.warnings as w}<p class="proposal-detail mono">{w}</p>{/each}
