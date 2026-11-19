@@ -450,6 +450,9 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "scripts/starter/build-site-space.ts" ;
               kpred:has-file "scripts/starter/site-story.ts" ;
               kpred:has-file "scripts/starter/__tests__/build-site-space.test.ts" ;
+              kpred:has-file "scripts/review-spaces/build-garden-redesign.ts" ;
+              kpred:has-file "scripts/review-spaces/garden-redesign-story.ts" ;
+              kpred:has-file "scripts/review-spaces/__tests__/build-garden-redesign.test.ts" ;
               kpred:has-file "static/starter-data-insight-solutions.ttl" ;
               kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/site.config.json" ;
               kpred:has-file "src/lib/publish/__tests__/fixtures/landing-site/assets/mark.svg" ;
@@ -1238,7 +1241,7 @@ code:llm kpred:has-file "src/lib/integrations/loopback.ts" .
 code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
 code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
     kpred:tested-by "src/lib/integrations/llm/__tests__/corpus-fixture.test.ts" .
-code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts", "tests/e2e/workflow-compare-v029.test.ts" .
 code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
     kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
 # Hand-held walkthroughs (F261).
