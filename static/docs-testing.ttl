@@ -1307,6 +1307,13 @@ test:Workflow-CompareV029-Step1
     kpred:screenshot    "/workflows/compare-v029/01-extract-note.webp" ;
     kpred:page-name     "the Add page" ;
     skos:definition     "Your knowledge base already holds the first orchard note, accepted. On the Add page title the second note \"Orchard meeting\" and paste: \"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.\" Press Extract statements. You land in Review's compare flow, not in a separate screen." ;
+    story:target        "ingest-submit :: Extract statements" ;
+    story:action        '{"kind":"open-page","path":"/ingest"}' ;
+    story:action        '{"kind":"type","target":"ingest-title","text":"Orchard meeting"}' ;
+    story:action        '{"kind":"type","target":"ingest-text","text":"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof."}' ;
+    story:action        '{"kind":"click","target":"ingest-submit"}' ;
+    story:expect        '{"kind":"visible","target":"compare-flow"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":4}' ;
     kpred:assertion     "Extracting leaves the Add page and opens Review in compare mode." .
 
 test:Workflow-CompareV029-Step2
@@ -1323,6 +1330,16 @@ test:Workflow-CompareV029-Step2
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "When a second note says mostly the same things, how would you know which sentences are really new?" ;
     skos:definition     "Review shows the four statements the note brought, each against what you hold. One is a repeat of something you have, one is a near-duplicate worded differently, one contradicts a statement you hold, and one is new. The button says Accept new only, with the count of what it would settle." ;
+    story:target        "compare-chips :: 1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"reinforces"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"near-duplicate"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"conflicts"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"new"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 repeat"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 near-duplicate"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 new"}' ;
+    story:expect        '{"kind":"text","target":"compare-flow","contains":"accept new only (1)"}' ;
     kpred:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
 
 test:Workflow-CompareV029-Step3
@@ -1339,6 +1356,12 @@ test:Workflow-CompareV029-Step3
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "What would it look like if a new note were laid over what you already know, without changing it?" ;
     skos:definition     "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with the notes they came from. The legend counts each. Nothing has been written to your knowledge base yet." ;
+    story:target        "overlay-legend :: Ghosts, repeats and one contradiction" ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 new, drawn as ghosts"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 repeat, folded onto what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 reinforcing, thickening what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":1}' ;
     kpred:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still three confirmed and four pending." .
 
 test:Workflow-CompareV029-Step4
@@ -1355,6 +1378,10 @@ test:Workflow-CompareV029-Step4
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "When two notes disagree about a number, which one should the tool believe, and who decides?" ;
     skos:definition     "The contradiction has a card of its own: forty members from the first note against fifty-two from the second, each with the passage it came from. Choose take the new one, keep mine, or keep both. Take the new one confirms fifty-two." ;
+    story:action        '{"kind":"click","target":"compare-take-new"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":0}' ;
+    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"40","status":"superseded"}' ;
+    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"52","status":"held"}' ;
     kpred:assertion     "Both passages are readable on the card; after take the new one, 52 is part of what you hold and 40 is marked replaced." .
 
 test:Workflow-CompareV029-Step5
@@ -1370,6 +1397,13 @@ test:Workflow-CompareV029-Step5
     kpred:screenshot    "/workflows/compare-v029/05-see-on-record.webp" ;
     kpred:page-name     "the Review page" ;
     skos:definition     "The decided pair stays on the page, marked replaced, still on record: members 40 from the first note and members 52 from the second, with the old passage. Keep mine would have rejected the arriving one instead, and keep both leaves the pair marked as a known disagreement." ;
+    story:target        "decided-pair :: Replaced, still on record" ;
+    story:expect        '{"kind":"elements","target":"decided-pair","n":1}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"replaced, still on record"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 40"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 52"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard seed"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard meeting"}' ;
     kpred:assertion     "The settled pair reads replaced, still on record, shows both statements and the note each came from, and the stored rows are 40 superseded and 52 refined, each keeping its passage." .
 
 

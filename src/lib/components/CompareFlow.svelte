@@ -218,7 +218,7 @@
           {#if c.note}<div class="pair-note mono">{c.note}</div>{/if}
           <div class="pair-actions">
             <button disabled={deciding === c.id} onclick={() => decide(c, 'keep-mine')} title="What you hold stays; the arriving statement is rejected.">keep mine</button>
-            <button class="primary" disabled={deciding === c.id} onclick={() => decide(c, 'take-new')} title="The arriving statement is taken; what you hold is marked replaced and stays on record.">take the new one</button>
+            <button class="primary" data-testid="compare-take-new" disabled={deciding === c.id} onclick={() => decide(c, 'take-new')} title="The arriving statement is taken; what you hold is marked replaced and stays on record.">take the new one</button>
             <button disabled={deciding === c.id} onclick={() => decide(c, 'keep-both')} title="Both stand, marked as a known disagreement.">keep both</button>
           </div>
         </div>

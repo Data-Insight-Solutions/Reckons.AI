@@ -15,8 +15,8 @@ import { demoRecorder, type DemoRecorder } from './demo-recorder';
  *
  * Order inside a step:
  *   1. the leading open-page actions;
- *   2. the step's focus (story:target, a data-testid) is pointed at while the line plays, if it is already on
- *      screen; a focus the remaining actions bring up is pointed at after step 5 instead;
+ *   2. the step's focus (story:target, a data-testid) is pointed at just before the click that presses it,
+ *      or, when no action presses it, at the end of the step after step 5;
  *   3. the remaining actions;
  *   4. the step's NAMED EXCEPTION, if it has one (see StepException);
  *   5. every expectation (a false one throws; a note is reported as human-judged, never skipped);
@@ -31,7 +31,7 @@ export interface StepException {
   /** Why this is code and not a story:action / story:expect. */
   why: string;
   /** Runs after the leading open-page actions, before the subject is pointed at. */
-  before?: (page: Page) => Promise<void>;
+  before?: (page: Page, snap: (target: Locator) => Promise<void>) => Promise<void>;
   /** Runs after the declared actions. `snap` points at the step's subject and holds while the line plays. */
   perform?: (page: Page, snap: (target: Locator) => Promise<void>) => Promise<void>;
   /** Runs after the expectations pass. */
@@ -77,7 +77,8 @@ export function playwrightPage(page: Page): StoryPage {
     }) as Promise<StatementRow[]>,
     // A missing element must fail the check quickly, not wait out the whole test timeout; the check itself retries (patience).
     patience: 15_000,
-    textOf: async (id) => by(id).first().innerText({ timeout: 1_000 }),
+    // textContent, not innerText: the page uppercases some labels with CSS, and a story quotes the words as written.
+    textOf: async (id) => (await by(id).first().textContent({ timeout: 1_000 })) ?? '',
     attrOf: async (id, name) => by(id).first().getAttribute(name, { timeout: 1_000 }),
     mediaWidth: (id) => by(id).first().evaluate((el) => {
       if (el instanceof HTMLImageElement) return el.complete ? el.naturalWidth : 0;
@@ -156,17 +157,19 @@ export async function playStory(page: Page, story: UnifiedStory, opts: PlayOptio
         const leading = lead < 0 ? step.actions : step.actions.slice(0, lead);
         const rest = lead < 0 ? [] : step.actions.slice(lead);
         for (const a of leading) await performAction(sp, a);
-        if (ex?.before) await ex.before(page);
-        // A focus that is already on screen is pointed at while the line plays, before the rest of the actions
-        // (the card a click is about to press). One the rest of the actions bring up (the asset a click opens) is
-        // pointed at at the end of the step, once its expectations have passed.
+        if (ex?.before) await ex.before(page, snap);
+        // The focus is pointed at where a person would look: just before the click that presses it (the card, the
+        // button, after any typing), else at the end of the step, once its expectations have passed (the asset a
+        // click opened, the row of labels that has settled).
         const focus = step.focus ? page.getByTestId(testIdOf(step.focus.ref, 'focus')) : null;
-        const early = focus ? (await focus.count()) > 0 : false;
-        if (focus && early) await snap(focus);
-        for (const a of rest) await performAction(sp, a);
+        let pointed = false;
+        for (const a of rest) {
+          if (focus && !pointed && a.kind === 'click' && a.target === step.focus!.ref) { await snap(focus); pointed = true; }
+          await performAction(sp, a);
+        }
         if (ex?.perform) await ex.perform(page, snap);
         const checks = await checkAll(sp, step.expects);
-        if (focus && !early) await snap(focus);
+        if (focus && !pointed) await snap(focus);
         if (ex?.after) await ex.after(page);
         outcomes.push({ id: step.id, actions: step.actions.length, checks, exception: ex?.why ?? null });
       };
