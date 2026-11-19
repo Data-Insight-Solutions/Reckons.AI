@@ -14,20 +14,25 @@ was the miss. **Worktrees:** a hand-made worktree links node_modules to the main
 `package-lock.json` matches; it installs only when a branch changes dependencies. On Matt's OK, the 10 merged
 worktrees were removed (disk 96 → 113 GB free).
 
-**The batch: `integration/2026-11-18` (worktree tripleNotes-scope029).** It is dev plus plan/v029-scope (#679),
-feat/v029-review-space (#677), feat/v029-visual-workflows (#678) and agent/local-0-2-9-docs (deputy draft plus
-Sonnet fixes, no PR). Local checks on the combined tree, 2026-11-18:
+**The batch: `integration/2026-11-18` (worktree tripleNotes-scope029), one PR to dev.** It is dev plus:
+- plan/v029-scope (#679)
+- feat/v029-review-space (#677)
+- feat/v029-visual-workflows (#678)
+- agent/local-0-2-9-docs (deputy draft plus Sonnet fixes, no PR)
+- feat/f300-3-story-recorder: F300.3 scaffolded, no PR. It carries #592, #652 and #655 merged with dev, so those
+  close as superseded.
+
+Local checks on the combined tree, 2026-11-18:
 - blocking script tier 9 of 9
 - svelte-check 0 errors
-- unit suite 431 files, 5,559 tests passed
-- e2e: queued on the local queue (job df634a61) on Node 24, matching CI. Node 22 (`.nvmrc`) crashes the full
-  suite before any test; this is recorded as a drift-warning on `kb:reproducible-delivery`.
-- `build:verify`: run after the e2e, since it needs `npm run build` in the same tree.
-Then ONE PR to dev. #677, #678 and #679 are marked merged once the batch lands.
-
-**Open work:** F300.3, the story recorder (a Sonnet agent, branch feat/f300-3-story-recorder, worktree
-tripleNotes-recorder). It merges #655's stack with dev and plays a story as test and recording. It goes in the
-next batch.
+- unit suite 431 files, 5,559 tests passed, before the recorder; the recorder's story tests 21 of 21
+- full e2e on Node 24, as CI runs it: 228 passed, 9 skipped, 2 flaky (both passed on retry). The flaky ones are
+  "Shelly queues a chain as ONE approval", flaky since 11-17, and the new Compare workflow's step 3.
+- production build and `build:verify` 0 errors (three size warnings, which predate this batch).
+Node 22 (`.nvmrc`) crashes the full e2e suite before any test; this is a drift-warning on `kb:reproducible-delivery`.
+`kb:story-recorder` had been defined on two branches; it was reconciled into one entity.
+The recorder is scaffolded: only steps 1–2 of the generated-assets walk are declarative, and the rest are named
+exceptions. No rendered video has been watched or heard.
 
 **The machine thrashed around 19:28 local.** The RAM guard (F74.11) fired as designed. An interactive deputy
 session's model loaded into system RAM while queue image jobs held the GPU. The guard stopped one image job and
@@ -49,10 +54,10 @@ they were listed moved to v0.3.0. F223.12, F264, F278 and F300 joined as parts. 
 (9dddb3e2): the accept confirmation counted an option's record rows as statements.
 
 **Next, in order:**
-1. The e2e result.
-2. `build:verify`.
-3. The batch PR.
-4. The recorder (F300.3) into the next batch.
+1. The batch PR: its CI, then Claude merges it into dev (merge authority: dev is Claude's, staging → main is Matt's).
+2. Extend the runner (run-job, count and standing probes) so more steps are declarative.
+3. Close #592, #652 and #655 as superseded once the batch lands.
+4. Re-run the garden splat if its retry fails again.
 5. Move the demo walks onto stories (F300.5).
 6. Matt reviews the scripts.
 7. Render the docs videos.
