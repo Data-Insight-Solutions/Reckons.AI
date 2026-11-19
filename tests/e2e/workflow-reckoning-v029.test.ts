@@ -1,10 +1,12 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { join } from 'path';
 import { clearStorage, waitForApp } from './helpers';
 import { boxTarget } from '../visual/workflow-harness';
-import type { Workflow } from '../../scripts/lib/test-workflow';
+import { playStory, type StepException } from './story-runner';
+import { advertiseRunner, linkRunner } from './synthetic-runner';
+import type { UnifiedStory } from '../../src/lib/rdf/story-steps';
 
 /**
  * TEST WORKFLOW: RECKONING (v0.2.9; F223.12.1 to F223.12.4). Choose the situation (canvas and list),
@@ -20,14 +22,9 @@ import type { Workflow } from '../../scripts/lib/test-workflow';
 const WORKFLOW_ID = 'reckoning-v029';
 const CAPTURE_DIR = process.env.WORKFLOW_CAPTURE_DIR ?? '';
 
-const workflows = JSON.parse(
-  execFileSync('npx', ['tsx', 'scripts/workflow-steps.ts'], { encoding: 'utf8' }),
-) as Workflow[];
-const workflow = workflows.find((w) => w.id === WORKFLOW_ID);
-if (!workflow) throw new Error(`No TestWorkflow with kpred:workflow-id "${WORKFLOW_ID}" in static/docs-testing.ttl`);
-
-type Snap = (target: Locator) => Promise<void>;
-type StepImpl = (page: Page, snap: Snap) => Promise<void>;
+const story = JSON.parse(
+  execFileSync('npx', ['tsx', 'scripts/workflow-steps.ts', `--story=${WORKFLOW_ID}`], { encoding: 'utf8' }),
+) as UnifiedStory;
 
 async function seed(page: Page) {
   await page.goto('/ingest');
@@ -83,28 +80,6 @@ const allRows = (page: Page) => page.evaluate(async () => {
   return out as Row[];
 });
 
-async function syntheticRunner(page: Page) {
-  await page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    const generation = await root.getDirectoryHandle('.reckons-generation', { create: true });
-    await generation.getDirectoryHandle('jobs', { create: true });
-    const writeCaps = async () => {
-      const writable = await (await generation.getFileHandle('capabilities.json', { create: true })).createWritable();
-      await writable.write(JSON.stringify({
-        version: 1, workspaceId: 'd67cf353-5af2-404b-b93d-41d10ffb6f15', heartbeat: Date.now(),
-        stages: ['image', 'video', 'splat'].map((stage) => ({ stage, available: true })),
-      }));
-      await writable.close();
-    };
-    await writeCaps();
-    setInterval(() => void writeCaps(), 5000);
-  });
-}
-const linkRunner = (page: Page) => page.evaluate(async () => {
-  const path = '/src/lib/stores/workspace.svelte.ts';
-  const module = await import(/* @vite-ignore */ path);
-  module.__linkHandleForTest(await navigator.storage.getDirectory());
-});
 const requestCount = (page: Page) => page.evaluate(async () => {
   const root = await navigator.storage.getDirectory();
   const jobs = await (await root.getDirectoryHandle('.reckons-generation')).getDirectoryHandle('jobs');
@@ -121,108 +96,132 @@ const requestCount = (page: Page) => page.evaluate(async () => {
 const ctx: { id: string; before: number } = { id: '', before: 0 };
 const cards = (page: Page) => page.locator('[data-testid="proposal-option"]');
 
-const impls: Record<string, StepImpl> = {
-  'select-on-canvas': async (page, snap) => {
-    const iri = (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/') && r.s.includes('company-alpha'))?.s
-      ?? (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/'))!.s;
-    await page.goto(`/?sel=${encodeURIComponent('i:' + iri)}`);
-    const action = page.getByRole('button', { name: /reckon with these/i });
-    await expect(action).toBeVisible({ timeout: 15_000 });
-    await snap(action);
-    await action.click();
-    await page.waitForURL(/\/reckoning\?r=/);
-    await expect(page.getByTestId('chosen-count')).not.toContainText('0 statements', { timeout: 10_000 });
-    ctx.id = new URL(page.url()).searchParams.get('r')!;
+/**
+ * NAMED EXCEPTIONS (F300.3). Steps 2, 3, 4 and 7 declare their typing, pressing and what must then be true;
+ * what a story cannot declare yet stays here as code, with its reason:
+ *   - select-on-canvas: the node to select is found from the data at run time, the button is found by its
+ *     name, and the reckoning id is read from the address for the later steps.
+ *   - choose-situation: statements are ticked by position and the count is read before the next press.
+ *   - choose-target: the "Answer a question" radio and the first choice are picked by label and position.
+ *   - generate-proposal: the synthetic runner is set up first, and the per-option row checks (status,
+ *     job-state, one open question) read fields no expectation kind reads.
+ *   - show-on-canvas: a second browser tab, a modified click and relinking the runner.
+ *   - accept-option: the confirm text must be read between pressing Accept and pressing Confirm, and
+ *     expectations are only checked after all of a step's actions.
+ *   - answer-missing-input: the count of queued job requests (OPFS files) is unchanged.
+ */
+const exceptions: Record<string, StepException> = {
+  'select-on-canvas': {
+    why: 'the node is found from the data at run time, the button by its name, and the reckoning id is read from the address',
+    perform: async (page, snap) => {
+      const iri = (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/') && r.s.includes('company-alpha'))?.s
+        ?? (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/'))!.s;
+      await page.goto(`/?sel=${encodeURIComponent('i:' + iri)}`);
+      const action = page.getByRole('button', { name: /reckon with these/i });
+      await expect(action).toBeVisible({ timeout: 15_000 });
+      await snap(action);
+      await action.click();
+      await page.waitForURL(/\/reckoning\?r=/);
+      await expect(page.getByTestId('chosen-count')).not.toContainText('0 statements', { timeout: 10_000 });
+      ctx.id = new URL(page.url()).searchParams.get('r')!;
+    },
   },
 
-  'choose-situation': async (page, snap) => {
-    const boxes = page.locator('[data-testid="situation-picker"] input[type="checkbox"]');
-    await expect(boxes.nth(2)).toBeVisible({ timeout: 10_000 });
-    for (let i = 0; i < 3; i++) await boxes.nth(i).check();
-    await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
-    await page.getByPlaceholder(/evaluating/i).fill('We need to decide how to refresh the company logo.');
-    await snap(page.getByTestId('situation-picker'));
-    await page.locator('.btn-next').click();
-    await expect(page).toHaveURL(/[?&]r=/);
-    expect(new URL(page.url()).searchParams.get('r')).toBeTruthy();
+  'choose-situation': {
+    why: 'statements are ticked by position and the count is read before the next press',
+    before: async (page, snap) => {
+      const boxes = page.locator('[data-testid="situation-picker"] input[type="checkbox"]');
+      await expect(boxes.nth(2)).toBeVisible({ timeout: 10_000 });
+      for (let i = 0; i < 3; i++) await boxes.nth(i).check();
+      await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
+      await snap(page.getByTestId('situation-picker'));
+    },
+    after: async (page) => {
+      await expect(page).toHaveURL(/[?&]r=/);
+      expect(new URL(page.url()).searchParams.get('r')).toBeTruthy();
+    },
   },
 
-  'choose-target': async (page, snap) => {
-    await page.getByLabel('Answer a question').check();
-    const choice = page.locator('[data-testid="target-picker"] input[type="radio"]').first();
-    await expect(choice).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('What does Sample Company still need?')).toBeVisible();
-    await choice.check();
-    await snap(page.getByTestId('target-picker'));
-    await page.getByRole('button', { name: /review/i }).click();
-    await expect(page.getByText('Answer this open question: What does Sample Company still need?')).toBeVisible();
+  'choose-target': {
+    why: 'the radio is picked by its label and the first choice by position, before the next press',
+    before: async (page, snap) => {
+      await page.getByLabel('Answer a question').check();
+      const choice = page.locator('[data-testid="target-picker"] input[type="radio"]').first();
+      await expect(choice).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText('What does Sample Company still need?')).toBeVisible();
+      await choice.check();
+      await snap(page.getByTestId('target-picker'));
+    },
+    after: async (page) => {
+      await expect(page.getByText('Answer this open question: What does Sample Company still need?')).toBeVisible();
+    },
   },
 
-  'generate-proposal': async (page, snap) => {
-    await syntheticRunner(page);
-    await page.getByRole('button', { name: /generate proposal/i }).click();
-    await expect(cards(page)).toHaveCount(2, { timeout: 15_000 });
-    await expect(page.getByText('Nothing is confirmed and no job has been queued.')).toBeVisible();
-    const rows = await allRows(page);
-    for (const key of ['a', 'b']) {
-      const mine = rows.filter((r) => r.proposalOption === `reckoning-${ctx.id}-option-${key}`);
-      expect(mine.every((r) => r.status === 'pending')).toBe(true);
-      expect(mine.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject)).toHaveLength(1);
-      expect(mine.filter((r) => r.p.endsWith('/job-state')).map((r) => r.o)).toEqual(['proposed']);
-      expect(mine.filter((r) => r.needsObject)).toHaveLength(1);
-    }
-    expect(rows.some((r) => r.p.endsWith('/job-state') && r.o === 'queued')).toBe(false);
-    await snap(page.locator('[data-testid="proposal-option"]').first());
+  'generate-proposal': {
+    why: 'the synthetic runner is set up first, and the per-option row checks read fields no expectation kind reads',
+    before: async (page) => { await advertiseRunner(page); },
+    perform: async (page) => {
+      await expect(cards(page)).toHaveCount(2, { timeout: 15_000 });
+      const rows = await allRows(page);
+      for (const key of ['a', 'b']) {
+        const mine = rows.filter((r) => r.proposalOption === `reckoning-${ctx.id}-option-${key}`);
+        expect(mine.every((r) => r.status === 'pending')).toBe(true);
+        expect(mine.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject)).toHaveLength(1);
+        expect(mine.filter((r) => r.p.endsWith('/job-state')).map((r) => r.o)).toEqual(['proposed']);
+        expect(mine.filter((r) => r.needsObject)).toHaveLength(1);
+      }
+      expect(rows.some((r) => r.p.endsWith('/job-state') && r.o === 'queued')).toBe(false);
+    },
   },
 
-  'show-on-canvas': async (page, snap) => {
-    // The link opens in a second tab (as a person can with ctrl-click), so this page keeps its proposal on screen.
-    const popup = page.context().waitForEvent('page');
-    await cards(page).first().getByRole('link', { name: /show on the canvas/i }).click({ modifiers: ['Control'] });
-    const canvasPage = await popup;
-    await canvasPage.setViewportSize({ width: 1280, height: 800 });
-    await expect(canvasPage).toHaveURL(/[?&]focus=reckoning-/);
-    const stop = canvasPage.getByTitle('Stop showing one proposal option');
-    await expect(stop).toBeVisible({ timeout: 15_000 });
-    await snap(stop);
-    await canvasPage.close();
-    await linkRunner(page);
-    await page.waitForTimeout(2500);
-    await linkRunner(page);
-    ctx.before = await requestCount(page);
+  'show-on-canvas': {
+    why: 'a second browser tab, a modified click and relinking the runner',
+    perform: async (page, snap) => {
+      // The link opens in a second tab (as a person can with ctrl-click), so this page keeps its proposal on screen.
+      const popup = page.context().waitForEvent('page');
+      await cards(page).first().getByRole('link', { name: /show on the canvas/i }).click({ modifiers: ['Control'] });
+      const canvasPage = await popup;
+      await canvasPage.setViewportSize({ width: 1280, height: 800 });
+      await expect(canvasPage).toHaveURL(/[?&]focus=reckoning-/);
+      const stop = canvasPage.getByTitle('Stop showing one proposal option');
+      await expect(stop).toBeVisible({ timeout: 15_000 });
+      await snap(stop);
+      await canvasPage.close();
+      await linkRunner(page);
+      await page.waitForTimeout(2500);
+      await linkRunner(page);
+      ctx.before = await requestCount(page);
+    },
   },
 
-  'accept-option': async (page, snap) => {
-    const A = `reckoning-${ctx.id}-option-a`;
-    const B = `reckoning-${ctx.id}-option-b`;
-    await cards(page).first().getByTestId('accept-option').click();
-    const confirm = cards(page).first().getByTestId('accept-confirm');
-    await expect(confirm).toContainText(/confirm \d+ statements?/);
-    await expect(confirm).toContainText('queue 1 job in one approval');
-    await expect(confirm).toContainText(/superseded/);
-    await expect(confirm).toContainText('1 missing-input question stays open');
-    await snap(confirm);
-    await cards(page).first().getByTestId('accept-confirm-yes').click();
-    await expect(cards(page).first().getByText('Accepted by you.')).toBeVisible({ timeout: 15_000 });
-    await expect.poll(async () => (await allRows(page)).some((r) => r.p.endsWith('/queued-as')), { timeout: 10_000 }).toBe(true);
-    const rows = await allRows(page);
-    const a = rows.filter((r) => r.proposalOption === A);
-    const b = rows.filter((r) => r.proposalOption === B);
-    expect(a.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject).map((r) => r.status)).toEqual(['confirmed']);
-    expect(b.length).toBeGreaterThan(0);
-    expect(b.every((r) => r.status === 'superseded')).toBe(true);
-    expect(await requestCount(page)).toBe(ctx.before + 1);
+  'accept-option': {
+    why: 'the confirm text is read between pressing Accept and pressing Confirm, and expectations are checked after all of a step\'s actions',
+    perform: async (page, snap) => {
+      const A = `reckoning-${ctx.id}-option-a`;
+      const B = `reckoning-${ctx.id}-option-b`;
+      await cards(page).first().getByTestId('accept-option').click();
+      const confirm = cards(page).first().getByTestId('accept-confirm');
+      await expect(confirm).toContainText(/confirm \d+ statements?/);
+      await expect(confirm).toContainText('queue 1 job in one approval');
+      await expect(confirm).toContainText(/superseded/);
+      await expect(confirm).toContainText('1 missing-input question stays open');
+      await snap(confirm);
+      await cards(page).first().getByTestId('accept-confirm-yes').click();
+      await expect(cards(page).first().getByText('Accepted by you.')).toBeVisible({ timeout: 15_000 });
+      await expect.poll(async () => (await allRows(page)).some((r) => r.p.endsWith('/queued-as')), { timeout: 10_000 }).toBe(true);
+      const rows = await allRows(page);
+      const a = rows.filter((r) => r.proposalOption === A);
+      const b = rows.filter((r) => r.proposalOption === B);
+      expect(a.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject).map((r) => r.status)).toEqual(['confirmed']);
+      expect(b.length).toBeGreaterThan(0);
+      expect(b.every((r) => r.status === 'superseded')).toBe(true);
+      expect(await requestCount(page)).toBe(ctx.before + 1);
+    },
   },
 
-  'answer-missing-input': async (page, snap) => {
-    const q = cards(page).first().getByTestId('open-question');
-    await expect(q).toBeVisible();
-    await q.getByRole('textbox').fill('logo.png');
-    await q.getByRole('button', { name: 'Answer' }).click();
-    const status = page.getByTestId('proposal-status');
-    await expect(status).toContainText('Completed', { timeout: 10_000 });
-    await snap(status);
-    expect(await requestCount(page)).toBe(ctx.before + 1);
+  'answer-missing-input': {
+    why: 'the count of queued job requests (OPFS files) is unchanged',
+    after: async (page) => { expect(await requestCount(page)).toBe(ctx.before + 1); },
   },
 };
 
@@ -232,29 +231,29 @@ test.beforeEach(async ({ page }) => {
   await waitForApp(page);
 });
 
-test('the steps in the graph and the steps this test runs are the same list', () => {
-  expect(Object.keys(impls).sort(), 'every TestStep needs an implementation here, and every implementation a TestStep')
-    .toEqual(workflow.steps.map((s) => s.id).sort());
+test('every named exception belongs to a step of the story', () => {
+  const inGraph = new Set(story.steps.map((st) => st.id));
+  for (const id of Object.keys(exceptions)) expect(inGraph.has(id), `exception "${id}" names no step in the story`).toBe(true);
+  for (const st of story.steps) expect(st.actions.length > 0 || exceptions[st.id], `step "${st.id}" declares nothing and has no named exception`).toBeTruthy();
 });
 
-test(`${workflow.title}`, async ({ page }) => {
+test(`${story.label}`, async ({ page }) => {
   test.setTimeout(180_000);
   if (CAPTURE_DIR) mkdirSync(CAPTURE_DIR, { recursive: true });
   await seed(page);
   await addTargetQuestion(page);
-  for (const step of workflow.steps) {
-    await test.step(`${step.order}. ${step.title} (${step.page})`, async () => {
-      const snap: Snap = async (target) => {
-        if (!CAPTURE_DIR) return;
-        const shotPage = target.page();
-        await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-        await shotPage.waitForTimeout(900);
-        const cleanup = await boxTarget(shotPage, target, step.boxLabel);
-        const png = await shotPage.screenshot({ fullPage: false });
-        await cleanup();
-        writeFileSync(join(CAPTURE_DIR, `${String(step.order).padStart(2, '0')}-${step.id}.png`), png);
-      };
-      await impls[step.id](page, snap);
-    });
-  }
+  const outcomes = await playStory(page, story, {
+    exceptions,
+    onSnap: async (step, target) => {
+      if (!CAPTURE_DIR) return;
+      const shotPage = target.page();
+      await target.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await shotPage.waitForTimeout(900);
+      const cleanup = await boxTarget(shotPage, target, step.target?.label ?? step.title);
+      const png = await shotPage.screenshot({ fullPage: false });
+      await cleanup();
+      writeFileSync(join(CAPTURE_DIR, `${String(step.order).padStart(2, '0')}-${step.id}.png`), png);
+    },
+  });
+  expect(outcomes.map((o) => o.id), 'the runner played every step of the story, in order').toEqual(story.steps.map((st) => st.id));
 });

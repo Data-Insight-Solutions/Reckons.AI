@@ -8,8 +8,12 @@
  * This module maps each StepAction kind to an operation on a small `StoryPage`, and each StepExpect
  * kind to a check, so it runs in a unit test against a fake page. Two rules:
  *   - An unknown kind fails loudly BY NAME. Nothing is skipped silently.
- *   - A page that cannot perform an operation (for example `run-job`, or `standing` with no probe
- *     for the data) says so by name; it never reports success it did not check.
+ *   - A page that cannot perform an operation (a `run-job` with no runner connected, or `standing` with
+ *     no probe for the data) says so by name; it never reports success it did not check.
+ *   - `run-job` is never a command: only a job kind in JOB_KINDS, with exactly its typed parameters.
+ * The data probes (count, standing) are pure functions over the rows a page reports (countEntitiesIn,
+ * standsIn). A check on the page itself (text, attr, elements, media, receipt, count, standing) retries
+ * for the page's `patience` before it fails, because a page settles; the last failure is the one named.
  * Targets are stable data-testid references (StepTarget.ref). A target that is not one (a legacy
  * step's plain words) is refused as a target, not guessed at.
  */

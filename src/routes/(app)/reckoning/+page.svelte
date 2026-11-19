@@ -536,10 +536,11 @@ Do NOT include <kb-actions> blocks.`;
         bind:value={situation}
         placeholder="e.g. I'm evaluating two ML frameworks for a production recommendation system. Team has 3 engineers, deadline is 6 weeks."
         rows="4"
+        data-testid="situation-text"
         disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'situation'}
-        <button class="btn-next" disabled={!canContinue} onclick={continueToTarget}>
+        <button class="btn-next" data-testid="situation-next" disabled={!canContinue} onclick={continueToTarget}>
           Next: Target →
         </button>
         {#if saveNote}<p class="error-msg">{saveNote}</p>{/if}
@@ -600,7 +601,7 @@ Do NOT include <kb-actions> blocks.`;
       {#if step === 'target'}
         <div class="btn-row">
           <button class="btn-back" onclick={() => step = 'situation'}>← Back</button>
-          <button class="btn-next" disabled={!targetReady} onclick={continueToConfirm}>
+          <button class="btn-next" data-testid="target-next" disabled={!targetReady} onclick={continueToConfirm}>
             Review →
           </button>
         </div>
@@ -639,7 +640,7 @@ Do NOT include <kb-actions> blocks.`;
 
       <div class="btn-row">
         <button class="btn-back" onclick={() => step = 'target'}>← Edit</button>
-        <button class="btn-reckon" disabled={busy} onclick={generateProposal}>
+        <button class="btn-reckon" data-testid="generate-proposal" disabled={busy} onclick={generateProposal}>
           {busy ? 'Consulting graph…' : 'Generate Proposal'}
         </button>
       </div>

@@ -1189,6 +1189,9 @@ test:Workflow-ReckoningV029-Step2
     kpred:screenshot    "/workflows/reckoning-v029/02-choose-situation.webp" ;
     kpred:page-name     "the Reckoning page" ;
     skos:definition     "On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice." ;
+    story:action        '{"kind":"type","target":"situation-text","text":"We need to decide how to refresh the company logo."}' ;
+    story:action        '{"kind":"click","target":"situation-next"}' ;
+    story:expect        '{"kind":"text","target":"chosen-count","contains":"3 statements chosen"}' ;
     kpred:assertion     "Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." .
 
 test:Workflow-ReckoningV029-Step3
@@ -1205,6 +1208,8 @@ test:Workflow-ReckoningV029-Step3
     kpred:page-name     "the Reckoning page" ;
     kpred:narration-lead "Is a target a sentence you type, or something your knowledge base might already know it is missing?" ;
     skos:definition     "Choose Answer a question. The questions you still have open are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have." ;
+    story:action        '{"kind":"click","target":"target-next"}' ;
+    story:expect        '{"kind":"visible","target":"generate-proposal"}' ;
     kpred:assertion     "The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." .
 
 test:Workflow-ReckoningV029-Step4
@@ -1221,6 +1226,10 @@ test:Workflow-ReckoningV029-Step4
     kpred:page-name     "the Reckoning page" ;
     kpred:narration-lead "What should a tool that suggests things be allowed to change before you have said yes?" ;
     skos:definition     "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued." ;
+    story:target        "proposal-option :: The two options" ;
+    story:action        '{"kind":"click","target":"generate-proposal"}' ;
+    story:expect        '{"kind":"elements","target":"proposal-option","n":2}' ;
+    story:expect        '{"kind":"text","target":"proposal-written","contains":"Nothing is confirmed and no job has been queued."}' ;
     kpred:assertion     "Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." .
 
 test:Workflow-ReckoningV029-Step5
@@ -1267,6 +1276,10 @@ test:Workflow-ReckoningV029-Step7
     kpred:screenshot    "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
     kpred:page-name     "the Reckoning page" ;
     skos:definition     "The accepted option still has its open question. Type \"logo.png\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued." ;
+    story:target        "proposal-status :: Completed" ;
+    story:action        '{"kind":"type","target":"open-question-input","text":"logo.png"}' ;
+    story:action        '{"kind":"click","target":"open-question-answer"}' ;
+    story:expect        '{"kind":"text","target":"proposal-status","contains":"Completed"}' ;
     kpred:assertion     "After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." .
 
 test:Workflow-CompareV029

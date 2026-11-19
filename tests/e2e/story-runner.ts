@@ -53,10 +53,11 @@ export function playwrightPage(page: Page): StoryPage {
   const by = (id: string) => page.getByTestId(id);
   return {
     goto: async (path) => { await page.goto(path); },
-    click: async (id) => { await by(id).click(); },
-    fill: async (id, text) => { await by(id).fill(text); },
+    // .first(): a test id can repeat (one per proposal option, say); a story presses or fills the first, as a person reads top down.
+    click: async (id) => { await by(id).first().click(); },
+    fill: async (id, text) => { await by(id).first().fill(text); },
     press: async (key) => { await page.keyboard.press(key); },
-    expectVisible: async (id) => { await expect(by(id)).toBeVisible({ timeout: 15_000 }); },
+    expectVisible: async (id) => { await expect(by(id).first()).toBeVisible({ timeout: 15_000 }); },
     // Search finds an entity by its IRI slug; picking the row selects it (as openAsset in the generated-assets walk did).
     selectEntity: async (iri) => {
       const slug = iri.split(/[/#:]/).pop() ?? iri;
@@ -161,7 +162,7 @@ export async function playStory(page: Page, story: UnifiedStory, opts: PlayOptio
         // The focus is pointed at where a person would look: just before the click that presses it (the card, the
         // button, after any typing), else at the end of the step, once its expectations have passed (the asset a
         // click opened, the row of labels that has settled).
-        const focus = step.focus ? page.getByTestId(testIdOf(step.focus.ref, 'focus')) : null;
+        const focus = step.focus ? page.getByTestId(testIdOf(step.focus.ref, 'focus')).first() : null;
         let pointed = false;
         for (const a of rest) {
           if (focus && !pointed && a.kind === 'click' && a.target === step.focus!.ref) { await snap(focus); pointed = true; }

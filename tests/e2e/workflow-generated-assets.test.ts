@@ -49,7 +49,7 @@ async function previewAll(page: Page) {
 }
 
 /**
- * NAMED EXCEPTIONS (F300.3). Steps 3 to 6 are declared in the graph in full (select the node, open its asset,
+ * NAMED EXCEPTIONS (F300.3). The steps "picture", "video", "splat" and "background" (3 to 6) are declared in the graph in full (select the node, open its asset,
  * the receipt check, the served file, its width, the viewer status, the background and the splat counter), so they
  * need no code. What a story cannot declare yet stays here as code with its reason, so the gap stays visible:
  *   - open-example: landing on the graph and then visiting the Spaces tab inside one step (a second page
