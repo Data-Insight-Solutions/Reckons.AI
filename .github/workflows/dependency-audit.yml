@@ -35,10 +35,19 @@ jobs:
       # Gate at MODERATE (Matt, 2026-10-28). It was --audit-level=low until seven low advisories
       # (@sveltejs/kit, deepmerge) appeared that only a SvelteKit 3 major upgrade fixes, blocking
       # every PR. Lows are still printed here and in npm run security:dependencies; they do not block.
+      # Named, dated exceptions (Matt, 2026-11-17): .github/audit-exceptions.json accepts ONE advisory on
+      # ONE package until a date, with a written reason; everything else still blocks at moderate, and
+      # an npm error report fails the gate. See scripts/offline/audit-gate.mjs.
       - name: Audit locked production and development dependencies
         working-directory: ${{ matrix.project }}
-        run: npm audit --package-lock-only --audit-level=moderate
+        run: |
+          npm audit --package-lock-only --json > "$RUNNER_TEMP/audit.json" || true
+          node "$GITHUB_WORKSPACE/scripts/offline/audit-gate.mjs" --level=moderate \
+            --exceptions="$GITHUB_WORKSPACE/.github/audit-exceptions.json" < "$RUNNER_TEMP/audit.json"
       - name: Audit scheduled integration dependencies
         if: github.event_name == 'schedule' && !cancelled()
         working-directory: integration/${{ matrix.project }}
-        run: npm audit --package-lock-only --audit-level=moderate
+        run: |
+          npm audit --package-lock-only --json > "$RUNNER_TEMP/audit-integration.json" || true
+          node "$GITHUB_WORKSPACE/integration/scripts/offline/audit-gate.mjs" --level=moderate \
+            --exceptions="$GITHUB_WORKSPACE/integration/.github/audit-exceptions.json" < "$RUNNER_TEMP/audit-integration.json"

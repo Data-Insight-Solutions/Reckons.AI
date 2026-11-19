@@ -24,6 +24,27 @@ code:room-benchmark
     kpred:has-file "scripts/content/scan-synthetic-room.py", "scripts/content/room-bench.ts", "scripts/content/room-bench-lib.ts" ;
     kpred:tested-by "scripts/content/__tests__/room-bench.test.ts" .
 
+code:cad-creation
+    rdf:type ktype:Concept ;
+    rdfs:label "CAD creation (F299)" ;
+    skos:definition "A part spec (kind plus named millimetre parameters) becomes a deterministic build123d script; the runner writes STEP and STL outside the repository with a receipt that checks the measured bounding box against the spec within 0.1 mm; the existing headless Blender path adds a material, turntable frames and GLB; the receipt feeds one CAD chain in the Generated assets example. build123d is an optional local tool in its own virtualenv, never a dependency of the app or CI." ;
+    kpred:has-file "scripts/content/cad/spec.ts" ;
+    kpred:has-file "scripts/content/cad/generate.ts" ;
+    kpred:has-file "scripts/content/cad/receipt.ts" ;
+    kpred:has-file "scripts/content/cad/run.ts" ;
+    kpred:has-file "scripts/content/cad/example-ttl.ts" ;
+    kpred:has-file "scripts/content/cad/specs-example.json" ;
+    kpred:has-file "static/generated/cad-l-bracket-60/cad-receipt.json" ;
+    kpred:tested-by "scripts/content/cad/__tests__/cad.test.ts" ;
+    kpred:tested-by "scripts/content/__tests__/blender-render.test.ts" .
+
+code:synthetic-captures
+    rdf:type ktype:Concept ;
+    rdfs:label "Synthetic multi-scan captures with known poses" ;
+    skos:definition "Headless Blender renders several separate captures of one textured object on a checkerboard, each with its own camera path, focal length and light, and writes every frame's true camera pose. scan:multi runs on them and a pure measurement library aligns COLMAP's registered cameras to the truth with a similarity fit, reporting rotation and position error per capture and whether all captures joined one model. Rendered captures are easier than filmed video; the ring videos remain the real test." ;
+    kpred:has-file "scripts/content/synthetic-captures.ts", "scripts/content/synthetic-captures-lib.ts", "scripts/content/synthetic_captures.py", "scripts/content/synthetic_export_poses.py" ;
+    kpred:tested-by "scripts/content/__tests__/synthetic-captures-lib.test.ts" .
+
 code:generation
     rdf:type ktype:Concept ;
     rdfs:label "Local generation story and workspace queue" ;
@@ -42,6 +63,10 @@ code:generation
     kpred:has-file "scripts/agent/gen-watch-core.ts" ;
     kpred:has-file "scripts/agent/gen-watch.ts" ;
     kpred:has-file "scripts/content/generation-runner.ts" ;
+    kpred:has-file "scripts/content/hub-assets.ts" ;
+    kpred:has-file "scripts/content/gen-hub-assets.ts" ;
+    kpred:tested-by "scripts/content/__tests__/hub-assets.test.ts" ;
+    kpred:tested-by "src/lib/generation/__tests__/hub-attach.test.ts" ;
     kpred:tested-by "src/lib/generation/__tests__/protocol.test.ts" ;
     kpred:tested-by "scripts/content/__tests__/generation-runner.test.ts" ;
     kpred:tested-by "tests/e2e/generated-assets-story.test.ts" ;
@@ -322,8 +347,6 @@ code:components  rdf:type     ktype:Concept ;
                  kpred:has-file "src/lib/components/MergeReview.svelte" ;
                  kpred:has-file "src/lib/components/TurtleChatPanel.svelte" ;
                  kpred:has-file "src/lib/components/LandingPage.svelte" ;
-                 kpred:has-file "src/lib/components/CompareScene.svelte" ;
-                 kpred:has-file "src/lib/components/CompareGraph.svelte" ;
                  kpred:has-file "src/lib/components/AlignmentCard.svelte" ;
                  kpred:has-file "src/lib/components/KbPicker.svelte" ;
                  kpred:has-file "src/lib/components/DisambiguationPanel.svelte" ;
@@ -628,7 +651,7 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/review/link-landing.ts" ;
              kpred:has-file "src/lib/review/__tests__/link-landing.test.ts" ;
              kpred:has-file "src/routes/(app)/ingest/+page.svelte" ;
-             kpred:has-file "src/routes/(app)/compare/+page.svelte" ;
+             kpred:has-file "src/routes/(app)/compare/+page.svelte", "src/routes/(app)/compare/+page.ts", "src/lib/components/CompareFlow.svelte", "src/lib/rdf/compare-overlay.ts", "src/lib/rdf/__tests__/compare-overlay.test.ts", "tests/e2e/compare-on-canvas.test.ts", "src/lib/rdf/compare-decide.ts", "src/lib/rdf/__tests__/compare-decide.test.ts", "tests/e2e/compare-decide-in-place.test.ts" ;
              kpred:has-file "src/routes/(app)/kb/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/+page.svelte" ;
              kpred:has-file "src/routes/(app)/settings/entity-types/+page.svelte" ;
@@ -644,6 +667,19 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/routes/(app)/analyze/+page.svelte" ;
              kpred:has-file "src/routes/(app)/history/+page.svelte" ;
              kpred:has-file "src/routes/(app)/reckoning/+page.svelte" ;
+             kpred:has-file "src/lib/rdf/reckoning-entity.ts" ;
+             kpred:has-file "src/lib/stores/reckoning.svelte.ts" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-entity.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-situation.test.ts" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-target.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-target.test.ts" ;
+             kpred:has-file "src/lib/rdf/reckoning-proposal.ts" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-proposal.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-proposal.test.ts" ;
+             kpred:has-file "src/lib/rdf/reckoning-accept.ts" ;
+             kpred:has-file "src/lib/components/OptionDecision.svelte" ;
+             kpred:has-file "src/lib/rdf/__tests__/reckoning-accept.test.ts" ;
+             kpred:has-file "tests/e2e/reckoning-accept.test.ts" ;
              kpred:has-file "src/routes/(app)/overlay/+page.svelte" ;
              kpred:has-file "src/routes/(app)/mobile/+page.svelte" .
 
@@ -832,6 +868,9 @@ code:test-visual  rdf:type     ktype:Concept ;
                   kpred:has-file "tests/visual/vision-local.ts" ;
                   kpred:has-file "tests/visual/vision-analyze.ts" ;
                   kpred:has-file "scripts/offline/space-visual-gate.ts" ;
+                  kpred:has-file "scripts/offline/example-space-inventory.ts" ;
+                  kpred:has-file "scripts/offline/lib/example-space-inventory.ts" ;
+                  kpred:has-file "scripts/offline/__tests__/example-space-inventory.test.ts" ;
                   kpred:has-file "tests/visual/kb-seed.ts" ;
                   kpred:has-file "tests/visual/fixtures/golden-visual.ts" ;
                   kpred:has-file "tests/visual/stories.test.ts" ;
@@ -1104,8 +1143,8 @@ code:routes kpred:depends-on-module code:indico .  # 3 imports
 code:local-security-audits rdf:type ktype:Concept ;
     rdfs:label "Private local security audit services" ;
     kpred:description "Read-only Linux host probes and explicit online npm lockfile audits. Shared agent output contains aggregate counts; evidence and local policy remain private. Registered script-tier jobs provide reusable invocations without a daemon or inbound listener." ;
-    kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
-    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts" .
+    kpred:has-file "scripts/offline/commit-trailers.ts", "scripts/offline/host-health.ts","scripts/offline/dependency-health.ts", "scripts/offline/audit-gate.mjs", "scripts/offline/lib/host-probes.ts", "scripts/offline/lib/private-audit.ts", "scripts/offline/lib/dependency-audit.ts" ;
+    kpred:tested-by "scripts/offline/__tests__/commit-trailers.test.ts", "scripts/offline/__tests__/host-health.test.ts","scripts/offline/__tests__/dependency-health.test.ts", "scripts/offline/__tests__/audit-gate.test.ts" .
 
 # Review-queue integrity (Matt, 2026-10-28: script tier must catch malformation).
 code:review-queue-integrity rdf:type ktype:Concept ;
@@ -1153,12 +1192,31 @@ code:job-plan-space rdf:type ktype:Concept ;
     kpred:has-file "scripts/agent/reconcile.ts" ;
     kpred:has-file "scripts/agent/session-heartbeat.sh" ;
     kpred:has-file "scripts/agent/session-schedule.ts" ;
+    kpred:has-file "scripts/agent/space-channel.ts" ;
+    kpred:has-file "scripts/agent/lib/job-request.ts" ;
+    kpred:has-file "scripts/agent/lib/cross-device-request.ts" ;
+    kpred:has-file "scripts/agent/cross-device-inputs.ts" ;
+    kpred:has-file "scripts/agent/lib/job-claims.ts" ;
+    kpred:has-file "scripts/agent/lib/space-status.ts" ;
+    kpred:has-file "scripts/agent/__tests__/space-channel.test.ts" ;
+    kpred:has-file "scripts/agent/lib/__tests__/job-request.test.ts" ;
+    kpred:has-file "scripts/agent/lib/__tests__/cross-device-request.test.ts" ;
+    kpred:has-file "scripts/agent/lib/__tests__/job-claims.test.ts" ;
+    kpred:has-file "scripts/agent/__tests__/cross-device-channel.test.ts" ;
+    kpred:has-file "scripts/agent/lib/__tests__/space-status.test.ts" ;
     kpred:has-file "scripts/agent/space-watch.ts" ;
     kpred:has-file "scripts/agent/split.ts" ;
     kpred:has-file "scripts/agent/state-file.ts" ;
     kpred:has-file "scripts/agent/task-templates.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space.test.ts" ;
     kpred:tested-by "scripts/agent/__tests__/queue-to-space-device.test.ts" .
+
+# This device's measured space (F269, F303.2): what the device measured, never shown outside it.
+code:device-space-measure rdf:type ktype:Concept ;
+    rdfs:label "This device: measured capabilities and the match" ;
+    kpred:description "measure-device.ts probes memory, GPU memory, free disk, installed models and tools (no sudo, no changes); device-space-build.ts writes them as capability terms into a private device-only space under the XDG state folder (mode 0600, outside Git, random stable id kept by device-space-paths.ts); device-capabilities.ts holds the terms, the reader and the pure matchCapabilities (can-run or cannot-run with reasons); device-config.ts exposes loadDeviceCapabilities to the job runtime and mcp-server local-jobs.ts lists what the device adds. Terms are defined in static/reckons-capabilities.ttl; no device value is in the repository." ;
+    kpred:has-file "scripts/agent/measure-device.ts", "scripts/agent/device-space-build.ts", "scripts/agent/device-space-paths.ts", "scripts/agent/device-capabilities.ts", "scripts/agent/device-config.ts", "mcp-server/src/local-jobs.ts", "static/reckons-capabilities.ttl" ;
+    kpred:tested-by "scripts/agent/__tests__/device-capabilities.test.ts", "scripts/agent/__tests__/device-config.test.ts", "mcp-server/src/__tests__/local-jobs.test.ts" .
 
 # Triple Check and focused research views (2026-10-26).
 code:rdf kpred:has-file "src/lib/rdf/triple-check.ts", "src/lib/rdf/statement-chunks.ts", "src/lib/rdf/space-view.ts", "src/lib/rdf/repository-comparison.ts", "src/lib/rdf/purpose-organization.ts" .
@@ -1185,6 +1243,8 @@ code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
     kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
 # Hand-held walkthroughs (F261).
 code:rdf kpred:has-file "src/lib/rdf/story-offers.ts" ;
+          kpred:has-file "src/lib/rdf/story-steps.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/story-steps.test.ts" ;
     kpred:tested-by "src/lib/rdf/__tests__/story-offers.test.ts" .
 
 code:splat-embed-viewer

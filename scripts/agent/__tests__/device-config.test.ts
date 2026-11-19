@@ -114,3 +114,30 @@ describe('migration from watch.json', () => {
     expect(resolveThresholds([defaults, ttl], 'other').gpuUtil.yellow).toBe(85);
   });
 });
+
+describe('device capabilities reader (F269)', () => {
+  it('reads what the measurement script wrote, from the XDG state folder, and nothing when absent', async () => {
+    const { loadDeviceCapabilities } = await import('../device-config');
+    const { buildMeasuredSpaceText } = await import('../device-space-build');
+    const { measurementsToValues } = await import('../device-capabilities');
+    const { deviceMeasuredPath } = await import('../device-space-paths');
+    const state = mkdtempSync(path.join(os.tmpdir(), 'dev-caps-'));
+    const env = { XDG_STATE_HOME: state } as NodeJS.ProcessEnv;
+    expect(loadDeviceCapabilities(env)).toBeUndefined();
+    const m = measurementsToValues({ measuredAt: '2030-01-01T00:00:00.000Z', ramTotalBytes: 8 * 1024 ** 3, tools: { widget: true } });
+    mkdirSync(path.dirname(deviceMeasuredPath(env)), { recursive: true });
+    writeFileSync(deviceMeasuredPath(env), buildMeasuredSpaceText(m, '11111111-2222-4333-8444-555555555555', 0));
+    expect(loadDeviceCapabilities(env)).toEqual(m);
+    writeFileSync(deviceMeasuredPath(env), 'not turtle');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(loadDeviceCapabilities(env)).toBeUndefined();
+  });
+  it('the stable id is generated once and kept, and is not a host name', async () => {
+    const { deviceStableId } = await import('../device-space-paths');
+    const env = { XDG_STATE_HOME: mkdtempSync(path.join(os.tmpdir(), 'dev-id-')) } as NodeJS.ProcessEnv;
+    const a = deviceStableId(env);
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(deviceStableId(env)).toBe(a);
+    expect(a).not.toContain(os.hostname().toLowerCase());
+  });
+});

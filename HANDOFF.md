@@ -3,6 +3,197 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+
+Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
+
+**Waiting on Matt:**
+1. Review the seven docs-video scripts on the private "Docs Video Scripts" page. Its link is in this session. The page shows each step's screenshot, its Kokoro line and Play all; verdicts save to the page's `scripts` collection, read back with ArtifactData. Nothing renders until he approves a script. Matt (2026-11-17): drafts are first passes and he will rework the flow ("it can be difficult to automatically generate a compelling story").
+2. The service-worker finding, queued as a high drift-warning on `kb:offline-first`. No page registers `/sw.js`, and registered by hand it fails to install on dev (kit 2.70.3) and on #649 (kit 3), so the PWA offline mode does not work today. Whether offline page loading is a promise the app makes is his call.
+3. Rights to clone the Hume "Shelly V1" voice (`kb:narration-kokoro-vs-tada` honest-note). This is moot for now, because Kokoro won.
+
+**Held PRs, in merge order:** #592 (F275, rendered generated-assets video; lead-ins kept for now) → #652 (Kokoro provider and narrator, F275.8 functional, the blind ranking, the F275.22 plan) → #655 (docs page `<video>` embed with a 10 MB cap; drafts for build-change and readme-path) → #656 (Guided walk and Between spaces workflows) and #657 (Reckoning and Compare workflows). #656 and #657 change the same term-ratchet baseline lines, so the second to merge adds both raises. Then #649 (SvelteKit 3.2.1, e2e green): rebase it and remove all five audit exceptions, which kit 3 fixes, except picomatch. The picomatch one stays until picomatch ships a fix.
+
+**Merged to dev today:** #642, #643 (the deputy's blocked branches), #644, #645, #646 (deputy drafts after Sonnet review), #647 and #654 (named, dated audit exceptions, all expiring 2026-12-15; Matt chose each), #648 (plan), #650 (F299 CAD, scaffolded), #651 (F58.9.19.6 synthetic captures, functional; exits 1 on wrong geometry, not only on a failed join).
+
+**Measured today:** v0.2.9 burndown, 0 of 31 parts functional (headline: F275 planned on dev, F58.9.19 and F299 scaffolded). Narration benchmark: Matt's blind ranking put Kokoro af_heart first on 7 of 11 lines (TADA-3B: 0.27x real time, 15.7 GB VRAM). His first ranking was lost to a bug in the page Opus built. The page was fixed, tested against an echoing stub store, and he ranked again. Hume's TTS and EVI APIs are gone (404); the new `@humeai/audio-decisions` SDK scores audio but does not synthesize it, and needs a key from the new Hume Platform.
+
+**Not done:** no docs video rendered; the CAD part has not been looked at in the app's 3D viewer; multi-scan has not been tried on separately filmed real videos; dev CI on the last merges was still running when this was written.
+
+## 2026-11-16 (deputy, local qwen3.8-160k) — START HERE: handoff + two new asks
+
+**What I did this window (verified against the file, not the recap):**
+- The MCP review queue is `mcp-workspace/kbs/<kb>/pending.jsonl` — that is where kb_add_note writes
+  (NOT reckons-workspace/knowledge.pending.jsonl, a different app-side store). I first grepped the
+  wrong file and nearly re-reported "lost" notes; all four new notes ARE present in
+  `mcp-workspace/kbs/architecture/pending.jsonl` (device-capability-gating, a private-space note,
+  own-trained-models, demo-videos); the shelly-job-queue correction + local-orchestration build-map are
+  in the queue too. LESSON: verify against the store the tool actually writes to, not the one you assume.
+- Captured Matt's new "This device" asks as a grounded proposal — `device-capability-gating` (part-of
+  `device-space`): environmental settings leap to the This-device space; its device-only status is what
+  makes it diff-detectable against all spaces; a Generation space should clearly BLOCK + explain a
+  regenerate whose install/hardware requirement This device does not meet.
+- Flagged a program in one of Matt's private spaces (NOT in my KBs; named there, not here) as time-sensitive — due
+  dates coming soon; I cannot generate from here (no access to the space + the pipeline is the
+  local-stack lane).
+
+**CORRECTION I owe (so it doesn't repeat):** I had queued a note calling `shelly-job-queue` "not built".
+WRONG — it is `functional` (F166.1.2, measured 2026-10-23). A high-priority correction is in the queue
+telling Opus to reject the bad note. Root cause: I asserted a feature status from memory. LESSON:
+**ground every status claim against the graph before asserting it, and verify your own prior "queued"
+claims against the pending store — my recap was wrong about 2 of 4 notes having landed.**
+
+**Build-map (recommended order, on `local-orchestration`):** F286.4 worker-outlives-session (reproduced
+failure 2026-11-10; script-verified done-test on record) → F81 web-runtime (a Web Worker drains the
+in-graph queue — the real "within the app" gap) → F166.1.2 `.remaining` (a REAL model emitting a valid
+`queue_jobs` block; only mock tested today) → F64 (speculative, gated on F61). LANE: F286.4 + the F81
+worker/runner are Opus/Matt's builds (opposite-side rule); my part is the grounded map + the in-app proposals.
+
+**Honest limits of this session:** I cannot push / open PRs / merge (no GitHub credential) — so a local
+Opus session reads this HANDOFF.md from the working tree; commit it as you see fit. I cannot see the
+private space named there. I cannot run the generation pipeline (local-stack lane). The next session
+(Opus) is the final triage authority on the provisional review verdicts (one batch settled this window:
+5 accept / 5 reject / 0 defer, all reversible).
+
+## 2026-11-14 (night) — START HERE: overnight jobs scheduled and draining; two branches still unpushed
+
+**Matt: "I'm going to bed, schedule and monitor jobs."** Done as of 2026-11-14 ~01:30 UTC:
+
+- **Queue result: `sched:offline-all-agent` RAN and passed 4/4** (2026-11-15 01:29→01:56 UTC, exit 0):
+  describe-entities (3 already queued), **docs-expand (875.7s — clears the 24d-overdue run; 116 thin
+  entities, 110 already queued, 10 drafted and ALL rejected by the validator: "inline markdown" /
+  "unexplained jargon: ttl")**, docs-review (7 proposals queued), space-visual-gate (32/51 gates passed,
+  19 failures → 8 new pending findings; receipt `reckons-workspace/runs/space-visual-gate_2026-11-15T01-55-34-130Z.json`).
+  Plus job-plan and pull-notes passed. Findings are proposals in the review queue — Opus triages.
+- **Then the RAM guard did its job.** The standalone `sched:docs-review` (started 1 s after the suite, with
+  the 27.3B qwen3.8-160k model still resident from the suite) drove system RAM to **0.9 GiB available
+  (floor 2 GiB)**; the F74.11 guard (session-ram.ts) STOPPED the job, UNLOADED the model, and PAUSED the
+  queue fail-closed (PAUSE file). The machine did not OOM — that is the guard working as Matt specified.
+  Swap was already exhausted (~184 kB free), so a second such race could have hurt. **I reverted my override:
+  `~/.config/reckons/device.ttl` deleted, `ramStartAvailMiB` back to the 16384 default (verified).**
+  **Queue is PAUSED and I am leaving it paused.** 11 jobs remain queued (incl. the held docs-review,
+  30-min retry backoff). The 16 GiB gate structurally blocks this machine overnight (desktop baseline
+  ~19 GiB) — that is the point of the gate. **Opus: decide** — resume (`npx tsx scripts/agent/queue.ts resume`)
+  only after apps close / RAM settles, or adjust the gate with full incident context (kb notes on
+  `kb:queue-ram-guard`, agent `local-deputy:qwen3.8-160k`). Root cause is back-to-back model loads with
+  exhausted swap, not a broken guard.
+- GPU start gate (83 C) is doing normal cooldown-waits between jobs on the two 3090s — not a defect.
+- **5174 mock dev server started** (`npm run dev:test`, log `/tmp/devtest-5174.log`) for
+  `sched:visual-tests`. Probe with `127.0.0.1:5174` — `localhost` times out in the sandbox but the server is up.
+- **Still BLOCKED (unchanged):** both branches unpushed, no PRs. Push commands for Matt:
+  `! git -C /home/matt/Github/tripleNotes-monetization push -u origin agent/local-monetization-roadmap`
+  `! git -C /home/matt/Github/tripleNotes-sched-jobs push -u origin chore/schedule-script-jobs`
+  then PR both against **dev**, no merge.
+
+## 2026-11-13 (daytime) — F297 monetization roadmap entry, on agent/local-monetization-roadmap
+
+**Branch `agent/local-monetization-roadmap` (worktree `tripleNotes-monetization`, off origin/dev e2ec131b).**
+One commit, one file changed (`static/reckons-roadmap.ttl`), appending Matt's 2026-11-13 monetization
+decisions verbatim: new feature **F297 `kb:monetization`** (speculative) — the custom trained model behind
+MCP is the selling point (links `kb:model-training` F13), optional with Reckons.AI usage, no forced payment,
+no excessive ads; enterprise = fixed-rate contracts, not per-use metering, with cost limits baked in on
+Matt's end; metered path = Cloudflare Monetization Gateway (access requested 2026-11-13, under Cloudflare
+review); domain split tentative (aiteams.us = US enterprise, rooted domains = personal, "not concrete");
+gated on working Google Workspace + Microsoft 365 tools OR serious personal-assistant features. Also two
+lines on **F13 `kb:model-training`**: Matt's decision to start testing "the trainable MoE model I mentioned
+a few days ago", the stated struggle (robust spaces, multiple functional layouts, rich entity types and
+attributes), and open questions (which MoE base; train on what; where testing runs — MoE is new to F13,
+whose target models are small dense ones). Two open questions for Matt are on F297 (GA/MS365 gate entity?;
+domain split is a working read).
+
+**Verified 2026-11-13:** graph-lint 0 errors / 15 warnings (same baseline as dev); tracked-ttl-parses
+84/84; `F297` and `kb:monetization` each appear exactly once in static/; no generated content page embeds
+feature numbers, so no md-align drift. **NOT run:** the full CI suite (`npm run check`, unit suite) — it
+runs on the PR; nothing here touches code, so that is the expected delta.
+
+**UNVERIFIED / BLOCKED:** the branch is NOT pushed and NO PR is open. `git push` was denied repeatedly in
+auto mode (the server-side safety check cannot be reached through the local gateway; the allow rules
+`Bash(git push *)` / `Bash(gh pr create *)` in `~/.claude/settings.json` are set aside in auto mode).
+Whoever continues: push `agent/local-monetization-roadmap`, open the PR against **dev** (title suggestion:
+"roadmap: F297 monetization — custom model behind MCP, enterprise contracts first, gated on working tools"),
+do not merge. The same push block holds `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`,
+otherwise done; PR body drafted in its HANDOFF entry).
+
+**Matt's decisions (2026-11-13, all recorded as `kpred:decided` on the entities):** selling point = custom
+model behind MCP, optional, no forced payment/ads; gate = GA/MS365 tools or serious PA features first;
+enterprise = fixed-rate contracts with his own cost limits baked in; domain split tentative; start testing
+the trainable MoE now.
+
+**Follow-up wave (recorded 2026-11-13, uncommitted at time of writing):** on **F13 `kb:model-training`** —
+model training is CRITICAL; build many immaculate spaces BY HAND as training data; fine-tune a granite/base
+model with a thorough BAKED KNOWLEDGE of the Reckons platform; the re-learning pain (asking multiple times
+for previews, repeatedly stating entity typing should happen) is the problem the training fixes; training
+compute NOT SELECTED, locally would be ideal (graph's energy-bench hardware is a 2x RTX 3090); MULTIPLE open
+source bases should be trained/compared — an MoE may lift the generalist base but size may be a problem.
+Priority raised to high. On **F296 `kb:plugin-library`** — each plugin OWNS ITS SERIES OF FEATURES
+(Google Suite / Microsoft Suite plugins); a separate plugin when the product differs (SharePoint legacy vs
+new SharePoint); suite feature series not yet scoped (they ARE the F297 gate's tools). On **F297** — GATE
+ALTERNATIVE: the iOS suite may make more sense than office applications (spatial computing push from Apple;
+Matt sold Orange Logic to people there; WebXR/Web App ecosystems adopted slowly; their app store expensive
+to publish into; ring-scan workflow — a Stray scanner, attributed, built into a Reckons.AI iOS app); SECOND
+SELLING POINT (conditional): multi-modal asset generation context + game experiences defined by editable
+plain English statements. Matching open questions added on **F74.1 `kb:asset-generation`** (what "make that
+work" requires; which entity owns the game experiences — no entity does yet). UNVERIFIED items flagged as
+such on the entities: no iOS-app entity (nearest kb:ios-note-capture, unmerged branch), no Orange Logic or
+Stray scanner entity. Two more same-evening decisions: **ComfyUI** named as a possibly-important integration
+while Matt thinks about critical integrations (decided on F297 + open question on F58.2 `kb:mvg-image-gen`,
+where it is already a candidate runtime behind stable-diffusion.cpp/Diffusers); and the active **reckons.\*
+domain inventory** (reckons.ai/.app/.solutions/.space/.tech/.us with expiry dates, "not implemented" partly)
+recorded on F297 next to the rooted/aiteams.us split — no domain-to-purpose mapping exists yet.
+
+**Final wave (recorded 2026-11-13, this entry's own commit):** new feature **F298 `kb:theming`**
+(speculative, low priority, roadmap entry only) — Matt: "We need to start themeing… a way to change theme
+to 'forest' away from the default 'ocean'… green and earth tones instead of deep teals and blues… make
+Shelly into a Sloth. Named Sherril or something clever. The tree roots could be a great analogy to the
+rooting of AI agent usage to your personal context." Open questions on the entity: switch-with-ocean-default
+vs rebrand (his call), the sloth's name, and what his sister's three.js work covers (mascot asset under
+F74.1 vs theme chrome under F37 `kb:undersea-pod-ui`; collaboration or hand-off). Linked
+`kb:undersea-pod-ui`, `kb:currents`, `kb:minimal-ontology`. And on **`kb:minimal-ontology`** (the
+"small context packages" concept) — Matt's pairing, verbatim: context PACKAGING is a sharing mechanism,
+context ROOTING is "the concept of connecting to your existing files (sources), and knowledge
+(statements)"; open question for Opus: does rooting become its own named concept or stay a facet here?
+
+**Verification (all green in `tripleNotes-monetization`, 2026-11-13):** graph-lint 0 errors / 15 warnings
+(dev baseline); tracked-ttl-parses 84/84; `kb:theming` and `F298` each appear exactly once in `static/`.
+One parse bug found and fixed on this branch: three statement blocks (ComfyUI, domain inventory,
+mvg-image-gen) had been ended with `;` instead of `.` — lenient N3 accepted it, but graph-lint's strict
+TriG parse rejected it (166 errors); all three now end with `.`. **NOT run:** the full CI suite — it runs
+on the PR; nothing here touches code.
+
+**Still pending (same as above):** push `agent/local-monetization-roadmap`, open the PR against **dev**,
+do not merge; `chore/schedule-script-jobs` (worktree `tripleNotes-sched-jobs`) is blocked on the same
+push permission.
+
+## 2026-11-13 (local deputy, qwen3.8-160k) — jobs: schedule never-run script checks; route the last untagged model jobs
+
+**Branch `chore/schedule-script-jobs` (worktree ../tripleNotes-sched-jobs), 1 commit 53cbae2b, base origin/dev.**
+TTL only: `reckons-workspace/schedules.ttl`, +81 lines, nothing else touched.
+
+- **Task A (done):** `kpred:job-kind` added to the two model schedules that lacked one — `sched:visual-tests`
+  ("visual", runs space-visual-gate on qwen2.5vl:7b) and `sched:terminology-sweep` ("classification-judgment",
+  runs term-senses over the local panel; it stays disabled — only the tag was added). `sched:offline-all-agent`
+  deliberately left untagged: it bundles several kinds.
+- **Task B (done, 8 of 12 candidates scheduled):** each candidate's `kpred:command` was run once in this clean
+  worktree; scheduled only the ones that exited 0, finished <2 min, and wrote no line to
+  `reckons-workspace/knowledge.pending.jsonl` (file absent before and after). Scheduled, all `session-worker`
+  + `script` tier like `sched:dis-fact-expiry`: published-graph-guard (1d), version-align (1d), commit-trailers
+  (1d, 22.3 s run), landing-data-align (1d), set-integrity (1d), anchor-resolution (1d), csp-origin-audit (7d),
+  ci-graph (7d).
+- **NOT scheduled — findings for Matt, with first error line each (full runs in /tmp/jobout_*.log, 2026-11-13):**
+  - `queue-integrity` exit 1 (0.8 s): "VIOLATIONS (0-based line index: field): 1585: origin, 1598: origin, …" — 15 rows on `kb:review-queue`-shaped entries missing `origin`.
+  - `repo-hygiene` exit 1 (0.5 s): "tracked-but-ignored (2): tests/bench/results/overseer-2026-10-28.jsonl, …10-29.jsonl — matches a .gitignore pattern and is tracked anyway".
+  - `taxonomy-current` exit 1 (0.7 s): "type-no-term urn:kbase:type/GaussianSplat: built-in type 'Gaussian splat' has no term or vocabulary class" (4 such).
+  - `graph-lint --pending` exit 1 (1.2 s): lint itself says "0 error(s), 15 warning(s)", then the `--pending` writer CRASHES — "RowContractError: row refused: missing kb on a machine row about 'urn:kbase:predicate/'" (mcp-server/src/row-contract.ts:93). Plain `graph-lint.ts` is already scheduled as `sched:graph-lint`, so only the `--pending` path is the bug.
+- **Unverified:** I could not run `npm run align` against a live CI context, and the queue worker did not
+  actually EXECUTE the new schedules (no worker pickup while I worked) — the parse tests
+  (`tracked-ttl-parses`, 83 files) plus `agent:queue -- list` printing the queue cover the 2026-11-13 crash class.
+- **Done-test (all pass, 2026-11-13):** vitest scripts/agent + tracked-ttl-parses: 41 files, 525 passed;
+  graph-lint: 0 errors / 15 warnings; release-review-space --check: ok ×3; `npm run check`: 0 ERRORS;
+  `agent:queue -- list`: prints the queue.
+- **Matt's decisions here were the tasking itself** (criteria above); nothing else was decided. **BLOCKED:** the
+  environment denied `git push` for this session — the commit is ready on the branch; someone with credentials
+  pushes it and opens the PR to `dev` (title/body drafted in chat 2026-11-13). Do not merge to main.
+
 ## 2026-11-13 (overnight, final) — START HERE: v0.2.8 is green on #624; MATT merges it
 
 **Release v0.2.8 — ready.** PR #624 (staging -> main) is green and clean (28 checks, 2026-11-13): the docs

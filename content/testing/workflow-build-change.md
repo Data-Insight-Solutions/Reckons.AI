@@ -27,11 +27,11 @@ Space building and space changing, start to finish: add a note and accept what i
 
 ### 1. Add the first note
 
-Open the Add tab, title the note "Garden notes" and paste: "The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed." Then press Extract facts. Every fact it reads arrives waiting for your decision.
+Open the Add tab, title the note "Garden notes" and paste: "The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed." Then press Extract statements. Every fact it reads arrives waiting for your decision.
 
 Where: the Add tab (`/ingest`).
 
-<figure class="workflow-shot"><img src="/workflows/build-change/01-add-first-note.webp" width="1280" height="800" alt="Screenshot of step 1, Add the first note. A pink box labelled &quot;Extract facts&quot; marks the Extract facts button, under the note's title and text." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract facts button, under the note's title and text.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/build-change/01-add-first-note.webp" width="1280" height="800" alt="Screenshot of step 1, Add the first note. A pink box labelled &quot;Extract statements&quot; marks the Extract statements button, under the note's title and text." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract statements button, under the note's title and text.</figcaption></figure>
 
 **What the test checks.** Reading the note leaves the Add tab and puts its facts in Review, each waiting.
 
@@ -47,11 +47,11 @@ Where: the Review tab (`/review`).
 
 ### 3. Add a note that changes things
 
-Back on the Add tab, title it "Garden meeting" and paste: "Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen." Press Extract facts.
+Back on the Add tab, title it "Garden meeting" and paste: "Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen." Press Extract statements.
 
 Where: the Add tab (`/ingest`).
 
-<figure class="workflow-shot"><img src="/workflows/build-change/03-add-change-note.webp" width="1280" height="800" alt="Screenshot of step 3, Add a note that changes things. A pink box labelled &quot;Extract facts&quot; marks the Extract facts button, with the change note filled in." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract facts button, with the change note filled in.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/build-change/03-add-change-note.webp" width="1280" height="800" alt="Screenshot of step 3, Add a note that changes things. A pink box labelled &quot;Extract statements&quot; marks the Extract statements button, with the change note filled in." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract statements button, with the change note filled in.</figcaption></figure>
 
 **What the test checks.** Reading the change note leaves the Add tab and puts its facts in Review.
 

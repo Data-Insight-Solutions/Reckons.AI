@@ -31,13 +31,13 @@ The test uses no language model. When it adds its own note in step 1, a stand-in
 
 ### 1. Add a source
 
-Open the Add tab, give the note a title, type or paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.
+Open the Add tab, give the note a title, type or paste in a few sentences and press Extract statements. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.
 
 Where: the Add tab (`/ingest`).
 
-<figure class="workflow-shot"><img src="/workflows/readme-path/01-add-source.webp" width="1280" height="800" alt="Screenshot of step 1, Add a source. A pink box labelled &quot;Extract facts&quot; marks the Extract facts button, under the note's title and text." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract facts button, under the note's title and text.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/readme-path/01-add-source.webp" width="1280" height="800" alt="Screenshot of step 1, Add a source. A pink box labelled &quot;Extract statements&quot; marks the Extract statements button, under the note's title and text." loading="lazy" decoding="async" /><figcaption>The pink box marks the Extract statements button, under the note's title and text.</figcaption></figure>
 
-**What the test checks.** The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point.
+**What the test checks.** The Extract statements button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point.
 
 ### 2. Review the proposed claims
 

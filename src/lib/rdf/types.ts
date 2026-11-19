@@ -196,6 +196,11 @@ export type Statement = {
   confidence: number;
   /** Statement this one supersedes (if a refinement of an earlier one) */
   supersedes?: string;
+  /**
+   * Ids of held statements this one was SEEN to disagree with and the person chose to keep both
+   * (F264.3). The disagreement is recorded, not resolved: neither side is replaced.
+   */
+  knownDisagreement?: string[];
   /** Human-readable rendering produced at extraction time */
   gloss?: string;
   /**
@@ -501,6 +506,14 @@ export const GENERATION_PROVENANCE_PREDICATES = [
   'urn:kbase:predicate/generated-gaussians',
 ] as const;
 
+/** F299.3: the predicates of a CAD part spec (kb:cad-creation). `param-*` mirrors the parameter names in
+ *  scripts/content/cad/spec.ts (a test keeps the two lists in step). */
+export const CAD_PARAM_PREDICATES = [
+  'part-kind', 'origin-label', 'volume-mm3', 'spec-sha256',
+  'param-width-mm', 'param-height-mm', 'param-depth-mm', 'param-thickness-mm', 'param-hole-diameter-mm',
+  'param-hole-count', 'param-fillet-mm', 'param-wall-mm', 'param-corner-radius-mm', 'param-lip-height-mm',
+].map((n) => `urn:kbase:predicate/${n}`);
+
 /** F166.1.2: what a Job entity records about itself. Attributes in the detail panel, never value
  *  vertices (a bare "queued" or "image" floating on the canvas would say nothing). The edges waits-for
  *  and produced stay visible: they are the chain. */
@@ -536,6 +549,9 @@ export const PRESENTATION_IMAGE_PREDICATES = new Set([
   ...['differs-by', 'seconds', 'peak-vram-mib', 'peak-ram-mib', 'output-bytes', 'checks-passed', 'checks-failed', 'fps', 'vision-hint', 'scene-file']
     .map((n) => `urn:kbase:predicate/${n}`),
   ...JOB_ATTRIBUTE_PREDICATES,
+  // F299.3: a CAD part spec's parameters are facts about the spec entity, shown in the detail panel,
+  // never value vertices ("60" or "bracket" floating on the canvas would say nothing).
+  ...CAD_PARAM_PREDICATES,
   'urn:kbase:predicate/spdx-id',
   'urn:kbase:predicate/license-url',
 ]);

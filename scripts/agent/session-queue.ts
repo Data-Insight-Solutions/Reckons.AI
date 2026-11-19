@@ -70,7 +70,9 @@ export type QueueJob = { id: string; name: string; cwd: string; argv: string[]; 
   /** true = this job's model may spill into system RAM (too big for VRAM); the RAM guard's spill check skips it, its floor does not (session-ram.ts). */
   ramSpill?: boolean;
   /** Model routing (F74.6): the job's kind picks a model from the routing table in static/reckons-jobs.ttl; `model` is an explicit override. Neither = the flat RAM start gate. */
-  kind?: string; model?: string };
+  kind?: string; model?: string;
+  /** F74.14: the target space this run was made for, so a per-workspace status view can include or leave it out. Absent = no declared target. */
+  space?: string };
 export type DoneJob = QueueJob & { finishedAt: string; outcome: 'passed' | 'failed' | 'refused' | 'dropped' | 'blocked' | 'no-commit'; exitCode?: number;
   /** In words: which link blocked a job, or what 'no-commit' checked and found. */
   reason?: string;
@@ -92,7 +94,7 @@ export function parseQueue(text: string): QueueJob[] {
       if (typeof j.id === 'string' && typeof j.name === 'string' && typeof j.cwd === 'string' && typeof j.addedAt === 'string'
         && Array.isArray(j.argv) && j.argv.length > 0 && j.argv.every((a) => typeof a === 'string')) {
         const after = Array.isArray(j.after) ? j.after.filter((a) => typeof a === 'string' && a.length > 0) : undefined;
-        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(typeof j.gpuIndex === 'number' ? { gpuIndex: j.gpuIndex } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}), ...(typeof j.kind === 'string' && j.kind ? { kind: j.kind } : {}), ...(typeof j.model === 'string' && j.model ? { model: j.model } : {}) });
+        out.push({ id: j.id, name: j.name, cwd: j.cwd, argv: j.argv, addedAt: j.addedAt, ...(typeof j.priority === 'number' ? { priority: j.priority } : {}), ...(j.gpu === false ? { gpu: false } : {}), ...(typeof j.gpuIndex === 'number' ? { gpuIndex: j.gpuIndex } : {}), ...(after?.length ? { after } : {}), ...(j.ramSpill === true ? { ramSpill: true } : {}), ...(j.ollama === false ? { ollama: false } : {}), ...(typeof j.kind === 'string' && j.kind ? { kind: j.kind } : {}), ...(typeof j.model === 'string' && j.model ? { model: j.model } : {}), ...(typeof j.space === 'string' && j.space ? { space: j.space } : {}) });
       }
     } catch { /* skip */ }
   }

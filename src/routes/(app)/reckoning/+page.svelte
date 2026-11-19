@@ -18,6 +18,18 @@
   import type { KBContext } from '$lib/types/turtle-chat';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import { fade } from 'svelte/transition';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { loaded } from '$lib/stores/kb.svelte';
+  import { groupByStanding, newReckoningId, readReckoning, questionTargets, TARGET_ASSET_TYPES, type ReckoningTarget } from '$lib/rdf/reckoning-entity';
+  import { labelFromIRI } from '$lib/rdf/semantic-diff';
+  import { saveReckoning, saveProposal } from '$lib/stores/reckoning.svelte';
+  import { onMount } from 'svelte';
+  import { useGenerationJobs } from '$lib/stores/generation-jobs.svelte';
+  import OptionDecision from '$lib/components/OptionDecision.svelte';
+  import { readStoredProposal } from '$lib/rdf/reckoning-accept';
+  import { ACTION_STATUS } from '$lib/rdf/proposal';
+  import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
   type Mode = 'form' | 'voice';
@@ -26,8 +38,124 @@
   let step = $state<Step>('situation');
 
   let situation = $state('');
+
+  // F223.12.1: the situation is chosen from facts (here, or on the canvas) and a sentence is added.
+  // The choice is kept as a Reckoning entity, named in the address as ?r=, so a reload restores it.
+  let chosen = $state<string[]>([]);
+  let reckoningId = $state<string | null>(null);
+  let search = $state('');
+  let saveNote = $state<string | null>(null);
+  let restored = false;
+
+  // F223.12.2: the target is a question to answer, an asset to make, or free text. Kept on the same entity.
+  type TargetKind = 'question' | 'asset' | 'text';
+  let targetKind = $state<TargetKind>('text');
+  let targetStatementId = $state<string | null>(null);
+  let targetAssetType = $state<string | null>(null);
+  let targetSearch = $state('');
   let target = $state('');
+
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of statements()) {
+      if (st.p.value === 'http://www.w3.org/2000/01/rdf-schema#label' && st.s.kind === 'iri' && st.status !== 'rejected') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+  const labelOf = (iri: string) => entityLabels.get(iri) ?? labelFromIRI(iri);
+  const groups = $derived(groupByStanding(statements(), search, labelOf));
+  const chosenRows = $derived(chosen.map((id) => statements().find((st) => st.id === id)).filter((st) => !!st));
+  const describe = (st: (typeof chosenRows)[number]) =>
+    `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.o.kind === 'iri' ? labelOf(st.o.value) : st.o.value}`;
+  const canContinue = $derived(chosen.length > 0 || situation.trim().length >= 10);
+  /** The situation as the proposal prompt reads it: the chosen facts, then the sentence. */
+  const situationText = $derived(
+    [...chosenRows.map((st) => `- ${describe(st)}`), situation.trim()].filter(Boolean).join('\n')
+  );
+
+  const questions = $derived(questionTargets(statements(), targetSearch, labelOf));
+  const targetQuestion = $derived(targetStatementId ? statements().find((st) => st.id === targetStatementId) ?? null : null);
+  const assetLabel = $derived(TARGET_ASSET_TYPES.find((a) => a.iri === targetAssetType)?.label ?? '');
+  /** What is saved on the Reckoning entity: only the kind the person is on counts. */
+  const targetChoice = $derived<ReckoningTarget>({
+    statementId: targetKind === 'question' ? targetStatementId : null,
+    assetType: targetKind === 'asset' ? targetAssetType : null,
+    note: target.trim(),
+  });
+  const targetReady = $derived(
+    targetKind === 'question' ? !!targetQuestion : targetKind === 'asset' ? !!targetAssetType : target.trim().length >= 10
+  );
+  /** The target as the proposal prompt reads it. */
+  const targetText = $derived(
+    [
+      targetKind === 'question' && targetQuestion ? `Answer this open question: ${targetQuestion.question ?? describe(targetQuestion)}` : '',
+      targetKind === 'asset' && assetLabel ? `Make this asset: ${assetLabel}` : '',
+      target.trim(),
+    ].filter(Boolean).join('\n')
+  );
+
+  function toggle(id: string) {
+    chosen = chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id];
+  }
+
+  async function keepSituation() {
+    saveNote = null;
+    if (chosen.length === 0) return;
+    const id = reckoningId ?? newReckoningId();
+    try {
+      const ok = await saveReckoning(id, chosen, situation, targetChoice);
+      if (!ok) { saveNote = 'This data is read-only, so the Reckoning was not saved.'; return; }
+      reckoningId = id;
+      await goto(`?r=${id}`, { replaceState: true, keepFocus: true, noScroll: true });
+    } catch (e) {
+      saveNote = `The Reckoning could not be saved: ${e instanceof Error ? e.message : String(e)}`;
+    }
+  }
+
+  async function continueToConfirm() {
+    if (reckoningId) await keepSituation();
+    step = 'confirm';
+  }
+
+  async function continueToTarget() {
+    await keepSituation();
+    step = 'target';
+  }
+
+  // Restore from the entity once your facts have loaded (the canvas action and a reload both arrive here).
+  $effect(() => {
+    const id = $page.url.searchParams.get('r');
+    if (restored || !id || !loaded()) return;
+    restored = true;
+    const found = readReckoning(statements(), id);
+    if (!found) { saveNote = 'That Reckoning was not found.'; return; }
+    reckoningId = id;
+    chosen = found.statementIds.filter((sid) => statements().some((st) => st.id === sid));
+    situation = found.note;
+    target = found.target.note;
+    targetStatementId = found.target.statementId;
+    targetAssetType = found.target.assetType;
+    targetKind = found.target.statementId ? 'question' : found.target.assetType ? 'asset' : 'text';
+    if (found.target.statementId || found.target.assetType || found.target.note) step = 'target';
+    const missing = found.statementIds.length - chosen.length;
+    if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
+  });
+  // Accepting an option may queue jobs: find the local runner while this page is open.
+  onMount(() => useGenerationJobs());
   let proposal = $state('');
+  /** The proposal's own state, read from its stored rows so it stays right after a reload and after each decision. */
+  const proposalLine = $derived.by(() => {
+    const stored = reckoningId ? readStoredProposal(statements(), reckoningId) : null;
+    const n = written?.options.length ?? 0;
+    if (stored?.proposal.status === ACTION_STATUS.completed) return 'Completed: the target is reached by statements you confirmed.';
+    if (stored?.proposal.status === ACTION_STATUS.active) return 'You accepted an option. This proposal is active until its target is reached.';
+    return `${n} options are now in your data as proposals. Nothing is confirmed and no job has been queued.`;
+  });
+  /** F223.12.3: what the structured proposal wrote into the knowledge base, kept so the card can point at it. */
+  type WrittenOption = { id: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
+  let written = $state<{ options: WrittenOption[]; blocked: string[]; warnings: string[]; rows: number } | null>(null);
+  /** Filled when the structured path was not usable and the prose below is the fallback. */
+  let proseReason = $state<string | null>(null);
   let technicalDetail = $state('');
   let busy = $state(false);
   let error = $state<string | null>(null);
@@ -159,18 +287,61 @@ After proposing, ask: "Does that work for you, or should I adjust?"`;
     busy = true;
     error = null;
     proposal = '';
+    written = null;
+    proseReason = null;
     step = 'proposal';
 
     try {
       const prov = getProvider();
       const kbContext = buildKBContext();
 
-      // Inject the reckoning prompt as a custom prompt override
+      // The structured path: ask for JSON, refuse anything malformed, write pending rows.
+      const numbered = chosenRows.map((st) => `{{${st.id}}} ${describe(st)}`).join('\n');
+      const structured = await turtleChat({
+        ...prov,
+        messages: [{
+          role: 'user',
+          content: `SITUATION STATEMENTS:\n${numbered || '(none chosen)'}\n\nSITUATION NOTE:\n${situation.trim() || '(none)'}\n\nTARGET:\n${targetText}\n\nReply with the JSON object only.`
+        }],
+        kbContext,
+        customPrompt: PROPOSAL_SYSTEM_PROMPT,
+        purpose: PROPOSAL_PURPOSE,
+      });
+      const parsed = parseProposalReply(structured.message, chosen);
+      let reason: string | null = null;
+      if (parsed.ok) {
+        const id = reckoningId ?? newReckoningId();
+        if (!reckoningId) {
+          const saved = await saveReckoning(id, chosen, situation, targetChoice);
+          if (saved) reckoningId = id;
+        }
+        const result = reckoningId ? await saveProposal(reckoningId, parsed.proposal, parsed.warnings) : null;
+        if (result) {
+          written = {
+            options: parsed.proposal.options.map((o, i) => {
+              const po = result.proposal.options[i];
+              return { id: po.id, label: o.label, rationale: o.rationale, recommended: po.id === result.proposal.recommendedId,
+                statements: o.statements.length, jobs: o.jobs.length, missing: o.missingInputs.length, cites: o.citations };
+            }),
+            blocked: result.blocked.map((b) => `${b.what}: ${b.reasons.join(', ')}`),
+            warnings: result.warnings.map((w) => w.message),
+            rows: result.written,
+          };
+          step = 'done';
+          return;
+        }
+        reason = 'This data is read-only, so nothing could be written.';
+      } else {
+        reason = parsed.reason;
+      }
+
+      // Fallback: the model's reply could not be used as a proposal, so say why and offer the prose summary instead.
+      proseReason = reason;
       const result = await turtleChat({
         ...prov,
         messages: [{
           role: 'user',
-          content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+          content: `SITUATION:\n${situationText}\n\nTARGET:\n${targetText}\n\nPlease generate a structured proposal based on my graph.`
         }],
         kbContext,
         customPrompt: RECKONING_SYSTEM_PROMPT
@@ -216,7 +387,7 @@ Do NOT include <kb-actions> blocks.`;
         messages: [
           {
             role: 'user',
-            content: `SITUATION:\n${situation.trim()}\n\nTARGET:\n${target.trim()}\n\nPlease generate a structured proposal based on my graph.`
+            content: `SITUATION:\n${situationText}\n\nTARGET:\n${targetText}\n\nPlease generate a structured proposal based on my graph.`
           },
           { role: 'assistant', content: proposal },
           { role: 'user', content: 'show technical details' }
@@ -279,8 +450,15 @@ Do NOT include <kb-actions> blocks.`;
 
   function reset() {
     situation = '';
+    chosen = [];
+    reckoningId = null;
     target = '';
+    targetKind = 'text';
+    targetStatementId = null;
+    targetAssetType = null;
     proposal = '';
+    written = null;
+    proseReason = null;
     technicalDetail = '';
     conversation = [];
     voiceInput = '';
@@ -330,6 +508,29 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">Where are you now? What's the context?</p>
         </div>
       </div>
+      {#if step === 'situation'}
+        <div class="pick" data-testid="situation-picker">
+          <input class="pick-search" type="search" placeholder="Search statements…" aria-label="Search statements" bind:value={search} />
+          {#each groups as g (g.standing)}
+            <h4 class="pick-head mono">{g.label} ({g.rows.length})</h4>
+            <ul class="pick-list">
+              {#each g.rows.slice(0, 40) as st (st.id)}
+                <li>
+                  <label class="pick-row">
+                    <input type="checkbox" checked={chosen.includes(st.id)} onchange={() => toggle(st.id)} />
+                    <span>{describe(st)}</span>
+                  </label>
+                </li>
+              {/each}
+            </ul>
+            {#if g.rows.length > 40}<p class="stp-desc">Showing 40 of {g.rows.length}. Search to narrow them.</p>{/if}
+          {/each}
+          {#if groups.length === 0}<p class="stp-desc">No statements match.</p>{/if}
+        </div>
+        <p class="stp-desc" data-testid="chosen-count">{chosen.length} statement{chosen.length === 1 ? '' : 's'} chosen. Add a sentence below if it helps.</p>
+      {:else if chosenRows.length > 0}
+        <ul class="pick-list">{#each chosenRows as st (st.id)}<li class="pick-row"><span>{describe(st)}</span></li>{/each}</ul>
+      {/if}
       <textarea
         class="stp-input"
         bind:value={situation}
@@ -338,9 +539,10 @@ Do NOT include <kb-actions> blocks.`;
         disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'situation'}
-        <button class="btn-next" disabled={situation.trim().length < 10} onclick={() => step = 'target'}>
+        <button class="btn-next" disabled={!canContinue} onclick={continueToTarget}>
           Next: Target →
         </button>
+        {#if saveNote}<p class="error-msg">{saveNote}</p>{/if}
       {/if}
     </section>
   {/if}
@@ -354,17 +556,51 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">What outcome are you trying to reach?</p>
         </div>
       </div>
+      {#if step === 'target'}
+        <div class="kind-row" role="radiogroup" aria-label="Kind of target">
+          <label><input type="radio" name="target-kind" value="question" bind:group={targetKind} /> Answer a question</label>
+          <label><input type="radio" name="target-kind" value="asset" bind:group={targetKind} /> Make an asset</label>
+          <label><input type="radio" name="target-kind" value="text" bind:group={targetKind} /> Write the outcome</label>
+        </div>
+        {#if targetKind === 'question'}
+          <div class="pick" data-testid="target-picker">
+            <input class="pick-search" type="search" placeholder="Search questions…" aria-label="Search questions" bind:value={targetSearch} />
+            <ul class="pick-list">
+              {#each questions.slice(0, 40) as st (st.id)}
+                <li>
+                  <label class="pick-row">
+                    <input type="radio" name="target-question" checked={targetStatementId === st.id} onchange={() => (targetStatementId = st.id)} />
+                    <span>{st.question ?? describe(st)}</span>
+                  </label>
+                </li>
+              {/each}
+            </ul>
+            {#if questions.length === 0}<p class="stp-desc">No open questions match.</p>{/if}
+            {#if questions.length > 40}<p class="stp-desc">Showing 40 of {questions.length}. Search to narrow them.</p>{/if}
+          </div>
+        {:else if targetKind === 'asset'}
+          <div class="kind-row" role="radiogroup" aria-label="Kind of asset">
+            {#each TARGET_ASSET_TYPES as a (a.iri)}
+              <label><input type="radio" name="target-asset" value={a.iri} bind:group={targetAssetType} /> {a.label}</label>
+            {/each}
+          </div>
+        {/if}
+      {:else if targetKind === 'question' && targetQuestion}
+        <p class="stp-desc">Answer: {targetQuestion.question ?? describe(targetQuestion)}</p>
+      {:else if targetKind === 'asset' && assetLabel}
+        <p class="stp-desc">Make: {assetLabel}</p>
+      {/if}
       <textarea
         class="stp-input"
         bind:value={target}
-        placeholder="e.g. Choose the framework that minimises engineering risk while giving us the best long-term scalability for 10M+ users."
+        placeholder={targetKind === 'asset' ? 'Describe what it should show (this becomes the generation prompt).' : targetKind === 'question' ? 'Anything that helps answer it (optional).' : 'e.g. Choose the framework that minimises engineering risk while giving us the best long-term scalability for 10M+ users.'}
         rows="3"
         disabled={step === 'confirm'}
       ></textarea>
       {#if step === 'target'}
         <div class="btn-row">
           <button class="btn-back" onclick={() => step = 'situation'}>← Back</button>
-          <button class="btn-next" disabled={target.trim().length < 10} onclick={() => step = 'confirm'}>
+          <button class="btn-next" disabled={!targetReady} onclick={continueToConfirm}>
             Review →
           </button>
         </div>
@@ -385,11 +621,11 @@ Do NOT include <kb-actions> blocks.`;
       <div class="confirm-preview">
         <div class="confirm-row">
           <span class="confirm-label mono">situation</span>
-          <p>{situation}</p>
+          <p>{situationText}</p>
         </div>
         <div class="confirm-row">
           <span class="confirm-label mono">target</span>
-          <p>{target}</p>
+          <p>{targetText}</p>
         </div>
         <div class="confirm-row">
           <span class="confirm-label mono">graph context</span>
@@ -427,6 +663,35 @@ Do NOT include <kb-actions> blocks.`;
     </section>
   {/if}
 
+  {#if step === 'done' && written}
+    <section class="card proposal-card" data-testid="proposal-written" transition:fade={{ duration: 200 }}>
+      <div class="stp-header">
+        <span class="stp-num ok mono">✓</span>
+        <div>
+          <h3>Proposal</h3>
+          <p class="stp-desc" data-testid="proposal-status">{proposalLine}</p>
+        </div>
+      </div>
+      <div class="proposal-body">
+        {#each written.options as o (o.id)}
+          <div class="proposal-option" data-testid="proposal-option">
+            <p class="proposal-section">{o.label}{o.recommended ? ' (recommended)' : ''}</p>
+            <p class="proposal-text">{o.rationale}</p>
+            <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing input{o.missing === 1 ? '' : 's'}</p>
+            <a class="btn-technical" href={`/?focus=${encodeURIComponent(o.id)}${o.cites.length ? `&cite=${o.cites.map(encodeURIComponent).join(',')}` : ''}`}>Show on the canvas</a>
+            <OptionDecision optionId={o.id} />
+          </div>
+        {/each}
+        {#each written.warnings as w}<p class="proposal-detail mono">{w}</p>{/each}
+        {#each written.blocked as b}<p class="error-msg">Not written (content safety): {b}</p>{/each}
+      </div>
+      <div class="btn-row">
+        <button class="btn-back" onclick={reset}>New Reckoning</button>
+        <button class="btn-next" onclick={() => { step = 'confirm'; written = null; }}>Refine inputs →</button>
+      </div>
+    </section>
+  {/if}
+
   {#if (step === 'done' || step === 'technical') && proposal}
     <section class="card proposal-card" transition:fade={{ duration: 200 }}>
       <div class="stp-header">
@@ -436,6 +701,9 @@ Do NOT include <kb-actions> blocks.`;
           <p class="stp-desc">Based on {kbSize} verified statements.</p>
         </div>
       </div>
+      {#if proseReason}
+        <p class="error-msg" data-testid="prose-fallback">Written summary only: nothing was added to your data. The model's structured reply was not usable ({proseReason})</p>
+      {/if}
 
       <div class="proposal-body">
         {#each proposal.split('\n') as line}
@@ -533,6 +801,14 @@ Do NOT include <kb-actions> blocks.`;
 {/if}
 
 <style>
+  .pick { max-height: 18rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--rad-sm); padding: 0.6rem; margin-bottom: 0.6rem; background: var(--surface-2); }
+  .pick-search { width: 100%; box-sizing: border-box; padding: 0.4rem 0.6rem; margin-bottom: 0.4rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--rad-sm); color: var(--ink); }
+  .kind-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 0.6rem; font-size: 0.85rem; color: var(--ink); }
+  .kind-row label { display: flex; gap: 0.35rem; align-items: center; cursor: pointer; }
+  .pick-head { font-size: 0.75rem; text-transform: uppercase; color: var(--accent); margin: 0.6rem 0 0.2rem; }
+  .pick-list { list-style: none; margin: 0 0 0.6rem; padding: 0; }
+  .pick-row { display: flex; gap: 0.5rem; align-items: flex-start; padding: 0.2rem 0; font-size: 0.85rem; color: var(--ink); cursor: pointer; }
+
   .head { margin-bottom: 2rem; }
   .kicker { font-size: 0.7rem; color: var(--accent); letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 0.3rem; font-family: var(--font-mono); }
   h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 0.4rem; }

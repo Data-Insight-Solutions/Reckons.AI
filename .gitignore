@@ -66,8 +66,11 @@ yarn-debug.log*
 .cache/
 temp/
 
-# Bench results (generated)
-tests/bench/results/
+# Bench results (generated). The CONTENTS are ignored, not the directory, so the two files below can be
+# re-included: kb:loop-local-deputy cites them as evidence (kpred:has-file), so every checkout needs them.
+tests/bench/results/*
+!tests/bench/results/overseer-2026-10-28.jsonl
+!tests/bench/results/overseer-2026-10-29.jsonl
 
 # MCP workspace (legacy symlinks)
 mcp-workspace/
@@ -197,3 +200,6 @@ static/generated/**/.image.png
 
 # F183.5 bench review: the dev-server link to the private bench output (splats are megabytes)
 static/bench-generation
+
+# A persistent flock inode (scripts/agent/state-file.ts); its existence means nothing.
+/mcp-workspace.lock

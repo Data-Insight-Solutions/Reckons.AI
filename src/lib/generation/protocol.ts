@@ -14,6 +14,8 @@ export interface GenerationRequest {
   seed: number;
   /** A completed image job in this same workspace and space. */
   parentId?: string;
+  /** F278: the hub entity this asset is made for. A kept result links it to that hub; absent for free-form jobs. */
+  forEntity?: string;
 }
 export interface GenerationReceipt {
   stage: GenerationStage;
@@ -82,7 +84,8 @@ export function parseRequest(value: unknown): GenerationRequest {
     || typeof value.prompt !== 'string' || !value.prompt.trim() || value.prompt.length > 2000
     || !Number.isInteger(value.seed) || Number(value.seed) < 0 || Number(value.seed) > 2147483647
     || (value.stage !== 'image' && !validJobId(value.parentId))
-    || (value.stage === 'image' && value.parentId !== undefined)) {
+    || (value.stage === 'image' && value.parentId !== undefined)
+    || (value.forEntity !== undefined && (typeof value.forEntity !== 'string' || !value.forEntity || value.forEntity.length > 500))) {
     throw new Error('Invalid generation request');
   }
   // Drop unknown fields: the queue cannot supply a command, path, model, or extra CLI arguments.
@@ -90,6 +93,7 @@ export function parseRequest(value: unknown): GenerationRequest {
     version: 1, id: value.id, spaceId: value.spaceId, stage: value.stage as GenerationStage,
     prompt: value.prompt, seed: value.seed as number,
     ...(value.parentId ? { parentId: value.parentId as string } : {}),
+    ...(value.forEntity ? { forEntity: value.forEntity as string } : {}),
   };
 }
 

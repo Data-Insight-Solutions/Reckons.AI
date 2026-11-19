@@ -19,15 +19,13 @@ import { join, resolve } from 'path';
 import { Parser } from 'n3';
 
 import type { Quad } from '@rdfjs/types';
+import { readStoryQuads } from '../../src/lib/rdf/story-steps';
 
 export const ROOT = resolve(import.meta.dirname ?? '.', '..', '..');
 export const TESTING_TTL = join(ROOT, 'static', 'docs-testing.ttl');
 
 const KTYPE = 'urn:kbase:type/';
 const KPRED = 'urn:kbase:predicate/';
-const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
-const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
-const SKOS_DEFINITION = 'http://www.w3.org/2004/02/skos/core#definition';
 
 /** Every flagship screenshot is captured at this viewport, so the page can reserve the space. */
 export const SHOT_WIDTH = 1280;
@@ -116,73 +114,46 @@ export function parseTtl(file: string): Quad[] {
   return new Parser().parse(readFileSync(file, 'utf8')) as Quad[];
 }
 
-/** Every workflow in these quads, steps in their declared order. Throws on a malformed graph. */
+/**
+ * Every workflow in these quads, steps in their declared order. Throws on a malformed input.
+ * A thin adapter: the reading is src/lib/rdf/story-steps.ts (F300.1), shared with the in-app player.
+ */
 export function loadWorkflows(quads: Quad[]): Workflow[] {
-  const bySubject = new Map<string, Quad[]>();
-  for (const q of quads) {
-    if (q.subject.termType !== 'NamedNode') continue;
-    const arr = bySubject.get(q.subject.value) ?? [];
-    arr.push(q);
-    bySubject.set(q.subject.value, arr);
-  }
-  const lit = (iri: string, p: string): string | null =>
-    bySubject.get(iri)?.find((q) => q.predicate.value === p && q.object.termType === 'Literal')?.object.value ?? null;
-  const isType = (iri: string, t: string) =>
-    !!bySubject.get(iri)?.some((q) => q.predicate.value === RDF_TYPE && q.object.value === t);
-  const need = (iri: string, p: string, what: string): string => {
-    const v = lit(iri, p);
-    if (v === null || v.trim() === '') throw new Error(`<${iri}> has no ${what}`);
-    return v;
-  };
-
-  const workflows: Workflow[] = [];
-  for (const iri of bySubject.keys()) {
-    if (!isType(iri, TEST_WORKFLOW)) continue;
-    const steps: WorkflowStep[] = [];
-    for (const [sIri, sQuads] of bySubject) {
-      if (!isType(sIri, TEST_STEP)) continue;
-      if (!sQuads.some((q) => q.predicate.value === P.partOf && q.object.value === iri)) continue;
-      const order = parseInt(need(sIri, P.stepOrder, 'kpred:step-order'), 10);
-      if (!Number.isFinite(order)) throw new Error(`<${sIri}> has a non-numeric kpred:step-order`);
-      const title = need(sIri, RDFS_LABEL, 'rdfs:label');
-      steps.push({
-        iri: sIri,
-        id: need(sIri, P.stepId, 'kpred:step-id'),
-        order,
-        title,
-        text: need(sIri, SKOS_DEFINITION, 'skos:definition'),
-        page: need(sIri, P.page, 'kpred:page'),
-        assertion: need(sIri, P.assertion, 'kpred:assertion'),
-        shortLabel: lit(sIri, P.shortLabel) ?? title,
-        boxLabel: lit(sIri, P.boxLabel) ?? title,
-        boxTarget: need(sIri, P.boxTarget, 'kpred:box-target'),
-        pageName: need(sIri, P.pageName, 'kpred:page-name'),
-        screenshot: lit(sIri, P.screenshot),
-        narration: lit(sIri, P.narration)?.trim() || null,
-        narrationLead: lit(sIri, P.narrationLead)?.trim() || null,
-      });
-    }
-    steps.sort((a, b) => a.order - b.order);
-    const orders = steps.map((s) => s.order);
-    if (new Set(orders).size !== orders.length) throw new Error(`<${iri}> has two steps with the same kpred:step-order`);
-    const ids = steps.map((s) => s.id);
-    if (new Set(ids).size !== ids.length) throw new Error(`<${iri}> has two steps with the same kpred:step-id`);
-    workflows.push({
-      iri,
-      id: need(iri, P.workflowId, 'kpred:workflow-id'),
-      title: need(iri, RDFS_LABEL, 'rdfs:label'),
-      definition: lit(iri, SKOS_DEFINITION) ?? '',
-      shotsNote: lit(iri, P.shotsNote) ?? '',
-      testFile: need(iri, P.testFile, 'kpred:test-file'),
-      narrator: lit(iri, P.narrator)?.trim() || null,
-      video: lit(iri, P.video)?.trim() || null,
-      videoCaptions: lit(iri, P.videoCaptions)?.trim() || null,
-      videoPoster: lit(iri, P.videoPoster)?.trim() || null,
-      relatesTo: (bySubject.get(iri) ?? []).filter((q) => q.predicate.value === P.relatesTo && q.object.termType === 'NamedNode').map((q) => q.object.value),
-      steps,
-    });
-  }
-  return workflows.sort((a, b) => a.id.localeCompare(b.id));
+  // Recorder-only predicates (F275.22) that the shared reader does not carry.
+  const extra = (iri: string, p: string): string | null =>
+    quads.find((q) => q.subject.value === iri && q.predicate.value === p && q.object.termType === 'Literal')?.object.value.trim() || null;
+  return readStoryQuads(quads, { strict: true })
+    .filter((s) => s.origin === 'test-workflow')
+    .map((s): Workflow => ({
+      iri: s.iri,
+      id: s.id,
+      title: s.label,
+      definition: s.description,
+      shotsNote: s.shotsNote,
+      testFile: s.testFile ?? '',
+      narrator: s.narrator?.trim() || null,
+      video: extra(s.iri, P.video),
+      videoCaptions: extra(s.iri, P.videoCaptions),
+      videoPoster: extra(s.iri, P.videoPoster),
+      relatesTo: quads.filter((q) => q.subject.value === s.iri && q.predicate.value === P.relatesTo && q.object.termType === 'NamedNode').map((q) => q.object.value),
+      steps: s.steps.map((t): WorkflowStep => ({
+        iri: t.iri,
+        id: t.id,
+        order: t.order,
+        title: t.title,
+        text: t.detail,
+        page: t.openPage ?? '',
+        assertion: t.expects.find((e) => e.kind === 'note')?.text ?? '',
+        shortLabel: t.shortLabel,
+        boxLabel: t.target?.label ?? t.title,
+        boxTarget: t.target?.ref ?? '',
+        pageName: t.pageName,
+        screenshot: t.media,
+        narration: extra(t.iri, P.narration),
+        narrationLead: t.question?.trim() || null,
+      })),
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function loadWorkflowsFromFile(file = TESTING_TTL): Workflow[] {

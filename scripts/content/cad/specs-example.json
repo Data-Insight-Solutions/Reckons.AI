@@ -1,0 +1,13 @@
+{
+  "kind": "bracket",
+  "name": "l-bracket-60",
+  "params": {
+    "width_mm": 60,
+    "height_mm": 40,
+    "depth_mm": 35,
+    "thickness_mm": 4,
+    "hole_diameter_mm": 5,
+    "hole_count": 2,
+    "fillet_mm": 6
+  }
+}

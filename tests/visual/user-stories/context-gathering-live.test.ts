@@ -83,14 +83,14 @@ test('gather context from a note — LIVE Ollama extraction', async ({ page }) =
   });
 
   await test.step('extract with the live model and land on compare', async () => {
-    await page.getByRole('button', { name: /extract facts/i }).click();
+    await page.getByRole('button', { name: /extract statements/i }).click();
     // Isolate live EXTRACTION: decline the (separate) embedding-model download so
     // the semantic dedup step falls back to structural.
     await page
       .getByRole('button', { name: /not now/i })
       .click({ timeout: 20_000 })
       .catch(() => {});
-    await page.waitForURL(/\/compare/, { timeout: 90_000 });
+    await page.waitForURL(/\/review\?view=compare/, { timeout: 90_000 });
     await page.waitForTimeout(2000);
     await screenshotTo(page, 'context-gathering-live', '02-compare-live');
   });

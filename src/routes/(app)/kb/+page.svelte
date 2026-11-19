@@ -1470,7 +1470,7 @@
                 <a href={`/review?source=${src.id}`}>
                   <button class="primary sm">review {pending}</button>
                 </a>
-                <a href={`/compare?source=${src.id}`}>
+                <a href={`/review?view=compare&source=${src.id}`}>
                   <button class="sm">compare</button>
                 </a>
               {/if}

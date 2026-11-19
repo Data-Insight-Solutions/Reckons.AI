@@ -1,5 +1,7 @@
 <script lang="ts">
   import { projectSpaceView } from '$lib/rdf/space-view';
+  import { statementsTouching, newReckoningId } from '$lib/rdf/reckoning-entity';
+  import { saveReckoning } from '$lib/stores/reckoning.svelte';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
@@ -13,6 +15,7 @@
   import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import OptionDecision from '$lib/components/OptionDecision.svelte';
   import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
@@ -2094,6 +2097,27 @@
     selected = null; // hand off to the multi-select action panel
   }
 
+  /**
+   * F223.12.1: 'Reckon with these'. The facts that touch the picked entities become the situation of a new
+   * Reckoning entity, and the Reckoning page opens with them already chosen. An action on the existing selection,
+   * not a new place to go.
+   */
+  async function reckonWithIris(iris: string[]) {
+    const rows = statementsTouching(statements(), new Set(iris));
+    if (rows.length === 0) {
+      pushNotification({ id: 'reckon-empty', type: 'info', title: 'Nothing to reckon with', body: 'No statements touch what you selected.' });
+      return;
+    }
+    const id = newReckoningId();
+    try {
+      if (!(await saveReckoning(id, rows.map((r) => r.id), ''))) throw new Error('this data is read-only');
+    } catch (e) {
+      pushNotification({ id: 'reckon-failed', type: 'warn', title: 'Reckoning not saved', body: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    await goto(`/reckoning?r=${id}`);
+  }
+
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
   // is a first-class node (skos:Collection) linked to each member via skos:member,
   // so it round-trips in TTL and can be re-selected to act on the whole group.
@@ -2609,6 +2633,7 @@
         <button class="chip active" onclick={() => { focusOptionId = null; focusCited = []; }} title="Stop showing one proposal option">
           <span class="lbl mono">option {focusOptionId} ✕</span>
         </button>
+        <OptionDecision optionId={focusOptionId} />
       {/if}
       <!-- Sources filter chip -->
       <Popover.Root bind:open={showSourceFilter} onOpenChange={(o) => { if (o) showTypeFilter = false; }}>
@@ -2756,6 +2781,8 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
+      <button class="np-act-btn np-act-primary" onclick={() => reckonWithIris(multiSelectedList.map((n) => n.iri))}
+        title="open the Reckoning page with the statements about these chosen">⚖ Reckon with these</button>
       <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
@@ -3128,6 +3155,8 @@
           {#if selectedIri}
             <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
             <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
+            <button class="np-act-btn" onclick={() => reckonWithIris([selectedIri!])}
+              title="open the Reckoning page with the statements about this chosen">⚖ Reckon with these</button>
           {/if}
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
         </div>
