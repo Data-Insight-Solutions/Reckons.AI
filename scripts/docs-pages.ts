@@ -55,6 +55,7 @@ import { loadCache, diagramKey, diagramFigure } from './lib/mermaid-render.js';
 import { loadSceneCache, sceneKey, sceneFigure, sceneIframe } from './lib/scene-render.js';
 import { hashFacts, DEFAULT_FLOOR } from './lib/page-provenance.js';
 import { docsTitle } from './lib/docs-title.js';
+import { videoBlock } from './lib/docs-video.js';
 import { loadWorkflows, workflowDiagram, SHOT_WIDTH, SHOT_HEIGHT, type Workflow } from './lib/test-workflow.js';
 import { altitudeOf, ALTITUDE_RANK } from '../src/lib/rdf/fact-altitude.js';
 import { readSets, readNotations, setOverlaps, type EntitySet } from '../src/lib/rdf/sets.js';
@@ -140,6 +141,11 @@ const RENDER_ONLY_STRUCTURAL = new Set<string>([
   // printing them again as "Details" bullets would show the plumbing beside the finished page.
   `${KPRED}workflow-id`, `${KPRED}test-file`, `${KPRED}step-id`, `${KPRED}short-label`,
   `${KPRED}box-label`, `${KPRED}box-target`, `${KPRED}page-name`, `${KPRED}shots-note`, `${KPRED}screenshot`,
+  // F275 demo videos: the narrator's voice id and each step's spoken line feed npm run demo:render,
+  // not the page; a raw provider id under "Detail" means nothing to a reader.
+  `${KPRED}narrator`, `${KPRED}narration`, `${KPRED}narration-lead`, `${KPRED}narration-status`, `${KPRED}narration-storyline`,
+  // F275.22: the video is rendered as a player at the top of the page, not listed as a path.
+  `${KPRED}video`, `${KPRED}video-captions`, `${KPRED}video-poster`,
   // Which surface a tenet appears on is a routing flag, not something to print at a reader.
   SHOW_ON_LANDING,
   // Where the page LIVES is routing too. Without these, the first page to use the override
@@ -1212,6 +1218,13 @@ function renderBody(
   if (status && STATUS_BANNER[status]) lines.push(STATUS_BANNER[status], '');
 
   if (e.definition) { lines.push(escapeMdText(e.definition), ''); }
+
+  // F275.22: a workflow's narrated video plays here, and on every page the workflow documents.
+  for (const w of WORKFLOWS.values()) {
+    if (w.video && (w.iri === e.iri || w.relatesTo.includes(e.iri))) {
+      lines.push(videoBlock(w, (p) => existsSync(join(STATIC_DIR, p.replace(/^\/+/, '')))), '');
+    }
+  }
 
   // The picture goes directly under the sentence that introduces it, not at the bottom.
   lines.push(...renderDiagramFor(e));

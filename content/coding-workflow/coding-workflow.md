@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the code and the plan honest with each other. The plan lives in the graph; code is checked against it; agents propose, humans decide. This page is generated from that same graph, so it cannot claim a capability the graph does not have.
 
-<p class="derived">It has 24 parts below, 7 of which are not built yet.</p>
+<p class="derived">It has 25 parts below, 8 of which are not built yet.</p>
 
 ## Why it is this way
 
@@ -52,5 +52,6 @@ Reckons.AI turns a codebase into a graph you can interrogate, and then keeps the
 <a class="card" href="../coding-workflow/deputy-memory-readback"><span class="card-title">What the deputy remembers, held back for review</span><span class="card-text">Each deputy launch starts from a copy of the main session's project memory, so it works with the same remembered facts.</span></a>
 <a class="card" href="../coding-workflow/overseer-bench-rates"><span class="card-title">How often each overseer stops, measured</span><span class="card-text">An overseer is the agent that decides, over other agents' work, whether to proceed or to stop.</span></a>
 <a class="card" href="../coding-workflow/other-repo-agents"><span class="card-title">The same deputies, working in another repository</span><span class="card-text">The deputy is not locked to this repository.</span></a>
+<a class="card" href="../coding-workflow/hub-assets-command"><span class="card-title">Giving the busiest topics a picture and a 3D view, from the command line</span><span class="card-status">in-progress</span><span class="card-text">A hub is a topic that many statements connect to.</span></a>
 
 </div>

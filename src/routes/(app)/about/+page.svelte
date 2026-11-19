@@ -879,6 +879,7 @@
       {#each listedExampleKbs() as kb (kb.id)}
         <button
           class="starter-card"
+          data-testid="starter-card-{kb.id}"
           onclick={() => importStarterKB(kb)}
           disabled={loadingKb !== null}
         >

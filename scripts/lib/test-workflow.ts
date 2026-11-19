@@ -47,6 +47,20 @@ export const P = {
   shotsNote: `${KPRED}shots-note`,
   shortLabel: `${KPRED}short-label`,
   screenshot: `${KPRED}screenshot`,
+  /** F275.1: the line spoken while the step plays in a demo video. */
+  narration: `${KPRED}narration`,
+  /** F275.1: the Hume voice (name or id) a workflow's demo is narrated in. */
+  narrator: `${KPRED}narrator`,
+  /** F275: a short question or bridge spoken as the step begins, before the screen changes. */
+  narrationLead: `${KPRED}narration-lead`,
+  /** F275.22: the rendered video this workflow's pages play, a site-root path under /video/demos/. */
+  video: `${KPRED}video`,
+  videoCaptions: `${KPRED}video-captions`,
+  videoPoster: `${KPRED}video-poster`,
+  /** The entity a workflow documents: its page shows the workflow's video too. */
+  relatesTo: `${KPRED}relates-to`,
+  /** F275.22.2: one sentence on what the viewer understands by the end and how the steps build. */
+  narrationStoryline: `${KPRED}narration-storyline`,
 } as const;
 
 export interface WorkflowStep {
@@ -71,6 +85,10 @@ export interface WorkflowStep {
   pageName: string;
   /** Site-root path of the annotated screenshot, or null when none has been captured. */
   screenshot: string | null;
+  /** F275.1: what the demo narrator says during this step, or null when the step plays silent. */
+  narration: string | null;
+  /** F275: spoken at the step's start, before its pause; null when the step has none. */
+  narrationLead: string | null;
 }
 
 export interface Workflow {
@@ -81,6 +99,14 @@ export interface Workflow {
   /** Markdown on how the screenshots were made and what is scripted; shown after the diagram. */
   shotsNote: string;
   testFile: string;
+  /** F275.1: the Hume voice its demo is narrated in, or null for the render's default. */
+  narrator: string | null;
+  /** F275.22: site-root paths of the rendered video, its captions and its poster, or null. */
+  video: string | null;
+  videoCaptions: string | null;
+  videoPoster: string | null;
+  /** Entities this workflow documents (kpred:relates-to). */
+  relatesTo: string[];
   steps: WorkflowStep[];
 }
 
@@ -93,6 +119,9 @@ export function parseTtl(file: string): Quad[] {
  * A thin adapter: the reading is src/lib/rdf/story-steps.ts (F300.1), shared with the in-app player.
  */
 export function loadWorkflows(quads: Quad[]): Workflow[] {
+  // Recorder-only predicates (F275.22) that the shared reader does not carry.
+  const extra = (iri: string, p: string): string | null =>
+    quads.find((q) => q.subject.value === iri && q.predicate.value === p && q.object.termType === 'Literal')?.object.value.trim() || null;
   return readStoryQuads(quads, { strict: true })
     .filter((s) => s.origin === 'test-workflow')
     .map((s): Workflow => ({
@@ -102,6 +131,11 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
       definition: s.description,
       shotsNote: s.shotsNote,
       testFile: s.testFile ?? '',
+      narrator: s.narrator?.trim() || null,
+      video: extra(s.iri, P.video),
+      videoCaptions: extra(s.iri, P.videoCaptions),
+      videoPoster: extra(s.iri, P.videoPoster),
+      relatesTo: quads.filter((q) => q.subject.value === s.iri && q.predicate.value === P.relatesTo && q.object.termType === 'NamedNode').map((q) => q.object.value),
       steps: s.steps.map((t): WorkflowStep => ({
         iri: t.iri,
         id: t.id,
@@ -115,6 +149,8 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
         boxTarget: t.target?.ref ?? '',
         pageName: t.pageName,
         screenshot: t.media,
+        narration: extra(t.iri, P.narration),
+        narrationLead: t.question?.trim() || null,
       })),
     }))
     .sort((a, b) => a.id.localeCompare(b.id));

@@ -3,7 +3,101 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+## 2026-11-18 — START HERE: dev integrates LOCALLY now; integration/2026-11-18 holds the batch; v0.2.9 waits for its videos
+
+Opus head session with Sonnet agents and the local deputy. Decisions are `kpred:decided` on `kb:release-0-2-9`.
+
+**How dev work lands (Matt, 2026-11-10, reminded 2026-11-18: "skip GitHub on dev"):** agent branches are
+PUSHED WITH NO PR. They merge into a local `integration/<date>` branch, the checks run on the combined tree
+here, and GitHub gets ONE batched PR to dev. Most of this day went through one PR per feature instead; that
+was the miss. **Worktrees:** a hand-made worktree links node_modules to the main checkout's when
+`package-lock.json` matches; it installs only when a branch changes dependencies. On Matt's OK, the 10 merged
+worktrees were removed (disk 96 → 113 GB free).
+
+**The batch: `integration/2026-11-18` (worktree tripleNotes-scope029), one PR to dev.** It is dev plus:
+- plan/v029-scope (#679)
+- feat/v029-review-space (#677)
+- feat/v029-visual-workflows (#678)
+- agent/local-0-2-9-docs (deputy draft plus Sonnet fixes, no PR)
+- feat/f300-3-story-recorder: F300.3 scaffolded, no PR. It carries #592, #652 and #655 merged with dev, so those
+  close as superseded.
+
+Local checks on the combined tree, 2026-11-18:
+- blocking script tier 9 of 9
+- svelte-check 0 errors
+- unit suite 431 files, 5,559 tests passed, before the recorder; the recorder's story tests 21 of 21
+- full e2e on Node 24, as CI runs it: 228 passed, 9 skipped, 2 flaky (both passed on retry). The flaky ones are
+  "Shelly queues a chain as ONE approval", flaky since 11-17, and the new Compare workflow's step 3.
+- production build and `build:verify` 0 errors (three size warnings, which predate this batch).
+Node 22 (`.nvmrc`) crashes the full e2e suite before any test; this is a drift-warning on `kb:reproducible-delivery`.
+`kb:story-recorder` had been defined on two branches; it was reconciled into one entity.
+The recorder is scaffolded: only steps 1–2 of the generated-assets walk are declarative, and the rest are named
+exceptions. No rendered video has been watched or heard.
+
+**The machine thrashed around 19:28 local.** The RAM guard (F74.11) fired as designed. An interactive deputy
+session's model loaded into system RAM while queue image jobs held the GPU. The guard stopped one image job and
+paused the queue. This is a high drift-warning on `kb:queue-ram-guard`; the proposed fix is that an interactive
+local session holds a GPU claim. Matt said resume; the queue was resumed at 20:51 local. All garden pictures are
+done and copied into the review space; two were looked at, and they are correct. The garden splat failed with
+CUDA out of memory: qwen3.8 was resident on GPU 0 (18 GB), and what called it is unknown. The worker retries it
+by itself.
+
+**Matt decided today (AskUserQuestion):** v0.2.9 KEEPS the demo-video headline. It is cut only after:
+- the F300 story reader (F300.1, merged #674)
+- the recorder and test that play a story (F300.3)
+- the docs videos made from stories (F300.5 / F275.22)
+Passive mode (F300.2) and the device fallback (F300.4) are not cut conditions. The 27 parts with no work since
+they were listed moved to v0.3.0. F223.12, F264, F278 and F300 joined as parts. v0.2.9 is NOT close: burndown
+0 of 8 functional on 2026-11-18.
+
+**Merged to dev today via GitHub (before the reminder):** #659–#665 and #667–#676. #671 included a fix
+(9dddb3e2): the accept confirmation counted an option's record rows as statements.
+
+**Next, in order:**
+1. The batch PR: its CI, then Claude merges it into dev (merge authority: dev is Claude's, staging → main is Matt's).
+2. Extend the runner (run-job, count and standing probes) so more steps are declarative.
+3. Close #592, #652 and #655 as superseded once the batch lands.
+4. Re-run the garden splat if its retry fails again.
+5. Move the demo walks onto stories (F300.5).
+6. Matt reviews the scripts.
+7. Render the docs videos.
+8. Release notes, `review-0.2.9.ttl`, the review page.
+
+**Waiting on Matt:** close #657 (superseded by #678)? The nine bundled-only starters in F263; which F303 phone
+transport comes first; the F196.5 registry; F301 and F302 questions.
+
+**Not verified:** the garden space has not been opened in the app; the walk has not been played.
+
+## 2026-11-18 (deputy, local qwen3.8-160k) — v0.2.9 docs pages: five pages covering the nine undocumented features
+
+**Overseer note (Sonnet, 2026-11-18):** this draft was reviewed, rebased on dev and corrected before it merged. #671 had landed, so the Reckoning page now describes accepting an option as built (F223.12.4), and F278.1–.3 got a short developer-facing page. About 70% of the deputy's sentences survived unchanged.
+
+**What I did (branch `agent/local-0-2-9-docs`, one commit):** wrote the five documentation pages the
+job brief asked for, from each feature's own roadmap status and remaining notes:
+- Reckoning (F223.12.1–.3 together): three-step flow + "accepting an option is planned, not built"
+- Compare in Review (F264.1): one flow, the four labels, "labels tested with a fixed-answer model"
+- New page "Making assets" (F299 CAD + F166.1.3 connect popup + F58.9.19.6 synthetic captures)
+- Local models page extended for F279.1 (automatic model choice; role lists are judgment, not re-measured)
+- Site page extended for F274.4.5 (workflow in the site repo; preview URL unverified, nothing in production)
+
+**DONE WHEN verified:** release-notes --check-docs no longer lists these nine (the remaining four
+rows — F278.1–.3 and F223.12.4 — are other jobs' scope); graph-lint 0 errors; term-usage --check
+green (no baseline raised); the docs-expand jargon gate run over every new block passes; docs-status
+consistent. All facts were read from `static/reckons-roadmap.ttl` this session, not from memory.
+
+**Unverified (says so on the pages):** the CAD bracket never opened in the app's 3D viewer; the
+connect popup never seen with a real folder picker or real job; the multi-scan pass limits are
+proposed starting values from one good run; the F264.1 labels tested with a deterministic embedder,
+not the real model; the site preview URL unverified and nothing deployed to production.
+
+**One house-rule finding for the overseer:** `scripts/docs-pages.ts` sorts `skos:broadMatch` target
+IRIs alphabetically (line ~359 `arr.sort()`), so "first match link in file order wins" (the house
+comment on the Owed pages) is not how the status banner resolves — for feat:SiteBuilder I therefore
+kept only the least finished feature (deploy, scaffolded) as the broadMatch status carrier, with the
+build linked via `kpred:relates-to` (the gate counts that). Banner now reads Scaffolded. No Matt
+decisions were made with me in this window, so nothing was queued via kb_add_note.
+
+## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 
 Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
 

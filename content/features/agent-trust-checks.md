@@ -1,7 +1,7 @@
 ---
 title: "Trust checks for work done by a local helper"
 slug: "agent-trust-checks"
-order: 1059
+order: 1060
 section: "Features"
 parent: "local-jobs-mcp"
 template: doc

@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it.
 
-## Works today (50)
+## Works today (49)
 
 <p class="derived">Built and working. Production means also tested and in daily use.</p>
 
@@ -23,7 +23,6 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [A background for a space](../features/space-background) · functional
 - [A reckoning — asking your graph what to do](../learn/reckoning) · production
 - [A space file that carries its evidence](../features/space-file-passages) · functional
-- [Build a website from your notes](../features/site-builder) · functional
 - [Compare — finding out where two people actually disagree](../features/compare) · production
 - [Content Safety](../features/content-safety-features) · production
 - [Context Compression](../features/context-compression-features) · functional
@@ -69,14 +68,16 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Where a node's facts came from](../features/node-sources) · functional
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (13)
+## Partly built (15)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
+- [Build a website from your notes](../features/site-builder) · scaffolded
 - [Currents](../features/currents) · scaffolded
 - [Generated media: checks, retries, settings and what it costs](../features/generation-quality) · scaffolded
 - [Local jobs through MCP](../features/local-jobs-mcp) · in-progress
 - [Local jobs: the one queue, This device and the memory guard](../features/local-jobs-on-this-device) · scaffolded
+- [Making assets: a part you can cut, a tool you can start, a check with a known answer](../features/making-assets) · scaffolded
 - [Physical scene simulator (early, command line only)](../features/physical-scene-simulator) · in-progress
 - [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress

@@ -77,6 +77,8 @@
     "docs:diagrams": "npx tsx scripts/docs-diagrams.ts",
     "docs:diagrams:check": "npx tsx scripts/docs-diagrams.ts --check",
     "workflow:shots": "npx tsx scripts/workflow-shots.ts",
+    "demo:render": "npx tsx scripts/demo/render.ts",
+    "demo:story": "DEMO_OUT_DIR=\"$PWD/demo-out\" npx tsx scripts/demo/render.ts --voice=kokoro:af_heart",
     "workflow:check": "npx tsx scripts/offline/test-workflow-check.ts",
     "gen:assets": "npx tsx scripts/content/gen-assets.ts",
     "assets:hubs": "tsx scripts/content/gen-hub-assets.ts",

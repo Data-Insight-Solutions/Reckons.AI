@@ -29,7 +29,7 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.
 
-<p class="derived">It has 4 parts below.</p>
+<p class="derived">It has 6 parts below.</p>
 
 ## In this section
 
@@ -48,3 +48,11 @@ Space building and space changing, start to finish: add a note and accept what i
 **[Make pictures, clips and 3D splats on your own machine, and see them in a space](../testing/workflow-generated-assets)**
 
 Write a prompt, and three local models turn it into a picture, then a short clip and a Gaussian splat (a 3D object drawn as many small soft blobs of color) made from that picture.
+
+**[Read a note against what you hold, see it on the canvas, decide a contradiction](../testing/workflow-compare-v029)**
+
+Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new.
+
+**[Reckon with chosen statements, then accept one option](../testing/workflow-reckoning-v029)**
+
+A Reckoning helps you decide something using what your knowledge base already holds.

@@ -32,6 +32,18 @@ test:W-${id}
 const parse = (ttl: string) => new Parser().parse(ttl);
 
 describe('loadWorkflows', () => {
+  it('reads demo narration and narrator when present, null when absent (F275.1)', () => {
+    const plain = loadWorkflows(parse(PRE + step(1, 'a')));
+    expect(plain[0].narrator).toBeNull();
+    expect(plain[0].steps[0].narration).toBeNull();
+    const narrated = PRE.replace('kpred:test-file "tests/e2e/sample.test.ts" .', 'kpred:test-file "tests/e2e/sample.test.ts" ; kpred:narrator "Shelly V1" .')
+      + step(1, 'a', '; kpred:narration "  Here is the first step.  "') + step(2, 'b', '; kpred:narration "   "');
+    const w = loadWorkflows(parse(narrated))[0];
+    expect(w.narrator).toBe('Shelly V1');
+    expect(w.steps[0].narration).toBe('Here is the first step.');
+    expect(w.steps[1].narration).toBeNull();
+  });
+
   it('returns steps in kpred:step-order, not file order', () => {
     const w = loadWorkflows(parse(PRE + step(2, 'second') + step(1, 'first')));
     expect(w).toHaveLength(1);
@@ -114,5 +126,34 @@ describe('the real flagship workflow', () => {
   it('is run by a test file that names every step (static twin of the e2e mismatch check)', () => {
     const text = readFileSync(join(ROOT, flagship.testFile), 'utf8');
     for (const s of flagship.steps) expect(text, s.id).toMatch(new RegExp(`['"]?${s.id}['"]?\\s*:`));
+  });
+});
+
+import { videoBlock, videoPathProblem } from '../lib/docs-video';
+
+describe('docs video embed (F275.22.1)', () => {
+  const base = {
+    iri: 'urn:x', id: 'x', title: 'X', definition: '', shotsNote: '', testFile: 't', narrator: null,
+    video: '/video/demos/x.mp4', videoCaptions: '/video/demos/x.vtt', videoPoster: '/video/demos/x.webp',
+    relatesTo: [], steps: [],
+  } as never;
+  const yes = () => true;
+  it('renders a captioned player with a poster', () => {
+    const h = videoBlock(base, yes);
+    expect(h).toBe('<video controls preload="metadata" playsinline poster="/video/demos/x.webp"><source src="/video/demos/x.mp4" type="video/mp4"><track kind="captions" srclang="en" label="English" src="/video/demos/x.vtt" default></video>');
+  });
+  it('omits poster and track when absent, and escapes attribute values', () => {
+    const h = videoBlock({ ...(base as object), video: '/video/demos/a"b.mp4', videoCaptions: null, videoPoster: null } as never, yes);
+    expect(h).not.toContain('poster');
+    expect(h).not.toContain('<track');
+    expect(h).toContain('a&quot;b.mp4');
+  });
+  it('rejects paths outside /video/demos/ and traversal', () => {
+    expect(videoPathProblem('/other/x.mp4', ['.mp4'], yes)).toMatch(/not under/);
+    expect(videoPathProblem('/video/demos/../x.mp4', ['.mp4'], yes)).toMatch(/not under/);
+    expect(videoPathProblem('https://e.com/video/demos/x.mp4', ['.mp4'], yes)).toMatch(/not under/);
+  });
+  it('errors when an asset is missing from static/', () => {
+    expect(() => videoBlock(base, (p) => p !== '/video/demos/x.vtt')).toThrow(/x\.vtt is linked but .* does not exist/);
   });
 });
