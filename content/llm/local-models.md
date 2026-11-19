@@ -20,13 +20,13 @@ Small language models that run on your own machine (via Ollama, or fully in-brow
 
 <p class="derived">It has one part below.</p>
 
-ON A FRESH INSTALL, NO MODEL NAME IS STORED AT ALL. Each task — extracting facts, chatting, or code — asks your Ollama which models are installed and picks one that fits the task's role, so a first run works without anyone having pre-named a model. A model you have explicitly chosen is never overridden: the automatic choice fills the gaps, it does not replace your decision. In Settings the choice reads Automatic, next to the model that would actually run, so it is never a mystery which one answered. And if nothing is installed, the app tells you to pull one — for example, ollama pull gemma3 — instead of sending a request that would fail with no model to answer it.
+ON A FRESH INSTALL, NO MODEL NAME IS STORED AT ALL. Each task (extracting statements, chatting, or code) asks your Ollama which models are installed and picks one that fits the task's role, so a first run works without anyone having pre-named a model. A model you have explicitly chosen is never overridden: the automatic choice fills the gaps, it does not replace your decision. In Settings the choice reads Automatic, next to the model that would actually run, so it is never a mystery which one answered. And if nothing is installed, the app tells you to pull one — for example, ollama pull gemma3 — instead of sending a request that would fail with no model to answer it.
 
 ## Why it is this way
 
 **Honest Note**
 
-THE ROLE LISTS ARE ORDERED BY JUDGMENT, not by a fresh measurement: they lean on one extraction benchmark from 2026-11-04. Only the extraction and chat roles are reachable by a task today (there is a code list, but no task uses it yet). And gemma3, the model the app suggests you pull, is a recommendation, not something measured on this project's own work.
+THE ROLE LISTS ARE ORDERED BY JUDGMENT, not by a fresh measurement: they lean on one extraction benchmark from 2026-11-04. Only the extraction and chat roles are reachable by a task today (there is a code list, but no task uses it yet). An install that already saved a model name keeps that choice. And gemma3, the model the app suggests you pull, is a recommendation, not something measured on this project's own work.
 
 ## In this section
 

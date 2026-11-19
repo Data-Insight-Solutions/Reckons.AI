@@ -45,7 +45,7 @@ IT CAN ONLY COMPARE WHAT WAS WRITTEN DOWN. Two graphs that use different words f
 
 **Honest Note**
 
-TWO HONEST NOTES. The four richer labels were tested with a model that gives fixed, repeatable answers, not with the small model that would run on a real device — the machinery is proven, the real model's exact judgement is not yet measured. And the compare that draws the incoming statements over the canvas, so you can see where they would land against what you hold, is still being built and is not merged yet.
+TWO HONEST NOTES. The four richer labels were tested with a model that gives fixed, repeatable answers, not with the small model that would run on a real device: the machinery is proven, the real model's exact judgment is not yet measured. And the view that draws the incoming statements over your own canvas (new ones as amber ghosts, repeats folded onto the statement they repeat, each contradiction as a red-ringed ghost with a card naming where each side came from) is built but still marked in progress. It works on the flat 2D canvas only, and its test checks the counts and cards, not the drawn pixels.
 
 ## Detail
 

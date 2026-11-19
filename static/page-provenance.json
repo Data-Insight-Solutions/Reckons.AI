@@ -1,5 +1,5 @@
 {
-  "built": 207,
+  "built": 208,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -269,7 +269,7 @@
       "factHash": "a55f82ed8b72bdf5",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "8ab169719c9ac156"
+      "pageHash": "8d5dbf2e98f08963"
     },
     {
       "path": "coding-workflow/commit-trailers",
@@ -315,6 +315,15 @@
       "factCount": 4,
       "floor": "evidence",
       "pageHash": "98ef94c7ae85a4e4"
+    },
+    {
+      "path": "coding-workflow/hub-assets-command",
+      "entity": "urn:reckons:docs/coding-workflow/HubAssetsCommand",
+      "graph": "docs-coding-workflow.ttl",
+      "factHash": "34c3db75e52fc061",
+      "factCount": 3,
+      "floor": "evidence",
+      "pageHash": "03b27e77ab7a38f4"
     },
     {
       "path": "coding-workflow/local-deputy",
@@ -518,10 +527,10 @@
       "path": "features/compare",
       "entity": "urn:reckons:feature/Compare",
       "graph": "docs-features.ttl",
-      "factHash": "6b6929b789da0a13",
+      "factHash": "f5cd9fc072cf1d91",
       "factCount": 10,
       "floor": "evidence",
-      "pageHash": "fb650b0637b5cb5a"
+      "pageHash": "00575f0167d3cfd7"
     },
     {
       "path": "features/confluence-migration",
@@ -662,10 +671,10 @@
       "path": "features/making-assets",
       "entity": "urn:reckons:feature/MakingAssets",
       "graph": "docs-features.ttl",
-      "factHash": "8ac6dd3612d49daf",
+      "factHash": "1984a9267a48c5f2",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "30fb54a49e20fe9a"
+      "pageHash": "4024e62901fb9057"
     },
     {
       "path": "features/mcp-workspace",
@@ -1103,10 +1112,10 @@
       "path": "learn/reckoning",
       "entity": "urn:reckons:feature/Reckoning",
       "graph": "docs-features.ttl",
-      "factHash": "379fda97bf31604f",
+      "factHash": "9306863d17837f5b",
       "factCount": 15,
       "floor": "evidence",
-      "pageHash": "ce5a4b332ac1e0a4"
+      "pageHash": "95f74feb74d0e549"
     },
     {
       "path": "learn/start-here",
@@ -1139,10 +1148,10 @@
       "path": "llm/local-models",
       "entity": "urn:reckons:llm/LocalModels",
       "graph": "docs-llm.ttl",
-      "factHash": "c0c4b566cd3ec3ad",
+      "factHash": "1b39a45862c6595c",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "e6b1704d85ba436f"
+      "pageHash": "f59187a727341f28"
     },
     {
       "path": "llm/retrieval-augmented",
