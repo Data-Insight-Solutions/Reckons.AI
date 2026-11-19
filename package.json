@@ -140,6 +140,7 @@
     "offline:altitude": "npx tsx scripts/offline/altitude-report.ts",
     "offline:decisions": "npx tsx scripts/offline/graph-decisions.ts",
     "offline:aggregate": "npx tsx scripts/offline/aggregate-decisions.ts",
+    "offline:examples": "npx tsx scripts/offline/example-space-inventory.ts",
     "offline:lint": "npx tsx scripts/offline/graph-lint.ts",
     "offline:terms": "npx tsx scripts/offline/term-usage.ts",
     "offline:naming": "npx tsx scripts/offline/naming-conventions.ts",
