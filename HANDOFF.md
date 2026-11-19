@@ -219,6 +219,46 @@ decisions were made with me in this window, so nothing was queued via kb_add_not
 
 ## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 
+## 2026-11-18 (deputy, local qwen3.8-160k) — START HERE: F304/F305 model-library plan recorded; PROPOSAL, nothing built
+
+**Branch `agent/local-model-library` (worktree `.claude/worktrees/local-model-library`, off origin/dev
+55622477, which has #676 F278 hub-assets — local dev f9753a57 is BEHIND origin, this branch is not).**
+One commit, two files: `static/reckons-roadmap.ttl` (the plan) and this entry.
+
+**Matt's decisions (2026-11-18, in chat, recorded as `kpred:decided` on the entities):**
+1. Use the open-source CC0 3D libraries he listed (Quaternius, Open Source 3D Assets, 3D Valley,
+   Poly Haven, Kenney, OpenGameArt, the two Awesome-CC0/Tools directories) as node assets in the space,
+   **automatically for hubs by default**; three.js stays the renderer; a style dropdown in settings
+   starts at low-poly (he is unsure performance matters — recorded as an open question, not a constraint).
+2. Editing/customizing EXISTING models is a NEW feature, with the Blender path.
+3. Hubs automatically search, trying to find the best match with the node's statements.
+
+**What the plan says (read the TTL, this is the summary):** `kb:model-library` F304 (planned) with
+F304.1 search-and-select into the existing kb-assets models slot (filters: license/style/format/size;
+management is the existing `kb:glb-management-ui` R4) and F304.2 hub auto-match — a THIRD source for
+F278's default assets (generated / library-matched / picked), query built only from the hub's confirmed
+facts (F278's GROUNDED principle), result lands as a PENDING asset, DEFAULT MEANS QUEUED NOT RUN.
+`kb:model-edit-blender` F305 (planned), Phase 2 of `kb:content-orchestration` after the scaffolded
+`kb:blender-mcp` Phase 1: open a stored GLB (or FBX/OBJ), graph-described change, export a NEW file
+beside the old (a rejected edit is a deletion, not a restore), license and attribution travel with it.
+License stance: license + author recorded as triples at save time (precedent `kb:ref-pmtiles`);
+OpenGameArt is mixed-license and gated per asset; NC assets excluded from published spaces.
+
+**Unverified / not done:** NOTHING is built — statuses are `planned`; this is a proposal for Matt/Opus
+to accept, re-shape or split (Matt called F305 "a new feature"; I made it a Phase with its own number
+because `kb:blender-mcp` already owns Phase 1 under content-orchestration — split it if you disagree).
+I did not run the full CI suite (it runs on the PR; this touches only roadmap TTL). I did not decide
+the release slot, the first library, the dropdown options or how "best match" is computed (F74.3
+routing decision — left as open questions on the entities). `kb:theming` has Matt's 2026-11-13 open
+question about his sister's three.js work on the same 3D surface — not resolved, don't re-ask him twice.
+
+**Checked:** graph-lint 0 errors / 15 warnings (identical baseline to dev; none on the new entities);
+every linked entity verified present in this base; F304/F305 are the next free feature numbers
+(F300–F303 taken). **NOT pushed, no PR** — deputy has no credential. Push then PR against dev, no merge:
+`! git -C /home/matt/Github/tripleNotes/.claude/worktrees/local-model-library push -u origin agent/local-model-library`
+
+## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+
 Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
 
 **Waiting on Matt:**
