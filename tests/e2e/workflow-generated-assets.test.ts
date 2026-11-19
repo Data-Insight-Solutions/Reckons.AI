@@ -121,6 +121,13 @@ test('every named exception belongs to a step of the story', () => {
   for (const s of story.steps) expect(s.actions.length > 0 || exceptions[s.id], `step "${s.id}" has neither an action nor a named exception`).toBeTruthy();
 });
 
+test('the steps with no code are declared in the graph, with expectations', () => {
+  for (const id of ['picture', 'splat', 'background']) {
+    const st = story.steps.find((x) => x.id === id)!;
+    expect(st.actions.length > 0 && st.expects.length > 0, `step "${id}" declares its actions and expectations`).toBe(true);
+  }
+});
+
 test(`${story.label}`, async ({ page }) => {
   const record = demoRecorder(page); // F275.3: a no-op unless npm run demo:story is recording
   test.setTimeout(record.active ? 600_000 : 180_000);
