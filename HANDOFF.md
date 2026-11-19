@@ -3,7 +3,54 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
-## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+## 2026-11-18 — START HERE: v0.2.9 waits for its demo videos; 27 parts moved to v0.3.0; the queue is PAUSED by the RAM guard
+
+Opus head session with Sonnet agents and the local deputy. Decisions are `kpred:decided` on `kb:release-0-2-9`.
+
+**The machine thrashed around 19:28 local (load average about 265, no reboot).** Matt was working in an
+interactive local deputy session while the queue ran the garden image jobs on the GPU, so the deputy's model
+loaded into system RAM. The RAM guard (F74.11) fired as designed (worker log: "Ollama holds 13.0 GiB of
+anonymous system RAM (hard limit 12.0 GiB)"). It stopped image job d2e8c548 (exit 143) and paused the queue.
+It cannot stop an interactive session's model load, so the desktop kept thrashing. Recorded as a high
+drift-warning on `kb:queue-ram-guard`. Proposed fix: an interactive local session holds a GPU claim the
+worker honours. After the crash: 22 GB RAM free, GPUs idle, no Ollama model loaded, the worker restarted by
+the watcher and holding because of PAUSE. **Resume only when Matt says so:** `npx tsx scripts/agent/queue.ts resume`.
+15 jobs wait: four garden images (bb0bf2d1, afd1010a, 7cf8e5bc, 29537042) and eleven scheduled checks.
+d2e8c548 must be queued again. Don't resume while an interactive deputy session is open.
+
+**Matt decided today (AskUserQuestion):** v0.2.9 KEEPS the demo-video headline and is cut only after the
+F300 story reader (F300.1, merged #674), the recorder and test that play a story (F300.3) and the docs videos
+made from stories (F300.5 / F275.22). Passive mode (F300.2) and the device fallback (F300.4) are not cut
+conditions. The 27 parts with no work since they were listed moved to v0.3.0 (list in the 11-18 `kpred:progress`).
+F223.12 (Reckoning), F264 (Compare), F278 (hub assets) and F300 joined as parts: they ship anyway.
+v0.2.9 is NOT close: burndown 0 of 8 functional on 2026-11-18. Release notes and the review page wait.
+
+**Merged to dev today (Claude):** #659–#665, #667–#676 (dev 55622477). #671 included a fix (9dddb3e2):
+the accept confirmation said "confirm 11 statements" for an option holding one, counting its record rows.
+The merge script is `~/.local/state/reckons/merge-chain.sh LOG PR…` (holds anything not green, not dev, or conflicting).
+
+**Open, not merged:** this PR (scope plan + this entry). #677, the crafted v0.2.9 review space "Larkspur Lane"
+community garden (Reckoning, Compare, CAD, hub assets, a five-step walk), written to Matt's private workspace by
+`scripts/review-spaces/build-garden-redesign.ts --workspace=<dir>`. One image (813fb2c5) finished but has not
+been inspected. When the rest are done, re-run with `--queue` (the splat), then without flags (copies the
+pictures in). #678, visual test workflows for the rebuilt Reckoning (7 steps) and Compare (5 steps). It needs a
+rebase on dev and a re-shot Reckoning step 6, whose screenshot shows the old count.
+
+**Deputy output waiting for an overseer:** 5aa42da9 on agent/local-0-2-9-docs (worktree tripleNotes-docs029,
+unpushed): the first draft of five docs pages for the nine undocumented features. A Sonnet overseer reviews it
+against `release-notes.ts --base=origin/main --head=origin/dev --check-docs`, then pushes and opens the PR.
+
+**Next, in order:** resume the queue (Matt) → the docs overseer → F300.3 recorder (brief from `kb:story-recorder`)
+→ move the demo stack (#592, #652, #655, #656) onto stories and convert #678's two walks (F300.5) → Matt
+reviews the scripts → render the docs videos → release notes, `review-0.2.9.ttl`, the review page.
+
+**Waiting on Matt:** resume the queue; close #657 (superseded by #678)?; the nine bundled-only starters in
+F263; which F303 phone transport comes first; the F196.5 registry; F301 and F302 questions.
+
+**Not verified:** the garden space has not been opened in the app; no generated asset in it has been looked
+at; #678's screenshots other than two have not been looked at; the #671 e2e change ran only in CI.
+
+## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 
 Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
 

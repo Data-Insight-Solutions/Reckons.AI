@@ -8314,7 +8314,7 @@ kb:example-space-review rdf:type ktype:Feature ;
 kb:review-compare-overlay-fix rdf:type ktype:Feature ;
     rdfs:label "Review's compare and overlay screens — make them work, or remove them" ;
     kpred:feature-id "F264" ;
-    kpred:has-status "planned" ;
+    kpred:has-status "in-progress" ;
     kpred:relates-to kb:review-attention, kb:one-graph-canvas ;
     kpred:decided "MATT, 2026-10-27: 'Review has the compare screen, and overlay screen, neither seemed functional last I checked.'" ;
     kpred:remaining "Reproduce what fails in each with a synthetic space, then fix or remove; the 2026-10-08 decision (kb:one-graph-canvas) makes them overlays on the one shared canvas, which is the shape a fix should take." .
@@ -10503,10 +10503,7 @@ kb:release-0-2-9 rdf:type ktype:Release ;
     kpred:version "0.2.9" ;
     kpred:has-status "planned" ;
     kpred:description "The orchestration release: what makes the local deputy and its queue trustworthy enough to run offline." ;
-    kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." ;
-    kpred:has-part kb:procedure-over-prose ;
-    kpred:has-part kb:local-dev-integration ;
-    kpred:has-part kb:taxonomy-coverage .
+    kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." .
 
 kb:local-dev-integration rdf:type ktype:Feature ;
     rdfs:label "Local dev integration — reviewed deputy branches merge in a local bare repository, the full check suite runs on this machine, and one batched push carries the review" ;
@@ -12401,7 +12398,7 @@ kb:reckoning-selections rdf:type ktype:Phase ;
     rdfs:label "F223.12 — selections in, proposals out: a reckoning starts from chosen statements and targets, and writes its proposal into the space" ;
     kpred:feature-id   "F223.12" ;
     kpred:part-of      kb:graph-proposals ;
-    kpred:has-status   "planned" ;
+    kpred:has-status   "in-progress" ;
     kpred:relates-to   kb:proposal-outcome-assets ;
     kpred:relates-to   kb:reckon-an-asset ;
     kpred:relates-to   kb:shelly-generation-jobs ;
@@ -12426,7 +12423,7 @@ kb:reckoning-outcome-review rdf:type ktype:Phase ;
     kpred:depends-on   kb:asset-qa-in-review ;
     kpred:description  "The new version of a reckoned asset waits in review beside the old one: both previews, the receipt fields that differ, the QA report (F281.5), and the reckoning it answers. Accepting it closes the proposal (F223.1 lifecycle); rejecting it keeps the old version and the proposal open." ;
     kpred:done-test    "a pending new version shows both previews and the differing receipt fields in the existing review flow (no new navigation); accept closes the proposal; reject keeps it open with the reason." .
-kb:release-0-2-9 kpred:has-part kb:guided-asset-refine .
+kb:release-0-3-0 kpred:has-part kb:guided-asset-refine .
 
 # ── 2026-11-12 v0.2.8 RELEASE CUT (release/0.2.8, from integration/2026-11-10) ──
 kb:release-0-2-8 kpred:has-status "production" ;
@@ -12477,28 +12474,7 @@ kb:release-0-2-8 kpred:progress "2026-11-12, CUT AND BUILT, NOT YET IN PRODUCTIO
 
 kb:release-0-2-9 kpred:progress "2026-11-12, MOVED FROM v0.2.8 (Matt: release from dev now). Reasons, one line each. Assets and demos headline (F275, F223.5/.6/.8, F283, F74.14, F89.4.4/.5, F58.9.18/.19): planned, not started, so not releasable. Reach and time series (F243, F244, F258, F259): planned since 2026-10-07, no code. Canvas and analysis work (F218, F92, F256, F255, F246, F108.4, F61, F34.3): in-progress or planned with no dated note in over a month. Site engine Sveltia and deploy (F274.4.4, F274.4.5): planned, the DIS repository owns the live deploy." ;
     kpred:has-part kb:demo-videos ;
-    kpred:has-part kb:proposal-outcome-assets ;
-    kpred:has-part kb:reckon-an-asset ;
-    kpred:has-part kb:reckoning-outcome-review ;
-    kpred:has-part kb:open-in-app ;
-    kpred:has-part kb:job-space-channel ;
-    kpred:has-part kb:review-run-sets ;
-    kpred:has-part kb:review-sample-gate ;
-    kpred:has-part kb:gen-video-quality ;
-    kpred:has-part kb:local-host-mode ;
-    kpred:has-part kb:lan-https ;
-    kpred:has-part kb:time-series-planning ;
-    kpred:has-part kb:enclosure-monitoring ;
-    kpred:has-part kb:meta-graph-view ;
-    kpred:has-part kb:one-graph-canvas ;
-    kpred:has-part kb:set-layout ;
-    kpred:has-part kb:integration-plugin-sdk ;
-    kpred:has-part kb:analyze-job-sets ;
-    kpred:has-part kb:research-watch ;
-    kpred:has-part kb:graph-density-legibility ;
-    kpred:has-part kb:test-workflow-stories ;
-    kpred:has-part kb:downstream-site-sveltia ;
-    kpred:has-part kb:downstream-site-deploy .
+    kpred:has-part kb:job-space-channel .
 kb:release-0-3-0 kpred:has-part kb:interactive-space ;
     kpred:decided "MATT, 2026-11-07: 'For the big release on 0.3 I think interactive mode should be the highlight and core.' + MATT 2026-11-07 (AskUserQuestion) 'Interactive = core': F285 the interactive space is the v0.3.0 headline and core, and the sharing release (the has-part list below) is a part of it — the story is 'share a space you can move in on.' One cohesive release (F33); the sharing parts remain agent-proposed (2026-10-21) and ride along as parts, not the headline." .
 
@@ -12683,6 +12659,19 @@ kb:release-0-2-9 kpred:decided "MATT, 2026-11-17 (chat): 'Lets see how far we ca
     kpred:has-part kb:multi-scan-reconstruction ;
     kpred:has-part kb:cad-creation ;
     kpred:proposed "AGENT (Opus), 2026-11-17, NOT DECIDED: following Matt's priority above, move the personal use cases out of v0.2.9 to a later release: F258 time series and F259 enclosure monitoring (the pet watcher), with their alert, camera-event and radio work. The v0.2.9 burndown would then measure the three headline parts. F258's first slice (PR #646, forecast baselines) can still merge without the release." .
+
+## 2026-11-18 — Matt: v0.2.9 keeps the demo-video headline and waits for it; 27 unstarted parts move to v0.3.0.
+kb:release-0-2-9 kpred:decided "MATT, 2026-11-18 (AskUserQuestion), on the v0.2.9 scope: 'Keep demo videos headline', chosen over 'Ship what's built' (the Reckoning rebuild and Compare inside Review as the headline, demo videos moved to v0.3.0 with F300) and over 'Cut dev as it is now'. The release is cut after the F300 story reader (F300.1), the recorder and test that play a story (F300.3) and the docs-page videos made from stories (F300.5, F275.22); passive mode (F300.2) and the per-device fallback (F300.4) are not cut conditions. On the 27 parts with no work since they were listed (most carried forward untouched from v0.2.7 and v0.2.8): 'Move to v0.3.0', chosen over leaving them unassigned until started and over keeping them in v0.2.9. This settles the 2026-11-17 proposal above: F258 and F259 are among the 27." ;
+    kpred:has-part kb:one-story-three-modes ;
+    kpred:has-part kb:reckoning-selections ;
+    kpred:has-part kb:review-compare-overlay-fix ;
+    kpred:has-part kb:hub-default-assets ;
+    kpred:progress "2026-11-18 (Opus), APPLYING THAT DECISION. Kept: F275 demo videos, F58.9.19 multi-scan and F299 CAD (the headline) and F74.14 the job channel (in progress, merged in #663). Added because they are built on dev and ship in this release whatever its headline: F223.12 the Reckoning rebuild, F264 Compare inside Review, F278 hub assets (#676), and F300, which the headline now waits on. Moved to v0.3.0: F273, F276, taxonomy-coverage, F284, F223.5, F223.6, F223.8, F283, F89.4.4, F89.4.5, F58.9.18, F243, F244, F258, F259, F218, F92, F256, F61, F255, F246, F108.4, F34.3, F274.4.4, F274.4.5, F69.1, F296. Two of them are not untouched, and are said so here: F274.4.5 (the deploy, scaffolded 2026-11-13) and the first slices of F283 (#644), F89.4.5 (#645) and F258 (#646) are already on dev, so that code ships in v0.2.9 as unused or partial work and the release notes list it; finishing those features is v0.3.0's." ;
+    kpred:honest-note "NOT CLOSE TO A CUT ON 2026-11-18, AND SAID PLAINLY. Of the headline, F275 is planned (paused by Matt's own 2026-11-17 direction to lean videos on the story definition), F58.9.19 is scaffolded (synthetic captures join and are measured; separate real videos have not been tried) and F299 is scaffolded (one bracket built). F300.1 is in review (#674); F300.3 and F300.5 are not started." .
+kb:reckoning-selections kpred:progress "2026-11-18 (Opus): status planned -> in-progress. F223.12.1 to .3 are functional on dev (#660, #667, #669); F223.12.4, accepting an option, is in review (#671)." .
+kb:review-compare-overlay-fix kpred:progress "2026-11-18 (Opus): status planned -> in-progress. F264.1, one compare inside Review, is functional on dev (#662); F264.2 (the comparison on the canvas) and F264.3 (deciding in place) are in progress." .
+kb:release-0-3-0 kpred:has-part kb:procedure-over-prose, kb:local-dev-integration, kb:taxonomy-coverage, kb:proposal-outcome-assets, kb:reckon-an-asset, kb:reckoning-outcome-review, kb:open-in-app, kb:review-run-sets, kb:review-sample-gate, kb:gen-video-quality, kb:local-host-mode, kb:lan-https, kb:time-series-planning, kb:enclosure-monitoring, kb:meta-graph-view, kb:one-graph-canvas, kb:set-layout, kb:integration-plugin-sdk, kb:analyze-job-sets, kb:research-watch, kb:graph-density-legibility, kb:test-workflow-stories, kb:downstream-site-sveltia, kb:downstream-site-deploy ;
+    kpred:progress "2026-11-18: received 27 parts from v0.2.9 by Matt's decision recorded on kb:release-0-2-9 that day (three more, F284 and the two settings features, were already written with this release as subject). Its own scope (interactive mode F285 and sharing F217) is unchanged; whether all 27 stay here is open." .
 
 kb:demo-videos kpred:decided "MATT, 2026-11-17 (AskUserQuestion): 'Approve, Hume Shelly V1'. The six narration lines of the generated-assets workflow are approved as written (PR #592), spoken in the account's custom Hume voice 'Shelly V1'. If Hume's text-to-speech API has ended, that is reported and the local Kokoro voice is the fallback." .
 
@@ -13369,7 +13358,7 @@ kb:settings-unified-integrations kpred:decided "MATT, 2026-11-12: one cohesive p
     kpred:principle "ONE LIBRARY, FILTERED, NOT ONE LONG PAGE. Plugins are cards in a single library; filters (kind: LLM, cloud service, local service, integration, data source; locality: this device, local network, cloud; status: installed, enabled, connected, running, needs setup; purpose: the app verb or asset kind it serves) and search narrow it; a plugin's settings open in its own panel. What is not a plugin (display, identity, backup, reset) stays a short core preferences section." ;
     kpred:open-question "FOR MATT: which settings are core rather than plugins (display, identity, backup and export, reset — anything else)? And do the entity-types and Triple Check pages fold in as plugins, or stay separate pages linked from the library?" .
 
-kb:release-0-2-9 kpred:has-part kb:settings-unified-integrations .
+kb:release-0-3-0 kpred:has-part kb:settings-unified-integrations .
 
 ## 2026-11-12 — Matt: the plugin library (new, v0.2.9).
 kb:plugin-library rdf:type ktype:Feature ;
@@ -13386,7 +13375,7 @@ kb:plugin-library rdf:type ktype:Feature ;
 kb:plugin-library kpred:decided "MATT, 2026-11-13 (model cleanup chat, on uninstalling command-r:35b, devstral-small-2, phi4:14b, lfm2.5 and llama3.2:3b): 'We need to make sure all references for removed models are changed. I believe llama3.2 is a default for ollama. We should tie this into plugin library ollama plugin.'" ;
     kpred:proposed "PLAN ONLY, NOTHING BUILT (2026-11-13). THE OLLAMA PLUGIN inside this library: (1) LISTS every installed model with its size (from Ollama /api/tags) and the ROLES it serves, where a role is a job kind in the routing table (kb:model-routing-ledger; ktype:ModelRoute in static/reckons-jobs.ttl) or an app task (ollamaModelFor); (2) FLAGS an installed model no role uses (the 2026-11-13 cleanup found five by hand); (3) FLAGS a role with no installed model, or only a candidate that cannot fit the RAM gate; (4) OFFERS install and uninstall, each following the recorded procedure: version and digest before, the passing check after, and the rollback (`ollama pull <name>`, noting a tag may then resolve to a newer digest than the one recorded), written to a private change record, never a silent action (upgrades of the local stack are a separate, recorded step, AGENTS.md). llama3.2 is the APP's default model for a fresh end-user install (src/lib/storage/db.ts, settings, SETUP.md, .env.example) because it runs anywhere; the app already resolves the model from what Ollama reports installed and shows a substitution notice (src/lib/integrations/llm/model-for-task.ts), so the plugin's job is to make that visible and to suggest the pull when nothing fits, not to hard-code a name." .
 
-kb:release-0-2-9 kpred:has-part kb:plugin-library, kb:settings-unified-integrations .
+kb:release-0-3-0 kpred:has-part kb:plugin-library, kb:settings-unified-integrations .
 kb:settings-unified-integrations kpred:relates-to kb:plugin-library .
 kb:integration-plugin-sdk kpred:relates-to kb:plugin-library .
 
@@ -13695,3 +13684,27 @@ kb:story-step-vocabulary rdf:type ktype:Phase ;
     kpred:done-test "A pure reader returns the same step model from a story in a space and from a legacy TestWorkflow (every mapped predicate covered by a unit test); the generated-assets workflow converted to a story renders the same docs page and plays the same e2e test; story:action and story:expect cover every step of the three existing workflows without falling back to test code." .
 kb:example-space-review kpred:decided "MATT, 2026-11-17 (in a session with the local deputy, relayed to Opus): the review-0.2.x release spaces are NOT example spaces; they stay out of the F263 inventory, and their home is the workspace, not the examples list. The app already hides them from the examples list (example-kbs.ts marks them unlisted; /about renders listedExampleKbs()); they still open by direct link for the F34.5 release reviews. The inventory filters them by the review- id, not by unlisted, because ring-scan is also unlisted and IS an example in scope (F292.3). Re-measured 2026-11-18 after the filter: 14 spaces (was 17)." ;
     kpred:open-question "FOR MATT: nine bundled-only starter files (starter-turtles, starter-everyday, starter-guide and others) are counted too; some look like support files for listed examples rather than examples themselves. Keep them in F263's scope, or count only listed examples?" .
+kb:story-passive-mode rdf:type ktype:Phase ;
+    rdfs:label "F300.2 — passive mode: the player autoplays a story in the app, performing each step's action and speaking its lines locally" ;
+    kpred:feature-id "F300.2" ; kpred:part-of kb:one-story-three-modes ; kpred:has-status "planned" ; kpred:order 2 ; kpred:depends-on kb:story-step-vocabulary ;
+    kpred:relates-to kb:story-walk-player ; kpred:relates-to kb:story-narration-voice ;
+    kpred:description "The F292.2 walk gains a mode that runs on its own: each step's story:action is performed by the app (open a page, select, type into a target), its story:content is spoken by the local voice (Kokoro af_heart, Matt's 2026-11-17 choice), its story:question is spoken before it, and story:pace sets the dwell. The reader can stop it and continue by hand at any step. Not a v0.2.9 cut condition (Matt, 2026-11-18)." ;
+    kpred:done-test "One example story autoplays from start to end in the app with spoken lines; stopping at step 3 and pressing Next continues interactively from step 3." .
+kb:story-recorder rdf:type ktype:Phase ;
+    rdfs:label "F300.3 — the recorder and the end-to-end test play a story: one runner performs its actions, checks its expectations and records each step" ;
+    kpred:feature-id "F300.3" ; kpred:part-of kb:one-story-three-modes ; kpred:has-status "planned" ; kpred:order 3 ; kpred:depends-on kb:story-step-vocabulary ;
+    kpred:relates-to kb:demo-videos ;
+    kpred:description "One Playwright runner reads a story through the F300.1 reader and, for each step, performs story:action, checks every story:expect, and (when recording) writes story:media: the step's clip, its caption from story:content and a poster frame. The e2e test and the demo recorder are the same runner with recording on or off, so a video cannot show a step the test did not pass. The narration and render pipeline already built for TestWorkflows (PR #592, #652 and #655: Kokoro narration, captions, the 10 MB web render) is reused, fed from story steps instead. A v0.2.9 cut condition (Matt, 2026-11-18)." ;
+    kpred:done-test "The generated-assets walk, as a story, runs as an e2e test that fails when one expectation is changed to be false, and, with recording on, renders a captioned, narrated video whose step count and captions match the story's steps." .
+kb:story-capability-fallback rdf:type ktype:Phase ;
+    rdfs:label "F300.4 — a step the device cannot run plays its recorded segment instead" ;
+    kpred:feature-id "F300.4" ; kpred:part-of kb:one-story-three-modes ; kpred:has-status "planned" ; kpred:order 4 ; kpred:depends-on kb:story-recorder ;
+    kpred:relates-to kb:device-space ;
+    kpred:description "Before a step runs, its story:needs are matched against the capabilities the This-device space measured (F269); a step whose needs are not met plays its story:media segment, with a line saying why, and the walk continues live at the next step it can run. Not a v0.2.9 cut condition (Matt, 2026-11-18)." ;
+    kpred:done-test "With the GPU capability switched off in a test device profile, a story's generation step plays its recorded clip and the next step runs live." .
+kb:demo-stories-in-spaces rdf:type ktype:Phase ;
+    rdfs:label "F300.5 — the demo walks become stories in the example spaces they walk, and the docs pages embed the videos made from them" ;
+    kpred:feature-id "F300.5" ; kpred:part-of kb:one-story-three-modes ; kpred:has-status "planned" ; kpred:order 5 ; kpred:depends-on kb:story-recorder ;
+    kpred:relates-to kb:demo-videos ; kpred:relates-to kb:example-space-review ;
+    kpred:description "Each demo walk (the existing test workflows, plus the Reckoning and Compare walks redone on 2026-11-18 for the rebuilt screens) moves into the example space it walks as a story; static/docs-testing.ttl keeps a pointer to the story and its test file (Matt, 2026-11-17: stories live in the example spaces). Their videos are recorded by F300.3 and embedded on the docs pages they belong to (F275.22). Matt reviews each script before its video is published; his 2026-11-17 notes (more lead-in questions, less corny asset lead-ins) apply. A v0.2.9 cut condition (Matt, 2026-11-18)." ;
+    kpred:done-test "Each converted walk plays as an e2e test from its story and renders its video; each docs page that names a walk embeds that video; test-workflow-check passes with pointers only; Matt has passed each script." .
