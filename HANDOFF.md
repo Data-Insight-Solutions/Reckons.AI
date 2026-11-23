@@ -3,6 +3,49 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-23 — F306 two-source comparison PLANNED (branch agent/local-f306-two-source-compare, unpushed)
+
+Local deputy (qwen3.8-160k) in this worktree. Matt asked (chat, 2026-11-23) for small seamless workflows
+for demos: compare two sources (2 web pages, 2 PDFs, one of each) "according to its claims", the statement
+graph visually split ON THE MAIN GRAPH — only-A blue, only-B red, shared purple, colors default-editable —
+hubs as Reckons-generated 3D objects, ingest that works when a person tries it themselves, a plugin or
+simplified view of the two sources' results, honest about time but "within minutes on my machine".
+
+**What this branch does (plan only — nothing built):** F306 in `static/reckons-roadmap.ttl` —
+`kb:two-source-compare` (planned, high, depends-on `kb:hub-default-assets` F278) with F306.1
+`kb:two-source-ingest`, F306.2 `kb:split-canvas` (a mode of the ONE canvas per F92; shared = existing
+near-duplicate/synonym matching, never string identity; colors are defaults, editable), F306.3
+`kb:two-source-simplified-view` (plugin shape open). One `kpred:decided` re-affirmation added on
+`kb:hub-default-assets`. F304/F305 are taken on `agent/local-model-library` (unmerged), so the deputy took
+F306. Matt's four open questions are `kpred:open-question` lines on the feature (where the split view lives;
+what the plugin deliverable is; v0.2.9 vs v0.3.0; shared semantics) and queued via kb_add_note
+(agent local-deputy:qwen3.8-160k).
+
+**Verified (2026-11-23):** graph-lint in this worktree 0 errors / 15 warnings, none on the new entities
+(the main checkout's extra 16 `mcp-invisible` warnings pre-date this branch). `npm run offline:all --
+--tier=script` finished **50/58 clean, exit 0, all 9 blocking checks pass** (published-graph-guard,
+commit-trailers, version-align, test-workflow-check, release-review-space, codebase-coverage,
+branch-ancestry, term-ratchet, ui-terms). The ✗ jobs in the full run (the suite's own tally is 50/58
+clean; state varies between runs) are all stateful/pre-existing, NONE on the F306 plan: `fix-without-test` (incl. the host running kernel 6.8.0-117 with 6.8.0-149 installed —
+needs a reboot window), `perf-crawl` (6 starter/docs pages slow; reckons-roadmap 11730 lines, worst frame
+5700ms, 50 long tasks), `naming-ratchet` (JS/TS counters, +72 declaration/interface since baseline),
+`queue-integrity` (documented in aeb63380: 15 line-contract violations), `graph-lint` (the suite runs
+`--pending`, whose writer is refused by the row contract — documented in aeb63380; plain graph-lint, which
+CI schedules, passes), `extraction-chain`, `safety-attestation`, `taxonomy-current` (known failing per
+aeb63380), `site-live`.
+
+**NOT VERIFIED / open:** the 5-minutes-per-source bound is a PROPOSED starting value to be measured on
+Matt's machine, not a promise; no code, no tests, no build; the branch is NOT pushed (the deputy has no
+GitHub credential — by design): ready for the head session to merge into the integration branch when Matt
+answers the four questions. Also that day: one local-work-reviewer batch (≤10) dispatched against the
+956-decision backlog; the job queue was checked — worker alive and actively cycling (script-tier schedules
+passing all day), 2 jobs (sched:docs-review, sched:drain-queue) waiting on the F74.11 RAM floor
+(18.5 GiB needed vs 14–18 GiB available machine-wide), no manual pause, no holds, no circuits — the gate
+clears itself when RAM frees; no force-run past the resource gate exists by design, and the deputy did not
+try to make one.
+
+## 2026-11-18 — START HERE: dev integrates LOCALLY now; integration/2026-11-18 holds the batch; v0.2.9 waits for its videos
+
 ## 2026-11-18 (night) — START HERE: batch 2 is on feat/f300-5-stories-in-spaces; F300.5 is planned, not built
 
 This entry exists only on this branch until batch 2 lands. Dev's copy ends at the entry below it.
