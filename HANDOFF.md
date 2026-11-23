@@ -15,11 +15,21 @@ simplified view of the two sources' results, honest about time but "within minut
 `kb:two-source-compare` (planned, high, depends-on `kb:hub-default-assets` F278) with F306.1
 `kb:two-source-ingest`, F306.2 `kb:split-canvas` (a mode of the ONE canvas per F92; shared = existing
 near-duplicate/synonym matching, never string identity; colors are defaults, editable), F306.3
-`kb:two-source-simplified-view` (plugin shape open). One `kpred:decided` re-affirmation added on
+`kb:two-source-simplified-view` (the plugin). One `kpred:decided` re-affirmation added on
 `kb:hub-default-assets`. F304/F305 are taken on `agent/local-model-library` (unmerged), so the deputy took
-F306. Matt's four open questions are `kpred:open-question` lines on the feature (where the split view lives;
-what the plugin deliverable is; v0.2.9 vs v0.3.0; shared semantics) and queued via kb_add_note
-(agent local-deputy:qwen3.8-160k).
+F306.
+
+**Matt answered all four open questions (chat, 2026-11-23, recorded verbatim as `kpred:decided`):**
+1. The comparison lives **in the main graph view canvas, not a separate screen** — "I imagine it as a
+   layout, venn diagram shaped."
+2. The plugin **"allows for easy import of the two sources, and then provides a direct link once the
+   sources are added (import/ingest), and then the layout link for comparison will work."**
+3. **Release: v0.3.0** ("0.3") — `kb:two-source-compare` is now a `kb:release-0-3-0` part.
+4. **Shared = both sources hold it, and shared sits at the centre of the venn overlap** ("Yes, and
+   center of the venn diagram shape.").
+So F306.2 is now "the venn comparison layout on the main canvas, shared at the centre" and F306.3 is now
+"the two-source plugin: easy import, then the direct link to the layout". The open-question lines are
+replaced by the decided lines.
 
 **Verified (2026-11-23):** graph-lint in this worktree 0 errors / 15 warnings, none on the new entities
 (the main checkout's extra 16 `mcp-invisible` warnings pre-date this branch). `npm run offline:all --
