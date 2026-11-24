@@ -7,8 +7,8 @@ describe('example entries (F292.3)', () => {
   it('the ring is unlisted: resolvable by id, absent from the list', () => {
     expect(findExampleKb('ring-scan')?.file).toBe('/starter-ring-scan.ttl');
     expect(listedExampleKbs().some((k) => k.id === 'ring-scan')).toBe(false);
-    expect(listedExampleKbs().length).toBe(EXAMPLE_KBS.length - 5);
-    for (const id of ['review-0.2.6', 'review-0.2.7', 'review-0.2.8', 'getting-started']) {
+    expect(listedExampleKbs().length).toBe(EXAMPLE_KBS.length - 6);
+    for (const id of ['review-0.2.6', 'review-0.2.7', 'review-0.2.8', 'getting-started', 'matthew-roe']) {
       expect(findExampleKb(id)).toBeDefined();
       expect(listedExampleKbs().some((k) => k.id === id)).toBe(false);
     }
