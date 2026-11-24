@@ -198,7 +198,7 @@ story:quickstart-compare-1
     story:action        '{"kind":"click","target":"ingest-submit"}' ;
     story:expect        '{"kind":"visible","target":"compare-flow"}' ;
     story:expect        '{"kind":"elements","target":"diff-entry","n":4}' ;
-    story:media         "/workflows/compare-v029/01-extract-note.webp" ;
+    story:media "/workflows/compare-v029/01-extract-note.webp" ;
     story:assertion     "Extracting leaves the Add page and opens Review in compare mode with four statements." .
 
 story:quickstart-compare-2
@@ -224,7 +224,7 @@ story:quickstart-compare-2
     story:expect        '{"kind":"text","target":"compare-chips","contains":"1 contradiction"}' ;
     story:expect        '{"kind":"text","target":"compare-chips","contains":"1 new"}' ;
     story:expect        '{"kind":"text","target":"compare-flow","contains":"accept new only (1)"}' ;
-    story:media         "/workflows/compare-v029/02-see-labels.webp" ;
+    story:media "/workflows/compare-v029/02-see-labels.webp" ;
     story:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
 
 story:quickstart-compare-3
@@ -246,7 +246,7 @@ story:quickstart-compare-3
     story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 reinforcing, thickening what you hold"}' ;
     story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 contradiction"}' ;
     story:expect        '{"kind":"elements","target":"contradiction-pair","n":1}' ;
-    story:media         "/workflows/compare-v029/03-see-on-canvas.webp" ;
+    story:media "/workflows/compare-v029/03-see-on-canvas.webp" ;
     story:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still the confirmed ones plus four pending." .
 
 story:quickstart-compare-4
@@ -266,7 +266,7 @@ story:quickstart-compare-4
     story:expect        '{"kind":"elements","target":"contradiction-pair","n":0}' ;
     story:expect        '{"kind":"standing","subject":"project-phoenix","predicate":"deadline","object":"2026-09-15","status":"superseded"}' ;
     story:expect        '{"kind":"standing","subject":"project-phoenix","predicate":"deadline","object":"2026-10-31","status":"held"}' ;
-    story:media         "/workflows/compare-v029/04-decide-contradiction.webp" ;
+    story:media "/workflows/compare-v029/04-decide-contradiction.webp" ;
     story:assertion     "Both statements are readable on the card; after take the new one, 2026-10-31 is part of what you hold and 2026-09-15 is marked replaced." .
 
 story:quickstart-compare-5
@@ -287,7 +287,7 @@ story:quickstart-compare-5
     story:expect        '{"kind":"text","target":"decided-pair","contains":"deadline \u00b7 2026 09 15"}' ;
     story:expect        '{"kind":"text","target":"decided-pair","contains":"deadline \u00b7 2026 10 31"}' ;
     story:expect        '{"kind":"text","target":"decided-pair","contains":"from Phoenix check-in"}' ;
-    story:media         "/workflows/compare-v029/05-see-on-record.webp" ;
+    story:media "/workflows/compare-v029/05-see-on-record.webp" ;
     story:assertion     "The settled pair reads replaced, still on record, and shows both deadlines; the stored rows are the old one superseded and the new one refined; the project's panel lists the new deadline under the check-in note and not the old one." .
 story:quickstart-reckoning
     rdf:type            story:Story ;
