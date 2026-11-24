@@ -144,7 +144,7 @@ rev:wf-readme-path-04-see-in-space rdf:type ktype:Concept ;
 
 rev:wf-readme-path-05-reckoning rdf:type ktype:Concept ;
     rdfs:label "5. Ask for a reckoning" ;
-    rdfs:comment "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It reads the facts in your space and proposes options and a recommendation, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust.\n\nWhere: the Reckon tab (/reckoning).\n\nThe test checks: The request is accepted and a proposal card comes back saying how many facts it is based on. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." ;
+    rdfs:comment "Open Reckoning. Describe the situation in a sentence, press Next, say what outcome you want to reach and press Review, then Generate Proposal. Two options appear, each already written into your space as proposals: nothing is confirmed and no job has been queued until you accept one, and you weigh them yourself. It is a proposal to evaluate, not an answer to trust.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Two option cards appear and the page says nothing is confirmed and no job has been queued. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." ;
     p:photo "/workflows/readme-path/05-reckoning.webp" ;
     hnav:order "5"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;

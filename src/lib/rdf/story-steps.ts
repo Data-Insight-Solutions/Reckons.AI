@@ -323,10 +323,20 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
   const common = (iri: string) => {
     const refusals: Refusal[] = [];
     const actions: StepAction[] = [];
+    // A space's own file may be re-serialized (the Getting started space is regenerated from its parts), and a
+    // serializer keeps no order among the values of one predicate. An action may therefore carry `"at": n` (its
+    // 1-based place in the step); when any does, they are played in that order.
+    const placed: { at: number; i: number; action: StepAction }[] = [];
+    let anyAt = false;
     for (const raw of lits(iri, S.action)) {
       const r = parseAction(raw);
-      if (r.ok) actions.push(r.action); else refusals.push({ predicate: S.action, value: raw, reason: r.reason });
+      if (!r.ok) { refusals.push({ predicate: S.action, value: raw, reason: r.reason }); continue; }
+      let at = Number.MAX_SAFE_INTEGER;
+      try { const n = (JSON.parse(raw) as { at?: unknown }).at; if (typeof n === 'number' && Number.isFinite(n)) { at = n; anyAt = true; } } catch { /* parseAction already accepted it */ }
+      placed.push({ at, i: placed.length, action: r.action });
     }
+    if (anyAt) placed.sort((a, b) => a.at - b.at || a.i - b.i);
+    for (const p of placed) actions.push(p.action);
     const expects: StepExpect[] = [];
     for (const raw of lits(iri, S.expect)) {
       const r = parseExpect(raw);

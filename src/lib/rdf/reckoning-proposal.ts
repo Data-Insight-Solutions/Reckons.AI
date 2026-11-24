@@ -330,6 +330,26 @@ export function mockProposalReply(citations: readonly string[], situation = ''):
       },
     ],
   });
+  // The Getting started space's README path (F300.5) decides about its own camping weekend.
+  if (/oh! ridge|lake george/i.test(situation)) return JSON.stringify({
+    recommended: 'a',
+    options: [
+      {
+        label: 'Book Oh! Ridge for Friday and Saturday', rationale: 'It is open both nights and costs less; the cost is the lakes Jordan wanted.',
+        statements: [{ s: 'Oh! Ridge', p: 'booking plan', o: 'Friday and Saturday' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A simple one-page checklist for booking a two-night campsite' } }],
+        missingInputs: [{ about: 'Oh! Ridge', question: 'Add the date the booking must be made by' }],
+        citations: cite,
+      },
+      {
+        label: 'Take Lake George for Saturday only', rationale: 'It has the alpine lakes; the cost is that Friday night has no campsite.',
+        statements: [{ s: 'Lake George', p: 'booking plan', o: 'Saturday only' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A simple one-page plan for a single night at a mountain lake campsite' } }],
+        missingInputs: [{ about: 'Lake George', question: 'Add where to sleep on Friday night' }],
+        citations: cite,
+      },
+    ],
+  });
   return JSON.stringify({
     recommended: 'a',
     options: [

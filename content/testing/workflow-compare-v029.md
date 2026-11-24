@@ -1,7 +1,7 @@
 ---
 title: "Read a note against what you hold, see it on the canvas, decide a contradiction"
 slug: "workflow-compare-v029"
-order: 1014
+order: 1011
 section: "Testing"
 parent: "test-workflows"
 template: doc

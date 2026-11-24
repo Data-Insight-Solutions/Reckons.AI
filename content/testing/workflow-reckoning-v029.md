@@ -1,7 +1,7 @@
 ---
 title: "Reckon with chosen statements, then accept one option"
 slug: "workflow-reckoning-v029"
-order: 1015
+order: 1012
 section: "Testing"
 parent: "test-workflows"
 template: doc

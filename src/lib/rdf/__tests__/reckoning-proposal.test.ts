@@ -40,6 +40,13 @@ describe('parseProposalReply', () => {
     expect(phoenix).not.toBe(mockProposalReply(['st-1']));
     expect(phoenix).toContain('Vendor Contract');
   });
+  it('accepts the Getting started README path\'s reply, chosen by its camping situation (F300.5)', () => {
+    const camping = mockProposalReply(['st-1'], 'Alex and Jordan are choosing between Lake George and Oh! Ridge for a camping weekend.');
+    expect(parseProposalReply(camping, ids).ok).toBe(true);
+    expect(camping).toContain('Oh! Ridge');
+    expect(camping).not.toBe(mockProposalReply(['st-1']));
+    expect(camping).not.toContain('Vendor Contract');
+  });
   const refused: [string, string, RegExp][] = [
     ['not JSON', 'I think you should try something.', /no JSON object/],
     ['broken JSON', '{"options": [', /no JSON object|not valid JSON/],
