@@ -439,7 +439,7 @@ export async function turtleChat(opts: TurtleChatOptions): Promise<TurtleChatRes
     // unexpectedly request credentials or a model download.
     // F223.12.3: unless a test scripted a reply, a structured-proposal request gets the fixed, valid proposal, citing the first situation id it was shown.
     raw = customPrompt?.includes(STRUCTURED_PROPOSAL_MARKER) && !(globalThis as { __RECKONS_MOCK_REPLY__?: unknown }).__RECKONS_MOCK_REPLY__
-      ? mockProposalReply([...messages.map((m) => m.content).join('\n').matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1]))
+      ? mockProposalReply([...messages.map((m) => m.content).join('\n').matchAll(/\{\{(.+?)\}\}/g)].map((m) => m[1]), messages.map((m) => m.content).join('\n'))
       : mockChatReply(kbContext.statementCount);
   } else {
     raw = await chatClaude(messages, system, apiKey, model ?? 'claude-haiku-4-5-20251001');

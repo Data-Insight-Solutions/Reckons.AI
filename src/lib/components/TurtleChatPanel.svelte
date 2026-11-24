@@ -16,7 +16,7 @@
   import { offerApplied } from '$lib/rdf/story-offers';
   import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
-  import type { TurtleChatMessage, KBAction, KBContext } from '$lib/types/turtle-chat';
+  import { GRAPH_FILTERS, type GraphFilter, type TurtleChatMessage, type KBAction, type KBContext } from '$lib/types/turtle-chat';
   import { buildKBContext as buildKBContextShared } from '$lib/rdf/kb-context';
   import { turtleChat, resolveChatProvider as _resolveProvider, type TurtleChatProvider } from '$lib/integrations/llm/turtle-chat';
   import type { Statement, Source } from '$lib/rdf/types';
@@ -27,6 +27,8 @@
 
   /** Layouts the renderer accepts — the guard for an authored story:layout. */
   const KNOWN_LAYOUTS: GraphLayout[] = ['force', 'focus', 'source', 'type', 'hub', 'timeline', 'order', 'hierarchy', 'map'];
+  /** Filter names this build's chip row accepts — the guard for an authored story:filter, same rule as KNOWN_LAYOUTS. */
+  const isKnownFilter = (v: string): v is GraphFilter => (GRAPH_FILTERS as readonly string[]).includes(v);
 
   import { wasmStatus, wasmPct, wasmStatusText } from '$lib/stores/wasm-status.svelte';
   import { turtleSettings, updateTurtleSettings } from '$lib/stores/turtle-settings.svelte';
@@ -657,20 +659,28 @@
     // unknown name would otherwise reach the renderer. An unrecognised layout falls back rather
     // than throwing, so a story from a newer build degrades instead of breaking.
     const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
+    // PARSE PERMISSIVELY, VALIDATE AT USE (the same rule as story:layout): story.ts passes story:filter
+    // through as raw strings so a story authored for a different build still loads; keep only the names
+    // this build's chip row knows and drop the rest, so a story from a newer build degrades instead of breaking.
+    const authoredFilters = step.filters ? step.filters.filter(isKnownFilter) : undefined;
     /*
      * F292.2, LIGHT WITHOUT MOVING. A step lights its highlights and dims the rest (the canvas draws the
      * spotlight through the lit-fact mechanism F223.11 built), and it no longer falls back to the
      * focus layout, which re-arranged every marker on every step. An AUTHORED story:layout still applies.
      * It SELECTS nothing: selecting a marker re-seats the layout (measured: positions moved about 0.35 units
      * between steps) and opens a detail sheet that covers the caption on a phone. The markers are lit, not selected.
+     *
+     * F304, FILTERS FOLLOW THE SAME RULE: each of spotlight, layout and filters is applied only when the
+     * step says it. A step WITH story:filter chooses exactly those filters (known names; if it names none
+     * the build knows, the filters clear — "exactly those" means no others). A step WITHOUT
+     * story:filter leaves the filters as they are, the same rule as a step with no layout.
      */
-    if (step.highlights.length > 0) {
+    if (step.highlights.length > 0 || authored || authoredFilters !== undefined) {
       applyShellyViewAdjust({
-        spotlight: step.highlights,
-        layout: authored
+        ...(step.highlights.length > 0 ? { spotlight: step.highlights } : {}),
+        ...(authored ? { layout: authored } : {}),
+        ...(authoredFilters !== undefined ? { filters: authoredFilters } : {})
       });
-    } else if (authored) {
-      applyShellyViewAdjust({ layout: authored });
     }
 
     // Speak step via browser TTS when voice is enabled

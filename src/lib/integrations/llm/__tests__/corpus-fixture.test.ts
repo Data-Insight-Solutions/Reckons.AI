@@ -17,3 +17,14 @@ describe('corpus notes the mock backend reads for real (F183.3)', () => {
     expect(await corpusFixtureTriples('Company Alpha has 50 employees.')).toBeNull();
   });
 });
+
+describe('the Quick-Start check-in note (F300.5)', () => {
+  it('reads as four statements about the example\'s own project, with the new deadline quoted', async () => {
+    const demo = JSON.parse(readFileSync('tests/fixtures/compare-demo/notes.json', 'utf8')).quickstart;
+    const t = await corpusFixtureTriples(demo.text);
+    expect(t?.map((x) => `${x.subject} ${x.predicate} ${x.object}`)).toEqual([
+      'project-phoenix status in-progress', 'project-phoenix deadline 2026-10-31', 'content-based-filter trial-status running', 'carol writes vendor-faq',
+    ]);
+    expect(demo.text).toContain(t!.find((x) => x.predicate === 'deadline')!.excerpt!);
+  });
+});

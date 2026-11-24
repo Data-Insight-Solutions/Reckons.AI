@@ -50,6 +50,15 @@ export interface StoryStep {
    * through and the renderer ignores it, which degrades to today's behaviour instead of throwing.
    */
   layout?: string;
+  /**
+   * Filter names this step wants active (story:filter, repeatable). F304.
+   *
+   * PARSED PERMISSIVELY like story:layout — the values stay raw strings, because story.ts parses
+   * graphs that may be authored for a newer or older build than the one reading them. A step WITH
+   * story:filter applies exactly those filters (names this build does not know are dropped at use, in
+   * TurtleChatPanel); a step WITHOUT it leaves the filters as they are, the same rule as no layout.
+   */
+  filters?: string[];
   /** One-click settings and pages the step offers the reader (story:offerSetting, story:openPage; F261). */
   offers?: StoryOffer[];
 }
@@ -113,6 +122,7 @@ export function extractStories(stmts: Statement[]): Story[] {
         prompt: t.prompt,
         question: t.question,
         layout: t.layout,
+        filters: t.filters,
         offers: stepOffers(t.offers),
       })),
     }));
