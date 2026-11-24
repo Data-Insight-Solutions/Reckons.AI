@@ -25,7 +25,7 @@
  *   - touched only by B-only statements          -> 'b'
  *   - touched by any shared statement, OR by both an A-only and a B-only statement -> 'shared'
  * Reason: an entity both sides mention belongs in the overlap even when each says something
- * different about it, and a node cannot be in two lobes at once. The edges keep their own colour,
+ * different about it, and an entity cannot be in two lobes at once. The edges keep their own colour,
  * so the difference between what each side says about that entity is still drawn.
  *
  * COUNTS: `a` and `b` count statements only one side holds. `shared` counts CLAIMS: matched
@@ -227,7 +227,7 @@ export interface VennPoint { x: number; y: number }
 /**
  * Anchor for one entity. Entities of the same category get a deterministic spread around the
  * category's anchor (by index), so the lobes read as areas rather than three dots; the force
- * simulation then settles each node near its own anchor.
+ * simulation then settles each entity near its own anchor.
  */
 export function vennAnchor(category: CompareCategory, index: number, count: number): VennPoint {
   const cx = category === 'a' ? -VENN.OFFSET - 3 : category === 'b' ? VENN.OFFSET + 3 : 0;
@@ -272,9 +272,9 @@ export function outsideAnchor(index: number, count: number): VennPoint {
 }
 
 /**
- * Anchors for a renderer: the model's entities in their lobes, every other node (`allKeys`) in the
+ * Anchors for a renderer: the model's entities in their lobes, every other entity (`allKeys`) in the
  * outside row, plus four invisible FRAME points at the extremes of the two circles so a camera fit
- * frames the whole diagram and not only where nodes happen to be. Frame keys start with `cmp:`.
+ * frames the whole diagram and not only where entities happen to be. Frame keys start with `cmp:`.
  */
 export function compareAnchorsFor(model: CompareModel, allKeys: readonly string[]): Map<string, VennPoint> {
   const out = compareAnchors(model);

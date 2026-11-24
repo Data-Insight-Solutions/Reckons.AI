@@ -653,7 +653,7 @@
     // (see `blocked`) rather than opening an empty layout.
     { value: 'compare', label: 'compare', title: 'A comparison as a venn diagram: only the first on the left, only the second on the right, what both hold in the middle',
       available: () => perspective === 'statements',
-      blocked: () => (compareSources.length < 2 ? `needs two provenances (only ${compareSources.length} here)` : null) },
+      blocked: () => (compareSources.length < 2 ? `needs two documents (only ${compareSources.length} here)` : null) },
     { value: 'map', label: 'map', title: 'Place nodes by GPS coordinates; anything without a location goes to a lane below',
       available: () => statedCoordinates(statements()).size > 0 },
   ];
@@ -2450,7 +2450,7 @@
     <div class="overlay-group compare-panel" data-testid="compare-panel">
       <span class="group-label mono">compare</span>
       {#if compareSources.length < 2}
-        <p class="compare-note mono" data-testid="compare-needs-sources">The compare layout needs two provenances; only {compareSources.length} here. Add another from ingest, then come back.</p>
+        <p class="compare-note mono" data-testid="compare-needs-sources">The compare layout needs two documents; only {compareSources.length} here. Add another from ingest, then come back.</p>
       {:else}
         <div class="compare-pickers">
           <label class="compare-pick mono"><span class="compare-swatch" style="background: {resolveCompareColors(settings().compareColors).a}"></span>

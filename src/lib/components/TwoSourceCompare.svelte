@@ -120,7 +120,7 @@
   {#if result}
     <div class="done" data-testid="cmp-done">
       {#if result.link}
-        <a class="open" href={result.link} data-testid="cmp-link">open "{name.trim()}" in the graph →</a>
+        <a class="open" href={result.link} data-testid="cmp-link">open "{name.trim()}" on the canvas →</a>
         {#if result.a.status === 'failed' || result.b.status === 'failed'}
           <p class="hint">Only the document that arrived is in this link; the one that failed is recorded as failed.</p>
         {/if}

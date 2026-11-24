@@ -159,12 +159,12 @@ test('with one provenance the layout says so instead of opening empty', async ({
   await page.getByTestId('layout-trigger').click();
   const item = page.getByTestId('layout-compare');
   await expect(item).toBeDisabled();
-  await expect(item).toContainText('needs two provenances (only 1 here)');
+  await expect(item).toContainText('needs two documents (only 1 here)');
 
   // Opening it from the URL still says so, and draws no empty comparison.
   await page.goto('/?layout=compare');
   await expect(page.getByTestId('compare-needs-sources')).toContainText(
-    'The compare layout needs two provenances; only 1 here. Add another from ingest, then come back.',
+    'The compare layout needs two documents; only 1 here. Add another from ingest, then come back.',
   );
   await expect(page.getByTestId('compare-legend')).toHaveCount(0);
 });

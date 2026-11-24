@@ -503,7 +503,7 @@
       nodeColorMap = new Map(); hubNodeKeys = [];
     } else if (layout === 'compare' && compare) {
       // F306.2: a venn diagram. Anchors are STATED positions (which side holds the claim), so
-      // nodes are seeded at them like the map and hierarchy layouts rather than left to cool toward them.
+      // markers are seeded at them like the map and hierarchy layouts rather than left to cool toward them.
       activeAnchors = compareAnchorsFor(compare.model, nodes.map((n) => n.key));
       for (const node of nodes) {
         const anchor = activeAnchors.get(node.key);
