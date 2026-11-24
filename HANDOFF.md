@@ -3,6 +3,30 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-24 (afternoon) — START HERE: #682 merged; batch b on `integration/2026-11-24b`; builds run as deputy jobs with Sonnet overseers
+
+**Matt, 2026-11-24: "Use local jobs and overseer subagents."** Builds go to the deputy queue (briefs in
+`~/.local/state/reckons/briefs/`, shared rules in `common-2026-11-24.md`). A Sonnet overseer reviews each finished
+branch against its brief, makes only small fixes, and pushes. Sonnet is not the builder. The two Sonnet builders on
+F306 were stopped and their work handed to deputy jobs.
+**Matt also decided:** compare goes in the main graph view now (F306, ahead of its v0.3.0 slot), and the old
+`/compare` screen is removed once the canvas compare is functional. Both are recorded as `kpred:decided`.
+
+**#682 merged to dev (641088a6), all 17 CI checks green.** **Batch b, `integration/2026-11-24b` (worktree
+tripleNotes-stories):** `feat/f300-5-build` (F300.5: walks are stories in their spaces; BuildChange retired, with a
+`kpred:superseded-by` tombstone that keeps its live docs URL as a 301; the README path is a story in Getting started)
+and the `/compare` decision. Still to join it, each after its overseer:
+- `feat/f304-link-autoplay-filter` (deputy commit 789d43ae; overseer running; one-word term-ratchet fix)
+- `feat/f306-2-venn-layout` (deputy job 75479341 continues a Sonnet builder's uncommitted WIP)
+- `feat/f306-1-two-source-ingest` (deputy job 852357d9 continues commit fb89c645; its pre-push term ratchet fails on
+  "source" (+29), "space" (+2) and "set" (+1), so the brief says reword, never raise)
+- `feat/f300-5-shots` (worktree tripleNotes-shots): CPU queue jobs re-shoot compare-v029, reckoning-v029 and
+  readme-path, then rebuild Getting started; GPU 1 jobs render the four narrated videos outside the repo. An overseer
+  LOOKS at the screenshots before they are committed. Videos are copied into the docs only after Matt approves the audio.
+
+**Private work came first again today; it is recorded in its own repository.** The private workspace was moved to the
+Desktop at Matt's request; the old path is a symlink, and in the app he opens the new folder.
+
 ## 2026-11-24 — START HERE: batch 2 is PR #682; F300.5 and the F304 slice are being built
 
 Opus head session, one Sonnet builder, the local deputy. Private work came first today; it is recorded in its
