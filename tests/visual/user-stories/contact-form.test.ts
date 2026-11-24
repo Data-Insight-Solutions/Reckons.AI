@@ -8,10 +8,11 @@
  *
  * Screenshots: tests/visual/screenshots/contact-form/
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 test('contact form renders on the About page (mailto fallback when no n8n)', async ({ page }) => {
   await page.goto(`${APP}/about`);

@@ -13,10 +13,11 @@
  *
  * Run: npm run test:live
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const OLLAMA = 'http://localhost:11434';
 const MODEL = process.env.LIVE_OLLAMA_MODEL || 'llama3.2:3b';
 

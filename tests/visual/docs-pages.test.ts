@@ -14,9 +14,10 @@
  * read. Screenshots are captured as evidence, but the screenshots are not the test — a picture
  * nobody opens is not a gate, which is the whole lesson of that day.
  */
+import { E2E_BASE } from '../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 
-const BASE = process.env.DOCS_BASE_URL ?? 'http://localhost:5174';
+const BASE = process.env.DOCS_BASE_URL ?? E2E_BASE;
 
 /**
  * Representative pages, chosen for what each one exercises rather than for coverage:

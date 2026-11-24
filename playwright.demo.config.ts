@@ -1,3 +1,4 @@
+import { E2E_BASE } from './scripts/lib/e2e-port';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -12,7 +13,7 @@ import { defineConfig, devices } from '@playwright/test';
  *   WORKFLOW_BASE_URL   reuse an already-running dev server instead of starting one
  *   CHROME_PATH         use this Chrome binary instead of Playwright's own download
  */
-const base = process.env.WORKFLOW_BASE_URL ?? 'http://localhost:5174';
+const base = process.env.WORKFLOW_BASE_URL ?? E2E_BASE;
 // The page is laid out at 1280x720 and recorded at exactly that size; scripts/demo/mux.ts scales it to
 // 1920x1080 (lanczos). Playwright's recorder never scales UP: asking it for 1920x1080 padded the
 // 1280x720 picture with grey margins, which Matt saw as the video 'shrinking' after the title card
