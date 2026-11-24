@@ -119,6 +119,20 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     unlisted: true,
     entities: 23,
     triples: 155
+  },
+  {
+    // F304.2: UNLISTED (same 2026-11-19 decision as the showcase). The personal space behind the
+    // showcase's last step: archery, hand-made wooden bows and arrows, a dog, cats, chickens and
+    // darkling beetles, and swimming — and nothing else. No pictures, and no picture of a child.
+    id: 'matthew-roe-personal',
+    icon: '☍',
+    title: 'Matthew Roe — personal',
+    body: 'The personal space the showcase leaps to: off-the-clock facts only. Opens as its own space.',
+    file: '/starter-matthew-roe-personal.ttl',
+    space: 'Matthew Roe — personal',
+    unlisted: true,
+    entities: 5,
+    triples: 29
   }
 ];
 
