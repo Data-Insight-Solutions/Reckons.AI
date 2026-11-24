@@ -308,8 +308,28 @@ export function buildProposalRows(
 }
 
 /** A deterministic, synthetic reply for the mock provider: two options, each with one of every kind of row. */
-export function mockProposalReply(citations: readonly string[]): string {
+export function mockProposalReply(citations: readonly string[], situation = ''): string {
   const cite = citations.slice(0, 1);
+  // The Quick-Start example's walk (F300.5) decides about its own project, so its fixed reply is about that.
+  if (/phoenix/i.test(situation)) return JSON.stringify({
+    recommended: 'a',
+    options: [
+      {
+        label: 'Renew the vendor contract early', rationale: 'Unblocks the pipeline soonest; the cost is committing before legal has finished.',
+        statements: [{ s: 'Vendor Contract', p: 'renewal plan', o: 'Renew early' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A one-page timeline diagram of an early vendor contract renewal' } }],
+        missingInputs: [{ about: 'Data Pipeline', question: 'Attach the vendor quote' }],
+        citations: cite,
+      },
+      {
+        label: 'Keep the nightly batch for now', rationale: 'No new commitment; the cost is another quarter of day-old data.',
+        statements: [{ s: 'Vendor Contract', p: 'renewal plan', o: 'Wait for legal' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A one-page diagram of the nightly batch staying in place' } }],
+        missingInputs: [{ about: 'Data Pipeline', question: 'Add the date legal expects to finish' }],
+        citations: cite,
+      },
+    ],
+  });
   return JSON.stringify({
     recommended: 'a',
     options: [

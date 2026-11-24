@@ -34,6 +34,12 @@ describe('parseProposalReply', () => {
   it('accepts the mock provider reply', () => {
     expect(parseProposalReply(mockProposalReply(['st-1']), ids).ok).toBe(true);
   });
+  it('accepts the Quick-Start walk\'s reply, chosen by its situation, and it differs from the default (F300.5)', () => {
+    const phoenix = mockProposalReply(['st-1'], 'We need to decide how to unblock the Phoenix data pipeline.');
+    expect(parseProposalReply(phoenix, ids).ok).toBe(true);
+    expect(phoenix).not.toBe(mockProposalReply(['st-1']));
+    expect(phoenix).toContain('Vendor Contract');
+  });
   const refused: [string, string, RegExp][] = [
     ['not JSON', 'I think you should try something.', /no JSON object/],
     ['broken JSON', '{"options": [', /no JSON object|not valid JSON/],

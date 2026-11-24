@@ -13,10 +13,11 @@ import type { UnifiedStory } from '../../src/lib/rdf/story-steps';
  * choose the target, generate a proposal that is written into the knowledge base, look at an option on the
  * canvas, accept one, answer its missing input.
  *
- * As in workflow-build-change.test.ts the steps are the ktype:TestStep triples of
- * test:Workflow-ReckoningV029 in static/docs-testing.ttl; this file supplies what each one DOES and
- * fails if the two lists differ. The mock provider writes the proposal and a SYNTHETIC file-queue
- * runner in OPFS stands in for the generation tools: no job ever runs, the request file is counted.
+ * F300.5: the steps are the story story:quickstart-reckoning INSIDE the Quick-Start example
+ * (static/starter-quickstart.ttl); static/docs-testing.ttl keeps a pointer to it. This file plays that story and
+ * supplies what each step it cannot declare DOES. The mock provider writes the proposal (its Phoenix reply, chosen
+ * by the situation sentence) and a SYNTHETIC file-queue runner in OPFS stands in for the generation tools: no job
+ * ever runs, the request file is counted.
  */
 
 const WORKFLOW_ID = 'reckoning-v029';
@@ -26,25 +27,25 @@ const story = JSON.parse(
   execFileSync('npx', ['tsx', 'scripts/workflow-steps.ts', `--story=${WORKFLOW_ID}`], { encoding: 'utf8' }),
 ) as UnifiedStory;
 
-async function seed(page: Page) {
-  await page.goto('/ingest');
-  await page.getByPlaceholder(/what is this about/i).first().fill('Company Alpha');
-  await page.locator('textarea').first().fill('Company Alpha has 50 employees, was founded in 2020 by Jane Doe in Seattle, and makes battery software.');
-  const submit = page.getByRole('button', { name: /extract (facts|statements)/i });
-  await expect(submit).not.toBeDisabled({ timeout: 5_000 });
-  await submit.click();
-  await page.waitForURL((u) => !u.pathname.startsWith('/ingest'), { timeout: 30_000 });
-  await page.goto('/review');
-  await expect(page.getByText(/company.alpha|employee|2020|seattle/i).first()).toBeVisible({ timeout: 8_000 });
-  for (let i = 0; i < 40; i++) {
-    const confirm = page.getByRole('button', { name: /confirm|✓|accept/i }).first();
-    if (!(await confirm.count()) || !(await confirm.isVisible().catch(() => false))) break;
-    await confirm.click().catch(() => {});
-    await page.waitForTimeout(250);
-  }
+/**
+ * SETUP, not a step: the Quick-Start example is opened as its own space, the way the About page's card does it.
+ * (Both walks start with that example open; the example's own opening is the generated-assets walk's step 1.)
+ */
+async function openQuickstart(page: Page) {
+  await page.goto('/about');
+  await page.getByTestId('starter-card-quickstart').click();
+  await expect.poll(async () => page.evaluate(async () => {
+    const path = '/src/lib/storage/db.ts';
+    const { db } = await import(/* @vite-ignore */ path);
+    return (await db.statements.count()) as number;
+  }), { timeout: 20_000 }).toBeGreaterThan(20);
 }
 
-/** The open question the person chooses as the target; the mock's missing input uses the same entity and relationship. */
+/**
+ * The open question the person chooses as the target; the mock's missing input uses the same entity and relationship.
+ * NAMED GAP: an example file cannot carry an open question yet (TTL import has no form for a statement whose object
+ * is still missing), so the test writes this one row after the example is opened, as setup before the story plays.
+ */
 async function addTargetQuestion(page: Page) {
   await page.evaluate(async () => {
     const dbs = await indexedDB.databases();
@@ -53,9 +54,9 @@ async function addTargetQuestion(page: Page) {
       const open = await new Promise<IDBDatabase>((res, rej) => { const r = indexedDB.open(info.name!); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
       if (open.objectStoreNames.contains('statements')) {
         const all: any[] = await new Promise((res) => { const q = open.transaction('statements').objectStore('statements').getAll(); q.onsuccess = () => res(q.result); });
-        const base = all.find((st) => st.s?.kind === 'iri' && st.status === 'confirmed');
+        const base = all.find((st) => st.s?.kind === 'iri' && st.status === 'confirmed' && st.s.value.endsWith('/project-phoenix'));
         if (base) {
-          const row = { ...base, id: 'e2e-target-question', s: { kind: 'iri', value: 'urn:kbase:concept/sample-company' }, p: { kind: 'iri', value: 'urn:kbase:predicate/needs-input' }, status: 'pending', needsObject: true, o: { kind: 'literal', value: '?' }, question: 'What does Sample Company still need?' };
+          const row = { ...base, id: 'e2e-target-question', s: { kind: 'iri', value: 'urn:kbase:concept/data-pipeline' }, p: { kind: 'iri', value: 'urn:kbase:predicate/needs-input' }, status: 'pending', needsObject: true, o: { kind: 'literal', value: '?' }, question: 'What does Data Pipeline v2 still need?' };
           await new Promise<void>((res, rej) => { const w = open.transaction('statements', 'readwrite'); w.objectStore('statements').put(row); w.oncomplete = () => res(); w.onerror = () => rej(w.error); });
         }
       }
@@ -114,8 +115,8 @@ const exceptions: Record<string, StepException> = {
   'select-on-canvas': {
     why: 'the node is found from the data at run time, the button by its name, and the reckoning id is read from the address',
     perform: async (page, snap) => {
-      const iri = (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/') && r.s.includes('company-alpha'))?.s
-        ?? (await allRows(page)).find((r) => r.status === 'confirmed' && r.s.startsWith('urn:kbase:concept/'))!.s;
+      const iri = 'urn:kbase:concept/project-phoenix';
+      expect((await allRows(page)).some((r) => r.status === 'confirmed' && r.s === iri), 'the example holds Project Phoenix').toBe(true);
       await page.goto(`/?sel=${encodeURIComponent('i:' + iri)}`);
       const action = page.getByRole('button', { name: /reckon with these/i });
       await expect(action).toBeVisible({ timeout: 15_000 });
@@ -132,6 +133,11 @@ const exceptions: Record<string, StepException> = {
     before: async (page, snap) => {
       const boxes = page.locator('[data-testid="situation-picker"] input[type="checkbox"]');
       await expect(boxes.nth(2)).toBeVisible({ timeout: 10_000 });
+      // The canvas chose every statement that touches Project Phoenix; the person unticks them and ticks the three that matter.
+      // The list re-orders as statements are unticked, so untick whichever is ticked first until none is.
+      const ticked = page.locator('[data-testid="situation-picker"] input[type="checkbox"]:checked');
+      for (let guard = 0; guard < 60 && (await ticked.count()) > 0; guard++) await ticked.first().uncheck();
+      await expect(page.getByTestId('chosen-count')).toContainText('0 statements chosen');
       for (let i = 0; i < 3; i++) await boxes.nth(i).check();
       await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
       await snap(page.getByTestId('situation-picker'));
@@ -148,12 +154,12 @@ const exceptions: Record<string, StepException> = {
       await page.getByLabel('Answer a question').check();
       const choice = page.locator('[data-testid="target-picker"] input[type="radio"]').first();
       await expect(choice).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText('What does Sample Company still need?')).toBeVisible();
+      await expect(page.getByText('What does Data Pipeline v2 still need?')).toBeVisible();
       await choice.check();
       await snap(page.getByTestId('target-picker'));
     },
     after: async (page) => {
-      await expect(page.getByText('Answer this open question: What does Sample Company still need?')).toBeVisible();
+      await expect(page.getByText('Answer this open question: What does Data Pipeline v2 still need?')).toBeVisible();
     },
   },
 
@@ -166,7 +172,7 @@ const exceptions: Record<string, StepException> = {
       for (const key of ['a', 'b']) {
         const mine = rows.filter((r) => r.proposalOption === `reckoning-${ctx.id}-option-${key}`);
         expect(mine.every((r) => r.status === 'pending')).toBe(true);
-        expect(mine.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject)).toHaveLength(1);
+        expect(mine.filter((r) => r.p.endsWith('/renewal-plan') && !r.needsObject)).toHaveLength(1);
         expect(mine.filter((r) => r.p.endsWith('/job-state')).map((r) => r.o)).toEqual(['proposed']);
         expect(mine.filter((r) => r.needsObject)).toHaveLength(1);
       }
@@ -212,7 +218,7 @@ const exceptions: Record<string, StepException> = {
       const rows = await allRows(page);
       const a = rows.filter((r) => r.proposalOption === A);
       const b = rows.filter((r) => r.proposalOption === B);
-      expect(a.filter((r) => r.p.endsWith('/brand-direction') && !r.needsObject).map((r) => r.status)).toEqual(['confirmed']);
+      expect(a.filter((r) => r.p.endsWith('/renewal-plan') && !r.needsObject).map((r) => r.status)).toEqual(['confirmed']);
       expect(b.length).toBeGreaterThan(0);
       expect(b.every((r) => r.status === 'superseded')).toBe(true);
       expect(await requestCount(page)).toBe(ctx.before + 1);
@@ -240,7 +246,7 @@ test('every named exception belongs to a step of the story', () => {
 test(`${story.label}`, async ({ page }) => {
   test.setTimeout(180_000);
   if (CAPTURE_DIR) mkdirSync(CAPTURE_DIR, { recursive: true });
-  await seed(page);
+  await openQuickstart(page);
   await addTargetQuestion(page);
   const outcomes = await playStory(page, story, {
     exceptions,

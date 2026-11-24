@@ -20,5 +20,17 @@
       { "s": "larkspur-orchard-cooperative-society", "p": "has-cellar", "o": "stone-cellar" },
       { "s": "cider-press-shed", "p": "has-roof", "o": "slate", "literal": true }
     ]
+  },
+  "quickstart": {
+    "_about": "The Quick-Start example's check-in note (F300.5). Read against the example's own project, it yields one repeat (reinforces), one near-duplicate, one contradiction (conflicts) and one new statement.",
+    "title": "Phoenix check-in",
+    "text": "Notes from the Phoenix check-in: Project Phoenix is still in progress. Its deadline has moved to 2026-10-31. The content based filter trial is running. Carol is writing the vendor FAQ.",
+    "mockMatch": "Notes from the Phoenix check-in: Project Phoenix is still in progress.",
+    "mock": [
+      { "s": "project-phoenix", "p": "status", "o": "in-progress", "literal": true },
+      { "s": "project-phoenix", "p": "deadline", "o": "2026-10-31", "literal": true, "excerpt": "Its deadline has moved to 2026-10-31." },
+      { "s": "content-based-filter", "p": "trial-status", "o": "running", "literal": true },
+      { "s": "carol", "p": "writes", "o": "vendor-faq" }
+    ]
   }
 }

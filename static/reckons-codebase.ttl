@@ -1241,7 +1241,9 @@ code:llm kpred:has-file "src/lib/integrations/loopback.ts" .
 code:components kpred:has-file "src/lib/components/SettingsHeader.svelte" .
 code:llm kpred:has-file "src/lib/integrations/llm/corpus-fixture.ts" ;
     kpred:tested-by "src/lib/integrations/llm/__tests__/corpus-fixture.test.ts" .
-code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-build-change.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts", "tests/e2e/workflow-compare-v029.test.ts" .
+code:scripts kpred:has-file "scripts/content/gen-assets-walk.ttl" ;
+    kpred:has-file "scripts/content/__tests__/gen-assets-walk.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/triple-check.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts", "tests/e2e/workflow-compare-v029.test.ts" .
 code:scripts kpred:has-file "scripts/offline/lib/claim-needles.ts" ;
     kpred:tested-by "scripts/offline/__tests__/claim-needles.test.ts" .
 # Hand-held walkthroughs (F261).

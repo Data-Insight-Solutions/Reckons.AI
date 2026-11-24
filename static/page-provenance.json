@@ -1,5 +1,5 @@
 {
-  "built": 210,
+  "built": 209,
   "pages": [
     {
       "path": "architecture/claude-md-minimal",
@@ -1223,7 +1223,7 @@
       "factHash": "8c57311d6bb0d074",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "245ce2684037befe"
+      "pageHash": "d352db7432169727"
     },
     {
       "path": "testing/graph-review-story",
@@ -1241,7 +1241,7 @@
       "factHash": "d9600c88557cd268",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "e5337033bb05ff33"
+      "pageHash": "d6dad1c504dfecd3"
     },
     {
       "path": "testing/release-review-spaces",
@@ -1259,7 +1259,7 @@
       "factHash": "88d6ec7a008531ca",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "e979775dfde2b76a"
+      "pageHash": "63c6f818a42dd3dd"
     },
     {
       "path": "testing/synthetic-room-benchmark",
@@ -1268,7 +1268,7 @@
       "factHash": "e1e80cd0e03a4e84",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "efaf5516b0c79b7f"
+      "pageHash": "0da5c4cd9a0c7774"
     },
     {
       "path": "testing/test-suite",
@@ -1286,7 +1286,7 @@
       "factHash": "3f23434c3dda4674",
       "factCount": 1,
       "floor": "evidence",
-      "pageHash": "07ea9cf13d413370"
+      "pageHash": "17e9adf0c15e3243"
     },
     {
       "path": "testing/three-example-nodes",
@@ -1295,7 +1295,7 @@
       "factHash": "e518e7777e8257c9",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "ad84234f2b86f754"
+      "pageHash": "176d0df5ad0af22d"
     },
     {
       "path": "testing/visual-tests",
@@ -1304,7 +1304,7 @@
       "factHash": "9d0ddb82700ce0bd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "b0e8e6e6a98efba9"
+      "pageHash": "32ac5ae7b1f9d0b8"
     },
     {
       "path": "testing/vlm-workflow-streams",
@@ -1313,34 +1313,25 @@
       "factHash": "663a738d5de199f8",
       "factCount": 5,
       "floor": "evidence",
-      "pageHash": "1dd998469b12899c"
-    },
-    {
-      "path": "testing/workflow-build-change",
-      "entity": "urn:reckons:test/Workflow-BuildChange",
-      "graph": "docs-testing.ttl",
-      "factHash": "96357e0fc36d1976",
-      "factCount": 8,
-      "floor": "evidence",
-      "pageHash": "c1c4a37fee77581f"
+      "pageHash": "fee0d96fd1702fab"
     },
     {
       "path": "testing/workflow-compare-v029",
       "entity": "urn:reckons:test/Workflow-CompareV029",
       "graph": "docs-testing.ttl",
-      "factHash": "2f88f54cd3635798",
+      "factHash": "6ac74c2f6fdd1df2",
       "factCount": 7,
       "floor": "evidence",
-      "pageHash": "a814f5c2adcd3109"
+      "pageHash": "5e8689c3e6185cc5"
     },
     {
       "path": "testing/workflow-generated-assets",
       "entity": "urn:reckons:test/Workflow-GeneratedAssets",
       "graph": "docs-testing.ttl",
-      "factHash": "27726f73d9064c58",
-      "factCount": 8,
+      "factHash": "9fad170a90233f3b",
+      "factCount": 9,
       "floor": "evidence",
-      "pageHash": "acd1c067afa1967a"
+      "pageHash": "f895e9b39968fc59"
     },
     {
       "path": "testing/workflow-readme-path",
@@ -1349,16 +1340,16 @@
       "factHash": "544233fab594d838",
       "factCount": 8,
       "floor": "evidence",
-      "pageHash": "42d29056d56c327c"
+      "pageHash": "8e62ff86c5894dd0"
     },
     {
       "path": "testing/workflow-reckoning-v029",
       "entity": "urn:reckons:test/Workflow-ReckoningV029",
       "graph": "docs-testing.ttl",
-      "factHash": "6078067f04c18852",
+      "factHash": "75085b63a11b0ca7",
       "factCount": 7,
       "floor": "evidence",
-      "pageHash": "18c5f4df83dd1179"
+      "pageHash": "c3472465fccb96e3"
     },
     {
       "path": "timeline-ecosystem/semantic-web-organizations",

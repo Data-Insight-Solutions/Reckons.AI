@@ -742,123 +742,6 @@ A passing test only says "nothing broke". A workflow page lets a person who has 
 Screenshots are taken on synthetic example data, never on anyone's real notes. A step whose screenshot has not been captured yet says so instead of showing a stand-in picture. The test confirms the app responds at every step; it does not judge how good the extracted claims or a reckoning's proposal are, which are measured separately. Each workflow page says which parts are scripted stand-ins for a model.""" ;
     skos:broader        test:TestSuite .
 
-test:Workflow-BuildChange
-    rdf:type            ktype:TestWorkflow ;
-    kpred:narration-status "draft" ;
-    kpred:narration-storyline "A viewer comes to understand that a note becomes facts only once you accept them, and that a later note which contradicts those facts is held back beside the old ones, so you choose each change and the old values stay on record." ;
-    rdfs:label          "Build a space from a note, then change it with another" ;
-    skos:definition     """Space building and space changing, start to finish: add a note and accept what it says in one go, then add a second note that changes some of it, and decide each change. The second half is where a space goes wrong quietly: a new value that replaces an old one has to be noticed and decided, not accepted in a batch. A browser test runs these steps, and you can run the same steps by hand with your own model (F183.3).""" ;
-    kpred:shots-note    """## How these screenshots were made
-
-**What they show.** Both notes are invented: a community garden on an Elm Street, its beds, its coordinator and its tool shed. They are part of the notes corpus the extraction benchmark scores models on (`tests/fixtures/notes-corpus/06-garden-build.txt` and `07-garden-change.txt`).
-
-**What is scripted.** The browser test uses no language model. Its stand-in reader returns the facts a careful reader would take from each note, written down beside the notes as the benchmark's expected answers. So the pictures show the review working on the right facts. Whether a real model reads the notes that well is what the benchmark measures, and what you see when you run the steps by hand with your own model.""" ;
-    kpred:workflow-id   "build-change" ;
-    kpred:test-file     "tests/e2e/workflow-build-change.test.ts" ;
-    kpred:render-inline "true" ;
-    kpred:children-label "The steps" ;
-    skos:broader        test:TestWorkflows .
-
-test:Workflow-BuildChange-Step1
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Add the first note" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "1"^^xsd:integer ;
-    kpred:step-id       "add-first-note" ;
-    kpred:narration     "Meet the garden. We paste a short note about a community garden, and ask Reckons to read it." ;
-    kpred:short-label   "Add the first note" ;
-    kpred:box-label     "Extract statements" ;
-    kpred:box-target    "the Extract statements button, under the note's title and text" ;
-    kpred:page          "/ingest" ;
-    kpred:screenshot    "/workflows/build-change/01-add-first-note.webp" ;
-    kpred:page-name     "the Add tab" ;
-    skos:definition     "Open the Add tab, title the note \"Garden notes\" and paste: \"The Elm Street community garden has twelve raised beds. Priya Shah coordinates the garden. The tool shed is open on Saturdays. Water for the beds comes from a rain barrel next to the shed.\" Then press Extract statements. Every fact it reads arrives waiting for your decision." ;
-    kpred:assertion     "Reading the note leaves the Add tab and puts its facts in Review, each waiting." .
-
-test:Workflow-BuildChange-Step2
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Accept the note's facts in one go" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "2"^^xsd:integer ;
-    kpred:step-id       "accept-source" ;
-    kpred:narration     "Its four facts wait for you. Nothing is kept until you say so, so we accept them with one press." ;
-    kpred:narration-lead "When a tool reads your notes, who decides what counts as known?" ;
-    kpred:short-label   "Accept by source" ;
-    kpred:box-label     "Accept 4" ;
-    kpred:box-target    "the note's card in Review grouped by source, and its accept button with the count it will accept" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/build-change/02-accept-source.webp" ;
-    kpred:page-name     "the Review tab" ;
-    skos:definition     "Open Review and choose by source. The note is one card. Nothing in it disagrees with anything yet, so its accept button offers all of it; press it once. A real model may read the note differently: refine or reject what it got wrong." ;
-    kpred:assertion     "Grouped by source, the note's card offers to accept 4, and one press leaves nothing waiting." .
-
-test:Workflow-BuildChange-Step3
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Add a note that changes things" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "3"^^xsd:integer ;
-    kpred:step-id       "add-change-note" ;
-    kpred:narration     "Later, a meeting changes things. We paste a second note, and again ask Reckons to read it." ;
-    kpred:short-label   "Add the change" ;
-    kpred:box-label     "Extract statements" ;
-    kpred:box-target    "the Extract statements button, with the change note filled in" ;
-    kpred:page          "/ingest" ;
-    kpred:screenshot    "/workflows/build-change/03-add-change-note.webp" ;
-    kpred:page-name     "the Add tab" ;
-    skos:definition     "Back on the Add tab, title it \"Garden meeting\" and paste: \"Notes from the garden meeting: the tool shed is now open on Sundays instead of Saturdays. Marco Ruiz is the new coordinator of the Elm Street community garden. The garden added four raised beds, so it now has sixteen.\" Press Extract statements." ;
-    kpred:assertion     "Reading the change note leaves the Add tab and puts its facts in Review." .
-
-test:Workflow-BuildChange-Step4
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See what disagrees with the space" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "4"^^xsd:integer ;
-    kpred:step-id       "see-held-back" ;
-    kpred:narration     "Three new facts clash with what we already hold, so they wait, each beside the old one it would replace." ;
-    kpred:narration-lead "What should happen when new information disagrees with what you already have?" ;
-    kpred:short-label   "See the disagreements" ;
-    kpred:box-label     "Held back" ;
-    kpred:box-target    "the change note's card, with its facts held back and the reason above each" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/build-change/04-see-held-back.webp" ;
-    kpred:page-name     "the Review tab" ;
-    skos:definition     "In Review, by source, the meeting note's card says how many facts are held back. Each new value sits next to the one it would replace, with the reason it is held: it disagrees with a fact you have. Accepting the card in one go would skip them; they need a decision each. The graph beside the list shows only this note's facts and what they touch." ;
-    kpred:assertion     "The meeting note's card shows all three facts held back as disagreeing with a fact you have, and offers no group accept." .
-
-test:Workflow-BuildChange-Step5
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Keep the new values" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "5"^^xsd:integer ;
-    kpred:step-id       "keep-new" ;
-    kpred:narration     "We decide each one. Keeping the new value replaces the old, which stays on record as replaced." ;
-    kpred:narration-lead "If you change something, can you still see what it said before?" ;
-    kpred:short-label   "Keep the new values" ;
-    kpred:box-label     "Keep new" ;
-    kpred:box-target    "the keep new button on a held-back fact" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/build-change/05-keep-new.webp" ;
-    kpred:page-name     "the Review tab" ;
-    skos:definition     "Press keep new on each one: Sunday, Marco Ruiz and 16 raised beds. The old values are kept on record as replaced, not deleted. If a real model wrote the number added instead of the new total, or the old day again, this is where you catch it." ;
-    kpred:assertion     "Pressing keep new on each disagreement settles it until nothing is waiting." .
-
-test:Workflow-BuildChange-Step6
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See the space after the change" ;
-    kpred:part-of       test:Workflow-BuildChange ;
-    kpred:step-order    "6"^^xsd:integer ;
-    kpred:step-id       "see-changed-space" ;
-    kpred:narration     "On the map, the garden now shows sixteen beds and a new coordinator, each under its source note." ;
-    kpred:narration-lead "Can you still tell which note each fact came from?" ;
-    kpred:short-label   "See the changed space" ;
-    kpred:box-label     "The garden's facts" ;
-    kpred:box-target    "the garden's facts in its panel, under the note each came from" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/build-change/06-see-changed-space.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "Open the graph and select the garden. Its facts are listed under the note each came from: 16 raised beds and Marco Ruiz as coordinator from the meeting, the rain barrel from the first note. The replaced values are kept on record but are no longer part of the space." ;
-    kpred:assertion     "The space holds the new values and keeps the old ones as replaced; the garden's panel lists 16 raised beds under the meeting note and no 12." .
-
 test:Workflow-ReadmePath
     rdf:type            ktype:TestWorkflow ;
     kpred:narration-status "draft" ;
@@ -985,169 +868,25 @@ A model can write a grey square, a clip in which nothing moves, or a splat full 
 ### A generated splat is invented
 
 TripoSplat guesses the far side of an object from one picture. A splat made this way is decoration, not a record of anything real, and the space says so. A splat rebuilt from many real photographs is a different thing and is not part of this workflow.""" ;
-    kpred:shots-note    """## How these screenshots were made
-
-**What they show.** The pictures, clips and splats are the committed results of one run of `npm run gen:assets` on one machine with an NVIDIA RTX 3090 graphics card, on 2026-10-14. Every prompt is made up for this example.
-
-**What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again.""" ;
     kpred:workflow-id   "generated-assets" ;
     kpred:narrator      "hume:a623d3ed-612c-413b-b09f-e0a379a317f0" ;
     kpred:narration-status "approved" ;
     kpred:relates-to    kb:splat-e2e-workflow ;
     kpred:relates-to    kb:splat-local-pipeline ;
     kpred:test-file     "tests/e2e/workflow-generated-assets.test.ts" ;
+    kpred:story         <urn:reckons:story/generated-assets-walk> ;
+    kpred:story-space   "generated-assets" ;
     kpred:render-inline "true" ;
     kpred:children-label "The steps" ;
     skos:broader        test:TestWorkflows .
-
-test:Workflow-GeneratedAssets-Step1
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Open the Generated assets example as its own space" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "1"^^xsd:integer ;
-    kpred:step-id       "open-example" ;
-    kpred:narration     "Welcome. We open the Generated assets example, and it arrives as a space of its own, so nothing touches your other work." ;
-    kpred:short-label   "Open the example" ;
-    kpred:box-label     "Generated assets" ;
-    kpred:box-target    "the Generated assets card under example data" ;
-    kpred:page          "/about" ;
-    kpred:screenshot    "/workflows/generated-assets/01-open-example.webp" ;
-    kpred:page-name     "the About page" ;
-    skos:definition     "Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
-    story:target        "starter-card-generated-assets :: Generated assets" ;
-    story:action        '{"kind":"open-page","path":"/about"}' ;
-    story:action        '{"kind":"click","target":"starter-card-generated-assets"}' ;
-    kpred:assertion     "The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space." .
-
-test:Workflow-GeneratedAssets-Step2
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See the pipeline in the graph" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "2"^^xsd:integer ;
-    kpred:step-id       "see-pipeline" ;
-    kpred:narration     "Here is the whole chain on one graph: each prompt links to its picture, and each picture links to the clip and the 3D scene made from it." ;
-    kpred:narration-lead "Where did each of these files come from, and could you prove it?" ;
-    kpred:short-label   "See the pipeline" ;
-    kpred:box-label     "Prompt → picture → clip and splat" ;
-    kpred:box-target    "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/generated-assets/02-see-pipeline.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
-    story:action        '{"kind":"open-page","path":"/"}' ;
-    kpred:assertion     "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
-
-test:Workflow-GeneratedAssets-Step3
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "The picture, made from a prompt" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "3"^^xsd:integer ;
-    kpred:step-id       "picture" ;
-    kpred:narration     "This picture came from a written prompt, made earlier on this computer with an open model. The app checks it against a saved record of how it was made." ;
-    kpred:narration-lead "Where was this picture actually made?" ;
-    kpred:short-label   "Picture from a prompt" ;
-    kpred:box-label     "Made by Z-Image-Turbo" ;
-    kpred:box-target    "the enlarged picture" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/generated-assets/03-picture.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
-    story:target        "asset-image :: Made by Z-Image-Turbo" ;
-    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-image"]}' ;
-    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-image"}' ;
-    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"image"}' ;
-    story:expect        '{"kind":"visible","target":"asset-large"}' ;
-    story:expect        '{"kind":"attr","target":"asset-image","name":"src","value":"/generated/carved-turtle/image.webp"}' ;
-    story:expect        '{"kind":"media","target":"asset-image","width":768}' ;
-    kpred:assertion     "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
-
-test:Workflow-GeneratedAssets-Step4
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "The clip, made from the picture" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "4"^^xsd:integer ;
-    kpred:step-id       "video" ;
-    kpred:narration     "Next, a short clip made from that same picture. Its record measures how much it moves, so a clip where nothing happens would be flagged, not called fine." ;
-    kpred:narration-lead "How would you know a generated clip really moves?" ;
-    kpred:short-label   "Clip from the picture" ;
-    kpred:box-label     "Made by Wan2.2" ;
-    kpred:box-target    "the clip, paused part way through" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/generated-assets/04-video.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
-    story:target        "asset-video :: Made by Wan2.2" ;
-    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-video"]}' ;
-    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-video"}' ;
-    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"video"}' ;
-    story:expect        '{"kind":"visible","target":"asset-large"}' ;
-    story:expect        '{"kind":"attr","target":"asset-video","name":"src","value":"/generated/carved-turtle/video.webm"}' ;
-    story:expect        '{"kind":"media","target":"asset-video","width":512}' ;
-    kpred:assertion     "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
-
-test:Workflow-GeneratedAssets-Step5
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "The splat, made from the picture" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "5"^^xsd:integer ;
-    kpred:step-id       "splat" ;
-    kpred:narration     "Now a 3D scene, also made from the picture. Drag it to look from any side, but remember the far side is only a guess from one picture." ;
-    kpred:narration-lead "And what about the side of the turtle the picture never showed?" ;
-    kpred:short-label   "Splat from the picture" ;
-    kpred:box-label     "Made by TripoSplat" ;
-    kpred:box-target    "the splat viewer, which turns the splat slowly and can be dragged" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/generated-assets/05-splat.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
-    story:target        "splat-viewer :: Made by TripoSplat" ;
-    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-splat"]}' ;
-    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-splat"}' ;
-    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"splat"}' ;
-    story:expect        '{"kind":"visible","target":"asset-large"}' ;
-    story:expect        '{"kind":"attr","target":"splat-viewer","name":"data-splat-status","value":"ready"}' ;
-    kpred:assertion     "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
-
-test:Workflow-GeneratedAssets-Step6
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Set a splat as the background of the space" ;
-    kpred:part-of       test:Workflow-GeneratedAssets ;
-    kpred:step-order    "6"^^xsd:integer ;
-    kpred:step-id       "background" ;
-    kpred:narration     "Finally, the scene can sit behind the whole graph as a slowly turning backdrop. All of it was made on one computer, and every file is checked against its record." ;
-    kpred:narration-lead "What if a scene could become the room your ideas live in?" ;
-    kpred:short-label   "Splat as the background" ;
-    kpred:box-label     "The island behind the graph" ;
-    kpred:box-target    "the graph with the lighthouse island splat drawn behind it" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/generated-assets/06-background.webp" ;
-    kpred:page-name     "the graph" ;
-    skos:definition     "Open the lighthouse island splat and choose Set as background. The island is then drawn large behind the graph, sized to the graph and turning very slowly, and it never gets in the way of choosing a node. The choice is saved with the space, so it travels with an export. Clear background removes it." ;
-    story:target        "graph-canvas :: The island behind the graph" ;
-    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-lighthouse-island-splat"]}' ;
-    story:action        '{"kind":"click","target":"asset-open-gen-lighthouse-island-splat"}' ;
-    story:action        '{"kind":"click","target":"asset-bg-toggle"}' ;
-    story:action        '{"kind":"click","target":"asset-large-close"}' ;
-    story:action        '{"kind":"press","key":"Escape"}' ;
-    story:expect        '{"kind":"receipt","slug":"lighthouse-island","stage":"splat"}' ;
-    story:expect        '{"kind":"attr","target":"graph-canvas","name":"data-splats","value":"3/0"}' ;
-    kpred:assertion     "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .
 
 
 test:Workflow-ReckoningV029
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Reckon with chosen statements, then accept one option" ;
-    skos:definition     """A Reckoning helps you decide something using what your knowledge base already holds. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal.
+    skos:definition     """A Reckoning helps you decide something using what your knowledge base already holds. Here the decision is how to unblock the data pipeline that the Quick-Start example's project depends on. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal.
 
-A browser test runs these steps on every change. It replaces the earlier Reckoning workflow, which described a three-box form that no longer exists.""" ;
-    kpred:narration-storyline "You pick what the decision is about, say what you want out of it, and get options you can inspect before anything is confirmed or run." ;
-    kpred:shots-note    """## How these screenshots were made
-
-**What they show.** A knowledge base made from one invented note about a fictional company, Company Alpha, with its statements already confirmed, and one invented open question, "What does Sample Company still need?". Nothing here is anyone's real notes.
-
-**What is scripted.** The test uses no language model: a stand-in reader returns the statements of the note, and the proposal is a fixed reply written in advance (two options, each with a statement, a picture job and a missing-input question). The job queue is a stand-in too: the test counts the request written for the job and never runs a model. So the pictures show what each screen does and that the standings change as described. They do not show how good a real model's options are.
-
-**What is not shown.** Running the queued picture job, and the weather-style context blocks a later phase adds to the situation.""" ;
+The steps are a story inside the Quick-Start example itself, which the walk starts with open. A browser test plays that story on every change.""" ;
     kpred:workflow-id   "reckoning-v029" ;
     kpred:relates-to    kb:reckoning-selections ;
     kpred:relates-to    kb:reckoning-select-situation ;
@@ -1156,146 +895,18 @@ A browser test runs these steps on every change. It replaces the earlier Reckoni
     kpred:relates-to    kb:reckoning-accept-option ;
     kpred:test-file     "tests/e2e/workflow-reckoning-v029.test.ts" ;
     kpred:tested-by     "tests/e2e/workflow-reckoning-v029.test.ts" ;
+    kpred:story         <urn:reckons:story/quickstart-reckoning> ;
+    kpred:story-space   "quickstart" ;
     kpred:render-inline "true" ;
     kpred:children-label "The steps" ;
     skos:broader        test:TestWorkflows .
 
-test:Workflow-ReckoningV029-Step1
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Select statements on the canvas and reckon with them" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "1"^^xsd:integer ;
-    kpred:step-id       "select-on-canvas" ;
-    kpred:short-label   "Select on the canvas" ;
-    kpred:box-label     "Reckon with these" ;
-    kpred:box-target    "the Reckon with these button, shown once something on the canvas is selected" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/reckoning-v029/01-select-on-canvas.webp" ;
-    kpred:page-name     "the canvas" ;
-    kpred:narration-lead "When a decision starts from something you are already looking at, how do you tell the tool what the decision is about?" ;
-    skos:definition     "Open the canvas and select Company Alpha. A Reckon with these button appears in its panel. Press it: the Reckoning page opens with the statements that touch Company Alpha already chosen." ;
-    kpred:assertion     "With one entity selected the canvas offers Reckon with these, and pressing it opens the Reckoning page with at least one statement already chosen." .
-
-test:Workflow-ReckoningV029-Step2
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Choose the situation from the list" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "2"^^xsd:integer ;
-    kpred:step-id       "choose-situation" ;
-    kpred:short-label   "Choose the situation" ;
-    kpred:box-label     "Statements chosen" ;
-    kpred:box-target    "the list of statements with their checkboxes and the count of how many are chosen" ;
-    kpred:page          "/reckoning" ;
-    kpred:screenshot    "/workflows/reckoning-v029/02-choose-situation.webp" ;
-    kpred:page-name     "the Reckoning page" ;
-    skos:definition     "On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice." ;
-    story:action        '{"kind":"type","target":"situation-text","text":"We need to decide how to refresh the company logo."}' ;
-    story:action        '{"kind":"click","target":"situation-next"}' ;
-    story:expect        '{"kind":"text","target":"chosen-count","contains":"3 statements chosen"}' ;
-    kpred:assertion     "Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." .
-
-test:Workflow-ReckoningV029-Step3
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Choose the target: a question to answer" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "3"^^xsd:integer ;
-    kpred:step-id       "choose-target" ;
-    kpred:short-label   "Choose the target" ;
-    kpred:box-label     "Open question" ;
-    kpred:box-target    "the open question chosen as the target, among the open questions you hold" ;
-    kpred:page          "/reckoning" ;
-    kpred:screenshot    "/workflows/reckoning-v029/03-choose-target.webp" ;
-    kpred:page-name     "the Reckoning page" ;
-    kpred:narration-lead "Is a target a sentence you type, or something your knowledge base might already know it is missing?" ;
-    skos:definition     "Choose Answer a question. The questions you still have open are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have." ;
-    story:action        '{"kind":"click","target":"target-next"}' ;
-    story:expect        '{"kind":"visible","target":"generate-proposal"}' ;
-    kpred:assertion     "The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." .
-
-test:Workflow-ReckoningV029-Step4
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Generate a proposal that is written into your knowledge base" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "4"^^xsd:integer ;
-    kpred:step-id       "generate-proposal" ;
-    kpred:short-label   "Generate the proposal" ;
-    kpred:box-label     "Two options" ;
-    kpred:box-target    "the two option cards, each listing its statement, its job and its open question" ;
-    kpred:page          "/reckoning" ;
-    kpred:screenshot    "/workflows/reckoning-v029/04-generate-proposal.webp" ;
-    kpred:page-name     "the Reckoning page" ;
-    kpred:narration-lead "What should a tool that suggests things be allowed to change before you have said yes?" ;
-    skos:definition     "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued." ;
-    story:target        "proposal-option :: The two options" ;
-    story:action        '{"kind":"click","target":"generate-proposal"}' ;
-    story:expect        '{"kind":"elements","target":"proposal-option","n":2}' ;
-    story:expect        '{"kind":"text","target":"proposal-written","contains":"Nothing is confirmed and no job has been queued."}' ;
-    kpred:assertion     "Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." .
-
-test:Workflow-ReckoningV029-Step5
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Look at an option on the canvas" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "5"^^xsd:integer ;
-    kpred:step-id       "show-on-canvas" ;
-    kpred:short-label   "Show on the canvas" ;
-    kpred:box-label     "Stop showing one proposal option" ;
-    kpred:box-target    "the control that stops showing one proposal option, over the canvas that is drawing it" ;
-    kpred:page          "/" ;
-    kpred:screenshot    "/workflows/reckoning-v029/05-show-on-canvas.webp" ;
-    kpred:page-name     "the canvas" ;
-    skos:definition     "On an option's card press Show on the canvas. The canvas opens on that option alone, its proposed statements drawn dashed so they cannot be mistaken for what you hold. Use the control that stops showing one option to come back." ;
-    kpred:assertion     "The address carries the option's focus, and the control that stops showing one proposal option is on the page." .
-
-test:Workflow-ReckoningV029-Step6
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Accept one option" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "6"^^xsd:integer ;
-    kpred:step-id       "accept-option" ;
-    kpred:short-label   "Accept one option" ;
-    kpred:box-label     "Confirm" ;
-    kpred:box-target    "the confirm step under the option card, which says what accepting will change" ;
-    kpred:page          "/reckoning" ;
-    kpred:screenshot    "/workflows/reckoning-v029/06-accept-option.webp" ;
-    kpred:page-name     "the Reckoning page" ;
-    kpred:narration-lead "If you accept one option, what should happen to the other, and to the job it wanted to run?" ;
-    skos:definition     "Back on the Reckoning page press Accept on the first option. Before anything changes, a confirm step says how many statements will be confirmed, that one job will be queued in one approval, that the other option's rows will be marked superseded, and that one missing-input question stays open. Press the confirm button. The card says Accepted by you." ;
-    kpred:assertion     "The confirm step names the statement count, one job in one approval, the superseded rows and the open question; after it the accepted option's statement is confirmed, exactly one job request exists, and every row of the other option is superseded." .
-
-test:Workflow-ReckoningV029-Step7
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Answer the missing input" ;
-    kpred:part-of       test:Workflow-ReckoningV029 ;
-    kpred:step-order    "7"^^xsd:integer ;
-    kpred:step-id       "answer-missing-input" ;
-    kpred:short-label   "Answer the missing input" ;
-    kpred:box-label     "Completed" ;
-    kpred:box-target    "the proposal's standing, which reads Completed once the open question is answered" ;
-    kpred:page          "/reckoning" ;
-    kpred:screenshot    "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
-    kpred:page-name     "the Reckoning page" ;
-    skos:definition     "The accepted option still has its open question. Type \"logo.png\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued." ;
-    story:target        "proposal-status :: Completed" ;
-    story:action        '{"kind":"type","target":"open-question-input","text":"logo.png"}' ;
-    story:action        '{"kind":"click","target":"open-question-answer"}' ;
-    story:expect        '{"kind":"text","target":"proposal-status","contains":"Completed"}' ;
-    kpred:assertion     "After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." .
-
 test:Workflow-CompareV029
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Read a note against what you hold, see it on the canvas, decide a contradiction" ;
-    skos:definition     """Adding a second note to a knowledge base that already holds a first one is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new. Here the note is read and lands in Review's compare flow, where each statement is labeled by what it would do. The same comparison is drawn over your own canvas, and the one contradiction is decided on its own card, with the replaced statement kept on record.
+    skos:definition     """Adding a second note to a knowledge base that already holds a project is where it goes wrong quietly: the new note repeats some of what you have, words some of it differently, contradicts some, and adds some that is new. Here a check-in note is read against the Quick-Start example and lands in Review's compare flow, where each statement is labeled by what it would do. The same comparison is drawn over your own canvas, and the one contradiction, a moved deadline, is decided on its own card, with the replaced statement kept on record.
 
-A browser test runs these steps on every change. It replaces the earlier Compare workflow, which described two separate screens that are now one flow.""" ;
-    kpred:narration-storyline "A new note is read against what you already hold, shown on your own canvas, and nothing is written until you decide." ;
-    kpred:shots-note    """## How these screenshots were made
-
-**What they show.** Two invented notes about a fictional cider cooperative (`tests/fixtures/compare-demo/notes.json`). The first is accepted so your knowledge base holds it. The second repeats one thing, rewords one, contradicts one (forty members against fifty-two) and adds one.
-
-**What is scripted.** The test uses no language model: a stand-in reader returns the statements written down for each note. The near-duplicate label uses a test stand-in for the embedding model, so the picture proves the wiring and not how well the real model judges similar wording.
-
-**What is not shown.** How well a real model reads either note, and comparing one whole knowledge base against another, which is no longer part of Review.""" ;
+The steps are a story inside the Quick-Start example itself, which the walk starts with open. A browser test plays that story on every change.""" ;
     kpred:workflow-id   "compare-v029" ;
     kpred:relates-to    kb:review-compare-overlay-fix ;
     kpred:relates-to    kb:compare-one-flow ;
@@ -1303,121 +914,11 @@ A browser test runs these steps on every change. It replaces the earlier Compare
     kpred:relates-to    kb:compare-decide-in-place ;
     kpred:test-file     "tests/e2e/workflow-compare-v029.test.ts" ;
     kpred:tested-by     "tests/e2e/workflow-compare-v029.test.ts" ;
+    kpred:story         <urn:reckons:story/quickstart-compare> ;
+    kpred:story-space   "quickstart" ;
     kpred:render-inline "true" ;
     kpred:children-label "The steps" ;
     skos:broader        test:TestWorkflows .
-
-test:Workflow-CompareV029-Step1
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Extract statements from a second note" ;
-    kpred:part-of       test:Workflow-CompareV029 ;
-    kpred:step-order    "1"^^xsd:integer ;
-    kpred:step-id       "extract-note" ;
-    kpred:short-label   "Extract from a note" ;
-    kpred:box-label     "Extract statements" ;
-    kpred:box-target    "the Extract statements button, under the note's title and text" ;
-    kpred:page          "/ingest" ;
-    kpred:screenshot    "/workflows/compare-v029/01-extract-note.webp" ;
-    kpred:page-name     "the Add page" ;
-    skos:definition     "Your knowledge base already holds the first orchard note, accepted. On the Add page title the second note \"Orchard meeting\" and paste: \"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.\" Press Extract statements. You land in Review's compare flow, not in a separate screen." ;
-    story:target        "ingest-submit :: Extract statements" ;
-    story:action        '{"kind":"open-page","path":"/ingest"}' ;
-    story:action        '{"kind":"type","target":"ingest-title","text":"Orchard meeting"}' ;
-    story:action        '{"kind":"type","target":"ingest-text","text":"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof."}' ;
-    story:action        '{"kind":"click","target":"ingest-submit"}' ;
-    story:expect        '{"kind":"visible","target":"compare-flow"}' ;
-    story:expect        '{"kind":"elements","target":"diff-entry","n":4}' ;
-    kpred:assertion     "Extracting leaves the Add page and opens Review in compare mode." .
-
-test:Workflow-CompareV029-Step2
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See each statement labeled by what it would do" ;
-    kpred:part-of       test:Workflow-CompareV029 ;
-    kpred:step-order    "2"^^xsd:integer ;
-    kpred:step-id       "see-labels" ;
-    kpred:short-label   "See the labels" ;
-    kpred:box-label     "1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
-    kpred:box-target    "the row of labels counting each kind of statement the note brought" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/compare-v029/02-see-labels.webp" ;
-    kpred:page-name     "the Review page" ;
-    kpred:narration-lead "When a second note says mostly the same things, how would you know which sentences are really new?" ;
-    skos:definition     "Review shows the four statements the note brought, each against what you hold. One is a repeat of something you have, one is a near-duplicate worded differently, one contradicts a statement you hold, and one is new. The button says Accept new only, with the count of what it would settle." ;
-    story:target        "compare-chips :: 1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
-    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"reinforces"}' ;
-    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"near-duplicate"}' ;
-    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"conflicts"}' ;
-    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"new"}' ;
-    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 repeat"}' ;
-    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 near-duplicate"}' ;
-    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 contradiction"}' ;
-    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 new"}' ;
-    story:expect        '{"kind":"text","target":"compare-flow","contains":"accept new only (1)"}' ;
-    kpred:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
-
-test:Workflow-CompareV029-Step3
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See the comparison on your own canvas" ;
-    kpred:part-of       test:Workflow-CompareV029 ;
-    kpred:step-order    "3"^^xsd:integer ;
-    kpred:step-id       "see-on-canvas" ;
-    kpred:short-label   "See it on the canvas" ;
-    kpred:box-label     "Ghosts, folded repeat, contradiction" ;
-    kpred:box-target    "the legend over the canvas that says what is drawn as ghosts, what is folded onto what you hold, and the contradiction" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/compare-v029/03-see-on-canvas.webp" ;
-    kpred:page-name     "the Review page" ;
-    kpred:narration-lead "What would it look like if a new note were laid over what you already know, without changing it?" ;
-    skos:definition     "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with the notes they came from. The legend counts each. Nothing has been written to your knowledge base yet." ;
-    story:target        "overlay-legend :: Ghosts, repeats and one contradiction" ;
-    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 new, drawn as ghosts"}' ;
-    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 repeat, folded onto what you hold"}' ;
-    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 reinforcing, thickening what you hold"}' ;
-    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 contradiction"}' ;
-    story:expect        '{"kind":"elements","target":"contradiction-pair","n":1}' ;
-    kpred:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still three confirmed and four pending." .
-
-test:Workflow-CompareV029-Step4
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "Decide the contradiction where it is" ;
-    kpred:part-of       test:Workflow-CompareV029 ;
-    kpred:step-order    "4"^^xsd:integer ;
-    kpred:step-id       "decide-contradiction" ;
-    kpred:short-label   "Decide the contradiction" ;
-    kpred:box-label     "take the new one" ;
-    kpred:box-target    "the contradiction's own card, with the held and the arriving passage and its three choices" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/compare-v029/04-decide-contradiction.webp" ;
-    kpred:page-name     "the Review page" ;
-    kpred:narration-lead "When two notes disagree about a number, which one should the tool believe, and who decides?" ;
-    skos:definition     "The contradiction has a card of its own: forty members from the first note against fifty-two from the second, each with the passage it came from. Choose take the new one, keep mine, or keep both. Take the new one confirms fifty-two." ;
-    story:action        '{"kind":"click","target":"compare-take-new"}' ;
-    story:expect        '{"kind":"elements","target":"contradiction-pair","n":0}' ;
-    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"40","status":"superseded"}' ;
-    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"52","status":"held"}' ;
-    kpred:assertion     "Both passages are readable on the card; after take the new one, 52 is part of what you hold and 40 is marked replaced." .
-
-test:Workflow-CompareV029-Step5
-    rdf:type            ktype:TestStep ;
-    rdfs:label          "See the replaced statement still on record" ;
-    kpred:part-of       test:Workflow-CompareV029 ;
-    kpred:step-order    "5"^^xsd:integer ;
-    kpred:step-id       "see-on-record" ;
-    kpred:short-label   "Still on record" ;
-    kpred:box-label     "replaced, still on record" ;
-    kpred:box-target    "the settled pair, which says the old statement was replaced and is still on record" ;
-    kpred:page          "/review" ;
-    kpred:screenshot    "/workflows/compare-v029/05-see-on-record.webp" ;
-    kpred:page-name     "the Review page" ;
-    skos:definition     "The decided pair stays on the page, marked replaced, still on record: members 40 from the first note and members 52 from the second, with the old passage. Keep mine would have rejected the arriving one instead, and keep both leaves the pair marked as a known disagreement." ;
-    story:target        "decided-pair :: Replaced, still on record" ;
-    story:expect        '{"kind":"elements","target":"decided-pair","n":1}' ;
-    story:expect        '{"kind":"text","target":"decided-pair","contains":"replaced, still on record"}' ;
-    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 40"}' ;
-    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 52"}' ;
-    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard seed"}' ;
-    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard meeting"}' ;
-    kpred:assertion     "The settled pair reads replaced, still on record, shows both statements and the note each came from, and the stored rows are 40 superseded and 52 refined, each keeping its passage." .
 
 
 ## =============================================================================
