@@ -3,6 +3,40 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-24 — START HERE: batch 2 is PR #682; F300.5 and the F304 slice are being built
+
+Opus head session, one Sonnet builder, the local deputy. Private work came first today; it is recorded in its
+own repository, not here.
+
+**PR #682 (`integration/2026-11-24` → dev, worktree tripleNotes-stories).** It is batch 2 (F300.3 functional,
+the F300.5 plan) plus the 11-19 plans (F304 showcase, F305 TSL), the F306 plan, and the deputy's model library,
+**renumbered F307/F308** because its branch had used F304/F305. From `agent/local-f306-two-source-compare` only
+the two plan commits were cherry-picked. Its three handoff commits describe private work: never push that branch.
+Local checks on the combined tree: blocking script tier 9 of 9, svelte-check 0, unit 5,622 passed with 1 load
+timeout that passed 3 of 3 alone, graph-lint 0 errors. e2e was left to CI. Claude merges it when CI is green.
+
+**F304, measured (on `kb:personal-showcase`).** The walk player already auto-advances, applies a step's layout and
+highlights, and is silent unless voice is on. Missing: a link that starts autoplay, and a per-step `story:filter`.
+
+**Being built:**
+- `feat/f304-link-autoplay-filter` (worktree tripleNotes-f304-slice): those two parts. Deputy queue job
+  `f304-slice-deputy` (7c8c1cc2); the brief is `~/.local/state/reckons/briefs/f304-slice-2026-11-24.md`. Next is a
+  Sonnet overseer against the brief's DONE WHEN, then integration.
+- `feat/f300-5-build` (worktree tripleNotes-f3005): a Sonnet builder, phase A only (the pointer, Quickstart's
+  Reckoning and Compare stories, the generated-assets story with the generator trap handled, BuildChange
+  retired, test-workflow-check on pointers). It stops before shots, docs regeneration and recordings, which
+  are queue jobs. It pushes its branch with no PR.
+
+**Release burndown (2026-11-24):** v0.2.9 has 0 of 9 parts functional, v0.3.0 has 0 of 32. v0.2.9's path: F300.5 →
+render the docs videos (queue) → Matt reviews the scripts; F304 needs the slice above, its spaces, and Matt's own text.
+
+**Review queue:** one local-work-reviewer batch (3 accepted, 3 deferred). c420d2cc was rejected: fixed by 0efe6a46
+(one decision per finding). The backlog is 1,057.
+
+**Next, in order:** 1. #682 CI, then merge. 2. The overseer on the deputy's F304 slice. 3. Triage the F300.5 report,
+then integrate both into one new batch and PR. 4. Queue the render phase. **Waiting on Matt:** as on 11-18, plus his
+own text for the showcase.
+
 ## 2026-11-23 — F306 two-source comparison PLANNED (branch agent/local-f306-two-source-compare, unpushed)
 
 Local deputy (qwen3.8-160k) in this worktree. Matt asked (chat, 2026-11-23) for small seamless workflows
