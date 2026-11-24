@@ -497,3 +497,19 @@ describe('F223.9 — the view carries standing', () => {
     expect(view.nodeStandings.get(view.questionEnds.get(q.id)!)).toBe('question');
   });
 });
+
+describe('F139.2 — one entity, one detail level', () => {
+  it('kpred:detail-level wins over the level derived from its facts', () => {
+    const fact = st('e1', 'progress', { literal: 'WIRED 2026-11-24.' }); // log
+    const override = st('e1', 'detail-level', { literal: 'decision' });
+    const view = buildGraphView([fact, override], { minAltitude: 'decision' });
+    expect(view.edges).toHaveLength(0); // the only edge is log; it stays off the canvas
+    expect(view.shownEntities.has(`${KB}e1`)).toBe(true); // but the entity itself is at decisions
+  });
+
+  it('without the override the entity keeps the level its facts give it', () => {
+    const fact = st('e2', 'has-file', 'f2'); // record
+    expect(buildGraphView([fact], { minAltitude: 'decision' }).shownEntities.has(`${KB}e2`)).toBe(false);
+    expect(buildGraphView([fact], { minAltitude: 'record' }).shownEntities.has(`${KB}e2`)).toBe(true);
+  });
+});

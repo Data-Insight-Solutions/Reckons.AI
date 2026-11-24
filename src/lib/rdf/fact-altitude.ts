@@ -664,6 +664,57 @@ export function evidenceAltitudes(statements: Statement[]): Map<string, Altitude
   return out;
 }
 
+/**
+ * A DETAIL LEVEL PER ENTITY (F139.2 part 3, kb:entity-detail-levels).
+ *
+ * An entity's level is the highest altitude of any statement touching it — as subject or as
+ * object — after the derived passes (part 2 included), so a fact lifts every end it connects.
+ * The rule the floor needs: a thing disappears only when EVERYTHING touching it is below the
+ * floor, which is exactly "the entity whose edges all went", and it is symmetric — a leaf
+ * hidden by its own altitude cannot drag its parent in, and a parent hidden by its fixed
+ * level takes its leaf edges with it.
+ *
+ * A kpred:detail-level literal on the entity wins over the derived level, the same way a
+ * fixed altitude on a statement does: it is a person's call about this entity, and a call is
+ * not averaged away by its own bookkeeping. An invalid literal is ignored rather than
+ * guessed at — a level that cannot be read is not a level.
+ */
+export const DETAIL_LEVEL_PREDICATE = `${KPRED}detail-level`;
+
+/** Effective altitude after part 2: the altitude a statement's own predicate gives, or the
+ * evidence its review status and claim give it, whichever is higher. Lift belongs to the
+ * view, which already carries it, and is applied by the caller. */
+export function effectiveAfterEvidence(statements: Statement[]): (st: Statement) => Altitude {
+  const derived = evidenceAltitudes(statements);
+  return (st) => {
+    const own = altitudeOf(st);
+    const d = derived.get(st.id);
+    return d && ALTITUDE_RANK[d] > ALTITUDE_RANK[own] ? d : own;
+  };
+}
+
+export function entityDetailLevels(
+  statements: Statement[],
+  altOf: (st: Statement) => Altitude = effectiveAfterEvidence(statements),
+): Map<string, Altitude> {
+  const levels = new Map<string, Altitude>();
+  const touch = (entity: string, a: Altitude) => {
+    const cur = levels.get(entity);
+    if (!cur || ALTITUDE_RANK[a] > ALTITUDE_RANK[cur]) levels.set(entity, a);
+  };
+  for (const st of statements) {
+    const a = altOf(st);
+    if (st.s.kind === 'iri') touch(st.s.value, a);
+    if (st.o.kind === 'iri') touch(st.o.value, a);
+  }
+  for (const st of statements) {
+    if (st.p.value !== DETAIL_LEVEL_PREDICATE || st.s.kind !== 'iri' || !isLit(st.o)) continue;
+    const v = st.o.value.trim().toLowerCase();
+    if (isAltitude(v)) levels.set(st.s.value, v);
+  }
+  return levels;
+}
+
 /** One line for a report or a queue note. */
 export function explainAltitude(a: Altitude): string {
   const m = ALTITUDE_META[a];

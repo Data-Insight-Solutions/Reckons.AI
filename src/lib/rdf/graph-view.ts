@@ -25,7 +25,9 @@
  */
 import type { Statement, Term } from './types';
 import { termKey, isIRI, isLit } from './types';
-import { ALTITUDE_RANK, altitudeOf, liftedAltitudes, type Altitude } from './fact-altitude';
+import {
+  ALTITUDE_RANK, altitudeOf, liftedAltitudes, effectiveAfterEvidence, entityDetailLevels, type Altitude,
+} from './fact-altitude';
 import { UNKNOWN_OBJECT } from './partial-facts';
 import { standingOf, nodeStanding, type Standing } from './statement-standing';
 
@@ -138,6 +140,17 @@ export interface GraphView {
   standing: Map<string, Standing>;
   /** Standing of every marker, from the facts that touch it. A question's end marker is a question. */
   nodeStandings: Map<string, Standing>;
+  /**
+   * Entity IRIs (subject- or object-side) that the floor leaves SHOWN (F139.2 part 3).
+   *
+   * An entity's level is the highest effective altitude of anything touching it, and it is
+   * shown when that reaches the floor — so this can name an entity whose every edge is
+   * hidden (for example by a hand-set kpred:detail-level on one of its ends). With no floor
+   * every IRI end is shown. Renderers may read this to draw such isolated entities; the 2D/3D
+   * pages do not yet, because they derive their markers from edges — that is the follow-up,
+   * not a change to what this view reports.
+   */
+  shownEntities: Set<string>;
 }
 
 const NO_ALTITUDE_HIDDEN: HiddenByAltitude = {
@@ -228,9 +241,24 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   // the windowed set, so narrowing a date range cannot accidentally drop the decision doing
   // the lifting and hide a fact that was visible a moment ago.
   const lifted = minAltitude ? liftedAltitudes(statements) : null;
+  // EVIDENCE IS DERIVED (F139.2): the per-statement effective altitude folds in the reviewed-supports
+  // rule before the floor reads it, and LIFT still wins over it — authority can lift, never lower.
+  const eff = minAltitude ? effectiveAfterEvidence(statements) : null;
   const floor = minAltitude ? ALTITUDE_RANK[minAltitude] : Number.NEGATIVE_INFINITY;
-  const altitudeOfDrawn = (st: Statement): Altitude => lifted?.get(st.id) ?? altitudeOf(st);
+  const altitudeOfDrawn = (st: Statement): Altitude => {
+    const a = eff ? eff(st) : altitudeOf(st);
+    const l = lifted?.get(st.id);
+    return l && ALTITUDE_RANK[l] > ALTITUDE_RANK[a] ? l : a;
+  };
   const aboveFloor = (st: Statement) => !lifted || ALTITUDE_RANK[altitudeOfDrawn(st)] >= floor;
+  // A DETAIL LEVEL PER ENTITY (F139.2 part 3): an entity's level is the highest effective altitude of
+  // anything touching it — subject- or object-side — and it is shown when that level reaches the floor.
+  // An entity a hand-set kpred:detail-level lifted above its own facts shows even when every edge of its
+  // own was hidden; a floor we cannot read for an entity must not be allowed to hide it, so entities the
+  // level map does not know are shown.
+  const levels = minAltitude ? entityDetailLevels(statements, altitudeOfDrawn) : null;
+  const entityShown = (t: Term): boolean =>
+    !levels || !isIRI(t) || (levels.has(t.value) ? ALTITUDE_RANK[levels.get(t.value)!] >= floor : true);
   // The container's own record is not content: off the canvas unless asked for, like a fact below the
   // floor, and it falls through to `attributes` the same way.
   const drawableFact = (st: Statement) => aboveFloor(st) && (spaceMetadata || !isSpaceMetadata(st));
@@ -256,7 +284,7 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   // the mapping the renderers (F223.10) read when they key that end.
   for (const st of filtered) {
     const question = isQuestionEnd(st);
-    if (drawableFact(st) && (question || isNodeTerm(st.o, categories))) {
+    if (drawableFact(st) && entityShown(st.s) && entityShown(st.o) && (question || isNodeTerm(st.o, categories))) {
       edges.push(st);
       if (question) questionEnds.set(st.id, questionEndKey(st.id));
     } else {
@@ -278,7 +306,15 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   const nodeStandings = new Map<string, Standing>();
   for (const [k, sts] of touching) nodeStandings.set(k, nodeStanding(sts));
 
-  return { edges, attributes, categories, hidden: summarizeHidden(), questionEnds, standing, nodeStandings };
+  // Entities shown at the floor — the same rule the edges used, collected over the windowed ends,
+  // so a page can draw an entity whose own edges are all hidden (kpred:detail-level on it).
+  const shownEntities = new Set<string>();
+  for (const st of filtered) {
+    if (isIRI(st.s) && entityShown(st.s)) shownEntities.add(st.s.value);
+    if (isIRI(st.o) && entityShown(st.o)) shownEntities.add(st.o.value);
+  }
+
+  return { edges, attributes, categories, hidden: summarizeHidden(), questionEnds, standing, nodeStandings, shownEntities };
 
   function summarizeHidden(): HiddenByAltitude {
     if (!lifted && spaceMetadata) return NO_ALTITUDE_HIDDEN;
