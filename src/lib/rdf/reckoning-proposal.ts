@@ -308,8 +308,48 @@ export function buildProposalRows(
 }
 
 /** A deterministic, synthetic reply for the mock provider: two options, each with one of every kind of row. */
-export function mockProposalReply(citations: readonly string[]): string {
+export function mockProposalReply(citations: readonly string[], situation = ''): string {
   const cite = citations.slice(0, 1);
+  // The Quick-Start example's walk (F300.5) decides about its own project, so its fixed reply is about that.
+  if (/phoenix/i.test(situation)) return JSON.stringify({
+    recommended: 'a',
+    options: [
+      {
+        label: 'Renew the vendor contract early', rationale: 'Unblocks the pipeline soonest; the cost is committing before legal has finished.',
+        statements: [{ s: 'Vendor Contract', p: 'renewal plan', o: 'Renew early' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A one-page timeline diagram of an early vendor contract renewal' } }],
+        missingInputs: [{ about: 'Data Pipeline', question: 'Attach the vendor quote' }],
+        citations: cite,
+      },
+      {
+        label: 'Keep the nightly batch for now', rationale: 'No new commitment; the cost is another quarter of day-old data.',
+        statements: [{ s: 'Vendor Contract', p: 'renewal plan', o: 'Wait for legal' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A one-page diagram of the nightly batch staying in place' } }],
+        missingInputs: [{ about: 'Data Pipeline', question: 'Add the date legal expects to finish' }],
+        citations: cite,
+      },
+    ],
+  });
+  // The Getting started space's README path (F300.5) decides about its own camping weekend.
+  if (/oh! ridge|lake george/i.test(situation)) return JSON.stringify({
+    recommended: 'a',
+    options: [
+      {
+        label: 'Book Oh! Ridge for Friday and Saturday', rationale: 'It is open both nights and costs less; the cost is the lakes Jordan wanted.',
+        statements: [{ s: 'Oh! Ridge', p: 'booking plan', o: 'Friday and Saturday' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A simple one-page checklist for booking a two-night campsite' } }],
+        missingInputs: [{ about: 'Oh! Ridge', question: 'Add the date the booking must be made by' }],
+        citations: cite,
+      },
+      {
+        label: 'Take Lake George for Saturday only', rationale: 'It has the alpine lakes; the cost is that Friday night has no campsite.',
+        statements: [{ s: 'Lake George', p: 'booking plan', o: 'Saturday only' }],
+        jobs: [{ kind: 'image', params: { prompt: 'A simple one-page plan for a single night at a mountain lake campsite' } }],
+        missingInputs: [{ about: 'Lake George', question: 'Add where to sleep on Friday night' }],
+        citations: cite,
+      },
+    ],
+  });
   return JSON.stringify({
     recommended: 'a',
     options: [

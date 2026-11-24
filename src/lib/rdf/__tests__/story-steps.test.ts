@@ -70,6 +70,25 @@ describe('story-steps reader', () => {
     expect(w.steps[0]).toMatchObject({ content: 'Spoken', detail: 'Say this' });
   });
 
+  it('plays actions in their "at" order when they carry one, whatever order the file lists them in (F300.5)', () => {
+    const w = read(`
+ex:S a story:Story ; rdfs:label "Tour" .
+ex:S1 a story:Step ; story:partOf ex:S ; story:order "1" ; story:title "Add" ; story:stepId "add" ; story:content "Say" ;
+  story:action '{"kind":"click","target":"go","at":3}' ;
+  story:action '{"kind":"open-page","path":"/ingest","at":1}' ;
+  story:action '{"kind":"type","target":"box","text":"hi","at":2}' .`);
+    expect(w[0].steps[0].actions.map((a) => a.kind)).toEqual(['open-page', 'type', 'click']);
+  });
+
+  it('keeps the listed order when no action carries "at"', () => {
+    const w = read(`
+ex:S a story:Story ; rdfs:label "Tour" .
+ex:S1 a story:Step ; story:partOf ex:S ; story:order "1" ; story:title "Add" ; story:stepId "add" ; story:content "Say" ;
+  story:action '{"kind":"open-page","path":"/ingest"}' ;
+  story:action '{"kind":"click","target":"go"}' .`);
+    expect(w[0].steps[0].actions.map((a) => a.kind)).toEqual(['open-page', 'click']);
+  });
+
   it('parses every action kind', () => {
     const ok = (o: object) => parseAction(JSON.stringify(o));
     expect(ok({ kind: 'open-page', path: '/kb' })).toMatchObject({ ok: true });

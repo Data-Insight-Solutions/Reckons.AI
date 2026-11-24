@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import {
   ROOT, TESTING_TTL, loadWorkflowsFromFile, conventionalScreenshotPath, screenshotFile,
-  setScreenshotLink, SHOT_WIDTH,
+  setScreenshotLink, setStoryMediaLink, SHOT_WIDTH,
 } from './lib/test-workflow.js';
 
 const only = process.argv.find((a) => a.startsWith('--workflow='))?.split('=')[1];
@@ -34,6 +34,8 @@ if (!workflows.length) { console.error(`No workflow${only ? ` "${only}"` : ''} i
 
 /** The e2e test file that runs each workflow, relative to the repo (kpred:test-file). */
 let ttl = readFileSync(TESTING_TTL, 'utf8');
+/** F300.5: a pointed workflow's screenshot links are written to the file that holds its story, not the Testing graph. */
+const storyTexts = new Map<string, string>();
 let failed = false;
 
 for (const w of workflows) {
@@ -58,12 +60,17 @@ for (const w of workflows) {
     mkdirSync(join(out, '..'), { recursive: true });
     await sharp(join(dir, png)).resize({ width: SHOT_WIDTH, withoutEnlargement: true })
       .webp({ quality: 80, effort: 6 }).toFile(out);
-    ttl = setScreenshotLink(ttl, s.iri, sitePath);
+    if (w.storyFile) {
+      storyTexts.set(w.storyFile, setStoryMediaLink(storyTexts.get(w.storyFile) ?? readFileSync(w.storyFile, 'utf8'), s.iri, sitePath));
+    } else {
+      ttl = setScreenshotLink(ttl, s.iri, sitePath);
+    }
     console.log(`  ✓ ${sitePath}  ${(statSync(out).size / 1024).toFixed(0)} KB`);
   }
   rmSync(dir, { recursive: true, force: true });
 }
 
 if (existsSync(TESTING_TTL)) writeFileSync(TESTING_TTL, ttl);
+for (const [file, text] of storyTexts) writeFileSync(file, text);
 console.log('\nNext: npx tsx scripts/docs-pages.ts   (regenerates content/), then look at the pictures.');
 process.exit(failed ? 1 : 0);

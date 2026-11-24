@@ -14,37 +14,38 @@
 @prefix kb:     <urn:kbase:concept/> .
 @prefix pred:   <urn:kbase:predicate/> .
 @prefix schema: <https://schema.org/> .
+@prefix story:  <urn:reckons:story/> .
 
 
 ## ═════════════════════════════════════════════════════════════════════════════
 ## SECTION 1: People and relationships
 ## ═════════════════════════════════════════════════════════════════════════════
 
-kb:Alice
+kb:alice
     rdf:type        foaf:Person ;
     rdfs:label      "Alice" ;
     foaf:name       "Alice Chen" ;
     pred:role       "lead engineer" ;
-    schema:worksFor kb:AcmeCorp ;
-    pred:knows      kb:Bob , kb:Carol .
+    schema:worksFor kb:acme-corp ;
+    pred:knows      kb:bob , kb:carol .
 
-kb:Bob
+kb:bob
     rdf:type        foaf:Person ;
     rdfs:label      "Bob" ;
     foaf:name       "Bob Martinez" ;
     pred:role       "product manager" ;
-    schema:worksFor kb:AcmeCorp ;
-    pred:knows      kb:Alice .
+    schema:worksFor kb:acme-corp ;
+    pred:knows      kb:alice .
 
-kb:Carol
+kb:carol
     rdf:type        foaf:Person ;
     rdfs:label      "Carol" ;
     foaf:name       "Carol Okafor" ;
     pred:role       "data scientist" ;
-    schema:worksFor kb:AcmeCorp ;
-    pred:knows      kb:Alice .
+    schema:worksFor kb:acme-corp ;
+    pred:knows      kb:alice .
 
-kb:AcmeCorp
+kb:acme-corp
     rdf:type        foaf:Organization ;
     rdfs:label      "Acme Corp" ;
     pred:industry   "technology" ;
@@ -56,106 +57,365 @@ kb:AcmeCorp
 ## SECTION 2: A project with deadlines and dependencies
 ## ═════════════════════════════════════════════════════════════════════════════
 
-kb:ProjectPhoenix
+kb:project-phoenix
     rdf:type            skos:Concept ;
     rdfs:label          "Project Phoenix" ;
     pred:status         "in-progress" ;
     pred:deadline       "2026-09-15"^^xsd:date ;
-    pred:lead           kb:Alice ;
-    pred:stakeholder    kb:Bob ;
-    pred:dependsOn      kb:DataPipeline ;
+    pred:lead           kb:alice ;
+    pred:stakeholder    kb:bob ;
+    pred:dependsOn      kb:data-pipeline ;
     dc:description      "Rebuild the recommendation engine with real-time signals. Target: 15% lift in conversion by Q4." .
 
-kb:DataPipeline
+kb:data-pipeline
     rdf:type            skos:Concept ;
     rdfs:label          "Data Pipeline v2" ;
     pred:status         "blocked" ;
-    pred:blockedBy      kb:VendorContract ;
-    pred:owner          kb:Carol ;
+    pred:blockedBy      kb:vendor-contract ;
+    pred:owner          kb:carol ;
     dc:description      "Streaming pipeline replacing the nightly batch ETL. Depends on new vendor data feed." .
 
-kb:VendorContract
+kb:vendor-contract
     rdf:type            skos:Concept ;
     rdfs:label          "Vendor Contract Renewal" ;
     pred:status         "pending-legal" ;
     pred:deadline       "2026-07-01"^^xsd:date ;
-    pred:owner          kb:Bob .
+    pred:owner          kb:bob .
 
 
 ## ═════════════════════════════════════════════════════════════════════════════
 ## SECTION 3: Research notes with sources
 ## ═════════════════════════════════════════════════════════════════════════════
 
-kb:RecommendationSystems
+kb:recommendation-systems
     rdf:type            skos:Concept ;
     rdfs:label          "Recommendation Systems" ;
     skos:definition     "Algorithms that predict user preferences based on past behavior, content features, or collaborative filtering." ;
-    skos:related        kb:ProjectPhoenix .
+    skos:related        kb:project-phoenix .
 
-kb:CollaborativeFiltering
+kb:collaborative-filtering
     rdf:type            skos:Concept ;
     rdfs:label          "Collaborative Filtering" ;
     skos:definition     "Recommendation approach using user-item interaction patterns. Effective when interaction data is abundant." ;
-    skos:broader        kb:RecommendationSystems ;
+    skos:broader        kb:recommendation-systems ;
     pred:strength       "works well with sparse item features" ;
     pred:weakness       "cold-start problem for new users/items" .
 
-kb:ContentBasedFiltering
+kb:content-based-filtering
     rdf:type            skos:Concept ;
     rdfs:label          "Content-Based Filtering" ;
     skos:definition     "Recommendations based on item attributes and user profile matching. No cold-start for items, but requires good feature engineering." ;
-    skos:broader        kb:RecommendationSystems ;
+    skos:broader        kb:recommendation-systems ;
     pred:strength       "no cold-start for new items" ;
     pred:weakness       "limited serendipity — only finds similar items" .
 
-kb:HybridApproach
+kb:hybrid-approach
     rdf:type            skos:Concept ;
     rdfs:label          "Hybrid Recommendation" ;
     skos:definition     "Combining collaborative and content-based methods to get the benefits of both." ;
-    skos:broader        kb:RecommendationSystems ;
-    skos:related        kb:CollaborativeFiltering ;
-    skos:related        kb:ContentBasedFiltering ;
-    pred:adoptedBy      kb:ProjectPhoenix .
+    skos:broader        kb:recommendation-systems ;
+    skos:related        kb:collaborative-filtering ;
+    skos:related        kb:content-based-filtering ;
+    pred:adoptedBy      kb:project-phoenix .
 
 
 ## ═════════════════════════════════════════════════════════════════════════════
 ## SECTION 4: Decisions and their rationale
 ## ═════════════════════════════════════════════════════════════════════════════
 
-kb:Decision-UseHybrid
+kb:decision-use-hybrid
     rdf:type            skos:Concept ;
     rdfs:label          "Decision: Use Hybrid Approach" ;
-    pred:decidedBy      kb:Alice ;
+    pred:decidedBy      kb:alice ;
     pred:decidedOn      "2026-05-20"^^xsd:date ;
     pred:rationale      "Cold-start is our biggest problem (30% of users are new monthly). Hybrid model handles both new and returning users." ;
-    pred:implements     kb:HybridApproach ;
-    pred:supports       kb:ProjectPhoenix .
+    pred:implements     kb:hybrid-approach ;
+    pred:supports       kb:project-phoenix .
 
-kb:Decision-StreamingArch
+kb:decision-streaming-arch
     rdf:type            skos:Concept ;
     rdfs:label          "Decision: Move to Streaming" ;
-    pred:decidedBy      kb:Carol ;
+    pred:decidedBy      kb:carol ;
     pred:decidedOn      "2026-04-10"^^xsd:date ;
     pred:rationale      "Batch ETL has 24h latency. Real-time signals improve recommendation freshness by estimated 40%." ;
-    pred:supports       kb:DataPipeline .
+    pred:supports       kb:data-pipeline .
 
 
 ## ═════════════════════════════════════════════════════════════════════════════
 ## SECTION 5: Metrics and measurements
 ## ═════════════════════════════════════════════════════════════════════════════
 
-kb:Q2-ConversionRate
+kb:q2-conversion-rate
     rdf:type            skos:Concept ;
     rdfs:label          "Q2 2026 Conversion Rate" ;
     pred:value          "3.2%"^^xsd:string ;
     pred:target         "3.7%"^^xsd:string ;
     pred:measuredAt     "2026-06-01"^^xsd:date ;
-    pred:relatedTo      kb:ProjectPhoenix .
+    pred:relatedTo      kb:project-phoenix .
 
-kb:Q1-ConversionRate
+kb:q1-conversion-rate
     rdf:type            skos:Concept ;
     rdfs:label          "Q1 2026 Conversion Rate" ;
     pred:value          "2.8%"^^xsd:string ;
     pred:measuredAt     "2026-03-31"^^xsd:date ;
     pred:trend          "up 14% from Q4 2025" ;
-    pred:relatedTo      kb:ProjectPhoenix .
+    pred:relatedTo      kb:project-phoenix .
+
+
+## ═════════════════════════════════════════════════════════════════════════════
+## SECTION 6: Two guided walks on this example (F300.5)
+## ═════════════════════════════════════════════════════════════════════════════
+## The walks below are stories: each step says what is said, what is shown, what happens and what must
+## be true afterwards. The browser tests play them (tests/e2e/workflow-compare-v029.test.ts and
+## workflow-reckoning-v029.test.ts) and the docs pages and demo videos are made from them, so what a
+## reader is shown here is what the tests passed. The data above is invented for this example.
+
+story:quickstart-compare
+    rdf:type            story:Story ;
+    rdfs:label          "Read a second note against what you hold" ;
+    story:description   "Start with the Quick-Start example open: it already holds a project, its people and its deadlines. A new check-in note arrives: it repeats one thing, words one differently, contradicts one deadline, and adds one. Review labels each statement by what it would do, the same comparison is drawn over your own canvas, and the contradiction is decided where it is, with the replaced statement still on record." ;
+    story:storyline     "A new note is read against what you already hold, shown on your own canvas, and nothing is written until you decide." ;
+    story:shotsNote     "## How these screenshots were made\n\n**What they show.** The Quick-Start example, opened as its own space, and one invented check-in note about its project (`tests/fixtures/compare-demo/notes.json`, the entry named quickstart). The note repeats the project's status, moves its deadline, adds a trial to a method the example names a little differently, and adds a person's task.\n\n**What is scripted.** The test uses no language model: a stand-in reader returns the statements written down for the note. The near-duplicate label uses a test stand-in for the embedding model, so the picture proves the wiring and not how well the real model judges similar names.\n\n**What is not shown.** How well a real model reads the note, and comparing one whole knowledge base against another, which is no longer part of Review." ;
+    story:autoplay      "false" .
+
+story:quickstart-compare-1
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-compare ;
+    story:order         "1" ;
+    story:stepId        "extract-note" ;
+    story:title         "Extract statements from a second note" ;
+    story:shortLabel    "Extract from a note" ;
+    story:page          "/ingest" ;
+    story:pageName      "the Add page" ;
+    story:boxTarget     "the Extract statements button, under the note's title and text" ;
+    story:content       "A new note arrives. We paste it and ask for its statements." ;
+    story:question      "If a new note repeats some of what you hold and contradicts the rest, how would you know?" ;
+    story:detail        "On the Add page title the note \"Phoenix check-in\" and paste: \"Notes from the Phoenix check-in: Project Phoenix is still in progress. Its deadline has moved to 2026-10-31. The content based filter trial is running. Carol is writing the vendor FAQ.\" Press Extract statements. You land in Review's compare flow, not in a separate screen." ;
+    story:target        "ingest-submit :: Extract statements" ;
+    story:action        '{"kind":"open-page","path":"/ingest"}' ;
+    story:action        '{"kind":"type","target":"ingest-title","text":"Phoenix check-in"}' ;
+    story:action        '{"kind":"type","target":"ingest-text","text":"Notes from the Phoenix check-in: Project Phoenix is still in progress. Its deadline has moved to 2026-10-31. The content based filter trial is running. Carol is writing the vendor FAQ."}' ;
+    story:action        '{"kind":"click","target":"ingest-submit"}' ;
+    story:expect        '{"kind":"visible","target":"compare-flow"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":4}' ;
+    story:media         "/workflows/compare-v029/01-extract-note.webp" ;
+    story:assertion     "Extracting leaves the Add page and opens Review in compare mode with four statements." .
+
+story:quickstart-compare-2
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-compare ;
+    story:order         "2" ;
+    story:stepId        "see-labels" ;
+    story:title         "See each statement labeled by what it would do" ;
+    story:shortLabel    "See the labels" ;
+    story:page          "/review" ;
+    story:pageName      "the Review page" ;
+    story:boxTarget     "the row of labels counting each kind of statement the note brought" ;
+    story:content       "Each statement is labeled by what it would do to what you already hold: repeat, near-duplicate, contradiction or new." ;
+    story:question      "When a second note says mostly the same things, which sentences are really new?" ;
+    story:detail        "Review shows the four statements the note brought, each against what you hold. One is a repeat of something you have, one is a near-duplicate worded differently, one contradicts a statement you hold, and one is new. The button says Accept new only, with the count of what it would settle." ;
+    story:target        "compare-chips :: 1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"reinforces"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"near-duplicate"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"conflicts"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"new"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 repeat"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 near-duplicate"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 new"}' ;
+    story:expect        '{"kind":"text","target":"compare-flow","contains":"accept new only (1)"}' ;
+    story:media         "/workflows/compare-v029/02-see-labels.webp" ;
+    story:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
+
+story:quickstart-compare-3
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-compare ;
+    story:order         "3" ;
+    story:stepId        "see-on-canvas" ;
+    story:title         "See the comparison on your own canvas" ;
+    story:shortLabel    "See it on the canvas" ;
+    story:page          "/review" ;
+    story:pageName      "the Review page" ;
+    story:boxTarget     "the legend over the canvas that says what is drawn as ghosts, what is folded onto what you hold, and the contradiction" ;
+    story:content       "The same comparison is drawn over your own canvas. Nothing is written until you decide." ;
+    story:question      "What would it look like if a new note were laid over what you already know, without changing it?" ;
+    story:detail        "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side. The legend counts each. Nothing has been written to your knowledge base yet." ;
+    story:target        "overlay-legend :: Ghosts, repeats and one contradiction" ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 new, drawn as ghosts"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 repeat, folded onto what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 reinforcing, thickening what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":1}' ;
+    story:media         "/workflows/compare-v029/03-see-on-canvas.webp" ;
+    story:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still the confirmed ones plus four pending." .
+
+story:quickstart-compare-4
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-compare ;
+    story:order         "4" ;
+    story:stepId        "decide-contradiction" ;
+    story:title         "Decide the contradiction where it is" ;
+    story:shortLabel    "Decide the contradiction" ;
+    story:page          "/review" ;
+    story:pageName      "the Review page" ;
+    story:boxTarget     "the contradiction's own card, with the held and the arriving statement and its three choices" ;
+    story:content       "The deadline you hold disagrees with the new note. You decide which stands, right where the disagreement is." ;
+    story:question      "When two notes disagree about a date, which should the tool believe, and who decides?" ;
+    story:detail        "The contradiction has a card of its own: the deadline you hold, 2026-09-15, against the 2026-10-31 from the new note. Choose take the new one, keep mine, or keep both. Take the new one confirms the new date." ;
+    story:action        '{"kind":"click","target":"compare-take-new"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":0}' ;
+    story:expect        '{"kind":"standing","subject":"project-phoenix","predicate":"deadline","object":"2026-09-15","status":"superseded"}' ;
+    story:expect        '{"kind":"standing","subject":"project-phoenix","predicate":"deadline","object":"2026-10-31","status":"held"}' ;
+    story:media         "/workflows/compare-v029/04-decide-contradiction.webp" ;
+    story:assertion     "Both statements are readable on the card; after take the new one, 2026-10-31 is part of what you hold and 2026-09-15 is marked replaced." .
+
+story:quickstart-compare-5
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-compare ;
+    story:order         "5" ;
+    story:stepId        "see-on-record" ;
+    story:title         "See the replaced statement still on record" ;
+    story:shortLabel    "Still on record" ;
+    story:page          "/review" ;
+    story:pageName      "the Review page" ;
+    story:boxTarget     "the settled pair, which says the old statement was replaced and is still on record" ;
+    story:content       "The old date is not erased. It is marked replaced and stays on record, beside the one that replaced it." ;
+    story:detail        "The decided pair stays on the page, marked replaced, still on record: the old deadline and the new one, with the note each came from. Keep mine would have rejected the arriving one instead, and keep both leaves the pair marked as a known disagreement." ;
+    story:target        "decided-pair :: Replaced, still on record" ;
+    story:expect        '{"kind":"elements","target":"decided-pair","n":1}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"replaced, still on record"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"deadline \u00b7 2026 09 15"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"deadline \u00b7 2026 10 31"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Phoenix check-in"}' ;
+    story:media         "/workflows/compare-v029/05-see-on-record.webp" ;
+    story:assertion     "The settled pair reads replaced, still on record, and shows both deadlines; the stored rows are the old one superseded and the new one refined; the project's panel lists the new deadline under the check-in note and not the old one." .
+story:quickstart-reckoning
+    rdf:type            story:Story ;
+    rdfs:label          "Reckon with chosen statements, then accept one option" ;
+    story:description   "Start with the Quick-Start example open. A Reckoning helps you decide something using what your knowledge base already holds. Here the decision is how to unblock the data pipeline that Project Phoenix depends on. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has), and two options are written into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal." ;
+    story:storyline     "You pick what the decision is about, say what you want out of it, and get options you can inspect before anything is confirmed or run." ;
+    story:shotsNote     "## How these screenshots were made\n\n**What they show.** The Quick-Start example, opened as its own space, with one open question added by the test: \"What does Data Pipeline v2 still need?\" An example file cannot carry an open question yet, so the test writes that one row; everything else is the example's own content.\n\n**What is scripted.** The test uses no language model: the proposal is a fixed reply written in advance (two options about the vendor contract, each with a statement, a picture job and a missing-input question). The job queue is a stand-in too: the test counts the request written for the job and never runs a model. So the pictures show what each screen does and that the standings change as described. They do not show how good a real model's options are.\n\n**What is not shown.** Running the queued picture job, and the weather-style context blocks a later phase adds to the situation." ;
+    story:autoplay      "false" .
+
+story:quickstart-reckoning-1
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "1" ;
+    story:stepId        "select-on-canvas" ;
+    story:title         "Select statements on the canvas and reckon with them" ;
+    story:shortLabel    "Select on the canvas" ;
+    story:page          "/" ;
+    story:pageName      "the canvas" ;
+    story:boxTarget     "the Reckon with these button, shown once something on the canvas is selected" ;
+    story:content       "When a decision starts from something you are already looking at, you can start it from there." ;
+    story:question      "How do you tell the tool what a decision is about when you are already looking at it?" ;
+    story:detail        "Open the canvas and select Project Phoenix. A Reckon with these button appears in its panel. Press it: the Reckoning page opens with the statements that touch Project Phoenix already chosen." ;
+    story:media         "/workflows/reckoning-v029/01-select-on-canvas.webp" ;
+    story:assertion     "With one entity selected the canvas offers Reckon with these, and pressing it opens the Reckoning page with at least one statement already chosen." .
+
+story:quickstart-reckoning-2
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "2" ;
+    story:stepId        "choose-situation" ;
+    story:title         "Choose the situation from the list" ;
+    story:shortLabel    "Choose the situation" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the list of statements with their checkboxes and the count of how many are chosen" ;
+    story:content       "You choose the statements that describe the situation, and say in a sentence what is to be decided." ;
+    story:detail        "On the Reckoning page the statements you hold are listed with a checkbox each. Untick any the canvas chose, tick the three that describe the decision, and write a sentence about it: \"We need to decide how to unblock the Phoenix data pipeline.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice." ;
+    story:action        '{"kind":"type","target":"situation-text","text":"We need to decide how to unblock the Phoenix data pipeline."}' ;
+    story:action        '{"kind":"click","target":"situation-next"}' ;
+    story:expect        '{"kind":"text","target":"chosen-count","contains":"3 statements chosen"}' ;
+    story:media         "/workflows/reckoning-v029/02-choose-situation.webp" ;
+    story:assertion     "Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." .
+
+story:quickstart-reckoning-3
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "3" ;
+    story:stepId        "choose-target" ;
+    story:title         "Choose the target: a question to answer" ;
+    story:shortLabel    "Choose the target" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the open question chosen as the target, among the open questions you hold" ;
+    story:content       "The target is a question your knowledge base already knows it cannot answer." ;
+    story:question      "Is a target a sentence you type, or something your knowledge base might already know it is missing?" ;
+    story:detail        "Choose Answer a question. The questions you still have open are listed; pick \"What does Data Pipeline v2 still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have." ;
+    story:target        "target-picker :: Open question" ;
+    story:action        '{"kind":"click","target":"target-next"}' ;
+    story:expect        '{"kind":"visible","target":"generate-proposal"}' ;
+    story:media         "/workflows/reckoning-v029/03-choose-target.webp" ;
+    story:assertion     "The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." .
+
+story:quickstart-reckoning-4
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "4" ;
+    story:stepId        "generate-proposal" ;
+    story:title         "Generate a proposal that is written into your knowledge base" ;
+    story:shortLabel    "Generate the proposal" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the two option cards, each listing its statement, its job and its open question" ;
+    story:content       "Two options are written into your knowledge base as proposals. None of it counts, and no job runs, until you accept one." ;
+    story:question      "What should a tool that suggests things be allowed to change before you have said yes?" ;
+    story:detail        "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued." ;
+    story:target        "proposal-option :: The two options" ;
+    story:action        '{"kind":"click","target":"generate-proposal"}' ;
+    story:expect        '{"kind":"elements","target":"proposal-option","n":2}' ;
+    story:expect        '{"kind":"text","target":"proposal-written","contains":"Nothing is confirmed and no job has been queued."}' ;
+    story:media         "/workflows/reckoning-v029/04-generate-proposal.webp" ;
+    story:assertion     "Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." .
+
+story:quickstart-reckoning-5
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "5" ;
+    story:stepId        "show-on-canvas" ;
+    story:title         "Look at an option on the canvas" ;
+    story:shortLabel    "Show on the canvas" ;
+    story:page          "/" ;
+    story:pageName      "the canvas" ;
+    story:boxTarget     "the control that stops showing one proposal option, over the canvas that is drawing it" ;
+    story:content       "An option can be looked at on your own canvas, drawn dashed, before you accept it." ;
+    story:detail        "On an option's card press Show on the canvas. The canvas opens on that option alone, its proposed statements drawn dashed so they cannot be mistaken for what you hold. Use the control that stops showing one option to come back." ;
+    story:media         "/workflows/reckoning-v029/05-show-on-canvas.webp" ;
+    story:assertion     "The address carries the option's focus, and the control that stops showing one proposal option is on the page." .
+
+story:quickstart-reckoning-6
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "6" ;
+    story:stepId        "accept-option" ;
+    story:title         "Accept one option" ;
+    story:shortLabel    "Accept one option" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the confirm step under the option card, which says what accepting will change" ;
+    story:content       "Accepting is one confirmation. The other option is set aside, and the job is queued once." ;
+    story:question      "If you accept one option, what should happen to the other, and to the job it wanted to run?" ;
+    story:detail        "Back on the Reckoning page press Accept on the first option. Before anything changes, a confirm step says how many statements will be confirmed, that one job will be queued in one approval, that the other option's rows will be marked superseded, and that one missing-input question stays open. Press the confirm button. The card says Accepted by you." ;
+    story:media         "/workflows/reckoning-v029/06-accept-option.webp" ;
+    story:assertion     "The confirm step names the statement count, one job in one approval, the superseded rows and the open question; after it the accepted option's statement is confirmed, exactly one job request exists, and every row of the other option is superseded." .
+
+story:quickstart-reckoning-7
+    rdf:type            story:Step ;
+    story:partOf        story:quickstart-reckoning ;
+    story:order         "7" ;
+    story:stepId        "answer-missing-input" ;
+    story:title         "Answer the missing input" ;
+    story:shortLabel    "Answer the missing input" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the proposal's standing, which reads Completed once the open question is answered" ;
+    story:content       "Answering the open question finishes the proposal. No second job runs." ;
+    story:detail        "The accepted option still has its open question. Type \"vendor-quote.pdf\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued." ;
+    story:target        "proposal-status :: Completed" ;
+    story:action        '{"kind":"type","target":"open-question-input","text":"vendor-quote.pdf"}' ;
+    story:action        '{"kind":"click","target":"open-question-answer"}' ;
+    story:expect        '{"kind":"text","target":"proposal-status","contains":"Completed"}' ;
+    story:media         "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
+    story:assertion     "After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." .

@@ -80,6 +80,19 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     triples: 209
   },
   {
+    // F300.5: UNLISTED, because the Getting started space is offered by the welcome page's own button, not as a card.
+    // It is listed here so the README path's story, which lives INSIDE it, resolves through the same table as the other walks.
+    id: 'getting-started',
+    icon: '⛺',
+    title: 'Getting started',
+    body: 'Two friends plan a camping weekend: the sample the welcome page opens, with its sample sources and their review.',
+    file: '/starter-everyday-reviewed.ttl',
+    space: 'Getting started',
+    unlisted: true,
+    entities: 356,
+    triples: 3249
+  },
+  {
     // F292.3: UNLISTED. Opened by /about?example=ring-scan (the Data Insight Solutions site links to it) and never shown in the list.
     // Unlisted is not private: the file is public. The ring is RECONSTRUCTED from photographs, not generated.
     id: 'ring-scan',

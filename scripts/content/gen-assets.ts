@@ -395,6 +395,12 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
 // ── The example space (static/starter-generated-assets.ttl) ──────────────────
 
 export const EXAMPLE_TTL = join(ROOT, 'static/starter-generated-assets.ttl');
+/**
+ * F300.5: the walk of this example is a story INSIDE it. It is hand-written here and copied into the generated file,
+ * because anything written straight into EXAMPLE_TTL is deleted by the next `gen:assets -- --ttl`. Its screenshot
+ * links (story:media) are written to this file by `npm run workflow:shots`, never to EXAMPLE_TTL.
+ */
+export const WALK_TTL = join(ROOT, 'scripts/content/gen-assets-walk.ttl');
 const lit = (v: string | number) => JSON.stringify(String(v));
 const KIND: Record<Stage, string> = { image: 'Image', video: 'Video', splat: 'GaussianSplat' };
 const MODEL_NAMES: Record<Stage, string> = {
@@ -451,6 +457,8 @@ export function exampleTtl(receipts: Receipt[], cad: CadReceipt[] = []): string 
     '    story:title "Choose what happens next" ;',
     '    story:content "Once the image is ready, choose an available derivation. Each output links back to its source image." ;',
     '    story:question "Would you like a video, a Gaussian splat, or another image?" .',
+    '',
+    readFileSync(WALK_TTL, 'utf8').trimEnd(),
     '',
   );
   // License is an entity: assets LINK to it (an edge between two entities), and it carries its own

@@ -10,12 +10,11 @@
  *   npx tsx scripts/workflow-steps.ts                 every workflow, in the docs-page shape
  *   npx tsx scripts/workflow-steps.ts --story=<id>    one story as the unified model (actions, expectations, media)
  */
-import { readStoryQuads } from '../src/lib/rdf/story-steps.js';
-import { loadWorkflowsFromFile, parseTtl, TESTING_TTL } from './lib/test-workflow.js';
+import { loadStoriesFromFile, loadWorkflowsFromFile, TESTING_TTL } from './lib/test-workflow.js';
 
 const storyArg = process.argv.find((a) => a.startsWith('--story='))?.slice('--story='.length);
 if (storyArg) {
-  const story = readStoryQuads(parseTtl(TESTING_TTL), { strict: true }).find((s) => s.id === storyArg);
+  const story = loadStoriesFromFile().find((s) => s.id === storyArg);
   if (!story) { console.error(`no story "${storyArg}" in ${TESTING_TTL}`); process.exit(1); }
   process.stdout.write(JSON.stringify(story, null, 2) + '\n');
 } else {

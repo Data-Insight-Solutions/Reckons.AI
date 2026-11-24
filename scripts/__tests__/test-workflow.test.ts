@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Parser } from 'n3';
 import {
-  loadWorkflows, loadWorkflowsFromFile, workflowDiagram, setScreenshotLink, conventionalScreenshotPath, ROOT,
+  loadWorkflows, loadWorkflowsFromFile, workflowDiagram, setScreenshotLink, setStoryMediaLink, conventionalScreenshotPath, ROOT,
 } from '../lib/test-workflow';
 import { checkWorkflows } from '../offline/test-workflow-check';
 
@@ -155,5 +155,52 @@ describe('docs video embed (F275.22.1)', () => {
   });
   it('errors when an asset is missing from static/', () => {
     expect(() => videoBlock(base, (p) => p !== '/video/demos/x.vtt')).toThrow(/x\.vtt is linked but .* does not exist/);
+  });
+});
+
+describe('a workflow that points at a story in a space (F300.5)', () => {
+  const POINT = PRE.replace('kpred:test-file "tests/e2e/sample.test.ts" .', 'kpred:test-file "tests/e2e/sample.test.ts" ; kpred:story <urn:reckons:story/Walk> ; kpred:story-space "ex" .');
+  const SPACE = `
+@prefix story: <urn:reckons:story/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+story:Walk a story:Story ; rdfs:label "Walk" .
+story:Walk-1 a story:Step ; story:partOf story:Walk ; story:order "1" ; story:title "Open it" ; story:stepId "open" ;
+  story:content "We open it." ; story:detail "Open the page." ; story:page "/about" ; story:pageName "the About page" ;
+  story:boxTarget "the card" ; story:assertion "The card opens it." ; story:target "card :: The card" ;
+  story:media "/workflows/sample/01-open.webp" .
+`;
+  const load = (id: string) => (id === 'ex' ? parse(SPACE) : null);
+
+  it('reads the steps from the space and keeps the workflow\'s own identity', () => {
+    const w = loadWorkflows(parse(POINT), load)[0];
+    expect(w.id).toBe('sample');
+    expect(w.testFile).toBe('tests/e2e/sample.test.ts');
+    expect(w.storySpace).toBe('ex');
+    expect(w.steps).toHaveLength(1);
+    const s = w.steps[0];
+    expect([s.id, s.page, s.pageName, s.boxTarget, s.boxLabel, s.text, s.assertion, s.narration, s.screenshot])
+      .toEqual(['open', '/about', 'the About page', 'the card', 'The card', 'Open the page.', 'The card opens it.', 'We open it.', '/workflows/sample/01-open.webp']);
+    expect(workflowDiagram(w)).toContain('1. Open it');
+  });
+  it('fails loudly when the space is not an example', () => {
+    expect(() => loadWorkflows(parse(POINT), () => null)).toThrow(/not in EXAMPLE_KBS/);
+  });
+});
+
+describe('setStoryMediaLink', () => {
+  const ttl = [
+    'story:Walk-1 a story:Step ;', '    story:title "One" .', '',
+    'story:Walk-2 a story:Step ;', '    story:media "/old.webp" ;', '    story:title "Two" .', '',
+  ].join('\n');
+  it('adds a link to a step that has none and replaces one that has, touching nothing else', () => {
+    const a = setStoryMediaLink(ttl, 'urn:reckons:story/Walk-1', '/new.webp');
+    expect(a).toContain('story:Walk-1 a story:Step ;\n    story:media "/new.webp" ;\n    story:title "One" .');
+    const b = setStoryMediaLink(ttl, 'urn:reckons:story/Walk-2', '/new.webp');
+    expect(b).toContain('story:media "/new.webp" ;');
+    expect(b).not.toContain('/old.webp');
+    expect(b.split('\n').length).toBe(ttl.split('\n').length);
+  });
+  it('throws for a step that is not there', () => {
+    expect(() => setStoryMediaLink(ttl, 'urn:reckons:story/Nope', '/x.webp')).toThrow(/No block/);
   });
 });

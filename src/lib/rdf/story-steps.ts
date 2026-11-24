@@ -63,6 +63,14 @@ export const S = {
   expect: `${STORY_NS}expect`,
   needs: `${STORY_NS}needs`,
   media: `${STORY_NS}media`,
+  /** F300.5: what a docs page and a release review need from a step of a story kept in an example's file. All optional. */
+  route: `${STORY_NS}page`,
+  pageName: `${STORY_NS}pageName`,
+  shortLabel: `${STORY_NS}shortLabel`,
+  boxTarget: `${STORY_NS}boxTarget`,
+  detail: `${STORY_NS}detail`,
+  assertion: `${STORY_NS}assertion`,
+  shotsNote: `${STORY_NS}shotsNote`,
 } as const;
 
 /** The legacy TestWorkflow predicates (the ones scripts/lib/test-workflow.ts always read). */
@@ -145,6 +153,10 @@ export interface UnifiedStep {
   /** The element to point at while the line plays, by data-testid. On a legacy step it is the optional story:target beside the box-target words. */
   focus?: StepTarget;
   openPage?: string;
+  /** The app route the step happens on (story:page, F300.5); legacy steps keep theirs in openPage. */
+  route?: string;
+  /** In plain words, what the highlight box sits on (story:boxTarget). A legacy step keeps it in target.ref. */
+  boxTarget?: string;
   layout?: string;
   highlights: string[];
   /** One-click offers in authored order (raw; story-offers.ts applies its allowlist). */
@@ -311,10 +323,20 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
   const common = (iri: string) => {
     const refusals: Refusal[] = [];
     const actions: StepAction[] = [];
+    // A space's own file may be re-serialized (the Getting started space is regenerated from its parts), and a
+    // serializer keeps no order among the values of one predicate. An action may therefore carry `"at": n` (its
+    // 1-based place in the step); when any does, they are played in that order.
+    const placed: { at: number; i: number; action: StepAction }[] = [];
+    let anyAt = false;
     for (const raw of lits(iri, S.action)) {
       const r = parseAction(raw);
-      if (r.ok) actions.push(r.action); else refusals.push({ predicate: S.action, value: raw, reason: r.reason });
+      if (!r.ok) { refusals.push({ predicate: S.action, value: raw, reason: r.reason }); continue; }
+      let at = Number.MAX_SAFE_INTEGER;
+      try { const n = (JSON.parse(raw) as { at?: unknown }).at; if (typeof n === 'number' && Number.isFinite(n)) { at = n; anyAt = true; } } catch { /* parseAction already accepted it */ }
+      placed.push({ at, i: placed.length, action: r.action });
     }
+    if (anyAt) placed.sort((a, b) => a.at - b.at || a.i - b.i);
+    for (const p of placed) actions.push(p.action);
     const expects: StepExpect[] = [];
     for (const raw of lits(iri, S.expect)) {
       const r = parseExpect(raw);
@@ -342,10 +364,12 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         id: lit(sIri, S.stepId) ?? local(sIri),
         order: parseInt(lit(sIri, S.order) ?? '0', 10),
         title,
-        shortLabel: title,
-        pageName: '',
+        shortLabel: lit(sIri, S.shortLabel) ?? title,
+        pageName: lit(sIri, S.pageName) ?? '',
         content: lit(sIri, S.content) ?? '',
-        detail: '',
+        detail: lit(sIri, S.detail) ?? '',
+        route: lit(sIri, S.route) ?? undefined,
+        boxTarget: lit(sIri, S.boxTarget) ?? undefined,
         question: lit(sIri, S.question) ?? undefined,
         prompt: lit(sIri, S.prompt) ?? undefined,
         target: tgt === null ? undefined : parseTarget(tgt),
@@ -354,7 +378,11 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         layout: lit(sIri, S.layout) ?? undefined,
         offers,
         media: lit(sIri, S.media),
-        ...common(sIri),
+        ...(() => {
+          const c = common(sIri);
+          const note = lit(sIri, S.assertion);
+          return { ...c, expects: [...(note ? [{ kind: 'note', text: note } as StepExpect] : []), ...c.expects] };
+        })(),
       });
     }
     steps.sort((a, b) => a.order - b.order);
@@ -367,7 +395,7 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
       autoplay: lit(iri, S.autoplay) === 'true',
       pace: parseInt(lit(iri, S.pace) ?? '8', 10),
       interaction: lit(iri, S.interaction) ?? undefined,
-      shotsNote: '',
+      shotsNote: lit(iri, S.shotsNote) ?? '',
       steps,
     });
   }
