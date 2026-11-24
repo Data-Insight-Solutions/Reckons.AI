@@ -59,13 +59,13 @@ describe('applyPointers', () => {
     expect(w.steps[0].expects.some((e) => e.kind === 'note')).toBe(true);
   });
 
-  it('throws, with the reason, for a space that is not an example', () => {
+  it('throws, with the reason, for an id that is not an example', () => {
     const q = parse(WORKFLOW('; kpred:story story:Walk ; kpred:story-space "nowhere"'));
     expect(() => applyPointers(legacy(q), q, load)).toThrow(/"nowhere", which is not in EXAMPLE_KBS/);
   });
-  it('throws for a story the space does not hold', () => {
+  it('throws for a story the example does not hold', () => {
     const q = parse(WORKFLOW('; kpred:story story:Missing ; kpred:story-space "ex"'));
-    expect(() => applyPointers(legacy(q), q, load)).toThrow(/not a story:Story in example space "ex"/);
+    expect(() => applyPointers(legacy(q), q, load)).toThrow(/not a story:Story in example "ex"/);
   });
   it('throws when a step lacks what a docs page prints', () => {
     const bad = (id: string): Quad[] | null => (id === 'ex' ? parse(SPACE().replace('story:pageName "the About page" ;', '')) : null);

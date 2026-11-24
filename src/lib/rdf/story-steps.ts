@@ -63,7 +63,7 @@ export const S = {
   expect: `${STORY_NS}expect`,
   needs: `${STORY_NS}needs`,
   media: `${STORY_NS}media`,
-  /** F300.5: what a docs page and a review space need from a step of a story that lives in a space. All optional. */
+  /** F300.5: what a docs page and a release review need from a step of a story kept in an example's file. All optional. */
   route: `${STORY_NS}page`,
   pageName: `${STORY_NS}pageName`,
   shortLabel: `${STORY_NS}shortLabel`,

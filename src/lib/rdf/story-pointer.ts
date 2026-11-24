@@ -1,13 +1,13 @@
 /**
- * A STORY LIVES IN THE SPACE IT WALKS (F300.5, kb:demo-stories-in-spaces).
+ * A STORY LIVES IN THE EXAMPLE IT WALKS (F300.5, kb:demo-stories-in-spaces).
  *
  * The Testing graph (static/docs-testing.ttl) used to hold every demo walk's steps itself, beside the
- * example space the walk uses. Now the steps are `story:Step` entities inside that example space, and a
+ * example the walk uses. Now the steps are `story:Step` entities inside that example's own file, and a
  * `ktype:TestWorkflow` keeps only what a docs page and the test runner need that is NOT the walk:
  *
  *   kpred:workflow-id   the docs URL and the screenshot folder
  *   kpred:test-file     the spec that plays the story
- *   kpred:story         <the story:Story IRI in the space>
+ *   kpred:story         <the story:Story IRI in the example's file>
  *   kpred:story-space   "<example id>"   resolved through EXAMPLE_KBS (src/lib/storage/example-kbs.ts)
  *   + its label, definition, docs placement fields, narrator and storyline
  *
@@ -25,7 +25,7 @@ export const POINTER = {
 
 export interface StoryPointer { workflowIri: string; storyIri: string; spaceId: string }
 
-/** Every TestWorkflow in these quads that points at a story in a space. A half pointer is an error. */
+/** Every TestWorkflow in these quads that points at a story in an example. A half pointer is an error. */
 export function readPointers(quads: Iterable<QuadLike>): StoryPointer[] {
   const out: StoryPointer[] = [];
   const subjects = new Map<string, QuadLike[]>();
@@ -66,13 +66,13 @@ export function applyPointers(
     let inSpace = cache.get(ptr.spaceId);
     if (!inSpace) {
       const quads = loadSpace(ptr.spaceId);
-      if (!quads) throw new Error(`<${w.iri}> points at example space "${ptr.spaceId}", which is not in EXAMPLE_KBS`);
+      if (!quads) throw new Error(`<${w.iri}> points at example "${ptr.spaceId}", which is not in EXAMPLE_KBS`);
       inSpace = readStoryQuads(quads).filter((s) => s.origin === 'story');
       cache.set(ptr.spaceId, inSpace);
     }
     const target = inSpace.find((s) => s.iri === ptr.storyIri);
-    if (!target) throw new Error(`<${w.iri}> points at <${ptr.storyIri}>, which is not a story:Story in example space "${ptr.spaceId}"`);
-    if (target.steps.length === 0) throw new Error(`<${ptr.storyIri}> in "${ptr.spaceId}" has no steps`);
+    if (!target) throw new Error(`<${w.iri}> points at <${ptr.storyIri}>, which is not a story:Story in example "${ptr.spaceId}"`);
+    if (target.steps.length === 0) throw new Error(`<${ptr.storyIri}> in example "${ptr.spaceId}" has no steps`);
     const ids = target.steps.map((s) => s.id);
     if (new Set(ids).size !== ids.length) throw new Error(`<${ptr.storyIri}> has two steps with the same story:stepId`);
     const orders = target.steps.map((s) => s.order);
