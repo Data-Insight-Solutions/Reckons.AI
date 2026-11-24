@@ -1,9 +1,9 @@
 <script lang="ts">
   /**
-   * "Compare two sources" on the Ingest page (F306.1). Two inputs (a web address or a file each)
+   * "Compare two documents" on the Ingest page (F306.1). Two inputs (a web address or a file each)
    * and a name. Both go through the ordinary ingest pipeline; the pair is recorded as one named
    * comparison, and a direct link opens the main canvas in the comparison layout.
-   * Elapsed time per source is the real clock, not an estimate (kb:honest-status).
+   * Elapsed time per document is the real clock, not an estimate (kb:honest-status).
    */
   import { onDestroy } from 'svelte';
   import { ingest } from '$lib/stores/ingest.svelte';
@@ -56,7 +56,7 @@
       );
       sides = { a: result.a, b: result.b };
       // Printed so a run on a real machine leaves its measured wall clock in the console.
-      console.info(`[two-source] comparison "${name}" took ${result.totalMs} ms; ` +
+      console.info(`[two-documents] comparison "${name}" took ${result.totalMs} ms; ` +
         `A ${(result.a.endedAt ?? 0) - (result.a.startedAt ?? 0)} ms, B ${(result.b.endedAt ?? 0) - (result.b.startedAt ?? 0)} ms`);
     } finally {
       if (timer) clearInterval(timer);
@@ -70,8 +70,8 @@
 <div class="card two-source" data-testid="two-source">
   <p class="hint">
     Two web pages, two PDFs, or one of each. Each goes through the same reading as anything you add,
-    then the pair is saved as one named comparison. Each source is read in turn, and how long each
-    takes depends on your model and the length of the source.
+    then the pair is saved as one named comparison. Each document is read in turn, and how long each
+    takes depends on your model and the length of the document.
   </p>
   <label>
     <span class="lbl mono">comparison name</span>
@@ -80,7 +80,7 @@
   <div class="pair">
     {#each [{ k: 'A', d: a, id: 'a' }, { k: 'B', d: b, id: 'b' }] as side}
       <fieldset class="side">
-        <legend class="mono">source {side.k}</legend>
+        <legend class="mono">document {side.k}</legend>
         <label>
           <span class="lbl mono">web address</span>
           <input type="url" bind:value={side.d.url} disabled={busy || !!side.d.file} placeholder="https://..." data-testid="cmp-url-{side.id}" />
@@ -95,7 +95,7 @@
     {/each}
   </div>
   <div class="row">
-    <span class="hint mono">saved as one comparison; every statement keeps the source it came from</span>
+    <span class="hint mono">saved as one comparison; every statement keeps the document it came from</span>
     <button class="primary" onclick={start} disabled={!ready} data-testid="cmp-start">
       {busy ? 'working…' : 'compare these two →'}
     </button>
@@ -122,10 +122,10 @@
       {#if result.link}
         <a class="open" href={result.link} data-testid="cmp-link">open "{name.trim()}" in the graph →</a>
         {#if result.a.status === 'failed' || result.b.status === 'failed'}
-          <p class="hint">Only the source that arrived is in this link; the one that failed is recorded as failed.</p>
+          <p class="hint">Only the document that arrived is in this link; the one that failed is recorded as failed.</p>
         {/if}
       {:else}
-        <p class="err" role="alert">Neither source could be added, so there is nothing to open. The reasons are above.</p>
+        <p class="err" role="alert">Neither document could be added, so there is nothing to open. The reasons are above.</p>
       {/if}
       <p class="hint mono" data-testid="cmp-total">whole run: {formatElapsed(result.totalMs)} (measured on this device)</p>
     </div>

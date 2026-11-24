@@ -3,14 +3,14 @@ import { readFileSync } from 'fs';
 import { clearStorage, waitForApp } from './helpers';
 
 /**
- * TWO-SOURCE INGEST (F306.1). The Ingest page's "compare two" entry reads two sources through the
- * ordinary pipeline and records one named comparison. The two sources are the synthetic compare-demo
- * notes (tests/fixtures/compare-demo) served as fake web pages, so no network and no model are used:
- * the mock extractor returns each note's statements.
+ * TWO-DOCUMENT INGEST (F306.1). The Ingest page's "compare two" entry reads two documents through
+ * the ordinary pipeline and records one named comparison. The two documents are the synthetic
+ * compare-demo notes (tests/fixtures/compare-demo) served as fake web pages, so no network and no
+ * model are used: the mock extractor returns each note's statements.
  *
- * What this proves: the wiring, the record, the source on every statement, the link's form, and the
- * failure case. What it does NOT prove: the minutes bound on a real machine. The wall clock per source
- * is printed below; on the mock reader it is milliseconds and says nothing about a real model.
+ * What this proves: the wiring, the record, the document on every statement, the link's form, and
+ * the failure case. What it does NOT prove: the minutes bound on a real machine. The wall clock per
+ * document is printed below; on the mock reader it is milliseconds and says nothing about a real model.
  */
 const demo = JSON.parse(readFileSync('tests/fixtures/compare-demo/notes.json', 'utf8')) as {
   seed: { title: string; text: string };
@@ -60,7 +60,7 @@ async function openEntry(page: Page) {
   await expect(page.getByTestId('cmp-start')).toBeDisabled();
 }
 
-test('two web pages become one named comparison, each statement keeps its source, the link has the contract form', async ({ page }) => {
+test('two web pages become one named comparison, each statement keeps its document, the link has the contract form', async ({ page }) => {
   await servePages(page);
   await openEntry(page);
   await page.getByTestId('cmp-name').fill('Orchard seed vs meeting');
@@ -82,20 +82,23 @@ test('two web pages become one named comparison, each statement keeps its source
   const perSource = (id: string) => snap.stmts.filter((s) => s.sourceId === id);
   expect(perSource(a.id).length).toBe(3);
   expect(perSource(b.id).length).toBe(4);
-  // Every statement is attributable: it carries the id of a source that exists, or the comparison record's own tag.
+  // Every statement is attributable: it carries the id of a document that exists, or the comparison record's own tag.
   const known = new Set(snap.sources.map((s) => s.id));
   for (const st of snap.stmts) expect(known.has(st.sourceId) || st.sourceId === 'comparison', st.p ?? '').toBe(true);
 
-  // The comparison is recorded: label, both source ids, when.
+  // The comparison is recorded: label, both document ids, when.
   const rec = snap.stmts.filter((s) => s.s.startsWith('urn:reckons:comparison/'));
   expect(rec.find((s) => s.p === 'rdf-schema#label' && s.o === 'Orchard seed vs meeting')).toBeTruthy();
-  expect(rec.find((s) => s.p === 'comparison-source-a')?.o).toBe(a.id);
-  expect(rec.find((s) => s.p === 'comparison-source-b')?.o).toBe(b.id);
+  expect(rec.find((s) => s.p === 'comparison-document-a')?.o).toBe(a.id);
+  expect(rec.find((s) => s.p === 'comparison-document-b')?.o).toBe(b.id);
   expect(rec.find((s) => s.p === 'comparison-made-at')).toBeTruthy();
 
   const href = await page.getByTestId('cmp-link').getAttribute('href');
   expect(href).toBe(`/?layout=compare&a=${a.id}&b=${b.id}`);
-  console.log(`[two-source e2e] both pages, mock reader: whole run ${wall} ms wall clock (mock only; not a real-model measurement)`);
+  // Per-document wall clock, as the page reports it (mock reader: milliseconds, not a real-model measurement).
+  const sideAText = (await page.getByTestId('cmp-side-a').textContent())?.trim() ?? '';
+  const sideBText = (await page.getByTestId('cmp-side-b').textContent())?.trim() ?? '';
+  console.log(`[two-documents e2e] whole run ${wall} ms; per document: A "${sideAText}" | B "${sideBText}" (mock reader only; not a real-model measurement)`);
 });
 
 test('a file and a page work together, and the comparison survives a reload', async ({ page }) => {
@@ -111,10 +114,10 @@ test('a file and a page work together, and the comparison survives a reload', as
   await page.reload();
   await waitForApp(page);
   const snap = await dbSnapshot(page);
-  expect(snap.stmts.filter((s) => s.p === 'comparison-source-a' && s.o).length).toBe(1);
+  expect(snap.stmts.filter((s) => s.p === 'comparison-document-a' && s.o).length).toBe(1);
 });
 
-test('a failed source is named, the other still completes, and the link opens with the source that worked', async ({ page }) => {
+test('a failed document is named, the other still completes, and the link opens with the document that worked', async ({ page }) => {
   await servePages(page, { failB: true });
   await openEntry(page);
   await page.getByTestId('cmp-name').fill('One gone');
@@ -134,5 +137,5 @@ test('a failed source is named, the other still completes, and the link opens wi
   await expect(page.getByTestId('cmp-link')).toHaveAttribute('href', `/?layout=compare&a=${a.id}`);
   const rec = snap.stmts.filter((s) => s.s.startsWith('urn:reckons:comparison/'));
   expect(rec.find((s) => s.p === 'comparison-failed-b')?.o).toBe('Reader failed: 404');
-  expect(rec.find((s) => s.p === 'comparison-source-b')).toBeUndefined();
+  expect(rec.find((s) => s.p === 'comparison-document-b')).toBeUndefined();
 });

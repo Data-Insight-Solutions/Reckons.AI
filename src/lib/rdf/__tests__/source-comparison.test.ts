@@ -11,8 +11,8 @@ import {
 let n = 0;
 const makeId = () => `id${n++}`;
 
-describe('source comparison record', () => {
-  it('records the name, both source ids and the time, and reads them back', () => {
+describe('two-document comparison record', () => {
+  it('records the name, both document ids and the time, and reads them back', () => {
     const sts = buildComparisonStatements({
       id: 'x-1', name: ' Page A vs B ', a: { sourceId: 'src-a' }, b: { sourceId: 'src-b' }, makeId, now: Date.UTC(2026, 10, 24),
     });
@@ -23,7 +23,7 @@ describe('source comparison record', () => {
     });
   });
 
-  it('records a failed side with its reason and no source id for it', () => {
+  it('records a failed side with its reason and no document id for it', () => {
     const sts = buildComparisonStatements({
       id: 'x-2', name: 'n', a: { sourceId: 'src-a' }, b: { failed: 'Reader failed: 404' }, makeId,
     });

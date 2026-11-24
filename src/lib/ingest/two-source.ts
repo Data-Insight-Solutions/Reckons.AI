@@ -1,8 +1,9 @@
 /**
- * Two sources, one named comparison (F306.1, kb:two-source-ingest).
+ * Two documents, one named comparison (F306.1, urn:kbase:concept/two-source-ingest).
  *
  * This does NOT add a second pipeline. Each side goes through the same `ingest()` every other
- * mode uses (source corpus, extraction, the diff against the space), one after the other so a
+ * mode uses (document corpus, extraction, the diff against the knowledge base), one after the
+ * other so a
  * local model is never asked to hold two extractions at once and the elapsed time of each side is
  * its own. A side that fails is recorded as failed WITH ITS REASON; the other side still
  * completes and the comparison is still recorded (kb:honest-status: a failure is shown, not hidden).

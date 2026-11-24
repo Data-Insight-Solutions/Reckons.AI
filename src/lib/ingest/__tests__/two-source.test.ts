@@ -25,8 +25,8 @@ function deps(failUrl?: string) {
   return { d, recorded };
 }
 
-describe('two-source comparison run', () => {
-  it('ingests both sides and records one comparison with both source ids', async () => {
+describe('two-document comparison run', () => {
+  it('ingests both sides and records one comparison with both document ids', async () => {
     const { d, recorded } = deps();
     const seen: string[] = [];
     const r = await runTwoSourceComparison(
