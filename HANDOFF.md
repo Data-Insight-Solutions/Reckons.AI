@@ -16,8 +16,9 @@ simplified view of the two sources' results, honest about time but "within minut
 `kb:two-source-ingest`, F306.2 `kb:split-canvas` (a mode of the ONE canvas per F92; shared = existing
 near-duplicate/synonym matching, never string identity; colors are defaults, editable), F306.3
 `kb:two-source-simplified-view` (the plugin). One `kpred:decided` re-affirmation added on
-`kb:hub-default-assets`. F304/F305 are taken on `agent/local-model-library` (unmerged), so the deputy took
-F306.
+`kb:hub-default-assets`. F304/F305 were taken on `agent/local-model-library` (unmerged), so the deputy took
+F306. (At integration on 2026-11-24 the model-library plan became F307/F308, because the stories branch had
+already given F304/F305 to the personal showcase and TSL visuals.)
 
 **Matt answered all four open questions (chat, 2026-11-23, recorded verbatim as `kpred:decided`):**
 1. The comparison lives **in the main graph view canvas, not a separate screen** — "I imagine it as a
@@ -217,9 +218,7 @@ kept only the least finished feature (deploy, scaffolded) as the broadMatch stat
 build linked via `kpred:relates-to` (the gate counts that). Banner now reads Scaffolded. No Matt
 decisions were made with me in this window, so nothing was queued via kb_add_note.
 
-## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
-
-## 2026-11-18 (deputy, local qwen3.8-160k) — START HERE: F304/F305 model-library plan recorded; PROPOSAL, nothing built
+## 2026-11-18 (deputy, local qwen3.8-160k) — F307/F308 (numbered F304/F305 on its branch) model-library plan recorded; PROPOSAL, nothing built
 
 **Branch `agent/local-model-library` (worktree `.claude/worktrees/local-model-library`, off origin/dev
 55622477, which has #676 F278 hub-assets — local dev f9753a57 is BEHIND origin, this branch is not).**
@@ -233,19 +232,19 @@ One commit, two files: `static/reckons-roadmap.ttl` (the plan) and this entry.
 2. Editing/customizing EXISTING models is a NEW feature, with the Blender path.
 3. Hubs automatically search, trying to find the best match with the node's statements.
 
-**What the plan says (read the TTL, this is the summary):** `kb:model-library` F304 (planned) with
-F304.1 search-and-select into the existing kb-assets models slot (filters: license/style/format/size;
-management is the existing `kb:glb-management-ui` R4) and F304.2 hub auto-match — a THIRD source for
+**What the plan says (read the TTL, this is the summary):** `kb:model-library` F307 (planned) with
+F307.1 search-and-select into the existing kb-assets models slot (filters: license/style/format/size;
+management is the existing `kb:glb-management-ui` R4) and F307.2 hub auto-match — a THIRD source for
 F278's default assets (generated / library-matched / picked), query built only from the hub's confirmed
 facts (F278's GROUNDED principle), result lands as a PENDING asset, DEFAULT MEANS QUEUED NOT RUN.
-`kb:model-edit-blender` F305 (planned), Phase 2 of `kb:content-orchestration` after the scaffolded
+`kb:model-edit-blender` F308 (planned), Phase 2 of `kb:content-orchestration` after the scaffolded
 `kb:blender-mcp` Phase 1: open a stored GLB (or FBX/OBJ), graph-described change, export a NEW file
 beside the old (a rejected edit is a deletion, not a restore), license and attribution travel with it.
 License stance: license + author recorded as triples at save time (precedent `kb:ref-pmtiles`);
 OpenGameArt is mixed-license and gated per asset; NC assets excluded from published spaces.
 
 **Unverified / not done:** NOTHING is built — statuses are `planned`; this is a proposal for Matt/Opus
-to accept, re-shape or split (Matt called F305 "a new feature"; I made it a Phase with its own number
+to accept, re-shape or split (Matt called F308 "a new feature"; I made it a Phase with its own number
 because `kb:blender-mcp` already owns Phase 1 under content-orchestration — split it if you disagree).
 I did not run the full CI suite (it runs on the PR; this touches only roadmap TTL). I did not decide
 the release slot, the first library, the dropdown options or how "best match" is computed (F74.3
@@ -253,11 +252,11 @@ routing decision — left as open questions on the entities). `kb:theming` has M
 question about his sister's three.js work on the same 3D surface — not resolved, don't re-ask him twice.
 
 **Checked:** graph-lint 0 errors / 15 warnings (identical baseline to dev; none on the new entities);
-every linked entity verified present in this base; F304/F305 are the next free feature numbers
+every linked entity verified present in this base; F307/F308 are the next free feature numbers
 (F300–F303 taken). **NOT pushed, no PR** — deputy has no credential. Push then PR against dev, no merge:
 `! git -C /home/matt/Github/tripleNotes/.claude/worktrees/local-model-library push -u origin agent/local-model-library`
 
-## 2026-11-17 — START HERE: demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
+## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 
 Opus session with Sonnet agents. Matt's decisions are recorded as `kpred:decided` on the entities named below.
 
