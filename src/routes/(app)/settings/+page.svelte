@@ -1,6 +1,7 @@
 <script lang="ts">
   import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { resolveCompareColors, DEFAULT_COMPARE_COLORS } from '$lib/rdf/compare-venn';
   import { copyText } from '$lib/utils/clipboard';
   import { ensureWasmReady, onWasmProgress } from '$lib/integrations/llm/wasm';
   import { providerStatus, warmProviderSdk, type ProviderInfo } from '$lib/integrations/llm/provider-status.svelte';
@@ -108,6 +109,20 @@
 
   async function saveDisplaySettings() {
     await updateSettings({ uiScale, nodeLabelFontSize, prefer2D });
+  }
+
+  // F306.2: the three compare-layout colours. Reverting writes nothing back, so the defaults in
+  // rdf/compare-venn.ts stay the one place the default values come from.
+  let compareColors = $state(resolveCompareColors(settings().compareColors));
+  const COMPARE_COLOR_ROWS = [
+    { key: 'a', label: 'only in the first' },
+    { key: 'b', label: 'only in the second' },
+    { key: 'shared', label: 'in both' },
+  ] as const;
+  async function saveCompareColors() { await updateSettings({ compareColors: { ...compareColors } }); }
+  async function revertCompareColors() {
+    compareColors = { ...DEFAULT_COMPARE_COLORS };
+    await updateSettings({ compareColors: undefined });
   }
 
   // ── Shared backend option groups (consistent naming across all selectors) ──
@@ -1152,6 +1167,21 @@
     />
   </label>
 
+  <div class="field" data-testid="compare-colors">
+    <span class="lbl mono">compare layout colors</span>
+    <p class="hint" style="margin: 0.1rem 0 0.4rem;">The compare layout draws what only one holds in its own color, and what both hold in the third. These are the defaults; change them to suit your eyes.</p>
+    <div class="compare-color-row">
+      {#each COMPARE_COLOR_ROWS as row (row.key)}
+        <label class="compare-color">
+          <input type="color" aria-label={row.label} data-testid={`compare-color-${row.key}`}
+            bind:value={compareColors[row.key]} onchange={saveCompareColors} />
+          <span class="muted">{row.label}</span>
+        </label>
+      {/each}
+      <button class="scale-btn" data-testid="compare-colors-revert" onclick={revertCompareColors}>revert</button>
+    </div>
+  </div>
+
   <div class="field row-field">
     <div>
       <span class="lbl mono">graph renderer</span>
@@ -1842,6 +1872,9 @@
   .field { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.7rem; }
   .field-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .btn-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  .compare-color-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+  .compare-color { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+  .compare-color input[type='color'] { width: 2rem; height: 1.6rem; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: none; cursor: pointer; }
   .defaults-block { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .defaults-info { flex: 1; min-width: 0; }
   .defaults-info strong { font-size: 0.9rem; }

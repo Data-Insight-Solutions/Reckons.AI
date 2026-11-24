@@ -8,7 +8,9 @@
   import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
   import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
-  import { bestSuggestion } from '$lib/rdf/view-suggestions';
+  import { bestSuggestion, type GraphLayout } from '$lib/rdf/view-suggestions';
+  import { computeCompare, compareLegend, resolveCompareColors, type CompareModel, type CompareView } from '$lib/rdf/compare-venn';
+  import { embedMany, isEmbedderReady } from '$lib/embed';
   import { statedCoordinates } from '$lib/rdf/map-layout';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import type { ComponentProps } from 'svelte';
@@ -388,7 +390,10 @@
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
-  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map'>('force');
+  let layout = $state<GraphLayout>('force');
+  /** F306.2: the two provenances the compare layout draws, from ?layout=compare&a=<id>&b=<id> or the pickers. */
+  let compareA = $state<string | null>(null);
+  let compareB = $state<string | null>(null);
   /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting.
    *  Toggled on the Graph tab (/kb currents section); honoured here via the shared store. */
   const podMode = $derived(podViewEnabled());
@@ -427,7 +432,8 @@
     const params = $page.url.searchParams;
     if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
-    if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
+    if (l && ['force','focus','source','type','hub','timeline','order','hierarchy','compare'].includes(l)) layout = l as typeof layout;
+    if (l === 'compare') { compareA = params.get('a'); compareB = params.get('b'); }
     const sel = params.get('sel');
     if (sel) selected = sel;
     const f = params.get('f');
@@ -539,6 +545,9 @@
     else params.delete('perspective');
     if (layout !== 'force') params.set('layout', layout);
     else params.delete('layout');
+    // The compare layout's two provenances travel in the URL (F306.2), and only while it is on.
+    if (layout === 'compare' && compareA && compareB) { params.set('a', compareA); params.set('b', compareB); }
+    else { params.delete('a'); params.delete('b'); }
     // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
     // the existing params forward does not, and a filter param left behind after the filter is
     // cleared would reapply it on the next load.
@@ -624,7 +633,7 @@
    * `available` keeps the conditional options honest: clustering by source is meaningless with one
    * source, and by type with no types.
    */
-  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean }[] = [
+  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean; blocked?: () => string | null }[] = [
     { value: 'force', label: 'free', title: 'Free force layout — nodes repel, links pull them together' },
     { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours; push the rest away' },
     { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
@@ -640,10 +649,60 @@
     // OFFERED ONLY WHEN THE GRAPH HAS SOMETHING TO PLACE. Most graphs hold no coordinates at all,
     // and a map layout that opens empty reads as a broken feature rather than as an absent fact.
     // The same `available` gate already hides 'source' and 'type' for the same reason.
+    // ALWAYS OFFERED, never silently absent: with fewer than two provenances the menu item says so
+    // (see `blocked`) rather than opening an empty layout.
+    { value: 'compare', label: 'compare', title: 'A comparison as a venn diagram: only the first on the left, only the second on the right, what both hold in the middle',
+      available: () => perspective === 'statements',
+      blocked: () => (compareSources.length < 2 ? `needs two provenances (only ${compareSources.length} here)` : null) },
     { value: 'map', label: 'map', title: 'Place nodes by GPS coordinates; anything without a location goes to a lane below',
       available: () => statedCoordinates(statements()).size > 0 },
   ];
   const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
+
+  // ── Compare layout (F306.2) ────────────────────────────────────────────────────
+  /** Provenances that hold at least one live statement in the knowledge base, oldest first. */
+  const compareSources = $derived.by(() => {
+    const held = new Set(visible.map((st) => st.sourceId));
+    return sources().filter((src) => src.kind !== 'analysis' && held.has(src.id)).sort((x, y) => x.ingestedAt - y.ingestedAt);
+  });
+  const compareReady = $derived(
+    layout === 'compare' && perspective === 'statements' && !!compareA && !!compareB && compareA !== compareB
+      && compareSources.some((src) => src.id === compareA) && compareSources.some((src) => src.id === compareB),
+  );
+  // Opening the layout without (valid) provenances picks the two oldest, so it never opens empty when it can draw.
+  $effect(() => {
+    if (layout !== 'compare' || compareSources.length < 2) return;
+    const ids = compareSources.map((src) => src.id);
+    if (compareA && compareB && compareA !== compareB && ids.includes(compareA) && ids.includes(compareB)) return;
+    compareA = ids.includes(compareA ?? '') ? compareA : ids.find((id) => id !== compareB) ?? ids[0];
+    compareB = ids.includes(compareB ?? '') && compareB !== compareA ? compareB : ids.find((id) => id !== compareA) ?? ids[1];
+  });
+  let compareModel = $state<CompareModel | null>(null);
+  let compareToken = 0;
+  /** Matching by meaning loads the embedding model; until it is on the device (or asked for) only identical statements are shared. */
+  let compareByMeaning = $state(false);
+  $effect(() => {
+    if (!compareReady) { compareModel = null; return; }
+    const stmts = visible, a = compareA!, b = compareB!, asked = compareByMeaning;
+    const token = ++compareToken;
+    (async () => {
+      let embed: typeof embedMany | undefined;
+      try { if (asked || (await isEmbedderReady())) embed = embedMany; } catch { embed = undefined; }
+      let model: CompareModel;
+      try { model = await computeCompare(stmts, a, b, { embedMany: embed }); }
+      catch { model = await computeCompare(stmts, a, b); } // a refused or failed model: identical statements only, and the legend says so
+      if (token === compareToken) compareModel = model;
+    })();
+  });
+  const sourceTitle = (id: string | null) => {
+    const t = sources().find((src) => src.id === id)?.title ?? id ?? '';
+    return t.length > 28 ? `${t.slice(0, 27)}…` : t;
+  };
+  const compareView = $derived.by((): CompareView | null => compareReady && compareModel
+    ? { model: compareModel, colors: resolveCompareColors(settings().compareColors), titleA: sourceTitle(compareA), titleB: sourceTitle(compareB) } : null);
+  /** The layout the renderers draw: 'compare' only once there is something to draw, otherwise the free layout. */
+  const drawnLayout = $derived(layout === 'compare' && !compareView ? 'force' : layout);
+  const compareLegendRows = $derived(compareView ? compareLegend(compareView.model, { a: compareView.titleA, b: compareView.titleB }, compareView.colors) : []);
   // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown
   // styling much better than the new ones on graph view." A bare <select> inherits the browser's
   // widget and reads as foreign against an overlay built entirely from chips — and it was the
@@ -2232,7 +2291,8 @@
     get topologyStatements() { return drawn; },
     get flooredStatementIds() { return graphView.hidden.statementIds; },
     get selected() { return selected; },
-    get layout() { return layout; },
+    get layout() { return drawnLayout; },
+    get compare() { return compareView; },
     get timelineZoom() { return timelineZoom; },
     get timelineCenter() { return timelineCenter; },
     get timelineTimeSource() { return timelineTimeSource; },
@@ -2266,7 +2326,8 @@
     get topologyStatements() { return drawn; },
     get flooredStatementIds() { return graphView.hidden.statementIds; },
     get selected() { return selected; },
-    get layout() { return layout; },
+    get layout() { return drawnLayout; },
+    get compare() { return compareView; },
     get timelineZoom() { return timelineZoom; },
     get timelineCenter() { return timelineCenter; },
     get timelineTimeSource() { return timelineTimeSource; },
@@ -2318,7 +2379,7 @@
         <Popover.Trigger>
           {#snippet child({ props })}
             <button {...props} class="chip" class:active={showLayoutMenu}
-              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              title={availableLayouts.find((l) => l.value === layout)?.title} data-testid="layout-trigger">
               <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
               <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
             </button>
@@ -2327,9 +2388,11 @@
         <Popover.Portal>
           <Popover.Content class="filter-popover" sideOffset={6}>
             {#each availableLayouts as l (l.value)}
-              <button class="chip small" class:active={layout === l.value} title={l.title}
+              {@const why = l.blocked?.() ?? null}
+              <button class="chip small" class:active={layout === l.value} title={why ?? l.title}
+                disabled={!!why} data-testid={`layout-${l.value}`}
                 onclick={() => { layout = l.value; showLayoutMenu = false; }}>
-                <span class="lbl mono">{l.label}</span>
+                <span class="lbl mono">{l.label}{#if why}<span class="muted"> · {why}</span>{/if}</span>
               </button>
             {/each}
           </Popover.Content>
@@ -2381,6 +2444,40 @@
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
   </div>
+
+  <!-- COMPARE (F306.2): the two provenances and the legend. Present only while the layout is on. -->
+  {#if layout === 'compare'}
+    <div class="overlay-group compare-panel" data-testid="compare-panel">
+      <span class="group-label mono">compare</span>
+      {#if compareSources.length < 2}
+        <p class="compare-note mono" data-testid="compare-needs-sources">The compare layout needs two provenances; only {compareSources.length} here. Add another from ingest, then come back.</p>
+      {:else}
+        <div class="compare-pickers">
+          <label class="compare-pick mono"><span class="compare-swatch" style="background: {resolveCompareColors(settings().compareColors).a}"></span>
+            <select class="detail-select" aria-label="First source" data-testid="compare-source-a" value={compareA ?? ''} onchange={(e) => (compareA = e.currentTarget.value)}>
+              {#each compareSources as src (src.id)}<option value={src.id} disabled={src.id === compareB}>{src.title}</option>{/each}
+            </select></label>
+          <label class="compare-pick mono"><span class="compare-swatch" style="background: {resolveCompareColors(settings().compareColors).b}"></span>
+            <select class="detail-select" aria-label="Second source" data-testid="compare-source-b" value={compareB ?? ''} onchange={(e) => (compareB = e.currentTarget.value)}>
+              {#each compareSources as src (src.id)}<option value={src.id} disabled={src.id === compareA}>{src.title}</option>{/each}
+            </select></label>
+        </div>
+        {#if compareView}
+          <ul class="compare-legend mono" data-testid="compare-legend" aria-label="Compare legend">
+            {#each compareLegendRows as row (row.id)}
+              <li data-testid={`compare-legend-${row.id}`} data-count={row.count}><span class="compare-swatch" style="background: {row.color}"></span>{row.count} {row.label}</li>
+            {/each}
+          </ul>
+          <p class="compare-note mono" data-testid="compare-matched-by">
+            {#if compareView.model.matchedBy === 'meaning'}Shared = both say it, matched by meaning as well as exact wording.
+            {:else}Shared = identical statements only.
+              <button class="chip small" onclick={() => (compareByMeaning = true)} title="Loads the embedding model if it is not on this device yet">also match by meaning</button>{/if}
+            {#if compareView.model.counts.outside > 0}{compareView.model.counts.outside} statement{compareView.model.counts.outside === 1 ? '' : 's'} from somewhere else stay quiet below.{/if}
+          </p>
+        {/if}
+      {/if}
+    </div>
+  {/if}
 
   <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
        every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
@@ -3787,6 +3884,13 @@
   .standing-legend .sw { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--ink-2); }
   .standing-legend .sw-proposed { border-top: 2px dashed var(--data); }
   .standing-legend .sw-question { border: 1.5px dashed var(--ink-2); border-radius: 50%; width: 0.9rem; height: 0.9rem; line-height: 0.75rem; text-align: center; font-size: 0.6rem; color: var(--ink-2); opacity: 0.8; }
+  .compare-panel { max-width: 22rem; }
+  .compare-pickers { display: flex; flex-direction: column; gap: 0.3rem; }
+  .compare-pick { display: flex; align-items: center; gap: 0.4rem; font-size: 0.6rem; color: var(--muted); }
+  .compare-swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: none; }
+  .compare-legend { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.65rem; color: var(--ink-2); }
+  .compare-legend li { display: flex; align-items: center; gap: 0.4rem; }
+  .compare-note { font-size: 0.6rem; color: var(--muted); margin: 0.35rem 0 0; }
   .chip-row {
     display: flex;
     flex-wrap: wrap;
