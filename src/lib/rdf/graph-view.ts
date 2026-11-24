@@ -248,7 +248,9 @@ export function buildGraphView(statements: Statement[], opts: GraphViewOptions =
   const altitudeOfDrawn = (st: Statement): Altitude => {
     const a = eff ? eff(st) : altitudeOf(st);
     const l = lifted?.get(st.id);
-    return l && ALTITUDE_RANK[l] > ALTITUDE_RANK[a] ? l : a;
+    // liftedAltitudes returns the statement's OWN altitude when nothing lifts it, so only a
+    // lift that exceeds that counts; otherwise the derived class (which may sit below own) stands.
+    return l && ALTITUDE_RANK[l] > ALTITUDE_RANK[altitudeOf(st)] && ALTITUDE_RANK[l] > ALTITUDE_RANK[a] ? l : a;
   };
   const aboveFloor = (st: Statement) => !lifted || ALTITUDE_RANK[altitudeOfDrawn(st)] >= floor;
   // A DETAIL LEVEL PER ENTITY (F139.2 part 3): an entity's level is the highest effective altitude of

@@ -513,3 +513,15 @@ describe('F139.2 — one entity, one detail level', () => {
     expect(buildGraphView([fact], { minAltitude: 'record' }).shownEntities.has(`${KB}e2`)).toBe(true);
   });
 });
+
+describe('F139.2 — evidence is derived in the view too', () => {
+  it('a reviewed supports-fact is shown at the evidence floor and not at the judgments floor', () => {
+    const link = st('c1', 'supports', 'c2'); // confirmed (the helper's default)
+    expect(buildGraphView([link], { minAltitude: 'evidence' }).edges).toHaveLength(1);
+    expect(buildGraphView([link], { minAltitude: 'judgment' }).edges).toHaveLength(0);
+  });
+  it('the same fact pending keeps its predicate altitude (judgment)', () => {
+    const link = { ...st('c1', 'supports', 'c2'), status: 'pending' as const };
+    expect(buildGraphView([link], { minAltitude: 'judgment' }).edges).toHaveLength(1);
+  });
+});

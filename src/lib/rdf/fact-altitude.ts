@@ -687,9 +687,10 @@ export const DETAIL_LEVEL_PREDICATE = `${KPRED}detail-level`;
 export function effectiveAfterEvidence(statements: Statement[]): (st: Statement) => Altitude {
   const derived = evidenceAltitudes(statements);
   return (st) => {
-    const own = altitudeOf(st);
-    const d = derived.get(st.id);
-    return d && ALTITUDE_RANK[d] > ALTITUDE_RANK[own] ? d : own;
+    // The derived class is the class (the census reads it the same way). Taking the higher of
+    // the two kept a reviewed supports-fact at judgment, so the evidence rung never differed
+    // from the judgments rung. evidenceAltitudes already protects an altitude fixed on the statement, and decisions.
+    return derived.get(st.id) ?? altitudeOf(st);
   };
 }
 
