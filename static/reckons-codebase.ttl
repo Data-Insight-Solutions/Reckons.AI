@@ -1266,3 +1266,10 @@ code:rdf kpred:has-file "src/lib/rdf/story-ops.ts" ;
     kpred:tested-by "src/lib/rdf/__tests__/story-ops.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/story-runner.ts", "tests/e2e/demo-recorder.ts", "tests/e2e/workflow-generated-assets.test.ts", "tests/e2e/synthetic-runner.ts", "tests/e2e/story-probes.test.ts", "tests/e2e/workflow-compare-v029.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts" .
 code:scripts kpred:has-file "scripts/workflow-steps.ts" .
+
+# F304 — Matt's personal showcase (2026-11-24, branch feat/f304-showcase): the two unlisted spaces,
+# the measured Claude-share script and its tests, the example entries, and the walk e2e.
+code:static kpred:has-file "static/starter-matthew-roe.ttl", "static/starter-matthew-roe-personal.ttl" .
+code:scripts kpred:has-file "scripts/showcase/claude-share.ts", "scripts/showcase/__tests__/claude-share.test.ts", "scripts/showcase/__tests__/showcase-content.test.ts" .
+code:storage kpred:has-file "src/lib/storage/example-kbs.ts", "src/lib/storage/__tests__/example-kbs.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/showcase-walk.test.ts" .
