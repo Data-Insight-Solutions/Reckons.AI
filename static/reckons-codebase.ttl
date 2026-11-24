@@ -1260,5 +1260,5 @@ code:splat-embed-viewer
 # The story runner (F300.3).
 code:rdf kpred:has-file "src/lib/rdf/story-ops.ts" ;
     kpred:tested-by "src/lib/rdf/__tests__/story-ops.test.ts" .
-code:test-e2e kpred:has-file "tests/e2e/story-runner.ts", "tests/e2e/demo-recorder.ts", "tests/e2e/workflow-generated-assets.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/story-runner.ts", "tests/e2e/demo-recorder.ts", "tests/e2e/workflow-generated-assets.test.ts", "tests/e2e/synthetic-runner.ts", "tests/e2e/story-probes.test.ts", "tests/e2e/workflow-compare-v029.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts" .
 code:scripts kpred:has-file "scripts/workflow-steps.ts" .

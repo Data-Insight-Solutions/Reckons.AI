@@ -3,7 +3,162 @@
 Everything before 2026-10-28 is in `HANDOFF-ARCHIVE.md`, verbatim (top section). Grep it for history;
 the graph holds what was decided.
 
+## 2026-11-24 — START HERE: batch 2 is PR #682; F300.5 and the F304 slice are being built
+
+Opus head session, one Sonnet builder, the local deputy. Private work came first today; it is recorded in its
+own repository, not here.
+
+**PR #682 (`integration/2026-11-24` → dev, worktree tripleNotes-stories).** It is batch 2 (F300.3 functional,
+the F300.5 plan) plus the 11-19 plans (F304 showcase, F305 TSL), the F306 plan, and the deputy's model library,
+**renumbered F307/F308** because its branch had used F304/F305. From `agent/local-f306-two-source-compare` only
+the two plan commits were cherry-picked. Its three handoff commits describe private work: never push that branch.
+Local checks on the combined tree: blocking script tier 9 of 9, svelte-check 0, unit 5,622 passed with 1 load
+timeout that passed 3 of 3 alone, graph-lint 0 errors. e2e was left to CI. Claude merges it when CI is green.
+
+**F304, measured (on `kb:personal-showcase`).** The walk player already auto-advances, applies a step's layout and
+highlights, and is silent unless voice is on. Missing: a link that starts autoplay, and a per-step `story:filter`.
+
+**Being built:**
+- `feat/f304-link-autoplay-filter` (worktree tripleNotes-f304-slice): those two parts. Deputy queue job
+  `f304-slice-deputy` (7c8c1cc2); the brief is `~/.local/state/reckons/briefs/f304-slice-2026-11-24.md`. Next is a
+  Sonnet overseer against the brief's DONE WHEN, then integration.
+- `feat/f300-5-build` (worktree tripleNotes-f3005): a Sonnet builder, phase A only (the pointer, Quickstart's
+  Reckoning and Compare stories, the generated-assets story with the generator trap handled, BuildChange
+  retired, test-workflow-check on pointers). It stops before shots, docs regeneration and recordings, which
+  are queue jobs. It pushes its branch with no PR.
+
+**Release burndown (2026-11-24):** v0.2.9 has 0 of 9 parts functional, v0.3.0 has 0 of 32. v0.2.9's path: F300.5 →
+render the docs videos (queue) → Matt reviews the scripts; F304 needs the slice above, its spaces, and Matt's own text.
+
+**Review queue:** one local-work-reviewer batch (3 accepted, 3 deferred). c420d2cc was rejected: fixed by 0efe6a46
+(one decision per finding). The backlog is 1,057.
+
+**Next, in order:** 1. #682 CI, then merge. 2. The overseer on the deputy's F304 slice. 3. Triage the F300.5 report,
+then integrate both into one new batch and PR. 4. Queue the render phase. **Waiting on Matt:** as on 11-18, plus his
+own text for the showcase.
+
+## 2026-11-23 — F306 two-source comparison PLANNED (branch agent/local-f306-two-source-compare, unpushed)
+
+Local deputy (qwen3.8-160k) in this worktree. Matt asked (chat, 2026-11-23) for small seamless workflows
+for demos: compare two sources (2 web pages, 2 PDFs, one of each) "according to its claims", the statement
+graph visually split ON THE MAIN GRAPH — only-A blue, only-B red, shared purple, colors default-editable —
+hubs as Reckons-generated 3D objects, ingest that works when a person tries it themselves, a plugin or
+simplified view of the two sources' results, honest about time but "within minutes on my machine".
+
+**What this branch does (plan only — nothing built):** F306 in `static/reckons-roadmap.ttl` —
+`kb:two-source-compare` (planned, high, depends-on `kb:hub-default-assets` F278) with F306.1
+`kb:two-source-ingest`, F306.2 `kb:split-canvas` (a mode of the ONE canvas per F92; shared = existing
+near-duplicate/synonym matching, never string identity; colors are defaults, editable), F306.3
+`kb:two-source-simplified-view` (the plugin). One `kpred:decided` re-affirmation added on
+`kb:hub-default-assets`. F304/F305 were taken on `agent/local-model-library` (unmerged), so the deputy took
+F306. (At integration on 2026-11-24 the model-library plan became F307/F308, because the stories branch had
+already given F304/F305 to the personal showcase and TSL visuals.)
+
+**Matt answered all four open questions (chat, 2026-11-23, recorded verbatim as `kpred:decided`):**
+1. The comparison lives **in the main graph view canvas, not a separate screen** — "I imagine it as a
+   layout, venn diagram shaped."
+2. The plugin **"allows for easy import of the two sources, and then provides a direct link once the
+   sources are added (import/ingest), and then the layout link for comparison will work."**
+3. **Release: v0.3.0** ("0.3") — `kb:two-source-compare` is now a `kb:release-0-3-0` part.
+4. **Shared = both sources hold it, and shared sits at the centre of the venn overlap** ("Yes, and
+   center of the venn diagram shape.").
+So F306.2 is now "the venn comparison layout on the main canvas, shared at the centre" and F306.3 is now
+"the two-source plugin: easy import, then the direct link to the layout". The open-question lines are
+replaced by the decided lines.
+
+**Verified (2026-11-23):** graph-lint in this worktree 0 errors / 15 warnings, none on the new entities
+(the main checkout's extra 16 `mcp-invisible` warnings pre-date this branch). `npm run offline:all --
+--tier=script` finished **50/58 clean, exit 0, all 9 blocking checks pass** (published-graph-guard,
+commit-trailers, version-align, test-workflow-check, release-review-space, codebase-coverage,
+branch-ancestry, term-ratchet, ui-terms). The ✗ jobs in the full run (the suite's own tally is 50/58
+clean; state varies between runs) are all stateful/pre-existing, NONE on the F306 plan: `fix-without-test` (incl. the host running kernel 6.8.0-117 with 6.8.0-149 installed —
+needs a reboot window), `perf-crawl` (6 starter/docs pages slow; reckons-roadmap 11730 lines, worst frame
+5700ms, 50 long tasks), `naming-ratchet` (JS/TS counters, +72 declaration/interface since baseline),
+`queue-integrity` (documented in aeb63380: 15 line-contract violations), `graph-lint` (the suite runs
+`--pending`, whose writer is refused by the row contract — documented in aeb63380; plain graph-lint, which
+CI schedules, passes), `extraction-chain`, `safety-attestation`, `taxonomy-current` (known failing per
+aeb63380), `site-live`.
+
+**NOT VERIFIED / open:** the 5-minutes-per-source bound is a PROPOSED starting value to be measured on
+Matt's machine, not a promise; no code, no tests, no build; the branch is NOT pushed (the deputy has no
+GitHub credential — by design): ready for the head session to merge into the integration branch when Matt
+answers the four questions. Also that day: one local-work-reviewer batch (≤10) dispatched against the
+956-decision backlog; the job queue was checked — worker alive and actively cycling (script-tier schedules
+passing all day), 2 jobs (sched:docs-review, sched:drain-queue) waiting on the F74.11 RAM floor
+(18.5 GiB needed vs 14–18 GiB available machine-wide), no manual pause, no holds, no circuits — the gate
+clears itself when RAM frees; no force-run past the resource gate exists by design, and the deputy did not
+try to make one.
+
 ## 2026-11-18 — START HERE: dev integrates LOCALLY now; integration/2026-11-18 holds the batch; v0.2.9 waits for its videos
+
+## 2026-11-18 (night) — START HERE: batch 2 is on feat/f300-5-stories-in-spaces; F300.5 is planned, not built
+
+This entry exists only on this branch until batch 2 lands. Dev's copy ends at the entry below it.
+
+**Batch 1 landed in dev (#681, cc470141).** #677, #678 and #679 were marked merged with it, and #655 too.
+#592 and #652 were closed as superseded, each with a note. #652's one missing commit (Matt's 11-17 decision to
+keep the lead-ins for now) is carried here as 7d33a257.
+
+**Batch 2, branch feat/f300-5-stories-in-spaces (worktree tripleNotes-stories, shared node_modules).**
+It holds feat/f300-3-declarative plus Matt's F300.5 decisions. NOT yet checked as a batch, and no PR.
+- **F300.3, now functional.** Count, standing, text, attr, elements, media and receipt probes, plus run-job
+  (generation kinds only, typed parameters). All three walks play through playStory. App edits are
+  data-testid only (checked mechanically).
+  - Still named exceptions: the Reckoning walk's steps 1, 5 and 6, and steps that need canvas pixels or a
+    video seek.
+  - Video and splat run-job are unit-tested only.
+- **Matt, 2026-11-18 (AskUserQuestion; on `kb:demo-stories-in-spaces`):**
+  - The Reckoning and Compare stories live in QUICKSTART, rewritten on its content.
+  - Workflow-BuildChange retires into Compare.
+  - The README path's reckoning step moves to the new Reckoning flow.
+
+**F300.5 is NOT started in code.** A Sonnet builder read the code and stopped at the wrap. Its findings, so
+nobody redoes them:
+- Specs get their story through `scripts/workflow-steps.ts --story=<id>`, which reads static/docs-testing.ttl
+  via `readStoryQuads`. The consumers to move onto a pointer are:
+  - `scripts/lib/test-workflow.ts` (`loadWorkflows`, `loadWorkflowsFromFile`, `setScreenshotLink`)
+  - `scripts/docs-pages.ts` (about line 1307)
+  - `scripts/workflow-shots.ts`
+  - `scripts/offline/test-workflow-check.ts`
+  - `scripts/offline/release-review-space.ts`
+  - `scripts/demo/render.ts`
+  - `tests/bench/run-narration-bench.ts`
+- Proposed pointer. The TestWorkflow keeps `kpred:workflow-id` (the docs URL and screenshot folder),
+  `kpred:test-file` and its docs placement fields. It adds `kpred:story <IRI>` and `kpred:story-space "<example id>"`,
+  resolved through `EXAMPLE_KBS` in src/lib/storage/example-kbs.ts. shots-note and narrator move to the story,
+  and screenshot links become `story:media` in the space file.
+- TRAP: static/starter-generated-assets.ttl is GENERATED by `exampleTtl` in scripts/content/gen-assets.ts
+  (about line 405). A hand-written story there is deleted by the next regeneration, unless the generator
+  emits it or preserves a marked block.
+- static/starter-quickstart.ttl has no stories and uses CamelCase IRIs (`kb:ProjectPhoenix`, `pred:deadline`).
+  The README path spec runs on the Getting started sample today, not Quickstart.
+- Compare seeds its notes from tests/fixtures/compare-demo/notes.json through
+  src/lib/integrations/llm/corpus-fixture.ts. Reckoning seeds "Company Alpha" and injects a "Sample Company"
+  question. Both get rewritten on Quickstart. The mock entries must pass `slugIRI` in extractor.ts (about line 217).
+- Still unread: tests/e2e/workflow-readme-path.test.ts, workflow-build-change.test.ts (list its assertions the
+  Compare spec lacks before deleting it) and src/lib/rdf/story.ts (the in-app walk player).
+- Order: pointer reader plus unit tests → Quickstart content and its stories → move generated-assets →
+  retire BuildChange → shots and docs regeneration → recordings (gitignored, no media committed) → checks and
+  graph notes.
+
+**Queue and assets.** All garden pictures are in the review space. The splat failed once with CUDA out of
+memory: qwen3.8 was resident on GPU 0, and the worker's "retrying after 30 min" never re-ran it. It was
+re-queued by hand at about 04:40Z (job d869d6be) with the GPU free. It runs from worktree tripleNotes-revspace,
+so keep that worktree until it is done, then run
+`npx tsx scripts/review-spaces/build-garden-redesign.ts --workspace=<private workspace>` to copy the splat in.
+
+**Findings queued for review tonight (kb_add_note):**
+- `kb:queue-ram-guard`: an interactive deputy session needs a GPU claim; the splat retry message is false.
+- `kb:reproducible-delivery`: `.nvmrc` says Node 22, CI runs 24, and the full e2e suite crashes on 22.
+- `kb:graph-publishing`: docs-pages sorts broadMatch alphabetically, against its own comment.
+
+**Worktrees whose branches are now in dev** (scope029, vwf, docs029, recorder, and revspace after the splat):
+these can go, but only with Matt's OK and a tally first.
+
+**Waiting on Matt:** close #657 (superseded by #678)? The nine bundled-only starters in F263; which F303 phone
+transport comes first; the F196.5 registry; F301 and F302 questions.
+
+## 2026-11-18 — dev integrates LOCALLY now; integration/2026-11-18 holds the batch; v0.2.9 waits for its videos
 
 Opus head session with Sonnet agents and the local deputy. Decisions are `kpred:decided` on `kb:release-0-2-9`.
 
@@ -96,6 +251,44 @@ comment on the Owed pages) is not how the status banner resolves — for feat:Si
 kept only the least finished feature (deploy, scaffolded) as the broadMatch status carrier, with the
 build linked via `kpred:relates-to` (the gate counts that). Banner now reads Scaffolded. No Matt
 decisions were made with me in this window, so nothing was queued via kb_add_note.
+
+## 2026-11-18 (deputy, local qwen3.8-160k) — F307/F308 (numbered F304/F305 on its branch) model-library plan recorded; PROPOSAL, nothing built
+
+**Branch `agent/local-model-library` (worktree `.claude/worktrees/local-model-library`, off origin/dev
+55622477, which has #676 F278 hub-assets — local dev f9753a57 is BEHIND origin, this branch is not).**
+One commit, two files: `static/reckons-roadmap.ttl` (the plan) and this entry.
+
+**Matt's decisions (2026-11-18, in chat, recorded as `kpred:decided` on the entities):**
+1. Use the open-source CC0 3D libraries he listed (Quaternius, Open Source 3D Assets, 3D Valley,
+   Poly Haven, Kenney, OpenGameArt, the two Awesome-CC0/Tools directories) as node assets in the space,
+   **automatically for hubs by default**; three.js stays the renderer; a style dropdown in settings
+   starts at low-poly (he is unsure performance matters — recorded as an open question, not a constraint).
+2. Editing/customizing EXISTING models is a NEW feature, with the Blender path.
+3. Hubs automatically search, trying to find the best match with the node's statements.
+
+**What the plan says (read the TTL, this is the summary):** `kb:model-library` F307 (planned) with
+F307.1 search-and-select into the existing kb-assets models slot (filters: license/style/format/size;
+management is the existing `kb:glb-management-ui` R4) and F307.2 hub auto-match — a THIRD source for
+F278's default assets (generated / library-matched / picked), query built only from the hub's confirmed
+facts (F278's GROUNDED principle), result lands as a PENDING asset, DEFAULT MEANS QUEUED NOT RUN.
+`kb:model-edit-blender` F308 (planned), Phase 2 of `kb:content-orchestration` after the scaffolded
+`kb:blender-mcp` Phase 1: open a stored GLB (or FBX/OBJ), graph-described change, export a NEW file
+beside the old (a rejected edit is a deletion, not a restore), license and attribution travel with it.
+License stance: license + author recorded as triples at save time (precedent `kb:ref-pmtiles`);
+OpenGameArt is mixed-license and gated per asset; NC assets excluded from published spaces.
+
+**Unverified / not done:** NOTHING is built — statuses are `planned`; this is a proposal for Matt/Opus
+to accept, re-shape or split (Matt called F308 "a new feature"; I made it a Phase with its own number
+because `kb:blender-mcp` already owns Phase 1 under content-orchestration — split it if you disagree).
+I did not run the full CI suite (it runs on the PR; this touches only roadmap TTL). I did not decide
+the release slot, the first library, the dropdown options or how "best match" is computed (F74.3
+routing decision — left as open questions on the entities). `kb:theming` has Matt's 2026-11-13 open
+question about his sister's three.js work on the same 3D surface — not resolved, don't re-ask him twice.
+
+**Checked:** graph-lint 0 errors / 15 warnings (identical baseline to dev; none on the new entities);
+every linked entity verified present in this base; F307/F308 are the next free feature numbers
+(F300–F303 taken). **NOT pushed, no PR** — deputy has no credential. Push then PR against dev, no merge:
+`! git -C /home/matt/Github/tripleNotes/.claude/worktrees/local-model-library push -u origin agent/local-model-library`
 
 ## 2026-11-17 — demo videos, multi-scan and CAD are v0.2.9's headline; six docs-video scripts await Matt's review
 

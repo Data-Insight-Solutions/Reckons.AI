@@ -81,8 +81,8 @@
         <div class="q" data-testid="open-question">
           <p>{q.question ?? 'A missing input'}</p>
           <div class="row">
-            <input type="text" aria-label={q.question ?? 'Answer'} placeholder="Your answer" bind:value={answers[q.id]} />
-            <button class="d-btn d-accept" disabled={working || !(answers[q.id] ?? '').trim()} onclick={() => answer(q.id)}>Answer</button>
+            <input type="text" data-testid="open-question-input" aria-label={q.question ?? 'Answer'} placeholder="Your answer" bind:value={answers[q.id]} />
+            <button class="d-btn d-accept" data-testid="open-question-answer" disabled={working || !(answers[q.id] ?? '').trim()} onclick={() => answer(q.id)}>Answer</button>
           </div>
         </div>
       {/each}

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { clearStorage, waitForApp } from './helpers';
+import { finishJob, jobRequests } from './synthetic-runner';
 
 /**
  * Browser contract with a synthetic file-queue runner in OPFS. Actual GPU generation is a separate
@@ -46,47 +47,6 @@ async function openStory(page: Page) {
   });
   const reconnect = page.getByRole('button', { name: 'Reconnect runner', exact: true });
   if (await reconnect.isVisible()) await reconnect.click();
-}
-async function jobRequests(page: Page) {
-  return page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    const jobs = await (await root.getDirectoryHandle('.reckons-generation')).getDirectoryHandle('jobs');
-    const results = [];
-    const entries = jobs as FileSystemDirectoryHandle & { values(): AsyncIterableIterator<FileSystemHandle> };
-    for await (const handle of entries.values()) {
-      if (handle.kind !== 'directory') continue;
-      try {
-        results.push(JSON.parse(await (await (await (handle as FileSystemDirectoryHandle).getFileHandle('request.json')).getFile()).text()));
-      } catch { /* an unsubmitted cancellation marker */ }
-    }
-    return results as { id: string; stage: string; parentId?: string; spaceId: string; prompt: string }[];
-  });
-}
-async function finishJob(page: Page, id: string, state: 'completed' | 'failed' = 'completed', corrupt = false) {
-  await page.evaluate(async ({ id, state, corrupt }) => {
-    const jobs = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('.reckons-generation')).getDirectoryHandle('jobs');
-    const dir = await jobs.getDirectoryHandle(id);
-    const request = JSON.parse(await (await (await dir.getFileHandle('request.json')).getFile()).text());
-    const write = async (name: string, bytes: string | ArrayBuffer) => {
-      const writer = await (await dir.getFileHandle(name, { create: true })).createWritable();
-      await writer.write(bytes);
-      await writer.close();
-    };
-    if (state === 'failed') {
-      await write('status.json', JSON.stringify({ request, state, error: 'Synthetic generation failure' }));
-      return;
-    }
-    const filename = { image: 'image.webp', video: 'video.webm', splat: 'splat.ply' }[request.stage as 'image' | 'video' | 'splat'];
-    const fixture = await (await fetch('/generated/carved-turtle/receipt.json')).json();
-    const receipt = fixture.stages[request.stage];
-    const bytes = await (await fetch(`/generated/carved-turtle/${filename}`)).arrayBuffer();
-    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2, '0')).join('');
-    receipt.settings.seed = request.seed;
-    if (request.stage !== 'splat') receipt.input.prompt = request.prompt;
-    receipt.output = { file: filename, bytes: bytes.byteLength, sha256: corrupt ? '0'.repeat(64) : hash };
-    await write(filename, bytes);
-    await write('status.json', JSON.stringify({ request, state, receipt }));
-  }, { id, state, corrupt });
 }
 async function generatedCount(page: Page) {
   return page.evaluate(async () => {

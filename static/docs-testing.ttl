@@ -1052,7 +1052,13 @@ test:Workflow-GeneratedAssets-Step3
     kpred:screenshot    "/workflows/generated-assets/03-picture.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
+    story:target        "asset-image :: Made by Z-Image-Turbo" ;
+    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-image"]}' ;
+    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-image"}' ;
+    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"image"}' ;
     story:expect        '{"kind":"visible","target":"asset-large"}' ;
+    story:expect        '{"kind":"attr","target":"asset-image","name":"src","value":"/generated/carved-turtle/image.webp"}' ;
+    story:expect        '{"kind":"media","target":"asset-image","width":768}' ;
     kpred:assertion     "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
 
 test:Workflow-GeneratedAssets-Step4
@@ -1070,7 +1076,13 @@ test:Workflow-GeneratedAssets-Step4
     kpred:screenshot    "/workflows/generated-assets/04-video.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
+    story:target        "asset-video :: Made by Wan2.2" ;
+    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-video"]}' ;
+    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-video"}' ;
+    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"video"}' ;
     story:expect        '{"kind":"visible","target":"asset-large"}' ;
+    story:expect        '{"kind":"attr","target":"asset-video","name":"src","value":"/generated/carved-turtle/video.webm"}' ;
+    story:expect        '{"kind":"media","target":"asset-video","width":512}' ;
     kpred:assertion     "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
 
 test:Workflow-GeneratedAssets-Step5
@@ -1088,7 +1100,12 @@ test:Workflow-GeneratedAssets-Step5
     kpred:screenshot    "/workflows/generated-assets/05-splat.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
+    story:target        "splat-viewer :: Made by TripoSplat" ;
+    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-carved-turtle-splat"]}' ;
+    story:action        '{"kind":"click","target":"asset-open-gen-carved-turtle-splat"}' ;
+    story:expect        '{"kind":"receipt","slug":"carved-turtle","stage":"splat"}' ;
     story:expect        '{"kind":"visible","target":"asset-large"}' ;
+    story:expect        '{"kind":"attr","target":"splat-viewer","name":"data-splat-status","value":"ready"}' ;
     kpred:assertion     "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
 
 test:Workflow-GeneratedAssets-Step6
@@ -1106,6 +1123,14 @@ test:Workflow-GeneratedAssets-Step6
     kpred:screenshot    "/workflows/generated-assets/06-background.webp" ;
     kpred:page-name     "the graph" ;
     skos:definition     "Open the lighthouse island splat and choose Set as background. The island is then drawn large behind the graph, sized to the graph and turning very slowly, and it never gets in the way of choosing a node. The choice is saved with the space, so it travels with an export. Clear background removes it." ;
+    story:target        "graph-canvas :: The island behind the graph" ;
+    story:action        '{"kind":"select","entities":["urn:kbase:concept/gen-lighthouse-island-splat"]}' ;
+    story:action        '{"kind":"click","target":"asset-open-gen-lighthouse-island-splat"}' ;
+    story:action        '{"kind":"click","target":"asset-bg-toggle"}' ;
+    story:action        '{"kind":"click","target":"asset-large-close"}' ;
+    story:action        '{"kind":"press","key":"Escape"}' ;
+    story:expect        '{"kind":"receipt","slug":"lighthouse-island","stage":"splat"}' ;
+    story:expect        '{"kind":"attr","target":"graph-canvas","name":"data-splats","value":"3/0"}' ;
     kpred:assertion     "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .
 
 
@@ -1164,6 +1189,9 @@ test:Workflow-ReckoningV029-Step2
     kpred:screenshot    "/workflows/reckoning-v029/02-choose-situation.webp" ;
     kpred:page-name     "the Reckoning page" ;
     skos:definition     "On the Reckoning page the statements you hold are listed with a checkbox each. Tick two or three more, or untick any the canvas chose, and write a sentence about the decision: \"We need to decide how to refresh the company logo.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice." ;
+    story:action        '{"kind":"type","target":"situation-text","text":"We need to decide how to refresh the company logo."}' ;
+    story:action        '{"kind":"click","target":"situation-next"}' ;
+    story:expect        '{"kind":"text","target":"chosen-count","contains":"3 statements chosen"}' ;
     kpred:assertion     "Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." .
 
 test:Workflow-ReckoningV029-Step3
@@ -1180,6 +1208,8 @@ test:Workflow-ReckoningV029-Step3
     kpred:page-name     "the Reckoning page" ;
     kpred:narration-lead "Is a target a sentence you type, or something your knowledge base might already know it is missing?" ;
     skos:definition     "Choose Answer a question. The questions you still have open are listed; pick \"What does Sample Company still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have." ;
+    story:action        '{"kind":"click","target":"target-next"}' ;
+    story:expect        '{"kind":"visible","target":"generate-proposal"}' ;
     kpred:assertion     "The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." .
 
 test:Workflow-ReckoningV029-Step4
@@ -1196,6 +1226,10 @@ test:Workflow-ReckoningV029-Step4
     kpred:page-name     "the Reckoning page" ;
     kpred:narration-lead "What should a tool that suggests things be allowed to change before you have said yes?" ;
     skos:definition     "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued." ;
+    story:target        "proposal-option :: The two options" ;
+    story:action        '{"kind":"click","target":"generate-proposal"}' ;
+    story:expect        '{"kind":"elements","target":"proposal-option","n":2}' ;
+    story:expect        '{"kind":"text","target":"proposal-written","contains":"Nothing is confirmed and no job has been queued."}' ;
     kpred:assertion     "Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." .
 
 test:Workflow-ReckoningV029-Step5
@@ -1242,6 +1276,10 @@ test:Workflow-ReckoningV029-Step7
     kpred:screenshot    "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
     kpred:page-name     "the Reckoning page" ;
     skos:definition     "The accepted option still has its open question. Type \"logo.png\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued." ;
+    story:target        "proposal-status :: Completed" ;
+    story:action        '{"kind":"type","target":"open-question-input","text":"logo.png"}' ;
+    story:action        '{"kind":"click","target":"open-question-answer"}' ;
+    story:expect        '{"kind":"text","target":"proposal-status","contains":"Completed"}' ;
     kpred:assertion     "After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." .
 
 test:Workflow-CompareV029
@@ -1282,6 +1320,13 @@ test:Workflow-CompareV029-Step1
     kpred:screenshot    "/workflows/compare-v029/01-extract-note.webp" ;
     kpred:page-name     "the Add page" ;
     skos:definition     "Your knowledge base already holds the first orchard note, accepted. On the Add page title the second note \"Orchard meeting\" and paste: \"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.\" Press Extract statements. You land in Review's compare flow, not in a separate screen." ;
+    story:target        "ingest-submit :: Extract statements" ;
+    story:action        '{"kind":"open-page","path":"/ingest"}' ;
+    story:action        '{"kind":"type","target":"ingest-title","text":"Orchard meeting"}' ;
+    story:action        '{"kind":"type","target":"ingest-text","text":"Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof."}' ;
+    story:action        '{"kind":"click","target":"ingest-submit"}' ;
+    story:expect        '{"kind":"visible","target":"compare-flow"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":4}' ;
     kpred:assertion     "Extracting leaves the Add page and opens Review in compare mode." .
 
 test:Workflow-CompareV029-Step2
@@ -1298,6 +1343,16 @@ test:Workflow-CompareV029-Step2
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "When a second note says mostly the same things, how would you know which sentences are really new?" ;
     skos:definition     "Review shows the four statements the note brought, each against what you hold. One is a repeat of something you have, one is a near-duplicate worded differently, one contradicts a statement you hold, and one is new. The button says Accept new only, with the count of what it would settle." ;
+    story:target        "compare-chips :: 1 repeat, 1 near-duplicate, 1 contradiction, 1 new" ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"reinforces"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"near-duplicate"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"conflicts"}' ;
+    story:expect        '{"kind":"elements","target":"diff-entry","n":1,"attr":"data-kind","is":"new"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 repeat"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 near-duplicate"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"text","target":"compare-chips","contains":"1 new"}' ;
+    story:expect        '{"kind":"text","target":"compare-flow","contains":"accept new only (1)"}' ;
     kpred:assertion     "Exactly four entries carry the labels repeat, near-duplicate, contradiction and new, one of each, and the page says statements, never facts." .
 
 test:Workflow-CompareV029-Step3
@@ -1314,6 +1369,12 @@ test:Workflow-CompareV029-Step3
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "What would it look like if a new note were laid over what you already know, without changing it?" ;
     skos:definition     "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side with the notes they came from. The legend counts each. Nothing has been written to your knowledge base yet." ;
+    story:target        "overlay-legend :: Ghosts, repeats and one contradiction" ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 new, drawn as ghosts"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 repeat, folded onto what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 reinforcing, thickening what you hold"}' ;
+    story:expect        '{"kind":"text","target":"overlay-legend","contains":"1 contradiction"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":1}' ;
     kpred:assertion     "The legend reads 1 new, drawn as ghosts, 1 repeat folded, 1 reinforcing and 1 contradiction; amber ghost pixels are on the canvas; the stored statements are still three confirmed and four pending." .
 
 test:Workflow-CompareV029-Step4
@@ -1330,6 +1391,10 @@ test:Workflow-CompareV029-Step4
     kpred:page-name     "the Review page" ;
     kpred:narration-lead "When two notes disagree about a number, which one should the tool believe, and who decides?" ;
     skos:definition     "The contradiction has a card of its own: forty members from the first note against fifty-two from the second, each with the passage it came from. Choose take the new one, keep mine, or keep both. Take the new one confirms fifty-two." ;
+    story:action        '{"kind":"click","target":"compare-take-new"}' ;
+    story:expect        '{"kind":"elements","target":"contradiction-pair","n":0}' ;
+    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"40","status":"superseded"}' ;
+    story:expect        '{"kind":"standing","subject":"larkspur-orchard-cooperative","predicate":"members","object":"52","status":"held"}' ;
     kpred:assertion     "Both passages are readable on the card; after take the new one, 52 is part of what you hold and 40 is marked replaced." .
 
 test:Workflow-CompareV029-Step5
@@ -1345,6 +1410,13 @@ test:Workflow-CompareV029-Step5
     kpred:screenshot    "/workflows/compare-v029/05-see-on-record.webp" ;
     kpred:page-name     "the Review page" ;
     skos:definition     "The decided pair stays on the page, marked replaced, still on record: members 40 from the first note and members 52 from the second, with the old passage. Keep mine would have rejected the arriving one instead, and keep both leaves the pair marked as a known disagreement." ;
+    story:target        "decided-pair :: Replaced, still on record" ;
+    story:expect        '{"kind":"elements","target":"decided-pair","n":1}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"replaced, still on record"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 40"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"members \u00b7 52"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard seed"}' ;
+    story:expect        '{"kind":"text","target":"decided-pair","contains":"from Orchard meeting"}' ;
     kpred:assertion     "The settled pair reads replaced, still on record, shows both statements and the note each came from, and the stored rows are 40 superseded and 52 refined, each keeping its passage." .
 
 

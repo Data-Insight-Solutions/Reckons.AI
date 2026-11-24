@@ -2818,6 +2818,7 @@
           class:glb-badge={a.kind === 'glb' || a.kind === 'splat' || a.kind === 'three'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
+          data-testid={`asset-open-${(iriFromNodeKey(n.key) ?? n.key).split(/[/#:]/).pop()}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
         >
           {#if a.kind === 'image'}
@@ -2920,13 +2921,13 @@
   >
     {#if expandedAsset.kind === 'image'}
       <button type="button" class="asset-expand-control" aria-label="View image fullscreen" onclick={() => (assetFullscreen = true)}>
-        <img src={expandedAsset.url} alt="expanded asset" />
+        <img src={expandedAsset.url} alt="expanded asset" data-testid="asset-image" />
       </button>
     {:else if expandedAsset.kind === 'video'}
       <!-- Uploaded video assets do not include a separate caption file. Keep playback user-initiated;
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+      <video class="asset-media" data-testid="asset-video" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else if expandedAsset.kind === 'three'}
       <div class="asset-media asset-glb">
         {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
@@ -2939,9 +2940,9 @@
              intercepted, 2026-10-14). -->
         <div class="asset-bg-action">
           {#if backgroundSplat === expandedAsset.url}
-            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
+            <button class="asset-bg-toggle mono" data-testid="asset-bg-toggle" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
           {:else}
-            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
+            <button class="asset-bg-toggle mono" data-testid="asset-bg-toggle" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
           {/if}
           {#if expandedAssetKey && iriFromNodeKey(expandedAssetKey)}<SplatPlacementControls iri={iriFromNodeKey(expandedAssetKey)!} />{/if}
         </div>
@@ -2960,7 +2961,7 @@
     {/if}
     <div class="asset-controls">
       <button onclick={() => (assetFullscreen = true)} title="Fullscreen">⛶</button>
-      <button onclick={collapseAsset} title="Close">✕</button>
+      <button onclick={collapseAsset} title="Close" data-testid="asset-large-close">✕</button>
     </div>
   </div>
 {/if}

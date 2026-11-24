@@ -82,6 +82,12 @@ describe('story-steps reader', () => {
     const ok = (o: object) => parseExpect(JSON.stringify(o));
     expect(ok({ kind: 'visible', target: 't' })).toMatchObject({ ok: true });
     expect(ok({ kind: 'count', type: 'urn:kbase:type/Image', n: 3 })).toMatchObject({ ok: true });
+    expect(ok({ kind: 'text', target: 't', contains: 'x' })).toMatchObject({ ok: true, expect: { kind: 'text' } });
+    expect(ok({ kind: 'attr', target: 't', name: 'data-x', value: 'v' })).toMatchObject({ ok: true, expect: { kind: 'attr', value: 'v' } });
+    expect(ok({ kind: 'elements', target: 't', n: 2, attr: 'data-kind', is: 'new' })).toMatchObject({ ok: true, expect: { attr: 'data-kind', is: 'new' } });
+    expect(ok({ kind: 'receipt', slug: 'carved-turtle', stage: 'splat' })).toMatchObject({ ok: true });
+    expect(ok({ kind: 'media', target: 'asset-image', width: 768 })).toMatchObject({ ok: true });
+    expect(parseAction('{"kind":"press","key":"Escape"}')).toMatchObject({ ok: true });
     expect(ok({ kind: 'standing', subject: 'a', predicate: 'b', object: 'c', status: 'confirmed' })).toMatchObject({ ok: true });
   });
 
@@ -100,6 +106,10 @@ describe('story-steps reader', () => {
     expect(parseAction('{"kind":"run-job","job":"x","params":{"a":{"b":1}}}')).toMatchObject({ ok: false });
     expect(parseAction('{"kind":"open-page","path":"https://evil.example"}')).toMatchObject({ ok: false });
     expect(parseExpect('{"kind":"count","type":"t","n":-1}')).toMatchObject({ ok: false });
+    expect(parseExpect('{"kind":"text","target":"t"}')).toMatchObject({ ok: false });
+    expect(parseExpect('{"kind":"elements","target":"t","n":2,"attr":"data-kind"}')).toMatchObject({ ok: false, reason: expect.stringContaining('together') });
+    expect(parseExpect('{"kind":"receipt","slug":"x","stage":"audio"}')).toMatchObject({ ok: false });
+    expect(parseAction('{"kind":"press","key":"rm -rf"}')).toMatchObject({ ok: false });
     expect(parseExpect('{"kind":"mystery"}')).toMatchObject({ ok: false, reason: expect.stringContaining('unknown expect kind') });
   });
 

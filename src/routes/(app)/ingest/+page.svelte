@@ -1299,11 +1299,11 @@
   {:else if mode === 'note'}
     <label>
       <span class="lbl mono">title</span>
-      <input type="text" bind:value={title} placeholder="what is this about" />
+      <input type="text" bind:value={title} placeholder="what is this about" data-testid="ingest-title" />
     </label>
     <label>
       <span class="lbl mono">body</span>
-      <textarea bind:value={body} rows="9" placeholder="write a note in your own words. it will be decomposed into facts."></textarea>
+      <textarea bind:value={body} rows="9" data-testid="ingest-text" placeholder="write a note in your own words. it will be decomposed into facts."></textarea>
     </label>
   {:else if mode === 'triples'}
     <p class="hint" style="margin-bottom: 0.25rem;">Add facts directly — no AI needed. Great for structured notes.</p>
@@ -1363,7 +1363,7 @@
           disabled={!canCopyPrompt}
           title="Build the prompt and paste the response from any LLM — no API key needed"
         >use any LLM</button>
-        <button class="primary" onclick={submit} disabled={!canSubmit}>
+        <button class="primary" data-testid="ingest-submit" onclick={submit} disabled={!canSubmit}>
           {busy ? 'extracting…' : 'extract statements →'}
         </button>
         {#if busy}
