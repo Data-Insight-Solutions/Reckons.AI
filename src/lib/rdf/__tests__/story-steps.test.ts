@@ -152,3 +152,48 @@ describe('extractStories delegates to the reader', () => {
     expect(stories[0].steps[0]).toMatchObject({ id: 'urn:example:S1', title: 'Add', content: 'Say this', question: 'Ready?' });
   });
 });
+
+describe('story:filter (F304)', () => {
+  it('parses one filter name on a step', () => {
+    const [st] = read(`${STORY}
+ex:S1 story:filter "islands" .`);
+    expect(st.steps[0].filters).toEqual(['islands']);
+  });
+
+  it('parses several filter names, in the order the step says them', () => {
+    const [st] = read(`${STORY}
+ex:S1 story:filter "islands" , "pending" ; story:filter "no-type" .`);
+    expect(st.steps[0].filters).toEqual(['islands', 'pending', 'no-type']);
+  });
+
+  it('leaves filters absent when the step names none — the step must leave the filters as they are', () => {
+    const [st] = read(STORY);
+    expect(st.steps[0].filters).toBeUndefined();
+  });
+
+  it('passes names through RAW, without judging them — the reader may be older or newer than the graph', () => {
+    const [st] = read(`${STORY}
+ex:S1 story:filter "no-such-filter" , "hubs" .`);
+    expect(st.steps[0].filters).toEqual(['no-such-filter', 'hubs']);
+  });
+
+  it('carries the names through extractStories', () => {
+    const stmts = new Parser().parse(PRE + STORY + `
+ex:S1 story:filter "islands" , "pending" .`).map((q: Quad): Statement => ({
+      s: { kind: 'iri', value: q.subject.value }, p: { kind: 'iri', value: q.predicate.value },
+      o: q.object.termType === 'Literal' ? { kind: 'literal', value: q.object.value } : { kind: 'iri', value: q.object.value },
+      status: 'confirmed',
+    } as unknown as Statement));
+    const [story] = extractStories(stmts);
+    expect(story.steps[0].filters).toEqual(['islands', 'pending']);
+    // The layout rule is the template: a step without a layout has layout undefined.
+    expect(story.steps[0].layout).toBeUndefined();
+  });
+
+  // NO RESET PATH EXISTS TODAY, and it is not one to invent: the player keeps the last step's
+  // story:layout after the end (playStoryStep's end branch only stopAutoPlay()), and exitStory()
+  // calls stopStory(), which clears the spotlight but not the layout either. Filters follow the
+  // same rule as layout — so the gap of a story's end not clearing the filters it chose is
+  // recorded below as it.todo, like layout.
+  it.todo('story end clears the filters the story applied');
+});
