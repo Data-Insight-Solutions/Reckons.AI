@@ -59,6 +59,7 @@ export const S = {
   openPage: `${STORY_NS}openPage`,
   offerSetting: `${STORY_NS}offerSetting`,
   layout: `${STORY_NS}layout`,
+  filter: `${STORY_NS}filter`,
   action: `${STORY_NS}action`,
   expect: `${STORY_NS}expect`,
   needs: `${STORY_NS}needs`,
@@ -146,6 +147,8 @@ export interface UnifiedStep {
   focus?: StepTarget;
   openPage?: string;
   layout?: string;
+  /** Filter names the step wants active (story:filter, repeatable); raw strings, validated at use like layout. */
+  filters?: string[];
   highlights: string[];
   /** One-click offers in authored order (raw; story-offers.ts applies its allowlist). */
   offers: { kind: 'setting' | 'page'; value: string }[];
@@ -337,6 +340,10 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         .filter((q) => q.object.termType === 'Literal' && (q.predicate.value === S.offerSetting || q.predicate.value === S.openPage))
         .map((q) => ({ kind: q.predicate.value === S.offerSetting ? 'setting' as const : 'page' as const, value: q.object.value }));
       const title = lit(sIri, S.title) ?? lit(sIri, RDFS_LABEL) ?? 'Step';
+      // PARSE PERMISSIVELY, like story:layout: the values stay raw strings — a graph may name filters
+      // this build does not know, so the check belongs at use (TurtleChatPanel), where an unknown name
+      // is dropped rather than throwing. Absent stays undefined (a step with no story:filter names none).
+      const rawFilters = lits(sIri, S.filter).map((s) => s.trim()).filter((s) => s !== '');
       steps.push({
         iri: sIri,
         id: lit(sIri, S.stepId) ?? local(sIri),
@@ -352,6 +359,7 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         focus: tgt === null ? undefined : parseTarget(tgt),
         openPage: offers.find((o) => o.kind === 'page')?.value,
         layout: lit(sIri, S.layout) ?? undefined,
+        filters: rawFilters.length > 0 ? rawFilters : undefined,
         offers,
         media: lit(sIri, S.media),
         ...common(sIri),

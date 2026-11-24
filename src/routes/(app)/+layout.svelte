@@ -120,8 +120,10 @@
       const { promptStoryIfPresent } = await import('$lib/stores/story-prompt.svelte');
       const { getCurrentKbId } = await import('$lib/storage/kb-registry');
       // ?story starts the story outright (F261); otherwise the one-time notice offers it.
+      // F304: &autoplay=1 (or true) also starts it advancing on its pace — the muted showcase walk.
       const { startStoryFromLink } = await import('$lib/stores/story-prompt.svelte');
-      if (!startStoryFromLink(statements(), new URL(window.location.href).searchParams.get('story'), new URL(window.location.href).searchParams.get('step'))) {
+      const linkParams = new URL(window.location.href).searchParams;
+      if (!startStoryFromLink(statements(), linkParams.get('story'), linkParams.get('step'), linkParams.get('autoplay'))) {
         promptStoryIfPresent(statements(), getCurrentKbId());
       }
       // Apply embedding model from settings
