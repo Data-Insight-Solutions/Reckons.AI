@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   altitudeOf, reviewAltitude, isOpenDecision, isClassified,
-  liftedAltitudes, censusByAltitude, explainAltitude, isAltitude, ALTITUDE_RANK,
+  liftedAltitudes, evidenceAltitudes, censusByAltitude, explainAltitude, isAltitude, ALTITUDE_RANK,
 } from '../fact-altitude';
 import type { Statement } from '../types';
 
@@ -80,6 +80,25 @@ describe('altitudeOf', () => {
     expect(altitudeOf(st(`${KPRED}ruled-out-by`, 'kb:lake-george', { o: { kind: 'iri', value: 'kb:lake-george' } }))).toBe('decision');
     expect(altitudeOf(st(`${KPRED}decides`, 'kb:the-weekend'))).toBe('decision');
   });
+
+  it('classifies review bookkeeping as record — F139.2, measured 2026-11-24', () => {
+    const RDFNS = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    for (const p of [
+      `${RDFNS}subject`,
+      `${RDFNS}predicate`,
+      `${RDFNS}object`,
+      'urn:kbase:meta/status',
+      'urn:kbase:meta/confidence',
+      'urn:kbase:meta/reviewMetadata',
+      'urn:kbase:meta/gloss',
+      'urn:kbase:meta/proposed-by',
+      'urn:kbase:meta/excerpt',
+    ]) {
+      const s = st(p, 'a reviewed-or-pending fact');
+      expect(altitudeOf(s), p).toBe('record');
+      expect(isClassified(s), p).toBe(true);
+    }
+  });
 });
 
 describe('reviewAltitude — authority can LIFT, never lower', () => {
@@ -133,6 +152,36 @@ describe('liftedAltitudes — a log under a live decision is a deciding factor',
     const q = st(`${KPRED}open-question`, 'Q?', { s: subj, id: 'q2' });
     const dec = st(`${KPRED}principle`, 'P', { s: subj, id: 'p2' });
     expect(liftedAltitudes([q, dec]).get('p2')).toBe('decision');
+  });
+});
+
+describe('evidenceAltitudes — a reviewed fact that supports a claim is evidence (F139.2)', () => {
+  const claim = { kind: 'iri' as const, value: 'urn:kbase:concept/claim' };
+
+  it('a confirmed supports-fact is evidence; the same fact pending is not', () => {
+    const confirmed = st(`${KPRED}supports`, 'F139 works.', { s: claim, id: 'e1', status: 'confirmed' });
+    const pending = st(`${KPRED}supports`, 'F139 works.', { s: claim, id: 'e2', status: 'pending' });
+    const out = evidenceAltitudes([confirmed, pending]);
+    expect(out.get('e1')).toBe('evidence');
+    // kpred:supports is not in the table, so an unreviewed one keeps its default:
+    expect(out.get('e2')).toBe('judgment');
+  });
+
+  it('a confirmed fact on a subject that carries a reviewed supports-link is evidence', () => {
+    const link = st(`${KPRED}supports`, 'The claim stands.', { s: claim, id: 'l', status: 'confirmed' });
+    const fact = st(`${KPRED}has-status`, 'functional', { s: claim, id: 'f', status: 'confirmed' });
+    expect(evidenceAltitudes([link, fact]).get('f')).toBe('evidence');
+  });
+
+  it('an altitude fixed on the statement itself (st.altitude) still wins', () => {
+    const fixed = st(`${KPRED}supports`, 'F139 works.', { s: claim, id: 'h', status: 'confirmed', altitude: 'log' });
+    expect(evidenceAltitudes([fixed]).get('h')).toBe('log');
+  });
+
+  it('never lowers a decision into evidence', () => {
+    const link = st(`${KPRED}supports`, 'The claim stands.', { s: claim, id: 'l2', status: 'confirmed' });
+    const open = st(`${KPRED}open-question`, 'Which way?', { s: claim, id: 'o2', status: 'confirmed' });
+    expect(evidenceAltitudes([link, open]).get('o2')).toBe('decision');
   });
 });
 
