@@ -30,6 +30,7 @@
  * Screenshots saved to: tests/visual/screenshots/coding-workflow/
  */
 
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { analyzePixels, analyzeText } from '../vision-local';
 import {
@@ -37,7 +38,7 @@ import {
   screenshotTo,
 } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 // ── Test 1: Pre-action — baseline + roadmap review ─────────────────────────
 

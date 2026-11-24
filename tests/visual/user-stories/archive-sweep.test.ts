@@ -17,9 +17,10 @@
  * It writes screenshots to tests/visual/screenshots/archive-sweep/ deliberately — the artifact IS
  * the point, and the assertions below are only the parts a machine can settle.
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const SHOTS = 'tests/visual/screenshots/archive-sweep';
 /** The touch minimum. A DESKTOP measurement of this is advisory — see button-crawl.ts. */
 const TOUCH_MIN = 44;

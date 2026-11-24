@@ -1,3 +1,4 @@
+import { E2E_BASE } from './scripts/lib/e2e-port';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -19,13 +20,13 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: E2E_BASE,
     ...devices['Desktop Chrome'],
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev:test',
-    url: 'http://localhost:5174',
+    url: E2E_BASE,
     reuseExistingServer: true,
     timeout: 120_000,
   },

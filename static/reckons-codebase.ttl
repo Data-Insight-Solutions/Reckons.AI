@@ -852,6 +852,8 @@ code:test-e2e  rdf:type     ktype:Concept ;
 
                kpred:has-file "tests/e2e/detail-rungs.test.ts" ;
                kpred:has-file "playwright.config.ts" ;
+               kpred:has-file "scripts/lib/e2e-port.ts" ;
+               kpred:has-file "scripts/__tests__/e2e-port.test.ts" ;
                kpred:has-file "playwright.smoke.config.ts" ;
                kpred:has-file "scripts/visual-smoke-gate.ts" .
 

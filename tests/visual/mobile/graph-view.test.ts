@@ -11,10 +11,11 @@
  * Uses Pixel 7 viewport (412×915) via Playwright config.
  */
 
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { analyzePixels, analyzeDOMOverlaps, analyzeText, auditTouchTargets } from '../vision-local';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 // Seed the app with mock data so SnapPanels appear
 async function seedGraphData(page: import('@playwright/test').Page) {

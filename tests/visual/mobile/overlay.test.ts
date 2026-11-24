@@ -8,10 +8,11 @@
  *  - Empty/guidance state displays correctly
  */
 
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { analyzePixels, analyzeText, auditTouchTargets } from '../vision-local';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 test.describe('Overlay page — mobile', () => {
   test.beforeEach(async ({ page }) => {
