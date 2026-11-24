@@ -3,6 +3,8 @@ import { STMT_PREFIX, stmtIdFromIriPart, stmtIdToIriPart } from './types';
 import { standingOf, type Standing } from './statement-standing';
 import type { TargetShape } from './proposal';
 
+const STORY_NS = 'urn:reckons:story/';
+
 /**
  * F223.12.1: a Reckoning is an entity the knowledge base keeps. The person chose a situation (facts, plus an
  * optional sentence), and that choice is a fact, so reloading the page, or coming back from the canvas,
@@ -121,6 +123,10 @@ export const newReckoningId = () => Math.random().toString(36).slice(2, 10) + Da
 export function isChoosable(st: Statement): boolean {
   if (st.status === 'rejected' || st.status === 'superseded') return false;
   if (st.sourceId.startsWith('reckoning-') || st.sourceId.startsWith('job-')) return false;
+  // A story's own mechanics (step titles, order, actions, expectations) describe how to walk the space, not the world,
+  // so they are never a situation to reckon with. Quick-Start carries the Compare and Reckoning stories since F300.5,
+  // and the picker was offering "quickstart reckoning 3 title ..." and JSON step actions as facts (2026-11-24).
+  if (st.p.value.startsWith(STORY_NS)) return false;
   return st.p.value !== RDF_TYPE;
 }
 

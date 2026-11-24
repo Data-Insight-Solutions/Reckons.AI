@@ -49,6 +49,11 @@ describe('reckoning entity', () => {
     expect(held.rows.slice(2, 5).map((s) => s.id)).toEqual(['h0', 'h1', 'h2']);
     expect(groupByStanding(all, '', (i) => i)[0].rows.slice(0, 3).map((s) => s.id)).toEqual(['h0', 'h1', 'h2']);
   });
+  it('never offers a story\'s own mechanics as a situation', () => {
+    const all = [st('1', 'urn:x:a', 'alpha'), { ...st('2', 'urn:reckons:story/qs-step-1', 'Choose the target'), p: { kind: 'iri' as const, value: 'urn:reckons:story/title' } }];
+    expect(groupByStanding(all, '', (i) => i).flatMap((g) => g.rows).map((s) => s.id)).toEqual(['1']);
+    expect(statementsTouching(all, new Set(['urn:reckons:story/qs-step-1'])).length).toBe(0);
+  });
   it('finds facts touching picked entities, held first', () => {
     const all = [st('1', 'urn:x:a', 'v', { status: 'pending' }), st('2', 'urn:x:a', 'w'), st('3', 'urn:x:z', 'q')];
     expect(statementsTouching(all, new Set(['urn:x:a'])).map((s) => s.id)).toEqual(['2', '1']);
