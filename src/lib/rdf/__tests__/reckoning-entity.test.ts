@@ -41,6 +41,19 @@ describe('reckoning entity', () => {
     expect(groups.flatMap((g) => g.rows).some((s) => s.sourceId === 'reckoning-r')).toBe(false);
     expect(groupByStanding(all, 'alpha', (i) => i).flatMap((g) => g.rows).map((s) => s.id)).toEqual(['1']);
   });
+  it('puts chosen facts first in their group, so a chosen fact past the 40 shown rows can still be unticked', () => {
+    const all = Array.from({ length: 50 }, (_, i) => st(`h${i}`, `urn:x:e${i}`, `v${i}`));
+    const held = groupByStanding(all, '', (i) => i, new Set(['h45', 'h47'])).find((g) => g.standing === 'held')!;
+    expect(held.rows.slice(0, 2).map((s) => s.id)).toEqual(['h45', 'h47']);
+    expect(held.rows.slice(0, 40).map((s) => s.id)).toContain('h47');
+    expect(held.rows.slice(2, 5).map((s) => s.id)).toEqual(['h0', 'h1', 'h2']);
+    expect(groupByStanding(all, '', (i) => i)[0].rows.slice(0, 3).map((s) => s.id)).toEqual(['h0', 'h1', 'h2']);
+  });
+  it('never offers a story\'s own mechanics as a situation', () => {
+    const all = [st('1', 'urn:x:a', 'alpha'), { ...st('2', 'urn:reckons:story/qs-step-1', 'Choose the target'), p: { kind: 'iri' as const, value: 'urn:reckons:story/title' } }];
+    expect(groupByStanding(all, '', (i) => i).flatMap((g) => g.rows).map((s) => s.id)).toEqual(['1']);
+    expect(statementsTouching(all, new Set(['urn:reckons:story/qs-step-1'])).length).toBe(0);
+  });
   it('finds facts touching picked entities, held first', () => {
     const all = [st('1', 'urn:x:a', 'v', { status: 'pending' }), st('2', 'urn:x:a', 'w'), st('3', 'urn:x:z', 'q')];
     expect(statementsTouching(all, new Set(['urn:x:a'])).map((s) => s.id)).toEqual(['2', '1']);

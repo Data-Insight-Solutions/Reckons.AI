@@ -4,6 +4,7 @@
   import { untrack } from 'svelte';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
   import { sources, statements } from '$lib/stores/kb.svelte';
+  import TwoSourceCompare from '$lib/components/TwoSourceCompare.svelte';
   import { commitPrecomputedIngest } from '$lib/ingest/precomputed';
   import type { Source } from '$lib/rdf/types';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
@@ -31,9 +32,9 @@
   import { createKb, registerStableId, switchToKb, getRegistry } from '$lib/storage/kb-registry';
   import { resolveImportTarget, uniqueKbName, parseGeneratedAt } from '$lib/storage/kb-import-target';
 
-  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
+  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo' | 'compare';
   let mode = $state<Mode>('note');
-  const MODES: readonly Mode[] = ['note', 'url', 'document', 'reminder', 'triples', 'drive', 'calendar', 'kb', 'vault', 'folder', 'repo'];
+  const MODES: readonly Mode[] = ['note', 'url', 'document', 'reminder', 'triples', 'drive', 'calendar', 'kb', 'vault', 'folder', 'repo', 'compare'];
 
   // Opened from the nav's add quick menu: /ingest?mode=url starts in that mode. An unknown value is
   // ignored rather than trusted — it arrives in a URL anyone can type.
@@ -1156,9 +1157,14 @@
   >calendar</button>
   <button class:active={mode === 'folder'} onclick={() => (mode = 'folder')}>folder</button>
   <button class:active={mode === 'repo'} onclick={() => (mode = 'repo')}>repo</button>
+  <button class:active={mode === 'compare'} data-testid="tab-compare" onclick={() => (mode = 'compare')}>compare two</button>
 </div>
 
-{#if mode !== 'kb' && mode !== 'drive' && mode !== 'calendar'}
+{#if mode === 'compare'}
+  <TwoSourceCompare />
+{/if}
+
+{#if mode !== 'kb' && mode !== 'drive' && mode !== 'calendar' && mode !== 'compare'}
 <div class="card form">
   {#if mode === 'url'}
     <label>

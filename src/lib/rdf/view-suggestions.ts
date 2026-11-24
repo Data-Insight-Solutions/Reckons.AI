@@ -38,7 +38,8 @@ export type GraphLayout =
   | 'timeline'
   | 'order'
   | 'hierarchy'
-  | 'map';
+  | 'map'
+  | 'compare';
 
 export interface ViewContext {
   /** Statements currently drawn (post-filter). */

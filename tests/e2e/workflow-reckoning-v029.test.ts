@@ -123,7 +123,7 @@ const exceptions: Record<string, StepException> = {
       await snap(action);
       await action.click();
       await page.waitForURL(/\/reckoning\?r=/);
-      await expect(page.getByTestId('chosen-count')).not.toContainText('0 statements', { timeout: 10_000 });
+      await expect(page.getByTestId('chosen-count')).not.toHaveText(/^0 statements chosen/, { timeout: 10_000 });
       ctx.id = new URL(page.url()).searchParams.get('r')!;
     },
   },
@@ -136,10 +136,15 @@ const exceptions: Record<string, StepException> = {
       // The canvas chose every statement that touches Project Phoenix; the person unticks them and ticks the three that matter.
       // The list re-orders as statements are unticked, so untick whichever is ticked first until none is.
       const ticked = page.locator('[data-testid="situation-picker"] input[type="checkbox"]:checked');
-      for (let guard = 0; guard < 60 && (await ticked.count()) > 0; guard++) await ticked.first().uncheck();
-      await expect(page.getByTestId('chosen-count')).toContainText('0 statements chosen');
+      // ANCHORED: "10 statements chosen" contains "0 statements chosen" as a substring, so every count check is a ^regex.
+      // CLICK, NOT uncheck(): `ticked` names "the first checked box", so after a successful untick it points at another
+      // one and uncheck()'s own state check retries until the test times out. The count the person sees is the check.
+      await expect(async () => {
+        if ((await ticked.count()) > 0) await ticked.first().click({ timeout: 2_000 });
+        await expect(page.getByTestId('chosen-count')).toHaveText(/^0 statements chosen/, { timeout: 500 });
+      }).toPass({ timeout: 30_000 });
       for (let i = 0; i < 3; i++) await boxes.nth(i).check();
-      await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
+      await expect(page.getByTestId('chosen-count')).toHaveText(/^3 statements chosen/);
       await snap(page.getByTestId('situation-picker'));
     },
     after: async (page) => {

@@ -1,0 +1,20 @@
+{
+  "_about": "Synthetic two-source fixture for the compare (venn) layout, F306.2. No personal data. Two fictional notes about a made-up orchard cooperative. Expected mapping, computed with the deterministic test embedder (src/lib/embed.ts testEmbedding): 2 statements only in A, 2 only in B, 3 shared claims (one identical IRI statement, one identical literal, one near-duplicate wording that string identity would miss).",
+  "sources": [
+    { "id": "venn-a", "title": "Orchard seed note" },
+    { "id": "venn-b", "title": "Orchard meeting note" }
+  ],
+  "statements": [
+    { "source": "venn-a", "s": "cooperative", "p": "member-of", "o": "cider-league", "iri": true },
+    { "source": "venn-b", "s": "cooperative", "p": "member-of", "o": "cider-league", "iri": true },
+    { "source": "venn-a", "s": "cooperative", "p": "press-day", "o": "Thursday" },
+    { "source": "venn-b", "s": "cooperative", "p": "press-day", "o": "Thursday" },
+    { "source": "venn-a", "s": "cooperative", "p": "headcount", "o": "The cooperative lists forty members on its register this season" },
+    { "source": "venn-b", "s": "cooperative", "p": "headcount", "o": "The cooperative lists forty members on its register this seasons" },
+    { "source": "venn-a", "s": "cooperative", "p": "stores", "o": "apple-crates", "iri": true },
+    { "source": "venn-a", "s": "press-shed", "p": "has-part", "o": "slate-roof", "iri": true },
+    { "source": "venn-b", "s": "cooperative", "p": "located-in", "o": "river-valley", "iri": true },
+    { "source": "venn-b", "s": "stone-cellar", "p": "part-of", "o": "cooperative", "iri": true }
+  ],
+  "expected": { "a": 2, "b": 2, "shared": 3 }
+}
