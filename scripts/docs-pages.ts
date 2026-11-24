@@ -106,6 +106,10 @@ const LEAP              = 'urn:reckons:leap';
 const KB_STABLE_ID      = 'urn:reckons:meta/kbStableId';
 const STEP_ORDER        = 'urn:kbase:predicate/step-order';
 const PART_OF           = 'urn:kbase:predicate/part-of';
+/** A retired page's tombstone points at the entity whose page now answers its URL. */
+export const SUPERSEDED_BY = 'urn:kbase:predicate/superseded-by';
+/** On a tombstone: how many per-step URLs (-step1..N) the retired page had. */
+export const RETIRED_STEPS = 'urn:kbase:predicate/retired-steps';
 const THESIS_IRI        = 'urn:kbase:concept/thesis';
 const RENDER_INLINE     = 'urn:kbase:predicate/render-inline';
 const CHILDREN_LABEL    = 'urn:kbase:predicate/children-label';
@@ -369,6 +373,50 @@ function extractEntity(iri: string, section: string, quads: Quad[]): Entity {
     scene, sceneCaption, sceneAlt, sceneLive, leapTo, renderAs,
     literalProps, iriProps, diagram, diagramCaption,
   };
+}
+
+// ── Retired pages (tombstones) ───────────────────────────────────────────────
+
+/**
+ * An entity carrying kpred:superseded-by is a tombstone: it gets NO page, and its old URL (and the
+ * per-step URLs a workflow page used to have, kpred:retired-steps) answers with a 301 to the
+ * successor's page. The redirect is derived from the graph, so it cannot drift and needs no
+ * hand-kept list.
+ */
+export function splitTombstones(all: Entity[]): { live: Entity[]; tombstones: Entity[] } {
+  const tombstones = all.filter((e) => e.iriProps.has(SUPERSEDED_BY));
+  const dead = new Set(tombstones.map((e) => e.iri));
+  return { live: all.filter((e) => !dead.has(e.iri)), tombstones };
+}
+
+/** The URL path a page had (or would have had): section folder plus slug, as built for any page. */
+export function pagePath(e: Entity): string {
+  const section = e.literalProps.get(`${KPRED}page-section`)?.[0] ?? e.section;
+  const slug = e.literalProps.get(`${KPRED}page-slug`)?.[0] ?? kebabLocal(localName(e.iri));
+  return `/docs/${section ? `${slugify(section)}/` : ''}${slug}`;
+}
+
+/**
+ * One rule per tombstone, plus one per retired step URL. `successorPath` resolves the successor to
+ * the URL of the page that now holds it (a folded entity resolves to its host); a successor with
+ * no page is reported through `missing` so the caller fails loudly rather than emit a dead link.
+ */
+export function tombstoneRedirects(
+  tombstones: Entity[],
+  successorPath: (iri: string) => string | null,
+): { rules: { from: string; to: string }[]; missing: string[] } {
+  const rules: { from: string; to: string }[] = [];
+  const missing: string[] = [];
+  for (const t of tombstones) {
+    const target = t.iriProps.get(SUPERSEDED_BY)![0];
+    const to = successorPath(target);
+    if (!to) { missing.push(`${t.iri} -> ${target}`); continue; }
+    const from = pagePath(t);
+    if (from !== to) rules.push({ from, to });
+    const steps = parseInt(t.literalProps.get(RETIRED_STEPS)?.[0] ?? '0', 10) || 0;
+    for (let i = 1; i <= steps; i++) rules.push({ from: `${from}-step${i}`, to });
+  }
+  return { rules, missing };
 }
 
 // ── Slug assignment (globally unique — parent/related resolve by bare slug) ────
@@ -1309,9 +1357,11 @@ function main(): void {
   const home = resolveHomeFiles(fileQuads);
   const sectionOf = new Map(SOURCES.map((s) => [s.file, s.section]));
 
-  const entities: Entity[] = [...home.entries()]
+  const allEntities: Entity[] = [...home.entries()]
     .map(([iri, file]) => extractEntity(iri, sectionOf.get(file)!, fileQuads.get(file)!))
     .sort((a, b) => a.iri.localeCompare(b.iri));
+  // Retired pages are set aside before anything is built, so they get no page and no sidebar entry.
+  const { live: entities, tombstones } = splitTombstones(allEntities);
 
   // A mapped capability takes its status from the roadmap (F222 phase 2) — written into the entity
   // here so the banner, the derived sentence and a hub's "not built yet" count all read one value.
@@ -1511,6 +1561,16 @@ function main(): void {
       if (from !== to) redirects.push({ from, to });
       refs.set(e.iri, hostRef);
     }
+  }
+
+  // Retired pages: 301 from the URL they had to the page that now answers for the successor.
+  {
+    const { rules, missing } = tombstoneRedirects(tombstones, (iri) => {
+      const r = refs.get(iri);
+      return r ? `/docs/${r.section ? `${slugify(r.section)}/` : ''}${r.slug}` : null;
+    });
+    if (missing.length) throw new Error(`retired page(s) point at a successor with no page: ${missing.join('; ')}`);
+    redirects.push(...rules);
   }
 
   const childrenOf = new Map<string, ChildRef[]>();

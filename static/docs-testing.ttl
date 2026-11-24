@@ -901,6 +901,14 @@ The steps are a story inside the Quick-Start example itself, which the walk star
     kpred:children-label "The steps" ;
     skos:broader        test:TestWorkflows .
 
+# Tombstone: the page for this retired walk answers with a 301 to the Compare walk that took it
+# over (a note becomes facts only once you accept them). It builds no page of its own.
+test:Workflow-BuildChange
+    rdf:type            ktype:RetiredPage ;
+    rdfs:label          "Build a space from a note, then change it with another (retired)" ;
+    kpred:superseded-by test:Workflow-CompareV029 ;
+    kpred:retired-steps "6" .
+
 test:Workflow-CompareV029
     rdf:type            ktype:TestWorkflow ;
     rdfs:label          "Read a note against what you hold, see it on the canvas, decide a contradiction" ;
