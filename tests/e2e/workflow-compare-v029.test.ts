@@ -59,7 +59,10 @@ async function openQuickstart(page: Page) {
     const path = '/src/lib/storage/db.ts';
     const { db } = await import(/* @vite-ignore */ path);
     return (await db.statements.count()) as number;
-  }), { timeout: 20_000 }).toBeGreaterThan(20);
+    // The card click navigates; an evaluate that lands mid-navigation throws "Execution context was
+    // destroyed". That means "not loaded yet", so it counts as 0 and the poll retries (the screenshot
+    // run lost this race on 2026-11-24 while CI won it).
+  }).catch(() => 0), { timeout: 20_000 }).toBeGreaterThan(20);
 }
 
 const flow = (page: Page) => page.getByTestId('compare-flow');

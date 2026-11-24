@@ -38,7 +38,10 @@ async function openQuickstart(page: Page) {
     const path = '/src/lib/storage/db.ts';
     const { db } = await import(/* @vite-ignore */ path);
     return (await db.statements.count()) as number;
-  }), { timeout: 20_000 }).toBeGreaterThan(20);
+    // The card click navigates; an evaluate that lands mid-navigation throws "Execution context was
+    // destroyed". That means "not loaded yet", so it counts as 0 and the poll retries (the screenshot
+    // run lost this race on 2026-11-24 while CI won it).
+  }).catch(() => 0), { timeout: 20_000 }).toBeGreaterThan(20);
 }
 
 /**
@@ -136,8 +139,12 @@ const exceptions: Record<string, StepException> = {
       // The canvas chose every statement that touches Project Phoenix; the person unticks them and ticks the three that matter.
       // The list re-orders as statements are unticked, so untick whichever is ticked first until none is.
       const ticked = page.locator('[data-testid="situation-picker"] input[type="checkbox"]:checked');
-      for (let guard = 0; guard < 60 && (await ticked.count()) > 0; guard++) await ticked.first().uncheck();
-      await expect(page.getByTestId('chosen-count')).toContainText('0 statements chosen');
+      // Unticking re-renders the list, so a count read mid-render can say 0 too early (flaky ~1 in 2 on
+      // 2026-11-24). Retry the untick until the count the person sees says none are chosen.
+      await expect(async () => {
+        if ((await ticked.count()) > 0) await ticked.first().uncheck();
+        await expect(page.getByTestId('chosen-count')).toContainText('0 statements chosen', { timeout: 500 });
+      }).toPass({ timeout: 20_000 });
       for (let i = 0; i < 3; i++) await boxes.nth(i).check();
       await expect(page.getByTestId('chosen-count')).toContainText('3 statements chosen');
       await snap(page.getByTestId('situation-picker'));
