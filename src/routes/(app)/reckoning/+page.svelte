@@ -63,7 +63,7 @@
     return m;
   });
   const labelOf = (iri: string) => entityLabels.get(iri) ?? labelFromIRI(iri);
-  const groups = $derived(groupByStanding(statements(), search, labelOf));
+  const groups = $derived(groupByStanding(statements(), search, labelOf, new Set(chosen)));
   const chosenRows = $derived(chosen.map((id) => statements().find((st) => st.id === id)).filter((st) => !!st));
   const describe = (st: (typeof chosenRows)[number]) =>
     `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.o.kind === 'iri' ? labelOf(st.o.value) : st.o.value}`;

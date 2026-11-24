@@ -134,6 +134,7 @@ const GROUPS: { standing: Standing; label: string }[] = [
 /** Choosable facts grouped by standing (held, pending, question), filtered by a search text. */
 export function groupByStanding(
   all: readonly Statement[], query: string, labelOf: (iri: string) => string,
+  chosen: ReadonlySet<string> = new Set(),
 ): StandingGroup[] {
   const q = query.trim().toLowerCase();
   const text = (st: Statement) => `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.o.kind === 'iri' ? labelOf(st.o.value) : st.o.value}`;
@@ -141,7 +142,13 @@ export function groupByStanding(
   return GROUPS.map((g) => ({
     ...g,
     // proposed is pending that names an option; the list offers it with the pending ones
-    rows: pool.filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; }),
+    rows: pool
+      .filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; })
+      // CHOSEN FIRST. The picker shows only the first 40 rows of a group, in store order. A fact chosen on the canvas
+      // ("Reckon with these") could sit past row 40, so it was counted as chosen but had no box to untick: on
+      // Quick-Start, once its stories pushed the held group past 40, unticking stalled at 11 or 12 chosen (found
+      // 2026-11-24 by the Reckoning walk's e2e spec). Chosen rows now lead their group; the rest keep store order.
+      .sort((a, b) => Number(!chosen.has(a.id)) - Number(!chosen.has(b.id))),
   })).filter((g) => g.rows.length > 0);
 }
 
