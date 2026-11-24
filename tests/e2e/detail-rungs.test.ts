@@ -13,9 +13,12 @@ import { waitForApp } from './helpers';
  * Measured 2026-11-24, on all four starters, with the app's own pipeline (importTurtleFull →
  * the page's `visible` filter → buildGraphView per floor → the hubs rung): NO starter satisfies
  * the strict property —
- *   - the evidence rung draws the SAME nodes as the judgments rung in every starter: none of
- *     them carries a reviewed supports-fact (part 2's evidence) at evidence tier that touches
- *     a node the judgment floor would drop;
+ *   - the evidence rung draws the SAME entities as the judgments rung in every starter.
+ *     Quick-Start carries the only reviewed supports-facts (kb:decision-use-hybrid →
+ *     kb:project-phoenix, kb:decision-streaming-arch → kb:data-pipeline) and they do read as
+ *     evidence (altitude-report: evidence 2 → 11 there), but every entity they touch also
+ *     carries a judgment-tier fact, so the judgments floor keeps all of them and the two rungs
+ *     count the same 11;
  *   - the decisions rung is ZERO on starter-generated-assets.ttl and
  *     starter-data-insight-solutions.ttl (no decision-tier facts at all).
  * So, per the brief, this spec REPORTS the counts instead of asserting pairwise difference.
