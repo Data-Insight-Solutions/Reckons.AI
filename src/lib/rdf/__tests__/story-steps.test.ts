@@ -176,5 +176,5 @@ ex:S1 story:filter "islands" , "pending" .`).map((q: Quad): Statement => ({
   // calls stopStory(), which clears the spotlight but not the layout either. Filters follow the
   // same rule as layout — so the gap of a story's end not clearing the filters it chose is
   // recorded below as it.todo, like layout.
-  it.todo('story end clears filters it set');
+  it.todo('story end clears the filters the story applied');
 });
