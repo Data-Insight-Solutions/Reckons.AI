@@ -171,7 +171,7 @@ ex:S1 story:filter "islands" , "pending" ; story:filter "no-type" .`);
     expect(st.steps[0].filters).toBeUndefined();
   });
 
-  it('passes names through RAW, without judging them — the reader may be older or newer than the graph', () => {
+  it('passes names through RAW, without judging them — the reader may be older or newer than the story', () => {
     const [st] = read(`${STORY}
 ex:S1 story:filter "no-such-filter" , "hubs" .`);
     expect(st.steps[0].filters).toEqual(['no-such-filter', 'hubs']);

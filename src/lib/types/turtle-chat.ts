@@ -6,7 +6,7 @@ export interface TurtleChatMessage {
   actions?: KBAction[];
 }
 
-/** The filter chips the graph view can activate — one name each (the chip row in +page.svelte renders them). */
+/** The filter chips the canvas can activate — one name each (the chip row in +page.svelte renders them). */
 export const GRAPH_FILTERS = [
   'hubs', 'islands', 'leaps', 'confirmed', 'pending', 'proposed', 'questions', 'no-type', 'no-source', 'dichotomy',
 ] as const;

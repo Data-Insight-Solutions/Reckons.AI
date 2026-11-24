@@ -660,7 +660,7 @@
     // than throwing, so a story from a newer build degrades instead of breaking.
     const authored = KNOWN_LAYOUTS.includes(step.layout as GraphLayout) ? (step.layout as GraphLayout) : undefined;
     // PARSE PERMISSIVELY, VALIDATE AT USE (the same rule as story:layout): story.ts passes story:filter
-    // through as raw strings so a graph authored for a different build still loads; keep only the names
+    // through as raw strings so a story authored for a different build still loads; keep only the names
     // this build's chip row knows and drop the rest, so a story from a newer build degrades instead of breaking.
     const authoredFilters = step.filters ? step.filters.filter(isKnownFilter) : undefined;
     /*

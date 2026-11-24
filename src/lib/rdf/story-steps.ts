@@ -362,7 +362,7 @@ export function readStoryQuads(quads: Iterable<QuadLike>, opts: ReadOptions = {}
         .filter((q) => q.object.termType === 'Literal' && (q.predicate.value === S.offerSetting || q.predicate.value === S.openPage))
         .map((q) => ({ kind: q.predicate.value === S.offerSetting ? 'setting' as const : 'page' as const, value: q.object.value }));
       const title = lit(sIri, S.title) ?? lit(sIri, RDFS_LABEL) ?? 'Step';
-      // PARSE PERMISSIVELY, like story:layout: the values stay raw strings — a graph may name filters
+      // PARSE PERMISSIVELY, like story:layout: the values stay raw strings — a story may name filters
       // this build does not know, so the check belongs at use (TurtleChatPanel), where an unknown name
       // is dropped rather than throwing. Absent stays undefined (a step with no story:filter names none).
       const rawFilters = lits(sIri, S.filter).map((s) => s.trim()).filter((s) => s !== '');
