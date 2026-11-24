@@ -20,6 +20,8 @@ import { Parser } from 'n3';
 
 import type { Quad } from '@rdfjs/types';
 import { readStoryQuads } from '../../src/lib/rdf/story-steps';
+import { applyPointers, readPointers } from '../../src/lib/rdf/story-pointer';
+import { EXAMPLE_KBS } from '../../src/lib/storage/example-kbs';
 
 export const ROOT = resolve(import.meta.dirname ?? '.', '..', '..');
 export const TESTING_TTL = join(ROOT, 'static', 'docs-testing.ttl');
@@ -107,7 +109,29 @@ export interface Workflow {
   videoPoster: string | null;
   /** Entities this workflow documents (kpred:relates-to). */
   relatesTo: string[];
+  /** F300.5: the example space the steps live in (kpred:story-space) and the file that holds them, or null for a workflow that keeps its own steps. */
+  storySpace: string | null;
+  storyFile: string | null;
   steps: WorkflowStep[];
+}
+
+/**
+ * The story of a space whose file is GENERATED is hand-written in a source fragment the generator copies in
+ * (the generator would delete a story written into its output). Screenshot links are written to the source.
+ */
+export const GENERATED_STORY_SOURCES: Record<string, string> = {
+  'generated-assets': join(ROOT, 'scripts', 'content', 'gen-assets-walk.ttl'),
+};
+
+/** Quads of an example space's file, resolved through EXAMPLE_KBS; null for an id that is not an example. */
+export function loadExampleSpace(spaceId: string): Quad[] | null {
+  const kb = EXAMPLE_KBS.find((k) => k.id === spaceId);
+  return kb ? parseTtl(join(ROOT, 'static', kb.file.replace(/^\/+/, ''))) : null;
+}
+
+export function exampleSpaceFile(spaceId: string): string | null {
+  const kb = EXAMPLE_KBS.find((k) => k.id === spaceId);
+  return kb ? join(ROOT, 'static', kb.file.replace(/^\/+/, '')) : null;
 }
 
 export function parseTtl(file: string): Quad[] {
@@ -118,12 +142,12 @@ export function parseTtl(file: string): Quad[] {
  * Every workflow in these quads, steps in their declared order. Throws on a malformed input.
  * A thin adapter: the reading is src/lib/rdf/story-steps.ts (F300.1), shared with the in-app player.
  */
-export function loadWorkflows(quads: Quad[]): Workflow[] {
+export function loadWorkflows(quads: Quad[], loadSpace: (id: string) => Quad[] | null = loadExampleSpace): Workflow[] {
+  const pointers = new Map(readPointers(quads).map((p) => [p.workflowIri, p]));
   // Recorder-only predicates (F275.22) that the shared reader does not carry.
   const extra = (iri: string, p: string): string | null =>
     quads.find((q) => q.subject.value === iri && q.predicate.value === p && q.object.termType === 'Literal')?.object.value.trim() || null;
-  return readStoryQuads(quads, { strict: true })
-    .filter((s) => s.origin === 'test-workflow')
+  return applyPointers(readStoryQuads(quads, { strict: true }).filter((s) => s.origin === 'test-workflow'), quads, loadSpace)
     .map((s): Workflow => ({
       iri: s.iri,
       id: s.id,
@@ -135,6 +159,8 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
       video: extra(s.iri, P.video),
       videoCaptions: extra(s.iri, P.videoCaptions),
       videoPoster: extra(s.iri, P.videoPoster),
+      storySpace: pointers.get(s.iri)?.spaceId ?? null,
+      storyFile: pointers.has(s.iri) ? (GENERATED_STORY_SOURCES[pointers.get(s.iri)!.spaceId] ?? exampleSpaceFile(pointers.get(s.iri)!.spaceId)) : null,
       relatesTo: quads.filter((q) => q.subject.value === s.iri && q.predicate.value === P.relatesTo && q.object.termType === 'NamedNode').map((q) => q.object.value),
       steps: s.steps.map((t): WorkflowStep => ({
         iri: t.iri,
@@ -142,18 +168,25 @@ export function loadWorkflows(quads: Quad[]): Workflow[] {
         order: t.order,
         title: t.title,
         text: t.detail,
-        page: t.openPage ?? '',
+        page: t.route ?? t.openPage ?? t.actions.find((a) => a.kind === 'open-page')?.path ?? '',
         assertion: t.expects.find((e) => e.kind === 'note')?.text ?? '',
         shortLabel: t.shortLabel,
         boxLabel: t.target?.label ?? t.title,
-        boxTarget: t.target?.ref ?? '',
+        boxTarget: t.boxTarget ?? t.target?.ref ?? '',
         pageName: t.pageName,
         screenshot: t.media,
-        narration: extra(t.iri, P.narration),
+        // A story in a space says its line once, as story:content; a legacy step keeps kpred:narration.
+        narration: pointers.has(s.iri) ? (t.content.trim() || null) : extra(t.iri, P.narration),
         narrationLead: t.question?.trim() || null,
       })),
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Every story in the Testing graph as the unified model, pointers resolved to the steps in their space (F300.5). */
+export function loadStoriesFromFile(file = TESTING_TTL, loadSpace: (id: string) => Quad[] | null = loadExampleSpace) {
+  const quads = parseTtl(file);
+  return applyPointers(readStoryQuads(quads, { strict: true }), quads, loadSpace);
 }
 
 export function loadWorkflowsFromFile(file = TESTING_TTL): Workflow[] {
@@ -230,5 +263,26 @@ export function setScreenshotLink(ttl: string, stepIri: string, sitePath: string
     const at = block.findIndex((l) => l.includes('kpred:page'));
     lines.splice(start + (at >= 0 ? at : 0) + 1, 0, link);
   }
+  return lines.join('\n');
+}
+
+/**
+ * Set (or replace) a story step's `story:media` line in the text of the file that holds the story, leaving every
+ * other byte alone (the F300.5 counterpart of setScreenshotLink). The step is the `story:<local>` block. Throws if
+ * the block is not found or is a single-line statement, so a typo cannot silently link nothing.
+ */
+export function setStoryMediaLink(ttl: string, stepIri: string, sitePath: string): string {
+  const local = stepIri.replace('urn:reckons:story/', '');
+  const lines = ttl.split('\n');
+  const start = lines.findIndex((l) => l === `story:${local}` || l.startsWith(`story:${local} `));
+  if (start < 0) throw new Error(`No block for story:${local}`);
+  let end = start;
+  while (end + 1 < lines.length && lines[end + 1].trim() !== '' && !/^[\w-]*:[\w-]+(\s|$)/.test(lines[end + 1])) end++;
+  const block = lines.slice(start, end + 1);
+  const link = `    story:media "${sitePath}" ;`;
+  const existing = block.findIndex((l) => l.trim().startsWith('story:media '));
+  if (existing >= 0) { lines[start + existing] = link; return lines.join('\n'); }
+  if (/\.\s*$/.test(block[0])) throw new Error(`story:${local} is a one-line statement; cannot add story:media`);
+  lines.splice(start + 1, 0, link);
   return lines.join('\n');
 }

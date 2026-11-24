@@ -254,7 +254,8 @@ async function main() {
   const receipt = buildReceipt({
     workflow: workflowId,
     commit: dirty ? `${commit} (uncommitted changes)` : commit,
-    graphSha256: sha256(new Uint8Array(readFileSync(TESTING_TTL))),
+    // F300.5: the receipt pins the pointer AND the file the story lives in, so a changed story is a changed graph.
+    graphSha256: sha256(new Uint8Array(Buffer.concat([readFileSync(TESTING_TTL), ...(workflow.storyFile ? [readFileSync(workflow.storyFile)] : [])]))),
     renderedAt: new Date().toISOString(),
     marks: shifted.map((m) => ({ ...m, startMs: Math.round(mapTime(segments, m.startMs)) + TITLE_MS, endMs: Math.round(mapTime(segments, m.endMs)) + TITLE_MS })),
     clips: clips.map((c) => ({ stepId: c.stepId, voice: c.voice, source: c.source, sha256: c.sha256 })),
