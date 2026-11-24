@@ -856,6 +856,13 @@
     perspective === 'sources' ? sourceScene?.edges ?? [] : detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
   );
 
+  /** Distinct entities at the drawn edges' ends — what the canvas itself drew, independent of how many labels a renderer chose to hide. */
+  const drawnEntityCount = $derived.by(() => {
+    const shown = new Set<string>();
+    for (const e of drawn) { shown.add(termKey(e.s)); shown.add(termKey(e.o)); }
+    return shown.size;
+  });
+
   /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
   const detailHidden = $derived.by(() => {
     const shown = new Set<string>();
@@ -2523,6 +2530,7 @@
     data-graph-perspective={perspective}
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
+    data-drawn-entities={perspective === 'statements' ? drawnEntityCount : undefined}
     data-graph-settled={showingLanding || graphSettled}
     class:bg-example-live={backgroundExampleLive && !showingLanding}
     class:bg-example-interact={backgroundInteract && !showingLanding}
