@@ -103,6 +103,8 @@ graph:catalog a dcat:Catalog ;
         graph:starter-everyday ,
         graph:starter-everyday-reviewed ,
         graph:starter-generated-assets ,
+        graph:starter-matthew-roe ,
+        graph:starter-matthew-roe-personal ,
         graph:starter-ring-scan ,
         graph:starter-guide ,
         graph:starter-quickstart ,
@@ -308,6 +310,16 @@ graph:starter-ring-scan a void:Dataset ;
     dcterms:title "Starter: the ring (unlisted; reconstructed from photographs, F292.3)" ;
     dcterms:type role:starter ;
     dcterms:source "static/starter-ring-scan.ttl" .
+
+graph:starter-matthew-roe a void:Dataset ;
+    dcterms:title "Starter: Matthew Roe (unlisted personal showcase, F304; only what Matt chose to be public)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-matthew-roe.ttl" .
+
+graph:starter-matthew-roe-personal a void:Dataset ;
+    dcterms:title "Starter: Matthew Roe — personal space (unlisted, F304.2; only the facts Matt named)" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/starter-matthew-roe-personal.ttl" .
 
 graph:starter-your-room a void:Dataset ;
     dcterms:title "Starter: your room" ;
