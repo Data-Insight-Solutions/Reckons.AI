@@ -849,6 +849,8 @@ code:test-e2e  rdf:type     ktype:Concept ;
                kpred:has-file "tests/e2e/visual-contract.test.ts" ;
                kpred:has-file "tests/e2e/compare-venn.test.ts" ;
                kpred:has-file "tests/fixtures/compare-venn/comparison.json" ;
+
+               kpred:has-file "tests/e2e/detail-rungs.test.ts" ;
                kpred:has-file "playwright.config.ts" ;
                kpred:has-file "playwright.smoke.config.ts" ;
                kpred:has-file "scripts/visual-smoke-gate.ts" .
