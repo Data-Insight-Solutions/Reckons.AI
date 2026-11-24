@@ -14240,3 +14240,7 @@ kb:model-library kpred:honest-note "RENUMBERED at integration (Opus, 2026-11-24)
 ## 2026-11-24 — Matt: the old /compare screen goes once compare works on the main canvas.
 kb:review-compare-overlay-fix kpred:decided "MATT, 2026-11-24 (chat), asked 'once compare works on the canvas, should the old separate /compare screen go?': 'Yes'. So F264's compare screen is resolved by removal, after F306.2 (the venn layout on the main canvas) is functional; the removal is its own change, made only then." .
 kb:split-canvas kpred:decided "MATT, 2026-11-24 (chat), asked 'once compare works on the canvas, should the old separate /compare screen go?': 'Yes'. The separate screen is removed after this layout is functional." .
+
+## 2026-11-24 — Matt's answers for the personal showcase (F304).
+kb:personal-showcase kpred:decided "MATT, 2026-11-24 (chat), on which hobbies and interests the personal space shows: 'Archery, hand crafting wooden bows and arrows.' (Swimming is already public in his resume.) On which general details may be public: 'Most if not all of the context given in resume and other sources can be public. I will keep an eye out.'" ;
+    kpred:constraint "EVERY LINKED SPACE IS REVIEWED FIRST (Matt, 2026-11-24, asked whether the Food Tokens space is ready to be public): 'All spaces need deep review and refinement before making public.' So the showcase leaps to no space, Food Tokens and the farmers market included, until that space has had a deep review and refinement with Matt; a leap target that has not is left out, not linked." .
