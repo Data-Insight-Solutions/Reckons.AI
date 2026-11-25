@@ -211,6 +211,26 @@ test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166
     const workspace = await import(/* @vite-ignore */ workspacePath);
     workspace.__linkHandleForTest(await navigator.storage.getDirectory());
   });
+  // The (app) layout remounts on this navigation and its onMount chain runs loadWorkspace() once,
+  // after loadAll() — i.e. after this canvas is up. A row-less test link has no DB row, so that
+  // one-shot resets state to 'none' (workspace.svelte.ts:200) and the store's connect gate, which
+  // needs state 'connected', never passes again. openStory() sidesteps the same race by re-linking
+  // after mount; do the same here, but keep re-linking until the link SURVIVES — the one-shot
+  // cannot land twice — and the store's 2 s poller turns it into capabilities.
+  await expect.poll(async () => {
+    await page.evaluate(async () => {
+      // Path in a variable, as this file does elsewhere: a literal would make TS try to resolve it.
+      const workspacePath = '/src/lib/stores/workspace.svelte.ts';
+      const m = await import(/* @vite-ignore */ workspacePath);
+      m.__linkHandleForTest(await navigator.storage.getDirectory());
+    });
+    await page.waitForTimeout(500);
+    return page.evaluate(async () => {
+      const generationPath = '/src/lib/stores/generation-jobs.svelte.ts';
+      const g = await import(/* @vite-ignore */ generationPath);
+      return g.generationJobs.capabilities !== null;
+    });
+  }, { timeout: 40_000 }).toBe(true);
   const queue = page.getByRole('button', { name: 'queue 4', exact: true });
   await expect(queue).toBeEnabled({ timeout: 40_000 });
   await expect(page.getByText('2. Gaussian splat from image 1')).toBeVisible();
