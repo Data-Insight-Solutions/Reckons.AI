@@ -23,7 +23,7 @@ test('a link opens the site space and starts its story at step 1, without touchi
 
   // The story is open on its own, at step 1:
   await expect(page.locator('.story-step-label').first()).toBeVisible();
-  await expect(page.locator('.story-step-label').first()).toHaveText('1 / 8');
+  await expect(page.locator('.story-step-label').first()).toHaveText('1 / 10');
   // ...and step 1 is what is showing:
   await expect(page.getByText('Where the content came from').first()).toBeVisible();
   // Story mode is on (there is an exit affordance):

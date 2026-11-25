@@ -20,6 +20,9 @@ const PRED = 'urn:kbase:predicate/';
  * the detail panel shows the picture (F292.4, Matt 2026-11-24).
  */
 export const RING_CONTACT_SHEET = 'urn:reckons:ring/frames-contact-sheet';
+/** The ring's 3D splat, also under the ring space's IRI, so the site space draws the ring in 3D (Matt, 2026-11-25). */
+export const RING_SPLAT = 'urn:reckons:ring/ring-splat';
+const KMETA = 'urn:kbase:meta/';
 const XSD_INT = 'http://www.w3.org/2001/XMLSchema#integer';
 
 export interface StoryFact { iri: string; label: string; validUntil: string | null; pageCount: number }
@@ -40,7 +43,7 @@ export interface StoryCard { designIri: string; images: string[]; versions: numb
  * passed in — the leap it carries, and the space it opens with, are this space's own facts, not the
  * generator's to state.
  */
-export interface StoryRing { iri: string }
+export interface StoryRing { iri: string; /** The example space the ring's jump opens (from its leap path), when it is one. */ example?: string }
 
 export interface StoryInput {
   card?: StoryCard;
@@ -69,7 +72,7 @@ export type StoryTriple = { s: string; p: string; o: { iri: string } | { text: s
 const STEP_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const n = (count: number, one: string, many: string): string => count + ' ' + (count === 1 ? one : many);
 
-export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[]; filters?: string[]; layout?: string; view?: string }[] {
+export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[]; filters?: string[]; layout?: string; view?: string; offers?: string[] }[] {
   const total = i.pages + i.posts;
   const dated = i.expiring.filter((f) => f.validUntil !== null);
   const open = i.expiring.filter((f) => f.validUntil === null);
@@ -103,15 +106,32 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
   // are not this space's facts — the step points at them through the leap the ring node carries, and
   // the "leaps" filter is what makes the story's only link-carrying node stand out on the way in.
   const rg = i.ring;
+  // Matt, 2026-11-25: "We need story to show the 3d ring, and show the leaps." Three steps: the ring in 3D (its
+  // splat, focused), the frames behind it (the contact sheet), and the leap into the ring's own space, offered.
   const ringStep = rg ? [{
-    title: 'The ring, up close',
-    content: 'The site shows one physical object up close: a ring, rebuilt in 3D — the page says it was reconstructed, not generated. Here the contact sheet is open: 24 of the frames the scan kept, in one image. The ring\'s link opens the scan space, where the frame-by-frame review and its honest note about what the frames do not show live.',
-    highlights: [rg.iri, RING_CONTACT_SHEET],
-    filters: ['confirmed', 'leaps'],
+    title: 'The ring, in 3D',
+    content: 'The site shows one physical object up close: a ring, rebuilt in 3D from a phone video. The page says it was reconstructed, not generated. Here it is in this space, as the same 3D splat the site embeds: orbit it.',
+    highlights: [rg.iri, RING_SPLAT],
+    filters: ['confirmed'],
     layout: 'focus',
-    // F309 (Matt, 2026-11-25): the step's whole view as the app's own URL parameters. Selecting the contact sheet
-    // centres the focus layout on it and opens its detail panel, which shows the picture.
+    view: 'layout=focus&sel=i:' + RING_SPLAT,
+  }, {
+    title: 'The frames behind it',
+    content: 'Here the contact sheet is open: 24 of the frames the scan kept, in one image. Every frame was looked at, and only the sharp ones from differing angles were kept.',
+    highlights: [RING_SPLAT, RING_CONTACT_SHEET],
+    filters: ['confirmed'],
+    layout: 'focus',
     view: 'layout=focus&sel=i:' + RING_CONTACT_SHEET,
+  }, {
+    title: 'Jump into the ring\'s own space',
+    content: 'The ring has a space of its own: how it was filmed, which frames were kept and why, and how the splat was trained. A jump is a link from one space to another, and the Jumps filter shows every one here. The ring is selected, so its jump shows on the canvas with a faint preview of the space it leads to. Take it, and the ring\'s own story starts.',
+    highlights: [rg.iri],
+    filters: ['leaps'],
+    layout: 'focus',
+    // Selecting the ring shows its jump badge and the preview of the target space (the ghost graph).
+    view: 'layout=focus&sel=i:' + rg.iri,
+    // Its offer starts the target space's own story, when the jump leads to an example space.
+    ...(rg.example ? { offers: [`/about?example=${rg.example}&story=1&autoplay=1`] } : {}),
   }] : [];
   const steps = [
     {
@@ -175,11 +195,17 @@ export function storyTriples(i: StoryInput): StoryTriple[] {
       ...(st.filters ?? []).map((f): StoryTriple => ({ s: step, p: STORY + 'filter', o: { text: f } })),
       ...(st.layout ? [{ s: step, p: STORY + 'layout', o: { text: st.layout } }] : []),
       ...(st.view ? [{ s: step, p: STORY + 'view', o: { text: st.view } }] : []),
+      ...(st.offers ?? []).map((o): StoryTriple => ({ s: step, p: STORY + 'openPage', o: { text: o } })),
     );
   });
-  // The contact sheet the ring step selects lives in this space too, linked from the ring entity.
+  // The contact sheet and the 3D splat the ring steps select live in this space too, linked from the ring entity.
   if (i.ring) {
     out.push(
+      { s: RING_SPLAT, p: RDF_TYPE, o: { iri: KTYPE + 'GaussianSplat' } },
+      { s: RING_SPLAT, p: RDFS_LABEL, o: { text: 'Splat: the ring (reconstructed)' } },
+      { s: RING_SPLAT, p: PRED + 'splat', o: { text: '/scans/ring/ring.spz' } },
+      { s: RING_SPLAT, p: KMETA + 'splat-origin', o: { text: 'reconstructed' } },
+      { s: i.ring.iri, p: PRED + 'has', o: { iri: RING_SPLAT } },
       { s: RING_CONTACT_SHEET, p: RDF_TYPE, o: { iri: KTYPE + 'Image' } },
       { s: RING_CONTACT_SHEET, p: RDFS_LABEL, o: { text: 'Contact sheet: 24 of the 189 kept frames, spread across the video' } },
       { s: RING_CONTACT_SHEET, p: PRED + 'photo', o: { text: '/scans/ring/frames/contact-sheet.webp' } },

@@ -451,6 +451,8 @@ code:publish  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/publish/site-expiry.ts" ;
               kpred:has-file "src/lib/publish/__tests__/site-expiry.test.ts" ;
               kpred:has-file "scripts/offline/fact-expiry.ts" ;
+              kpred:has-file "scripts/offline/human-recheck.ts" ;
+              kpred:has-file "scripts/__tests__/human-recheck.test.ts" ;
               kpred:has-file "scripts/starter/build-site-space.ts" ;
               kpred:has-file "scripts/starter/site-story.ts" ;
               kpred:has-file "scripts/starter/__tests__/build-site-space.test.ts" ;

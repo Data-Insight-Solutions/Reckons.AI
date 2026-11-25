@@ -189,7 +189,7 @@ export function buildSiteSpace(files: Record<string, string>, opts: SpaceOptions
   for (const t of storyTriples({
     storyIri, stepIri: (k) => KB + 'dis-story-step-' + k, siteName, siteIri, blogIri: hasPosts ? blogIri : null, checkIri,
     pageNodes, pages, posts, shared: { iri: sharedIri, text: sharedText, pageCount: nodeBySlug.size }, expiring: storyFacts, who, card,
-    ring: profile?.ring ? { iri: KB + 'dis-ring' } : undefined,
+    ring: profile?.ring ? { iri: KB + 'dis-ring', example: /^\/about\?(?:.*&)?example=([\w-]+)/.exec(profile.ring.leapPath ?? '')?.[1] } : undefined,
   })) {
     add(t.s, t.p, 'iri' in t.o ? iri(t.o.iri) : 'integer' in t.o ? lit(String(t.o.integer), XSD_INT) : lit(t.o.text));
   }

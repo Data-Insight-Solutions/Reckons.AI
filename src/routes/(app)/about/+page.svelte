@@ -50,7 +50,7 @@
    * for a plain import they ride the goto. `sel` is the entity the main page should open selected
    * (?sel=i:<iri>); it rides the same way. Absent, everything lands exactly where it did before.
    */
-  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean; sel?: string } = {}) {
+  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean; sel?: string; step?: string } = {}) {
     loadingKb = kb.id;
     loadError = '';
     try {
@@ -108,7 +108,8 @@
     const story = params.get('story');
     const sel = params.get('sel');
     if (story === null) { void importStarterKB(kb, sel ? { sel } : undefined); return; }
-    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true', sel: sel ?? undefined });
+    const step = params.get('step');
+    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true', sel: sel ?? undefined, step: step ?? undefined });
   });
 
   onMount(() => {

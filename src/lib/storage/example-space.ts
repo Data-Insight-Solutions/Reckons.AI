@@ -34,17 +34,22 @@ const COMPANIONS: Record<string, [file: string, name: string][]> = {
  * +page.svelte) — where a link a site drops in names one (F292.4: the ring's frames contact sheet).
  * Pure, so the parameter handling is unit-testable without a browser (see __tests__/).
  */
-export function exampleLanding(opts: { story?: boolean | string; autoplay?: boolean; sel?: string } = {}): string {
+export function exampleLanding(opts: { story?: boolean | string; autoplay?: boolean; sel?: string; step?: string } = {}): string {
   const qs = new URLSearchParams();
   if (opts.story) {
     qs.set('story', typeof opts.story === 'string' ? opts.story : '');
     if (opts.autoplay) qs.set('autoplay', '1');
+    // ...&step=<n> starts the story at that step (startStoryFromLink); a link into the middle of a story.
+    if (opts.step && /^\d+$/.test(opts.step)) qs.set('step', opts.step);
   }
   if (opts.sel) qs.set('sel', opts.sel);
-  return qs.toString() ? `/?${qs.toString()}` : '/';
+  // Matt, 2026-11-25: "We need to auto open Shelly". An example opened without a story opens with Shelly on learn,
+  // where the alpha note is, and explore pulsing; a story opens her on explore by itself.
+  if (!opts.story) qs.set('shelly', 'learn');
+  return `/?${qs.toString()}`;
 }
 
-export async function openExampleSpace(file: string, name: string, opts: { switch?: boolean; story?: boolean | string; autoplay?: boolean; sel?: string } = {}): Promise<string> {
+export async function openExampleSpace(file: string, name: string, opts: { switch?: boolean; story?: boolean | string; autoplay?: boolean; sel?: string; step?: string } = {}): Promise<string> {
   for (const [companion, companionName] of COMPANIONS[file] ?? []) await openExampleSpace(companion, companionName, { switch: false });
   if (!/^\/(?:starter-[a-z0-9-]+|review-\d[a-z0-9.-]*)\.ttl$/.test(file)) throw new Error('example spaces load only files shipped with the app');
   const res = await fetch(file);

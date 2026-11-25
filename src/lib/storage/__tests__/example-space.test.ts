@@ -11,9 +11,21 @@ import { exampleLanding } from '../example-space';
 const read = (landing: string) => new URL(`http://reckons.local${landing}`).searchParams;
 
 describe('exampleLanding — the ?story=&autoplay= a link asks for', () => {
-  it('lands on the main page when no story is asked', () => {
-    expect(exampleLanding()).toBe('/');
-    expect(exampleLanding({ autoplay: true })).toBe('/'); // autoplay alone starts no story
+  it('lands on the main page with Shelly open on learn when no story is asked', () => {
+    // Matt, 2026-11-25: "We need to auto open Shelly, show the alpha disclaimer" (the learn tab carries the note).
+    expect(exampleLanding()).toBe('/?shelly=learn');
+    expect(exampleLanding({ autoplay: true })).toBe('/?shelly=learn'); // autoplay alone starts no story
+    expect(read(exampleLanding({ sel: 'i:urn:x' })).get('shelly')).toBe('learn');
+  });
+
+  it('carries a step number with a story, and nothing else as a step', () => {
+    expect(read(exampleLanding({ story: '1', step: '6' })).get('step')).toBe('6');
+    expect(read(exampleLanding({ story: '1', step: 'x' })).get('step')).toBeNull();
+    expect(read(exampleLanding({ step: '6' })).get('step')).toBeNull(); // no story, no step
+  });
+
+  it('leaves shelly= off when a story is asked: story mode opens her on explore by itself', () => {
+    expect(read(exampleLanding({ story: '1', autoplay: true })).get('shelly')).toBeNull();
   });
 
   it('keeps the F261 behaviour for story: true — the space\'s own first walk', () => {

@@ -174,7 +174,7 @@ rev:gap-f74-7 rdf:type ktype:Concept ;
 
 rev:gap-f292 rdf:type ktype:Concept ;
     rdfs:label "F292 Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts, src/lib/storage/__tests__/example-kbs.test.ts, tests/e2e/about-story-link.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts, src/lib/storage/__tests__/example-kbs.test.ts, tests/e2e/about-story-link.test.ts, tests/e2e/site-story-full.test.ts)." .
 
 rev:gap-f292-1 rdf:type ktype:Concept ;
     rdfs:label "F292.1 F292.1 — the site space generator emits the 'how this site was made' story from the build" ;

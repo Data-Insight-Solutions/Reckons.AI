@@ -183,28 +183,36 @@ describe('buildSiteSpace with a profile', () => {
   });
   it('the story gains one early step about who is behind the site, with computed counts and resolving highlights', () => {
     const [st] = extractStories(r.statements);
-    expect(st.steps.map((x) => x.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(st.steps.map((x) => x.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
     expect(st.steps[1].title).toBe('Who is behind the site');
     expect(st.steps[1].content).toContain('Pat Example is the founder of Example Studio LLC, formed in 2019, in Lakeside, Nebraska');
     expect(st.steps[1].content).toContain('3 services, 3 credentials, 2 recognitions');
     const nodes = new Set(r.statements.map((x) => x.s.value));
     for (const h of st.steps[1].highlights) expect(nodes.has(h), h).toBe(true);
   });
-  it('the story gains the ring step after the who step: its node lit, its leap link named, its own filter and layout', () => {
+  it('the story gains three ring steps after the who step: the ring in 3D, its frames, and its jump', () => {
     const [st] = extractStories(r.statements);
-    const ringStep = st.steps.find((x) => x.title === 'The ring, up close')!;
-    expect(ringStep.order).toBe(3);
-    // F292.4 + F309 (Matt, 2026-11-24/25): the step SHOWS the contact sheet. Its view selects it through the app's own
-    // URL parameters, focus centres on it, and the sheet itself is in this space under the ring space's IRI.
-    expect(ringStep.highlights).toEqual([K + 'dis-ring', 'urn:reckons:ring/frames-contact-sheet']);
-    expect(ringStep.content).toContain('rebuilt in 3D');
-    expect(ringStep.content).toContain('contact sheet is open');
-    expect(ringStep.filters).toEqual(['confirmed', 'leaps']);
-    expect(ringStep.layout).toBe('focus');
-    expect(ringStep.view).toBe('layout=focus&sel=i:urn:reckons:ring/frames-contact-sheet');
+    // Matt, 2026-11-25: "We need story to show the 3d ring, and show the leaps." Each step's view is the app's own URL
+    // parameters (F309): focus selects the splat, then the contact sheet, then the ring itself, whose jump shows.
+    const [inThreeD, frames, jump] = ['The ring, in 3D', 'The frames behind it', 'Jump into the ring\'s own space']
+      .map((t) => st.steps.find((x) => x.title === t)!);
+    expect([inThreeD.order, frames.order, jump.order]).toEqual([3, 4, 5]);
+    expect(inThreeD.highlights).toEqual([K + 'dis-ring', 'urn:reckons:ring/ring-splat']);
+    expect(inThreeD.content).toContain('rebuilt in 3D');
+    expect(inThreeD.view).toBe('layout=focus&sel=i:urn:reckons:ring/ring-splat');
+    expect(frames.content).toContain('contact sheet is open');
+    expect(frames.view).toBe('layout=focus&sel=i:urn:reckons:ring/frames-contact-sheet');
+    expect(jump.filters).toEqual(['leaps']);
+    expect(jump.view).toBe('layout=focus&sel=i:' + K + 'dis-ring');
+    // The offer starts the TARGET space's story, named by the example id in the ring's own jump.
+    expect(jump.offers?.map((o) => o.path)).toEqual(['/about?example=widget-scan&story=1&autoplay=1']);
+    // The splat and the sheet are in this space under the ring space's IRIs, linked from the ring.
+    const splat = r.statements.filter((x) => x.s.value === 'urn:reckons:ring/ring-splat');
+    expect(splat.some((x) => x.p.value === 'urn:kbase:predicate/splat' && x.o.value === '/scans/ring/ring.spz')).toBe(true);
     const sheet = r.statements.filter((x) => x.s.value === 'urn:reckons:ring/frames-contact-sheet');
     expect(sheet.some((x) => x.p.value === 'urn:kbase:predicate/photo' && x.o.value === '/scans/ring/frames/contact-sheet.webp')).toBe(true);
-    expect(r.statements.some((x) => x.s.value === K + 'dis-ring' && x.p.value === 'urn:kbase:predicate/has' && x.o.value === 'urn:reckons:ring/frames-contact-sheet')).toBe(true);
+    for (const o of ['urn:reckons:ring/ring-splat', 'urn:reckons:ring/frames-contact-sheet'])
+      expect(r.statements.some((x) => x.s.value === K + 'dis-ring' && x.p.value === 'urn:kbase:predicate/has' && x.o.value === o), o).toBe(true);
   });
   it('is deterministic, and a site with no About page gets no person and the old five steps', () => {
     expect(buildSiteSpace(files, opts).text).toBe(r.text);

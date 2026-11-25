@@ -79,7 +79,7 @@
     LEAP_PRED, LEAP_LABEL_PRED,
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
-  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, setSpotlightKeys, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { requestShellyChat, setShellyChatOpen, shellyChatOpen, openShellyOn, shellyTabParam, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, setSpotlightKeys, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
@@ -156,7 +156,14 @@
   let statementsLayout = 'force';
   let sourcesLayout = 'source';
   /** A node picked in the graph, from either renderer. Ctrl/Cmd adds to the multi-selection in Statements. */
+  /**
+   * The selection a story step made (not the reader). On a phone it stays on the canvas, and the full-screen detail
+   * sheet waits for a tap on the "details" chip: opened by the step, the sheet covered the story's caption and the very
+   * thing the step pointed at (Matt, 2026-11-25: "heavily test mobile and desktop for full story"; F292.5).
+   */
+  let storySelection = $state(false);
   function handleGraphSelect(k: string | null, ctrlKey?: boolean) {
+    storySelection = false;
     if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
     // F309.2 (Matt, 2026-11-25, asking for selection of several at once): Ctrl/Cmd-click builds a multi-selection in every perspective.
     if (ctrlKey && k) {
@@ -188,6 +195,7 @@
     selected = source.key;
   }
   function selectGraphNode(key: string | null) {
+    storySelection = false;
     if (perspective === 'sources' && key) {
       const containing = sourceScene?.sources.flatMap((source) => source.groups.filter((group) => group.members.includes(key)).map((group) => group.key)) ?? [];
       provenanceControls.expanded = new Set([...provenanceControls.expanded, ...containing]);
@@ -435,14 +443,18 @@
    * the view through this, so anything the UI can show, a link and a story can show. Each parameter applies only
    * when present: a story step that names no filter leaves the filters as they are.
    */
-  function applyViewParams(params: URLSearchParams) {
+  function applyViewParams(params: URLSearchParams, fromStory = false) {
     if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy','compare'].includes(l)) layout = l as typeof layout;
     if (l === 'compare') { compareA = params.get('a'); compareB = params.get('b'); }
+    // shelly=learn|chat|explore opens Shelly on that tab (Matt, 2026-11-25: "auto open Shelly"); an open panel is left
+    // where the reader has it.
+    const shellyTab = shellyTabParam(params.get('shelly'));
+    if (shellyTab && !shellyChatOpen()) openShellyOn(shellyTab);
     const sel = params.get('sel');
     // An empty sel= clears the selection (a story step that selects nothing starts clean, F309).
-    if (sel !== null) selected = sel === '' ? null : sel;
+    if (sel !== null) { selected = sel === '' ? null : sel; storySelection = fromStory && selected !== null; }
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
     // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
@@ -488,8 +500,11 @@
    * `oneTime` already dedupes by id, so re-running as the graph loads is harmless; untrack keeps
    * the push from making notification state a dependency of this effect.
    */
+  // Once Shelly has been open (opened by a link, by a story, or by hand), the tip that introduces her is moot.
+  let shellyMet = false;
   $effect(() => {
-    if (showingLanding) return;
+    if (shellyChatOpen()) { shellyMet = true; untrack(() => dismissNotification('tip-shelly-explore')); return; }
+    if (showingLanding || shellyMet) return;
     untrack(() => {
       pushNotification({
         id: 'tip-shelly-explore',
@@ -1237,11 +1252,26 @@
     return [...set].sort();
   });
 
+  /**
+   * Each entity's own label (rdfs:label), so the detail panel says "Business card, back", not the IRI's tail
+   * "dis-business-card-back" (seen in the site story, 2026-11-25). The label editor writes rdfs:label, and the heading
+   * never read it back, so an edited label looked unsaved. The canvas already drew these names.
+   */
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of statements()) {
+      if (st.p.value !== 'http://www.w3.org/2000/01/rdf-schema#label' || st.s.kind !== 'iri' || st.o.kind !== 'literal') continue;
+      if (st.status === 'rejected' || st.status === 'superseded') continue;
+      if (!m.has(st.s.value) || st.status === 'confirmed') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+
   // Decode a termKey into a human-readable short label
   function keyLabel(key: string): string {
     if (key.startsWith('i:')) {
       const iri = key.slice(2);
-      return iri.split('/').pop() ?? iri;
+      return entityLabels.get(iri) ?? iri.split('/').pop() ?? iri;
     }
     if (key.startsWith('l:')) {
       // l:value|datatype|lang — take just the value part
@@ -2091,7 +2121,7 @@
     if (adj.layout) layout = adj.layout;
     if (adj.filters) activeFilters = new Set(adj.filters);
     // F309: a whole view as query parameters (a story step's story:view), through the same parser a link uses.
-    if (adj.params) applyViewParams(new URLSearchParams(adj.params));
+    if (adj.params) applyViewParams(new URLSearchParams(adj.params), activeStoryId() !== null);
     clearShellyViewAdjust();
   });
 
@@ -3169,7 +3199,12 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three')}
+{#if isCompact() && storySelection && activeStoryId() !== null && perspective === 'statements' && selected && nodeDetails}
+  <button class="story-sel-chip mono" onclick={() => (storySelection = false)} aria-label="Show details: {nodeDetails.label}">
+    <span class="story-sel-name">{nodeDetails.label}</span> · details ↑
+  </button>
+{/if}
+{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three') && !(isCompact() && storySelection && activeStoryId() !== null)}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -4166,6 +4201,14 @@
   }
 
   /* Panel header (drag handle area inside SnapPanel) */
+  .story-sel-chip {
+    position: fixed; z-index: 340; right: 0.75rem; top: calc(env(safe-area-inset-top, 0px) + 5.4rem);
+    max-width: min(70vw, 22rem); display: flex; gap: 0.25rem; align-items: center;
+    padding: 0.45rem 0.75rem; min-height: 44px; border-radius: 999px; cursor: pointer;
+    background: var(--surface); color: var(--accent); border: 1px solid var(--accent); font-size: 0.75rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+  .story-sel-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--ink); }
   .np-header {
     display: flex;
     justify-content: space-between;

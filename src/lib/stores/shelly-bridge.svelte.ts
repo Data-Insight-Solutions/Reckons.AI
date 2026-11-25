@@ -12,12 +12,32 @@ import type { GraphLayout } from '$lib/rdf/view-suggestions';
 let chatOpen = $state(false);
 let openWithMessage = $state<string | null>(null);
 
+/** Shelly's three tabs; `tutorial` is the one labelled "learn". */
+export type ShellyTab = 'tutorial' | 'chat' | 'explore';
+let openOnTab = $state<ShellyTab | null>(null);
+
 export function shellyChatOpen(): boolean {
   return chatOpen;
 }
 export function setShellyChatOpen(open: boolean) {
   chatOpen = open;
-  if (!open) openWithMessage = null;
+  if (!open) { openWithMessage = null; openOnTab = null; }
+}
+/** The tab Shelly was asked to open on (the shelly= view parameter), or null for her own default. */
+export function shellyOpenTab(): ShellyTab | null {
+  return openOnTab;
+}
+/**
+ * Open Shelly on a named tab (Matt, 2026-11-25: "We need to auto open Shelly"). The view parameter
+ * shelly=learn|chat|explore comes here, so a link or a story step can open her as it can choose a layout.
+ */
+export function openShellyOn(tab: ShellyTab) {
+  openOnTab = tab;
+  chatOpen = true;
+}
+/** Pure: the tab a shelly= value names; learn is the word on the tab, tutorial the name in code. */
+export function shellyTabParam(v: string | null): ShellyTab | null {
+  return v === 'learn' ? 'tutorial' : v === 'chat' || v === 'explore' ? v : null;
 }
 export function shellyOpenMessage(): string | null {
   return openWithMessage;
