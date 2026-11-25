@@ -14558,3 +14558,17 @@ kb:showcase-work-leaps rdf:type ktype:Phase ;
     rdfs:label "F304.4 — leaps from the showcase to Matt's work spaces (Food Tokens, the farmers market), each only after its deep review" ;
     kpred:feature-id "F304.4" ; kpred:part-of kb:personal-showcase ; kpred:has-status "planned" ; kpred:order 4 ;
     kpred:description "Blocked by Matt's rule (2026-11-24): every space needs a deep review and refinement with him before it is public. Each work space becomes a public example only after that review, with detail levels allocated (F139.2), and only then does the showcase's step name a leap to it." .
+
+# F310 — open a Turtle file from GitHub in Reckons.AI (Matt, 2026-11-25).
+kb:open-from-github rdf:type ktype:Feature ;
+    rdfs:label "F310 — open a .ttl file from a public GitHub repository as its own space, from a link" ;
+    kpred:feature-id "F310" ;
+    kpred:has-status "functional" ;
+    kpred:relates-to kb:share-links, kb:read-only-guest, kb:ttl-aware-ingest ;
+    kpred:decided "MATT, 2026-11-25 (chat, after GitHub refused to display static/reckons-roadmap.ttl at 2.37 MB): 'Can we make it so people could open a space from github?'" ;
+    kpred:description "A link /about?gh=<owner>/<repo>/<path.ttl>[@<ref>] (also a github.com file page or a raw link, parsed by src/lib/integrations/github/open-space.ts) shows what will be opened and asks; on Open the browser reads the file through api.github.com with the raw media type (api.github.com is already in the CSP's connect-src; raw.githubusercontent.com is not) and stores it as its own knowledge base on this device, through the same storeSpaceFromTurtle the bundled examples use, then lands on it with Shelly open. Cancel stores nothing." ;
+    kpred:constraint "IT ASKS FIRST (the rule the QR link follows): anyone can make such a link, so nothing is fetched or stored before the reader chooses Open. Public repositories only, no token, no server; a .ttl path in plainly named segments only (no '..')." ;
+    kpred:measured "2026-11-25: api.github.com returned static/reckons-roadmap.ttl on main whole with Accept: application/vnd.github.raw (2,485,546 bytes, status 200, access-control-allow-origin: *), the file GitHub's page will not display." ;
+    kpred:done-test "Unit tests for the link forms, refusals, the API address and the error words; browser test (GitHub API intercepted with a synthetic file) on desktop-chrome and mobile-android: the link asks first and fetches nothing, Open stores and lands on the new knowledge base, Cancel stores nothing, a non-.ttl link says why." ;
+    kpred:tested-by "src/lib/integrations/github/__tests__/open-space.test.ts", "tests/e2e/open-from-github.test.ts" ;
+    kpred:progress "2026-11-25 (Opus): built and tested as the done-test says (4 unit, 4 browser). NOT YET: a link or badge in the README (it would only work once this reaches production), a read-only open (F3) and a re-open that fetches a newer version; GitHub allows 60 unauthenticated reads an hour per address." .

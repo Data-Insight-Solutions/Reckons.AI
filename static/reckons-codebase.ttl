@@ -1303,3 +1303,7 @@ code:static kpred:has-file "static/starter-matthew-roe.ttl", "static/starter-mat
 code:scripts kpred:has-file "scripts/showcase/claude-share.ts", "scripts/showcase/__tests__/claude-share.test.ts", "scripts/showcase/__tests__/showcase-content.test.ts" .
 code:storage kpred:has-file "src/lib/storage/example-kbs.ts", "src/lib/storage/__tests__/example-kbs.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/showcase-walk.test.ts" .
+
+# F310 — open a Turtle file from GitHub.
+code:integrations kpred:has-file "src/lib/integrations/github/open-space.ts", "src/lib/integrations/github/__tests__/open-space.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/open-from-github.test.ts" .
