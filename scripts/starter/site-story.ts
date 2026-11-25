@@ -12,6 +12,14 @@
 export const STORY = 'urn:reckons:story/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
+const KTYPE = 'urn:kbase:type/';
+const PRED = 'urn:kbase:predicate/';
+/**
+ * The ring's contact sheet, under the SAME IRI the ring space uses (static/starter-ring-scan.ttl): it is the same
+ * thing in both spaces, so the link Matt gave (?sel=i:urn:reckons:ring/frames-contact-sheet) selects it here too and
+ * the node panel shows the picture (F292.4, Matt 2026-11-24).
+ */
+export const RING_CONTACT_SHEET = 'urn:reckons:ring/frames-contact-sheet';
 const XSD_INT = 'http://www.w3.org/2001/XMLSchema#integer';
 
 export interface StoryFact { iri: string; label: string; validUntil: string | null; pageCount: number }
@@ -61,7 +69,7 @@ export type StoryTriple = { s: string; p: string; o: { iri: string } | { text: s
 const STEP_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const n = (count: number, one: string, many: string): string => count + ' ' + (count === 1 ? one : many);
 
-export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[]; filters?: string[]; layout?: string }[] {
+export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[]; filters?: string[]; layout?: string; view?: string }[] {
   const total = i.pages + i.posts;
   const dated = i.expiring.filter((f) => f.validUntil !== null);
   const open = i.expiring.filter((f) => f.validUntil === null);
@@ -97,10 +105,13 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
   const rg = i.ring;
   const ringStep = rg ? [{
     title: 'The ring, up close',
-    content: 'The site shows one physical object up close: a ring, rebuilt in 3D — the page says it was reconstructed, not generated. In this space the ring is one node; its link opens the scan space that holds it, with the contact sheet of the kept frames selected, so the frames are in a single image. The frame-by-frame review, and its honest note about what the frames do not show, live over there.',
-    highlights: [rg.iri],
+    content: 'The site shows one physical object up close: a ring, rebuilt in 3D — the page says it was reconstructed, not generated. Here the contact sheet is open: 24 of the frames the scan kept, in one image. The ring\'s link opens the scan space, where the frame-by-frame review and its honest note about what the frames do not show live.',
+    highlights: [rg.iri, RING_CONTACT_SHEET],
     filters: ['confirmed', 'leaps'],
-    layout: 'force',
+    layout: 'focus',
+    // F309 (Matt, 2026-11-25): the step's whole view as the app's own URL parameters. Selecting the contact sheet
+    // centres the focus layout on it and opens its node panel, which shows the picture.
+    view: 'layout=focus&sel=i:' + RING_CONTACT_SHEET,
   }] : [];
   const steps = [
     {
@@ -163,8 +174,18 @@ export function storyTriples(i: StoryInput): StoryTriple[] {
       // what its own view is, rather than inheriting whatever the viewer last picked (F292.4).
       ...(st.filters ?? []).map((f): StoryTriple => ({ s: step, p: STORY + 'filter', o: { text: f } })),
       ...(st.layout ? [{ s: step, p: STORY + 'layout', o: { text: st.layout } }] : []),
+      ...(st.view ? [{ s: step, p: STORY + 'view', o: { text: st.view } }] : []),
     );
   });
+  // The contact sheet the ring step selects lives in this space too, linked from the ring node.
+  if (i.ring) {
+    out.push(
+      { s: RING_CONTACT_SHEET, p: RDF_TYPE, o: { iri: KTYPE + 'Image' } },
+      { s: RING_CONTACT_SHEET, p: RDFS_LABEL, o: { text: 'Contact sheet: 24 of the 189 kept frames, spread across the video' } },
+      { s: RING_CONTACT_SHEET, p: PRED + 'photo', o: { text: '/scans/ring/frames/contact-sheet.webp' } },
+      { s: i.ring.iri, p: PRED + 'has', o: { iri: RING_CONTACT_SHEET } },
+    );
+  }
   return out;
 }
 

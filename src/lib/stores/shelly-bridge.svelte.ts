@@ -55,6 +55,13 @@ export interface ViewAdjust {
   filters?: GraphFilter[];
   /** Entity IRIs to spotlight (highlighted) in the graph — used by explore mode */
   spotlight?: string[];
+  /**
+   * A whole view as the main page's own URL query parameters (F309, Matt 2026-11-25: "tie in story mode to any UI
+   * available filter and layout, with query paramters"), e.g. "layout=focus&sel=i:<iri>&f=hubs&lit=i:<a>,i:<b>".
+   * Applied by the page's applyViewParams, the same code a link goes through, so a story step can show anything a
+   * person can. Applied after the fields above, so it wins where both speak.
+   */
+  params?: string;
 }
 
 let viewAdjust = $state<ViewAdjust | null>(null);
@@ -72,6 +79,10 @@ export function applyShellyViewAdjust(v: ViewAdjust) {
 }
 export function clearShellyViewAdjust() {
   viewAdjust = null;
+}
+/** Spotlight by node key (`i:<iri>`), as the `lit` URL parameter carries it (F309). */
+export function setSpotlightKeys(keys: string[]) {
+  spotlight = keys;
 }
 export function clearShellySpotlight() {
   spotlight = [];

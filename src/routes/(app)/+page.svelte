@@ -79,7 +79,7 @@
     LEAP_PRED, LEAP_LABEL_PRED,
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
-  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, setSpotlightKeys, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
@@ -158,7 +158,8 @@
   /** A node picked in the graph, from either renderer. Ctrl/Cmd adds to the multi-selection in Statements. */
   function handleGraphSelect(k: string | null, ctrlKey?: boolean) {
     if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-    if (ctrlKey && k && perspective === 'statements') {
+    // F309.2 (Matt, 2026-11-25: 'We also need Set selection!'): Ctrl/Cmd-click builds a set in every perspective.
+    if (ctrlKey && k) {
       const next = new Set(multiSelected);
       if (next.has(k)) next.delete(k); else next.add(k);
       multiSelected = next;
@@ -428,14 +429,20 @@
   // to be bookmarked and shared within the same browser/device).
   let cameraSpec = $state<CameraSpec | null>(null);
 
-  onMount(async () => {
-    const params = $page.url.searchParams;
+  /**
+   * ONE PARSER FOR THE VIEW (F309, Matt 2026-11-25: "tie in story mode to any UI available filter and layout, with
+   * query paramters"). Page load, links and story steps (story:view, through the Shelly bridge's `params`) all set
+   * the view through this, so anything the UI can show, a link and a story can show. Each parameter applies only
+   * when present: a story step that names no filter leaves the filters as they are.
+   */
+  function applyViewParams(params: URLSearchParams) {
     if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
     if (l && ['force','focus','source','type','hub','timeline','order','hierarchy','compare'].includes(l)) layout = l as typeof layout;
     if (l === 'compare') { compareA = params.get('a'); compareB = params.get('b'); }
     const sel = params.get('sel');
-    if (sel) selected = sel;
+    // An empty sel= clears the selection (a story step that selects nothing starts clean, F309).
+    if (sel !== null) selected = sel === '' ? null : sel;
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
     // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
@@ -452,6 +459,16 @@
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
     // (revealsDepth in camera-presets.ts); a head-on camera cannot.
     cameraSpec = parseCameraSpec(params.get('cam'));
+    // F309: the spotlight a story makes (lit nodes, the rest dimmed) is a parameter too, so a link can make one.
+    const lit = params.get('lit');
+    if (lit !== null) setSpotlightKeys(lit.split(',').filter(Boolean));
+    // F309.2: a SET selection (Ctrl/Cmd-click), distinct from the single selection `sel`.
+    const setParam = params.get('set');
+    if (setParam !== null) multiSelected = new Set(setParam.split(',').filter(Boolean));
+  }
+
+  onMount(async () => {
+    applyViewParams($page.url.searchParams);
 
     const s = await getSettings();
     if (s.nodeLabelFontSize != null) labelFontSize = s.nodeLabelFontSize;
@@ -558,6 +575,10 @@
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
     if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
+    // F309: the spotlight and a set selection travel in the URL like every other part of the view.
+    const litKeys = shellySpotlight();
+    if (litKeys.length > 0) params.set('lit', litKeys.join(',')); else params.delete('lit');
+    if (multiSelected.size > 0) params.set('set', [...multiSelected].join(',')); else params.delete('set');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', { ...untrack(() => $page.state), graphPerspective: perspective });
   });
@@ -821,6 +842,17 @@
    */
   // F292.2: while a story step lights markers, an edge is lit when it touches one of them (no layout change).
   const spotlightKeys = $derived(new Set(shellySpotlight()));
+  /**
+   * TITLES WITHOUT HOVER (Matt, 2026-11-25: "when we highlight we should be showing title without the need for
+   * hover"): lit nodes and a set's members are always labelled, exempt from overlap culling, in 2D and 3D, alongside
+   * the source labels the sources perspective already pins.
+   */
+  const labelPriority = $derived.by(() => {
+    const keys = new Set<string>(sourceLabels ?? []);
+    for (const k of spotlightKeys) keys.add(k);
+    for (const k of multiSelected) keys.add(k);
+    return keys.size > 0 ? keys : null;
+  });
   const litStatementIds = $derived.by(() => {
     const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
     const spot = spotlightKeys.size > 0;
@@ -2058,6 +2090,8 @@
     if (adj.selectEntity) selected = `i:${adj.selectEntity}`;
     if (adj.layout) layout = adj.layout;
     if (adj.filters) activeFilters = new Set(adj.filters);
+    // F309: a whole view as query parameters (a story step's story:view), through the same parser a link uses.
+    if (adj.params) applyViewParams(new URLSearchParams(adj.params));
     clearShellyViewAdjust();
   });
 
@@ -2304,7 +2338,7 @@
     get timelineCenter() { return timelineCenter; },
     get timelineTimeSource() { return timelineTimeSource; },
     get sources() { return sceneSources; },
-    get labelPriorityKeys() { return sourceLabels; },
+    get labelPriorityKeys() { return labelPriority; },
     get viewportInsets() { return assetGutters; },
     get showSourceNodes() { return perspective === 'statements' && detailLevel === 'all'; },
     get targetKey() { return hoverTarget; },
@@ -2341,7 +2375,7 @@
     get previewKeys() { return previewNodeKeys; },
     get previewSizePx() { return nodePreviewSize; },
     get sources() { return sceneSources; },
-    get labelPriorityKeys() { return sourceLabels; },
+    get labelPriorityKeys() { return labelPriority; },
     get viewportInsets() { return assetGutters; },
     get targetKey() { return hoverTarget; },
     onselect: handleGraphSelect,

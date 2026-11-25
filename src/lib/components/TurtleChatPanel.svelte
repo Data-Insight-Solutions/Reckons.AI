@@ -675,11 +675,23 @@
      * the build knows, the filters clear — "exactly those" means no others). A step WITHOUT
      * story:filter leaves the filters as they are, the same rule as a step with no layout.
      */
-    if (step.highlights.length > 0 || authored || authoredFilters !== undefined) {
+    // F309 (Matt, 2026-11-25): a step can also carry a whole view as the app's own URL parameters (story:view),
+    // applied by the same code a link uses. ONE bridge call: two in the same tick would overwrite each other.
+    // EACH STEP STARTS CLEAN ON SELECTION, and FOCUS HAS A CENTRE (Matt, 2026-11-25: "no layout changes like focus").
+    // A step that names no selection clears the previous step's; a focus step that names none centres on its first
+    // highlight, which is what focus means. Both go through the same parameters a link uses.
+    const vp = new URLSearchParams(step.view?.trim() ?? '');
+    if (!vp.has('sel')) {
+      const stepLayout = vp.get('layout') ?? authored;
+      vp.set('sel', stepLayout === 'focus' && step.highlights[0] ? `i:${step.highlights[0]}` : '');
+    }
+    const view = vp.toString();
+    if (step.highlights.length > 0 || authored || authoredFilters !== undefined || view) {
       applyShellyViewAdjust({
         ...(step.highlights.length > 0 ? { spotlight: step.highlights } : {}),
         ...(authored ? { layout: authored } : {}),
-        ...(authoredFilters !== undefined ? { filters: authoredFilters } : {})
+        ...(authoredFilters !== undefined ? { filters: authoredFilters } : {}),
+        ...(view ? { params: view } : {})
       });
     }
 

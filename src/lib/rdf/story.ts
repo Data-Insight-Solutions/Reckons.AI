@@ -50,6 +50,8 @@ export interface StoryStep {
    * through and the renderer ignores it, which degrades to today's behaviour instead of throwing.
    */
   layout?: string;
+  /** The step's whole view as URL query parameters (story:view, F309): anything the UI can show. */
+  view?: string;
   /**
    * Filter names this step wants active (story:filter, repeatable). F304.
    *
@@ -123,6 +125,7 @@ export function extractStories(stmts: Statement[]): Story[] {
         question: t.question,
         layout: t.layout,
         filters: t.filters,
+        view: t.view,
         offers: stepOffers(t.offers),
       })),
     }));

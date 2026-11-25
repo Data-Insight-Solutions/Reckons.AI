@@ -194,11 +194,17 @@ describe('buildSiteSpace with a profile', () => {
     const [st] = extractStories(r.statements);
     const ringStep = st.steps.find((x) => x.title === 'The ring, up close')!;
     expect(ringStep.order).toBe(3);
-    expect(ringStep.highlights).toEqual([K + 'dis-ring']);
+    // F292.4 + F309 (Matt, 2026-11-24/25): the step SHOWS the contact sheet. Its view selects it through the app's own
+    // URL parameters, focus centres on it, and the node itself is in this space under the ring space's IRI.
+    expect(ringStep.highlights).toEqual([K + 'dis-ring', 'urn:reckons:ring/frames-contact-sheet']);
     expect(ringStep.content).toContain('rebuilt in 3D');
-    expect(ringStep.content).toContain('contact sheet of the kept frames');
+    expect(ringStep.content).toContain('contact sheet is open');
     expect(ringStep.filters).toEqual(['confirmed', 'leaps']);
-    expect(ringStep.layout).toBe('force');
+    expect(ringStep.layout).toBe('focus');
+    expect(ringStep.view).toBe('layout=focus&sel=i:urn:reckons:ring/frames-contact-sheet');
+    const sheet = r.statements.filter((x) => x.s.value === 'urn:reckons:ring/frames-contact-sheet');
+    expect(sheet.some((x) => x.p.value === 'urn:kbase:predicate/photo' && x.o.value === '/scans/ring/frames/contact-sheet.webp')).toBe(true);
+    expect(r.statements.some((x) => x.s.value === K + 'dis-ring' && x.p.value === 'urn:kbase:predicate/has' && x.o.value === 'urn:reckons:ring/frames-contact-sheet')).toBe(true);
   });
   it('is deterministic, and a site with no About page gets no person and the old five steps', () => {
     expect(buildSiteSpace(files, opts).text).toBe(r.text);
