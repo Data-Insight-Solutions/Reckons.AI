@@ -80,7 +80,7 @@ export function applyShellyViewAdjust(v: ViewAdjust) {
 export function clearShellyViewAdjust() {
   viewAdjust = null;
 }
-/** Spotlight by node key (`i:<iri>`), as the `lit` URL parameter carries it (F309). */
+/** Spotlight by entity key (`i:<iri>`), as the `lit` URL parameter carries it (F309). */
 export function setSpotlightKeys(keys: string[]) {
   spotlight = keys;
 }

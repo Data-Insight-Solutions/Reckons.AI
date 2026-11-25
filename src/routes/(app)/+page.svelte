@@ -158,7 +158,7 @@
   /** A node picked in the graph, from either renderer. Ctrl/Cmd adds to the multi-selection in Statements. */
   function handleGraphSelect(k: string | null, ctrlKey?: boolean) {
     if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-    // F309.2 (Matt, 2026-11-25: 'We also need Set selection!'): Ctrl/Cmd-click builds a set in every perspective.
+    // F309.2 (Matt, 2026-11-25, asking for selection of several at once): Ctrl/Cmd-click builds a multi-selection in every perspective.
     if (ctrlKey && k) {
       const next = new Set(multiSelected);
       if (next.has(k)) next.delete(k); else next.add(k);
@@ -431,7 +431,7 @@
 
   /**
    * ONE PARSER FOR THE VIEW (F309, Matt 2026-11-25: "tie in story mode to any UI available filter and layout, with
-   * query paramters"). Page load, links and story steps (story:view, through the Shelly bridge's `params`) all set
+   * query paramters"). Page load, links and story steps (story:view, through the Shelly bridge's `params`) all apply
    * the view through this, so anything the UI can show, a link and a story can show. Each parameter applies only
    * when present: a story step that names no filter leaves the filters as they are.
    */
@@ -459,12 +459,12 @@
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
     // (revealsDepth in camera-presets.ts); a head-on camera cannot.
     cameraSpec = parseCameraSpec(params.get('cam'));
-    // F309: the spotlight a story makes (lit nodes, the rest dimmed) is a parameter too, so a link can make one.
+    // F309: the spotlight a story makes (lit entities, the rest dimmed) is a parameter too, so a link can make one.
     const lit = params.get('lit');
     if (lit !== null) setSpotlightKeys(lit.split(',').filter(Boolean));
-    // F309.2: a SET selection (Ctrl/Cmd-click), distinct from the single selection `sel`.
-    const setParam = params.get('set');
-    if (setParam !== null) multiSelected = new Set(setParam.split(',').filter(Boolean));
+    // F309.2: several selected at once (Ctrl/Cmd-click) travel as `sels`, distinct from the single selection `sel`.
+    const sels = params.get('sels');
+    if (sels !== null) multiSelected = new Set(sels.split(',').filter(Boolean));
   }
 
   onMount(async () => {
@@ -575,10 +575,10 @@
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
     if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
-    // F309: the spotlight and a set selection travel in the URL like every other part of the view.
+    // F309: the spotlight and a multi-selection travel in the URL like every other part of the view.
     const litKeys = shellySpotlight();
     if (litKeys.length > 0) params.set('lit', litKeys.join(',')); else params.delete('lit');
-    if (multiSelected.size > 0) params.set('set', [...multiSelected].join(',')); else params.delete('set');
+    if (multiSelected.size > 0) params.set('sels', [...multiSelected].join(',')); else params.delete('sels');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', { ...untrack(() => $page.state), graphPerspective: perspective });
   });
@@ -844,7 +844,7 @@
   const spotlightKeys = $derived(new Set(shellySpotlight()));
   /**
    * TITLES WITHOUT HOVER (Matt, 2026-11-25: "when we highlight we should be showing title without the need for
-   * hover"): lit nodes and a set's members are always labelled, exempt from overlap culling, in 2D and 3D, alongside
+   * hover"): lit entities and multi-selected ones are always labelled, exempt from overlap culling, in 2D and 3D, alongside
    * the source labels the sources perspective already pins.
    */
   const labelPriority = $derived.by(() => {

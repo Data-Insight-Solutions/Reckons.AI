@@ -195,7 +195,7 @@ describe('buildSiteSpace with a profile', () => {
     const ringStep = st.steps.find((x) => x.title === 'The ring, up close')!;
     expect(ringStep.order).toBe(3);
     // F292.4 + F309 (Matt, 2026-11-24/25): the step SHOWS the contact sheet. Its view selects it through the app's own
-    // URL parameters, focus centres on it, and the node itself is in this space under the ring space's IRI.
+    // URL parameters, focus centres on it, and the sheet itself is in this space under the ring space's IRI.
     expect(ringStep.highlights).toEqual([K + 'dis-ring', 'urn:reckons:ring/frames-contact-sheet']);
     expect(ringStep.content).toContain('rebuilt in 3D');
     expect(ringStep.content).toContain('contact sheet is open');
