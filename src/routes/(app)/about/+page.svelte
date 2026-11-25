@@ -47,9 +47,10 @@
   /**
    * `story` carries the /about?story=…&autoplay=… link parameters through to the main page
    * (F292.4): for a space they ride the switch (openExampleSpace builds the same landing URL),
-   * for a plain import they ride the goto. Absent, everything lands exactly where it did before.
+   * for a plain import they ride the goto. `sel` is the entity the main page should open selected
+   * (?sel=i:<iri>); it rides the same way. Absent, everything lands exactly where it did before.
    */
-  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean } = {}) {
+  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean; sel?: string } = {}) {
     loadingKb = kb.id;
     loadError = '';
     try {
@@ -60,7 +61,7 @@
       const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'starter-kb');
-      goto(story.story ? exampleLanding(story) : '/');
+      goto(exampleLanding(story));
     } catch (e) {
       loadError = (e as Error).message || 'Import failed';
       loadingKb = null;
@@ -97,14 +98,17 @@
   // F292.4: …&story=<iri|step>&autoplay=1 opens it AND starts its guided story at step 1 —
   // the story and autoplay ride through to the main page, where startStoryFromLink honours
   // them. autoplay is only true for 1|true (the same rule as startStoryFromLink), so a link
-  // that names a story without autoplay starts it paused.
+  // that names a story without autoplay starts it paused. …&sel=i:<iri> also rides through:
+  // the main page opens with that entity selected (the ring's contact sheet, per the site's
+  // own leap link).
   onMount(() => {
     const params = new URL(window.location.href).searchParams;
     const kb = findExampleKb(params.get('example'));
     if (!kb) return;
     const story = params.get('story');
-    if (story === null) { void importStarterKB(kb); return; }
-    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true' });
+    const sel = params.get('sel');
+    if (story === null) { void importStarterKB(kb, sel ? { sel } : undefined); return; }
+    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true', sel: sel ?? undefined });
   });
 
   onMount(() => {

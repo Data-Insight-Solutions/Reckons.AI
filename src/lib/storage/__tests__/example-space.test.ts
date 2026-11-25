@@ -35,4 +35,15 @@ describe('exampleLanding — the ?story=&autoplay= a link asks for', () => {
     expect(read(exampleLanding({ story: '1', autoplay: false })).get('autoplay')).toBeNull();
     expect(read(exampleLanding({ autoplay: true })).get('autoplay')).toBeNull();
   });
+
+  it('carries an entity selection (?sel=i:<iri>) alone or with the story', () => {
+    const sel = 'i:urn:reckons:ring/frames-contact-sheet';
+    expect(read(exampleLanding({ sel })).get('sel')).toBe(sel); // colon and slash survive, like a story IRI
+    expect(read(exampleLanding({ sel })).get('story')).toBeNull();
+    const both = read(exampleLanding({ story: '1', autoplay: true, sel }));
+    expect(both.get('story')).toBe('1');
+    expect(both.get('autoplay')).toBe('1');
+    expect(both.get('sel')).toBe(sel);
+    expect(read(exampleLanding({ sel: 'i:x' })).get('sel')).toBe('i:x');
+  });
 });

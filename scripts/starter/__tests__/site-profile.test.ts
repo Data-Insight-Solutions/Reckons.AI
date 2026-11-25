@@ -183,12 +183,22 @@ describe('buildSiteSpace with a profile', () => {
   });
   it('the story gains one early step about who is behind the site, with computed counts and resolving highlights', () => {
     const [st] = extractStories(r.statements);
-    expect(st.steps.map((x) => x.order)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(st.steps.map((x) => x.order)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(st.steps[1].title).toBe('Who is behind the site');
     expect(st.steps[1].content).toContain('Pat Example is the founder of Example Studio LLC, formed in 2019, in Lakeside, Nebraska');
     expect(st.steps[1].content).toContain('3 services, 3 credentials, 2 recognitions');
     const nodes = new Set(r.statements.map((x) => x.s.value));
     for (const h of st.steps[1].highlights) expect(nodes.has(h), h).toBe(true);
+  });
+  it('the story gains the ring step after the who step: its node lit, its leap link named, its own filter and layout', () => {
+    const [st] = extractStories(r.statements);
+    const ringStep = st.steps.find((x) => x.title === 'The ring, up close')!;
+    expect(ringStep.order).toBe(3);
+    expect(ringStep.highlights).toEqual([K + 'dis-ring']);
+    expect(ringStep.content).toContain('rebuilt in 3D');
+    expect(ringStep.content).toContain('contact sheet of the kept frames');
+    expect(ringStep.filters).toEqual(['confirmed', 'leaps']);
+    expect(ringStep.layout).toBe('force');
   });
   it('is deterministic, and a site with no About page gets no person and the old five steps', () => {
     expect(buildSiteSpace(files, opts).text).toBe(r.text);

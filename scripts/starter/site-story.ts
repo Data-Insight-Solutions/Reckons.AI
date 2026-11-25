@@ -27,10 +27,19 @@ export interface StoryWho {
 /** The business card and its regenerated print sheets (site-card.ts); counts come from the build. */
 export interface StoryCard { designIri: string; images: string[]; versions: number; sheets: number; sheetIris: string[]; ruleIri: string; changedWhy: string }
 
+/**
+ * The scanned ring the site page describes (site-profile.ts). Only its node IRI in this space is
+ * passed in — the leap it carries, and the space it opens with, are this space's own facts, not the
+ * generator's to state.
+ */
+export interface StoryRing { iri: string }
+
 export interface StoryInput {
   card?: StoryCard;
   /** Present when the About page names a person; adds the step that introduces them. */
   who?: StoryWho;
+  /** Present when the site page names a scanned ring; adds the step that shows it up close. */
+  ring?: StoryRing;
   storyIri: string;
   stepIri: (n: number) => string;
   siteName: string;
@@ -52,7 +61,7 @@ export type StoryTriple = { s: string; p: string; o: { iri: string } | { text: s
 const STEP_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 const n = (count: number, one: string, many: string): string => count + ' ' + (count === 1 ? one : many);
 
-export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[] }[] {
+export function storySteps(i: StoryInput): { title: string; content: string; highlights: string[]; filters?: string[]; layout?: string }[] {
   const total = i.pages + i.posts;
   const dated = i.expiring.filter((f) => f.validUntil !== null);
   const open = i.expiring.filter((f) => f.validUntil === null);
@@ -69,6 +78,8 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
       + n(w.services, 'service', 'services') + ', ' + n(w.credentials, 'credential', 'credentials') + (w.recognition ? ', ' + n(w.recognition, 'recognition', 'recognitions') : '')
       + ', each one marked with the page that states it. Open the person or the company to see them connected to the services, the posts that cover them and the dated credential.',
     highlights: w.highlights,
+    filters: ['confirmed'],
+    layout: 'hierarchy',
   }] : [];
   const cd = i.card;
   const cardStep = cd ? [{
@@ -77,35 +88,58 @@ export function storySteps(i: StoryInput): { title: string; content: string; hig
       + n(cd.sheets, 'print sheet was', 'print sheets were') + ' built from it across ' + n(cd.versions, 'version', 'versions') + ' of the design, each sheet linked to the version it came from and to the sheet that replaced it' + (cd.changedWhy ? ' (' + cd.changedWhy + ')' : '')
       + '. A rule node says what happens when the design changes: the sheet made from the old version is out of date, so a new one is built from the new export. The sheets themselves are private PDFs.',
     highlights: [cd.designIri, ...cd.images, ...cd.sheetIris, cd.ruleIri],
+    filters: ['confirmed'],
+    layout: 'focus',
+  }] : [];
+  // F292.4 (kb:site-story-improved): the ring the site shows up close. Its space and its contact sheet
+  // are not this space's facts — the step points at them through the leap the ring node carries, and
+  // the "leaps" filter is what makes the story's only link-carrying node stand out on the way in.
+  const rg = i.ring;
+  const ringStep = rg ? [{
+    title: 'The ring, up close',
+    content: 'The site shows one physical object up close: a ring, rebuilt in 3D — the page says it was reconstructed, not generated. In this space the ring is one node; its link opens the scan space that holds it, with the contact sheet of the kept frames selected, so the frames are in a single image. The frame-by-frame review, and its honest note about what the frames do not show, live over there.',
+    highlights: [rg.iri],
+    filters: ['confirmed', 'leaps'],
+    layout: 'force',
   }] : [];
   const steps = [
     {
       title: 'Where the content came from',
       content: 'This example is the published website of ' + i.siteName + ', read in as sources: ' + n(i.pages, 'page', 'pages') + ' and ' + n(i.posts, 'blog post', 'blog posts') + ', ' + total + ' in all. The owner also kept private notes, which were used to check claims on the site but are not part of this example, and no content from them is included here.',
       highlights: [i.siteIri, ...(i.blogIri ? [i.blogIri] : [])],
+      filters: ['confirmed'],
+      layout: 'source',
     },
     {
       title: 'Pages made from one set of facts',
       content: 'Each page is one entry here with its title, address and place in the site: ' + n(i.pages, 'page', 'pages') + ' and ' + n(i.posts, 'post', 'posts') + '. The website builder reads the same page files this example was made from and turns them into the pages visitors read, with one shared set of settings for the menu, the footer and the look.',
       highlights: i.pageNodes.slice(0, 8),
+      filters: ['confirmed'],
+      layout: 'type',
     },
     {
       title: 'One fact, stated on many pages',
       content: 'The line at the foot of every page, "' + i.shared.text + '", is written once, in the site\'s settings, and the build puts it on all ' + i.shared.pageCount + ' pages and posts. Change it there once and the next build changes every page; nobody has to find and edit ' + i.shared.pageCount + ' copies. The lit node is that one fact, and it links to each page that shows it.',
       highlights: [i.shared.iri],
+      filters: ['confirmed'],
+      layout: 'focus',
     },
     {
       title: 'Facts that expire',
       content: expiryText,
       highlights: i.expiring.length ? i.expiring.map((f) => f.iri) : [i.checkIri],
+      filters: ['confirmed'],
+      layout: 'timeline',
     },
     {
       title: 'The live website',
       content: 'The result is the live website, ' + total + ' pages and posts built from this one source. The site node is lit; its link opens the real website, so you can compare what you have just walked through with what a visitor sees.',
       highlights: [i.siteIri],
+      filters: ['confirmed'],
+      layout: 'force',
     },
   ];
-  return [steps[0], ...whoStep, ...cardStep, ...steps.slice(1)];
+  return [steps[0], ...whoStep, ...cardStep, ...ringStep, ...steps.slice(1)];
 }
 
 export function storyTriples(i: StoryInput): StoryTriple[] {
@@ -124,6 +158,11 @@ export function storyTriples(i: StoryInput): StoryTriple[] {
       { s: step, p: STORY + 'title', o: { text: st.title } },
       { s: step, p: STORY + 'content', o: { text: st.content } },
       ...st.highlights.map((h): StoryTriple => ({ s: step, p: STORY + 'highlight', o: { iri: h } })),
+      // story:filter is repeatable (each a name the app's graph knows, GRAPH_FILTERS); story:layout a
+      // name the renderer ships. A step that names a filter chooses it exactly, so each step here says
+      // what its own view is, rather than inheriting whatever the viewer last picked (F292.4).
+      ...(st.filters ?? []).map((f): StoryTriple => ({ s: step, p: STORY + 'filter', o: { text: f } })),
+      ...(st.layout ? [{ s: step, p: STORY + 'layout', o: { text: st.layout } }] : []),
     );
   });
   return out;
