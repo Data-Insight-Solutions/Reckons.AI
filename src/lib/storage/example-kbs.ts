@@ -113,7 +113,7 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     id: 'matthew-roe',
     icon: '☍',
     title: 'Matthew Roe',
-    body: 'A personal showcase: a life in facts, walked in eight steps and ending in leaps. Opens as its own space.',
+    body: 'A personal showcase: a life in facts, walked in eight steps and ending in leaps. It opens by itself, apart from your own.',
     file: '/starter-matthew-roe.ttl',
     space: 'Matthew Roe',
     unlisted: true,
@@ -121,13 +121,13 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     triples: 155
   },
   {
-    // F304.2: UNLISTED (same 2026-11-19 decision as the showcase). The personal space behind the
+    // F304.2: UNLISTED (same 2026-11-19 decision as the showcase). The personal example behind the
     // showcase's last step: archery, hand-made wooden bows and arrows, a dog, cats, chickens and
     // darkling beetles, and swimming — and nothing else. No pictures, and no picture of a child.
     id: 'matthew-roe-personal',
     icon: '☍',
     title: 'Matthew Roe — personal',
-    body: 'The personal space the showcase leaps to: off-the-clock facts only. Opens as its own space.',
+    body: 'The personal example the showcase leaps to: off-the-clock facts only. It opens by itself, apart from your own.',
     file: '/starter-matthew-roe-personal.ttl',
     space: 'Matthew Roe — personal',
     unlisted: true,

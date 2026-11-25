@@ -103,9 +103,11 @@ test('the showcase walk plays through muted, and the last step leaps to the pers
   const jump = page.locator('button.leap-id', { hasText: 'Open my personal space' });
   await expect(jump, 'the node panel shows the leap to the personal space').toBeVisible({ timeout: 30_000 });
   // The leap is /about?example=matthew-roe-personal, which imports the personal space and
-  // redirects to / — wait for a bare / before touching the db.
+  // redirects to the main page — wait for it before touching the db. A story-less example lands with
+  // shelly=learn (Matt, 2026-11-25: "auto open Shelly"), so the landing is / with no example pending, not a bare /.
   await jump.click();
-  await page.waitForURL((url) => url.pathname === '/' && url.search === '', { timeout: 60_000 });
+  await page.waitForURL((url) => url.pathname === '/' && !url.searchParams.has('example'), { timeout: 60_000 });
+  await expect(page.getByRole('tab', { name: 'learn' }), 'Shelly opened on learn').toHaveAttribute('data-state', 'active', { timeout: 15_000 });
 
   // The personal space opens as its own space, holding the five facts named there.
   await expect.poll(
