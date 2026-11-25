@@ -13797,7 +13797,7 @@ kb:asset-generation kpred:open-question "SELLING POINT, 2026-11-13 (Matt): multi
 kb:theming rdf:type ktype:Feature ;
     rdfs:label "F298 — Theme switching: a 'forest' theme away from the default 'ocean'" ;
     kpred:feature-id   "F298" ;
-    kpred:has-status   "speculative" ;
+    kpred:has-status   "planned" ;
     kpred:priority     "low" ;
     kpred:relates-to   kb:undersea-pod-ui, kb:currents, kb:minimal-ontology ;
     kpred:decided      "MATT, 2026-11-13 (chat): \"We need to start themeing. My sister has been learning three.js and I could talk to her about details, but we could start planning around current codebase. We need a way to change theme to 'forest' away from the default 'ocean' that we have now. A green and earth tones instead of deep teals and blues, we should make Shelly into a Sloth. Named Sherril or something clever. The tree roots could be a great analogy to the rooting of AI agent usage to your personal context.\"" ;
@@ -14400,3 +14400,46 @@ kb:shelly-manages-queue rdf:type ktype:Phase ;
     kpred:description "App side. Shelly reads queue-status.json from the connected workspace folder and can answer 'what is running', 'what is queued', 'why is it paused'. She proposes queue actions as a card the reader approves (queue a defined job, pause, resume, cancel one she queued), one approval per plan as F166.1.2 does. When a job finishes or fails, a one-line note appears in her chat without interrupting the reader. The job status list shows the whole queue, not only generation jobs." ;
     kpred:constraint "THE CHAT NEVER WAITS ON THE QUEUE. Reading the status file and writing a request are file operations; Shelly keeps answering while the worker runs. When a running job holds the GPU and her own provider is the local model on that GPU, she says so in a sentence and either answers with a provider that does not need it (the reader's choice) or queues her reply, rather than freezing." ;
     kpred:done-test "Browser test (mock provider, synthetic status file in the connected folder): asked 'what is running', Shelly names the running and queued jobs from the file; a proposed 'queue graph-lint' card writes one request when approved and none before; a receipt marked refused is shown as refused; a job moving to done adds a one-line note to the chat while the reader's own message is answered. Unit tests for the status parser and the card's request. NOT claimed: a real model choosing the right job name (needs a person to try it; mark kpred:needs-human-recheck)." .
+
+kb:theming kpred:decided "MATT, 2026-11-25 (chat): 'We need a new sloth, similar style to Shelly the main logo of Reckons.AI. We need Reckons.AI logo to become a whole scene, even in 3d, with the ocean theme existing assets first, and then the forest theme next. Template a new space, based on the existing space about the existing theme.' And: 'These theme spaces should have documentation and review pages created for them.' Read with his words from another session the same day: themes switch the look and feel, with symbolism (roots; the sloth slow and steady; a bird that is intelligent and sounds the alarm for its fellow birds, in place of the conch notification bell; the spaces list as branches of a tree with the sloth hanging from the active one)." ;
+    kpred:progress "2026-11-25 (Opus): speculative -> planned; four phases F298.1 to F298.4 below. The switch-or-rebrand question is answered by Matt's 'themes switch just the look and feel': ocean stays the default." .
+
+kb:theme-space-ocean rdf:type ktype:Phase ;
+    rdfs:label "F298.1 — the ocean theme as a space: every existing ocean element, its file and what it stands for, with a docs page and a review page" ;
+    kpred:feature-id "F298.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:theming ;
+    kpred:decided "MATT, 2026-11-25: 'Template a new space, based on the existing space about the existing theme'; 'These theme spaces should have documentation and review pages created for them.'" ;
+    kpred:description "A generated example space (static/starter-theme-ocean.ttl, built by a script from the codebase, never by hand) holding one entity per ocean-theme element actually in the app: the Reckons.AI logo (the low-poly sea turtle whose shell is a graph, static/svg/ReckonsAI-Logo.svg), Shelly's heads (static/svg/head1-3.svg), the turtle model (static/glb/Meshy_AI_Turtle_1.glb), the conch notification bell, the Spaces map tide pool (starfish, bubbles, seaweed), the whale-accented pod view and currents, and the palette (the deep teals and blues of the CSS variables). Each entity names its file (served path, so the asset shows), the component that draws it, and what it symbolises. A docs page generated from it (WebPage entity, scripts/docs-pages.ts) and a review page (the release-review pattern: one verdict per element) come with it." ;
+    kpred:constraint "ONLY WHAT EXISTS. Every file named must exist and be served; a script check fails on a dead path. Symbolism is quoted from Matt or the graph, or marked as a proposal." ;
+    kpred:done-test "npx tsx scripts/starter/build-theme-space.ts --theme=ocean writes the space and --check passes on a fresh clone; every asset path resolves; the space opens from the examples list and its assets show; the docs page is generated (docs:build) and the review page lists one verdict per element; unit tests for the generator." .
+
+kb:theme-space-forest rdf:type ktype:Phase ;
+    rdfs:label "F298.2 — the forest theme as a space, templated from the ocean one: each element's forest counterpart, made or still missing" ;
+    kpred:feature-id "F298.2" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:theming ;
+    kpred:depends-on kb:theme-space-ocean ;
+    kpred:decided "MATT, 2026-11-25: 'then the forest theme next. Template a new space, based on the existing space about the existing theme.'" ;
+    kpred:description "Generated from the ocean space: for each ocean element, its forest counterpart (Shelly the turtle -> the sloth; the conch bell -> the alarm bird; the tide pool -> tree branches with the sloth on the active one; currents -> roots; teals and blues -> greens and earth tones). A counterpart not made yet is a well-formed absence in the space (named, with what it must be), not a placeholder image. Same docs page and review page pattern as F298.1." ;
+    kpred:done-test "The forest space is generated from the ocean space with one counterpart per element; every counterpart is either an existing file or an explicit gap; docs and review pages generated; the generator's --check passes." .
+
+kb:forest-sloth rdf:type ktype:Phase ;
+    rdfs:label "F298.3 — the sloth, in Shelly's and the logo's style: low-poly facets, the graph worked into its back, hanging from a branch" ;
+    kpred:feature-id "F298.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:theming ;
+    kpred:decided "MATT, 2026-11-25: 'We need a new sloth, similar style to Shelly the main logo of Reckons.AI.'" ;
+    kpred:description "A 2D mark first (SVG, the same faceted construction and graph motif as ReckonsAI-Logo.svg, in forest greens and earth tones), then the 3D model. Taste work: drafted by Claude, judged by Matt (Matt, 2026-11-23: design work like this is beyond the local deputy's bar)." ;
+    kpred:done-test "An SVG sloth in static/svg/ that Matt approves on the forest theme's review page; its 3D counterpart follows under F298.4." .
+
+kb:logo-scene rdf:type ktype:Phase ;
+    rdfs:label "F298.4 — the Reckons.AI logo as a whole scene, 2D and 3D: ocean first from existing assets, then forest" ;
+    kpred:feature-id "F298.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:theming ;
+    kpred:depends-on kb:theme-space-ocean ;
+    kpred:decided "MATT, 2026-11-25: 'We need Reckons.AI logo to become a whole scene, even in 3d, with the ocean theme existing assets first, and then the forest theme next.'" ;
+    kpred:description "The turtle-with-a-graph-shell mark grows into a scene: the ocean scene composed from the assets the ocean space lists (turtle model, tide pool, bubbles, currents), rendered headless in Blender to stills and a short orbit, and shown as an entity in the theme space; the forest scene follows with the sloth and the branches once F298.3 exists." ;
+    kpred:done-test "An ocean logo scene file (.blend source plus rendered stills and an orbit video under static/) built by a script from the ocean space's assets; shown on the ocean space's review page; the forest scene follows after the sloth is approved." .
