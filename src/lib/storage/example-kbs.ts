@@ -109,7 +109,7 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     // F304.1: UNLISTED (Matt, 2026-11-19, recorded on kb:personal-showcase: an unlisted example is a public
     // example — unlisted is not private). Opens by /about?example=matthew-roe and never appears in the list.
     // Facts come only from the eight captions of its walk; the Claude Code figure in it is measured from git
-    // by scripts/showcase/claude-share.ts (F304.3).
+    // by the F304.3 measurement script (scripts/showcase/), never typed.
     id: 'matthew-roe',
     icon: '☍',
     title: 'Matthew Roe',

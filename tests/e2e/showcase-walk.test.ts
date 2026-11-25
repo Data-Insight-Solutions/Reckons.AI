@@ -21,7 +21,8 @@ const STORY = 'urn:reckons:story/matthew-roe-walk';
 /** rdfs:label values present in the active space's database. */
 async function labelsInDb(page: Page, names: string[]) {
   return page.evaluate(async (names) => {
-    const { db } = await import(/* @vite-ignore */ '/src/lib/storage/db.ts');
+    const runtimeImport = (path: string) => import(/* @vite-ignore */ path);
+    const { db } = await runtimeImport('/src/lib/storage/db.ts');
     const rows = (await db.statements.toArray()) as { p: { value: string }; o: { value: string } }[];
     const labels = new Set(rows.filter((r) => r.p.value === 'http://www.w3.org/2000/01/rdf-schema#label').map((r) => r.o.value));
     return names.filter((n) => labels.has(n));
@@ -60,7 +61,8 @@ test('the showcase walk plays through muted, and the last step leaps to the pers
   // before touching the db (it destroys the page context mid-import).
   await page.goto(`/about?example=matthew-roe&story=${encodeURIComponent(STORY)}&autoplay=1`);
   await page.waitForURL((url) => url.pathname === '/', { timeout: 60_000 });
-  await expect.poll(() => labelsInDb(page, ['Matthew Roe']), { timeout: 30_000 }, 'the showcase opened as its own space')
+  // The showcase opened as its own space.
+  await expect.poll(() => labelsInDb(page, ['Matthew Roe']), { timeout: 30_000 })
     .toEqual(['Matthew Roe']);
 
   // The story then opens from its link, on the canvas.
@@ -99,10 +101,9 @@ test('the showcase walk plays through muted, and the last step leaps to the pers
   await jump.click();
   await page.waitForURL((url) => url.pathname === '/' && url.search === '', { timeout: 60_000 });
 
-  // The personal space opens as its own space, holding only the facts named there.
+  // The personal space opens as its own space, holding the five facts named there.
   await expect.poll(
     () => labelsInDb(page, ['My personal space', 'Archery', 'Wooden bows and arrows', 'Dog, cats, chickens, and darkling beetles', 'Swimming']),
     { timeout: 60_000 },
-    'the personal space opened with its five facts',
   ).toEqual(['My personal space', 'Archery', 'Wooden bows and arrows', 'Dog, cats, chickens, and darkling beetles', 'Swimming']);
 });
