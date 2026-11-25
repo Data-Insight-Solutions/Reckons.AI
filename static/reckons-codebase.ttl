@@ -1209,6 +1209,8 @@ code:job-plan-space rdf:type ktype:Concept ;
     kpred:has-file "scripts/agent/job-watch.ts" ;
     kpred:has-file "scripts/agent/mcp-context.ts" ;
     kpred:has-file "scripts/agent/orchestrate.ts" ;
+    kpred:has-file "scripts/agent/roadmap-scheduler.ts" ;
+    kpred:has-file "scripts/__tests__/roadmap-scheduler.test.ts" ;
     kpred:has-file "scripts/agent/queue.ts" ;
     kpred:has-file "scripts/agent/reconcile.ts" ;
     kpred:has-file "scripts/agent/session-heartbeat.sh" ;
