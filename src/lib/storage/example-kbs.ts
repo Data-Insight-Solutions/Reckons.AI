@@ -103,7 +103,7 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     space: 'The ring',
     unlisted: true,
     entities: 41,
-    triples: 255
+    triples: 256
   }
 ];
 

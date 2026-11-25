@@ -433,7 +433,8 @@ story:everyday-readme-path-4
     story:page          "/kb" ;
     story:pageName      "the Spaces tab" ;
     story:boxTarget     "the card marked current, which shows its name and how many facts it holds" ;
-    story:content       "Those accepted claims are now facts in your space, and its card shows how many facts it holds." ;
+    story:content       "Those accepted claims are now facts in your space, and its card shows how many facts it holds. On the canvas the confirmed filter keeps what is now held lit — the confirmed claims among it — while anything still waiting recedes." ;
+    story:filter        "confirmed" ;
     story:question      "What is the difference between something you read and something you know?" ;
     story:detail        "Open Spaces. The claims you confirmed are now facts in your space, the collection of connected knowledge that everything you add feeds. The one you are working in is marked current, and its card says how many facts it holds." ;
     story:action        '{"kind":"open-page","path":"/kb","at":1}' ;
