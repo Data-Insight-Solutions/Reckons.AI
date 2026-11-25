@@ -1296,3 +1296,10 @@ code:ingest-lib kpred:has-file "src/lib/ingest/two-source.ts" ;
     kpred:tested-by "src/lib/ingest/__tests__/two-source.test.ts" .
 code:components kpred:has-file "src/lib/components/TwoSourceCompare.svelte" .
 code:test-e2e kpred:has-file "tests/e2e/two-source-ingest.test.ts" .
+
+# F304 — Matt's personal showcase (2026-11-24, branch feat/f304-showcase): the two unlisted spaces,
+# the measured Claude-share script and its tests, the example entries, and the walk e2e.
+code:static kpred:has-file "static/starter-matthew-roe.ttl", "static/starter-matthew-roe-personal.ttl" .
+code:scripts kpred:has-file "scripts/showcase/claude-share.ts", "scripts/showcase/__tests__/claude-share.test.ts", "scripts/showcase/__tests__/showcase-content.test.ts" .
+code:storage kpred:has-file "src/lib/storage/example-kbs.ts", "src/lib/storage/__tests__/example-kbs.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/showcase-walk.test.ts" .

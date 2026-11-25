@@ -104,6 +104,35 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     unlisted: true,
     entities: 41,
     triples: 256
+  },
+  {
+    // F304.1: UNLISTED (Matt, 2026-11-19, recorded on kb:personal-showcase: an unlisted example is a public
+    // example — unlisted is not private). Opens by /about?example=matthew-roe and never appears in the list.
+    // Facts come only from the eight captions of its walk; the Claude Code figure in it is measured from git
+    // by the F304.3 measurement script (scripts/showcase/), never typed.
+    id: 'matthew-roe',
+    icon: '☍',
+    title: 'Matthew Roe',
+    body: 'A personal showcase: a life in facts, walked in eight steps and ending in leaps. Opens as its own space.',
+    file: '/starter-matthew-roe.ttl',
+    space: 'Matthew Roe',
+    unlisted: true,
+    entities: 23,
+    triples: 155
+  },
+  {
+    // F304.2: UNLISTED (same 2026-11-19 decision as the showcase). The personal space behind the
+    // showcase's last step: archery, hand-made wooden bows and arrows, a dog, cats, chickens and
+    // darkling beetles, and swimming — and nothing else. No pictures, and no picture of a child.
+    id: 'matthew-roe-personal',
+    icon: '☍',
+    title: 'Matthew Roe — personal',
+    body: 'The personal space the showcase leaps to: off-the-clock facts only. Opens as its own space.',
+    file: '/starter-matthew-roe-personal.ttl',
+    space: 'Matthew Roe — personal',
+    unlisted: true,
+    entities: 5,
+    triples: 29
   }
 ];
 
