@@ -572,7 +572,10 @@
      *
      * The current params are an INPUT to the write, never a reason to write again.
      */
-    const params = new URLSearchParams(untrack(() => $page.url.searchParams));
+    // Start from the address as it IS, not the $page store: the story player writes step= with its own replaceState,
+    // and the store can lag behind it, so a write from the store dropped the step and broke the step link
+    // (story-walk e2e, CI on #688, 2026-11-25).
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : untrack(() => $page.url.search));
     if (perspective === 'sources') params.set('perspective', perspective);
     else params.delete('perspective');
     if (layout !== 'force') params.set('layout', layout);
