@@ -14373,3 +14373,30 @@ kb:story-step-moves-and-names kpred:progress "2026-11-25 (Opus): on a phone, a s
 
 kb:view-state-params kpred:progress "2026-11-25 (Opus): shelly=learn|chat|explore opens Shelly on that tab (Matt, 2026-11-25: 'We need to auto open Shelly, show the alpha disclaimer, and also pulse highlight the explore button'). An example opened without a story lands with shelly=learn, where the alpha note is; the other tabs and the phone's story bar carry a one-line alpha note until dismissed; the explore tab pulses until first opened. step=<n> now rides through /about?example= links. Read only: the URL writer does not write shelly= yet." ;
     kpred:tested-by "src/lib/stores/__tests__/shelly-open-tab.test.ts", "src/lib/storage/__tests__/example-space.test.ts" .
+
+# F166.1.4 / F166.1.5 — Shelly manages the local queue while the reader keeps chatting (Matt, 2026-11-25).
+kb:queue-status-bridge rdf:type ktype:Phase ;
+    rdfs:label "F166.1.4 — the worker shows the whole local queue to the app and takes named-job requests from it" ;
+    kpred:feature-id "F166.1.4" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:shelly-job-queue ;
+    kpred:relates-to kb:local-jobs-default ;
+    kpred:decided "MATT, 2026-11-25: 'Lets make sure Shelly can manage the queue in this way, with a local worker managing most of the task while Shelly allows users to chat.' The way meant: the head session queued GPU reconstructions, routine checks and deputy builds in one local queue, paused and resumed it, and kept talking while the worker ran them one at a time." ;
+    kpred:description "Host side, through the workspace folder the app already connects (F166.1.2, never a server port). The queue worker writes queue-status.json there on every change: each job's name, state (queued, waiting on another job, running, done, failed), priority, start and end times, exit code and a short log tail, plus whether the queue is paused and why (by hand, or the RAM or GPU guard). It reads typed requests the app writes: enqueue a DEFINED job by name with bounded arguments (the same allowlist kb_job_enqueue uses: jobs defined in static/reckons-jobs.ttl or the schedules file), cancel a queued job the app itself queued, pause, resume. Each request gets a receipt (accepted, or refused and why)." ;
+    kpred:constraint "THE BROWSER NEVER WRITES A COMMAND (as F166.1.2). A request names a defined job; the worker maps the name to its argv. A name that is not defined, an argument outside its bounds, or a cancel of a job the app did not queue is refused with a receipt, never run." ;
+    kpred:constraint "NO SECRETS AND NO PRIVATE PATHS LEAVE THE HOST BY ACCIDENT: the status file is written inside the person's own workspace folder, log tails are capped, and environment variables are never copied into it." ;
+    kpred:done-test "Unit tests: the status file round-trips every job state and the pause reasons; an enqueue of a defined name is accepted and appears queued; an undefined name, an out-of-bounds argument and a cancel of someone else's job are each refused with a receipt; pause and resume change the worker's step. A run of the real worker on an isolated state directory with --no-recurring writes the status file and honours one enqueue and one pause from request files." .
+
+kb:shelly-manages-queue rdf:type ktype:Phase ;
+    rdfs:label "F166.1.5 — Shelly manages the local queue in chat: what is running, queue a defined job, pause, resume, and news when a job finishes" ;
+    kpred:feature-id "F166.1.5" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:shelly-generation-jobs ;
+    kpred:depends-on kb:queue-status-bridge ;
+    kpred:decided "MATT, 2026-11-25: 'Lets make sure Shelly can manage the queue in this way, with a local worker managing most of the task while Shelly allows users to chat.'" ;
+    kpred:description "App side. Shelly reads queue-status.json from the connected workspace folder and can answer 'what is running', 'what is queued', 'why is it paused'. She proposes queue actions as a card the reader approves (queue a defined job, pause, resume, cancel one she queued), one approval per plan as F166.1.2 does. When a job finishes or fails, a one-line note appears in her chat without interrupting the reader. The job status list shows the whole queue, not only generation jobs." ;
+    kpred:constraint "THE CHAT NEVER WAITS ON THE QUEUE. Reading the status file and writing a request are file operations; Shelly keeps answering while the worker runs. When a running job holds the GPU and her own provider is the local model on that GPU, she says so in a sentence and either answers with a provider that does not need it (the reader's choice) or queues her reply, rather than freezing." ;
+    kpred:done-test "Browser test (mock provider, synthetic status file in the connected folder): asked 'what is running', Shelly names the running and queued jobs from the file; a proposed 'queue graph-lint' card writes one request when approved and none before; a receipt marked refused is shown as refused; a job moving to done adds a one-line note to the chat while the reader's own message is answered. Unit tests for the status parser and the card's request. NOT claimed: a real model choosing the right job name (needs a person to try it; mark kpred:needs-human-recheck)." .

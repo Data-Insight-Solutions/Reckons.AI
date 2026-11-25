@@ -117,6 +117,9 @@ function main() {
   const max = Number(args.find((a) => a.startsWith('--max='))?.slice(6) ?? 2);
   // --only=F139.2,F223.12: the head session steers which items are queued (e.g. skips one whose code is on an unmerged branch).
   const only = args.find((a) => a.startsWith('--only='))?.slice(7).split(',').filter(Boolean);
+  // --base=<ref>: start new worktrees from this ref instead of origin/dev (when the item's plan or prerequisites are on
+  // a branch not yet merged).
+  const base = args.find((a) => a.startsWith('--base='))?.slice(7) || 'origin/dev';
   const quads = new Parser().parse(readFileSync(path.join(ROOT, 'static/reckons-roadmap.ttl'), 'utf8'));
   const statusByIri = new Map<string, string>();
   for (const q of quads) if (q.predicate.value === P + 'has-status') statusByIri.set(q.subject.value, q.object.value);
@@ -142,12 +145,12 @@ function main() {
     const stem = stemOf(a.item.id), branch = `feat/${stem}-scheduled`, wt = path.resolve(ROOT, '..', `tripleNotes-${stem}`);
     if (!existsSync(wt)) {
       git('fetch', '-q', 'origin');
-      git('worktree', 'add', '-q', wt, '-b', branch, 'origin/dev');
+      git('worktree', 'add', '-q', wt, '-b', branch, base);
       symlinkSync(path.join(ROOT, 'node_modules'), path.join(wt, 'node_modules'));
     }
     mkdirSync(path.join(stateDir, 'briefs'), { recursive: true });
     const briefPath = path.join(stateDir, 'briefs', `${stem}-scheduled.md`);
-    writeFileSync(briefPath, briefFor(a.item, wt, branch) + (existsSync(common) ? '\n\n' + readFileSync(common, 'utf8') : ''));
+    writeFileSync(briefPath, briefFor(a.item, wt, branch).replace('(from dev)', `(from ${base})`) + (existsSync(common) ? '\n\n' + readFileSync(common, 'utf8') : ''));
     execFileSync('npx', ['tsx', 'scripts/agent/queue.ts', 'add', `--name=build-${stem}`, `--cwd=${wt}`, '--gpu=0', `--priority=${a.priority}`, '--',
       'bash', 'scripts/agent/local-claude.sh', '-p', readFileSync(briefPath, 'utf8'), '--permission-mode', 'acceptEdits',
       '--allowedTools', 'Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(npx:*),Bash(npm:*),Bash(node:*),Bash(ls:*),mcp__reckons__kb_get_entity,mcp__reckons__kb_search'],
