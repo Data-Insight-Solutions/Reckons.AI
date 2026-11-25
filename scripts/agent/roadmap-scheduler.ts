@@ -10,6 +10,7 @@
  *   npx tsx scripts/agent/roadmap-scheduler.ts            what it would do (the default; changes nothing)
  *   npx tsx scripts/agent/roadmap-scheduler.ts --apply    also create the worktree and queue the deputy build
  *   npx tsx scripts/agent/roadmap-scheduler.ts --json
+ *   npx tsx scripts/agent/roadmap-scheduler.ts --apply --only=F139.2,F223.12   queue just those
  *
  * Per item it reports one of:
  *   DONE          status functional or production
@@ -114,6 +115,8 @@ function main() {
   const apply = args.includes('--apply'), json = args.includes('--json');
   // --max=N: queue at most N new builds in one run (the local queue runs one job at a time).
   const max = Number(args.find((a) => a.startsWith('--max='))?.slice(6) ?? 2);
+  // --only=F139.2,F223.12: the head session steers which items are queued (e.g. skips one whose code is on an unmerged branch).
+  const only = args.find((a) => a.startsWith('--only='))?.slice(7).split(',').filter(Boolean);
   const quads = new Parser().parse(readFileSync(path.join(ROOT, 'static/reckons-roadmap.ttl'), 'utf8'));
   const statusByIri = new Map<string, string>();
   for (const q of quads) if (q.predicate.value === P + 'has-status') statusByIri.set(q.subject.value, q.object.value);
@@ -135,7 +138,7 @@ function main() {
   console.log(`\n${actions.filter((a) => a.action === 'DONE').length} done; ${actions.filter((a) => a.action === 'BUILD').length} to build; ${actions.filter((a) => a.action === 'CONTINUE').length} to continue; ${actions.filter((a) => a.action === 'BRANCH').length} branches to oversee and merge; ${actions.filter((a) => a.action === 'BLOCKED').length} blocked.`);
   if (!apply) { console.log(`(dry run: --apply creates worktrees and queues the top ${max} BUILD items; --max=N to change)`); return; }
   const common = path.join(stateDir, 'briefs/common-2026-11-24.md');
-  for (const a of actions.filter((x) => x.action === 'BUILD' || x.action === 'CONTINUE').slice(0, max)) {
+  for (const a of actions.filter((x) => (x.action === 'BUILD' || x.action === 'CONTINUE') && (!only || only.includes(x.item.id))).slice(0, max)) {
     const stem = stemOf(a.item.id), branch = `feat/${stem}-scheduled`, wt = path.resolve(ROOT, '..', `tripleNotes-${stem}`);
     if (!existsSync(wt)) {
       git('fetch', '-q', 'origin');
