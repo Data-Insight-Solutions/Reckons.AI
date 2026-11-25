@@ -38,6 +38,12 @@ describe('roadmap scheduler', () => {
     expect(acts.find((a) => a.item.id === 'F2')).toMatchObject({ action: 'BUILD' });
     expect(decide(items, { statusOf, jobs: [], branches: [] }).find((a) => a.item.id === 'F3.1')).toMatchObject({ action: 'CONTINUE' });
   });
+  it('a commit that only plans an item is not work under way on it', () => {
+    const br = [{ name: 'feat/other', subjects: ['Plan F1: the plan only'] }];
+    expect(decide(items, { statusOf, jobs: [], branches: br }).find((a) => a.item.id === 'F1')).toMatchObject({ action: 'BUILD' });
+    const built = [{ name: 'feat/other', subjects: ['F1: built it'] }];
+    expect(decide(items, { statusOf, jobs: [], branches: built }).find((a) => a.item.id === 'F1')).toMatchObject({ action: 'BRANCH' });
+  });
   it('writes a brief from the item itself: Matt\'s words and the done-test', () => {
     const b = briefFor(items.find((i) => i.id === 'F1')!, '/w', 'feat/f1-scheduled');
     expect(b).toContain('MATT, 2026-11-25: build alpha');

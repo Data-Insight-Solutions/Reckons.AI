@@ -86,7 +86,8 @@ export function decide(items: Item[], state: { statusOf: (iri: string) => string
     // Work under way = an UNMERGED branch named for the item, or one whose own commits name its id (work often lands on
     // a branch named for something else, e.g. F292.4 on feat/f300-6-story-variety).
     const idRe = new RegExp(`(^|[^0-9.])${item.id.replace(/\./g, '\\.')}(?![0-9.])`);
-    const br = state.branches.find((b) => new RegExp(`(^|/)(feat|plan|fix)/${stem}(-|$)`).test(b.name) || b.subjects.some((t) => idRe.test(t)));
+    // A commit that only PLANS the item (subject starting "Plan") is not work under way on it.
+    const br = state.branches.find((b) => new RegExp(`(^|/)(feat|plan|fix)/${stem}(-|$)`).test(b.name) || b.subjects.some((t) => idRe.test(t) && !/^plan\b/i.test(t)));
     if (br) { out.push({ item, action: 'BRANCH', why: `${br.name}: overseer, then merge into the next integration batch`, priority: prio }); continue; }
     // Something already exists for a scaffolded or in-progress item: the next job CONTINUES it (its kpred:remaining).
     out.push(item.status === 'planned' ? { item, action: 'BUILD', why: 'nothing under way', priority: prio }
