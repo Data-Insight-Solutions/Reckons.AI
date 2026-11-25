@@ -238,6 +238,20 @@ const RECORD_PREDICATES = new Set([
   'http://www.w3.org/2000/01/rdf-schema#label',
   'http://www.w3.org/2004/02/skos/core#prefLabel',
   'http://www.w3.org/2004/02/skos/core#broader',
+  // Review bookkeeping (F139.2, kb:entity-detail-levels). The 2026-11-24 measurement on
+  // kb:entity-detail-levels found rdf:subject, rdf:predicate, rdf:object (statement reification)
+  // and urn:kbase:meta/status, meta/confidence, meta/reviewMetadata at ~1,850 each in the
+  // application store, plus gloss 103, proposed-by 85, excerpt 54 — mechanical, re-derivable,
+  // no claim to review. None of them was classified before, so they defaulted to judgment.
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#subject',
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#predicate',
+  'http://www.w3.org/1999/02/22-rdf-syntax-ns#object',
+  'urn:kbase:meta/status',
+  'urn:kbase:meta/confidence',
+  'urn:kbase:meta/reviewMetadata',
+  'urn:kbase:meta/gloss',
+  'urn:kbase:meta/proposed-by',
+  'urn:kbase:meta/excerpt',
 ]);
 
 /** LOG — a narration of work done, addressed to nobody who can dispute it. */
@@ -611,6 +625,97 @@ export function liftedAltitudes(statements: Statement[]): Map<string, Altitude> 
   return out;
 }
 
+/**
+ * EVIDENCE IS DERIVED (F139.2, kb:entity-detail-levels). Matt, 2026-11-24, on the roadmap
+ * entity (kpred:decided): evidence is too generic to pull every fact toward it; if a
+ * statement is a reviewed fact that supports a claim, then it is evidence.
+ *
+ * A statement is EVIDENCE when it is REVIEWED (status confirmed or refined) AND it supports a
+ * claim: its predicate is urn:kbase:predicate/supports, or it is a fact about the subject of a
+ * reviewed supports-link. An UNREVIEWED one keeps the altitude its predicate gives it — a
+ * pending supports-fact is still just a judgment. An altitude fixed on the statement itself
+ * (st.altitude) still wins, and a decision is never lowered into evidence.
+ *
+ * This lives beside liftedAltitudes rather than in altitudeOf because the class of one
+ * statement depends on its companions.
+ */
+const SUPPORTS_PREDICATE = 'urn:kbase:predicate/supports';
+
+/** Reviewed: a person (or a settled pass) has stood behind it — confirmed or refined. */
+export function isReviewed(st: Statement): boolean {
+  return st.status === 'confirmed' || st.status === 'refined';
+}
+
+export function evidenceAltitudes(statements: Statement[]): Map<string, Altitude> {
+  const claimedSubjects = new Set<string>();
+  for (const st of statements) {
+    if (st.p.value === SUPPORTS_PREDICATE && isReviewed(st)) claimedSubjects.add(st.s.value);
+  }
+  const out = new Map<string, Altitude>();
+  for (const st of statements) {
+    const own = altitudeOf(st);
+    if (st.altitude || own === 'decision' || !isReviewed(st)) {
+      out.set(st.id, own);
+      continue;
+    }
+    const supportsClaim = st.p.value === SUPPORTS_PREDICATE || claimedSubjects.has(st.s.value);
+    out.set(st.id, supportsClaim ? 'evidence' : own);
+  }
+  return out;
+}
+
+/**
+ * A DETAIL LEVEL PER ENTITY (F139.2 part 3, kb:entity-detail-levels).
+ *
+ * An entity's level is the highest altitude of any statement touching it — as subject or as
+ * object — after the derived passes (part 2 included), so a fact lifts every end it connects.
+ * The rule the floor needs: a thing disappears only when EVERYTHING touching it is below the
+ * floor, which is exactly "the entity whose edges all went", and it is symmetric — a leaf
+ * hidden by its own altitude cannot drag its parent in, and a parent hidden by its fixed
+ * level takes its leaf edges with it.
+ *
+ * A kpred:detail-level literal on the entity wins over the derived level, the same way a
+ * fixed altitude on a statement does: it is a person's call about this entity, and a call is
+ * not averaged away by its own bookkeeping. An invalid literal is ignored rather than
+ * guessed at — a level that cannot be read is not a level.
+ */
+export const DETAIL_LEVEL_PREDICATE = `${KPRED}detail-level`;
+
+/** Effective altitude after part 2: the altitude a statement's own predicate gives, or the
+ * evidence its review status and claim give it, whichever is higher. Lift belongs to the
+ * view, which already carries it, and is applied by the caller. */
+export function effectiveAfterEvidence(statements: Statement[]): (st: Statement) => Altitude {
+  const derived = evidenceAltitudes(statements);
+  return (st) => {
+    // The derived class is the class (the census reads it the same way). Taking the higher of
+    // the two kept a reviewed supports-fact at judgment, so the evidence rung never differed
+    // from the judgments rung. evidenceAltitudes already protects an altitude fixed on the statement, and decisions.
+    return derived.get(st.id) ?? altitudeOf(st);
+  };
+}
+
+export function entityDetailLevels(
+  statements: Statement[],
+  altOf: (st: Statement) => Altitude = effectiveAfterEvidence(statements),
+): Map<string, Altitude> {
+  const levels = new Map<string, Altitude>();
+  const touch = (entity: string, a: Altitude) => {
+    const cur = levels.get(entity);
+    if (!cur || ALTITUDE_RANK[a] > ALTITUDE_RANK[cur]) levels.set(entity, a);
+  };
+  for (const st of statements) {
+    const a = altOf(st);
+    if (st.s.kind === 'iri') touch(st.s.value, a);
+    if (st.o.kind === 'iri') touch(st.o.value, a);
+  }
+  for (const st of statements) {
+    if (st.p.value !== DETAIL_LEVEL_PREDICATE || st.s.kind !== 'iri' || !isLit(st.o)) continue;
+    const v = st.o.value.trim().toLowerCase();
+    if (isAltitude(v)) levels.set(st.s.value, v);
+  }
+  return levels;
+}
+
 /** One line for a report or a queue note. */
 export function explainAltitude(a: Altitude): string {
   const m = ALTITUDE_META[a];
@@ -630,8 +735,14 @@ export interface AltitudeCensus {
 export function censusByAltitude(statements: Statement[]): AltitudeCensus {
   const counts: Record<Altitude, number> = { decision: 0, judgment: 0, evidence: 0, record: 0, log: 0 };
   let classified = 0;
+  // Count the DERIVED class (F139.2): a reviewed fact supporting a claim is evidence even when
+  // its own predicate says judgment or record. The done-test on kb:entity-detail-levels names
+  // this report as the surface that must show it.
+  const derived = evidenceAltitudes(statements);
   for (const st of statements) {
-    counts[altitudeOf(st)]++;
+    const own = altitudeOf(st);
+    const a = derived.get(st.id) ?? own;
+    counts[a]++;
     if (isClassified(st)) classified++;
   }
   const total = statements.length;

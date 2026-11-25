@@ -152,6 +152,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/__tests__/auto-trust.test.ts" ;
           kpred:has-file "src/lib/rdf/__tests__/captured-notes.test.ts" ;
           kpred:has-file "src/lib/rdf/__tests__/claims-context.test.ts" ;
+          kpred:has-file "src/lib/rdf/__tests__/compare-venn.test.ts" ;
           kpred:has-file "src/lib/rdf/__tests__/co-hyponyms.test.ts" ;
           kpred:has-file "src/lib/rdf/__tests__/decision-dependency.test.ts" ;
           kpred:has-file "src/lib/rdf/__tests__/distill-options.test.ts" ;
@@ -178,6 +179,7 @@ code:rdf  rdf:type     ktype:Concept ;
           kpred:has-file "src/lib/rdf/archive-guard.ts" ;
           kpred:has-file "src/lib/rdf/auto-trust.ts" ;
           kpred:has-file "src/lib/rdf/claims-context.ts" ;
+          kpred:has-file "src/lib/rdf/compare-venn.ts" ;
           kpred:has-file "src/lib/rdf/co-hyponyms.ts" ;
           kpred:has-file "src/lib/rdf/collections-migration.ts" ;
           kpred:has-file "src/lib/rdf/entity-sets.ts" ;
@@ -848,7 +850,13 @@ code:test-e2e  rdf:type     ktype:Concept ;
                kpred:has-file "tests/e2e/viewport.test.ts" ;
                kpred:has-file "tests/e2e/graph-render.test.ts" ;
                kpred:has-file "tests/e2e/visual-contract.test.ts" ;
+               kpred:has-file "tests/e2e/compare-venn.test.ts" ;
+               kpred:has-file "tests/fixtures/compare-venn/comparison.json" ;
+
+               kpred:has-file "tests/e2e/detail-rungs.test.ts" ;
                kpred:has-file "playwright.config.ts" ;
+               kpred:has-file "scripts/lib/e2e-port.ts" ;
+               kpred:has-file "scripts/__tests__/e2e-port.test.ts" ;
                kpred:has-file "playwright.smoke.config.ts" ;
                kpred:has-file "scripts/visual-smoke-gate.ts" .
 
@@ -1276,3 +1284,11 @@ code:rdf kpred:has-file "src/lib/rdf/story-ops.ts" ;
     kpred:tested-by "src/lib/rdf/__tests__/story-ops.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/story-runner.ts", "tests/e2e/demo-recorder.ts", "tests/e2e/workflow-generated-assets.test.ts", "tests/e2e/synthetic-runner.ts", "tests/e2e/story-probes.test.ts", "tests/e2e/workflow-compare-v029.test.ts", "tests/e2e/workflow-reckoning-v029.test.ts" .
 code:scripts kpred:has-file "scripts/workflow-steps.ts" .
+
+# Two-source comparison (F306.1).
+code:rdf kpred:has-file "src/lib/rdf/source-comparison.ts" ;
+    kpred:tested-by "src/lib/rdf/__tests__/source-comparison.test.ts" .
+code:ingest-lib kpred:has-file "src/lib/ingest/two-source.ts" ;
+    kpred:tested-by "src/lib/ingest/__tests__/two-source.test.ts" .
+code:components kpred:has-file "src/lib/components/TwoSourceCompare.svelte" .
+code:test-e2e kpred:has-file "tests/e2e/two-source-ingest.test.ts" .

@@ -33,10 +33,10 @@ import type { Statement } from './types';
 // ── Thresholds ─────────────────────────────────────────────────────────────
 
 /** Subject IRIs with cosine ≥ this are treated as the same entity. */
-const SUBJECT_NEAR_DUPLICATE_THRESHOLD = 0.88;
+export const SUBJECT_NEAR_DUPLICATE_THRESHOLD = 0.88;
 
 /** Predicate IRIs with cosine ≥ this are treated as synonyms. */
-const PREDICATE_SYNONYM_THRESHOLD = 0.82;
+export const PREDICATE_SYNONYM_THRESHOLD = 0.82;
 
 /**
  * Antonym predicates must have cosine in [MIN, MAX] — semantically related

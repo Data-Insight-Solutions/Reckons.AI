@@ -29,6 +29,24 @@ private working files are under `~/.local/state/reckons/ring-scan/`).
 reword, never raise a baseline), run the checks one suite at a time (memory), one PR to dev.
 **Waiting on Matt:** the ruler photo; whether the old `/compare` screen removal starts now that canvas compare is in dev
 (he said yes once it is functional; F306.2 is scaffolded); the v0.2.9 docs-video scripts review.
+
+## 2026-11-24 (evening) — START HERE: batch c (compare on the canvas, detail levels) is a PR; the showcase is building
+
+**Batch c, `integration/2026-11-24c`:** F306.2 the venn compare layout on the main canvas, F306.1 compare two documents from
+Ingest (ends on the link `/?layout=compare&a=&b=`), F139.2 detail levels on nodes (evidence derived from review plus
+kpred:supports; kpred:detail-level overrides). All three were built by deputy jobs and accepted by Sonnet overseers; all are
+honestly "scaffolded" (venn: not yet tried on a copy of real data; ingest: real-model and PDF timing unmeasured; F139.2: on
+Quick-Start the evidence and judgments rungs still draw the same 11 entities, and renderers do not yet draw edgeless entities).
+Combined-tree checks: unit 443 files / 5,689 passed, svelte-check 0, blocking 9/9 (after rewording bare "node"/"graph"; no
+baseline raised), e2e compare-venn, two-source-ingest, detail-rungs 8/8.
+
+**In the local queue (one job at a time):** the F304 showcase deputy (`feat/f304-showcase`, worktree tripleNotes-f304-answers;
+F304.1 space and story, .2 personal space, .3 Claude Code share from git; F304.4 leaps wait for Matt's deep review of each
+space), README-path screenshots, a deputy on a real Reckoning fault (about half the time unticking does not clear the chosen
+count; worktree tripleNotes-shots), and the F305 WebGPU spike (worktree tripleNotes-webgpu, flag off by default). Each gets a
+Sonnet overseer. When F304 lands with F139.2, add `kb:showcase-work-leaps kpred:depends-on kb:entity-detail-levels`.
+**Matt decided:** the old `/compare` screen is removed once the canvas compare is functional (not yet).
+
 ## 2026-11-24 (afternoon) — START HERE: #682 merged; batch b on `integration/2026-11-24b`; builds run as deputy jobs with Sonnet overseers
 
 **Matt, 2026-11-24: "Use local jobs and overseer subagents."** Builds go to the deputy queue (briefs in

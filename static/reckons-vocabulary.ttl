@@ -108,6 +108,14 @@ kalt:log a skos:Concept ;
     skos:note "CLASSIFIED, NEVER DROPPED. A log contradicting the evidence under a live decision IS a deciding factor, which is why altitude is a view-time rank rather than a delete." ;
     hnav:order 0 .
 
+# F139.2 (kb:entity-detail-levels): an ENTITY's own detail level — the altitude at which the view
+# shows it, overriding the level derived from its facts. One per entity; the reader
+# (src/lib/rdf/fact-altitude.ts, entityDetailLevels) takes a notation and ignores a value it does
+# not recognize, so a typo costs a fact not shown, not a broken view.
+kpred:detail-level a rdf:Property ;
+    rdfs:label "detail level" ;
+    rdfs:comment "The altitude at which an entity is shown, overriding the level its facts give it. Its values come from ktype:AltitudeScheme, exactly like kpred:altitude, which fixes the same word on a single fact." .
+
 # ── TASK STATE (F87) ─────────────────────────────────────────────────────────
 
 ktype:TaskStateScheme a skos:ConceptScheme ;
@@ -233,6 +241,17 @@ kshape:Altitude a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:severity sh:Violation ;
         sh:message "kpred:altitude must be one of the ktype:AltitudeScheme notations."
+    ] .
+
+kshape:DetailLevel a sh:NodeShape ;
+    rdfs:label "Detail level values must come from the scheme" ;
+    sh:targetSubjectsOf kpred:detail-level ;
+    sh:property [
+        sh:path kpred:detail-level ;
+        sh:in ( "decision" "judgment" "evidence" "record" "log" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "kpred:detail-level must be one of the ktype:AltitudeScheme notations."
     ] .
 
 kshape:TaskState a sh:NodeShape ;

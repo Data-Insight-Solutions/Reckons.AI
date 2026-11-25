@@ -3,6 +3,8 @@ import { STMT_PREFIX, stmtIdFromIriPart, stmtIdToIriPart } from './types';
 import { standingOf, type Standing } from './statement-standing';
 import type { TargetShape } from './proposal';
 
+const STORY_NS = 'urn:reckons:story/';
+
 /**
  * F223.12.1: a Reckoning is an entity the knowledge base keeps. The person chose a situation (facts, plus an
  * optional sentence), and that choice is a fact, so reloading the page, or coming back from the canvas,
@@ -121,6 +123,10 @@ export const newReckoningId = () => Math.random().toString(36).slice(2, 10) + Da
 export function isChoosable(st: Statement): boolean {
   if (st.status === 'rejected' || st.status === 'superseded') return false;
   if (st.sourceId.startsWith('reckoning-') || st.sourceId.startsWith('job-')) return false;
+  // A story's own mechanics (step titles, order, actions, expectations) describe how to walk the space, not the world,
+  // so they are never a situation to reckon with. Quick-Start carries the Compare and Reckoning stories since F300.5,
+  // and the picker was offering "quickstart reckoning 3 title ..." and JSON step actions as facts (2026-11-24).
+  if (st.p.value.startsWith(STORY_NS)) return false;
   return st.p.value !== RDF_TYPE;
 }
 
@@ -134,6 +140,7 @@ const GROUPS: { standing: Standing; label: string }[] = [
 /** Choosable facts grouped by standing (held, pending, question), filtered by a search text. */
 export function groupByStanding(
   all: readonly Statement[], query: string, labelOf: (iri: string) => string,
+  chosen: ReadonlySet<string> = new Set(),
 ): StandingGroup[] {
   const q = query.trim().toLowerCase();
   const text = (st: Statement) => `${labelOf(st.s.value)} ${labelOf(st.p.value)} ${st.o.kind === 'iri' ? labelOf(st.o.value) : st.o.value}`;
@@ -141,7 +148,13 @@ export function groupByStanding(
   return GROUPS.map((g) => ({
     ...g,
     // proposed is pending that names an option; the list offers it with the pending ones
-    rows: pool.filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; }),
+    rows: pool
+      .filter((st) => { const s = standingOf(st); return g.standing === 'pending' ? s === 'pending' || s === 'proposed' : s === g.standing; })
+      // CHOSEN FIRST. The picker shows only the first 40 rows of a group, in store order. A fact chosen on the canvas
+      // ("Reckon with these") could sit past row 40, so it was counted as chosen but had no box to untick: on
+      // Quick-Start, once its stories pushed the held group past 40, unticking stalled at 11 or 12 chosen (found
+      // 2026-11-24 by the Reckoning walk's e2e spec). Chosen rows now lead their group; the rest keep store order.
+      .sort((a, b) => Number(!chosen.has(a.id)) - Number(!chosen.has(b.id))),
   })).filter((g) => g.rows.length > 0);
 }
 

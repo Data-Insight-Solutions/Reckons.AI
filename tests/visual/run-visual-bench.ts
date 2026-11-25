@@ -23,6 +23,7 @@
  *   npm run dev:test &
  */
 
+import { E2E_BASE } from '../../scripts/lib/e2e-port';
 import { chromium, type Browser, type Page, devices } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
@@ -84,7 +85,7 @@ const testCases = filterPages.length > 0
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5174';
+const BASE_URL = process.env.BASE_URL ?? E2E_BASE;
 const BENCH_DIR = import.meta.dirname || __dirname;
 const RESULTS_DIR = join(BENCH_DIR, 'results');
 const SCREENSHOTS_DIR = join(BENCH_DIR, 'screenshots');

@@ -2,10 +2,11 @@
  * User Story: OCR in visual testing (F70.1). Assert the actual RENDERED text on
  * a screenshot via local Tesseract OCR — stronger than "does an element exist".
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { ocrScreenshot, normalizeOcr } from '../vision-local';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 test('OCR reads the rendered text off the Publishing settings tab', async ({ page }) => {
   test.setTimeout(60_000);

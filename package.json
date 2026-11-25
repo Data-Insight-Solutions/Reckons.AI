@@ -37,7 +37,7 @@
     "test:e2e:headed": "playwright test --headed --project=desktop-chrome",
     "test:e2e:smoke": "npm run build:test && npx tsx scripts/visual-smoke-gate.ts",
     "test:crawl": "npx tsx scripts/offline/button-crawl.ts",
-    "dev:test": "VITE_PREFERRED_BACKEND=mock VITE_INGEST_BACKEND=mock VITE_CHAT_BACKEND=mock vite dev --port 5174",
+    "dev:test": "VITE_PREFERRED_BACKEND=mock VITE_INGEST_BACKEND=mock VITE_CHAT_BACKEND=mock vite dev --port ${E2E_PORT:-5174} --strictPort",
     "build:test": "VITE_PREFERRED_BACKEND=mock VITE_INGEST_BACKEND=mock VITE_CHAT_BACKEND=mock vite build",
     "storybook": "storybook dev --port 6006",
     "build-storybook": "storybook build",

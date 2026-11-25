@@ -194,6 +194,8 @@ export type SettingsRecord = {
   nodeLabelFontSize?: number;
   /** Prefer 2D canvas renderer over 3D WebGL */
   prefer2D?: boolean;
+  /** F306.2: colours of the compare layout (only in A, only in B, in both). Absent = the defaults in rdf/compare-venn.ts. */
+  compareColors?: { a?: string; b?: string; shared?: string };
   /** Always render entity preview images on nodes (no hover needed). Slower to paint. */
   alwaysShowPreviews?: boolean;
   /** "Normal" node preview-image size in px (the thumbnail on selected/highlighted
@@ -682,6 +684,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       meshyApiKey: m.meshyApiKey,
       nodeLabelFontSize: m.nodeLabelFontSize,
       prefer2D: m.prefer2D,
+      compareColors: m.compareColors ? { ...m.compareColors } : undefined,
       alwaysShowPreviews: m.alwaysShowPreviews,
       previewMode: m.previewMode,
       uiScale: m.uiScale,
