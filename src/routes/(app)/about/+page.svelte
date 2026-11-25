@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
-  import { openExampleSpace } from '$lib/storage/example-space';
+  import { openExampleSpace, exampleLanding } from '$lib/storage/example-space';
   import { EXAMPLE_KBS, listedExampleKbs, findExampleKb, type ExampleKb } from '$lib/storage/example-kbs';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
@@ -44,18 +44,23 @@
   let loadError = $state('');
   let switchingToOfficial = $state(false);
 
-  async function importStarterKB(kb: ExampleKb) {
+  /**
+   * `story` carries the /about?story=…&autoplay=… link parameters through to the main page
+   * (F292.4): for a space they ride the switch (openExampleSpace builds the same landing URL),
+   * for a plain import they ride the goto. Absent, everything lands exactly where it did before.
+   */
+  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean } = {}) {
     loadingKb = kb.id;
     loadError = '';
     try {
-      if (kb.space) { await openExampleSpace(kb.file, kb.space); return; }
+      if (kb.space) { await openExampleSpace(kb.file, kb.space, story); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
       const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'starter-kb');
-      goto('/');
+      goto(story.story ? exampleLanding(story) : '/');
     } catch (e) {
       loadError = (e as Error).message || 'Import failed';
       loadingKb = null;
@@ -89,10 +94,17 @@
   let fading = $state(false);
 
   // A link of the form /about?example=<id> opens that example on its own.
+  // F292.4: …&story=<iri|step>&autoplay=1 opens it AND starts its guided story at step 1 —
+  // the story and autoplay ride through to the main page, where startStoryFromLink honours
+  // them. autoplay is only true for 1|true (the same rule as startStoryFromLink), so a link
+  // that names a story without autoplay starts it paused.
   onMount(() => {
-    const id = new URL(window.location.href).searchParams.get('example');
-    const kb = findExampleKb(id);
-    if (kb) void importStarterKB(kb);
+    const params = new URL(window.location.href).searchParams;
+    const kb = findExampleKb(params.get('example'));
+    if (!kb) return;
+    const story = params.get('story');
+    if (story === null) { void importStarterKB(kb); return; }
+    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true' });
   });
 
   onMount(() => {

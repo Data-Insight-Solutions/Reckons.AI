@@ -303,6 +303,8 @@ code:storage  rdf:type     ktype:Concept ;
               kpred:has-file "src/lib/storage/kb-fingerprint.ts" ;
               kpred:has-file "src/lib/storage/gif-package.ts" ;
               kpred:has-file "src/lib/storage/__tests__/app-db.test.ts" ;
+              kpred:has-file "src/lib/storage/example-space.ts" ;
+              kpred:has-file "src/lib/storage/__tests__/example-space.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/graph-sets.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/kb-duplicate-choice.test.ts" ;
               kpred:has-file "src/lib/storage/__tests__/kb-assets.test.ts" ;
@@ -666,6 +668,7 @@ code:routes  rdf:type     ktype:Concept ;
              kpred:has-file "src/lib/device/integrations.ts" ;
              kpred:has-file "scripts/dev-server/device-bridge.ts" ;
              kpred:has-file "src/routes/(app)/about/+page.svelte" ;
+             kpred:has-file "tests/e2e/about-story-link.test.ts" ;
              kpred:has-file "src/routes/(app)/about/case-study-0/+page.svelte" ;
              kpred:has-file "src/routes/(app)/analyze/+page.svelte" ;
              kpred:has-file "src/routes/(app)/history/+page.svelte" ;
@@ -1162,6 +1165,13 @@ code:docs-expand-gates rdf:type ktype:Concept ;
     kpred:description "lib/docs-gates.ts: pure checks a drafted docs paragraph must clear before review (unexplained jargon read from the terminology graph, words the grounding never used, and a skip rule for pages that already read plainly). docs-expand.ts wires them in. Calibration numbers are on kb:job-backpressure in the roadmap." ;
     kpred:has-file "scripts/offline/lib/docs-gates.ts" ;
     kpred:tested-by "scripts/offline/__tests__/docs-gates.test.ts" .
+
+# F300.6 (kb:story-variety): a bundled story must bring its own mix of what a story can do.
+code:story-variety-check rdf:type ktype:Concept ;
+    rdfs:label "Story variety check" ;
+    kpred:description "story-variety.ts lists, for every story in the bundled example spaces, the features each step uses (filters, layouts, highlights, offers, leaps, media), read with the repository's own story reader rather than pattern matching. It fails when a story uses no story:filter or when two stories share the same feature set. Script tier, zero tokens; registered non-blocking in static/reckons-jobs.ttl until the bundled stories each carry their own mix." ;
+    kpred:has-file "scripts/offline/story-variety.ts" ;
+    kpred:tested-by "scripts/__tests__/story-variety.test.ts" .
 
 code:three-example-viewer rdf:type ktype:Concept ;
     rdfs:label "Isolated Three.js example attachments" ;
