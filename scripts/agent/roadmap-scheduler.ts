@@ -37,6 +37,8 @@ const OPEN = new Set(['planned', 'in-progress', 'scaffolded']);
 export type Item = {
   iri: string; id: string; label: string; status: string; priority?: string; releases: string[];
   decided: string[]; description?: string; measured: string[]; remaining: string[]; doneTest: string; dependsOn: string[];
+  /** kpred:constraint lines: they bind the build as much as Matt's decisions do. */
+  constraints?: string[];
 };
 export type Action = { item: Item; action: 'DONE' | 'BLOCKED' | 'QUEUED' | 'BRANCH' | 'BUILD' | 'CONTINUE'; why: string; priority: number };
 
@@ -64,6 +66,7 @@ export function readItems(quads: Quad[]): Item[] {
       measured: m.get(P + 'measured') ?? [],
       remaining: m.get(P + 'remaining') ?? [],
       dependsOn: m.get(P + 'depends-on') ?? [],
+      constraints: m.get(P + 'constraint') ?? [],
     });
   }
   return items;
@@ -104,6 +107,7 @@ export function briefFor(item: Item, worktree: string, branch: string): string {
     `It is ${item.iri.replace(KB, 'kb:')} in static/reckons-roadmap.ttl. Read that entity in full first; what follows is quoted from it.`,
     '', 'MATT DECIDED (these bind you):', ...item.decided.map((d) => '- ' + d),
     ...(item.description ? ['', 'WHAT IT IS:', item.description] : []),
+    ...(item.constraints?.length ? ['', 'CONSTRAINTS (these bind you too):', ...item.constraints.map((c) => '- ' + c)] : []),
     ...(item.measured.length ? ['', 'ALREADY MEASURED (do not redo):', ...item.measured.map((m) => '- ' + m)] : []),
     ...(item.remaining.length ? ['', `IT IS ${item.status.toUpperCase()}; WHAT REMAINS (do this, not a rebuild):`, ...item.remaining.map((r) => '- ' + r)] : []),
     '', 'DONE WHEN (this is the test of your work):', item.doneTest,

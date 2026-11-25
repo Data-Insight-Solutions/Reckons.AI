@@ -48,6 +48,7 @@ describe('roadmap scheduler', () => {
     const b = briefFor(items.find((i) => i.id === 'F1')!, '/w', 'feat/f1-scheduled');
     expect(b).toContain('MATT, 2026-11-25: build alpha');
     expect(b).toContain('alpha works');
+    expect(briefFor({ ...items.find((i) => i.id === 'F1')!, constraints: ['NEVER A COMMAND'] }, '/w', 'b')).toContain('CONSTRAINTS (these bind you too):\n- NEVER A COMMAND');
     expect(stemOf('F58.9.19')).toBe('f58-9-19');
   });
 });

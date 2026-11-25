@@ -14443,3 +14443,22 @@ kb:logo-scene rdf:type ktype:Phase ;
     kpred:decided "MATT, 2026-11-25: 'We need Reckons.AI logo to become a whole scene, even in 3d, with the ocean theme existing assets first, and then the forest theme next.'" ;
     kpred:description "The turtle-with-a-graph-shell mark grows into a scene: the ocean scene composed from the assets the ocean space lists (turtle model, tide pool, bubbles, currents), rendered headless in Blender to stills and a short orbit, and shown as an entity in the theme space; the forest scene follows with the sloth and the branches once F298.3 exists." ;
     kpred:done-test "An ocean logo scene file (.blend source plus rendered stills and an orbit video under static/) built by a script from the ocean space's assets; shown on the ocean space's review page; the forest scene follows after the sloth is approved." .
+
+kb:theming kpred:decided "MATT, 2026-11-25 (chat): 'Theme space template needs to be one of the first Reckons.AI system connections that is customizable. The Reckons.AI UI and the plugin system should extend deep and far across the entire codebase, allowing customization of many if not all key functions of the UI.'" .
+
+kb:theme-space-ocean kpred:constraint "THE SPACE IS ALSO THE THEME'S DATA (Matt, 2026-11-25: the theme space template is one of the first customizable system connections). Each element entity carries kpred:theme-role (mascot, mascot-head, notify-icon, spaces-map-scene, logo, logo-scene, palette:bg, palette:surface, palette:accent, palette:data, ...) and kpred:theme-value (a colour as #rrggbb, or a served path), so F298.5 can load a theme from the space and a person can make their own by copying the space and changing values." .
+
+kb:theme-from-space rdf:type ktype:Phase ;
+    rdfs:label "F298.5 — the app's look loads from the active theme space: the first system connection a person can customize" ;
+    kpred:feature-id "F298.5" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:theming ;
+    kpred:depends-on kb:theme-space-ocean ;
+    kpred:relates-to kb:integration-plugin-sdk, kb:definition-spaces ;
+    kpred:decided "MATT, 2026-11-25: 'Theme space template needs to be one of the first Reckons.AI system connections that is customizable. The Reckons.AI UI and the plugin system should extend deep and far across the entire codebase, allowing customization of many if not all key functions of the UI.'" ;
+    kpred:description "A theme is a space. The app reads the theme-role / theme-value pairs of the chosen theme space and applies them: palette roles become the CSS variables (--bg, --surface, --accent, --data, ...), mascot roles replace Shelly's head and logo images, notify-icon the conch, spaces-map-scene the tide pool. Ocean (built in) and forest ship as spaces; a person copies one, changes values, and picks it in Settings. This is the first instance of the plugin direction (F61): a UI function whose behaviour is data in a space, not code." ;
+    kpred:constraint "SAFE BY CONSTRUCTION: a colour value must parse as #rrggbb (else ignored and reported); an asset must be a served path of this app or an asset stored in the space (no remote URL: the CSP allows none, and a theme must not make the app fetch from a stranger). Unknown roles are ignored. A theme with missing roles falls back to ocean role by role." ;
+    kpred:done-test "Unit tests: role extraction from a space, colour validation, path validation, fallback per role. Browser test: picking the forest space as the theme changes --accent and the mascot image; copying the ocean space, changing palette:accent and picking the copy changes the accent; a theme naming a remote URL is refused with a visible note." .
+
+kb:integration-plugin-sdk kpred:decided "MATT, 2026-11-25 (chat): 'The Reckons.AI UI and the plugin system should extend deep and far across the entire codebase, allowing customization of many if not all key functions of the UI.' The theme space (F298.5) is named as one of the first customizable system connections." .
