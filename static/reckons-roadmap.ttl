@@ -14525,3 +14525,15 @@ kb:persona-feature-behaviors rdf:type ktype:Phase ;
     kpred:description "Each persona carries a behavior description per feature, as statements in the space, not hidden prompt text: how it treats review (Shelly proposes, the sceptic asks for the source), reckoning (the sceptic argues the strongest objection), the queue (either may propose pause, resume, redefining a job, or stopping one, with its reason). The prompts are assembled from those statements." ;
     kpred:constraint "A PERSONA PROPOSES, THE PERSON DECIDES. Pause, resume, redefine and stop arrive as approval cards (F166.1.5); stopping is possible only for a job the app queued (F166.1.4), and a proposal to stop any other job says what the person would have to do themselves." ;
     kpred:done-test "Unit tests: the prompt for each persona is built from its behavior statements; a persona's queue proposal is a card, never an action; a stop proposal for a job the app did not queue explains the manual step instead of offering a button." .
+
+kb:theming kpred:decided "MATT, 2026-11-25 (chat, in a session since closed; picked up by the head session): 'Forest theme instead of conch lets do a bird, that is intelligent and sounds alarm for its fellow bird friends. ... The spaces list page should have branches of a tree representing the spaces, and the sloth hanging from the active branch / space. The starfish need to be much more appealing to the eye, the tidepool being high fidelity, and the background of the page blended into with the scene.' References he gave for the look: https://superspl.at/scene/106d9869 and https://superspl.at/scene/6dda9a31 (Gaussian-splat scenes)." .
+
+kb:ocean-theme-polish rdf:type ktype:Phase ;
+    rdfs:label "F298.7 — the ocean theme, polished: appealing starfish, a high-fidelity tide pool, and the page background blended into the scene" ;
+    kpred:feature-id "F298.7" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:theming ;
+    kpred:depends-on kb:theme-space-ocean ;
+    kpred:decided "MATT, 2026-11-25: 'The starfish need to be much more appealing to the eye, the tidepool being high fidelity, and the background of the page blended into with the scene.' Look references: https://superspl.at/scene/106d9869, https://superspl.at/scene/6dda9a31." ;
+    kpred:description "The Spaces map tide pool (src/lib/components/SpacesMap.svelte) gets generated starfish in the logo's faceted style (image model, then fit_svg, F298.6), a higher-fidelity pool (a splat or a rendered scene, per the references), and a page background that continues the scene instead of ending at a box. The forest counterpart (tree branches, the sloth on the active branch) is F298.2's." ;
+    kpred:done-test "Screenshots of the Spaces map before and after on desktop and phone, judged by Matt (kpred:needs-human-recheck: a look); the starfish assets come from the theme space; the map still lists every space and opens each." .
