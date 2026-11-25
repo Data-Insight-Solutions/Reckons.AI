@@ -38,16 +38,22 @@ async function expectLit(page: Page, names: string[]) {
   }, { timeout: 15_000 }).toBe(true);
 }
 
-/** The caption-derived label of each step's highlights, in story order. */
+/**
+ * The labels lit on each step, in story order: the step's highlights UNION whatever its
+ * node-set filter lights (the `leaps` filter lights BOTH leap nodes — the ring and the
+ * personal-space jump — so those two sets name each other). `no-type` and `islands` match
+ * nothing here (every entity is typed and graph-connected), so those steps light their
+ * highlights alone.
+ */
 const STEPS: { count: string; labels: string[] }[] = [
   { count: '1 / 8', labels: ['Matthew Roe'] },
   { count: '2 / 8', labels: ["Where I've worked", 'Univision', 'Submittable', 'Orange Logic', 'VF Corporation'] },
-  { count: '3 / 8', labels: ['Nonprofits and grants', 'Submittable'] },
+  { count: '3 / 8', labels: ['Nonprofits and grants', 'Submittable', 'Philanthropy Data Commons'] },
   { count: '4 / 8', labels: ['Ava Lions Club', 'Food Tokens'] },
   { count: '5 / 8', labels: ['Reckons.AI', 'The Claude Code figure'] },
-  { count: '6 / 8', labels: ['The ring and other 3D objects'] },
+  { count: '6 / 8', labels: ['The ring and other 3D objects', 'Off the clock'] },
   { count: '7 / 8', labels: ['The Saturday farmers market', 'Food Tokens'] },
-  { count: '8 / 8', labels: ['Off the clock'] },
+  { count: '8 / 8', labels: ['Off the clock', 'The ring and other 3D objects'] },
 ];
 
 test('the showcase walk plays through muted, and the last step leaps to the personal space', async ({ page }) => {
