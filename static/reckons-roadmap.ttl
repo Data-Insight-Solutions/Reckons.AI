@@ -14475,3 +14475,53 @@ kb:logo-clean-vector rdf:type ktype:Phase ;
     kpred:measured "2026-11-25: static/svg/ReckonsAI-Logo.svg is 1,000,561 bytes of 2,202 auto-traced paths (an Inkscape trace of a raster); ReckonsAI-LogoText.svg 371,794 bytes, ReckonsAI-Icons.svg 378,583 bytes." ;
     kpred:description "The same generator as the sloth (seeded low-poly facets, lit from the top left, the graph motif on the shell) draws the turtle from named parts: shell dome, rim, head, neck, flippers, tail, with the shell's network drawn from the triangulation of its nodes. Same look as the current mark, a few hundred shapes, tens of kilobytes, and editable as numbers." ;
     kpred:done-test "A generated turtle SVG Matt approves beside the current logo; under 60 KB; the generator committed with a --check that the file is up to date; the app's logo references swapped only after approval." .
+
+# F102.1-F102.4 — the council revived as two personas in chat, on the person's own subscriptions (Matt, 2026-11-25).
+kb:poseidons-council kpred:decided "MATT, 2026-11-25 (chat): 'New idea reviving some of the ai council, lets do it but with Claude and OpenAI. We will need subscription based local chats, probably two terminals running them. Then, we need to duplicate the Shelly chat panel, to allow for two seperate persona's Shelly and Anti-Shelly or Shelly and Sharky, or whatever. The second persona, should be generate assets based on the user's chat with them. A persona builder, then leading into image prompt and 3d gen. The second persona is unique to each person, but could be a pessimist, instead of a normal optimist the other chatbot play devils advocate. Prompt descriptions of their personality and behaviors with the Reckons.AI features, even pausing jobs and suggesting job re-define or stopping a job.'" .
+
+kb:subscription-chat-bridge rdf:type ktype:Phase ;
+    rdfs:label "F102.1 — chat through the person's own Claude and ChatGPT subscriptions: the local CLIs, each in its own process, reached through the local worker" ;
+    kpred:feature-id "F102.1" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:poseidons-council ;
+    kpred:relates-to kb:queue-status-bridge ;
+    kpred:decided "MATT, 2026-11-25: 'We will need subscription based local chats, probably two terminals running them.'" ;
+    kpred:measured "2026-11-25, this machine: Claude Code 2.1.72 (claude -p) and Codex CLI 0.144.6 (codex exec) installed and signed in." ;
+    kpred:description "Two long-running local chat processes, one per CLI (claude -p for Claude, codex exec for ChatGPT), each started like the queue worker and visible in agent:watch. The app sends a chat turn as a typed request through the connected workspace folder (the F166.1.2 transport, never a server port and never a command) naming the provider, the persona and the message; the process answers into a reply file the app reads. Each provider is opt-in in Settings, off by default, and names which subscription it uses." ;
+    kpred:constraint "THE APP NEVER WRITES A COMMAND OR A FLAG. It writes a message and a provider name; the host process builds the CLI call itself, with no tool permissions beyond answering (no file edits, no shell), so a chat turn cannot make either CLI act on the machine." ;
+    kpred:open-question "TERMS, 2026-11-25: whether each provider's consumer terms allow its CLI to answer chat for an app the subscriber runs for themself is NOT verified here. Check Anthropic's and OpenAI's current terms before this ships to anyone but Matt; until then it is a personal local option, described as such, and the metered API keys remain the supported path (subscriptions and metered API use stay separate rails)." ;
+    kpred:done-test "Unit tests for the request and reply files and the refusal of anything but a known provider and persona; a real run on this machine: a request names claude, a reply arrives from claude -p; the same for codex exec; the CLI calls carry no edit or shell permission (asserted in the test of the argv builder)." .
+
+kb:second-persona-panel rdf:type ktype:Phase ;
+    rdfs:label "F102.2 — a second persona beside Shelly: two chat panels, each its own persona and provider, answering the same question their own way" ;
+    kpred:feature-id "F102.2" ;
+    kpred:has-status "planned" ;
+    kpred:priority "high" ;
+    kpred:part-of kb:poseidons-council ;
+    kpred:depends-on kb:subscription-chat-bridge ;
+    kpred:decided "MATT, 2026-11-25: 'we need to duplicate the Shelly chat panel, to allow for two seperate persona's Shelly and Anti-Shelly or Shelly and Sharky, or whatever ... could be a pessimist, instead of a normal optimist the other chatbot play devils advocate.'" ;
+    kpred:description "The Shelly panel becomes an instance: Shelly (the optimist, the default) and a second persona open side by side on a desktop and as two tabs of one sheet on a phone. A message can go to one or to both; asked together, the second answers after reading Shelly's reply and argues the other side. Sources outrank both (kb:poseidons-council principle): where they disagree and a cited passage settles it, the passage wins." ;
+    kpred:constraint "NO NEW NAVIGATION TAB. The second persona opens from Shelly's panel, where the reader already goes." ;
+    kpred:done-test "Browser test (mock providers): two panels open, each with its own persona name and provider; a message sent to both gets Shelly's reply then the second's, which can quote Shelly's; a phone shows them as two tabs of one sheet; closing one leaves the other. Unit tests for the persona prompt assembly." .
+
+kb:persona-builder rdf:type ktype:Phase ;
+    rdfs:label "F102.3 — the persona builder: the second persona is made with the person in chat, then drawn and built in 3D from that chat" ;
+    kpred:feature-id "F102.3" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:poseidons-council ;
+    kpred:depends-on kb:second-persona-panel, kb:shelly-job-queue ;
+    kpred:decided "MATT, 2026-11-25: 'The second persona, should be generate assets based on the user's chat with them. A persona builder, then leading into image prompt and 3d gen. The second persona is unique to each person.'" ;
+    kpred:description "A short guided chat settles the persona: name, temperament (pessimist, sceptic, devil's advocate, or the person's own), voice, and look. The persona is saved as entities in the person's space (the same persona vocabulary the import already reads). Its look becomes an image prompt in the logo's construction (low-poly facets, the graph motif), queued as a local image job, fitted to a clean SVG (fit_svg, F298.6), then an image-to-3D job; the results attach to the persona as its avatar." ;
+    kpred:done-test "Browser test (mock provider, synthetic runner): the builder chat writes a persona to the space; the look step queues one image job then one 3D job as ONE approval (F166.1.2); the finished assets attach to the persona and its panel shows the avatar. A real run on this machine for Matt's own persona (kpred:needs-human-recheck: the look is judged by a person)." .
+
+kb:persona-feature-behaviors rdf:type ktype:Phase ;
+    rdfs:label "F102.4 — what each persona does with Reckons.AI's features, written down: including pausing the queue and proposing to redefine or stop a job" ;
+    kpred:feature-id "F102.4" ;
+    kpred:has-status "planned" ;
+    kpred:part-of kb:poseidons-council ;
+    kpred:depends-on kb:second-persona-panel, kb:shelly-manages-queue ;
+    kpred:decided "MATT, 2026-11-25: 'Prompt descriptions of their personality and behaviors with the Reckons.AI features, even pausing jobs and suggesting job re-define or stopping a job.'" ;
+    kpred:description "Each persona carries a behavior description per feature, as statements in the space, not hidden prompt text: how it treats review (Shelly proposes, the sceptic asks for the source), reckoning (the sceptic argues the strongest objection), the queue (either may propose pause, resume, redefining a job, or stopping one, with its reason). The prompts are assembled from those statements." ;
+    kpred:constraint "A PERSONA PROPOSES, THE PERSON DECIDES. Pause, resume, redefine and stop arrive as approval cards (F166.1.5); stopping is possible only for a job the app queued (F166.1.4), and a proposal to stop any other job says what the person would have to do themselves." ;
+    kpred:done-test "Unit tests: the prompt for each persona is built from its behavior statements; a persona's queue proposal is a card, never an action; a stop proposal for a job the app did not queue explains the manual step instead of offering a button." .
