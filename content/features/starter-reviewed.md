@@ -1,7 +1,7 @@
 ---
 title: "Getting started arrives already reviewed"
 slug: "starter-reviewed"
-order: 1018
+order: 1024
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

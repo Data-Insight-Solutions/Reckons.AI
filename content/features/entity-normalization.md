@@ -1,7 +1,7 @@
 ---
 title: "Entity Normalization"
 slug: "entity-normalization"
-order: 1014
+order: 1019
 section: "Features"
 parent: "ingest"
 template: doc
