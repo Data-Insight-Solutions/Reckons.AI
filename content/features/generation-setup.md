@@ -1,7 +1,7 @@
 ---
 title: "Generation tools and setup"
 slug: "generation-setup"
-order: 1017
+order: 1023
 section: "Features"
 parent: "story-system"
 template: doc

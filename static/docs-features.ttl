@@ -1127,3 +1127,84 @@ feat:MakingAssets
     kpred:relates-to    kb:cad-creation ;
     kpred:relates-to    kb:runner-connect-popup ;
     kpred:relates-to    kb:fusion-synthetic-captures .
+
+
+## =============================================================================
+## Owed for the v0.2.9 release gate — written 2026-11-26 from each feature's own
+## status and "not yet" notes in the roadmap. Each page relates (kpred:relates-to)
+## to every feature it covers; that link is what the release docs gate counts.
+## =============================================================================
+
+feat:DemoVideos
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:docs-video-embed ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "Demo videos made from the same steps the tests play" ;
+    skos:definition     "A demo video here is not a second script. It is a walk-through that already exists as a test, with a spoken line added to each step. Because the picture comes from the test running for real, a video can never show a step that the test did not pass: if a step fails, the recording stops and no video is made. SPEAKING. A step can carry one line to be spoken while it plays, and the walk-through can name a voice. Each line becomes one audio clip. If you have recorded the line yourself, your recording is used; otherwise the line is turned into speech, and a clip is reused until its words or voice change, so a re-render pays only for the lines you edited. Kokoro, a small voice model that runs on your own computer, speaks new and changed lines by default; a walk-through can still name a different voice, and one keeps its earlier voice from a hosted service (Hume). RECORDING. The walk-through runs in a browser at full-screen high-definition size, and each step holds until its line has finished plus a short pause. JOINING. One command, npm run demo:render -- --workflow=<name of the walk-through>, lays each clip over the recording at its step's start time and writes an ordinary video file, a captions file made from the same words, and a receipt: which version of the code and data it was made from, which voice spoke each line, and a fingerprint of the result. If any line used the hosted voice, the video's credits say so. ONE RUNNER FOR STORIES. A story (a guided tour stored with the facts it walks through) is played by a single runner. With recording off it is the browser test; with recording on it is the demo recorder. Every kind of step a story can declare, such as opening a page, clicking, typing, or checking that something is visible, is read the same way by both, and a check that fails stops the test and the recording together. SHOWING THE VIDEO ON A PAGE. A walk-through can point at a video file, and its documentation page, and the page of every feature it documents, then shows the video with captions and a still poster frame. A video over 10 MB is refused for the page, so pages stay light. WHICH VOICE. Several voices were compared on the same demo lines, including Kokoro and an openly licensed model from Hume called TADA, and the maintainer ranked them by ear without knowing which was which. Kokoro was chosen. That is one person's listening, not a measured quality score." ;
+    kpred:honest-note   "WHAT IS NOT DONE YET, AS OF 2026-11-26. No finished video file is embedded on any documentation page: the page-embedding code has only been tested with test data and has never run on a built site, and the page-ready output has never been produced from a full recording, because that waits for the maintainer to approve the spoken lines. The story runner passes its own tests with named gaps: for example it can start a generation job only through the story's own controls and a stand-in for the local job runner, never with a real model. Making a video needs ffmpeg installed on your computer and is run from the command line; nothing here is a button in the app." ;
+    skos:broader        feat:StorySystem ;
+    kpred:relates-to    kb:demo-step-narration ;
+    kpred:relates-to    kb:demo-narration-audio ;
+    kpred:relates-to    kb:demo-recorder ;
+    kpred:relates-to    kb:demo-mux ;
+    kpred:relates-to    kb:demo-narration-provider ;
+    kpred:relates-to    kb:narration-kokoro-vs-tada ;
+    kpred:relates-to    kb:docs-video-embed ;
+    kpred:relates-to    kb:story-recorder .
+
+feat:StoryVariety
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:story-variety ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "Every example story shows something different" ;
+    skos:definition     "The examples that come with the app each have a guided story. Left alone, they drift into telling the same tour with the same controls. A script now reads every story in every bundled example and lists what each one uses: which filters (for example, show only the facts you have confirmed, or only the links that jump elsewhere), which layouts (hub, timeline, force, hierarchy and others), which entities it highlights, which buttons it offers, which jumps elsewhere and which media. It fails when a story uses no filter at all, or when two stories use exactly the same group. Each story was then given its own mix, chosen for what its example is good at, and where a story's wording claimed more than the filter really did, the wording was corrected rather than the check relaxed. A SPECIFIC STORY: the Data Insight Solutions example's story now starts from its link, without a click on the notice that used to ask you to start it (the link ends in &story=...&autoplay=1), uses its own mix of filters and six layouts, and walks to the contact sheet of frames from the example 3D scan of a ring, reached through a link that selects that entity. That story is generated from a script, so a change to it is a change to the generator, never a hand edit." ;
+    kpred:honest-note   "THE CHECK COUNTS FEATURES, NOT QUALITY. It proves two stories differ in what they use; it cannot tell you the tour is good. In the last run it covered 11 stories in 14 files and passed (2026-11-25). For the ring step in the Data Insight Solutions story, the test checks that the right entity is selected, not how it looks on screen; a person has not yet watched that step. A story shows only what is built." ;
+    skos:broader        feat:GuidedWalks ;
+    kpred:relates-to    kb:story-variety ;
+    kpred:relates-to    kb:site-story-improved .
+
+feat:ShowcaseExample
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:showcase-claude-share ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "A showcase whose story plays from a link" ;
+    skos:definition     "An example can be unlisted: it has no card and no tab in the app, so it appears only to someone who has its link. The showcase is one such example. Its link, /about?example=<name>&story=<address of the story>&autoplay=1, opens it and starts its story by itself, with no sound, so it plays without a click. Each of the story's eight steps has a caption, lights part of the canvas, and changes the filter and the layout, so a first-time viewer sees different views of one body of facts rather than one picture. The last step leaps to a second, much smaller unlisted example. Both were written only from facts their owner chose to publish; they carry no phone number, street address, email or private person's name, and no pictures of people. A script guards that: a test fails if any such detail appears in either example. HOW MUCH CLAUDE CODE WROTE, MEASURED. The showcase states how much of Reckons.AI was written together with Claude Code. That number is never typed. A script reads the project's git history at a named commit, counts the non-merge commits whose message carries a Co-Authored-By line naming Claude, divides by all non-merge commits, and writes the fraction, the commit and the date into the example. A second mode of the script recomputes the figure at the recorded commit and fails if the stored one differs, so a hand-edited number is caught. At the first measurement, 2026-11-24, that was 1,473 of 1,706 commits, 86.3 percent." ;
+    kpred:honest-note   "WHAT THE FIGURE IS AND IS NOT. It is a count of commits, exactly as stated; it says nothing about how many lines, or how good, or who decided what. Its date is part of the claim: it describes the history at that commit and goes stale the moment more commits land. Unlisted examples are unlisted, not private: anyone given the link can open them, and the files ship with the app. The story's browser test plays it in the flat 2D drawing, because in 3D the label-hiding step can hide the very label a step is highlighting; 3D playback has not been shown to work step by step. If the owner later adds a scan of a hand-made object to the second example, it is not there yet." ;
+    skos:broader        feat:StorySystem ;
+    kpred:relates-to    kb:showcase-space ;
+    kpred:relates-to    kb:showcase-personal-space ;
+    kpred:relates-to    kb:showcase-claude-share .
+
+feat:CompareTwoDocuments
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:two-source-ingest ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "Compare two documents side by side as a Venn diagram" ;
+    skos:definition     "Put two documents next to each other and see what they have in common and where they differ. FEEDING IT: on the Ingest page, the compare-two tab (an entry on a page you already use, not a new tab in the main navigation) takes a name for the comparison and, for each side, a web address or a file (a PDF or plain text). Each side is read in turn by the same ingest you already use: the original is kept, the claims are pulled out, and they are checked against the facts already held. The pair is recorded as one named comparison, and every claim keeps the document it came from. While it runs, each side shows its stage and the seconds elapsed. If one side fails or is refused, it is shown as failed with the reason, and the comparison still opens with the side that arrived. When it finishes, you get a direct link of the form /?layout=compare&a=<first>&b=<second>. SEEING IT: that link draws the comparison on the main canvas as a Venn diagram, not on a separate screen. Claims only the first document makes sit in one lobe, in blue; claims only the second makes sit in the other, in red; claims both make sit in the overlap, in purple. Two claims count as shared when they mean nearly the same thing, even in different words, not only when the text is identical. The three colors are defaults you can change and revert. The panel shows a legend and a count for each color. The layout only reads the facts; turning it off leaves them exactly as it was. If fewer than two documents exist yet, the panel says what it needs." ;
+    kpred:honest-note   "EARLY (SCAFFOLDED), AS OF 2026-11-26. Ingesting two documents was exercised only with a pretend reader (about 2 seconds for a whole run on that); it has not been measured with a real model, nor with a real PDF, which needs a Mistral key, and a side without one fails with the Document tab's message. Nobody has timed it against the five-minute bound on a real machine. The Venn layout passes its unit and browser tests on made-up data, but it has not yet been checked on a copy of real data. Whether a color choice applies everywhere or only here is not settled." ;
+    skos:broader        feat:Compare ;
+    kpred:relates-to    kb:two-source-ingest ;
+    kpred:relates-to    kb:split-canvas .
+
+feat:DetailLevels
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:entity-detail-levels ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "Detail levels: show the main entities first, the evidence last" ;
+    skos:definition     "With many facts, the canvas draws too many entities to read. The detail control lets you start with the few that matter, such as the hubs and the decisions, and step down toward the finer judgments and evidence. For that to work every entity needs a level. Each entity now gets one: by default, the highest level among the facts that mention it, and a person can override it by setting a detail-level value on the entity itself. Two things were also fixed. The nine kinds of bookkeeping the review process stores (such as a fact's status, its confidence and its review notes) no longer count as content when levels are worked out; they are records. And evidence now has a meaning that can be computed: a fact is evidence when it has been reviewed and it supports a claim. Pending facts do not count." ;
+    kpred:honest-note   "SCAFFOLDED, NOT FINISHED, AS OF 2026-11-24. The goal was that each step of the control draws a different, non-empty group of entities on every bundled example. That is not met: on all four examples the evidence step draws the same entities as the judgments step, and on two of them the decisions step draws none. The browser test therefore reports how many entities each step draws on the Quick-Start example (48 for all, 18 for detailed, 11 for evidence, 11 for judgments, 6 for decisions, 2 for hubs) instead of asserting that they differ. Your own facts will mostly still show most facts as judgments until more of their predicates are classified." ;
+    skos:broader        feat:Graph3D ;
+    kpred:relates-to    kb:entity-detail-levels .
+
+feat:HumanRecheck
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:human-recheck ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "A person's check has a date, and goes stale" ;
+    skos:definition     "Some things no automated test can see, such as whether a voice sounds right or a story reads well on a real phone. A person looks, and says so. But that look covers only the code that ran at the time. This feature makes the look a dated record instead of a permanent approval. Two notes can be put on any item in the project's own plan: one records a check (a date, what was checked and by whom); the other asks for one (a date, what a person must look at, and why no test covers it). A script reads all of them and lists each item as OPEN (asked for and not yet checked), STALE (checked, but a file it depends on has changed since), or CURRENT. It compares dates with the version history, so a STALE line is a reason to look again, not proof that anything broke. The first requests were recorded on the Kokoro voice and on the Data Insight Solutions story in 3D on a real phone." ;
+    kpred:honest-note   "SCAFFOLDED, AS OF 2026-11-25. The script is built and has 7 unit tests, but it is not yet part of the standing group of checks that run with every change, and its list is not yet shown on the release review page, so for now it only prints a list when someone runs it. It is a prompt for a person, not a gate." ;
+    skos:broader        feat:AgentTrustChecks ;
+    kpred:relates-to    kb:human-recheck .
+
+feat:OpenFromGithub
+    rdf:type            ktype:Concept ;
+    skos:broadMatch     kb:open-from-github ;   # status shown is that of the least finished feature the page covers
+    rdfs:label          "Open a .ttl file from a GitHub link" ;
+    skos:definition     "Facts saved as a .ttl file in a public GitHub repository can be opened in Reckons.AI from a link. The link looks like /about?gh=<owner>/<repo>/<path to the file>.ttl, with @<branch or tag> added at the end to pick a version; the address of the file's page on github.com, or its raw link, works too. The app first shows what it is about to open and asks. Only when you press Open does your browser fetch the file straight from GitHub, with no Reckons.AI server in between, and store it on this device, apart from your own work, then open it with Shelly ready. Press Cancel and nothing is fetched or stored. This works for files too large for GitHub to display: the project's own plan, over 2 MB, opens this way." ;
+    kpred:honest-note   "LIMITS. Public repositories only, and no sign-in; the path must be plain folder and file names. Anyone can write such a link, which is why it always asks first. The copy on your device is a snapshot: reopening it does not yet fetch a newer version, and it is not yet a read-only open. A button or badge for it in the project's README is not there yet, and would work only once this release is live. Built and tested with 4 unit tests and 4 browser tests as of 2026-11-25." ;
+    skos:broader        feat:MultiKB ;
+    kpred:relates-to    kb:open-from-github .

@@ -1,7 +1,7 @@
 ---
 title: "Generated media: checks, retries, settings and what it costs"
 slug: "generation-quality"
-order: 1016
+order: 1022
 section: "Features"
 parent: "generation-setup"
 template: doc

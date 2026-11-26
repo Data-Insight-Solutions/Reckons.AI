@@ -1,7 +1,7 @@
 ---
 title: "Where a machine's row goes in Review: claim, question or finding"
 slug: "review-row-lanes"
-order: 1063
+order: 1070
 section: "Features"
 parent: "review-system"
 template: doc
