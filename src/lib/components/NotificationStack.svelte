@@ -42,6 +42,15 @@
   const collapsed = $derived(
     userToggle ?? (mobileSheetWantsCollapse || (routeWantsCollapse && !hasImportant))
   );
+  /**
+   * Closing ONE notice closes one notice (Matt, 2026-11-26: "I closed a notification, and all of them closed?"). On a
+   * page where the tray normally folds into the bell, an important notice holds it open; closing that one used to
+   * fold the tray and hide the rest, which looked like they had all gone. While others remain, the tray stays open.
+   */
+  function closeOne(n: { id: string; important?: boolean }) {
+    if (notifications().length > 1 && !collapsed) userToggle = false;
+    dismissNotification(n.id);
+  }
   const visibleLimit = $derived(isMobile() ? 1 : MAX_VISIBLE);
   // Apply the mobile limit only after promoting urgent guidance. Otherwise an
   // older ordinary notice can occupy the single visible slot while the alert
@@ -111,11 +120,11 @@
               {#if n.action.href}
                 <a class="notif-action" href={n.action.href}>{n.action.label}</a>
               {:else}
-                <button class="notif-action" onclick={() => { n.action?.onclick?.(); dismissNotification(n.id); }}>{n.action.label}</button>
+                <button class="notif-action" onclick={() => { n.action?.onclick?.(); closeOne(n); }}>{n.action.label}</button>
               {/if}
             {/if}
           </div>
-          <button class="notif-close" onclick={() => dismissNotification(n.id)} aria-label="dismiss">✕</button>
+          <button class="notif-close" onclick={() => closeOne(n)} aria-label="dismiss">✕</button>
         </div>
       {/each}
       {#if notifications().length > visibleLimit}
