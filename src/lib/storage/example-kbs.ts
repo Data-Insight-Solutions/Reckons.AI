@@ -80,6 +80,19 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     triples: 209
   },
   {
+    // F34.5: the release's visual tests, for manual review.
+    // Unlisted 2026-11-12 (Matt: review examples are not public); still opened by /about?example=review-0.2.9 for the F34.5 release review.
+    id: 'review-0.2.9',
+    unlisted: true,
+    icon: '✓',
+    title: 'Review 0.2.9',
+    body: 'The main workflows of v0.2.9 as visual tests: each step with its screenshot and what the test checks, ready for you to mark pass, fail or a note.',
+    file: '/review-0.2.9.ttl',
+    space: 'Review 0.2.9',
+    entities: 42,
+    triples: 317
+  },
+  {
     // F300.5: UNLISTED, because the Getting started space is offered by the welcome page's own button, not as a card.
     // It is listed here so the README path's story, which lives INSIDE it, resolves through the same table as the other walks.
     id: 'getting-started',
