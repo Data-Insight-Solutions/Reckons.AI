@@ -26,7 +26,7 @@ Guided walkthroughs defined as triples using the story: vocabulary. Steps can hi
 
 **[A showcase whose story plays from a link](../features/showcase-example)**
 
-An example collection can be unlisted: it has no card and no tab in the app, so it appears only to someone who has its link.
+An example can be unlisted: it has no card and no tab in the app, so it appears only to someone who has its link.
 
 **[Agent setup and installation permissions](../features/agent-setup)**
 

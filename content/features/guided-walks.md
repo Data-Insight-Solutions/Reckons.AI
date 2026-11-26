@@ -29,4 +29,4 @@ EARLY. Only the Triple Check walkthrough uses the buttons so far; the other exam
 
 **[Every example story shows something different](../features/story-variety)**
 
-The example collections that come with the app each have a guided story.
+The examples that come with the app each have a guided story.

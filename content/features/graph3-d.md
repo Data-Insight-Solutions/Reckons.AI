@@ -37,4 +37,4 @@ A space can have a background behind its 3D graph.
 
 **[Detail levels: show the main entities first, the evidence last](../features/detail-levels)** — **scaffolded**
 
-A large collection draws too many entities to read.
+With many facts, the canvas draws too many entities to read.

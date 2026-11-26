@@ -35,7 +35,7 @@ Cross-reference entities between graphs.
 
 **[Open a .ttl file from a GitHub link](../features/open-from-github)**
 
-A collection saved as a .ttl file in a public GitHub repository can be opened in Reckons.AI from a link.
+Facts saved as a .ttl file in a public GitHub repository can be opened in Reckons.AI from a link.
 
 ## Related
 
