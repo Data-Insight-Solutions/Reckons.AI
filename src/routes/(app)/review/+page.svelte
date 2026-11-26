@@ -775,6 +775,17 @@
   // review graph viewer needs to be more reactive to what you are reviewing... manual filter and view
   // setting changes makes it much worse." `followReview` off is the old whole-graph picture.
   let followReview = $state(true);
+  /**
+   * In follow mode the right panel follows too (Matt, 2026-11-26: "a bit difficult to see where to approve, even in
+   * Follow the review mode ... the follow review queue didn't filter the right side panel at all"): one card for the
+   * group under review, its facts, and plain confirm / reject / skip. The full list is one click away.
+   */
+  let showFullList = $state(false);
+  const followIndex = $derived(activeGroup ? reviewGroups.findIndex((g) => g.key === activeGroup.key) : -1);
+  function skipGroup() {
+    if (reviewGroups.length < 2 || followIndex < 0) return;
+    activeGroupKey = reviewGroups[(followIndex + 1) % reviewGroups.length].key;
+  }
   const reviewScope = $derived.by(() => {
     const entries = activeGroup?.entries ?? shownEntries;
     return {
@@ -1690,7 +1701,7 @@
   <div class="resize-handle" class:active={isDragging} onpointerdown={onResizeStart}></div>
 
   <!-- ── RIGHT: Review panel ───────────────────────────────────────────── -->
-  <aside class="review-panel" style="width:{panelWidth}px">
+  <aside class="review-panel" class:following={scoped && !showFullList} style="width:{panelWidth}px">
     <div class="rp-header">
       <h2 class="rp-title">review</h2>
       <p class="rp-sub mono" data-testid="review-pending-count">
@@ -1861,6 +1872,35 @@
               </div>
             </SwipeCard>
           {/snippet}
+
+          {#if scoped && !showFullList && activeGroup}
+            <section class="follow-card" data-testid="follow-card" aria-label="Reviewing: {activeGroup.label}">
+              <div class="fc-head">
+                <span class="fc-pos mono">group {followIndex + 1} of {reviewGroups.length}</span>
+                <h3 class="fc-title">{activeGroup.label}</h3>
+                <span class="fc-count mono">{activeGroup.entries.length} {activeGroup.entries.length === 1 ? 'fact' : 'facts'} to decide</span>
+              </div>
+              <div class="fc-actions">
+                <button class="fc-btn fc-confirm" onclick={() => acceptEntries(activeGroup.entries)} disabled={isProcessing} data-testid="follow-confirm-all">✓ Confirm all {activeGroup.entries.length}</button>
+                {#if confirmRejectKey === activeGroup.key}
+                  <button class="fc-btn fc-reject" onclick={() => rejectEntries(activeGroup.entries)} disabled={isProcessing}>Yes, reject all {activeGroup.entries.length}</button>
+                  <button class="fc-btn" onclick={() => (confirmRejectKey = null)}>Keep them</button>
+                {:else}
+                  <button class="fc-btn fc-reject" onclick={() => (confirmRejectKey = activeGroup.key)} disabled={isProcessing}>✕ Reject all</button>
+                {/if}
+                <button class="fc-btn" onclick={skipGroup} disabled={reviewGroups.length < 2} data-testid="follow-skip">Skip → next group</button>
+              </div>
+              {#if bulkResult}<p class="fc-result mono" role="status">{bulkResult}</p>{/if}
+              <p class="fc-hint">Or decide each fact below.</p>
+              <div class="entry-list">
+                {#each activeGroup.entries as e (e.incoming.id)}
+                  {@render entryCard(e)}
+                {/each}
+              </div>
+              <button class="fc-more mono" onclick={() => (showFullList = true)} data-testid="follow-show-all">Show the full review list ({shownEntries.length} facts in {reviewGroups.length} groups)</button>
+            </section>
+          {:else}
+            {#if scoped && showFullList}<button class="fc-more mono" onclick={() => (showFullList = false)}>Back to just this group</button>{/if}
 
           <!-- F53/F83/F80.1 review-at-scale: an honest headline, then the contested few, then
                facts grouped into entity cards (decide about things, not rows). The per-fact
@@ -2212,6 +2252,7 @@
                 {@render entryCard(e)}
               {/each}
             </div>
+          {/if}
           {/if}
         {/if}
       {/if}
@@ -3721,4 +3762,19 @@
       flex-basis: 100%;
     }
   }
+  /* Follow mode: the panel follows the group under review (Matt, 2026-11-26). */
+  .review-panel.following .summary, .review-panel.following .gates, .review-panel.following .ds-cards { display: none; }
+  .follow-card { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem; margin-bottom: 0.75rem;
+    border: 1px solid var(--accent); border-radius: var(--rad-md, 10px); background: var(--surface-2); }
+  .fc-head { display: flex; flex-direction: column; gap: 0.15rem; }
+  .fc-pos, .fc-count { font-size: 0.75rem; color: var(--muted); }
+  .fc-title { margin: 0; font-size: 1.1rem; color: var(--ink); }
+  .fc-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .fc-btn { min-height: 44px; padding: 0.45rem 1rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-size: 0.95rem; }
+  .fc-btn:disabled { opacity: 0.45; cursor: default; }
+  .fc-confirm { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .fc-reject { border-color: var(--danger); color: var(--danger); }
+  .fc-result { margin: 0; font-size: 0.8rem; color: var(--accent); }
+  .fc-hint { margin: 0; font-size: 0.8rem; color: var(--ink-2); }
+  .fc-more { align-self: flex-start; background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 0.78rem; padding: 0.25rem 0; }
 </style>

@@ -1310,3 +1310,6 @@ code:test-e2e kpred:has-file "tests/e2e/open-from-github.test.ts" .
 code:scripts kpred:has-file "scripts/content/option-review-space.ts", "scripts/__tests__/option-review-space.test.ts" .
 code:rdf kpred:has-file "src/lib/rdf/reckoning-written.ts", "src/lib/rdf/__tests__/reckoning-written.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/option-review-space.test.ts" .
+
+# Review follow mode: the right panel follows the group under review (2026-11-26).
+code:test-e2e kpred:has-file "tests/e2e/review-follow-panel.test.ts" .
