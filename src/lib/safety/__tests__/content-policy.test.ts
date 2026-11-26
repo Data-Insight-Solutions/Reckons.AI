@@ -37,6 +37,8 @@ describe('ETHICS_PREAMBLE', () => {
     expect(ETHICS_PREAMBLE).toContain('violence');
     expect(ETHICS_PREAMBLE).toContain('minors');
     expect(ETHICS_PREAMBLE).toContain('slavery');
+    // The fourth of the four prohibitions COUNSEL-BRIEF.md cites this test for.
+    expect(ETHICS_PREAMBLE).toMatch(/weapons of mass destruction/i);
   });
 
   it('encourages academic discussion', () => {

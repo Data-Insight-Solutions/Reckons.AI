@@ -50,13 +50,15 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
-import { jobResultPath, resultsDir, takeJobResult, addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
+import { jobResultPath, resultsDir, takeJobResult, addJobs, chainBlocked, chainStallReason, isGpuJob, isPaused, jobWatchTier, setPaused, mutateQueue, needsOllama, newJob, orderQueue, pickNext, readDone, readQueue, readWorker, workerStep, writeWorker, type DoneJob, type QueueJob, type WorkerState } from './session-queue.js';
 import { readCircuitCache } from './job-state.js';
 import { readGpuVerdict } from './session-gpu.js';
+import { chooseRoute, fetchModelSizes, fetchResidentModels, readRoutingTable, recordRouteAttempt, type RouteChoice } from './model-routing.js';
 import { loadRamLimits, ramStartVerdict, ramWatchVerdict, readOllamaResidency, readRamSample, unloadOllamaModels, type RamLimits } from './session-ram.js';
 import { backlogHolds, DEFAULT_HOLD_UNREVIEWED, doneSuccesses, dueAll, heldSchedules, loadRecurring, mergeSuccesses, selectDue } from './session-schedule.js';
 import { loadDeviceConfig } from './device-config.js';
 import { GenerationRunner } from '../content/generation-runner.js';
+import { JobChannel } from './space-channel.js';
 import { openByProducer, tallyWorkspace } from '../offline/lib/proposal-tally.js';
 
 const OLLAMA = (process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434').replace(/\/+$/, '');
@@ -91,16 +93,24 @@ type RunResult = { code: number; guard?: string };
  * Runs one job through job-watch and watches system RAM while it runs (F74.11). A RAM guard verdict
  * stops the whole job: SIGTERM to its process group, SIGKILL 5 s later if anything is left.
  */
-function runJob(job: QueueJob, limits: RamLimits): Promise<RunResult> {
+/** Resolve a job's model from its kind (or its explicit override) against live Ollama sizes and RAM. */
+async function routeJob(job: QueueJob, availMiB: number | null, floorMiB: number): Promise<RouteChoice> {
+  let table;
+  try { table = readRoutingTable(); } catch (e) { return { ok: false, code: 'unknown-kind', reason: `routing table unreadable: ${(e as Error).message}`, skipped: [] }; }
+  const [sizes, resident] = await Promise.all([fetchModelSizes(OLLAMA), fetchResidentModels(OLLAMA)]);
+  return chooseRoute({ kind: job.kind, override: job.model, table, sizes, availMiB, floorMiB, resident });
+}
+
+function runJob(job: QueueJob, limits: RamLimits, model?: string): Promise<RunResult> {
   const jobWatch = path.join(path.dirname(fileURLToPath(import.meta.url)), 'job-watch.ts');
   return new Promise((resolve) => {
     // detached = the job gets its own process group. job-watch passes SIGTERM only to its direct child, and a
     // `bash -c "npx tsx …"` chain can leave the grandchild holding the Ollama request alive; a group kill reaches it,
     // and closing that request is what makes Ollama abort a load in progress (journal, 2026-11-04 12:39:07).
-    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, ...(needsOllama(job) ? [] : ['--tier=script']), '--', ...job.argv], {
+    const child = spawn(process.execPath, [...process.execArgv, jobWatch, `--name=${job.name}`, ...(jobWatchTier(job) ? [`--tier=${jobWatchTier(job)}`] : []), '--', ...job.argv], {
       // A job that does not use Ollama gets no model verdict either: loading a reader model between
       // two generation stages would only compete with the next stage for VRAM.
-      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '', RECKONS_JOB_RESULT: jobResultPath(job.id),
+      cwd: job.cwd, stdio: 'inherit', env: { ...process.env, OLLAMA_BASE_URL: needsOllama(job) ? OLLAMA : '', ...(model ? { RECKONS_LOCAL_MODEL: model } : {}), RECKONS_JOB_RESULT: jobResultPath(job.id),
         // Pin the job to its physical GPU (gen-bench.ts's pin pattern; job-watch passes env through to the
         // real command, so both CUDA and the ggml/Vulkan path see it).
         ...(job.gpuIndex !== undefined ? { CUDA_VISIBLE_DEVICES: String(job.gpuIndex), GGML_VK_VISIBLE_DEVICES: String(job.gpuIndex) } : {}) }, detached: true,
@@ -159,8 +169,11 @@ async function main(): Promise<void> {
   // Ticks on its own timer: the browser rejects a capability heartbeat older than 30 s, and the main
   // loop can be busy for minutes running a job.
   const generation = workspace ? new GenerationRunner(path.resolve(workspace)) : undefined;
+  // F74.14: the job-request channel in the same folder, ticked with generation; one writer per file.
+  const channel = workspace ? new JobChannel(path.resolve(workspace)) : undefined;
   const genTimer = generation ? setInterval(() => {
     try { if (generation.tick()) wakeNow?.(); } catch (e) { console.error(`queue-worker: generation: ${String(e)}`); }
+    try { if (channel?.tick()) wakeNow?.(); } catch (e) { console.error(`queue-worker: job channel: ${String(e)}`); }
   }, 2000) : undefined;
   if (generation) { generation.tick(); console.log(`queue-worker: serving local generation for ${path.resolve(workspace!)} — connect that folder in Reckons.AI`); }
   let finished = 0;
@@ -231,7 +244,13 @@ async function main(): Promise<void> {
     // order is the one a start would take.
     const gate = checkGpu ? await readGpuVerdict(undefined, undefined, couldStart?.gpuIndex) : { ok: true as const };
     // F74.11: an idle GPU is not enough; a GPU job also needs system RAM free in case the model lands there.
-    const ram = checkGpu && gate.ok ? ramStartVerdict(readRamSample().mem, ramLimits) : { ok: true as const };
+    // Per-model gate (F74.6): a job with a kind or model is judged on ITS model's size + the floor; the flat gate stays for jobs that name neither.
+    let routed: RouteChoice | undefined;
+    if (checkGpu && gate.ok && couldStart && (couldStart.kind || couldStart.model)) routed = await routeJob(couldStart, readRamSample().mem?.availMiB ?? null, ramLimits.floorAvailMiB);
+    const ram = !(checkGpu && gate.ok) ? { ok: true as const }
+      : routed && routed.ok ? { ok: true as const }
+      : routed && routed.code !== 'sizes-unknown' ? { ok: false as const, kind: 'low' as const, reason: routed.reason }
+      : ramStartVerdict(readRamSample().mem, ramLimits);
     const gpuBlocked = !gate.ok ? gate.reason : !ram.ok ? ram.reason : undefined;
     const doneLog = readDone();
     const step = workerStep({ queue, running: false, ollamaUp: up, manualPause: isPaused(), gpuBlocked, done: doneLog });
@@ -254,7 +273,8 @@ async function main(): Promise<void> {
     const deputy = isDeputy(job);
     const headBefore = deputy ? gitHead(job.cwd) : '';
     mkdirSync(resultsDir(), { recursive: true });
-    const { code, guard } = await runJob(job, ramLimits);
+    const pick = job.kind || job.model ? (await routeJob(job, readRamSample().mem?.availMiB ?? null, ramLimits.floorAvailMiB)) : undefined;
+    const { code, guard } = await runJob(job, ramLimits, pick && pick.ok ? pick.model : undefined);
     finished++;
     let outcome: DoneJob['outcome'] = code === 0 ? 'passed' : code === 3 ? 'refused' : 'failed';
     let reason: string | undefined;
@@ -274,6 +294,7 @@ async function main(): Promise<void> {
         reason = `deputy exited clean but no new commit: head ${headBefore.slice(0, 8)} unchanged in ${job.cwd}`;
       }
     }
+    if (pick && pick.ok) recordRouteAttempt({ at: new Date().toISOString(), job: job.name, ...(job.kind ? { kind: job.kind } : {}), model: pick.model, rung: pick.rung, grade: pick.grade, outcome, ...(reason ? { reason } : {}) });
     const result = takeJobResult(job.id);
     mutateQueue((jobs) => ({
       jobs: jobs.filter((j) => j.id !== job.id),

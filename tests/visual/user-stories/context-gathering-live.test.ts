@@ -13,10 +13,11 @@
  *
  * Run: npm run test:live
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const OLLAMA = 'http://localhost:11434';
 const MODEL = process.env.LIVE_OLLAMA_MODEL || 'llama3.2:3b';
 
@@ -83,14 +84,14 @@ test('gather context from a note — LIVE Ollama extraction', async ({ page }) =
   });
 
   await test.step('extract with the live model and land on compare', async () => {
-    await page.getByRole('button', { name: /extract facts/i }).click();
+    await page.getByRole('button', { name: /extract statements/i }).click();
     // Isolate live EXTRACTION: decline the (separate) embedding-model download so
     // the semantic dedup step falls back to structural.
     await page
       .getByRole('button', { name: /not now/i })
       .click({ timeout: 20_000 })
       .catch(() => {});
-    await page.waitForURL(/\/compare/, { timeout: 90_000 });
+    await page.waitForURL(/\/review\?view=compare/, { timeout: 90_000 });
     await page.waitForTimeout(2000);
     await screenshotTo(page, 'context-gathering-live', '02-compare-live');
   });

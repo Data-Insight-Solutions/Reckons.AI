@@ -15,10 +15,11 @@
  *
  * Free and offline: tesseract.js (WASM) does the OCR — no API key, runs in CI.
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { ocrScreenshot, normalizeOcr } from '../vision-local';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 /** Seed a rendered graph via the landing page's "Getting started" (loads the everyday starter
  *  graph as confirmed facts and navigates to the graph view). */

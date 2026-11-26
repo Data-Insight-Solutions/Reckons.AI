@@ -18,11 +18,12 @@
  *
  * Screenshots: tests/visual/screenshots/async-questions/
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
 import { evalStable } from '../eval-stable';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const SHOTS = 'async-questions';
 
 const KB = 'urn:kbase:concept/';

@@ -35,3 +35,10 @@ describe('model inventory', () => {
     expect(withTag('x:7b')).toBe('x:7b');
   });
 });
+
+describe('a doc comment is not a model default', () => {
+  it('skips a line that opens with /** (it named `name:latest` as missing, 2026-11-13)', () => {
+    expect(defaultsInSource('x.ts', '/** Ollama names a bare model `name:latest`; compare on that form. */')).toEqual([]);
+    expect(defaultsInSource('x.ts', "const model = 'qwen3-coder:latest';")).toHaveLength(1);
+  });
+});

@@ -17,9 +17,10 @@
  * The screenshots in tests/visual/screenshots/blog-authoring/ are the point; the assertions are
  * only the parts a machine can settle.
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const SHOTS = 'tests/visual/screenshots/blog-authoring';
 const TOUCH_MIN = 44;
 

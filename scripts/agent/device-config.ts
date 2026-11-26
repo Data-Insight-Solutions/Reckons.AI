@@ -34,6 +34,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Parser } from 'n3';
 import { mainCheckoutRoot } from '../offline/lib/main-workspace.js';
+import { readMeasuredSpace, type Measured } from './device-capabilities.js';
+import { deviceMeasuredPath } from './device-space-paths.js';
 
 const KPRED = 'urn:kbase:predicate/';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
@@ -116,7 +118,7 @@ export function resolveEntities(sources: string[], host: string, type: string): 
 
 // ── schedules (compiled form) ──────────────────────────────────────────────
 
-export type CompiledSchedule = { iri: string; label: string; command: string; every: string; network: boolean; tier?: string; harness?: string; firstPass: boolean; cwd?: string };
+export type CompiledSchedule = { iri: string; label: string; command: string; every: string; network: boolean; tier?: string; harness?: string; firstPass: boolean; cwd?: string; kind?: string; model?: string };
 
 export function compileSchedules(sources: string[], host: string): CompiledSchedule[] {
   const out: CompiledSchedule[] = [];
@@ -124,7 +126,7 @@ export function compileSchedules(sources: string[], host: string): CompiledSched
     const command = p.get(`${KPRED}command`);
     const every = p.get(`${KPRED}every`);
     if (!command || !every || p.get(`${KPRED}enabled`) === 'false') continue;
-    out.push({ iri, label: p.get(RDFS_LABEL) ?? iri, command, every, network: p.get(`${KPRED}network`) === 'true', tier: p.get(`${KPRED}tier`), harness: p.get(`${KPRED}harness`), firstPass: p.get(`${KPRED}first-pass`) === 'true', cwd: p.get(`${KPRED}cwd`) });
+    out.push({ iri, label: p.get(RDFS_LABEL) ?? iri, command, every, network: p.get(`${KPRED}network`) === 'true', tier: p.get(`${KPRED}tier`), harness: p.get(`${KPRED}harness`), firstPass: p.get(`${KPRED}first-pass`) === 'true', cwd: p.get(`${KPRED}cwd`), kind: p.get(`${KPRED}job-kind`), model: p.get(`${KPRED}job-model`) });
   }
   return out;
 }
@@ -175,15 +177,21 @@ export function loadDeviceConfig(root: string = mainCheckoutRoot(), host: string
     const c = JSON.parse(readFileSync(cachePath(), 'utf8')) as { key: string; value: Compiled };
     if (c.key === key) return c.value;
   } catch { /* no cache, or unreadable: recompile */ }
-  const sources = files.filter((f) => existsSync(f)).map((f) => readFileSync(f, 'utf8'));
-  let value: Compiled;
-  try { value = { thresholds: resolveThresholds(sources, host), schedules: compileSchedules(sources, host) }; }
-  catch (e) {
-    // A syntax error in the PRIVATE device.ttl must not take the watcher down: say so and use the defaults alone.
-    console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring ${devicePath()}`);
-    const safe = files.filter((f) => f !== devicePath() && existsSync(f)).map((f) => readFileSync(f, 'utf8'));
-    return { thresholds: resolveThresholds(safe, host), schedules: compileSchedules(safe, host) };
+  // A syntax error in ANY source must not take the watcher or the queue down: drop THAT file, name
+  // it, and keep the others. (2026-11-13: a bad quote in the tracked schedules.ttl was blamed on
+  // device.ttl, and the "fallback" re-parsed the broken file and crashed agent:queue anyway.)
+  const sources: string[] = [];
+  let dropped = false;
+  for (const f of files.filter((p) => existsSync(p))) {
+    const ttl = readFileSync(f, 'utf8');
+    try { new Parser().parse(ttl); sources.push(ttl); }
+    catch (e) {
+      dropped = true;
+      console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring ${f}`);
+    }
   }
+  const value: Compiled = { thresholds: resolveThresholds(sources, host), schedules: compileSchedules(sources, host) };
+  if (dropped) return value; // never cache a partial result: the error must repeat until the file is fixed
   try {
     mkdirSync(path.dirname(cachePath()), { recursive: true });
     const tmp = `${cachePath()}.${process.pid}.tmp`;
@@ -191,6 +199,19 @@ export function loadDeviceConfig(root: string = mainCheckoutRoot(), host: string
     renameSync(tmp, cachePath());
   } catch { /* an unwritable cache only costs a re-parse */ }
   return value;
+}
+
+/**
+ * The capabilities this device MEASURED (F269), from the private device space written by
+ * `npm run device:measure`; undefined when none was measured yet or the file does not parse (named on
+ * stderr, never fatal). The job runtime and the MCP job tools read the device through this, so what
+ * the device adds is seen once, the same way, by both.
+ */
+export function loadDeviceCapabilities(env: NodeJS.ProcessEnv = process.env): Measured | undefined {
+  const file = deviceMeasuredPath(env);
+  if (!existsSync(file)) return undefined;
+  try { return readMeasuredSpace(readFileSync(file, 'utf8')); }
+  catch (e) { console.error(`device-config: ${(e as Error).message.split('\n')[0]} — ignoring the device space`); return undefined; }
 }
 
 let hinted = false;
@@ -214,7 +235,8 @@ function main(): void {
     chmodSync(devicePath(), 0o600);
     console.log(`created ${devicePath()} (0600)`);
   } else if (cmd === 'show') {
-    console.log(JSON.stringify(loadDeviceConfig(), null, 2));
+    const caps = loadDeviceCapabilities();
+    console.log(JSON.stringify({ ...loadDeviceConfig(), capabilityTerms: caps ? Object.keys(caps.values).sort() : null, measuredAt: caps?.measuredAt ?? null }, null, 2));
   } else {
     console.error('Usage: device-config.ts migrate | init | show');
     process.exit(2);

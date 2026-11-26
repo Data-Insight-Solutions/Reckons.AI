@@ -4,6 +4,7 @@
   import { untrack } from 'svelte';
   import { ingest, buildIngestionPrompt, type IngestInput, type IngestProgress } from '$lib/stores/ingest.svelte';
   import { sources, statements } from '$lib/stores/kb.svelte';
+  import TwoSourceCompare from '$lib/components/TwoSourceCompare.svelte';
   import { commitPrecomputedIngest } from '$lib/ingest/precomputed';
   import type { Source } from '$lib/rdf/types';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
@@ -31,9 +32,9 @@
   import { createKb, registerStableId, switchToKb, getRegistry } from '$lib/storage/kb-registry';
   import { resolveImportTarget, uniqueKbName, parseGeneratedAt } from '$lib/storage/kb-import-target';
 
-  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo';
+  type Mode = 'note' | 'url' | 'document' | 'reminder' | 'triples' | 'drive' | 'calendar' | 'kb' | 'vault' | 'folder' | 'repo' | 'compare';
   let mode = $state<Mode>('note');
-  const MODES: readonly Mode[] = ['note', 'url', 'document', 'reminder', 'triples', 'drive', 'calendar', 'kb', 'vault', 'folder', 'repo'];
+  const MODES: readonly Mode[] = ['note', 'url', 'document', 'reminder', 'triples', 'drive', 'calendar', 'kb', 'vault', 'folder', 'repo', 'compare'];
 
   // Opened from the nav's add quick menu: /ingest?mode=url starts in that mode. An unknown value is
   // ignored rather than trusted — it arrives in a URL anyone can type.
@@ -190,7 +191,7 @@
         statements: stmts,
       });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${source.id}`);
+      goto(`/review?view=compare&source=${source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -232,7 +233,7 @@
         statements: stmts,
       });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${source.id}`);
+      goto(`/review?view=compare&source=${source.id}`);
     } catch (e) {
       if (e instanceof Error && e.message === 'Cancelled') return;
       error = e instanceof Error ? e.message : String(e);
@@ -340,7 +341,7 @@
       // try again, and clearing the form would throw away the text the user was about to edit.
       if (result.phase === 'cancelled') return;
       clearDraft(); // extraction succeeded — the note is safely in the graph now
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       // An aborted fetch surfaces as AbortError. That is the user's own instruction carried out,
       // not a fault, so it must never be shown in the error banner.
@@ -529,7 +530,7 @@
       }
       pendingGlbImports = new Map();
 
-      goto(`/compare?source=${sourceId}`);
+      goto(`/review?view=compare&source=${sourceId}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -702,7 +703,7 @@
       };
       const result = await ingest(input, (p) => { phase = p.phase; });
       if (result.phase === 'cancelled') return;
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -777,7 +778,7 @@
           calImportCount = 0;
           return;
         }
-        goto(`/compare?source=${firstSourceId}`);
+        goto(`/review?view=compare&source=${firstSourceId}`);
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -1114,7 +1115,7 @@
       );
       if (result.phase === 'cancelled') return;
       repoDone = true;
-      goto(`/compare?source=${result.source.id}`);
+      goto(`/review?view=compare&source=${result.source.id}`);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -1156,9 +1157,14 @@
   >calendar</button>
   <button class:active={mode === 'folder'} onclick={() => (mode = 'folder')}>folder</button>
   <button class:active={mode === 'repo'} onclick={() => (mode = 'repo')}>repo</button>
+  <button class:active={mode === 'compare'} data-testid="tab-compare" onclick={() => (mode = 'compare')}>compare two</button>
 </div>
 
-{#if mode !== 'kb' && mode !== 'drive' && mode !== 'calendar'}
+{#if mode === 'compare'}
+  <TwoSourceCompare />
+{/if}
+
+{#if mode !== 'kb' && mode !== 'drive' && mode !== 'calendar' && mode !== 'compare'}
 <div class="card form">
   {#if mode === 'url'}
     <label>
@@ -1218,7 +1224,7 @@
                 <span class="vault-error">{item.error}</span>
               {/if}
               {#if item.sourceId}
-                <a class="vault-review" href="/compare?source={item.sourceId}">review →</a>
+                <a class="vault-review" href="/review?view=compare&source={item.sourceId}">review →</a>
               {/if}
             </div>
             <span class="vault-status mono">{item.status}</span>
@@ -1299,11 +1305,11 @@
   {:else if mode === 'note'}
     <label>
       <span class="lbl mono">title</span>
-      <input type="text" bind:value={title} placeholder="what is this about" />
+      <input type="text" bind:value={title} placeholder="what is this about" data-testid="ingest-title" />
     </label>
     <label>
       <span class="lbl mono">body</span>
-      <textarea bind:value={body} rows="9" placeholder="write a note in your own words. it will be decomposed into facts."></textarea>
+      <textarea bind:value={body} rows="9" data-testid="ingest-text" placeholder="write a note in your own words. it will be decomposed into facts."></textarea>
     </label>
   {:else if mode === 'triples'}
     <p class="hint" style="margin-bottom: 0.25rem;">Add facts directly — no AI needed. Great for structured notes.</p>
@@ -1363,8 +1369,8 @@
           disabled={!canCopyPrompt}
           title="Build the prompt and paste the response from any LLM — no API key needed"
         >use any LLM</button>
-        <button class="primary" onclick={submit} disabled={!canSubmit}>
-          {busy ? 'extracting…' : 'extract facts →'}
+        <button class="primary" data-testid="ingest-submit" onclick={submit} disabled={!canSubmit}>
+          {busy ? 'extracting…' : 'extract statements →'}
         </button>
         {#if busy}
           <button class="btn-cancel mono" onclick={cancelIngest} disabled={cancelling}>

@@ -29,6 +29,7 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { buildHierarchyParentMaps, NAV_ORDER, NAV_LAYER } from '$lib/rdf/hierarchy';
   import SplatLayer, { type SplatItem } from './SplatLayer.svelte';
+  import { compareAnchorsFor, VENN, type CompareView, type CompareCategory } from '$lib/rdf/compare-venn';
   import { occluderRadius, projectedRadius } from './splat-occlusion';
   import { splatMapFrom, backgroundSplatFrom, splatOrientationFor, backgroundSettingsFrom, backgroundQuaternion, splatOriginOf, placementsFrom, placementWorld, qAboutY, type RoomFrame } from './splat';
   import { roomView, focalPick } from './room-view';
@@ -48,6 +49,7 @@
     historyTimestamp = null,
     sources = [],
     layout = 'force',
+    compare = null as CompareView | null,
     timelineZoom = 1,
     timelineCenter = null,
     timelineTimeSource = 'event' as 'event' | 'ingested',
@@ -81,7 +83,9 @@
     targetKey?: string | null;
     historyTimestamp?: number | null;
     sources?: any[];
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map' | 'compare';
+    /** F306.2: a comparison of two provenances drawn as a venn diagram (layout 'compare'). Draws only; changes nothing. */
+    compare?: CompareView | null;
     /** Camera angle. Null keeps the historical straight-on view, so existing baselines are
      *  unaffected; a spec aims the camera so a visual test can actually SEE the z axis. */
     cameraSpec?: CameraSpec | null;
@@ -286,6 +290,8 @@
     questionEnd?: boolean;
   };
   type Edge = {
+    /** The statement this edge draws (the compare layout colours by it). */
+    id?: string;
     a: Node; b: Node;
     predicate: string;
     confidence: number;
@@ -403,7 +409,7 @@
     if (!cam.isPerspectiveCamera) return;
     const sphere = new THREE.Sphere();
     new THREE.Box3().setFromPoints([...anchors.values()]).getBoundingSphere(sphere);
-    if (layout === 'source') sphere.radius += 4; // anchors mark cluster centers, not their extent
+    if (layout === 'source' || layout === 'compare') sphere.radius += 4; // anchors mark cluster centers, not their extent
     const previousTarget = orbitRef?.target ?? cameraTarget;
     const direction = cam.position.clone().sub(previousTarget);
     if (direction.lengthSq() === 0) direction.set(0, 0, 1);
@@ -539,7 +545,7 @@
       a.degree++; b.degree++;
       const pred = st.p.value.split('/').pop() ?? st.p.value;
       e.push({
-        a, b, predicate: pred, confidence: st.confidence,
+        id: st.id, a, b, predicate: pred, confidence: st.confidence,
         semanticDist: edgeSemanticDist(!isIRI(st.o), pred, st.confidence),
         standing: standingOf(st)
       });
@@ -1244,6 +1250,23 @@
       anchorStrength = 0.80;
       nodeColorMap = nodeColors;
       hubNodeKeys = [];
+    } else if (layout === 'compare' && compare) {
+      // F306.2: venn diagram on the z=0 plane. Same anchors as the 2D renderer (rdf/compare-venn.ts).
+      const pts = compareAnchorsFor(compare.model, nodes.map((n) => n.key));
+      const anchors = new Map<string, THREE.Vector3>();
+      for (const [k, p] of pts) anchors.set(k, new THREE.Vector3(p.x, p.y, 0));
+      activeAnchors = anchors;
+      fitStructuredCamera3D(anchors);
+      layoutMarkers = [
+        { key: 'cmp-a', pos: new THREE.Vector3(-VENN.OFFSET - 3, -VENN.RADIUS - 1.2, 0), label: compare.titleA, color: compare.colors.a },
+        { key: 'cmp-b', pos: new THREE.Vector3(VENN.OFFSET + 3, -VENN.RADIUS - 1.2, 0), label: compare.titleB, color: compare.colors.b },
+      ];
+      layoutRingRadii = [];
+      anchorStrength = 1.2;
+      const colors = new Map<string, string>();
+      for (const [k, c] of compare.model.entityCategory) colors.set(k, compare.colors[c]);
+      nodeColorMap = colors;
+      hubNodeKeys = [];
     } else if (layout === 'type') {
       const { anchors, markers } = buildTypeAnchors();
       activeAnchors = anchors;
@@ -1314,6 +1337,12 @@
   let lineGeomQ: THREE.BufferGeometry | undefined = $state();
   let lineSegProp: THREE.LineSegments | undefined = $state();
   let lineSegQ: THREE.LineSegments | undefined = $state();
+  // F306.2: in the compare layout each category's edges are drawn in its own colour from its own buffer.
+  const CMP_CATS = ['a', 'b', 'shared'] as const;
+  const cmpLinePositions: Record<CompareCategory, Float32Array> = {
+    a: new Float32Array(MAX_EDGES * 6), b: new Float32Array(MAX_EDGES * 6), shared: new Float32Array(MAX_EDGES * 6),
+  };
+  const cmpGeoms: Record<CompareCategory, THREE.BufferGeometry | undefined> = $state({ a: undefined, b: undefined, shared: undefined });
   let reportedReady = false;
 
   // Attach position attributes imperatively with a direct THREE import — survives
@@ -1321,6 +1350,10 @@
   $effect(() => {
     if (lineGeom && !lineGeom.getAttribute('position')) {
       lineGeom.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    }
+    for (const c of CMP_CATS) {
+      const g = cmpGeoms[c];
+      if (g && !g.getAttribute('position')) g.setAttribute('position', new THREE.BufferAttribute(cmpLinePositions[c], 3));
     }
     if (lineGeomProp && !lineGeomProp.getAttribute('position')) lineGeomProp.setAttribute('position', new THREE.BufferAttribute(propLinePositions, 3));
     if (lineGeomQ && !lineGeomQ.getAttribute('position')) lineGeomQ.setAttribute('position', new THREE.BufferAttribute(qLinePositions, 3));
@@ -1606,11 +1639,15 @@
     if (lineGeom) {
       const limit = Math.min(edges.length, MAX_EDGES);
       let hlCount = 0, baseCount = 0, propCount = 0, qCount = 0;
+      const cmpCount: Record<CompareCategory, number> = { a: 0, b: 0, shared: 0 };
+      const cmpOn = layout === 'compare' && !!compare;
       for (let i = 0; i < limit; i++) {
         const e = edges[i];
+        const cat: CompareCategory | undefined = cmpOn && e.id ? compare!.model.statementCategory.get(e.id) : undefined;
         // Proposed and question edges go to their own dashed buffers; everything else stays solid.
-        const buf = e.standing === 'proposed' ? propLinePositions : e.standing === 'question' ? qLinePositions : linePositions;
-        const slot = e.standing === 'proposed' ? propCount++ : e.standing === 'question' ? qCount++ : baseCount++;
+        // In the compare layout an edge of either side (or both) goes to that category's coloured buffer.
+        const buf = cat ? cmpLinePositions[cat] : e.standing === 'proposed' ? propLinePositions : e.standing === 'question' ? qLinePositions : linePositions;
+        const slot = cat ? cmpCount[cat]++ : e.standing === 'proposed' ? propCount++ : e.standing === 'question' ? qCount++ : baseCount++;
         buf[slot * 6]     = e.a.pos.x; buf[slot * 6 + 1] = e.a.pos.y; buf[slot * 6 + 2] = e.a.pos.z;
         buf[slot * 6 + 3] = e.b.pos.x; buf[slot * 6 + 4] = e.b.pos.y; buf[slot * 6 + 5] = e.b.pos.z;
         // Collect edges connected to the selected node
@@ -1622,6 +1659,11 @@
       }
       const attr = lineGeom.getAttribute('position') as THREE.BufferAttribute | undefined;
       if (attr) { attr.needsUpdate = true; lineGeom.setDrawRange(0, baseCount * 2); }
+      for (const c of CMP_CATS) {
+        const g = cmpGeoms[c];
+        const ca = g?.getAttribute('position') as THREE.BufferAttribute | undefined;
+        if (g && ca) { ca.needsUpdate = true; g.setDrawRange(0, cmpCount[c] * 2); }
+      }
       lineSegProp?.computeLineDistances(); lineSegQ?.computeLineDistances();
       for (const [g, n] of [[lineGeomProp, propCount], [lineGeomQ, qCount]] as const) {
         const pa = g?.getAttribute('position') as THREE.BufferAttribute | undefined;
@@ -1669,7 +1711,7 @@
         previousCameraAspect = aspect;
         // Hierarchy framing depends on the limiting horizontal/vertical FOV. Re-fit after a
         // renderer resize (including rotation and split panes) without reheating the simulation.
-        if ((layout === 'hierarchy' || layout === 'source') && activeAnchors.size > 0) {
+        if ((layout === 'hierarchy' || layout === 'source' || layout === 'compare') && activeAnchors.size > 0) {
           fitStructuredCamera3D(activeAnchors);
         }
       }
@@ -2029,6 +2071,14 @@
   <T.LineBasicMaterial color="#ff6b35" transparent opacity={selected ? 0.12 : 0.35} />
 </T.LineSegments>
 
+<!-- F306.2: compare layout edges, one coloured buffer per category (empty and invisible otherwise) -->
+{#each CMP_CATS as c (c)}
+  <T.LineSegments>
+    <T.BufferGeometry bind:ref={cmpGeoms[c]} />
+    <T.LineBasicMaterial color={compare?.colors[c] ?? '#ffffff'} transparent opacity={0.9} />
+  </T.LineSegments>
+{/each}
+
 <!-- F223.10: proposed edges (dashed, --data) and question edges (dashed, --ink-2, half strength).
      Dash distances are computed on the fly in the frame loop (computeLineDistances). -->
 <T.LineSegments bind:ref={lineSegProp}>
@@ -2079,11 +2129,22 @@
     onstatus={(l, f) => {
       if (!renderer) return;
       renderer.domElement.dataset.splats = `${l}/${f}`;
+      renderer.domElement.dataset.testid = 'graph-canvas'; // lets a story's expectation name the canvas (F300.3)
       // Read by tests/e2e/splat-occlusion.test.ts to probe pixels; nothing in the app reads it.
       (renderer.domElement as unknown as { __rk?: unknown }).__rk = { scene: threeScene, getCamera: () => camera.current, renderer };
     }}
     onloadedkeys={(keys) => (splatDrawnKeys = keys)}
   />
+{/if}
+
+<!-- F306.2: the two circles of the venn diagram -->
+{#if layout === 'compare' && compare}
+  {#each [[-VENN.OFFSET, compare.colors.a], [VENN.OFFSET, compare.colors.b]] as [cx, col] (cx)}
+    <T.Mesh position={[cx as number, 0, 0]}>
+      <T.TorusGeometry args={[VENN.RADIUS, 0.07, 6, 128]} />
+      <T.MeshBasicMaterial color={col as string} transparent opacity={0.55} />
+    </T.Mesh>
+  {/each}
 {/if}
 
 <!-- Concentric rings: focus (teal, hop-distance) and hub (orange, degree-band) -->

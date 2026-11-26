@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterChain, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
+import { afterChain, jobWatchTier, chainBlocked, chainStallReason, dedupeAdd, newJob, orderQueue, parseQueue, pickNext, queueSegment, queueView, serializeQueue, workerPidAlive, workerStep, type DoneJob, type QueueJob, type StepInput } from '../session-queue';
 import { DEFAULT_GPU_LIMITS, gpuVerdict, mergeGpuLimits, parseApps, parseGpus } from '../session-gpu';
 import { dueAll, dueLabel, dueStatus, parseEvery, parseSchedules, parseStateSuccesses, selectDue, doneSuccesses, heldSchedules, RETRY_BACKOFF_MS, backlogHolds, type Recurring } from '../session-schedule';
 import { renderQueue } from '../watch';
@@ -121,6 +121,8 @@ describe('job chains (--after)', () => {
   it('the state machine refuses to start behind a stalled chain and says so', () => {
     const queue = [job('a', { after: ['b'] }), job('b', { after: ['a'] })];
     expect(workerStep(base({ queue, done: [] }))).toEqual({ state: 'paused-broken-chain', startJob: false, reason: 'a waiting on b; b waiting on a' });
+    // a closed RAM/GPU gate is named first: a chain head waiting for room is not a broken chain (2026-11-13)
+    expect(workerStep(base({ queue: [job('head'), job('tail', { after: ['head'] })], done: [], gpuBlocked: 'RAM 10 GiB < 16 GiB' }))).toEqual({ state: 'paused-resources', startJob: false, reason: 'RAM 10 GiB < 16 GiB' });
     // a startable sibling beside the cycle still starts
     expect(workerStep(base({ queue: [...queue, job('free')], done: [] })).startJob).toBe(true);
   });
@@ -313,5 +315,17 @@ describe('catch-up schedules', () => {
     const r = parseSchedules(ttl, '/root', 'h');
     expect(r.map((x) => [x.name, x.everyMs, x.gpu, !!x.network])).toEqual([['sched:pull-notes', 900_000, false, false], ['sched:llm', 7 * every, true, true]]);
     expect(r[0].argv).toEqual(['/bin/bash', '-c', 'npx tsx scripts/notes-pull.ts']);
+  });
+});
+
+describe('jobWatchTier: a passed script job is never read by a model', () => {
+  it('a script schedule (gpu:false) is script tier even though it may use Ollama', () => {
+    expect(jobWatchTier({ gpu: false })).toBe('script');
+  });
+  it('a job that never touches Ollama is script tier', () => {
+    expect(jobWatchTier({ ollama: false })).toBe('script');
+  });
+  it('a GPU job is not', () => {
+    expect(jobWatchTier({})).toBeUndefined();
   });
 });

@@ -477,7 +477,20 @@ export function readTermRatchets(ttl: string): TermRatchet[] {
   return out;
 }
 
+/**
+ * RETIRED TOKENS (Matt, 2026-11-17, for 'statement': "Retire 'statement' from the check"). A token the
+ * product has adopted as a user word is no longer guarded: `kpred:term-ratchet-retired "<token>"` beside
+ * the baselines exempts it, with the decision recorded on the same vocabulary. It is reported, never
+ * silently skipped, so the exemption stays visible in every run.
+ */
+export function readRetiredTerms(ttl: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of ttl.matchAll(/kpred:term-ratchet-retired\s+"([^"]+)"/g)) if (m[1].trim()) out.add(m[1].trim());
+  return out;
+}
+
 export type RatchetRow =
+  | { kind: 'retired'; token: string; actual: number }
   | { kind: 'over'; token: string; actual: number; max: number }
   | { kind: 'under'; token: string; actual: number; max: number }
   | { kind: 'at'; token: string; actual: number }
@@ -485,11 +498,12 @@ export type RatchetRow =
   | { kind: 'stale'; token: string; max: number };
 
 /** Pure: compare measured usages against baselines. Only 'over' and 'unbaselined' fail. */
-export function checkTermRatchets(usages: TokenUsage[], ratchets: TermRatchet[]): RatchetRow[] {
+export function checkTermRatchets(usages: TokenUsage[], ratchets: TermRatchet[], retired: Set<string> = new Set()): RatchetRow[] {
   const rows: RatchetRow[] = [];
   const byToken = new Map(usages.map((u) => [u.token, u]));
   for (const u of usages) {
     if (u.meanings.length < 2) continue;
+    if (retired.has(u.token)) { rows.push({ kind: 'retired', token: u.token, actual: u.freeProse }); continue; }
     const r = ratchets.find((x) => x.token === u.token);
     // `prose` baselines (the measure since 2026-10-21) count free uses in prose only; the older
     // `free` form, which also counted identifiers, is still read so a stray one fails loudly
@@ -502,6 +516,7 @@ export function checkTermRatchets(usages: TokenUsage[], ratchets: TermRatchet[])
   }
   // A baseline for a token that is no longer ambiguous (or no longer exists) protects nothing.
   for (const r of ratchets) {
+    if (retired.has(r.token)) continue;
     const u = byToken.get(r.token);
     if (!u || u.meanings.length < 2) rows.push({ kind: 'stale', token: r.token, max: r.max });
   }
@@ -608,12 +623,13 @@ function main(): void {
   const usages = [...tokens.values()].sort((a, b) => b.occurrences - a.occurrences);
 
   if (CHECK) {
-    const rows = checkTermRatchets(usages, readTermRatchets(ttl));
+    const rows = checkTermRatchets(usages, readTermRatchets(ttl), readRetiredTerms(ttl));
     console.log(C.bold('\nAMBIGUITY RATCHET — a word with several meanings may not gain bare uses'));
     for (const r of rows) {
       if (r.kind === 'over') console.log(`  ${C.red('✗')} ${r.token}: ${r.actual} free in prose, baseline ${r.max} — ${C.red(`${r.actual - r.max} new`)}. Use a qualified name (see its meanings in static/reckons-terminology.ttl), or raise the baseline in the same commit and say why.`);
       else if (r.kind === 'unbaselined') console.log(`  ${C.red('✗')} ${r.token}: ${r.meanings} meanings and no baseline. Add kpred:term-ratchet "${r.token}/prose/${r.actual}" in static/reckons-terminology.ttl to start the ratchet.`);
       else if (r.kind === 'under') console.log(`  ${C.yellow('!')} ${r.token}: ${r.actual} free, baseline ${r.max} ${C.dim('(lower the baseline to lock the cleanup in)')}`);
+      else if (r.kind === 'retired') console.log(`  ${C.dim('-')} ${r.token}: ${r.actual} free in prose, retired from the check ${C.dim('(kpred:term-ratchet-retired; adopted as a user word)')}`);
       else if (r.kind === 'stale') console.log(`  ${C.yellow('!')} ${r.token}: baseline ${r.max} but the token is no longer ambiguous ${C.dim('(remove it)')}`);
       else console.log(`  ${C.green('✓')} ${r.token}: ${r.actual} free in prose, at baseline`);
     }

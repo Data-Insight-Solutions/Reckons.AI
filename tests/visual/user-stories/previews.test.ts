@@ -10,10 +10,11 @@
  *
  * Screenshots: tests/visual/screenshots/previews/
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 async function seedStarter(page: Page) {
   await page.goto(APP);

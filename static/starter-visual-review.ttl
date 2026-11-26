@@ -44,7 +44,8 @@ test:VR-Step2
     story:partOf      test:VisualReviewDemo ;
     story:order       "2"^^xsd:integer ;
     story:title       "Getting started → graph" ;
-    story:content     "Clicking Getting started activates the graph — nodes lay out, not a silent no-op." ;
+    story:content     "Clicking Getting started activates the graph — nodes lay out, not a silent no-op. On that canvas the hubs filter keeps the four review steps lit together, the chain this story walks, so the flow reads as one connected walk instead of four loose screens." ;
+    story:filter      "hubs" ;
     kpred:icon2d      "/visual-review/02.png" ;
     kpred:assertion   "node-labels > 0 after click" ;
     kpred:result      "ok" ;

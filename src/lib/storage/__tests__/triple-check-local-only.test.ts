@@ -53,6 +53,7 @@ describe('Triple Check is local and free: every request, with fetch stubbed', ()
     vi.stubGlobal('fetch', vi.fn(async (input: unknown, init?: RequestInit) => {
       const url = new URL(String(input)); calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() });
       if (url.pathname.endsWith('/search')) return new Response(JSON.stringify({ results: [{ url: 'https://evidence.test/', title: 'E', content: 'passage' }] }));
+      if (url.pathname.endsWith('/api/tags')) return new Response(JSON.stringify({ models: [{ name: 'gemma3:4b' }] }));
       return new Response(JSON.stringify({ choices: [{ message: { content: '[{"index":0,"stance":"neutral","confidence":0.5}]' } }] }));
     }));
     const s = withLocal(settings), signal = new AbortController().signal;

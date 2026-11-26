@@ -57,7 +57,7 @@ This project has its own Reckons.AI MCP server configured (`reckons`). It expose
 - **When touching code files**: `kb_search` the Codebase KB to see which module owns the file.
 - **At the start of a session**: `kb_stats` to see current state.
 
-Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private. EXCEPTION (Matt, 2026-11-11: "I'm fine with data cross over and duplication in the Reckons.AI repo, I am acting as Data Insight Solutions LLC, when writing Reckons.AI anyhow"): the Data Insight Solutions website's PUBLISHED pages and posts may be shipped as one generated example space (`static/starter-data-insight-solutions.ttl`, `scripts/starter/build-site-space.ts`), because he publishes both; its drafts, workspace files, config and contact address never are.
+Public examples must be generic and purpose-built for Reckons.AI. Keep personal notes, grant applications, external-project sites and sharing drafts outside this public repository. Regression tests use synthetic transcripts, never copied personal captures. Every pushed branch is public; keeping content outside a site deployment folder does not make it private. EXCEPTION (Matt, 2026-11-11: "I'm fine with data cross over and duplication in the Reckons.AI repo, I am acting as Data Insight Solutions LLC, when writing Reckons.AI anyhow"): the Data Insight Solutions website's PUBLISHED pages and posts may be shipped as one generated example space (`static/starter-data-insight-solutions.ttl`, `scripts/starter/build-site-space.ts`), because he publishes both; its drafts, workspace files, config and contact address never are. EXCEPTION (Matt, 2026-11-19, F304 `kpred:decided`: "Unlisted Reckons.AI example (Recommended)"): the personal showcase `static/starter-matthew-roe.ttl` and its personal space `static/starter-matthew-roe-personal.ttl` are public examples — unlisted is not private; the files are in this repository — and hold only what he chose to be public (his resume captions and the hobbies he named; no pictures of his children, nothing from his private workspace).
 
 ### Keeping KBs up to date
 
@@ -208,9 +208,12 @@ qwen3-coder flagged `restoreSnapshot` for trusting its input unvalidated (accept
 graph-wipe path, now guarded and tested), while two other findings on the same file misread
 deliberate design and were rejected.
 
-Local models available here (2026-07-18): `qwen3-coder:latest` and `devstral-small-2` for code,
-`qwen2.5vl:7b` for visual, `nemotron3:33b` / `qwen3.6` for general reasoning, `nomic-embed-text`
-for embeddings.
+Local models installed here (2026-11-13, after Matt uninstalled command-r:35b, devstral-small-2, phi4:14b,
+lfm2.5 and llama3.2:3b): `qwen3.8` (+ the `qwen3.8-160k` alias, the deputy until the deputy benchmark decides),
+`qwen3-coder` for code, `mistral-small3.2:24b` general, `gemma3:27b` prose, `qwen2.5vl:7b` visual, `nuextract`
+extraction, `nomic-embed-text` embeddings. `qwen3.6` is NOT installed. Pick by job kind, not by name: the table is
+data in `static/reckons-jobs.ttl` (`ktype:ModelRoute`) and `scripts/agent/model-routing.ts` applies it with a
+per-model RAM gate. No small general model remains (the smallest is 15.2 GB).
 
 ### Reusable local security checks (F172.1)
 

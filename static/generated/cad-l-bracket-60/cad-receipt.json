@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "spec": {
+    "kind": "bracket",
+    "name": "l-bracket-60",
+    "params": {
+      "width_mm": 60,
+      "height_mm": 40,
+      "depth_mm": 35,
+      "thickness_mm": 4,
+      "hole_diameter_mm": 5,
+      "hole_count": 2,
+      "fillet_mm": 6
+    }
+  },
+  "specSha256": "ff435a88293dec8bbdaffad597887011c6eee12251e49cd76f01f065c525ec5d",
+  "scriptSha256": "b23fb599e1b980acb200c404a8b9352c83186e98ea72f69e2d20e98985311998",
+  "tools": {
+    "build123d": "0.13.0",
+    "ocp": "8.0.1.1",
+    "python": "3.12.3",
+    "blender": "Blender 5.3.0"
+  },
+  "volumeMm3": 17346.46033438202,
+  "bboxMm": {
+    "x": 60,
+    "y": 35,
+    "z": 40
+  },
+  "files": {
+    "step": {
+      "name": "part.step",
+      "sha256": "bb6875f257dbf5f1e0cee8c71fd41402aedbe13b11901dd3a12778ffa2b284ab",
+      "bytes": 35626
+    },
+    "stl": {
+      "name": "part.stl",
+      "sha256": "4acf8b77b37dbd4ffb33ce55bd7ab09183abac847ed4b70155d389bd5cb113b7",
+      "bytes": 58284
+    },
+    "glb": {
+      "name": "part.glb",
+      "sha256": "fa3b4a5302644fd9003ed9867d01d4658eeafa7ab8115326cc32d3967d982573",
+      "bytes": 50404
+    }
+  },
+  "origin": "modelled from parameters",
+  "builtAt": "2026-11-17T16:31:37.194Z",
+  "blender": {
+    "material": {
+      "color": [
+        0.72,
+        0.74,
+        0.78
+      ],
+      "metallic": 0.6,
+      "roughness": 0.4
+    },
+    "glb": {
+      "meshes": 1,
+      "vertices": 1764
+    },
+    "frames": [
+      {
+        "name": "turntable-0.png",
+        "sha256": "4bd64ff3aff5e6b5413b11b71dbce76ba172812a0e5576dcd7ec0dace10f4d46",
+        "bytes": 235605,
+        "variation": 0.199
+      }
+    ]
+  }
+}

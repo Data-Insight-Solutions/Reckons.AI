@@ -352,3 +352,113 @@ kb:ev-jordan-monday
     p:icon2d        "📋" ;
     p:for           kb:jordan ;
     p:scheduled-at  "2026-07-13T09:00"^^xsd:dateTime .
+
+## ═════════════════════════════════════════════════════════════════════════════
+## The README path, as a story on this space (F300.5)
+## ═════════════════════════════════════════════════════════════════════════════
+## The path the README describes: add a note, settle the claims it proposes, find them in this space, and ask
+## for a reckoning. The browser test (tests/e2e/workflow-readme-path.test.ts) plays it, and the docs page and
+## the demo video are made from it. Everything in this space is invented.
+
+@prefix story: <urn:reckons:story/> .
+
+story:everyday-readme-path
+    rdf:type            story:Story ;
+    rdfs:label          "Add a source, review it, see it in a space, ask for a reckoning" ;
+    story:description   "The whole loop in five steps on the Getting started space: put a short note in, settle the claims it proposes, find them in this space, and ask for a reckoning that works from what you settled." ;
+    story:storyline     "A note becomes claims you check against the original, the ones you confirm become facts in your space, and a reckoning then proposes options from only what you settled." ;
+    story:shotsNote     "## How these screenshots were made\n\n**What they show.**\n\nEvery step is run on the **Getting started** sample that a first-time visitor opens, in which two people, Alex and Jordan, plan a camping weekend. Everything in it is invented, so the claims, counts and names in the pictures are sample content and not anyone's real notes.\n\n**What is scripted.**\n\nThe test uses no language model. When it adds its own note in step 1, a stand-in reader returns placeholder claims, so the claims you see waiting in steps 2 and 3 are the ones Getting started already holds. In step 5 the reckoning is a fixed reply, written in advance to read like a real one: two options, each written into the space as proposals, none of them accepted. So the pictures show what each screen looks like and that it responds. They do not show how good a real model's claims or proposal would be, which is measured separately.\n\n**What is stale.** The pictures for steps 1 to 4 were taken before this story moved into the space. The picture for step 5 shows the earlier Reckoning page and is replaced when `npm run workflow:shots` is next run for this walk." ;
+    story:autoplay      "false" .
+
+story:everyday-readme-path-1
+    rdf:type            story:Step ;
+    story:partOf        story:everyday-readme-path ;
+    story:order         "1" ;
+    story:stepId        "add-source" ;
+    story:title         "Add a source" ;
+    story:shortLabel    "Add a source" ;
+    story:page          "/ingest" ;
+    story:pageName      "the Add tab" ;
+    story:boxTarget     "the Extract statements button, under the note's title and text" ;
+    story:content       "It starts with a note. Give it a title, paste a few sentences, and ask Reckons to read it." ;
+    story:detail        "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract statements. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision." ;
+    story:target        "ingest-submit :: Extract statements" ;
+    story:action        '{"kind":"open-page","path":"/ingest","at":1}' ;
+    story:action        '{"kind":"type","target":"ingest-title","text":"Camping trip plan","at":2}' ;
+    story:action        '{"kind":"type","target":"ingest-text","text":"Alex and Jordan are camping near Lake George for two nights. The budget is about 80 dollars.","at":3}' ;
+    story:action        '{"kind":"click","target":"ingest-submit","at":4}' ;
+    story:media         "/workflows/readme-path/01-add-source.webp" ;
+    story:assertion     "The Extract statements button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." .
+
+story:everyday-readme-path-2
+    rdf:type            story:Step ;
+    story:partOf        story:everyday-readme-path ;
+    story:order         "2" ;
+    story:stepId        "review-claims" ;
+    story:title         "Review the proposed claims" ;
+    story:shortLabel    "Review the claims" ;
+    story:page          "/review" ;
+    story:pageName      "the Review tab" ;
+    story:boxTarget     "one claim card: the claim, the passage it was taken from, and its accept, refine and reject buttons" ;
+    story:content       "Reckons proposes claims, each shown with the passage it came from, so you can check it against the original." ;
+    story:question      "If a tool pulls claims out of your writing, how would you check it read them right?" ;
+    story:detail        "Open Review. Each claim waiting for a decision is a card. It names where the claim came from, shows the passage it was taken from, and offers accept, refine and reject. AI can misread what it reads, so this is where you check what it proposed against the original text." ;
+    story:action        '{"kind":"open-page","path":"/review","at":1}' ;
+    story:media         "/workflows/readme-path/02-review-claims.webp" ;
+    story:assertion     "At least one claim is waiting on the Review tab, shown as a card with accept, refine and reject buttons." .
+
+story:everyday-readme-path-3
+    rdf:type            story:Step ;
+    story:partOf        story:everyday-readme-path ;
+    story:order         "3" ;
+    story:stepId        "confirm-claims" ;
+    story:title         "Confirm the claims that are right" ;
+    story:shortLabel    "Confirm what is right" ;
+    story:page          "/review" ;
+    story:pageName      "the Review tab" ;
+    story:boxTarget     "the accept button on the first claim card" ;
+    story:content       "We accept each claim that matches its source. Anything we leave waiting stays out of your space." ;
+    story:detail        "Press accept on each claim that matches its source. You can also refine a claim or reject it. Only claims you confirm become part of the space; anything left waiting stays out." ;
+    story:action        '{"kind":"open-page","path":"/review","at":1}' ;
+    story:media         "/workflows/readme-path/03-confirm-claims.webp" ;
+    story:assertion     "Pressing accept settles the claims one by one until none of them is left waiting for a decision." .
+
+story:everyday-readme-path-4
+    rdf:type            story:Step ;
+    story:partOf        story:everyday-readme-path ;
+    story:order         "4" ;
+    story:stepId        "see-in-space" ;
+    story:title         "See the claims in your space" ;
+    story:shortLabel    "See it in your space" ;
+    story:page          "/kb" ;
+    story:pageName      "the Spaces tab" ;
+    story:boxTarget     "the card marked current, which shows its name and how many facts it holds" ;
+    story:content       "Those accepted claims are now facts in your space, and its card shows how many facts it holds. On the canvas the confirmed filter keeps what is now held lit — the confirmed claims among it — while anything still waiting recedes." ;
+    story:filter        "confirmed" ;
+    story:question      "What is the difference between something you read and something you know?" ;
+    story:detail        "Open Spaces. The claims you confirmed are now facts in your space, the collection of connected knowledge that everything you add feeds. The one you are working in is marked current, and its card says how many facts it holds." ;
+    story:action        '{"kind":"open-page","path":"/kb","at":1}' ;
+    story:media         "/workflows/readme-path/04-see-in-space.webp" ;
+    story:assertion     "The Spaces tab shows the current one with more facts than it held before the claims were confirmed." .
+
+story:everyday-readme-path-5
+    rdf:type            story:Step ;
+    story:partOf        story:everyday-readme-path ;
+    story:order         "5" ;
+    story:stepId        "reckoning" ;
+    story:title         "Ask for a reckoning" ;
+    story:shortLabel    "Ask for a reckoning" ;
+    story:page          "/reckoning" ;
+    story:pageName      "the Reckoning page" ;
+    story:boxTarget     "the two option cards, each listing its proposed statement, its job and its open question" ;
+    story:content       "Finally, we ask for a reckoning. It proposes options from your own facts, for you to weigh, not to trust blindly." ;
+    story:question      "With only what you have confirmed, what could you decide next?" ;
+    story:detail        "Open Reckoning. Describe the situation in a sentence, press Next, say what outcome you want to reach and press Review, then Generate Proposal. Two options appear, each already written into your space as proposals: nothing is confirmed and no job has been queued until you accept one, and you weigh them yourself. It is a proposal to evaluate, not an answer to trust." ;
+    story:target        "proposal-option :: The two options" ;
+    story:action        '{"kind":"open-page","path":"/reckoning","at":1}' ;
+    story:action        '{"kind":"type","target":"situation-text","text":"Alex and Jordan are choosing between Lake George and Oh! Ridge for a camping weekend.","at":2}' ;
+    story:action        '{"kind":"click","target":"situation-next","at":3}' ;
+    story:expect        '{"kind":"elements","target":"proposal-option","n":2}' ;
+    story:expect        '{"kind":"text","target":"proposal-written","contains":"Nothing is confirmed and no job has been queued."}' ;
+    story:media         "/workflows/readme-path/05-reckoning.webp" ;
+    story:assertion     "Two option cards appear and the page says nothing is confirmed and no job has been queued. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." .

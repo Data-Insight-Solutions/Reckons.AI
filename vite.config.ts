@@ -166,6 +166,8 @@ export default defineConfig({
         '**/tests/visual/screenshots/**', '**/test-results/**', '**/playwright-report/**'],
     },
   },
-  optimizeDeps: { exclude: ['@huggingface/transformers', 'onnxruntime-web'] },
+  // kokoro-js is imported only once someone turns voice on, so Vite met it mid-session, re-bundled, and RELOADED
+  // the page on the very click that enabled voice (seen 2026-11-25, dev only). Pre-bundled at start instead.
+  optimizeDeps: { exclude: ['@huggingface/transformers', 'onnxruntime-web'], include: ['kokoro-js'] },
   ssr: { noExternal: ['bits-ui', 'svelte-toolbelt', 'runed'] }
 });

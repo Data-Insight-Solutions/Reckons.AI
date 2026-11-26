@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { readTerms } from './term-usage.js';
 
-export const DEFAULT_MODELS = ['qwen3-coder:latest', 'devstral-small-2:latest', 'gemma3:27b'];
+export const DEFAULT_MODELS = ['qwen3-coder:latest', 'mistral-small3.2:24b', 'gemma3:27b'];
 
 /** Words with two or more meanings in the terminology graph, most meanings first. Pure. */
 export function ambiguousWords(ttl: string): { word: string; meanings: number }[] {

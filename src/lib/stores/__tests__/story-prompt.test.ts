@@ -178,5 +178,20 @@ describe('startStoryFromLink (F261)', () => {
       expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 1);
     }
   });
+
+  it('starts autoplay only for &autoplay=1 and &autoplay=true, not for anything else (F304)', () => {
+    const facts = tour('urn:a');
+    for (const on of ['1', 'true']) {
+      expect(startStoryFromLink(facts, 'urn:a', '1', on)).toBe(true);
+      expect(startStory).toHaveBeenLastCalledWith('urn:a', true, 1);
+    }
+    for (const off of [null, '0', 'yes', 'TRUE', ' 1', '']) {
+      startStoryFromLink(facts, 'urn:a', '1', off);
+      expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 1);
+    }
+    // Absent (the pre-F304 call shape) stays stopped, as before.
+    expect(startStoryFromLink(facts, 'urn:a', '1')).toBe(true);
+    expect(startStory).toHaveBeenLastCalledWith('urn:a', false, 1);
+  });
 });
 

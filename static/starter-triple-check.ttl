@@ -100,8 +100,9 @@
     <urn:reckons:story/partOf> <urn:example:tour/triple-check> ;
     <urn:reckons:story/order> "9"^^xsd:integer ;
     <urn:reckons:story/title> "Two different answers can both be right" ;
-    <urn:reckons:story/content> "The forum and the installer both list the Model T inverter as compatible; the datasheet lists Harbor's own inverter. A battery can work with more than one inverter, so both can be true. Review shows them side by side because the answers differ. Whether they conflict is your call." ;
-    <urn:reckons:story/highlight> <urn:example:battery/model-t-inverter> .
+    <urn:reckons:story/content> "The forum and the installer both list the Model T inverter as compatible; the datasheet lists Harbor's own inverter. A battery can work with more than one inverter, so both can be true. Review shows them side by side because the answers differ. Whether they conflict is your call. The battery and its two inverter nodes are the only things here without a type, and the no-type filter keeps exactly them bright while the statements and sources recede." ;
+    <urn:reckons:story/highlight> <urn:example:battery/model-t-inverter> ;
+    <urn:reckons:story/filter> "no-type" .
 
 <urn:example:tour/triple-check/step-10>
     rdf:type <urn:reckons:story/Step> ;

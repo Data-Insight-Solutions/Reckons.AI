@@ -12,7 +12,7 @@
   let status = $state<'loading' | 'ready' | 'failed'>('loading');
 </script>
 
-<div class="splat-viewer" data-splat-status={status}>
+<div class="splat-viewer" data-testid="splat-viewer" data-splat-status={status}>
   <Canvas>
     <T.PerspectiveCamera makeDefault position={[0, 0.6, 3.2]} fov={45}>
       <OrbitControls enableDamping autoRotate={!still} autoRotateSpeed={1.2} target={[0, 0, 0]} />

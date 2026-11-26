@@ -1,3 +1,4 @@
+import { E2E_BASE } from '../../lib/e2e-port';
 import { describe, expect, it } from 'vitest';
 import { isTrustedRequest, mcpServers } from '../device-bridge.js';
 
@@ -21,7 +22,7 @@ describe('isTrustedRequest', () => {
     expect(isTrustedRequest({ method: 'POST', host: 'localhost:5173' })).toBe(false);
     expect(isTrustedRequest({ method: 'POST', host: 'localhost:5173', origin: 'http://evil.example.com' })).toBe(false);
     expect(isTrustedRequest({ method: 'POST', host: 'localhost:5173', origin: 'http://localhost:5173' })).toBe(true);
-    expect(isTrustedRequest({ method: 'POST', host: 'localhost:5173', origin: 'http://localhost:5174' })).toBe(false);
+    expect(isTrustedRequest({ method: 'POST', host: 'localhost:5173', origin: E2E_BASE })).toBe(false);
   });
 });
 
@@ -42,5 +43,17 @@ describe('mcpServers', () => {
 
   it('no servers, no list', () => {
     expect(mcpServers({})).toEqual([]);
+  });
+});
+
+describe('validWorkspace (F166.1.3)', () => {
+  it('accepts an absolute existing folder and nothing else', async () => {
+    const { validWorkspace } = await import('../device-bridge.js');
+    expect(validWorkspace(process.cwd())).toBe(process.cwd());
+    expect(validWorkspace('relative/dir')).toBeUndefined();
+    expect(validWorkspace('/definitely/not/here-xyz')).toBeUndefined();
+    expect(validWorkspace(process.cwd() + '\0x')).toBeUndefined();
+    expect(validWorkspace(`${process.cwd()}/package.json`)).toBeUndefined();
+    expect(validWorkspace(42)).toBeUndefined();
   });
 });

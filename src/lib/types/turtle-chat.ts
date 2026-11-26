@@ -6,7 +6,11 @@ export interface TurtleChatMessage {
   actions?: KBAction[];
 }
 
-export type GraphFilter = 'hubs' | 'islands' | 'leaps' | 'confirmed' | 'pending' | 'proposed' | 'questions' | 'no-type' | 'no-source' | 'dichotomy';
+/** The filter chips the canvas can activate — one name each (the chip row in +page.svelte renders them). */
+export const GRAPH_FILTERS = [
+  'hubs', 'islands', 'leaps', 'confirmed', 'pending', 'proposed', 'questions', 'no-type', 'no-source', 'dichotomy',
+] as const;
+export type GraphFilter = (typeof GRAPH_FILTERS)[number];
 
 export type KBAction =
   | { type: 'add_triple'; s: string; p: string; o: string; label: string }

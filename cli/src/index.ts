@@ -231,7 +231,7 @@ CONFIG
     "kb": "~/.reckons/personal.ttl",
     "kbDir": "~/.reckons",
     "provider": "ollama",
-    "model": "llama3.2",
+    "model": "gemma3",
     "voice": "en"
   }
 

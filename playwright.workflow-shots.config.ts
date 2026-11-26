@@ -1,3 +1,4 @@
+import { E2E_BASE } from './scripts/lib/e2e-port';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -9,7 +10,7 @@ import { defineConfig, devices } from '@playwright/test';
  *   CHROME_PATH         use this Chrome binary instead of Playwright's own download (the bundled
  *                       one can be an older build than the installed Playwright expects)
  */
-const base = process.env.WORKFLOW_BASE_URL ?? 'http://localhost:5174';
+const base = process.env.WORKFLOW_BASE_URL ?? E2E_BASE;
 
 export default defineConfig({
   testDir: './tests/e2e',

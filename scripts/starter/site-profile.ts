@@ -70,6 +70,18 @@ export interface Profile {
 }
 
 const postSlug = (href: string): string | null => /^\/blog\/([^/#?]+)\/?(?:[#?].*)?$/.exec(href)?.[1] ?? null;
+
+/**
+ * Where an example the site page names should OPEN, beyond the space itself. The page only carries the
+ * example id; which node there to select is app-side knowledge, so it is keyed on the id (F292.4,
+ * MATT, 2026-11-24 (chat): "…/?sel=i%3Aurn%3Areckons%3Aring%2Fframes-contact-sheet should be part of
+ * the improved Data Insight Solutions space story"). The contact sheet is the headline image of the
+ * ring space (static/starter-ring-scan.ttl). The main page selects by ?sel=i:<iri>; an example id
+ * outside this map gets no selection and the leap still opens its space.
+ */
+const EXAMPLE_LANDING_SEL: Record<string, string> = {
+  'ring-scan': 'i:urn:reckons:ring/frames-contact-sheet',
+};
 const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -142,7 +154,15 @@ export function extractProfile(files: Record<string, string>): Profile {
       const raw = ring.paragraphs.join('\n');
       const link = linksOf(raw).find((l) => /[?&]example=/.test(l.href));
       let leapPath: string | null = null;
-      if (link) { try { const ex = new URL(link.href).searchParams.get('example'); if (ex) leapPath = '/about?example=' + encodeURIComponent(ex); } catch { /* not a URL: no leap */ } }
+      if (link) {
+        try {
+          const ex = new URL(link.href).searchParams.get('example');
+          if (ex) {
+            const sel = EXAMPLE_LANDING_SEL[ex];
+            leapPath = '/about?example=' + encodeURIComponent(ex) + (sel ? '&sel=' + encodeURIComponent(sel) : '');
+          }
+        } catch { /* not a URL: no leap */ }
+      }
       const text = plain(ring.paragraphs.find((p) => !p.startsWith('<')) ?? '');
       out.ring = {
         label: plain(ring.title), text, viewerPath: /<iframe[^>]*\ssrc="(\/[^"]+)"/.exec(raw)?.[1] ?? null,

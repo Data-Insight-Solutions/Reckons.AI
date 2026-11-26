@@ -29,7 +29,7 @@ A local-first personal knowledge-graph tool. The user ingests text (notes, URLs,
 |---|---|---|
 | Normal use (ingest, review, graph, chat) | Browser IndexedDB, on-device | **No** |
 | Local LLM (Ollama / in-browser WASM) | Stays on the user's machine | **No** |
-| Cloud LLM (Claude, OpenAI, Gemini, OpenRouter) | Third-party LLM provider, **under the user's own API key and the user's own account with that provider** | **No** |
+| Cloud LLM (Claude, OpenAI, Gemini, OpenRouter) | Third-party LLM provider, **under the user's own API key and the user's own account with that provider** (the published build bundles no key and the build refuses if one is supplied, including from a local `.env`: `src/lib/integrations/llm/__tests__/no-bundled-key.test.ts`; a deliberate local developer build can still bake a key with `VITE_SECRET_GUARD_ALLOW=1`, and such a build must not be distributed) | **No** |
 | Export to file | User's own disk, plain-text `.ttl` | **No** |
 | Optional integrations (Google Drive, n8n, GitHub, etc.) | The user's own accounts/instances, which the user connects | **No** |
 | Publishing a graph to the web | The **user's own** hosting (their GitHub Pages, their Cloudflare, their domain) | **No** |
@@ -46,8 +46,8 @@ A local-first personal knowledge-graph tool. The user ingests text (notes, URLs,
 
 | Control | What it does | Enforceable? |
 |---|---|---|
-| `ETHICS_PREAMBLE` | ~121-token instruction used according to prompt purpose and locality. Shared output always carries it; remote conversational prose carries it; local-only use omits it; structured extraction omits it because extracted statements pass through deterministic filtering. It refuses incitement to violence, mass-casualty weapons instructions, sexualization of minors, and promotion of slavery/trafficking, while permitting academic/historical discussion. | **No — best-effort.** Open-source client code. A user can delete it, or point the app at an uncensored local model. It constrains the default experience according to the documented policy; it is not present in every prompt. |
-| Content classifier (`classifyText`) | Regex classification of ingested facts into `none` / `mature` / `blocked`. Blocked content is filtered before entering the graph. | **No — best-effort, and currently weak.** It matches *descriptions* of content (the literal phrases "sexually explicit", "pornographic"), not the content itself. Actual explicit prose is not detected. We should not represent this as a content filter. |
+| `ETHICS_PREAMBLE` | ~121-token instruction used according to prompt purpose and locality (pinned by `src/lib/safety/__tests__/ethics-purpose.test.ts`). Shared output always carries it; remote conversational prose carries it; local-only use omits it; structured extraction omits it because extracted statements pass through deterministic filtering. It refuses incitement to violence, mass-casualty weapons instructions, sexualization of minors, and promotion of slavery/trafficking, while permitting academic/historical discussion. | **No — best-effort.** Open-source client code. A user can delete it, or point the app at an uncensored local model. It constrains the default experience according to the documented policy; it is not present in every prompt. |
+| Content classifier (`classifyText`) | Regex classification of ingested facts into `none` / `mature` / `blocked` (pinned by `src/lib/safety/__tests__/content-policy.test.ts`). Blocked content is filtered before entering the graph. | **No — best-effort, and currently weak.** It matches *descriptions* of content (the literal phrases "sexually explicit", "pornographic"), not the content itself. Actual explicit prose is not detected. We should not represent this as a content filter. |
 | Export advisory | Attaches a content-advisory header to exported files containing flagged material. | Best-effort. Warns; does not block. |
 | Publish safety gate (**planned, not built** — roadmap F66) | Would classify a graph before publishing to the open web and refuse to publish blocked content. | **Only where we are in the delivery path.** If the user publishes with their own token to their own host, we are not in the loop and cannot gate anything. |
 
@@ -142,9 +142,9 @@ Each entry records, per control, PASS/FAIL with the evidence, plus the exact git
 
 Historical snapshot from 2026-07-12, commit `601cfec`: **5 of 6 passing. This is not a current attestation.** The prompt policy and publishing implementation have changed since then; use the latest safety-log entry and a fresh CI run for current evidence.
 
-- ✅ Ethics preamble exists, with all four required prohibitions
+- ✅ Ethics preamble exists, with all four required prohibitions (`src/lib/safety/__tests__/content-policy.test.ts`)
 - ✅ At that commit, the preamble was injected into 5/5 generative prompt modules (verified by the then-current static analysis). Current policy is purpose/locality-sensitive, so this historical check does not prove today's prompt coverage.
-- ✅ App and MCP-server copies byte-identical (no silent drift)
+- ✅ App and MCP-server copies byte-identical (no silent drift) (attestation check `preamble-no-drift` in `scripts/offline/safety-attestation.ts`, run by `.github/workflows/safety-attestation.yml`)
 - ✅ Content classifier present and filtering on ingest
 - ✅ Safety test suite green (28 tests)
 - ❌ **Egress gating: FAILING** — graph publishing is shipping ahead of its own safety gate (F66 is planned, publishing is already functional)

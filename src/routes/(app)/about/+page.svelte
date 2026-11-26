@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
-  import { openExampleSpace } from '$lib/storage/example-space';
+  import { openExampleSpace, exampleLanding, storeSpaceFromTurtle } from '$lib/storage/example-space';
+  import { parseGithubFileRef, fetchGithubTurtle, githubPageUrl, githubSpaceIdentity, type GithubFileRef } from '$lib/integrations/github/open-space';
+  import { switchToKb } from '$lib/storage/kb-registry';
   import { EXAMPLE_KBS, listedExampleKbs, findExampleKb, type ExampleKb } from '$lib/storage/example-kbs';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
@@ -44,18 +46,24 @@
   let loadError = $state('');
   let switchingToOfficial = $state(false);
 
-  async function importStarterKB(kb: ExampleKb) {
+  /**
+   * `story` carries the /about?story=…&autoplay=… link parameters through to the main page
+   * (F292.4): for a space they ride the switch (openExampleSpace builds the same landing URL),
+   * for a plain import they ride the goto. `sel` is the entity the main page should open selected
+   * (?sel=i:<iri>); it rides the same way. Absent, everything lands exactly where it did before.
+   */
+  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean; sel?: string; step?: string } = {}) {
     loadingKb = kb.id;
     loadError = '';
     try {
-      if (kb.space) { await openExampleSpace(kb.file, kb.space); return; }
+      if (kb.space) { await openExampleSpace(kb.file, kb.space, story); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
       const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'starter-kb');
-      goto('/');
+      goto(exampleLanding(story));
     } catch (e) {
       loadError = (e as Error).message || 'Import failed';
       loadingKb = null;
@@ -89,10 +97,46 @@
   let fading = $state(false);
 
   // A link of the form /about?example=<id> opens that example on its own.
+  // F292.4: …&story=<iri|step>&autoplay=1 opens it AND starts its guided story at step 1 —
+  // the story and autoplay ride through to the main page, where startStoryFromLink honours
+  // them. autoplay is only true for 1|true (the same rule as startStoryFromLink), so a link
+  // that names a story without autoplay starts it paused. …&sel=i:<iri> also rides through:
+  // the main page opens with that entity selected (the ring's contact sheet, per the site's
+  // own leap link).
+  // F310: /about?gh=<owner>/<repo>/<path.ttl>[@ref] offers to open a Turtle file from GitHub on its own.
+  // Anyone can make such a link, so it ASKS first (the rule the QR link follows): nothing is fetched or stored
+  // until the reader chooses Open.
+  let ghRef = $state<GithubFileRef | null>(null);
+  let ghBusy = $state(false);
+  let ghError = $state('');
+  async function openGithubSpace() {
+    if (!ghRef) return;
+    ghBusy = true; ghError = '';
+    try {
+      const ttl = await fetchGithubTurtle(ghRef);
+      const { name, uri } = githubSpaceIdentity(ghRef);
+      const id = await storeSpaceFromTurtle(ttl, name, uri, ghRef.path.split('/').pop());
+      switchToKb(id, { to: '/?shelly=learn' });
+    } catch (e) {
+      ghError = (e as Error).message || 'Could not open it';
+      ghBusy = false;
+    }
+  }
+
   onMount(() => {
-    const id = new URL(window.location.href).searchParams.get('example');
-    const kb = findExampleKb(id);
-    if (kb) void importStarterKB(kb);
+    const params = new URL(window.location.href).searchParams;
+    if (params.has('gh')) {
+      ghRef = parseGithubFileRef(params.get('gh'));
+      if (!ghRef) ghError = 'That link does not name a .ttl file in a GitHub repository.';
+      return;
+    }
+    const kb = findExampleKb(params.get('example'));
+    if (!kb) return;
+    const story = params.get('story');
+    const sel = params.get('sel');
+    if (story === null) { void importStarterKB(kb, sel ? { sel } : undefined); return; }
+    const step = params.get('step');
+    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true', sel: sel ?? undefined, step: step ?? undefined });
   });
 
   onMount(() => {
@@ -195,6 +239,23 @@
     { icon: '🤝', title: 'Collaboration',        body: 'Export your .ttl, share it. Recipients see a full semantic diff: what you added, what conflicts with their own graph.' },
   ];
 </script>
+
+{#if ghRef || ghError}
+  <div class="gh-open" role="dialog" aria-modal="false" aria-labelledby="gh-open-title">
+    <h2 id="gh-open-title">Open a space from GitHub</h2>
+    {#if ghRef}
+      <p>
+        <a href={githubPageUrl(ghRef)} target="_blank" rel="noopener noreferrer" class="mono">{ghRef.owner}/{ghRef.repo}/{ghRef.path}{ghRef.ref ? ` @ ${ghRef.ref}` : ''}</a>
+      </p>
+      <p class="gh-open-note">Your browser reads this file from GitHub and keeps it on this device, apart from your own work. Nothing is sent anywhere else. Only open files from people you trust.</p>
+      <div class="gh-open-actions">
+        <button class="primary" onclick={openGithubSpace} disabled={ghBusy}>{ghBusy ? 'Opening…' : 'Open'}</button>
+        <button onclick={() => { ghRef = null; ghError = ''; history.replaceState(null, '', '/about'); }} disabled={ghBusy}>Cancel</button>
+      </div>
+    {/if}
+    {#if ghError}<p class="gh-open-error" role="alert">{ghError}</p>{/if}
+  </div>
+{/if}
 
 <div class="page">
 
@@ -879,6 +940,7 @@
       {#each listedExampleKbs() as kb (kb.id)}
         <button
           class="starter-card"
+          data-testid="starter-card-{kb.id}"
           onclick={() => importStarterKB(kb)}
           disabled={loadingKb !== null}
         >
@@ -1652,6 +1714,18 @@
 
   .starter-label { display: inline-block; margin-left: 8px; font-size: 0.7rem; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; }
 
+  .gh-open {
+    position: fixed; z-index: 450; left: 50%; top: 5rem; transform: translateX(-50%);
+    width: min(92vw, 30rem); padding: 1rem 1.2rem; border-radius: var(--rad-md, 10px);
+    background: var(--surface); border: 1px solid var(--accent); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+  .gh-open h2 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--accent); }
+  .gh-open a { color: var(--ink); word-break: break-all; font-size: 0.85rem; }
+  .gh-open-note { font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; }
+  .gh-open-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+  .gh-open-actions button { min-height: 40px; padding: 0.4rem 1rem; border-radius: 999px; cursor: pointer; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+  .gh-open-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .gh-open-error { color: var(--danger); font-size: 0.85rem; margin: 0.5rem 0 0; }
   .stp-example {
     font-size: 0.72rem;
     color: var(--muted);

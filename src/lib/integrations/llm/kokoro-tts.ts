@@ -34,7 +34,46 @@ export function kokoroStatus() { return _status; }
 export function kokoroProgress() { return progress; }
 export function kokoroPhase() { return _phase; }
 
+/**
+ * TEST SEAM (Matt, 2026-11-25: "audio output seems broken ... we obviously need audio tests improved"). A browser
+ * test cannot download the ~87 MB voice model, so under the mock ingest build (only the Playwright config turns it
+ * on) AND an explicit `reckons-test-voice` browser flag, a stand-in speaks each sentence as a short silent WAV. It
+ * proves the narration WIRING (a step is spoken, a refused play() is shown and recovered from); it says nothing
+ * about whether the real model loads or sounds right, which needs a person listening.
+ */
+function testVoiceOn(): boolean {
+  if (import.meta.env.VITE_INGEST_BACKEND !== 'mock') return false;
+  try { return typeof localStorage !== 'undefined' && localStorage.getItem('reckons-test-voice') === '1'; }
+  catch { return false; }
+}
+
+/** A short silent mono 16-bit WAV: the stand-in voice's every sentence. */
+export function silentWav(ms = 120, rate = 24000): Blob {
+  const samples = Math.round((rate * ms) / 1000);
+  const buf = new ArrayBuffer(44 + samples * 2);
+  const v = new DataView(buf);
+  const str = (o: number, t: string) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+  v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, samples * 2, true);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+
+/** The stand-in model: the same stream() shape kokoro-js has, one silent chunk per sentence. */
+export function standInTts() {
+  return {
+    async *stream(text: string, opts: { split_pattern?: RegExp } = {}) {
+      for (const sentence of text.split(opts.split_pattern ?? /(?<=[.!?;:])\s+/).filter(Boolean)) {
+        yield { text: sentence, audio: { toBlob: () => silentWav() } };
+      }
+    },
+    async generate() { return { toBlob: () => silentWav() }; },
+    list_voices() { return [DEFAULT_KOKORO_VOICE]; },
+  };
+}
+
 async function loadModel(): Promise<any> {
+  if (testVoiceOn()) return standInTts();
   const { KokoroTTS } = await import('kokoro-js');
   const tts = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {
     dtype: 'q8',
@@ -125,9 +164,19 @@ export function speakStreaming(
     onStart?: () => void;
     onEnd?: () => void;
     onError?: (e: unknown) => void;
-  } = {}
+    /**
+     * The browser refused to play sound (NotAllowedError): no click or key press on the page yet, which is what a
+     * link that autoplays a story meets, and what any reload leaves behind. Speaking stops; the caller offers a
+     * button, whose click is the gesture that lets the next try play. Before 2026-11-25 this was swallowed: every
+     * sentence "played" instantly into silence and narration reported success.
+     */
+    onBlocked?: () => void;
+  } = {},
+  /** For tests: the model and the audio element. The app always uses the loaded model and new Audio(). */
+  deps: { tts?: any; makeAudio?: (url: string) => HTMLAudioElement } = {}
 ): () => void {
-  const tts = instance;
+  const tts = deps.tts ?? instance;
+  const makeAudio = deps.makeAudio ?? ((url: string) => new Audio(url));
   if (!tts) {
     opts.onError?.(new Error('Kokoro model not loaded'));
     return () => {};
@@ -194,16 +243,25 @@ export function speakStreaming(
         if (!blob) { if (producerDone) break; continue; }
 
         const url = URL.createObjectURL(blob);
-        const el = new Audio(url);
+        const el = makeAudio(url);
         currentAudio = el;
         el.playbackRate = opts.rate ?? 1;
         el.volume = opts.volume ?? 0.85;
 
+        let blocked = false;
         await new Promise<void>((resolve) => {
           el.onended = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
           el.onerror = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
-          el.play().catch(() => { URL.revokeObjectURL(url); currentAudio = null; resolve(); });
+          el.play().catch((e: unknown) => {
+            blocked = (e as { name?: string } | null)?.name === 'NotAllowedError';
+            URL.revokeObjectURL(url); currentAudio = null; resolve();
+          });
         });
+        if (blocked) {
+          aborted = true; // the producer stops too: nothing more can play until the reader acts
+          opts.onBlocked?.();
+          return;
+        }
         // Brief inter-chunk silence for natural sentence rhythm
         if (!aborted && buffer.length > 0) {
           await new Promise(r => setTimeout(r, 180));

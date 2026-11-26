@@ -13,22 +13,99 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.6" ;
-    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 1 of this release's 15 parts have a TestWorkflow (5 steps, each a screenshot and what the test checks); 14 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: production." ;
+    rdfs:comment "The visual tests of v0.2.6, in the order a person would review them. 2 of this release's 15 parts have a TestWorkflow (12 steps, each a screenshot and what the test checks); 13 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: production." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
-    p:has rev:wf-readme-path, rev:gap .
+    p:has rev:wf-reckoning-v029, rev:wf-readme-path, rev:gap .
 
-rev:wf-readme-path rdf:type ktype:Concept ;
-    rdfs:label "1. Add a source, review it, see it in a space, ask for a reckoning" ;
-    rdfs:comment "Part of v0.2.6: F34.2 Test workflows — each end-to-end path as a diagram, step text, an annotated screenshot per step and the assertion it checks (status: in-progress). The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled. It is the whole point of the product in five steps, and a browser test runs it on every change. Run by tests/e2e/workflow-readme-path.test.ts." ;
+rev:wf-reckoning-v029 rdf:type ktype:Concept ;
+    rdfs:label "1. Reckon with chosen statements, then accept one option" ;
+    rdfs:comment "Headline part of v0.2.6: F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer (status: planned). A Reckoning helps you decide something using what your knowledge base already holds. Here the decision is how to unblock the data pipeline that the Quick-Start example's project depends on. You choose the statements that describe the situation, you choose what you are trying to get (an open question your knowledge base has, or an asset to make), and Reckons.AI writes two options into your knowledge base as proposals. Nothing in them counts until you accept one. Accepting is one confirmation: its statements become confirmed, any jobs it proposes are queued in a single approval, and the other option is marked superseded. If an option needs something it does not know yet, it is held as an open question; answering it finishes the proposal. Run by tests/e2e/workflow-reckoning-v029.test.ts." ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
+    hnav:next rev:wf-readme-path ;
+    p:has rev:wf-reckoning-v029-01-select-on-canvas, rev:wf-reckoning-v029-02-choose-situation, rev:wf-reckoning-v029-03-choose-target, rev:wf-reckoning-v029-04-generate-proposal, rev:wf-reckoning-v029-05-show-on-canvas, rev:wf-reckoning-v029-06-accept-option, rev:wf-reckoning-v029-07-answer-missing-input .
+
+rev:wf-reckoning-v029-01-select-on-canvas rdf:type ktype:Concept ;
+    rdfs:label "1. Select statements on the canvas and reckon with them" ;
+    rdfs:comment "Open the canvas and select Project Phoenix. A Reckon with these button appears in its panel. Press it: the Reckoning page opens with the statements that touch Project Phoenix already chosen.\n\nWhere: the canvas (/).\n\nThe test checks: With one entity selected the canvas offers Reckon with these, and pressing it opens the Reckoning page with at least one statement already chosen." ;
+    p:photo "/workflows/reckoning-v029/01-select-on-canvas.webp" ;
+    hnav:order "1"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-02-choose-situation ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-02-choose-situation rdf:type ktype:Concept ;
+    rdfs:label "2. Choose the situation from the list" ;
+    rdfs:comment "On the Reckoning page the statements you hold are listed with a checkbox each. Untick any the canvas chose, tick the three that describe the decision, and write a sentence about it: \"We need to decide how to unblock the Phoenix data pipeline.\" The count says how many are chosen. Press Continue: the situation is saved as a Reckoning of its own, so reloading the page shows the same choice.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Three statements are chosen, the count reads 3 statements chosen, and after Continue the address carries the Reckoning's id." ;
+    p:photo "/workflows/reckoning-v029/02-choose-situation.webp" ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-03-choose-target ;
+    hnav:prev rev:wf-reckoning-v029-01-select-on-canvas ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-03-choose-target rdf:type ktype:Concept ;
+    rdfs:label "3. Choose the target: a question to answer" ;
+    rdfs:comment "Choose Answer a question. The questions you still have open are listed; pick \"What does Data Pipeline v2 still need?\". The target is kept as a link to that statement, not as a copy of its words. Choosing an asset to make is the other option, and the page then shows the assets you have.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: The open question is listed and can be chosen; the review step then reads Answer this open question, and the choice is still there after a reload." ;
+    p:photo "/workflows/reckoning-v029/03-choose-target.webp" ;
+    hnav:order "3"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-04-generate-proposal ;
+    hnav:prev rev:wf-reckoning-v029-02-choose-situation ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-04-generate-proposal rdf:type ktype:Concept ;
+    rdfs:label "4. Generate a proposal that is written into your knowledge base" ;
+    rdfs:comment "Press Review, then Generate proposal. Two options appear. Each is already in your knowledge base as proposals: a dashed statement saying what it would add, a proposed job that has not been queued, and a hollow question for the input it still needs. The page says so: nothing is confirmed and no job has been queued.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Two option cards appear, every row the proposal wrote is pending, no job is queued, and each option has one statement, one job and one open question." ;
+    p:photo "/workflows/reckoning-v029/04-generate-proposal.webp" ;
+    hnav:order "4"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-05-show-on-canvas ;
+    hnav:prev rev:wf-reckoning-v029-03-choose-target ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-05-show-on-canvas rdf:type ktype:Concept ;
+    rdfs:label "5. Look at an option on the canvas" ;
+    rdfs:comment "On an option's card press Show on the canvas. The canvas opens on that option alone, its proposed statements drawn dashed so they cannot be mistaken for what you hold. Use the control that stops showing one option to come back.\n\nWhere: the canvas (/).\n\nThe test checks: The address carries the option's focus, and the control that stops showing one proposal option is on the page." ;
+    p:photo "/workflows/reckoning-v029/05-show-on-canvas.webp" ;
+    hnav:order "5"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-06-accept-option ;
+    hnav:prev rev:wf-reckoning-v029-04-generate-proposal ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-06-accept-option rdf:type ktype:Concept ;
+    rdfs:label "6. Accept one option" ;
+    rdfs:comment "Back on the Reckoning page press Accept on the first option. Before anything changes, a confirm step says how many statements will be confirmed, that one job will be queued in one approval, that the other option's rows will be marked superseded, and that one missing-input question stays open. Press the confirm button. The card says Accepted by you.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: The confirm step names the statement count, one job in one approval, the superseded rows and the open question; after it the accepted option's statement is confirmed, exactly one job request exists, and every row of the other option is superseded." ;
+    p:photo "/workflows/reckoning-v029/06-accept-option.webp" ;
+    hnav:order "6"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:next rev:wf-reckoning-v029-07-answer-missing-input ;
+    hnav:prev rev:wf-reckoning-v029-05-show-on-canvas ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-reckoning-v029-07-answer-missing-input rdf:type ktype:Concept ;
+    rdfs:label "7. Answer the missing input" ;
+    rdfs:comment "The accepted option still has its open question. Type \"vendor-quote.pdf\" in its box and press Answer. The target of this Reckoning was that question, so answering it finishes the proposal and its standing reads Completed. No second job was queued.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: After Answer the proposal's standing reads Completed and the number of queued job requests is unchanged." ;
+    p:photo "/workflows/reckoning-v029/07-answer-missing-input.webp" ;
+    hnav:order "7"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer ;
+    hnav:prev rev:wf-reckoning-v029-06-accept-option ;
+    kmeta:review-verdict "unreviewed" .
+
+rev:wf-readme-path rdf:type ktype:Concept ;
+    rdfs:label "2. Add a source, review it, see it in a space, ask for a reckoning" ;
+    rdfs:comment "Part of v0.2.6: F34.2 Test workflows — each end-to-end path as a diagram, step text, an annotated screenshot per step and the assertion it checks (status: in-progress). The path the README describes, start to finish: put a short note into Reckons.AI, settle the claims it proposes, find them in your space, and ask for a reckoning that works from what you settled. It is the whole point of the product in five steps, and a browser test runs it on every change. Run by tests/e2e/workflow-readme-path.test.ts." ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
     hnav:next rev:gap ;
+    hnav:prev rev:wf-reckoning-v029 ;
     p:has rev:wf-readme-path-01-add-source, rev:wf-readme-path-02-review-claims, rev:wf-readme-path-03-confirm-claims, rev:wf-readme-path-04-see-in-space, rev:wf-readme-path-05-reckoning .
 
 rev:wf-readme-path-01-add-source rdf:type ktype:Concept ;
     rdfs:label "1. Add a source" ;
-    rdfs:comment "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract facts. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.\n\nWhere: the Add tab (/ingest).\n\nThe test checks: The Extract facts button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." ;
+    rdfs:comment "Open the Add tab, give the note a title, type or paste in a few sentences and press Extract statements. Reckons.AI reads the text and proposes claims from it. Nothing is accepted yet: every claim arrives waiting for your decision.\n\nWhere: the Add tab (/ingest).\n\nThe test checks: The Extract statements button is enabled once a title and text are entered, and pressing it takes the person off the Add tab when reading finishes. The test's stand-in reader returns placeholder claims at this point." ;
     p:photo "/workflows/readme-path/01-add-source.webp" ;
     hnav:order "1"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;
@@ -67,7 +144,7 @@ rev:wf-readme-path-04-see-in-space rdf:type ktype:Concept ;
 
 rev:wf-readme-path-05-reckoning rdf:type ktype:Concept ;
     rdfs:label "5. Ask for a reckoning" ;
-    rdfs:comment "Describe the situation you are in, say what you want to reach, and ask for a reckoning. It reads the facts in your space and proposes options and a recommendation, which you then weigh yourself. It is a proposal to evaluate, not an answer to trust.\n\nWhere: the Reckon tab (/reckoning).\n\nThe test checks: The request is accepted and a proposal card comes back saying how many facts it is based on. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." ;
+    rdfs:comment "Open Reckoning. Describe the situation in a sentence, press Next, say what outcome you want to reach and press Review, then Generate Proposal. Two options appear, each already written into your space as proposals: nothing is confirmed and no job has been queued until you accept one, and you weigh them yourself. It is a proposal to evaluate, not an answer to trust.\n\nWhere: the Reckoning page (/reckoning).\n\nThe test checks: Two option cards appear and the page says nothing is confirmed and no job has been queued. The reply in this run is scripted, written to read like a real reckoning about the Getting started notes; the test does not judge a real model's wording, which is measured separately." ;
     p:photo "/workflows/readme-path/05-reckoning.webp" ;
     hnav:order "5"^^xsd:integer ;
     hnav:layer "2"^^xsd:integer ;
@@ -76,19 +153,15 @@ rev:wf-readme-path-05-reckoning rdf:type ktype:Concept ;
 
 rev:gap rdf:type ktype:Concept ;
     rdfs:label "No visual test yet" ;
-    rdfs:comment "14 part(s) of v0.2.6 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
-    hnav:order "2"^^xsd:integer ;
+    rdfs:comment "13 part(s) of v0.2.6 that no TestWorkflow lists a test file for. They are listed here so the gap stays visible: review them some other way, or write the workflow." ;
+    hnav:order "3"^^xsd:integer ;
     hnav:layer "1"^^xsd:integer ;
     hnav:prev rev:wf-readme-path ;
-    p:has rev:gap-f107-10, rev:gap-f223, rev:gap-f122-1, rev:gap-f33-2, rev:gap-f74-10, rev:gap-currents-client-delivery-gap-resolved-in-the-app, rev:gap-f65, rev:gap-f74-9, rev:gap-f254-1, rev:gap-urn-kbase-concept-model-cache, rev:gap-f203-6, rev:gap-f203-7, rev:gap-f248, rev:gap-term-ratchet-counts-prose-only-not-code-identifiers .
+    p:has rev:gap-f107-10, rev:gap-f122-1, rev:gap-f33-2, rev:gap-f74-10, rev:gap-currents-client-delivery-gap-resolved-in-the-app, rev:gap-f65, rev:gap-f74-9, rev:gap-f254-1, rev:gap-urn-kbase-concept-model-cache, rev:gap-f203-6, rev:gap-f203-7, rev:gap-f248, rev:gap-term-ratchet-counts-prose-only-not-code-identifiers .
 
 rev:gap-f107-10 rdf:type ktype:Concept ;
     rdfs:label "F107.10 One self-contained space: its folder, its schema, and the order of one large Turtle file" ;
     rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/import-chunks.test.ts, src/lib/rdf/__tests__/export-chunks.test.ts, src/lib/ingest/__tests__/source-corpus.test.ts, src/lib/stores/__tests__/space-passages-roundtrip.test.ts)." .
-
-rev:gap-f223 rdf:type ktype:Concept ;
-    rdfs:label "F223 Proposals in the graph — a target state that needs a solution, as a question needs an answer" ;
-    rdfs:comment "Status in the roadmap: planned. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists src/lib/rdf/__tests__/statement-standing.test.ts, src/lib/rdf/__tests__/graph-view.test.ts, src/lib/rdf/__tests__/standing-style.test.ts, src/lib/rdf/__tests__/standing-filter.test.ts)." .
 
 rev:gap-f122-1 rdf:type ktype:Concept ;
     rdfs:label "F122.1 Document evidence anchors — page, block, span and geometry provenance" ;

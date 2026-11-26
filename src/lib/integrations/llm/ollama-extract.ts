@@ -7,11 +7,12 @@ import {
   isSmallOllamaModel,
   type ExtractedTriple
 } from './extractor';
-import { chatOllama, chatOllamaStructured, type ChatMessage } from './providers';
+import { chatOllama, chatOllamaStructured, resolveOllamaModelOrThrow, type ChatMessage } from './providers';
 import { CRITIC_SYSTEM_PROMPT, buildCriticUserPrompt, mergeCriticPass } from './extract-critic';
 
 export type OllamaExtractOptions = {
-  model: string;
+  /** Blank/undefined = the best installed model (resolved against the server before the first call). */
+  model?: string;
   baseUrl?: string;
   maxTokens?: number;
   /**
@@ -57,7 +58,7 @@ export type OllamaExtractOptions = {
 export function resolveOllamaSystemPrompt(opts: OllamaExtractOptions): string {
   if (opts.systemPromptOverride) return opts.systemPromptOverride;
   const mode = opts.promptMode ?? 'auto';
-  const useCompact = mode === 'compact' || (mode === 'auto' && isSmallOllamaModel(opts.model));
+  const useCompact = mode === 'compact' || (mode === 'auto' && isSmallOllamaModel(opts.model ?? ''));
   return useCompact ? EXTRACTION_SYSTEM_PROMPT_FEWSHOT : EXTRACTION_SYSTEM_PROMPT;
 }
 
@@ -128,6 +129,8 @@ export async function extractWithOllama(
   sourceTitle: string,
   opts: OllamaExtractOptions
 ): Promise<ExtractedTriple[]> {
+  // Resolve once, up front, so both passes and the prompt choice use the same installed model.
+  opts = { ...opts, model: await resolveOllamaModelOrThrow(opts.model, opts.baseUrl ?? 'http://localhost:11434') };
   const first = await runOnePass(
     buildExtractionUserPrompt(text, sourceTitle, opts.graphContext),
     resolveOllamaSystemPrompt(opts),

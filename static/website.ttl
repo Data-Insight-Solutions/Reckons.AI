@@ -385,3 +385,11 @@ site:release-notes-v0-2-8 a schema:WebPage ;
     schema:url <https://reckons.ai/docs/releases/v0-2-8> ;
     schema:position 95 ;
     schema:abstract "The website builder release: turn a folder of pages into a finished website, a website that tells how it was made, a guided walk through a story, a date on a fact that flags it when it goes out of date, and a first 3D asset scanned from photographs." .
+
+site:release-notes-v0-2-9 a schema:WebPage ;
+    schema:isPartOf site:docs ;
+    dcterms:isPartOf "Releases" ;
+    schema:name "Reckons.AI v0.2.9" ;
+    schema:url <https://reckons.ai/docs/releases/v0-2-9> ;
+    schema:position 96 ;
+    schema:abstract "The stories release: a personal example that plays from a link, a company story that starts from its link and shows its 3D ring, story steps carried in the page address, compare drawn on the main picture, and a .ttl file opened from a public GitHub repository." .

@@ -1,7 +1,7 @@
 ---
 title: "Make pictures, clips and 3D splats on your own machine, and see them in a space"
 slug: "workflow-generated-assets"
-order: 1017
+order: 1009
 section: "Testing"
 parent: "test-workflows"
 template: doc
@@ -59,7 +59,7 @@ Each result is a node, linked to what it was made from: a prompt to its picture,
 
 Where: the graph (`/`).
 
-<figure class="workflow-shot"><img src="/workflows/generated-assets/02-see-pipeline.webp" width="1280" height="800" alt="Screenshot of step 2, See the pipeline in the graph. A pink box labelled &quot;Prompt → picture → clip and splat&quot; marks the graph, where each prompt links to its picture and the picture links to its clip and its splat." loading="lazy" decoding="async" /><figcaption>The pink box marks the graph, where each prompt links to its picture and the picture links to its clip and its splat.</figcaption></figure>
+<figure class="workflow-shot"><img src="/workflows/generated-assets/02-see-pipeline.webp" width="1280" height="800" alt="Screenshot of step 2, See the pipeline in the graph. A pink box labelled &quot;See the pipeline in the graph&quot; marks the graph, where each prompt links to its picture and the picture links to its clip and its splat." loading="lazy" decoding="async" /><figcaption>The pink box marks the graph, where each prompt links to its picture and the picture links to its clip and its splat.</figcaption></figure>
 
 **What the test checks.** With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed.
 
@@ -105,4 +105,8 @@ Where: the graph (`/`).
 
 This workflow is run by `tests/e2e/workflow-generated-assets.test.ts`, which reads the steps above from the same list.
 
-<p class="derived">It has 6 parts below.</p>
+## Detail
+
+**Story Space**
+
+generated-assets

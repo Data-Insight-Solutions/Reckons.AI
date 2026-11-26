@@ -19,10 +19,11 @@
  *
  * Screenshots: tests/visual/screenshots/graph-sync/
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import { clearAllKbs, screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 /** Seed a rendered graph the robust way: the landing page's "Getting started"
  *  button loads the everyday starter graph as confirmed facts and navigates to

@@ -41,7 +41,7 @@ import path from 'path';
 // ── Scene model ──────────────────────────────────────────────────────────────
 // A minimal, deterministic scene. This is what a graph's ktype:Scene subgraph resolves to;
 // here it is the plain object so the renderer can be tested without the app.
-export type SceneShape = 'cube' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'ico';
+export type SceneShape = 'cube' | 'sphere' | 'cylinder' | 'cone' | 'torus' | 'ico' | 'stl';
 
 export interface SceneObject {
   shape: SceneShape;
@@ -58,6 +58,12 @@ export interface SceneObject {
   /** Ring radii for `torus`. Defaults to a chunky, clearly-holed ring. */
   majorRadius?: number;
   minorRadius?: number;
+  /** For `stl`: path of an STL file to import (F299.2). The mesh is imported as-is, then `scale`
+   *  is applied, so a millimetre part can be shown at a sensible size. */
+  stl?: string;
+  /** Principled BSDF metallic / roughness, 0..1. Only emitted when set, so existing scripts are unchanged. */
+  metallic?: number;
+  roughness?: number;
 }
 export interface Scene {
   objects: SceneObject[];
@@ -140,11 +146,18 @@ ${scene.objects
       const rot = o.rotation ?? [0, 0, 0];
       const s = o.scale ?? 1;
       const col = o.color ?? [0.8, 0.3, 0.2];
-      return `${primitiveCall(o)}location=(${loc[0]}, ${loc[1]}, ${loc[2]}))
-obj${i} = bpy.context.active_object
+      const create = o.shape === 'stl'
+        ? `bpy.ops.wm.stl_import(filepath=${JSON.stringify(o.stl ?? '')})`
+        : `${primitiveCall(o)}location=(${loc[0]}, ${loc[1]}, ${loc[2]}))`;
+      const place = o.shape === 'stl' ? `\nobj${i}.location = (${loc[0]}, ${loc[1]}, ${loc[2]})` : '';
+      const finish = o.metallic !== undefined || o.roughness !== undefined
+        ? `\nb${i} = obj${i}.data.materials[0].node_tree.nodes.get("Principled BSDF")\nb${i}.inputs["Metallic"].default_value = ${o.metallic ?? 0}\nb${i}.inputs["Roughness"].default_value = ${o.roughness ?? 0.5}`
+        : '';
+      return `${create}
+obj${i} = bpy.context.active_object${place}
 obj${i}.rotation_euler = (${rot[0]}, ${rot[1]}, ${rot[2]})
 obj${i}.scale = (${s}, ${s}, ${s})
-obj${i}.data.materials.append(mat((${col[0]}, ${col[1]}, ${col[2]})))`;
+obj${i}.data.materials.append(mat((${col[0]}, ${col[1]}, ${col[2]})))${finish}`;
     })
     .join('\n')}
 
@@ -179,7 +192,7 @@ bpy.ops.render.render(write_still=True)`
   return py;
 }
 
-function blenderBin(): string {
+export function blenderBin(): string {
   for (const c of ['blender', '/snap/bin/blender', '/usr/bin/blender']) {
     try {
       execFileSync(c, ['--version'], { stdio: 'ignore' });

@@ -1,0 +1,65 @@
+@prefix kb:     <urn:kbase:concept/> .
+@prefix kpred:  <urn:kbase:predicate/> .
+@prefix ktype:  <urn:kbase:type/> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+
+# CAPABILITY TERMS (F269, F303.2) — the words a job's needs and a device's measurements share.
+# TERMS ONLY: no device value is ever written here. A device's values live in its private device
+# space (F269), outside Git. A job asks for a term; a device claims it only if it has MEASURED it
+# (F303 "measured, not declared"). Open families: tool:<name> (an installed tool) and model:<name>
+# (an installed local model) are one term per name; the entities below define the known ones and the
+# two family patterns.
+
+kb:capability-terms rdf:type ktype:Concept ;
+    rdfs:label "Capability terms a job can need and a device can measure" ;
+    kpred:has-status "planned" ;
+    kpred:description "The shared vocabulary for F269 and F303.2: numeric terms (a minimum the device must meet) and presence terms (the thing must be installed). Defined once here; measured values stay in the private device space." ;
+    kpred:has-file "static/reckons-capabilities.ttl" .
+
+kb:cap-ram-gib rdf:type ktype:CapabilityTerm ;
+    rdfs:label "ram-gib" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "GiB" ;
+    kpred:description "Total system memory." .
+
+kb:cap-ram-available-gib rdf:type ktype:CapabilityTerm ;
+    rdfs:label "ram-available-gib" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "GiB" ;
+    kpred:description "System memory free at the moment of measurement; it changes, so it is dated." .
+
+kb:cap-gpu-count rdf:type ktype:CapabilityTerm ;
+    rdfs:label "gpu-count" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "count" ;
+    kpred:description "Graphics processors the device reports." .
+
+kb:cap-gpu-memory-gib rdf:type ktype:CapabilityTerm ;
+    rdfs:label "gpu-memory-gib" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "GiB" ;
+    kpred:description "Memory of the largest single graphics processor; a job that must fit on one card needs this." .
+
+kb:cap-gpu-memory-total-gib rdf:type ktype:CapabilityTerm ;
+    rdfs:label "gpu-memory-total-gib" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "GiB" ;
+    kpred:description "Memory summed over every graphics processor." .
+
+kb:cap-disk-free-gib rdf:type ktype:CapabilityTerm ;
+    rdfs:label "disk-free-gib" ;
+    kpred:capability-kind "numeric" ;
+    kpred:capability-unit "GiB" ;
+    kpred:description "Free disk where the device keeps its working files." .
+
+kb:cap-tool-family rdf:type ktype:CapabilityTerm ;
+    rdfs:label "tool:<name>" ;
+    kpred:capability-kind "presence" ;
+    kpred:description "An installed tool a job runs. Known names: tool:blender, tool:colmap, tool:build123d, tool:tada, tool:ollama, tool:nvidia-smi. A tool the probe looked for and did not find is recorded as absent, which differs from never measured." .
+
+kb:cap-model-family rdf:type ktype:CapabilityTerm ;
+    rdfs:label "model:<name>" ;
+    kpred:capability-kind "presence" ;
+    kpred:description "A local model the device has installed, by the name its model server lists. Recorded only when the model server could be reached; otherwise models are unmeasured, not absent." .

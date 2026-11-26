@@ -25,7 +25,7 @@ test('submit button is disabled with empty note', async ({ page }) => {
   await page.goto('/ingest');
 
   // Submit button should be disabled when title/body are empty
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).toBeDisabled({ timeout: 5_000 });
 });
 
@@ -37,14 +37,15 @@ test('ingest a note with mock backend produces pending statements', async ({ pag
   await page.locator('textarea').first().fill('Test Company Alpha was founded in 2020. It has 50 employees and is based in London.');
 
   // Submit button becomes enabled
-  const submitBtn = page.getByRole('button', { name: /extract facts/i });
+  const submitBtn = page.getByRole('button', { name: /extract statements/i });
   await expect(submitBtn).not.toBeDisabled({ timeout: 5_000 });
   await submitBtn.click();
 
-  // Mock backend completes fast and navigates to /compare.
+  // Mock backend completes fast and navigates to Review's compare mode.
   // Wait for the URL to change away from /ingest.
   await page.waitForURL((url) => !url.pathname.startsWith('/ingest'), { timeout: 30_000 });
-  expect(page.url()).toContain('/compare');
+  expect(new URL(page.url()).pathname).toBe('/review');
+  expect(page.url()).toContain('view=compare');
 });
 
 test('document tab renders file input', async ({ page }) => {

@@ -14,12 +14,13 @@
  * Run:  (dev:test on 5174 must be up)
  *   npx playwright test --config=playwright.visual.config.ts --project=chromium full-sweep
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'fs';
 import { DEVICES, useDevice, gotoStable, waitForAppReady, screenshotStep, stepAudit } from '../workflow-harness';
 import { seedAllKbs } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 const ROUTES = [
   { label: 'graph-main', path: '/' },
@@ -28,7 +29,7 @@ const ROUTES = [
   { label: 'reckoning', path: '/reckoning' },
   { label: 'kb', path: '/kb' },
   { label: 'analyze', path: '/analyze' },
-  { label: 'compare', path: '/compare' },
+  { label: 'compare', path: '/review?view=compare' },
   { label: 'history', path: '/history' },
   { label: 'about', path: '/about' },
   { label: 'case-study', path: '/about/case-study-0' },

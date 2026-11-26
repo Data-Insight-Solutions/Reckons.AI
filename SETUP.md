@@ -124,11 +124,11 @@ Best for privacy and offline use.
 # Install Ollama (macOS/Linux)
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Pull a model (choose based on your RAM)
-ollama pull llama3.2        # ~2GB, good balance
-ollama pull llama3.2:1b     # ~1.3GB, fastest
-ollama pull mistral         # ~4GB, strong reasoning
-ollama pull qwen2.5:7b      # ~4.7GB, excellent for structured output
+# Pull a small model for each job you want local (Reckons.AI uses what you have installed;
+# there is no single default, and leaving the Settings model box blank means "Automatic")
+ollama pull gemma3          # extraction and chat, a few GB
+ollama pull qwen3-coder     # code, large (about 19 GB), skip on small machines
+ollama pull llama3.2:3b     # ~2GB, a small option for low-RAM machines
 
 # Start the server (auto-starts on install)
 ollama serve

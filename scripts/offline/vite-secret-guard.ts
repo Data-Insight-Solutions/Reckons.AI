@@ -29,12 +29,32 @@ export function findBakedSecrets(env: NodeJS.ProcessEnv): string[] {
     .sort();
 }
 
+/**
+ * Vite inlines VITE_ vars from `.env*` files as well as from the process environment, so a
+ * guard that reads only process.env lets a key sitting in a local `.env` straight into the
+ * bundle. This merges the files Vite would load for a production build (process env wins,
+ * as in Vite). 2026-11-13: found while pinning COUNSEL-BRIEF.md's "user's own API key" claim.
+ */
+export function buildEnvWithDotenv(cwd: string, env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const merged: Record<string, string | undefined> = {};
+  for (const f of ['.env', '.env.local', '.env.production', '.env.production.local']) {
+    const file = join(cwd, f);
+    if (!existsSync(file)) continue;
+    for (const line of readFileSync(file, 'utf8').split('\n')) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+      if (!m || !m[1].startsWith('VITE_')) continue;
+      merged[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2').replace(/\s+#.*$/, '');
+    }
+  }
+  return { ...merged, ...env } as NodeJS.ProcessEnv;
+}
+
 function main(): void {
-  const offenders = findBakedSecrets(process.env);
+  const offenders = findBakedSecrets(buildEnvWithDotenv(process.cwd(), process.env));
   const overridden = process.env.VITE_SECRET_GUARD_ALLOW === '1';
 
   if (offenders.length === 0) {
-    console.log('✓ vite-secret-guard: no provider secrets in the build environment.');
+    console.log('✓ vite-secret-guard: no provider secrets in the build environment or .env files.');
     return;
   }
 
@@ -56,6 +76,8 @@ function main(): void {
 
 // Run only when invoked directly, so the pure findBakedSecrets can be unit-tested.
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   main();
 }

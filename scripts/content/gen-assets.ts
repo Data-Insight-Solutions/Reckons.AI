@@ -35,6 +35,9 @@ import sharp from 'sharp';
 import { checkImage, checkSplat, checkVideo, type Check } from './asset-checks.js';
 import { compressSplat, verifyCompressed, type CompressedReceipt } from './splat-compress.js';
 import { validateReceipt, type ScanReceipt } from './scan-room-lib.js';
+import { cadPartId, cadSpecId, cadTtl } from './cad/example-ttl.js';
+import { checkReceipt as checkCadReceipt, type CadReceipt } from './cad/receipt.js';
+import { checkGlb } from './blender-render.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const OUT_ROOT = join(ROOT, 'static/generated');
@@ -342,6 +345,17 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
       else lines.push(`✓ ${slug} (synthetic): ${s.output.file} ${JSON.stringify(check.measured)}`);
       continue;
     }
+    // A CAD part (F299): modelled from parameters, verified against its own spec and file hashes.
+    const cadFile = join(root, slug, 'cad-receipt.json');
+    if (existsSync(cadFile)) {
+      const c = JSON.parse(readFileSync(cadFile, 'utf8')) as CadReceipt;
+      const problems = checkCadReceipt(c, join(root, slug));
+      const glb = checkGlb(join(root, slug, c.files.glb?.name ?? 'part.glb'));
+      if (!glb.ok) problems.push(glb.reason);
+      if (problems.length) { ok = false; lines.push(`✗ ${slug} (CAD): ${problems.join('; ')}`); }
+      else lines.push(`✓ ${slug} (CAD, modelled from parameters): bbox ${JSON.stringify(c.bboxMm)} mm, ${glb.vertices} vertices`);
+      continue;
+    }
     const rfile = join(root, slug, 'receipt.json');
     if (!existsSync(rfile)) { ok = false; lines.push(`✗ ${slug}: no receipt.json`); continue; }
     const parsed = JSON.parse(readFileSync(rfile, 'utf8')) as Receipt | ScanReceipt;
@@ -381,6 +395,12 @@ export async function checkCommitted(root = OUT_ROOT): Promise<{ ok: boolean; li
 // ── The example space (static/starter-generated-assets.ttl) ──────────────────
 
 export const EXAMPLE_TTL = join(ROOT, 'static/starter-generated-assets.ttl');
+/**
+ * F300.5: the walk of this example is a story INSIDE it. It is hand-written here and copied into the generated file,
+ * because anything written straight into EXAMPLE_TTL is deleted by the next `gen:assets -- --ttl`. Its screenshot
+ * links (story:media) are written to this file by `npm run workflow:shots`, never to EXAMPLE_TTL.
+ */
+export const WALK_TTL = join(ROOT, 'scripts/content/gen-assets-walk.ttl');
 const lit = (v: string | number) => JSON.stringify(String(v));
 const KIND: Record<Stage, string> = { image: 'Image', video: 'Video', splat: 'GaussianSplat' };
 const MODEL_NAMES: Record<Stage, string> = {
@@ -394,7 +414,7 @@ const MODEL_NAMES: Record<Stage, string> = {
  * that the run did not record. Each output is its own node, linked back to what it was made from,
  * so the graph itself shows the pipeline: prompt → image → video, and image → splat.
  */
-export function exampleTtl(receipts: Receipt[]): string {
+export function exampleTtl(receipts: Receipt[], cad: CadReceipt[] = []): string {
   const out: string[] = [
     '## Generated assets — made on this machine by local models (F58.9, kb:splat-local-pipeline).',
     '## WRITTEN BY scripts/content/gen-assets.ts FROM static/generated/*/receipt.json. Do not hand-edit;',
@@ -407,13 +427,14 @@ export function exampleTtl(receipts: Receipt[]): string {
     '@prefix p:     <urn:kbase:predicate/> .',
     '@prefix schema: <https://schema.org/> .',
     '@prefix story: <urn:reckons:story/> .',
+    '@prefix kmeta: <urn:kbase:meta/> .',
     '',
     '## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.',
     '',
     'kb:generated-assets rdf:type ktype:Concept ;',
     '    rdfs:label "Generated on this machine" ;',
     `    rdfs:comment ${lit('Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real.')} ;`,
-    `    p:has ${receipts.map((r) => `kb:gen-${r.slug}-prompt`).join(', ')} .`,
+    `    p:has ${[...receipts.map((r) => `kb:gen-${r.slug}-prompt`), ...cad.map(cadSpecId)].join(', ')} .`,
     '',
   ];
   out.push(
@@ -427,8 +448,9 @@ export function exampleTtl(receipts: Receipt[]): string {
     '    story:partOf story:create-generated-asset ;',
     '    story:order "1" ;',
     '    story:title "Imagine an image" ;',
-    '    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result." ;',
-    '    story:question "What image would you like me to generate?" .',
+    '    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result. The confirmed filter keeps what this space already holds lit — the results made earlier and their receipts — while anything still awaiting a decision recedes." ;',
+    '    story:question "What image would you like me to generate?" ;',
+    '    story:filter "confirmed" .',
     '',
     'story:derive-asset rdf:type story:Step ;',
     '    story:partOf story:create-generated-asset ;',
@@ -436,6 +458,8 @@ export function exampleTtl(receipts: Receipt[]): string {
     '    story:title "Choose what happens next" ;',
     '    story:content "Once the image is ready, choose an available derivation. Each output links back to its source image." ;',
     '    story:question "Would you like a video, a Gaussian splat, or another image?" .',
+    '',
+    readFileSync(WALK_TTL, 'utf8').trimEnd(),
     '',
   );
   // License is an entity: assets LINK to it (an edge between two entities), and it carries its own
@@ -475,7 +499,13 @@ export function exampleTtl(receipts: Receipt[]): string {
       out.push(...lines);
     }
   }
+  if (cad.length) out.push('## CAD parts (F299, kb:cad-creation): modelled from parameters with build123d, checked against their spec.', '', cadTtl(cad));
   return out.join('\n');
+}
+
+export function readCadReceipts(root = OUT_ROOT): CadReceipt[] {
+  return readdirSync(root).filter((d) => existsSync(join(root, d, 'cad-receipt.json'))).sort()
+    .map((d) => JSON.parse(readFileSync(join(root, d, 'cad-receipt.json'), 'utf8')) as CadReceipt);
 }
 
 function readReceipts(root = OUT_ROOT): Receipt[] {
@@ -494,7 +524,7 @@ async function main() {
     process.exit(ok ? 0 : 1);
   }
   if (process.argv.includes('--ttl')) {
-    writeFileSync(EXAMPLE_TTL, exampleTtl(readReceipts()));
+    writeFileSync(EXAMPLE_TTL, exampleTtl(readReceipts(), readCadReceipts()));
     console.log(`wrote ${EXAMPLE_TTL}`);
     process.exit(0);
   }
@@ -532,7 +562,7 @@ async function main() {
       if (!r.check.pass) failed = true;
     }
   }
-  writeFileSync(EXAMPLE_TTL, exampleTtl(readReceipts()));
+  writeFileSync(EXAMPLE_TTL, exampleTtl(readReceipts(), readCadReceipts()));
   process.exit(failed ? 1 : 0);
 }
 

@@ -313,7 +313,7 @@ async function main(): Promise<void> {
   const flag = (k: string) => flags.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3);
   const name = flag('name');
   const reset = flags.includes('--reset');
-  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.6:latest] [--max-attempts=3] [--max-per-hour=6] [--tier=script|agent] [--reset] -- <command…>'); process.exit(2); }
+  if (!name || (!cmd.length && !reset)) { console.error('Usage: npx tsx scripts/agent/job-watch.ts --name=<job> [--model=qwen3.8:latest] [--max-attempts=3] [--max-per-hour=6] [--tier=script|agent] [--reset] -- <command…>'); process.exit(2); }
   const num = (k: string, d: number) => { const v = Number(flag(k)); return Number.isFinite(v) && v > 0 ? Math.trunc(v) : d; };
   const maxAttempts = num('max-attempts', DEFAULT_MAX_ATTEMPTS);
   const maxPerHour = num('max-per-hour', DEFAULT_MAX_PER_HOUR);

@@ -241,6 +241,24 @@ kb:gen-f5-tts rdf:type        ktype:Tool ;
     kpred:generates    "speech" ;
     kpred:description  "MIT voice cloning, actively pushed." .
 
+kb:gen-tada rdf:type        ktype:Tool ;
+    rdfs:label      "TADA (Hume)" ;
+    kpred:part-of      kb:generation-catalog ;
+    hnav:order   21 ;
+    kpred:repo-url     "https://github.com/HumeAI/tada" ;
+    kpred:accepts      "text" ;
+    kpred:accepts      "audio" ;
+    kpred:produces     "audio" ;
+    kpred:agent-fit    6 ;
+    kpred:install-shape "pip package" ;
+    kpred:agent-interface "cli" ;
+    kpred:license      "Code MIT (LICENSE_CODE); model weights Llama 3.2 Community License (LICENSE, read from the repository 2026-11-17)" ;
+    kpred:copy-permitted "yes — code MIT; weights allow commercial use under the Llama 3.2 terms (display 'Built with Llama', request a license above 700 million monthly active users)" ;
+    kpred:stars        1019 ;
+    kpred:last-push    "2026-05-11"^^xsd:date ;
+    kpred:generates    "speech" ;
+    kpred:description  "Hume's open-source text-to-speech model (1B and 3B sizes on Llama 3.2); voice cloning from a reference clip with its transcript. Measured against Kokoro in kb:narration-kokoro-vs-tada." .
+
 kb:gen-bark rdf:type        ktype:Tool ;
     rdfs:label      "bark" ;
     kpred:part-of      kb:generation-catalog ;

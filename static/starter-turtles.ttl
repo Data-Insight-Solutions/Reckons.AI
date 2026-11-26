@@ -449,8 +449,9 @@ kb:turtle-step-1
     story:partOf        kb:turtle-story ;
     story:order         "1"^^xsd:integer ;
     story:title         "Everything at once" ;
-    story:content       "This is the whole graph: 57 things and the links between them. Nothing is arranged yet — related nodes drift together only because they pull on each other. That is what a graph looks like before you ask it anything, and it is deliberately a bit of a mess. Drag a node. Click one to read what the graph knows about it. Start with the Leatherback." ;
+    story:content       "This is the whole graph: 57 things and the links between them. Nothing is arranged yet — related nodes drift together only because they pull on each other. That is what a graph looks like before you ask it anything, and it is deliberately a bit of a mess. Drag a node. Click one to read what the graph knows about it. Start with the Leatherback. The hubs filter keeps the most-connected nodes lit — the order at the top and the best-known species — while the rest of the tangle recedes." ;
     story:layout        "force" ;
+    story:filter        "hubs" ;
     p:page          "/" .
 
 kb:turtle-step-2

@@ -11,6 +11,7 @@
 @prefix klayer: <urn:kbase:type/layer/> .
 @prefix kshape: <urn:kbase:shape/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix story:  <urn:reckons:story/> .
 @prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
@@ -106,6 +107,14 @@ kalt:log a skos:Concept ;
     skos:definition "It asserts only that something happened. If it were wrong: nothing — there is no claim in it to be wrong about." ;
     skos:note "CLASSIFIED, NEVER DROPPED. A log contradicting the evidence under a live decision IS a deciding factor, which is why altitude is a view-time rank rather than a delete." ;
     hnav:order 0 .
+
+# F139.2 (kb:entity-detail-levels): an ENTITY's own detail level — the altitude at which the view
+# shows it, overriding the level derived from its facts. One per entity; the reader
+# (src/lib/rdf/fact-altitude.ts, entityDetailLevels) takes a notation and ignores a value it does
+# not recognize, so a typo costs a fact not shown, not a broken view.
+kpred:detail-level a rdf:Property ;
+    rdfs:label "detail level" ;
+    rdfs:comment "The altitude at which an entity is shown, overriding the level its facts give it. Its values come from ktype:AltitudeScheme, exactly like kpred:altitude, which fixes the same word on a single fact." .
 
 # ── TASK STATE (F87) ─────────────────────────────────────────────────────────
 
@@ -232,6 +241,17 @@ kshape:Altitude a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:severity sh:Violation ;
         sh:message "kpred:altitude must be one of the ktype:AltitudeScheme notations."
+    ] .
+
+kshape:DetailLevel a sh:NodeShape ;
+    rdfs:label "Detail level values must come from the scheme" ;
+    sh:targetSubjectsOf kpred:detail-level ;
+    sh:property [
+        sh:path kpred:detail-level ;
+        sh:in ( "decision" "judgment" "evidence" "record" "log" ) ;
+        sh:maxCount 1 ;
+        sh:severity sh:Violation ;
+        sh:message "kpred:detail-level must be one of the ktype:AltitudeScheme notations."
     ] .
 
 kshape:TaskState a sh:NodeShape ;
@@ -561,6 +581,50 @@ ktype:DeviceProfile a rdfs:Class ;
     rdfs:label "device profile" ;
     rdfs:comment "A machine (or every machine, hostname \"*\") that statements can be scoped to." .
 
+# ── Model routing (F74.6, 2026-11-13): job kind -> ordered candidate models, data in static/reckons-jobs.ttl ──
+ktype:JobKind a rdfs:Class ;
+    rdfs:label "Job kind" ;
+    rdfs:comment "A kind of local-model work (code-draft, extraction, visual, ...). The routing table keys on it, so a job declares its kind instead of hard-coding a model." .
+
+ktype:ModelRoute a rdfs:Class ;
+    rdfs:label "Model route" ;
+    rdfs:comment "One candidate model for one job kind, ordered by hnav:order, with its evidence and whether that evidence is measured or a guess." .
+
+kpred:route-kind a rdf:Property ;
+    rdfs:label "route kind" ;
+    rdfs:domain ktype:ModelRoute ;
+    rdfs:comment "The job kind this candidate serves." .
+
+kpred:route-local a rdf:Property ;
+    rdfs:label "has a local route" ;
+    rdfs:domain ktype:JobKind ;
+    rdfs:comment "\"false\" when no local model is used for this kind (local code review, retired 2026-10-13); the work goes to a Sonnet or Opus subagent." .
+
+kpred:evidence-grade a rdf:Property ;
+    rdfs:label "evidence grade" ;
+    rdfs:domain ktype:ModelRoute ;
+    rdfs:comment "measured (a bench or calibration is cited in the evidence) or guess (listed so it can be measured)." .
+
+kpred:job-kind a rdf:Property ;
+    rdfs:label "job kind" ;
+    rdfs:comment "On a schedule or offline job: the kind of local-model work it does; the router picks the model from the routing table. Absent = no routing and the flat RAM start gate applies." .
+
+kpred:job-model a rdf:Property ;
+    rdfs:label "job model" ;
+    rdfs:comment "On a schedule or offline job: an explicit model that overrides the routing table." .
+
+kpred:superseded-by a rdf:Property ;
+    rdfs:label "superseded by" ;
+    rdfs:comment "On a tombstone entity in a docs graph: the entity whose page replaces this retired one. The tombstone gets no page; its old URL answers with a 301 to the successor's page (scripts/docs-pages.ts)." .
+
+ktype:RetiredPage a rdfs:Class ;
+    rdfs:label "retired page" ;
+    rdfs:comment "A tombstone in a docs graph for a page that no longer exists. It carries kpred:superseded-by, builds no page, and keeps the old URL answering with a redirect." .
+
+kpred:retired-steps a rdf:Property ;
+    rdfs:label "retired step pages" ;
+    rdfs:comment "On a tombstone: how many per-step URLs (-step1 to -stepN) the retired page had; each also redirects to the successor." .
+
 ktype:Threshold a rdfs:Class ;
     rdfs:label "threshold" ;
     rdfs:comment "A named limit. rdfs:label is the metric; kpred:yellow / kpred:red bound a colour band, kpred:limit is a single hard limit. Merged per property across defaults and device overrides, matched by label." .
@@ -646,3 +710,51 @@ kpred:raised-by kpred:layer klayer:provenance .
 kpred:moved-to kpred:layer klayer:provenance .
 kpred:tested-by kpred:layer klayer:provenance .
 kpred:open-question kpred:layer klayer:question .
+
+# ── STORY STEP TERMS (F300.1, kb:story-step-vocabulary) ──────────────────────
+# One vocabulary for a guided sequence, read by src/lib/rdf/story-steps.ts for the in-app player, the docs
+# pages, the e2e tests and the demo recorder. The older story terms (title, order, partOf, highlight, layout,
+# openPage, offerSetting, prompt, autoplay, pace) are declared by use in the starter stories; these are the
+# ones the unified step adds. DEFINED, NOT YET ENFORCED by a SHACL shape: the reader refuses an unknown
+# action or expect kind today; nothing performs an action yet (F300.2+).
+
+story:content a rdf:Property ;
+    rdfs:label "story:content" ;
+    skos:definition "What the step says: the text the player shows and a narrator speaks. A legacy test step's kpred:narration maps here." .
+
+story:question a rdf:Property ;
+    rdfs:label "story:question" ;
+    skos:definition "The lead-in question: interactive mode asks it, passive mode speaks it before the step. Legacy kpred:narration-lead maps here." .
+
+story:storyline a rdf:Property ;
+    rdfs:label "story:storyline" ;
+    skos:definition "Story level: the single storyline a multi-topic story follows. Legacy kpred:narration-storyline maps here." .
+
+story:narrator a rdf:Property ;
+    rdfs:label "story:narrator" ;
+    skos:definition "Story level: who speaks the story. Legacy kpred:narrator maps here." .
+
+story:target a rdf:Property ;
+    rdfs:label "story:target" ;
+    skos:definition "A region of the screen the step points at: a stable test id, optionally followed by ' :: ' and a short label. Legacy kpred:box-target and kpred:box-label map here." .
+
+story:action a rdf:Property ;
+    rdfs:label "story:action" ;
+    skos:definition "One thing that happens at the step, as a JSON object so a player and a test can both perform it: kind open-page (path), select (entities), click (target), type (target, text) or run-job (a defined job kind name and typed params, never a command). Any other kind is refused with a reason." .
+
+story:expect a rdf:Property ;
+    rdfs:label "story:expect" ;
+    skos:definition "One thing that must be true after the step, as a JSON object: kind visible (target), count (type, n), standing (subject, predicate, object, optional status) or note (plain words a human judges). A test fails on any, a passive player warns. Legacy kpred:assertion maps to note." .
+
+story:needs a rdf:Property ;
+    rdfs:label "story:needs" ;
+    skos:definition "A capability term (static capability vocabulary, F269) the step requires; a device lacking it plays the recorded segment instead (F300.4)." .
+
+story:media a rdf:Property ;
+    rdfs:label "story:media" ;
+    skos:definition "The step's recorded clip, captions or poster, written by the recorder and never by hand. Legacy kpred:screenshot maps here." .
+
+story:stepId a rdf:Property ;
+    rdfs:label "story:stepId" ;
+    skos:definition "A stable key for a step, so a test can implement it by name. Legacy kpred:step-id maps here." .
+

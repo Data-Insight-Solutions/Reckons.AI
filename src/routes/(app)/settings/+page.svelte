@@ -1,6 +1,7 @@
 <script lang="ts">
   import SettingsHeader from '$lib/components/SettingsHeader.svelte';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
+  import { resolveCompareColors, DEFAULT_COMPARE_COLORS } from '$lib/rdf/compare-venn';
   import { copyText } from '$lib/utils/clipboard';
   import { ensureWasmReady, onWasmProgress } from '$lib/integrations/llm/wasm';
   import { providerStatus, warmProviderSdk, type ProviderInfo } from '$lib/integrations/llm/provider-status.svelte';
@@ -22,6 +23,8 @@
     computeContentHash, formatContentHash
   } from '$lib/storage/kb-fingerprint';
   import { onMount } from 'svelte';
+  import { pickDefaultOllamaModel } from '$lib/integrations/llm/model-for-task';
+  import { ollamaReachable, installedOllamaModels } from '$lib/integrations/llm/prefer-local';
   import Select from '$lib/components/ui/Select.svelte';
   import { Dialog } from 'bits-ui';
   import { DEFAULT_SETTINGS, getSettings, getUserDefaults, saveUserDefaults, clearUserDefaults, type SettingsRecord } from '$lib/storage/db';
@@ -73,7 +76,18 @@
   let claudeModel = $state(settings().claudeModel);
   let openaiModel = $state(settings().openaiModel);
   let geminiModel = $state(settings().geminiModel);
-  let ollamaModel = $state(settings().ollamaModel ?? 'llama3.2');
+  let ollamaModel = $state(settings().ollamaModel ?? '');
+  // "Automatic": blank means the best installed model by role runs (F279.1). Show which one, once
+  // the Ollama probe has run; before that we only say Automatic rather than guess a name.
+  let ollamaInstalled = $state<string[] | null>(null);
+  const ollamaAutoPlaceholder = $derived.by(() => {
+    const auto = ollamaInstalled ? pickDefaultOllamaModel(ollamaInstalled, 'extraction') : undefined;
+    return auto ? `Automatic (${auto})` : 'Automatic';
+  });
+  async function refreshOllamaInstalled() {
+    const base = ollamaBaseUrl || 'http://localhost:11434';
+    if (await ollamaReachable(base)) ollamaInstalled = installedOllamaModels(base);
+  }
   // Per-task overrides. Empty string means "use the general model above" — the resolver
   // (ollamaModelFor) treats blank as unset, so an empty box is not a broken setting.
   let ollamaIngestModel = $state(settings().ollamaIngestModel ?? '');
@@ -95,6 +109,20 @@
 
   async function saveDisplaySettings() {
     await updateSettings({ uiScale, nodeLabelFontSize, prefer2D });
+  }
+
+  // F306.2: the three compare-layout colours. Reverting writes nothing back, so the defaults in
+  // rdf/compare-venn.ts stay the one place the default values come from.
+  let compareColors = $state(resolveCompareColors(settings().compareColors));
+  const COMPARE_COLOR_ROWS = [
+    { key: 'a', label: 'only in the first' },
+    { key: 'b', label: 'only in the second' },
+    { key: 'shared', label: 'in both' },
+  ] as const;
+  async function saveCompareColors() { await updateSettings({ compareColors: { ...compareColors } }); }
+  async function revertCompareColors() {
+    compareColors = { ...DEFAULT_COMPARE_COLORS };
+    await updateSettings({ compareColors: undefined });
   }
 
   // ── Shared backend option groups (consistent naming across all selectors) ──
@@ -265,6 +293,7 @@
   let deviceProfile = $state<DeviceProfile | null>(null);
 
   onMount(async () => {
+    void refreshOllamaInstalled();
     const id = await getOrCreateStableId(
       settings().kbStableId,
       (newId) => updateSettings({ kbStableId: newId })
@@ -431,7 +460,7 @@
     claudeModel            = d.claudeModel;
     openaiModel            = d.openaiModel;
     geminiModel            = d.geminiModel;
-    ollamaModel            = d.ollamaModel;
+    ollamaModel            = d.ollamaModel ?? '';
     ollamaIngestModel      = d.ollamaIngestModel ?? '';
     ollamaAnalyzeModel     = d.ollamaAnalyzeModel ?? '';
     ollamaChatModel        = d.ollamaChatModel ?? '';
@@ -529,7 +558,7 @@
     claudeModel                = ud.claudeModel;
     openaiModel                = ud.openaiModel;
     geminiModel                = ud.geminiModel;
-    ollamaModel                = ud.ollamaModel;
+    ollamaModel                = ud.ollamaModel ?? '';
     ollamaIngestModel          = ud.ollamaIngestModel ?? '';
     ollamaAnalyzeModel         = ud.ollamaAnalyzeModel ?? '';
     ollamaChatModel            = ud.ollamaChatModel ?? '';
@@ -967,14 +996,14 @@
 {#if usedProviders.has('ollama')}
 <section id="s-ollama" class="card">
   <h3>ollama <span class="local-badge mono">local</span></h3>
-  <p class="hint">No API key needed. Run <code>ollama serve</code> then pull a model: <code>ollama pull llama3.2</code></p>
+  <p class="hint">No API key needed. Run <code>ollama serve</code>, then pull a small model that suits the job (for example <code>ollama pull gemma3</code> for extraction and chat, <code>ollama pull qwen3-coder</code> for code). Leave the model box blank and Reckons.AI picks from what you have installed.</p>
   <label class="field">
     <span class="lbl mono">base url</span>
     <input type="text" bind:value={ollamaBaseUrl} placeholder="http://localhost:11434" />
   </label>
   <label class="field">
     <span class="lbl mono">model</span>
-    <input type="text" bind:value={ollamaModel} placeholder="llama3.2" />
+    <input type="text" bind:value={ollamaModel} placeholder={ollamaAutoPlaceholder} />
   </label>
 
   <p class="hint">
@@ -1137,6 +1166,21 @@
       style="flex: 1;"
     />
   </label>
+
+  <div class="field" data-testid="compare-colors">
+    <span class="lbl mono">compare layout colors</span>
+    <p class="hint" style="margin: 0.1rem 0 0.4rem;">The compare layout draws what only one holds in its own color, and what both hold in the third. These are the defaults; change them to suit your eyes.</p>
+    <div class="compare-color-row">
+      {#each COMPARE_COLOR_ROWS as row (row.key)}
+        <label class="compare-color">
+          <input type="color" aria-label={row.label} data-testid={`compare-color-${row.key}`}
+            bind:value={compareColors[row.key]} onchange={saveCompareColors} />
+          <span class="muted">{row.label}</span>
+        </label>
+      {/each}
+      <button class="scale-btn" data-testid="compare-colors-revert" onclick={revertCompareColors}>revert</button>
+    </div>
+  </div>
 
   <div class="field row-field">
     <div>
@@ -1692,7 +1736,7 @@
           <tr><td><code>VITE_GEMINI_MODEL</code></td><td>Gemini model</td><td>gemini-2.0-flash</td></tr>
           <tr><td><code>VITE_PREFERRED_BACKEND</code></td><td>Default backend</td><td>claude</td></tr>
           <tr><td><code>VITE_OLLAMA_BASE_URL</code></td><td>Ollama URL</td><td>http://localhost:11434</td></tr>
-          <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>llama3.2</td></tr>
+          <tr><td><code>VITE_OLLAMA_MODEL</code></td><td>Ollama model</td><td>automatic</td></tr>
           <tr><td><code>VITE_OPENROUTER_MODEL</code></td><td>OpenRouter model</td><td>meta-llama/llama-3.2-3b-instruct:free</td></tr>
           <tr><td><code>VITE_WASM_MODEL</code></td><td>WASM/HuggingFace model ID</td><td>onnx-community/Qwen2.5-0.5B-Instruct</td></tr>
         </tbody>
@@ -1828,6 +1872,9 @@
   .field { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.7rem; }
   .field-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
   .btn-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+  .compare-color-row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+  .compare-color { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+  .compare-color input[type='color'] { width: 2rem; height: 1.6rem; padding: 0; border: 1px solid var(--border); border-radius: 4px; background: none; cursor: pointer; }
   .defaults-block { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .defaults-info { flex: 1; min-width: 0; }
   .defaults-info strong { font-size: 0.9rem; }
