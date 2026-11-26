@@ -38,7 +38,7 @@ async function openQuickstart(page: Page) {
     const path = '/src/lib/storage/db.ts';
     const { db } = await import(/* @vite-ignore */ path);
     return (await db.statements.count()) as number;
-  }), { timeout: 20_000 }).toBeGreaterThan(20);
+  }).catch(() => 0), { timeout: 20_000 }).toBeGreaterThan(20); // a reload mid-poll returns 0, not a failure
 }
 
 /**
