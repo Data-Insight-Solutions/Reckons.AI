@@ -42,7 +42,8 @@ test('a GitHub link asks first, then opens the file as its own space', async ({ 
   // The space that opened holds the file's facts. Read from the open space's own rows, as the showcase walk does:
   // whether a label is drawn on the canvas depends on the renderer, and CI's draws it differently (CI on #693).
   await expect.poll(() => page.evaluate(async () => {
-    const { db } = await import(/* @vite-ignore */ '/src/lib/storage/db.ts');
+    const runtimeImport = (path: string) => import(/* @vite-ignore */ path);  // as showcase-walk: no type resolution of a dev-server path
+    const { db } = await runtimeImport('/src/lib/storage/db.ts');
     const rows = (await db.statements.toArray()) as { p: { value: string }; o: { value: string } }[];
     return rows.filter((r) => r.p.value === 'http://www.w3.org/2000/01/rdf-schema#label').map((r) => r.o.value).sort();
   }).catch(() => []), { timeout: 20_000 }).toEqual(expect.arrayContaining(['Garden plan', 'Raised bed']));
