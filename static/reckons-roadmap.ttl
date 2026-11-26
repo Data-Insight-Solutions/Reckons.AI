@@ -14572,3 +14572,17 @@ kb:open-from-github rdf:type ktype:Feature ;
     kpred:done-test "Unit tests for the link forms, refusals, the API address and the error words; browser test (GitHub API intercepted with a synthetic file) on desktop-chrome and mobile-android: the link asks first and fetches nothing, Open stores and lands on the new knowledge base, Cancel stores nothing, a non-.ttl link says why." ;
     kpred:tested-by "src/lib/integrations/github/__tests__/open-space.test.ts", "tests/e2e/open-from-github.test.ts" ;
     kpred:progress "2026-11-25 (Opus): built and tested as the done-test says (4 unit, 4 browser). NOT YET: a link or badge in the README (it would only work once this reaches production), a read-only open (F3) and a re-open that fetches a newer version; GitHub allows 60 unauthenticated reads an hour per address." .
+
+# F312 — review image options inside a space, not in an HTML page (Matt, 2026-11-26).
+kb:option-review-space rdf:type ktype:Phase ;
+    rdfs:label "F312 — review image options in a space: each decision is a Reckoning proposal whose options are the candidate images" ;
+    kpred:feature-id "F312" ;
+    kpred:has-status "in-progress" ;
+    kpred:part-of kb:theming ;
+    kpred:relates-to kb:reckoning-accept-option, kb:reckoning-proposal-in-space ;
+    kpred:decided "MATT, 2026-11-26 (chat): 'So instead of file:///home/matt/Desktop/reckons-private/theme/review.html can you just give me a space? Also, give me a way to choose 1 of several options within the space. That could be existing features like questions maybe? Lets get review working for image options, instead of an html.'" ;
+    kpred:description "A generator (scripts/content/option-review-space.ts) turns a JSON list of decisions (a question, a subject, and candidate images) into a workspace space folder: one Reckoning per decision, one proposal option per image, each option's candidate entity carrying its image as its kasset:icon so the picture shows on its node. Choosing is the existing Accept on the option (OptionDecision, reckoning-accept): the other options become superseded. The Reckoning page now shows the stored proposal of an existing Reckoning (it only showed one it had just generated) with each option's picture, and lists the open decisions of a space so a person can reach them." ;
+    kpred:constraint "THE GENERATOR PROPOSES, A PERSON DECIDES: every option is a pending statement; nothing is confirmed until Accept. It refuses an image outside the folders it was told it may read. The space of real candidate images is generated privately and never committed. NOT BUILT: a gallery view of all options of a decision side by side on the canvas (the Reckoning page card is the comparison view)." ;
+    kpred:done-test "Unit tests for the generator (determinism, refusal of outside images, one option per image, the icon reference, round-trip through the importer) and for reading a stored proposal back for display; browser test with SYNTHETIC images on desktop-chrome and mobile-android: the space loads, an option's icon is stored, the option card shows its picture, accepting one marks the others superseded; the real theme-review space generated privately." ;
+    kpred:has-file "scripts/content/option-review-space.ts", "src/lib/rdf/reckoning-written.ts", "src/lib/stores/kb-import.ts", "src/lib/rdf/reckoning-accept.ts", "src/routes/(app)/reckoning/+page.svelte" ;
+    kpred:tested-by "scripts/__tests__/option-review-space.test.ts", "src/lib/rdf/__tests__/reckoning-written.test.ts", "tests/e2e/option-review-space.test.ts" .
