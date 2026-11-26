@@ -1307,3 +1307,6 @@ code:test-e2e kpred:has-file "tests/e2e/showcase-walk.test.ts" .
 # F310 — open a Turtle file from GitHub.
 code:integrations kpred:has-file "src/lib/integrations/github/open-space.ts", "src/lib/integrations/github/__tests__/open-space.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/open-from-github.test.ts" .
+code:scripts kpred:has-file "scripts/content/option-review-space.ts", "scripts/__tests__/option-review-space.test.ts" .
+code:rdf kpred:has-file "src/lib/rdf/reckoning-written.ts", "src/lib/rdf/__tests__/reckoning-written.test.ts" .
+code:test-e2e kpred:has-file "tests/e2e/option-review-space.test.ts" .

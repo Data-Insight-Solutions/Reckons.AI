@@ -29,6 +29,8 @@
   import OptionDecision from '$lib/components/OptionDecision.svelte';
   import { readStoredProposal } from '$lib/rdf/reckoning-accept';
   import { ACTION_STATUS } from '$lib/rdf/proposal';
+  import { storedDecisions, writtenOptions } from '$lib/rdf/reckoning-written';
+  import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
   type Step = 'situation' | 'target' | 'confirm' | 'proposal' | 'done' | 'technical';
@@ -45,7 +47,7 @@
   let reckoningId = $state<string | null>(null);
   let search = $state('');
   let saveNote = $state<string | null>(null);
-  let restored = false;
+  let restoredFor: string | null = null;
 
   // F223.12.2: the target is a question to answer, an asset to make, or free text. Kept on the same entity.
   type TargetKind = 'question' | 'asset' | 'text';
@@ -125,8 +127,8 @@
   // Restore from the entity once your facts have loaded (the canvas action and a reload both arrive here).
   $effect(() => {
     const id = $page.url.searchParams.get('r');
-    if (restored || !id || !loaded()) return;
-    restored = true;
+    if (!id || restoredFor === id || !loaded()) return;
+    restoredFor = id;
     const found = readReckoning(statements(), id);
     if (!found) { saveNote = 'That Reckoning was not found.'; return; }
     reckoningId = id;
@@ -137,12 +139,22 @@
     targetAssetType = found.target.assetType;
     targetKind = found.target.statementId ? 'question' : found.target.assetType ? 'asset' : 'text';
     if (found.target.statementId || found.target.assetType || found.target.note) step = 'target';
+    // F312: a Reckoning that already holds a proposal (written by a generator or an earlier session) shows it.
+    const options = writtenOptions(statements(), id, icon2dOverrides());
+    if (options.length > 0) {
+      written = { options, blocked: [], warnings: [], rows: 0 };
+      step = 'done';
+    }
     const missing = found.statementIds.length - chosen.length;
     if (missing > 0) saveNote = `${missing} chosen statement${missing === 1 ? ' is' : 's are'} no longer here.`;
   });
   // Accepting an option may queue jobs: find the local runner while this page is open.
   onMount(() => useGenerationJobs());
   let proposal = $state('');
+  /** F312: the decisions of this knowledge base that already hold a proposal, offered before a new Reckoning is started. */
+  const openDecisions = $derived(storedDecisions(statements()));
+  /** F312: each option's picture (its candidate entity's icon), read live so it appears once its icons have loaded. */
+  const optionImages = $derived(reckoningId ? new Map(writtenOptions(statements(), reckoningId, icon2dOverrides()).map((o) => [o.id, o.image])) : new Map<string, string>());
   /** The proposal's own state, read from its stored rows so it stays right after a reload and after each decision. */
   const proposalLine = $derived.by(() => {
     const stored = reckoningId ? readStoredProposal(statements(), reckoningId) : null;
@@ -152,7 +164,7 @@
     return `${n} options are now in your data as proposals. Nothing is confirmed and no job has been queued.`;
   });
   /** F223.12.3: what the structured proposal wrote into the knowledge base, kept so the card can point at it. */
-  type WrittenOption = { id: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
+  type WrittenOption = { id: string; image?: string; label: string; rationale: string; recommended: boolean; statements: number; jobs: number; missing: number; cites: string[] };
   let written = $state<{ options: WrittenOption[]; blocked: string[]; warnings: string[]; rows: number } | null>(null);
   /** Filled when the structured path was not usable and the prose below is the fallback. */
   let proseReason = $state<string | null>(null);
@@ -499,6 +511,23 @@ Do NOT include <kb-actions> blocks.`;
     {/each}
   </div>
 
+  {#if step === 'situation' && !reckoningId && openDecisions.length > 0}
+    <section class="card" data-testid="open-decisions">
+      <div class="stp-header">
+        <span class="stp-num mono">?</span>
+        <div>
+          <h3>Decisions waiting here</h3>
+          <p class="stp-desc">Each one already holds options. Open one to look at them and accept one.</p>
+        </div>
+      </div>
+      <ul class="pick-list">
+        {#each openDecisions as d (d.id)}
+          <li><a data-testid="open-decision" href={`?r=${encodeURIComponent(d.id)}`}>{d.label}</a> <span class="mono">{d.status.replace(/^.*\//, '')}</span></li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
   {#if step === 'situation' || step === 'target' || step === 'confirm'}
     <section class="card">
       <div class="stp-header">
@@ -676,6 +705,7 @@ Do NOT include <kb-actions> blocks.`;
       <div class="proposal-body">
         {#each written.options as o (o.id)}
           <div class="proposal-option" data-testid="proposal-option">
+            {#if optionImages.get(o.id)}<img class="option-image" data-testid="option-image" src={optionImages.get(o.id)} alt={o.label} />{/if}
             <p class="proposal-section">{o.label}{o.recommended ? ' (recommended)' : ''}</p>
             <p class="proposal-text">{o.rationale}</p>
             <p class="proposal-detail mono">{o.statements} proposed statement{o.statements === 1 ? '' : 's'} · {o.jobs} proposed job{o.jobs === 1 ? '' : 's'} · {o.missing} missing input{o.missing === 1 ? '' : 's'}</p>
@@ -841,6 +871,7 @@ Do NOT include <kb-actions> blocks.`;
     align-items: center;
     gap: 0.6rem;
   }
+ .option-image { display: block; width: 8rem; max-width: 100%; height: auto; border: 1px solid var(--border); background: var(--surface); margin-bottom: 0.4rem; }
   .empty-icon { font-size: 2.5rem; }
   .empty-kb p { margin: 0; font-size: 0.9rem; }
   .btn-ingest {

@@ -10,6 +10,17 @@
 import { db, KBaseDB, DEFAULT_SETTINGS } from '../storage/db';
 import type { Statement, Source } from '../rdf/types';
 
+/**
+ * Base64 of a byte array, in slices. `String.fromCharCode(...bytes)` passes every byte as an argument and throws
+ * RangeError once a file is a few hundred KB, so an icon of 100 KB+ could not be imported (found 2026-11-26 by F312,
+ * whose candidate pictures are 0.5 MB PNGs).
+ */
+export function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
 export type KnowledgeBaseImportMeta = { name: string; stableId?: string };
 export type KnowledgeBaseImportData = { ttl: string; assets: Map<string, Uint8Array> };
 
@@ -114,10 +125,10 @@ export async function populateKbFromTtl(
         const filename = ref.value.split('/').pop() ?? 'preview';
         decoded.push({ kind: 'gif', id: ref.entityIri, filename, blob: new Blob([bytes.buffer as ArrayBuffer], { type: extToMime(ref.value) }) });
       } else if (ref.category === 'models') {
-        const b64 = btoa(String.fromCharCode(...bytes));
+        const b64 = bytesToBase64(bytes);
         decoded.push({ kind: 'glb', id: ref.entityIri, url: `data:model/gltf-binary;base64,${b64}` });
       } else if (ref.category === 'icons') {
-        const b64 = btoa(String.fromCharCode(...bytes));
+        const b64 = bytesToBase64(bytes);
         decoded.push({ kind: 'icon', id: ref.entityIri, url: `data:${extToMime(ref.value)};base64,${b64}` });
       }
     }

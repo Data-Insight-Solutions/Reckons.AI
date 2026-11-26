@@ -125,7 +125,7 @@ function plannedJobs(rows: readonly Statement[]): { jobs: PlannedJob[]; skipped:
  * missing-input question. Record rows are found by their subject: the option entity (it has the ProposalOption
  * type row) and each job entity (it has the proposed job-state row).
  */
-function proposedStatements(rows: readonly Statement[]): Statement[] {
+export function proposedStatements(rows: readonly Statement[]): Statement[] {
   const records = new Set(rows
     .filter((st) => (st.p.value === RDF_TYPE && st.o.value === PROPOSAL_OPTION_TYPE) || isProposedJobState(st))
     .map((st) => st.s.value));
