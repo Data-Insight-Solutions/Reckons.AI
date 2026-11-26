@@ -83,7 +83,7 @@ test('a generated option-review knowledge base: decisions are listed, options sh
     return { n, icons: await db.icon2dOverrides.count() };
   }, { ttl: space.ttl, assets });
   expect(loaded.n).toBeGreaterThan(20);
-  expect(loaded.icons).toBe(5); // one image per option
+  expect(loaded.icons).toBe(10); // one image per option, on its candidate and on its option node (the one the canvas shows)
   await page.reload();
 
   // the decisions are offered
@@ -121,4 +121,11 @@ test('a generated option-review knowledge base: decisions are listed, options sh
   expect(after.filter((r) => r.proposalOption?.startsWith('reckoning-document-option-')).every((r) => r.status === 'pending')).toBe(true);
   // the decision's question was the target, so the proposal closes
   await expect(page.getByTestId('proposal-status')).toContainText('Completed', { timeout: 10_000 });
+
+  // one tab, many decisions (Matt, 2026-11-26: no tab per decision): the position is shown, and the way on is lit
+  await expect(page.getByTestId('decision-position')).toHaveText(/Decision \d of 2 · 1 undecided/);
+  await page.getByTestId('next-undecided').click();
+  await expect(page).toHaveURL(/[?&]r=document/);
+  await expect(page.getByTestId('proposal-option')).toHaveCount(2, { timeout: 15_000 }); // the Document decision has two
+  await expect(page.getByTestId('proposal-option').first().getByTestId('option-image')).toBeVisible();
 });

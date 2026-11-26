@@ -63,3 +63,23 @@ export function writtenOptions(all: readonly Statement[], reckoningId: string, i
   });
 }
 
+/**
+ * Where one decision sits among the open ones, and where to go next (Matt, 2026-11-26: "could not navigate between
+ * them. So, I right click open in new tab all of the different proposals ... my Ubuntu went OOM"). Pure. `decided`
+ * says which statuses count as settled; "next undecided" wraps around and skips the current one.
+ */
+export function decisionNav(decisions: readonly StoredDecision[], currentId: string, decided: (status: string) => boolean):
+  { index: number; total: number; prev: string | null; next: string | null; nextUndecided: string | null; undecided: number } | null {
+  const i = decisions.findIndex((d) => d.id === currentId);
+  if (i < 0) return null;
+  const n = decisions.length;
+  let nextUndecided: string | null = null;
+  for (let k = 1; k < n; k++) { const d = decisions[(i + k) % n]; if (!decided(d.status)) { nextUndecided = d.id; break; } }
+  return {
+    index: i, total: n,
+    prev: i > 0 ? decisions[i - 1].id : null,
+    next: i < n - 1 ? decisions[i + 1].id : null,
+    nextUndecided,
+    undecided: decisions.filter((d) => !decided(d.status)).length,
+  };
+}

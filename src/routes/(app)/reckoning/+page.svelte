@@ -29,7 +29,7 @@
   import OptionDecision from '$lib/components/OptionDecision.svelte';
   import { readStoredProposal } from '$lib/rdf/reckoning-accept';
   import { ACTION_STATUS } from '$lib/rdf/proposal';
-  import { storedDecisions, writtenOptions } from '$lib/rdf/reckoning-written';
+  import { decisionNav, storedDecisions, writtenOptions } from '$lib/rdf/reckoning-written';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import { parseProposalReply, PROPOSAL_SYSTEM_PROMPT, PROPOSAL_PURPOSE } from '$lib/rdf/reckoning-proposal';
 
@@ -153,6 +153,15 @@
   let proposal = $state('');
   /** F312: the decisions of this knowledge base that already hold a proposal, offered before a new Reckoning is started. */
   const openDecisions = $derived(storedDecisions(statements()));
+  /**
+   * F312: move between decisions in ONE tab (Matt, 2026-11-26: "could not navigate between them. So, I right click
+   * open in new tab all of the different proposals ... my Ubuntu went OOM"). Settled = accepted (active) or completed.
+   */
+  const isSettled = (status: string) => status === ACTION_STATUS.active || status === ACTION_STATUS.completed;
+  const nav = $derived(reckoningId ? decisionNav(openDecisions, reckoningId, isSettled) : null);
+  const openDecision = (id: string | null) => { if (id) goto(`?r=${encodeURIComponent(id)}`); };
+  // Once this decision is settled, the way on is lit: one click to the next undecided decision.
+  const settledHere = $derived(!!(reckoningId && openDecisions.find((x) => x.id === reckoningId && isSettled(x.status))));
   /** F312: each option's picture (its candidate entity's icon), read live so it appears once its icons have loaded. */
   const optionImages = $derived(reckoningId ? new Map(writtenOptions(statements(), reckoningId, icon2dOverrides()).map((o) => [o.id, o.image])) : new Map<string, string>());
   /** The proposal's own state, read from its stored rows so it stays right after a reload and after each decision. */
@@ -694,6 +703,16 @@ Do NOT include <kb-actions> blocks.`;
   {/if}
 
   {#if step === 'done' && written}
+    {#if nav}
+      <nav class="decision-nav" aria-label="Decisions" data-testid="decision-nav">
+        <button class="dn-btn" onclick={() => openDecision(nav.prev)} disabled={!nav.prev} aria-label="Previous decision">← Previous</button>
+        <span class="dn-pos mono" data-testid="decision-position">Decision {nav.index + 1} of {nav.total} · {nav.undecided} undecided</span>
+        <button class="dn-btn" onclick={() => openDecision(nav.next)} disabled={!nav.next} aria-label="Next decision">Next →</button>
+        <button class="dn-btn primary" class:lit={settledHere} onclick={() => openDecision(nav.nextUndecided)} disabled={!nav.nextUndecided} data-testid="next-undecided">Next undecided →</button>
+        <a class="dn-all mono" href="/reckoning">all decisions</a>
+      </nav>
+      {#if settledHere && nav.nextUndecided}<p class="dn-note" role="status">Decided. {nav.undecided} left: <button class="dn-link" onclick={() => openDecision(nav.nextUndecided)}>go to the next one →</button></p>{/if}
+    {/if}
     <section class="card proposal-card" data-testid="proposal-written" transition:fade={{ duration: 200 }}>
       <div class="stp-header">
         <span class="stp-num ok mono">✓</span>
@@ -1080,4 +1099,16 @@ Do NOT include <kb-actions> blocks.`;
     transition: opacity 0.15s;
   }
   .btn-send:disabled { opacity: 0.4; cursor: default; }
+  .decision-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0 0 0.75rem; padding: 0.6rem 0.75rem;
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--rad-md, 10px); position: sticky; top: 0.5rem; z-index: 5; }
+  .dn-pos { flex: 1; text-align: center; font-size: 0.8rem; color: var(--ink-2); min-width: 12rem; }
+  .dn-btn { min-height: 40px; padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .dn-btn.primary { border-color: var(--accent); color: var(--accent); }
+  .dn-btn:disabled { opacity: 0.4; cursor: default; }
+  .dn-all { font-size: 0.75rem; color: var(--muted); }
+  .dn-note { margin: -0.25rem 0 0.75rem; color: var(--accent); font-size: 0.85rem; }
+  .dn-link { background: none; border: none; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+  .dn-btn.primary.lit { background: var(--accent); color: #fff; box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); animation: dn-pulse 1.6s ease-in-out infinite; }
+  @keyframes dn-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); } }
+  @media (prefers-reduced-motion: reduce) { .dn-btn.primary.lit { animation: none; } }
 </style>
