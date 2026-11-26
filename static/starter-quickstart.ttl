@@ -237,7 +237,8 @@ story:quickstart-compare-3
     story:page          "/review" ;
     story:pageName      "the Review page" ;
     story:boxTarget     "the legend over the canvas that says what is drawn as ghosts, what is folded onto what you hold, and the contradiction" ;
-    story:content       "The same comparison is drawn over your own canvas. Nothing is written until you decide." ;
+    story:content       "The same comparison is drawn over your own canvas. Nothing is written until you decide. The pending filter keeps the four arriving statements lit — they are not facts yet — while what you already hold recedes." ;
+    story:filter        "pending" ;
     story:question      "What would it look like if a new note were laid over what you already know, without changing it?" ;
     story:detail        "The same comparison is drawn over your canvas. The new statement is a ghost in amber. The repeat is folded onto the statement you hold, the reinforcing one thickens what you hold, and the contradiction is a pair of statements shown side by side. The legend counts each. Nothing has been written to your knowledge base yet." ;
     story:target        "overlay-legend :: Ghosts, repeats and one contradiction" ;
@@ -380,7 +381,8 @@ story:quickstart-reckoning-5
     story:page          "/" ;
     story:pageName      "the canvas" ;
     story:boxTarget     "the control that stops showing one proposal option, over the canvas that is drawing it" ;
-    story:content       "An option can be looked at on your own canvas, drawn dashed, before you accept it." ;
+    story:content       "An option can be looked at on your own canvas, drawn dashed, before you accept it. Standing does the same across the whole canvas: the proposed filter keeps both options' rows lit, and everything you already hold recedes." ;
+    story:filter        "proposed" ;
     story:detail        "On an option's card press Show on the canvas. The canvas opens on that option alone, its proposed statements drawn dashed so they cannot be mistaken for what you hold. Use the control that stops showing one option to come back." ;
     story:media         "/workflows/reckoning-v029/05-show-on-canvas.webp" ;
     story:assertion     "The address carries the option's focus, and the control that stops showing one proposal option is on the page." .

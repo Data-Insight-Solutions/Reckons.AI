@@ -264,8 +264,9 @@ story:ring-step-show rdf:type story:Step ;
     story:partOf story:ring-to-asset ;
     story:order "8"^^xsd:integer ;
     story:title "Show it" ;
-    story:content "The same file is shown in Reckons.AI and on the Data Insight Solutions website. Open the splat node to orbit it, or see Scan your own object to do the same with yours. The next two steps are the keyframe attempt and what comes next." ;
-    story:highlight ring:show, ring:ring-splat, ring:scan-your-own .
+    story:content "The same file is shown in Reckons.AI and on the Data Insight Solutions website. Open the splat node to orbit it, or see Scan your own object to do the same with yours. The leaps filter keeps one node lit — the link to that website — while the whole pipeline recedes: it is the only node here that points out of the space. The next two steps are the keyframe attempt and what comes next." ;
+    story:highlight ring:show, ring:ring-splat, ring:scan-your-own ;
+    story:filter "leaps" .
 
 story:ring-step-keyframes rdf:type story:Step ;
     story:partOf story:ring-to-asset ;

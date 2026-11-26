@@ -14,6 +14,8 @@ describe('what a story step may offer (F261)', () => {
   });
   it('opens only pages inside this app', () => {
     expect(parsePageOffer('/review?group=source')).toEqual({ kind: 'page', path: '/review?group=source', label: 'Open Review' });
+    // An offer that opens an example is a jump, and says where it lands (unlisted examples too).
+    expect(parsePageOffer('/about?example=ring-scan&story=1&autoplay=1')?.label).toBe('Jump to “The ring”');
     for (const raw of ['//evil.test', 'https://evil.test', 'javascript:alert(1)', '/\\evil.test', '/unknown-page', 'review']) {
       expect(parsePageOffer(raw), raw).toBeNull();
     }

@@ -18,7 +18,38 @@ const COMPANIONS: Record<string, [file: string, name: string][]> = {
   '/starter-triple-check.ttl': [['/starter-triple-check-reference.ttl', "Harbor 10 owners' forum"]],
 };
 
-export async function openExampleSpace(file: string, name: string, opts: { switch?: boolean; story?: boolean } = {}): Promise<string> {
+/**
+ * Where an opened example space LANDS (F261, extended by F292.4): on the main page, or on that
+ * page inside its guided story.
+ *
+ * `story: true` is the F261 behaviour — `?story` with no value, which startStoryFromLink reads as
+ * "the space's own first walk" (its fallback picks the first story with two or more steps). A
+ * string names what the link named: a story IRI or a step number, and startStoryFromLink matches
+ * it against the imported story's id (a number never matches an IRI and falls to that same
+ * fallback, so `story=1` opens the space's walk at step 1 either way).
+ *
+ * `autoplay` is appended as `autoplay=1` only when asked — startStoryFromLink honours exactly
+ * 1|true (F304), and a story a person opens by clicking should not start advancing on its own.
+ * `sel` is an entity the main page should open selected (`?sel=i:<iri>`, read on mount at
+ * +page.svelte) — where a link a site drops in names one (F292.4: the ring's frames contact sheet).
+ * Pure, so the parameter handling is unit-testable without a browser (see __tests__/).
+ */
+export function exampleLanding(opts: { story?: boolean | string; autoplay?: boolean; sel?: string; step?: string } = {}): string {
+  const qs = new URLSearchParams();
+  if (opts.story) {
+    qs.set('story', typeof opts.story === 'string' ? opts.story : '');
+    if (opts.autoplay) qs.set('autoplay', '1');
+    // ...&step=<n> starts the story at that step (startStoryFromLink); a link into the middle of a story.
+    if (opts.step && /^\d+$/.test(opts.step)) qs.set('step', opts.step);
+  }
+  if (opts.sel) qs.set('sel', opts.sel);
+  // Matt, 2026-11-25: "We need to auto open Shelly". An example opened without a story opens with Shelly on learn,
+  // where the alpha note is, and explore pulsing; a story opens her on explore by itself.
+  if (!opts.story) qs.set('shelly', 'learn');
+  return `/?${qs.toString()}`;
+}
+
+export async function openExampleSpace(file: string, name: string, opts: { switch?: boolean; story?: boolean | string; autoplay?: boolean; sel?: string; step?: string } = {}): Promise<string> {
   for (const [companion, companionName] of COMPANIONS[file] ?? []) await openExampleSpace(companion, companionName, { switch: false });
   if (!/^\/(?:starter-[a-z0-9-]+|review-\d[a-z0-9.-]*)\.ttl$/.test(file)) throw new Error('example spaces load only files shipped with the app');
   const res = await fetch(file);
@@ -47,7 +78,9 @@ export async function openExampleSpace(file: string, name: string, opts: { switc
     db.close();
   }
   // Land on the graph: reloading the page the person clicked on hid that the switch happened.
-  // `story`: land in the guided story rather than on a notice that offers it (F261).
-  if (opts.switch !== false) switchToKb(entry.id, { to: opts.story ? '/?story' : '/' });
+  // `story`: land in the guided story rather than on a notice that offers it (F261); a string
+  // carries the ?story= value (a story IRI or a step number) and autoplay=1 through to
+  // startStoryFromLink on the main page (F292.4).
+  if (opts.switch !== false) switchToKb(entry.id, { to: exampleLanding(opts) });
   return entry.id;
 }

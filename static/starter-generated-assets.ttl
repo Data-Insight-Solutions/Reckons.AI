@@ -28,8 +28,9 @@ story:generate-image rdf:type story:Step ;
     story:partOf story:create-generated-asset ;
     story:order "1" ;
     story:title "Imagine an image" ;
-    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result." ;
-    story:question "What image would you like me to generate?" .
+    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result. The confirmed filter keeps what this space already holds lit — the results made earlier and their receipts — while anything still awaiting a decision recedes." ;
+    story:question "What image would you like me to generate?" ;
+    story:filter "confirmed" .
 
 story:derive-asset rdf:type story:Step ;
     story:partOf story:create-generated-asset ;
@@ -78,8 +79,9 @@ story:generated-assets-walk-2 rdf:type story:Step ;
     story:page "/" ;
     story:pageName "the graph" ;
     story:boxTarget "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
-    story:content "Here is the whole chain on one graph: each prompt links to its picture, and each picture links to the clip and the 3D scene made from it." ;
+    story:content "Here is the whole chain on one graph: each prompt links to its picture, and each picture links to the clip and the 3D scene made from it. The hubs filter keeps the most-connected nodes lit — here, most of this walk's steps, the chain the story follows — while the assets they point to sit quiet among them." ;
     story:question "Where did each of these files come from, and could you prove it?" ;
+    story:filter "hubs" ;
     story:detail "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
     story:action "{\"kind\":\"open-page\",\"path\":\"/\"}" ;
     story:media "/workflows/generated-assets/02-see-pipeline.webp" ;

@@ -13,7 +13,7 @@
   import { typeMap } from '$lib/stores/entity-types.svelte';
   import { ONBOARDING_TEMPLATES, BLANK_TEMPLATE } from '$lib/onboarding/templates';
   import { settings, updateSettings } from '$lib/stores/settings.svelte';
-  import { offerApplied } from '$lib/rdf/story-offers';
+  import { offerApplied, type StoryOffer } from '$lib/rdf/story-offers';
   import { openFeedback } from '$lib/stores/feedback.svelte';
   import { RDF_TYPE } from '$lib/rdf/entity-types';
   import { GRAPH_FILTERS, type GraphFilter, type TurtleChatMessage, type KBAction, type KBContext } from '$lib/types/turtle-chat';
@@ -42,16 +42,33 @@
   import { Tabs } from 'bits-ui';
   import type { HumeAuthPlan } from '$lib/integrations/hume/token';
 
-  let { onclose = () => {}, initialMessage = null, exploreMode = false, storyId = null } = $props<{
+  let { onclose = () => {}, initialMessage = null, exploreMode = false, storyId = null, openTab = null } = $props<{
     onclose?: () => void;
     initialMessage?: string | null;
     exploreMode?: boolean;
     storyId?: string | null;
+    /** The tab a link or story step asked for (shelly= view parameter, F309). */
+    openTab?: 'tutorial' | 'chat' | 'explore' | null;
   }>();
 
   type Tab = 'tutorial' | 'chat' | 'explore';
-  function initialTab(): Tab { return storyId || exploreMode ? 'explore' : 'tutorial'; }
+  function initialTab(): Tab { return storyId || exploreMode ? 'explore' : openTab ?? 'tutorial'; }
   let tab = $state<Tab>(initialTab());
+
+  /*
+   * Matt, 2026-11-25: "We need to auto open Shelly, show the alpha disclaimer, and also pulse highlight the explore
+   * button." The learn tab carries the full alpha note; the other tabs carry one short line of it until it is
+   * dismissed, so a reader who lands straight in a story still reads it. Explore pulses until it is first opened
+   * in this browser: it is the tab a newcomer does not know to try.
+   */
+  const ALPHA_NOTE_KEY = 'reckons:alpha-note-dismissed';
+  const EXPLORE_TRIED_KEY = 'reckons:explore-tried';
+  const readFlag = (k: string): boolean => { try { return localStorage.getItem(k) === '1'; } catch { return false; } };
+  const writeFlag = (k: string): void => { try { localStorage.setItem(k, '1'); } catch { /* private mode: the flag lasts this page only */ } };
+  let alphaNoteDismissed = $state(readFlag(ALPHA_NOTE_KEY));
+  let exploreTried = $state(readFlag(EXPLORE_TRIED_KEY));
+  function dismissAlphaNote() { alphaNoteDismissed = true; writeFlag(ALPHA_NOTE_KEY); }
+  $effect(() => { if (tab === 'explore' && !exploreTried) { exploreTried = true; writeFlag(EXPLORE_TRIED_KEY); } });
 
   function resolveChatProvider() {
     return _resolveProvider(settings());
@@ -675,11 +692,23 @@
      * the build knows, the filters clear — "exactly those" means no others). A step WITHOUT
      * story:filter leaves the filters as they are, the same rule as a step with no layout.
      */
-    if (step.highlights.length > 0 || authored || authoredFilters !== undefined) {
+    // F309 (Matt, 2026-11-25): a step can also carry a whole view as the app's own URL parameters (story:view),
+    // applied by the same code a link uses. ONE bridge call: two in the same tick would overwrite each other.
+    // EACH STEP STARTS CLEAN ON SELECTION, and FOCUS HAS A CENTRE (Matt, 2026-11-25: "no layout changes like focus").
+    // A step that names no selection clears the previous step's; a focus step that names none centres on its first
+    // highlight, which is what focus means. Both go through the same parameters a link uses.
+    const vp = new URLSearchParams(step.view?.trim() ?? '');
+    if (!vp.has('sel')) {
+      const stepLayout = vp.get('layout') ?? authored;
+      vp.set('sel', stepLayout === 'focus' && step.highlights[0] ? `i:${step.highlights[0]}` : '');
+    }
+    const view = vp.toString();
+    if (step.highlights.length > 0 || authored || authoredFilters !== undefined || view) {
       applyShellyViewAdjust({
         ...(step.highlights.length > 0 ? { spotlight: step.highlights } : {}),
         ...(authored ? { layout: authored } : {}),
-        ...(authoredFilters !== undefined ? { filters: authoredFilters } : {})
+        ...(authoredFilters !== undefined ? { filters: authoredFilters } : {}),
+        ...(view ? { params: view } : {})
       });
     }
 
@@ -721,7 +750,10 @@
    * over a short strip and leaves the canvas visible and tappable. "chat" brings the sheet back.
    */
   let sheetOverride = $state(false);
-  const walkBar = $derived(isCompact() && currentStory !== null && !currentStory.interaction && !sheetOverride);
+  // While a story named by a link is still loading, it is already a walk: the sheet must not open and then close
+  // again once the story arrives (a visible flash on a phone, and for the length of its closing animation every
+  // story control was on the page twice; found by the mobile story-voice test, 2026-11-25).
+  const walkBar = $derived(isCompact() && !sheetOverride && (currentStory !== null ? !currentStory.interaction : !!storyId));
   const walkStep = $derived(currentStory && !currentStory.interaction ? currentStory.steps[storyStepIdx] ?? null : null);
 
   function exitStory() {
@@ -749,6 +781,10 @@
   let kokoro: KokoroModule | null = null;
   let kokoroImport: Promise<KokoroModule> | null = null;
   let ttsBroken = $state(false);
+  /** The browser refused sound until the reader clicks (autoplay policy); a "tap to hear" button is the way back. */
+  let voiceBlocked = $state(false);
+  /** What was being said when the browser refused it, so the tap says that, not something else. */
+  let blockedText = '';
   let stopCurrentSpeech: (() => void) | null = null;
 
   // Track Kokoro load status reactively
@@ -845,8 +881,15 @@
       voice,
       rate: ts.speechRate ?? 0.75,
       volume: Math.min((ts.volume ?? 75) / 100, 0.9),
-      onStart: () => { storySpeaking = true; },
+      onStart: () => { storySpeaking = true; voiceBlocked = false; },
       onEnd: () => { storySpeaking = false; stopCurrentSpeech = null; },
+      onBlocked: () => {
+        console.warn('[kokoro-tts] the browser refused to play sound until the page is clicked; showing "tap to hear"');
+        voiceBlocked = true;
+        blockedText = text;
+        storySpeaking = false;
+        stopCurrentSpeech = null;
+      },
       onError: (e) => {
         console.warn('[kokoro-tts] streaming failed:', e);
         ttsBroken = true;
@@ -1325,7 +1368,7 @@
       <Tabs.List class="tcp-tab-list">
         <Tabs.Trigger value="tutorial" class="tcp-tab">learn</Tabs.Trigger>
         <Tabs.Trigger value="chat" class="tcp-tab">chat</Tabs.Trigger>
-        <Tabs.Trigger value="explore" class="tcp-tab">explore</Tabs.Trigger>
+        <Tabs.Trigger value="explore" class={!exploreTried && tab !== 'explore' ? 'tcp-tab tcp-tab-pulse' : 'tcp-tab'}>explore</Tabs.Trigger>
       </Tabs.List>
       <button class="close" onclick={onclose} aria-label="close">✕</button>
     </div>
@@ -1361,6 +1404,13 @@
         <button class="primary" onclick={() => grantAiConsent(true)}>Turn it on</button>
       </div>
     </div>
+  {/if}
+
+  {#if tab !== 'tutorial' && !alphaNoteDismissed}
+    <p class="alpha-line" role="note">
+      <span><strong>Alpha</strong> · v{__APP_VERSION__}, one maintainer. Expect rough edges.</span>
+      <button class="alpha-line-x" onclick={dismissAlphaNote} aria-label="Dismiss the alpha note" title="Dismiss">✕</button>
+    </p>
   {/if}
 
   <!-- ── Tutorial tab ── -->
@@ -1703,19 +1753,7 @@
                   <!-- F261: what the step offers, one click each. Offered, never applied: the reader's
                        click is the consent, and story-offers.ts limits what may be offered at all. -->
                   {#if msg.isStep && msg.stepIdx !== undefined && currentStory?.steps[msg.stepIdx]?.offers?.length}
-                    <div class="step-offers">
-                      {#each currentStory.steps[msg.stepIdx].offers ?? [] as offer (offer.label)}
-                        {#if offer.kind === 'setting'}
-                          {@const done = offerApplied(offer, settings())}
-                          <button class="step-offer" class:done disabled={done}
-                            onclick={() => updateSettings({ [offer.key]: offer.value })}>
-                            {done ? '✓ ' : ''}{offer.label}
-                          </button>
-                        {:else}
-                          <button class="step-offer" onclick={() => goto(offer.path)}>{offer.label} →</button>
-                        {/if}
-                      {/each}
-                    </div>
+                    {@render offerButtons(currentStory.steps[msg.stepIdx].offers ?? [])}
                   {/if}
                 </div>
               </div>
@@ -1776,7 +1814,11 @@
               <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1 || storyLoading} title="Next step" aria-label="Next step">→</button>
             </div>
             <div class="story-audio">
-              {#if ttsBroken}
+              {#if voiceBlocked && turtleSettings().voiceEnabled}
+                <!-- The click IS the permission: browsers allow sound after a gesture on the page. -->
+                <button class="story-btn story-voice-blocked mono" onclick={() => { voiceBlocked = false; speakText(blockedText || (currentStory?.steps[storyStepIdx] ? `${currentStory.steps[storyStepIdx].title}. ${currentStory.steps[storyStepIdx].content}` : '')); }}
+                  title="Your browser holds sound back until you click the page once" aria-label="Tap to hear Shelly">▶ tap to hear</button>
+              {:else if ttsBroken}
                 <a href="/settings/turtle" class="tts-broken-hint mono">try Hume.AI voice</a>
               {:else if turtleSettings().voiceEnabled && !kokoroReady}
                 <span class="tts-loading mono" title="Downloading Kokoro voice model — first time only">{kokoroPhase === 'init' ? 'starting voice…' : kokoroLoadPct > 0 ? `voice ${kokoroLoadPct}%` : 'loading voice…'}</span>
@@ -1940,15 +1982,58 @@
 </AdaptivePanel>
 </Tabs.Root>
 
+{#snippet offerButtons(offers: StoryOffer[])}
+  <div class="step-offers">
+    {#each offers as offer (offer.label)}
+      {#if offer.kind === 'setting'}
+        {@const done = offerApplied(offer, settings())}
+        <button class="step-offer" class:done disabled={done}
+          onclick={() => updateSettings({ [offer.key]: offer.value })}>
+          {done ? '✓ ' : ''}{offer.label}
+        </button>
+      {:else}
+        <button class="step-offer" onclick={() => goto(offer.path)}>{offer.label} →</button>
+      {/if}
+    {/each}
+  </div>
+{/snippet}
+
 {#if walkBar && walkStep && currentStory}
+  <!--
+    The phone's story bar carries what the desktop story view does (Matt, 2026-11-25: "heavily test mobile and desktop
+    for full story"): the step's offers (the ring step's jump was missing here), play and the voice gate, "tap to
+    hear" when the browser holds sound back, and the alpha note.
+  -->
   <section class="walk-bar" aria-label="Story: {currentStory.label}">
+    {#if !alphaNoteDismissed}
+      <p class="alpha-line walk-alpha" role="note">
+        <span><strong>Alpha</strong> · v{__APP_VERSION__}, one maintainer. Expect rough edges.</span>
+        <button class="alpha-line-x" onclick={dismissAlphaNote} aria-label="Dismiss the alpha note" title="Dismiss">✕</button>
+      </p>
+    {/if}
     <div class="walk-text">
       <strong class="walk-title">{walkStep.title}</strong>
       <p class="walk-caption">{walkStep.content}</p>
     </div>
+    {#if walkStep.offers?.length}{@render offerButtons(walkStep.offers)}{/if}
+    {#if voiceConfirmPending}
+      <div class="voice-confirm">
+        <span class="voice-confirm-text">Enable voice narration? Downloads ~87 MB on first use.</span>
+        <div class="voice-confirm-btns">
+          <button class="primary sm" onclick={() => confirmVoice(true)}>Enable voice</button>
+          <button class="sm" onclick={() => confirmVoice(false)}>No, just auto-advance</button>
+        </div>
+      </div>
+    {/if}
+    {#if voiceBlocked && turtleSettings().voiceEnabled}
+      <button class="story-btn story-voice-blocked mono" onclick={() => { voiceBlocked = false; speakText(blockedText || `${walkStep.title}. ${walkStep.content}`); }}
+        title="Your browser holds sound back until you tap the page once" aria-label="Tap to hear Shelly">▶ tap to hear</button>
+    {/if}
     <div class="walk-controls">
       <span class="story-step-label mono" aria-live="polite">{storyStepIdx + 1} / {currentStory.steps.length}</span>
+      {#if storyAutoPlaying && storyCountdown > 0}<span class="story-timer mono" class:speaking={storySpeaking}>{storyCountdown}s</span>{/if}
       <button class="story-btn" onclick={storyPrev} disabled={storyStepIdx <= 0} aria-label="Previous step">←</button>
+      <button class="story-btn" class:active={storyAutoPlaying} onclick={toggleAutoPlay} aria-label={storyAutoPlaying ? 'Pause' : 'Auto-play'}>{storyAutoPlaying ? '⏸' : '▶'}</button>
       <button class="story-btn" onclick={storyNext} disabled={storyStepIdx >= currentStory.steps.length - 1} aria-label="Next step">→</button>
       <button class="story-btn" onclick={() => (sheetOverride = true)} aria-label="Open Shelly chat">chat</button>
       <button class="story-btn story-exit" onclick={() => { exitStory(); onclose(); }} aria-label="Exit story mode">✕</button>
@@ -1961,13 +2046,16 @@
   .walk-bar {
     position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 58px); z-index: 350;
     display: flex; flex-direction: column; gap: 0.35rem; padding: 0.55rem 0.75rem;
-    background: color-mix(in srgb, var(--surface, #111) 94%, transparent); border-top: 1px solid var(--line, #333);
+    /* Opaque: at 94% the perspective switch beneath showed through the caption (seen on a 412px phone, 2026-11-25). */
+    background: var(--surface, #111); border-top: 1px solid var(--line, #333);
     box-shadow: 0 -6px 20px rgba(0,0,0,0.35);
   }
   .walk-text { max-height: 26vh; overflow-y: auto; }
   .walk-title { color: var(--accent); font-size: 0.9rem; }
   .walk-caption { margin: 0.2rem 0 0; font-size: 0.82rem; line-height: 1.4; }
   .walk-controls { display: flex; align-items: center; gap: 0.35rem; justify-content: space-between; }
+  .walk-bar .step-offers { margin-top: 0; }
+  .walk-alpha { margin: -0.55rem -0.75rem 0; }
   /* ── Header ── */
   .panel-header {
     display: flex;
@@ -1999,6 +2087,51 @@
     cursor: pointer;
     transition: all 0.15s;
   }
+  /* Explore, until first opened: a soft ring that breathes. Reduced motion gets the ring without the breathing. */
+  :global(.tcp-tab-pulse) {
+    border-color: var(--accent);
+    color: var(--accent);
+    animation: -global-tcp-explore-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes -global-tcp-explore-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 0%, transparent); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global(.tcp-tab-pulse) { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+  }
+  .alpha-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.3rem 0.75rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--ink-2);
+    background: var(--data-soft);
+    border-bottom: 1px solid color-mix(in srgb, var(--data) 40%, transparent);
+  }
+  .alpha-line strong { color: var(--ink); letter-spacing: 0.04em; }
+  .alpha-line-x {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.3rem;
+    min-width: 24px;
+    min-height: 24px;
+  }
+  .alpha-line-x:hover { color: var(--ink); }
+  .story-voice-blocked {
+    border-color: var(--accent);
+    color: var(--accent);
+    animation: -global-tcp-explore-pulse 1.8s ease-in-out infinite;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) { .story-voice-blocked { animation: none; } }
   :global(.tcp-tab[data-state="active"]) {
     background: var(--accent-soft);
     border-color: var(--accent);

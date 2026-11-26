@@ -39,7 +39,7 @@ rev:gap-f89-4 rdf:type ktype:Concept ;
 
 rev:gap-f273 rdf:type ktype:Concept ;
     rdfs:label "F273 Procedure over prose — define the job, then let the harness run the process, so speed cannot skip a step" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/lib/__tests__/job-brief.test.ts, scripts/__tests__/brief-entity.test.ts, scripts/__tests__/githooks.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/lib/__tests__/job-brief.test.ts, scripts/__tests__/brief-entity.test.ts, scripts/__tests__/githooks.test.ts, scripts/__tests__/roadmap-scheduler.test.ts)." .
 
 rev:gap-f274-1 rdf:type ktype:Concept ;
     rdfs:label "F274.1 F274.1 — local agents and the MCP server work in another repository" ;

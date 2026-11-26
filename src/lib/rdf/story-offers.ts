@@ -16,6 +16,7 @@
  *   story:openPage     "/review?group=source" .
  */
 import type { SettingsRecord } from '$lib/storage/db';
+import { EXAMPLE_KBS } from '$lib/storage/example-kbs';
 
 export type SettingOffer = { kind: 'setting'; key: keyof SettingsRecord; value: boolean; label: string };
 export type PageOffer = { kind: 'page'; path: string; label: string };
@@ -51,5 +52,10 @@ export function parsePageOffer(raw: string): PageOffer | null {
   if (!/^\/(?![/\\])[\w\-/?=&.%]*$/.test(path)) return null;
   const first = path.slice(1).split(/[/?]/)[0];
   const name = PAGE_NAMES[first];
+  // A JUMP (Matt, 2026-11-25: "show the leaps"; "jump" is the word the canvas uses for a leap): an offer that opens
+  // an example says where it goes.
+  const example = first === 'about' ? new URLSearchParams(path.split('?')[1] ?? '').get('example') : null;
+  const target = example ? EXAMPLE_KBS.find((k) => k.id === example) : undefined;
+  if (target) return { kind: 'page', path, label: `Jump to “${target.title}”` };
   return name ? { kind: 'page', path, label: `Open ${name}` } : null;
 }

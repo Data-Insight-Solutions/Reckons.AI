@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { importTurtleFull } from '$lib/rdf/import-ttl';
-  import { openExampleSpace } from '$lib/storage/example-space';
+  import { openExampleSpace, exampleLanding } from '$lib/storage/example-space';
   import { EXAMPLE_KBS, listedExampleKbs, findExampleKb, type ExampleKb } from '$lib/storage/example-kbs';
   import { addStatements, addSource } from '$lib/stores/kb.svelte';
   import { activateOfficialKb, officialKbActive } from '$lib/stores/official-kb.svelte';
@@ -44,18 +44,24 @@
   let loadError = $state('');
   let switchingToOfficial = $state(false);
 
-  async function importStarterKB(kb: ExampleKb) {
+  /**
+   * `story` carries the /about?story=…&autoplay=… link parameters through to the main page
+   * (F292.4): for a space they ride the switch (openExampleSpace builds the same landing URL),
+   * for a plain import they ride the goto. `sel` is the entity the main page should open selected
+   * (?sel=i:<iri>); it rides the same way. Absent, everything lands exactly where it did before.
+   */
+  async function importStarterKB(kb: ExampleKb, story: { story?: string; autoplay?: boolean; sel?: string; step?: string } = {}) {
     loadingKb = kb.id;
     loadError = '';
     try {
-      if (kb.space) { await openExampleSpace(kb.file, kb.space); return; }
+      if (kb.space) { await openExampleSpace(kb.file, kb.space, story); return; }
       const res = await fetch(kb.file);
       if (!res.ok) throw new Error(`Failed to fetch ${kb.file}`);
       const ttl = await res.text();
       const { statements, sources } = await importTurtleFull(ttl, { name: kb.file });
       for (const src of sources) await addSource(src);
       if (statements.length) await addStatements(statements, 'starter-kb');
-      goto('/');
+      goto(exampleLanding(story));
     } catch (e) {
       loadError = (e as Error).message || 'Import failed';
       loadingKb = null;
@@ -89,10 +95,21 @@
   let fading = $state(false);
 
   // A link of the form /about?example=<id> opens that example on its own.
+  // F292.4: …&story=<iri|step>&autoplay=1 opens it AND starts its guided story at step 1 —
+  // the story and autoplay ride through to the main page, where startStoryFromLink honours
+  // them. autoplay is only true for 1|true (the same rule as startStoryFromLink), so a link
+  // that names a story without autoplay starts it paused. …&sel=i:<iri> also rides through:
+  // the main page opens with that entity selected (the ring's contact sheet, per the site's
+  // own leap link).
   onMount(() => {
-    const id = new URL(window.location.href).searchParams.get('example');
-    const kb = findExampleKb(id);
-    if (kb) void importStarterKB(kb);
+    const params = new URL(window.location.href).searchParams;
+    const kb = findExampleKb(params.get('example'));
+    if (!kb) return;
+    const story = params.get('story');
+    const sel = params.get('sel');
+    if (story === null) { void importStarterKB(kb, sel ? { sel } : undefined); return; }
+    const step = params.get('step');
+    void importStarterKB(kb, { story, autoplay: params.get('autoplay') === '1' || params.get('autoplay') === 'true', sel: sel ?? undefined, step: step ?? undefined });
   });
 
   onMount(() => {

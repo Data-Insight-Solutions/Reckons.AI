@@ -6,7 +6,7 @@ export interface ExampleKb {
 }
 
 export const EXAMPLE_KBS: ExampleKb[] = [
-  { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC: the person and company behind it, its services, credentials and posts as connected nodes, a scanned ring, and a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 68, triples: 519 },
+  { id: 'data-insight-solutions', icon: '◆', title: 'Data Insight Solutions', label: 'Built with Reckons.AI', body: 'A real website published by Data Insight Solutions LLC: the person and company behind it, its services, credentials and posts as connected nodes, a scanned ring, and a link to the live site.', file: '/starter-data-insight-solutions.ttl', space: 'Data Insight Solutions', entities: 73, triples: 572 },
   { id: 'triple-check', icon: '✓', title: 'Triple Check walkthrough', body: 'Four documents disagree about a fictional home battery, and an owners\' forum space comes with them. A guided story shows how Triple Check brings what it finds into Review.', file: '/starter-triple-check.ttl', space: 'Triple Check walkthrough', entities: 3, triples: 14 },
   {
     id: 'quickstart',
@@ -103,7 +103,36 @@ export const EXAMPLE_KBS: ExampleKb[] = [
     space: 'The ring',
     unlisted: true,
     entities: 41,
-    triples: 255
+    triples: 256
+  },
+  {
+    // F304.1: UNLISTED (Matt, 2026-11-19, recorded on kb:personal-showcase: an unlisted example is a public
+    // example — unlisted is not private). Opens by /about?example=matthew-roe and never appears in the list.
+    // Facts come only from the eight captions of its walk; the Claude Code figure in it is measured from git
+    // by the F304.3 measurement script (scripts/showcase/), never typed.
+    id: 'matthew-roe',
+    icon: '☍',
+    title: 'Matthew Roe',
+    body: 'A personal showcase: a life in facts, walked in eight steps and ending in leaps. It opens by itself, apart from your own.',
+    file: '/starter-matthew-roe.ttl',
+    space: 'Matthew Roe',
+    unlisted: true,
+    entities: 23,
+    triples: 155
+  },
+  {
+    // F304.2: UNLISTED (same 2026-11-19 decision as the showcase). The personal example behind the
+    // showcase's last step: archery, hand-made wooden bows and arrows, a dog, cats, chickens and
+    // darkling beetles, and swimming — and nothing else. No pictures, and no picture of a child.
+    id: 'matthew-roe-personal',
+    icon: '☍',
+    title: 'Matthew Roe — personal',
+    body: 'The personal example the showcase leaps to: off-the-clock facts only. It opens by itself, apart from your own.',
+    file: '/starter-matthew-roe-personal.ttl',
+    space: 'Matthew Roe — personal',
+    unlisted: true,
+    entities: 5,
+    triples: 29
   }
 ];
 

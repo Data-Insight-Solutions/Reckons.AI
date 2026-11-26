@@ -15,7 +15,7 @@
   import { loadTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
   import { initExtensionBridge } from '$lib/extension-bridge';
-  import { shellyChatOpen, setShellyChatOpen, shellyOpenMessage, clearShellyOpen, exploreOpen, stopExplore, activeStoryId, stopStory } from '$lib/stores/shelly-bridge.svelte';
+  import { shellyChatOpen, setShellyChatOpen, shellyOpenMessage, shellyOpenTab, clearShellyOpen, exploreOpen, stopExplore, activeStoryId, stopStory } from '$lib/stores/shelly-bridge.svelte';
   import { officialKbActive, deactivateOfficialKb } from '$lib/stores/official-kb.svelte';
   import { warmWasm } from '$lib/stores/wasm-status.svelte';
   import { settings } from '$lib/stores/settings.svelte';
@@ -280,6 +280,7 @@
       initialMessage={shellyOpenMessage()}
       exploreMode={exploreOpen()}
       storyId={activeStoryId()}
+      openTab={shellyOpenTab()}
       onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
     />
   {/await}
