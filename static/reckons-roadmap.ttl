@@ -10501,8 +10501,6 @@ kb:release-0-2-7 kpred:decided "MATT, 2026-10-13: arrived from v0.2.6 in the day
 kb:release-0-2-9 rdf:type ktype:Release ;
     rdfs:label "v0.2.9" ;
     kpred:version "0.2.9" ;
-    kpred:has-status "planned" ;
-    kpred:description "The orchestration release: what makes the local deputy and its queue trustworthy enough to run offline." ;
     kpred:decided "MATT, 2026-11-03 (chat): keep 0.2.8 as reach, canvas and Triple Check; add 0.2.9 for the agent orchestration enhancements." .
 
 kb:local-dev-integration rdf:type ktype:Feature ;
@@ -14572,3 +14570,19 @@ kb:open-from-github rdf:type ktype:Feature ;
     kpred:done-test "Unit tests for the link forms, refusals, the API address and the error words; browser test (GitHub API intercepted with a synthetic file) on desktop-chrome and mobile-android: the link asks first and fetches nothing, Open stores and lands on the new knowledge base, Cancel stores nothing, a non-.ttl link says why." ;
     kpred:tested-by "src/lib/integrations/github/__tests__/open-space.test.ts", "tests/e2e/open-from-github.test.ts" ;
     kpred:progress "2026-11-25 (Opus): built and tested as the done-test says (4 unit, 4 browser). NOT YET: a link or badge in the README (it would only work once this reaches production), a read-only open (F3) and a re-open that fetches a newer version; GitHub allows 60 unauthenticated reads an hour per address." .
+
+# ── 2026-11-26 v0.2.9 RELEASE CUT (release/v0.2.9, from dev) ──
+kb:release-0-2-9 kpred:has-status "functional" ;
+    kpred:description "The stories and showcase release: a personal showcase example that opens and plays from a link (partial), the Data Insight Solutions story improved and started from its link, a story step carried in the page address (partial), compare drawn on the main graph canvas (partial), a reckoning that starts from chosen statements (partial), opening a .ttl file from a public GitHub repository by link, narration that says when the browser holds sound back, and a human recheck that goes stale when its code changes (scaffolded). It was planned as the demo-videos release; that headline is NOT done and is not in this release." ;
+    kpred:decided "MATT, 2026-11-26 (chat): 'Lets make 0.2.9 today.' This overrides the 2026-11-18 cut conditions (demo videos on the documentation pages as the headline), which were not met." ;
+    kpred:has-part kb:site-story-improved ;
+    kpred:has-part kb:story-step-moves-and-names ;
+    kpred:has-part kb:view-state ;
+    kpred:has-part kb:two-source-ingest ;
+    kpred:has-part kb:split-canvas ;
+    kpred:has-part kb:open-from-github ;
+    kpred:has-part kb:human-recheck .
+
+kb:release-0-2-9 kpred:progress "2026-11-26, CUT AND BUILT, NOT YET IN PRODUCTION. package.json 0.2.9; release notes at content/releases/v0-2-9.md; review space static/review-0.2.9.ttl (unlisted). Cut from dev: 16 parts by release:burndown, 2 functional (F292.4, F310) and 14 partial (in-progress, scaffolded or planned), each at the status the graph holds on this date. NOT DONE, and said first: the planned headline, a narrated demo video on the documentation pages (F275.22, F300.5). Two narrated demo renders exist on the maintainer's machine; neither is on a documentation page. F300 (three ways to play a story) is planned." ;
+    kpred:honest-note "FUNCTIONAL HERE MEANS built and on dev, promoted to staging for Matt's review, not in production. Matt's 2026-11-26 decision overrides the 2026-11-18 cut conditions; the demo-video headline did not ship. Reported by the maintainer and NOT re-run here: on 2026-11-26 a pooled splat from two separately filmed recordings ran successfully on his machine (F58.9.19, which stays scaffolded because the graph holds no receipt for that run and the pooled layout is not measured against one scan at a time). The scan files are private." .
+

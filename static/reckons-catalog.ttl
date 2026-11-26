@@ -90,6 +90,7 @@ graph:catalog a dcat:Catalog ;
         graph:review-0-2-6 ,
         graph:review-0-2-7 ,
         graph:review-0-2-8 ,
+        graph:review-0-2-9 ,
         graph:reckons-jobs ,
         graph:reckons-production ,
         graph:reckons-roadmap ,
@@ -279,6 +280,12 @@ graph:review-0-2-8 a void:Dataset ;
     dcterms:title "Release review: v0.2.8" ;
     dcterms:type role:starter ;
     dcterms:source "static/review-0.2.8.ttl" ;
+    prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
+
+graph:review-0-2-9 a void:Dataset ;
+    dcterms:title "Release review: v0.2.9" ;
+    dcterms:type role:starter ;
+    dcterms:source "static/review-0.2.9.ttl" ;
     prov:wasGeneratedBy <urn:reckons:script/scripts/offline/release-review-space.ts> .
 
 graph:starter-assets a void:Dataset ;
