@@ -1,7 +1,7 @@
 ---
 title: "How held facts, proposals and questions look on the canvas"
 slug: "standing-on-canvas"
-order: 1024
+order: 1030
 section: "Features"
 parent: "proposals"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Turn a phone scan of a room into a splat, on your own machine"
 slug: "room-scan"
-order: 1061
+order: 1068
 section: "Features"
 parent: "generation-setup"
 template: doc

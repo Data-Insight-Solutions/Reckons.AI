@@ -1,7 +1,7 @@
 ---
 title: "Build a website from your notes"
 slug: "site-builder"
-order: 1005
+order: 1007
 section: "Features"
 parent: "published-docs"
 template: doc

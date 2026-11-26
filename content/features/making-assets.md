@@ -1,7 +1,7 @@
 ---
 title: "Making assets: a part you can cut, a tool you can start, a check with a known answer"
 slug: "making-assets"
-order: 1030
+order: 1036
 section: "Features"
 parent: "generation-setup"
 template: doc

@@ -1,7 +1,7 @@
 ---
 title: "Compare — finding out where two people actually disagree"
 slug: "compare"
-order: 1006
+order: 1008
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -19,7 +19,7 @@ related:
 
 Put two graphs side by side and see what is new, what agrees, and what conflicts. Two colleagues who have each read around the same subject can find the three things they disagree about in a minute, instead of discovering them in a meeting six weeks later.
 
-<p class="derived">This is built, working, and in daily use here. It has one part below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 2 parts below, 1 of which is not built yet.</p>
 
 <p class="in-sets">Part of Ask it things.</p>
 
@@ -54,6 +54,10 @@ TWO HONEST NOTES. The four richer labels were tested with a model that gives fix
 Compare / Diff Engine
 
 ## In this section
+
+**[Compare two documents side by side as a Venn diagram](../features/compare-two-documents)** — **scaffolded**
+
+Put two documents next to each other and see what they have in common and where they differ.
 
 ### Diff Summary
 

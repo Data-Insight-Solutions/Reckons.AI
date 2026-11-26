@@ -1,7 +1,7 @@
 ---
 title: "Confluence Migration"
 slug: "confluence-migration"
-order: 1007
+order: 1010
 section: "Features"
 parent: "ingest"
 template: doc

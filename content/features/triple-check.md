@@ -1,7 +1,7 @@
 ---
 title: "Triple Check"
 slug: "triple-check"
-order: 1058
+order: 1065
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
