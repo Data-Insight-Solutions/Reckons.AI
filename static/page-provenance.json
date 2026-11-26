@@ -536,10 +536,10 @@
       "path": "features/compare-two-documents",
       "entity": "urn:reckons:feature/CompareTwoDocuments",
       "graph": "docs-features.ttl",
-      "factHash": "30648dd8d5db67c4",
+      "factHash": "bdad02ca1fe1c33d",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "bb331bc687212411"
+      "pageHash": "843b1f2ab14a6cb5"
     },
     {
       "path": "features/confluence-migration",
@@ -581,19 +581,19 @@
       "path": "features/demo-videos",
       "entity": "urn:reckons:feature/DemoVideos",
       "graph": "docs-features.ttl",
-      "factHash": "680ccc1c551a421f",
+      "factHash": "ca4d76f098af667c",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "c895c6bb49ff816f"
+      "pageHash": "b39899603dae5c47"
     },
     {
       "path": "features/detail-levels",
       "entity": "urn:reckons:feature/DetailLevels",
       "graph": "docs-features.ttl",
-      "factHash": "bca6c7c9c895b006",
+      "factHash": "9f10f6ad77d96802",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "7fc1d8bdc1ed8ca7"
+      "pageHash": "08ab2b12e9cb6e30"
     },
     {
       "path": "features/entity-normalization",
@@ -638,7 +638,7 @@
       "factHash": "17c18ea496929e86",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "dd1296866da62f5d"
+      "pageHash": "5585363d556d1d34"
     },
     {
       "path": "features/guided-walks",
@@ -647,7 +647,7 @@
       "factHash": "090c5163536b7efd",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "df91b9da494d299f"
+      "pageHash": "fc046001de0c41d2"
     },
     {
       "path": "features/human-recheck",
@@ -728,7 +728,7 @@
       "factHash": "c9cf93810fcba2ca",
       "factCount": 2,
       "floor": "evidence",
-      "pageHash": "781c631e292741dd"
+      "pageHash": "7d2950ac654f04ac"
     },
     {
       "path": "features/node-sources",
@@ -743,10 +743,10 @@
       "path": "features/open-from-github",
       "entity": "urn:reckons:feature/OpenFromGithub",
       "graph": "docs-features.ttl",
-      "factHash": "6618bce5289efd30",
+      "factHash": "047f9a5c8b5e3535",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "463300d5c75f80b4"
+      "pageHash": "865f991d388af2fb"
     },
     {
       "path": "features/open-in-source",
@@ -887,10 +887,10 @@
       "path": "features/showcase-example",
       "entity": "urn:reckons:feature/ShowcaseExample",
       "graph": "docs-features.ttl",
-      "factHash": "396d9a7c0e3b450d",
+      "factHash": "1023fa33c03a88a2",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "962cde256497d153"
+      "pageHash": "5d26659e9a2f07d1"
     },
     {
       "path": "features/site-builder",
@@ -962,16 +962,16 @@
       "factHash": "5979162acdaddff2",
       "factCount": 4,
       "floor": "evidence",
-      "pageHash": "ff5069aa74cac95b"
+      "pageHash": "86e34707bed60e98"
     },
     {
       "path": "features/story-variety",
       "entity": "urn:reckons:feature/StoryVariety",
       "graph": "docs-features.ttl",
-      "factHash": "fca665c8e5fda023",
+      "factHash": "036d044dd731229e",
       "factCount": 3,
       "floor": "evidence",
-      "pageHash": "b5d1dbf09f87696e"
+      "pageHash": "a0a7991880197d52"
     },
     {
       "path": "features/text-chunking",
