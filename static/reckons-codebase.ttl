@@ -1307,3 +1307,6 @@ code:test-e2e kpred:has-file "tests/e2e/showcase-walk.test.ts" .
 # F310 — open a Turtle file from GitHub.
 code:integrations kpred:has-file "src/lib/integrations/github/open-space.ts", "src/lib/integrations/github/__tests__/open-space.test.ts" .
 code:test-e2e kpred:has-file "tests/e2e/open-from-github.test.ts" .
+
+# Notification tray: closing one notice keeps the others showing (2026-11-26).
+code:test-e2e kpred:has-file "tests/e2e/notification-close-one.test.ts" .

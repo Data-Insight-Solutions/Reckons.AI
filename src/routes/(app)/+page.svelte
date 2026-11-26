@@ -388,7 +388,7 @@
       _labelTrail = setTimeout(() => { _labelLast = performance.now(); nodeLabels = labels; _labelTrail = null; }, LABEL_THROTTLE_MS);
     }
   }
-  let labelFontSize = $state(11);
+  let labelFontSize = $state(14); // Matt, 2026-11-26: "We should bump up default text size to 14px" (was 11)
   let markerLabels = $state<Array<{ key: string; label: string; color: string; x: number; y: number }>>([]);
   let navHistory = $state<string[]>([]);
   let activeFilters = $state<Set<GraphFilter>>(new Set());

@@ -104,7 +104,7 @@
   let mistralApiKey = $state(settings().mistralApiKey ?? '');
   let meshyApiKey = $state(settings().meshyApiKey ?? '');
   let uiScale = $state<'sm' | 'md' | 'lg'>(settings().uiScale ?? 'md');
-  let nodeLabelFontSize = $state(settings().nodeLabelFontSize ?? 11);
+  let nodeLabelFontSize = $state(settings().nodeLabelFontSize ?? 14);
   let prefer2D = $state(settings().prefer2D ?? false);
 
   async function saveDisplaySettings() {
@@ -577,7 +577,7 @@
     autoRefreshOnOpen          = ud.autoRefreshOnOpen          ?? false;
     autoRefreshIntervalMinutes = ud.autoRefreshIntervalMinutes ?? 0;
     uiScale                    = ud.uiScale                   ?? 'md';
-    nodeLabelFontSize          = ud.nodeLabelFontSize          ?? 11;
+    nodeLabelFontSize          = ud.nodeLabelFontSize          ?? 14;
     prefer2D                   = ud.prefer2D                   ?? false;
     if (ud.extensionHighlight) {
       const hl = { ...DEFAULT_HIGHLIGHT_SETTINGS, ...ud.extensionHighlight };
