@@ -26,7 +26,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Statement, Source } from '../../src/lib/rdf/types';
 import { reckoningStatements, reckoningSource } from '../../src/lib/rdf/reckoning-entity';
-import { buildProposalRows, slugOf, type ParsedProposal } from '../../src/lib/rdf/reckoning-proposal';
+import { buildProposalRows, optionEntity, slugOf, type ParsedProposal } from '../../src/lib/rdf/reckoning-proposal';
 import { toTurtleFull } from '../../src/lib/rdf/serialize';
 import { ASSET_ICON } from '../../src/lib/storage/kb-assets';
 
@@ -145,6 +145,9 @@ export function buildOptionReviewSpace(input: SpaceInput, opts: { allow: readonl
       const file = `${rid}-candidate-${i + 1}${ext}`;
       assets.set(`assets/icons/${file}`, bytes);
       assetLines.push(`<${candidate}> <${ASSET_ICON}> "assets/icons/${file}" .`);
+      // The canvas shows the proposal's OPTION node, not the candidate: it carries the same picture, so the choice is
+      // visible where it is made (Matt, 2026-11-26: "no images actually are set as node preview images").
+      assetLines.push(`<${optionEntity(rid, KEYS[i])}> <${ASSET_ICON}> "assets/icons/${file}" .`);
 
       proposal.options.push({
         key: KEYS[i], label: o.label.trim(),

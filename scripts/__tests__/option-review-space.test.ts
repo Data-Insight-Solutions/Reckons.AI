@@ -39,10 +39,12 @@ describe('buildOptionReviewSpace', () => {
     expect(a.options).toBe(5);
   });
 
-  it('writes one icon reference and one image file per option', () => {
+  it('writes one image file per option, referenced by its candidate AND its option node (the node the canvas shows)', () => {
     const built = buildOptionReviewSpace(input, { allow: [dir] });
     const refs = parseAssetRefs(built.ttl);
-    expect(refs).toHaveLength(5);
+    expect(refs).toHaveLength(10); // 5 options x (candidate + option node), same 5 files
+    expect(new Set(refs.map((r) => r.value)).size).toBe(5);
+    expect(refs.filter((r) => /-option-[a-d]$/.test(r.entityIri))).toHaveLength(5); // each option node has its picture
     for (const r of refs) { expect(r.category).toBe('icons'); expect(built.assets.has(r.value)).toBe(true); }
     expect(refs.map((r) => r.value)).toContain('assets/icons/svc-candidate-2.svg');
     const out = path.join(mkdtempSync(path.join(tmpdir(), 'optrev-out-')), 'synthetic-review');
