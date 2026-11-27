@@ -2,12 +2,13 @@
  * User Story: local OCR on the ingest "add" tab (F70). Upload an image with no
  * Mistral key → the text is read in-browser via Tesseract (offline, no key).
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { clearAllKbs } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 test('image upload is OCR-read locally (no Mistral key)', async ({ page }) => {

@@ -29,7 +29,8 @@ const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
 const DRY = raw.includes('--dry-run');
 const OLLAMA = process.env.OLLAMA_BASE_URL ?? process.env.VITE_OLLAMA_BASE_URL ?? '';
-const MODEL = flag('model') ?? process.env.DESCRIBE_MODEL ?? 'qwen3-coder:latest';
+// RECKONS_LOCAL_MODEL is the model the queue worker routed for this job's kind (prose-draft), 2026-11-13.
+const MODEL = flag('model') ?? process.env.DESCRIBE_MODEL ?? process.env.RECKONS_LOCAL_MODEL ?? 'qwen3-coder:latest';
 const LIMIT = Number(flag('limit') ?? 10);
 const ONLY = flag('entity');
 const PENDING = 'reckons-workspace/knowledge.pending.jsonl';

@@ -11,10 +11,11 @@
  * regression coverage for the mobile nav bar. Screenshots:
  *   tests/visual/screenshots/navigation-sweep/<device>/
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { DEVICES, useDevice, screenshotStep, stepAudit, waitForAppReady , gotoStable} from '../workflow-harness';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 // Labels are the USER register recorded in static/reckons-terminology.ttl — the
 // test asserts the decided word, so a drift back to a developer-register label

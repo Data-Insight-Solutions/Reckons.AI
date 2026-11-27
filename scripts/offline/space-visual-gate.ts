@@ -9,6 +9,7 @@
  * Usage:
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts [--base=http://localhost:5174]
  */
+import { E2E_BASE } from '../lib/e2e-port';
 import { chromium, type Page } from '@playwright/test';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
@@ -16,7 +17,7 @@ import path from 'path';
 // ── Config ───────────────────────────────────────────────────────────────────
 const OLLAMA_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
 const BASE = process.argv.find(a => a.startsWith('--base='))?.split('=')[1]
-  ?? process.env.BASE_URL ?? 'http://localhost:5174';
+  ?? process.env.BASE_URL ?? E2E_BASE;
 const VIEWPORTS = [
   { label: 'desktop', width: 1280, height: 900 },
   { label: 'mobile', width: 390, height: 844 },

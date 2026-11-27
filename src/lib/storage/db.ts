@@ -55,7 +55,7 @@ export type SettingsRecord = {
   /** Sub-task overrides within analyze — fall back to analyzeBackend when absent */
   diffSummaryBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
   mergeAnalysisBackend?: 'claude' | 'openai' | 'gemini' | 'ollama' | 'wasm' | 'openrouter' | 'chrome-ai' | 'reckons';
-  ollamaModel: string;
+  ollamaModel?: string;
   /**
    * Per-task Ollama model overrides — fall back to `ollamaModel` when absent.
    *
@@ -194,6 +194,8 @@ export type SettingsRecord = {
   nodeLabelFontSize?: number;
   /** Prefer 2D canvas renderer over 3D WebGL */
   prefer2D?: boolean;
+  /** F306.2: colours of the compare layout (only in A, only in B, in both). Absent = the defaults in rdf/compare-venn.ts. */
+  compareColors?: { a?: string; b?: string; shared?: string };
   /** Always render entity preview images on nodes (no hover needed). Slower to paint. */
   alwaysShowPreviews?: boolean;
   /** "Normal" node preview-image size in px (the thumbnail on selected/highlighted
@@ -319,7 +321,8 @@ export const DEFAULT_SETTINGS: SettingsRecord = {
   ingestBackend: (import.meta.env.VITE_INGEST_BACKEND as SettingsRecord['ingestBackend']) || undefined,
   analyzeBackend: (import.meta.env.VITE_ANALYZE_BACKEND as SettingsRecord['analyzeBackend']) || undefined,
   chatBackend: (import.meta.env.VITE_CHAT_BACKEND as SettingsRecord['chatBackend']) || undefined,
-  ollamaModel: import.meta.env.VITE_OLLAMA_MODEL ?? 'llama3.2',
+  // No default model name: unset means "Automatic" (best installed model by role, F279.1).
+  ollamaModel: import.meta.env.VITE_OLLAMA_MODEL || undefined,
   // Unset by default: absent means "use ollamaModel", so an existing install keeps its behaviour
   // exactly until someone deliberately splits a task off.
   ollamaIngestModel: import.meta.env.VITE_OLLAMA_INGEST_MODEL || undefined,
@@ -681,6 +684,7 @@ export async function saveSettings(patch: Partial<SettingsRecord>): Promise<void
       meshyApiKey: m.meshyApiKey,
       nodeLabelFontSize: m.nodeLabelFontSize,
       prefer2D: m.prefer2D,
+      compareColors: m.compareColors ? { ...m.compareColors } : undefined,
       alwaysShowPreviews: m.alwaysShowPreviews,
       previewMode: m.previewMode,
       uiScale: m.uiScale,

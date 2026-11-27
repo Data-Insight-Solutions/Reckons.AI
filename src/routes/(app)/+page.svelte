@@ -1,18 +1,23 @@
 <script lang="ts">
   import { projectSpaceView } from '$lib/rdf/space-view';
+  import { statementsTouching, newReckoningId } from '$lib/rdf/reckoning-entity';
+  import { saveReckoning } from '$lib/stores/reckoning.svelte';
   import { SELECTED_NODE_SCALE } from '$lib/3d/preview-collage';
   import { goto } from '$app/navigation';
   import { parseCameraSpec, type CameraSpec } from '$lib/3d/camera-presets';
   import { buildGraphView, hubNodeKeys, hubOnlyEdges } from '$lib/rdf/graph-view';
   import { ALTITUDE_RANK, liftedAltitudes, type Altitude } from '$lib/rdf/fact-altitude';
   import { connectedComponents, nHopNeighbours } from '$lib/rdf/n-hop';
-  import { bestSuggestion } from '$lib/rdf/view-suggestions';
+  import { bestSuggestion, type GraphLayout } from '$lib/rdf/view-suggestions';
+  import { computeCompare, compareLegend, resolveCompareColors, type CompareModel, type CompareView } from '$lib/rdf/compare-venn';
+  import { embedMany, isEmbedderReady } from '$lib/embed';
   import { statedCoordinates } from '$lib/rdf/map-layout';
   import GraphCanvas from '$lib/components/GraphCanvas.svelte';
   import type { ComponentProps } from 'svelte';
   import type KnowledgeGraph from '$lib/3d/KnowledgeGraph.svelte';
   import type KnowledgeGraph2D from '$lib/3d/KnowledgeGraph2D.svelte';
   import GraphLabels from '$lib/components/GraphLabels.svelte';
+  import OptionDecision from '$lib/components/OptionDecision.svelte';
   import ReviewVerdict from '$lib/components/ReviewVerdict.svelte';
   import { copyText } from '$lib/utils/clipboard';
   import AssetGlbViewer from '$lib/components/AssetGlbViewer.svelte';
@@ -74,7 +79,7 @@
     LEAP_PRED, LEAP_LABEL_PRED,
   ]);
   import { isIRI, isLit } from '$lib/rdf/types';
-  import { requestShellyChat, setShellyChatOpen, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
+  import { requestShellyChat, setShellyChatOpen, shellyChatOpen, openShellyOn, shellyTabParam, shellyViewAdjust, clearShellyViewAdjust, shellySpotlight, setSpotlightKeys, activeStoryId, exploreOpen, startExplore, stopExplore } from '$lib/stores/shelly-bridge.svelte';
   import AdaptivePanel from '$lib/components/AdaptivePanel.svelte';
   import { entityProtection } from '$lib/rdf/protected-entities';
   import { buildEntitySet, defaultSetName, isEntitySet, setMembers } from '$lib/rdf/entity-sets';
@@ -151,9 +156,17 @@
   let statementsLayout = 'force';
   let sourcesLayout = 'source';
   /** A node picked in the graph, from either renderer. Ctrl/Cmd adds to the multi-selection in Statements. */
+  /**
+   * The selection a story step made (not the reader). On a phone it stays on the canvas, and the full-screen detail
+   * sheet waits for a tap on the "details" chip: opened by the step, the sheet covered the story's caption and the very
+   * thing the step pointed at (Matt, 2026-11-25: "heavily test mobile and desktop for full story"; F292.5).
+   */
+  let storySelection = $state(false);
   function handleGraphSelect(k: string | null, ctrlKey?: boolean) {
+    storySelection = false;
     if (!autoExpandAssets) collapseAsset(); // manual mode: a graph click collapses; auto mode: the effect re-syncs
-    if (ctrlKey && k && perspective === 'statements') {
+    // F309.2 (Matt, 2026-11-25, asking for selection of several at once): Ctrl/Cmd-click builds a multi-selection in every perspective.
+    if (ctrlKey && k) {
       const next = new Set(multiSelected);
       if (next.has(k)) next.delete(k); else next.add(k);
       multiSelected = next;
@@ -182,6 +195,7 @@
     selected = source.key;
   }
   function selectGraphNode(key: string | null) {
+    storySelection = false;
     if (perspective === 'sources' && key) {
       const containing = sourceScene?.sources.flatMap((source) => source.groups.filter((group) => group.members.includes(key)).map((group) => group.key)) ?? [];
       provenanceControls.expanded = new Set([...provenanceControls.expanded, ...containing]);
@@ -385,7 +399,10 @@
   let selectedTypes = $state<Set<string>>(new Set()); // entity type IRIs
   let showSourcesPanel = $state(false);
   let hubLimit = $state(5);
-  let layout = $state<'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map'>('force');
+  let layout = $state<GraphLayout>('force');
+  /** F306.2: the two provenances the compare layout draws, from ?layout=compare&a=<id>&b=<id> or the pickers. */
+  let compareA = $state<string | null>(null);
+  let compareB = $state<string | null>(null);
   /** Pod view (F29 Currents): pending-only arrival nodes render translucent + drifting.
    *  Toggled on the Graph tab (/kb currents section); honoured here via the shared store. */
   const podMode = $derived(podViewEnabled());
@@ -420,13 +437,24 @@
   // to be bookmarked and shared within the same browser/device).
   let cameraSpec = $state<CameraSpec | null>(null);
 
-  onMount(async () => {
-    const params = $page.url.searchParams;
+  /**
+   * ONE PARSER FOR THE VIEW (F309, Matt 2026-11-25: "tie in story mode to any UI available filter and layout, with
+   * query paramters"). Page load, links and story steps (story:view, through the Shelly bridge's `params`) all apply
+   * the view through this, so anything the UI can show, a link and a story can show. Each parameter applies only
+   * when present: a story step that names no filter leaves the filters as they are.
+   */
+  function applyViewParams(params: URLSearchParams, fromStory = false) {
     if (['sources', 'provenance'].includes(params.get('perspective') ?? '')) switchPerspective('sources');
     const l = params.get('layout');
-    if (l && ['force','focus','source','type','hub','timeline','order','hierarchy'].includes(l)) layout = l as typeof layout;
+    if (l && ['force','focus','source','type','hub','timeline','order','hierarchy','compare'].includes(l)) layout = l as typeof layout;
+    if (l === 'compare') { compareA = params.get('a'); compareB = params.get('b'); }
+    // shelly=learn|chat|explore opens Shelly on that tab (Matt, 2026-11-25: "auto open Shelly"); an open panel is left
+    // where the reader has it.
+    const shellyTab = shellyTabParam(params.get('shelly'));
+    if (shellyTab && !shellyChatOpen()) openShellyOn(shellyTab);
     const sel = params.get('sel');
-    if (sel) selected = sel;
+    // An empty sel= clears the selection (a story step that selects nothing starts clean, F309).
+    if (sel !== null) { selected = sel === '' ? null : sel; storySelection = fromStory && selected !== null; }
     const f = params.get('f');
     if (f) activeFilters = new Set(f.split(',').filter(Boolean) as GraphFilter[]);
     // F223.11: ?focus=<option id>&cite=<fact ids> lights one proposal option (see focusOption).
@@ -443,6 +471,16 @@
     // Exists so visual tests can shoot from an angle that can actually SEE the z axis
     // (revealsDepth in camera-presets.ts); a head-on camera cannot.
     cameraSpec = parseCameraSpec(params.get('cam'));
+    // F309: the spotlight a story makes (lit entities, the rest dimmed) is a parameter too, so a link can make one.
+    const lit = params.get('lit');
+    if (lit !== null) setSpotlightKeys(lit.split(',').filter(Boolean));
+    // F309.2: several selected at once (Ctrl/Cmd-click) travel as `sels`, distinct from the single selection `sel`.
+    const sels = params.get('sels');
+    if (sels !== null) multiSelected = new Set(sels.split(',').filter(Boolean));
+  }
+
+  onMount(async () => {
+    applyViewParams($page.url.searchParams);
 
     const s = await getSettings();
     if (s.nodeLabelFontSize != null) labelFontSize = s.nodeLabelFontSize;
@@ -462,8 +500,11 @@
    * `oneTime` already dedupes by id, so re-running as the graph loads is harmless; untrack keeps
    * the push from making notification state a dependency of this effect.
    */
+  // Once Shelly has been open (opened by a link, by a story, or by hand), the tip that introduces her is moot.
+  let shellyMet = false;
   $effect(() => {
-    if (showingLanding) return;
+    if (shellyChatOpen()) { shellyMet = true; untrack(() => dismissNotification('tip-shelly-explore')); return; }
+    if (showingLanding || shellyMet) return;
     untrack(() => {
       pushNotification({
         id: 'tip-shelly-explore',
@@ -531,11 +572,17 @@
      *
      * The current params are an INPUT to the write, never a reason to write again.
      */
-    const params = new URLSearchParams(untrack(() => $page.url.searchParams));
+    // Start from the address as it IS, not the $page store: the story player writes step= with its own replaceState,
+    // and the store can lag behind it, so a write from the store dropped the step and broke the step link
+    // (story-walk e2e, CI on #688, 2026-11-25).
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : untrack(() => $page.url.search));
     if (perspective === 'sources') params.set('perspective', perspective);
     else params.delete('perspective');
     if (layout !== 'force') params.set('layout', layout);
     else params.delete('layout');
+    // The compare layout's two provenances travel in the URL (F306.2), and only while it is on.
+    if (layout === 'compare' && compareA && compareB) { params.set('a', compareA); params.set('b', compareB); }
+    else { params.delete('a'); params.delete('b'); }
     // Each of these must DELETE when empty. Rebuilding from scratch got that for free; carrying
     // the existing params forward does not, and a filter param left behind after the filter is
     // cleared would reapply it on the next load.
@@ -546,6 +593,10 @@
     if (selectedTypes.size > 0) params.set('types', [...selectedTypes].join(',')); else params.delete('types');
     // 'detailed' is the default, so it stays out of the URL; every other rung is shareable.
     if (detailLevel !== 'detailed') params.set('detail', detailLevel); else params.delete('detail');
+    // F309: the spotlight and a multi-selection travel in the URL like every other part of the view.
+    const litKeys = shellySpotlight();
+    if (litKeys.length > 0) params.set('lit', litKeys.join(',')); else params.delete('lit');
+    if (multiSelected.size > 0) params.set('sels', [...multiSelected].join(',')); else params.delete('sels');
     const qs = params.toString();
     replaceState(qs ? `?${qs}` : '?', { ...untrack(() => $page.state), graphPerspective: perspective });
   });
@@ -621,7 +672,7 @@
    * `available` keeps the conditional options honest: clustering by source is meaningless with one
    * source, and by type with no types.
    */
-  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean }[] = [
+  const LAYOUTS: { value: typeof layout; label: string; title: string; available?: () => boolean; blocked?: () => string | null }[] = [
     { value: 'force', label: 'free', title: 'Free force layout — nodes repel, links pull them together' },
     { value: 'focus', label: 'focus', title: 'Focus the selected node and its neighbours; push the rest away' },
     { value: 'source', label: 'source', title: 'Cluster nodes by the source they came from',
@@ -637,10 +688,60 @@
     // OFFERED ONLY WHEN THE GRAPH HAS SOMETHING TO PLACE. Most graphs hold no coordinates at all,
     // and a map layout that opens empty reads as a broken feature rather than as an absent fact.
     // The same `available` gate already hides 'source' and 'type' for the same reason.
+    // ALWAYS OFFERED, never silently absent: with fewer than two provenances the menu item says so
+    // (see `blocked`) rather than opening an empty layout.
+    { value: 'compare', label: 'compare', title: 'A comparison as a venn diagram: only the first on the left, only the second on the right, what both hold in the middle',
+      available: () => perspective === 'statements',
+      blocked: () => (compareSources.length < 2 ? `needs two documents (only ${compareSources.length} here)` : null) },
     { value: 'map', label: 'map', title: 'Place nodes by GPS coordinates; anything without a location goes to a lane below',
       available: () => statedCoordinates(statements()).size > 0 },
   ];
   const availableLayouts = $derived(LAYOUTS.filter((l) => l.available?.() ?? true));
+
+  // ── Compare layout (F306.2) ────────────────────────────────────────────────────
+  /** Provenances that hold at least one live statement in the knowledge base, oldest first. */
+  const compareSources = $derived.by(() => {
+    const held = new Set(visible.map((st) => st.sourceId));
+    return sources().filter((src) => src.kind !== 'analysis' && held.has(src.id)).sort((x, y) => x.ingestedAt - y.ingestedAt);
+  });
+  const compareReady = $derived(
+    layout === 'compare' && perspective === 'statements' && !!compareA && !!compareB && compareA !== compareB
+      && compareSources.some((src) => src.id === compareA) && compareSources.some((src) => src.id === compareB),
+  );
+  // Opening the layout without (valid) provenances picks the two oldest, so it never opens empty when it can draw.
+  $effect(() => {
+    if (layout !== 'compare' || compareSources.length < 2) return;
+    const ids = compareSources.map((src) => src.id);
+    if (compareA && compareB && compareA !== compareB && ids.includes(compareA) && ids.includes(compareB)) return;
+    compareA = ids.includes(compareA ?? '') ? compareA : ids.find((id) => id !== compareB) ?? ids[0];
+    compareB = ids.includes(compareB ?? '') && compareB !== compareA ? compareB : ids.find((id) => id !== compareA) ?? ids[1];
+  });
+  let compareModel = $state<CompareModel | null>(null);
+  let compareToken = 0;
+  /** Matching by meaning loads the embedding model; until it is on the device (or asked for) only identical statements are shared. */
+  let compareByMeaning = $state(false);
+  $effect(() => {
+    if (!compareReady) { compareModel = null; return; }
+    const stmts = visible, a = compareA!, b = compareB!, asked = compareByMeaning;
+    const token = ++compareToken;
+    (async () => {
+      let embed: typeof embedMany | undefined;
+      try { if (asked || (await isEmbedderReady())) embed = embedMany; } catch { embed = undefined; }
+      let model: CompareModel;
+      try { model = await computeCompare(stmts, a, b, { embedMany: embed }); }
+      catch { model = await computeCompare(stmts, a, b); } // a refused or failed model: identical statements only, and the legend says so
+      if (token === compareToken) compareModel = model;
+    })();
+  });
+  const sourceTitle = (id: string | null) => {
+    const t = sources().find((src) => src.id === id)?.title ?? id ?? '';
+    return t.length > 28 ? `${t.slice(0, 27)}…` : t;
+  };
+  const compareView = $derived.by((): CompareView | null => compareReady && compareModel
+    ? { model: compareModel, colors: resolveCompareColors(settings().compareColors), titleA: sourceTitle(compareA), titleB: sourceTitle(compareB) } : null);
+  /** The layout the renderers draw: 'compare' only once there is something to draw, otherwise the free layout. */
+  const drawnLayout = $derived(layout === 'compare' && !compareView ? 'force' : layout);
+  const compareLegendRows = $derived(compareView ? compareLegend(compareView.model, { a: compareView.titleA, b: compareView.titleB }, compareView.colors) : []);
   // Chip + popover, matching the previews control. Matt, 2026-08-28: "I like the previews dropdown
   // styling much better than the new ones on graph view." A bare <select> inherits the browser's
   // widget and reads as foreign against an overlay built entirely from chips — and it was the
@@ -759,6 +860,17 @@
    */
   // F292.2: while a story step lights markers, an edge is lit when it touches one of them (no layout change).
   const spotlightKeys = $derived(new Set(shellySpotlight()));
+  /**
+   * TITLES WITHOUT HOVER (Matt, 2026-11-25: "when we highlight we should be showing title without the need for
+   * hover"): lit entities and multi-selected ones are always labelled, exempt from overlap culling, in 2D and 3D, alongside
+   * the source labels the sources perspective already pins.
+   */
+  const labelPriority = $derived.by(() => {
+    const keys = new Set<string>(sourceLabels ?? []);
+    for (const k of spotlightKeys) keys.add(k);
+    for (const k of multiSelected) keys.add(k);
+    return keys.size > 0 ? keys : null;
+  });
   const litStatementIds = $derived.by(() => {
     const status = [...activeFilters].some((f) => f === 'confirmed' || f === 'pending' || f === 'proposed' || f === 'questions');
     const spot = spotlightKeys.size > 0;
@@ -852,6 +964,13 @@
   const drawn = $derived(
     perspective === 'sources' ? sourceScene?.edges ?? [] : detail.hubsOnly ? hubOnlyEdges(graphView.edges, detailHubKeys) : graphView.edges,
   );
+
+  /** Distinct entities at the drawn edges' ends — what the canvas itself drew, independent of how many labels a renderer chose to hide. */
+  const drawnEntityCount = $derived.by(() => {
+    const shown = new Set<string>();
+    for (const e of drawn) { shown.add(termKey(e.s)); shown.add(termKey(e.o)); }
+    return shown.size;
+  });
 
   /** Everything the detail ladder took off the canvas — the floor AND the hubs rung. */
   const detailHidden = $derived.by(() => {
@@ -1136,11 +1255,26 @@
     return [...set].sort();
   });
 
+  /**
+   * Each entity's own label (rdfs:label), so the detail panel says "Business card, back", not the IRI's tail
+   * "dis-business-card-back" (seen in the site story, 2026-11-25). The label editor writes rdfs:label, and the heading
+   * never read it back, so an edited label looked unsaved. The canvas already drew these names.
+   */
+  const entityLabels = $derived.by(() => {
+    const m = new Map<string, string>();
+    for (const st of statements()) {
+      if (st.p.value !== 'http://www.w3.org/2000/01/rdf-schema#label' || st.s.kind !== 'iri' || st.o.kind !== 'literal') continue;
+      if (st.status === 'rejected' || st.status === 'superseded') continue;
+      if (!m.has(st.s.value) || st.status === 'confirmed') m.set(st.s.value, st.o.value);
+    }
+    return m;
+  });
+
   // Decode a termKey into a human-readable short label
   function keyLabel(key: string): string {
     if (key.startsWith('i:')) {
       const iri = key.slice(2);
-      return iri.split('/').pop() ?? iri;
+      return entityLabels.get(iri) ?? iri.split('/').pop() ?? iri;
     }
     if (key.startsWith('l:')) {
       // l:value|datatype|lang — take just the value part
@@ -1989,6 +2123,8 @@
     if (adj.selectEntity) selected = `i:${adj.selectEntity}`;
     if (adj.layout) layout = adj.layout;
     if (adj.filters) activeFilters = new Set(adj.filters);
+    // F309: a whole view as query parameters (a story step's story:view), through the same parser a link uses.
+    if (adj.params) applyViewParams(new URLSearchParams(adj.params), activeStoryId() !== null);
     clearShellyViewAdjust();
   });
 
@@ -2092,6 +2228,27 @@
     if (members.length === 0) return;
     multiSelected = new Set(members.map(m => `i:${m}`));
     selected = null; // hand off to the multi-select action panel
+  }
+
+  /**
+   * F223.12.1: 'Reckon with these'. The facts that touch the picked entities become the situation of a new
+   * Reckoning entity, and the Reckoning page opens with them already chosen. An action on the existing selection,
+   * not a new place to go.
+   */
+  async function reckonWithIris(iris: string[]) {
+    const rows = statementsTouching(statements(), new Set(iris));
+    if (rows.length === 0) {
+      pushNotification({ id: 'reckon-empty', type: 'info', title: 'Nothing to reckon with', body: 'No statements touch what you selected.' });
+      return;
+    }
+    const id = newReckoningId();
+    try {
+      if (!(await saveReckoning(id, rows.map((r) => r.id), ''))) throw new Error('this data is read-only');
+    } catch (e) {
+      pushNotification({ id: 'reckon-failed', type: 'warn', title: 'Reckoning not saved', body: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    await goto(`/reckoning?r=${id}`);
   }
 
   // Batch-select several nodes → group them into a reusable "set" (F65). The set
@@ -2208,12 +2365,13 @@
     get topologyStatements() { return drawn; },
     get flooredStatementIds() { return graphView.hidden.statementIds; },
     get selected() { return selected; },
-    get layout() { return layout; },
+    get layout() { return drawnLayout; },
+    get compare() { return compareView; },
     get timelineZoom() { return timelineZoom; },
     get timelineCenter() { return timelineCenter; },
     get timelineTimeSource() { return timelineTimeSource; },
     get sources() { return sceneSources; },
-    get labelPriorityKeys() { return sourceLabels; },
+    get labelPriorityKeys() { return labelPriority; },
     get viewportInsets() { return assetGutters; },
     get showSourceNodes() { return perspective === 'statements' && detailLevel === 'all'; },
     get targetKey() { return hoverTarget; },
@@ -2242,14 +2400,15 @@
     get topologyStatements() { return drawn; },
     get flooredStatementIds() { return graphView.hidden.statementIds; },
     get selected() { return selected; },
-    get layout() { return layout; },
+    get layout() { return drawnLayout; },
+    get compare() { return compareView; },
     get timelineZoom() { return timelineZoom; },
     get timelineCenter() { return timelineCenter; },
     get timelineTimeSource() { return timelineTimeSource; },
     get previewKeys() { return previewNodeKeys; },
     get previewSizePx() { return nodePreviewSize; },
     get sources() { return sceneSources; },
-    get labelPriorityKeys() { return sourceLabels; },
+    get labelPriorityKeys() { return labelPriority; },
     get viewportInsets() { return assetGutters; },
     get targetKey() { return hoverTarget; },
     onselect: handleGraphSelect,
@@ -2294,7 +2453,7 @@
         <Popover.Trigger>
           {#snippet child({ props })}
             <button {...props} class="chip" class:active={showLayoutMenu}
-              title={availableLayouts.find((l) => l.value === layout)?.title}>
+              title={availableLayouts.find((l) => l.value === layout)?.title} data-testid="layout-trigger">
               <span class="lbl mono">{availableLayouts.find((l) => l.value === layout)?.label ?? layout}</span>
               <span class="arr mono">{showLayoutMenu ? '▲' : '▼'}</span>
             </button>
@@ -2303,9 +2462,11 @@
         <Popover.Portal>
           <Popover.Content class="filter-popover" sideOffset={6}>
             {#each availableLayouts as l (l.value)}
-              <button class="chip small" class:active={layout === l.value} title={l.title}
+              {@const why = l.blocked?.() ?? null}
+              <button class="chip small" class:active={layout === l.value} title={why ?? l.title}
+                disabled={!!why} data-testid={`layout-${l.value}`}
                 onclick={() => { layout = l.value; showLayoutMenu = false; }}>
-                <span class="lbl mono">{l.label}</span>
+                <span class="lbl mono">{l.label}{#if why}<span class="muted"> · {why}</span>{/if}</span>
               </button>
             {/each}
           </Popover.Content>
@@ -2357,6 +2518,40 @@
       <span class="pod-indicator mono" title="Pod view is on — arrivals from your currents drift in translucent until you accept them. Toggle it on the Graph tab.">🐋 pod</span>
     {/if}
   </div>
+
+  <!-- COMPARE (F306.2): the two provenances and the legend. Present only while the layout is on. -->
+  {#if layout === 'compare'}
+    <div class="overlay-group compare-panel" data-testid="compare-panel">
+      <span class="group-label mono">compare</span>
+      {#if compareSources.length < 2}
+        <p class="compare-note mono" data-testid="compare-needs-sources">The compare layout needs two documents; only {compareSources.length} here. Add another from ingest, then come back.</p>
+      {:else}
+        <div class="compare-pickers">
+          <label class="compare-pick mono"><span class="compare-swatch" style="background: {resolveCompareColors(settings().compareColors).a}"></span>
+            <select class="detail-select" aria-label="First source" data-testid="compare-source-a" value={compareA ?? ''} onchange={(e) => (compareA = e.currentTarget.value)}>
+              {#each compareSources as src (src.id)}<option value={src.id} disabled={src.id === compareB}>{src.title}</option>{/each}
+            </select></label>
+          <label class="compare-pick mono"><span class="compare-swatch" style="background: {resolveCompareColors(settings().compareColors).b}"></span>
+            <select class="detail-select" aria-label="Second source" data-testid="compare-source-b" value={compareB ?? ''} onchange={(e) => (compareB = e.currentTarget.value)}>
+              {#each compareSources as src (src.id)}<option value={src.id} disabled={src.id === compareA}>{src.title}</option>{/each}
+            </select></label>
+        </div>
+        {#if compareView}
+          <ul class="compare-legend mono" data-testid="compare-legend" aria-label="Compare legend">
+            {#each compareLegendRows as row (row.id)}
+              <li data-testid={`compare-legend-${row.id}`} data-count={row.count}><span class="compare-swatch" style="background: {row.color}"></span>{row.count} {row.label}</li>
+            {/each}
+          </ul>
+          <p class="compare-note mono" data-testid="compare-matched-by">
+            {#if compareView.model.matchedBy === 'meaning'}Shared = both say it, matched by meaning as well as exact wording.
+            {:else}Shared = identical statements only.
+              <button class="chip small" onclick={() => (compareByMeaning = true)} title="Loads the embedding model if it is not on this device yet">also match by meaning</button>{/if}
+            {#if compareView.model.counts.outside > 0}{compareView.model.counts.outside} statement{compareView.model.counts.outside === 1 ? '' : 's'} from somewhere else stay quiet below.{/if}
+          </p>
+        {/if}
+      {/if}
+    </div>
+  {/if}
 
   <!-- PREVIEWS — one mode, not two booleans that can contradict each other. "preview all" spreads
        every thumbnail so they are all visible; "auto-expand" blows the selected one up to cover
@@ -2499,6 +2694,7 @@
     data-graph-perspective={perspective}
     data-provenance-nodes={perspective === 'sources' ? sourceScene?.nodes.size : undefined}
     data-provenance-links={perspective === 'sources' ? sourceScene?.edges.length : undefined}
+    data-drawn-entities={perspective === 'statements' ? drawnEntityCount : undefined}
     data-graph-settled={showingLanding || graphSettled}
     class:bg-example-live={backgroundExampleLive && !showingLanding}
     class:bg-example-interact={backgroundInteract && !showingLanding}
@@ -2609,6 +2805,7 @@
         <button class="chip active" onclick={() => { focusOptionId = null; focusCited = []; }} title="Stop showing one proposal option">
           <span class="lbl mono">option {focusOptionId} ✕</span>
         </button>
+        <OptionDecision optionId={focusOptionId} />
       {/if}
       <!-- Sources filter chip -->
       <Popover.Root bind:open={showSourceFilter} onOpenChange={(o) => { if (o) showTypeFilter = false; }}>
@@ -2756,6 +2953,8 @@
         multiSelected = new Set();
         showRelationUI = true;
       }}>+ relate</button>
+      <button class="np-act-btn np-act-primary" onclick={() => reckonWithIris(multiSelectedList.map((n) => n.iri))}
+        title="open the Reckoning page with the statements about these chosen">⚖ Reckon with these</button>
       <button class="np-act-btn np-act-set" onclick={createSetFromSelection} title="group these nodes into a reusable collection">⬡ group as collection</button>
       <button class="np-act-btn" onclick={() => (multiSelected = new Set())}>✕ clear</button>
     </div>
@@ -2791,6 +2990,7 @@
           class:glb-badge={a.kind === 'glb' || a.kind === 'splat' || a.kind === 'three'}
           style={dims}
           aria-label={`Open asset for ${n.label}`}
+          data-testid={`asset-open-${(iriFromNodeKey(n.key) ?? n.key).split(/[/#:]/).pop()}`}
           onclick={(e) => { e.stopPropagation(); openNodeFromThumb(n.key); }}
         >
           {#if a.kind === 'image'}
@@ -2886,19 +3086,20 @@
        measured each time rather than hardcoded to the 360/320 defaults. -->
   <div
     class="asset-large"
+    data-testid="asset-large"
     class:placing-hidden={!!placementMode.iri}
     style="--gutter-left: {assetGutters.left}px; --gutter-right: {assetGutters.right}px;"
     transition:fade={{ duration: 140 }}
   >
     {#if expandedAsset.kind === 'image'}
       <button type="button" class="asset-expand-control" aria-label="View image fullscreen" onclick={() => (assetFullscreen = true)}>
-        <img src={expandedAsset.url} alt="expanded asset" />
+        <img src={expandedAsset.url} alt="expanded asset" data-testid="asset-image" />
       </button>
     {:else if expandedAsset.kind === 'video'}
       <!-- Uploaded video assets do not include a separate caption file. Keep playback user-initiated;
            a fake empty captions track would be more misleading than documenting that limitation. -->
       <!-- svelte-ignore a11y_media_has_caption -->
-      <video class="asset-media" src={expandedAsset.url} controls preload="metadata" playsinline></video>
+      <video class="asset-media" data-testid="asset-video" src={expandedAsset.url} controls preload="metadata" playsinline></video>
     {:else if expandedAsset.kind === 'three'}
       <div class="asset-media asset-glb">
         {#key expandedAsset.url}<ThreeExampleViewer url={expandedAsset.url} />{/key}
@@ -2911,9 +3112,9 @@
              intercepted, 2026-10-14). -->
         <div class="asset-bg-action">
           {#if backgroundSplat === expandedAsset.url}
-            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
+            <button class="asset-bg-toggle mono" data-testid="asset-bg-toggle" onclick={() => setBackgroundSplat(null)} title="Stop using this splat as the space background">Clear background</button>
           {:else}
-            <button class="asset-bg-toggle mono" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
+            <button class="asset-bg-toggle mono" data-testid="asset-bg-toggle" onclick={() => setBackgroundSplat(expandedAsset!.url)} title="Show this splat behind the graph in this space">Set as background</button>
           {/if}
           {#if expandedAssetKey && iriFromNodeKey(expandedAssetKey)}<SplatPlacementControls iri={iriFromNodeKey(expandedAssetKey)!} />{/if}
         </div>
@@ -2932,7 +3133,7 @@
     {/if}
     <div class="asset-controls">
       <button onclick={() => (assetFullscreen = true)} title="Fullscreen">⛶</button>
-      <button onclick={collapseAsset} title="Close">✕</button>
+      <button onclick={collapseAsset} title="Close" data-testid="asset-large-close">✕</button>
     </div>
   </div>
 {/if}
@@ -3001,7 +3202,12 @@
 {/if}
 
 <!-- Unified node panel — shown when a node is selected -->
-{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three')}
+{#if isCompact() && storySelection && activeStoryId() !== null && perspective === 'statements' && selected && nodeDetails}
+  <button class="story-sel-chip mono" onclick={() => (storySelection = false)} aria-label="Show details: {nodeDetails.label}">
+    <span class="story-sel-name">{nodeDetails.label}</span> · details ↑
+  </button>
+{/if}
+{#if perspective === 'statements' && selected && nodeDetails && !(isCompact() && assetFullscreen && expandedAsset?.kind === 'three') && !(isCompact() && storySelection && activeStoryId() !== null)}
   {@const info = nodeDetails}
   <AdaptivePanel corner="bottom-right" width={320} minWidth={240} maxWidth={800} zIndex={300} title={info.label} open={true} onOpenChange={(o) => { if (!o) { selected = null; editingLabel = false; showMergeUI = false; showRelationUI = false; showMergeReview = false; } }} extraStyle="max-height: calc(100vh - {132 + notificationStackHeight.get()}px)">
     {#snippet header()}
@@ -3128,6 +3334,8 @@
           {#if selectedIri}
             <button class="np-act-btn" onclick={() => (showMergeUI = true)}>⟷ merge</button>
             <button class="np-act-btn np-act-primary" onclick={() => (showRelationUI = true)}>+ relate</button>
+            <button class="np-act-btn" onclick={() => reckonWithIris([selectedIri!])}
+              title="open the Reckoning page with the statements about this chosen">⚖ Reckon with these</button>
           {/if}
           <button class="np-act-btn np-act-danger" onclick={deleteSelected}>✕ delete</button>
         </div>
@@ -3756,6 +3964,13 @@
   .standing-legend .sw { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--ink-2); }
   .standing-legend .sw-proposed { border-top: 2px dashed var(--data); }
   .standing-legend .sw-question { border: 1.5px dashed var(--ink-2); border-radius: 50%; width: 0.9rem; height: 0.9rem; line-height: 0.75rem; text-align: center; font-size: 0.6rem; color: var(--ink-2); opacity: 0.8; }
+  .compare-panel { max-width: 22rem; }
+  .compare-pickers { display: flex; flex-direction: column; gap: 0.3rem; }
+  .compare-pick { display: flex; align-items: center; gap: 0.4rem; font-size: 0.6rem; color: var(--muted); }
+  .compare-swatch { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: none; }
+  .compare-legend { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.65rem; color: var(--ink-2); }
+  .compare-legend li { display: flex; align-items: center; gap: 0.4rem; }
+  .compare-note { font-size: 0.6rem; color: var(--muted); margin: 0.35rem 0 0; }
   .chip-row {
     display: flex;
     flex-wrap: wrap;
@@ -3989,6 +4204,14 @@
   }
 
   /* Panel header (drag handle area inside SnapPanel) */
+  .story-sel-chip {
+    position: fixed; z-index: 340; right: 0.75rem; top: calc(env(safe-area-inset-top, 0px) + 5.4rem);
+    max-width: min(70vw, 22rem); display: flex; gap: 0.25rem; align-items: center;
+    padding: 0.45rem 0.75rem; min-height: 44px; border-radius: 999px; cursor: pointer;
+    background: var(--surface); color: var(--accent); border: 1px solid var(--accent); font-size: 0.75rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+  .story-sel-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: var(--ink); }
   .np-header {
     display: flex;
     justify-content: space-between;

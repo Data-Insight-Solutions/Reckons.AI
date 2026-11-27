@@ -23,6 +23,7 @@
  * Needs the app running: `npm run dev:test` (port 5174).
  * Usage: npx tsx tests/bench/run-space-size-browser.ts [--profiles=s,m,l] [--gpu] [--save]
  */
+import { E2E_BASE } from '../../scripts/lib/e2e-port';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { chromium, type Page } from 'playwright';
@@ -30,7 +31,7 @@ import { PROFILES, renderSpace } from './lib/synthetic-space';
 
 const args = process.argv.slice(2);
 const flag = (n: string) => args.find((a) => a.startsWith(`--${n}=`))?.split('=')[1];
-const URL_BASE = flag('url') ?? 'http://localhost:5174';
+const URL_BASE = flag('url') ?? E2E_BASE;
 const TIMEOUT_MS = Number(flag('open-timeout') ?? 120_000);
 const GPU = args.includes('--gpu');
 const wanted = flag('profiles')?.split(',') ?? ['s', 'm', 'l'];

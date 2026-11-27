@@ -17,7 +17,7 @@ generated: "docs-kb"
 
 Interactive force-directed graph (a map where linked facts pull toward each other and unrelated ones drift apart) in WebGL (3D) or Canvas (2D fallback). Per-entity icons from urn:kbase:predicate/icon2d statements with emoji fallback. Label overlap prevention sorts by degree and hides collisions. Hub emphasis, layout modes (force/focus/source/type/hub), filter chips.
 
-<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 3 parts below, 1 of which is not built yet.</p>
 
 ## Why it is this way
 
@@ -34,3 +34,7 @@ A node can carry a Gaussian splat: a 3D object or scene drawn as many small, sof
 **[A background for a space](../features/space-background)**
 
 A space can have a background behind its 3D graph.
+
+**[Detail levels: show the main entities first, the evidence last](../features/detail-levels)** — **scaffolded**
+
+With many facts, the canvas draws too many entities to read.

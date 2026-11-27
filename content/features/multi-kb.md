@@ -1,7 +1,7 @@
 ---
 title: "Multi-Graph Management"
 slug: "multi-kb"
-order: 1032
+order: 1039
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc
@@ -19,7 +19,7 @@ related:
 
 Create, switch, rename, and delete independent knowledge graphs. Each graph has its own IndexedDB store, stable UUID, content fingerprint, and optional accent color. Per-tab graph support via URL ?kb= parameter.
 
-<p class="derived">This is built, working, and in daily use here. It has 2 parts below.</p>
+<p class="derived">This is built, working, and in daily use here. It has 3 parts below.</p>
 
 <p class="in-sets">Part of Keep it.</p>
 
@@ -32,6 +32,10 @@ Each graph has a stable UUID (never changes, used for MCP routing and graph Leap
 **[Graph Leap](../features/kb-leap)**
 
 Cross-reference entities between graphs.
+
+**[Open a .ttl file from a GitHub link](../features/open-from-github)**
+
+Facts saved as a .ttl file in a public GitHub repository can be opened in Reckons.AI from a link.
 
 ## Related
 

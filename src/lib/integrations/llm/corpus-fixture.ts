@@ -14,10 +14,25 @@
  */
 import type { ExtractedTriple } from './extractor';
 
-type MockTriple = { s: string; p: string; o: string; literal?: boolean };
+type MockTriple = { s: string; p: string; o: string; literal?: boolean; excerpt?: string };
 type CorpusEntry = { mockMatch?: string; expected?: { mock?: MockTriple }[] };
 
+/** The compare flow's synthetic notes (F264.1): one seed, one change that yields all four labels. */
+async function compareDemoTriples(text: string): Promise<ExtractedTriple[] | null> {
+  const demo = (await import('../../../../tests/fixtures/compare-demo/notes.json')).default as Record<string, CorpusEntry & { mock?: MockTriple[] } | string>;
+  for (const entry of Object.values(demo)) {
+    if (typeof entry !== 'object' || !entry.mockMatch || !text.includes(entry.mockMatch)) continue;
+    return (entry.mock ?? []).map((mock) => ({
+      subject: mock.s, predicate: mock.p, object: mock.o, objectIsLiteral: mock.literal === true,
+      gloss: `${mock.s} ${mock.p} ${mock.o}`.replace(/-/g, ' '), confidence: 0.95, excerpt: mock.excerpt,
+    }));
+  }
+  return null;
+}
+
 export async function corpusFixtureTriples(text: string): Promise<ExtractedTriple[] | null> {
+  const demo = await compareDemoTriples(text);
+  if (demo) return demo;
   // Loaded only on this path, so the corpus is never part of the app's main bundle.
   const corpus = (await import('../../../../tests/fixtures/notes-corpus/expectations.json')).default as Record<string, CorpusEntry | string>;
   for (const entry of Object.values(corpus)) {

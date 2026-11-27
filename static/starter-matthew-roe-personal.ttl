@@ -1,0 +1,53 @@
+## F304.2 — the personal space behind the showcase's last step (public example).
+## Matt's decision of 2026-11-19, recorded on kb:personal-showcase: an UNLISTED example is a
+## public example — unlisted is not private. This space holds ONLY the facts named on
+## kb:showcase-personal-space: archery, hand-made wooden bows and arrows, a dog, cats, chickens
+## and darkling beetles, and swimming. Nothing else. No pictures, and no picture of a child.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix ktype: <urn:kbase:type/> .
+@prefix p:     <urn:kbase:predicate/> .
+@prefix hnav:  <urn:reckons:nav/> .
+@prefix mp:    <urn:reckons:matthew-roe-personal/> .
+
+# ── The root ────────────────────────────────────────────────────────────────
+
+mp:matthew-roe-personal
+    rdf:type ktype:Concept ;
+    rdfs:label "My personal space" ;
+    rdfs:comment "What I do off the clock. The last step of the showcase points here." ;
+    hnav:order "1"^^xsd:integer ;
+    hnav:layer "1"^^xsd:integer ;
+    p:has mp:archery, mp:bows-and-arrows, mp:animals, mp:swimming .
+
+# ── The facts ───────────────────────────────────────────────────────────────
+
+mp:archery
+    rdf:type ktype:Concept ;
+    rdfs:label "Archery" ;
+    rdfs:comment "Archery, off the clock." ;
+    hnav:order "2"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer .
+
+mp:bows-and-arrows
+    rdf:type ktype:Concept ;
+    rdfs:label "Wooden bows and arrows" ;
+    rdfs:comment "Handmade: the wooden bows and arrows I make by hand." ;
+    hnav:order "3"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer .
+
+mp:animals
+    rdf:type ktype:Concept ;
+    rdfs:label "Dog, cats, chickens, and darkling beetles" ;
+    rdfs:comment "A dog, cats, chickens, and even darkling beetles." ;
+    hnav:order "4"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer .
+
+mp:swimming
+    rdf:type ktype:Concept ;
+    rdfs:label "Swimming" ;
+    rdfs:comment "Seventeen years of competitive swimming; top 100 in the United States for the 1650 yard freestyle; three conference champion wins." ;
+    hnav:order "5"^^xsd:integer ;
+    hnav:layer "2"^^xsd:integer .

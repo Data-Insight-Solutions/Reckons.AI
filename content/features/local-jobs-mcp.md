@@ -1,7 +1,7 @@
 ---
 title: "Local jobs through MCP"
 slug: "local-jobs-mcp"
-order: 1028
+order: 1034
 section: "Features"
 parent: "mcp-workspace"
 template: doc

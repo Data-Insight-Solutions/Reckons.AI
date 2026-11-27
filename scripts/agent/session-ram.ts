@@ -9,7 +9,7 @@
  *
  * THREE CHECKS, limits in scripts/agent/defaults/device-defaults.ttl (ramStartAvailMiB,
  * ramFloorAvailMiB, ramSpillAnonMiB; override per machine in ~/.config/reckons/device.ttl):
- *  - START: a GPU job does not start while MemAvailable is under ramStartAvailMiB (default 6 GiB).
+ *  - START: a GPU job does not start while MemAvailable is under ramStartAvailMiB (default 16 GiB since 2026-11-13: a 15-17 GiB model loaded without mmap under host memory pressure staged itself in RAM and took 7 jobs to the floor in 48 h).
  *  - SPILL: while any job runs, the Ollama service's ANONYMOUS memory (memory.stat `anon` of its
  *    cgroup) over ramSpillAnonMiB (default 6 GiB) means weights were copied into RAM. The worker
  *    stops the job, unloads every model and pauses the queue. Anonymous memory is the right signal:
@@ -36,7 +36,7 @@ import { readFileSync } from 'node:fs';
 import { loadDeviceConfig, type ThresholdOverride } from './device-config.js';
 
 export type RamLimits = { startAvailMiB: number; floorAvailMiB: number; spillAnonMiB: number; hardAnonMiB: number };
-export const DEFAULT_RAM_LIMITS: RamLimits = { startAvailMiB: 6144, floorAvailMiB: 2048, spillAnonMiB: 6144, hardAnonMiB: 12288 };
+export const DEFAULT_RAM_LIMITS: RamLimits = { startAvailMiB: 16384, floorAvailMiB: 2048, spillAnonMiB: 6144, hardAnonMiB: 12288 };
 
 export type MemInfo = { totalMiB: number; availMiB: number };
 export type RamSample = { mem: MemInfo | null; anonMiB: number | null };

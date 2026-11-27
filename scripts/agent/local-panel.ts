@@ -52,7 +52,7 @@
  *
  * Usage:
  *   npx tsx scripts/agent/local-panel.ts --task=task.json [--out=result.json]
- *     [--models=qwen3.6:latest] [--votes=3] [--accept=unanimous|majority] [--concurrency=2]
+ *     [--models=qwen3.8:latest] [--votes=3] [--accept=unanimous|majority] [--concurrency=2]
  *     [--engine=ollama|claude-code] [--json] [--labels=labels.json]
  *
  *   --labels scores the run against hand labels ({ itemId: value | "ambiguous" }). A labelled

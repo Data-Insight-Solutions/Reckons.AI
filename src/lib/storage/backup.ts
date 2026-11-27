@@ -41,7 +41,7 @@ export interface SettingsProfile {
   claudeModel: string;
   openaiModel: string;
   geminiModel: string;
-  ollamaModel: string;
+  ollamaModel?: string;
   ollamaIngestModel?: string;
   ollamaAnalyzeModel?: string;
   ollamaChatModel?: string;

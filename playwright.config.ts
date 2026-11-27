@@ -1,3 +1,4 @@
+import { E2E_BASE } from './scripts/lib/e2e-port';
 import { defineConfig, devices } from '@playwright/test';
 
 /**
@@ -52,7 +53,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: E2E_BASE,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     contextOptions: { ignoreHTTPSErrors: true },
@@ -99,7 +100,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev:test',
-    url: 'http://localhost:5174',
+    url: E2E_BASE,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     env: sharedEnv,

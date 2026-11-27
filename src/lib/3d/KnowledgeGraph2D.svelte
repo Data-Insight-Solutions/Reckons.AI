@@ -20,6 +20,8 @@
   import { hopDistances, adjacencyFromPairs } from '$lib/rdf/n-hop';
   import { icon2dOverrides } from '$lib/stores/icon2d-overrides.svelte';
   import type { GhostGraph, GhostNode } from '$lib/rdf/ghost-graph';
+  import type { CanvasOverlay } from '$lib/rdf/compare-overlay';
+  import { compareAnchorsFor, VENN, type CompareView } from '$lib/rdf/compare-venn';
 
   let {
     statements = [],
@@ -44,6 +46,8 @@
     ghostGraph = null as GhostGraph | null,
     ghostAnchorKey = null as string | null,
     flyToGhost = false,
+    compareOverlay = null as CanvasOverlay | null,
+    compare = null as CompareView | null,
     podMode = false,
     focusKey = null as string | null,
     highlightedEdges = [] as Array<{ s: string; o: string; p?: string }>,
@@ -98,7 +102,7 @@
      * spreading; the fix is to aim the camera at the space that is actually free.
      */
     viewportInsets?: { left?: number; right?: number; top?: number; bottom?: number };
-    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map';
+    layout?: 'force' | 'focus' | 'source' | 'type' | 'hub' | 'timeline' | 'order' | 'hierarchy' | 'map' | 'compare';
     timelineZoom?: number;
     timelineCenter?: number | null;
     timelineTimeSource?: 'event' | 'ingested';
@@ -106,6 +110,10 @@
     ghostGraph?: GhostGraph | null;
     ghostAnchorKey?: string | null;
     flyToGhost?: boolean;
+    /** F264.2: an incoming note drawn over this canvas (ghosts where they would attach; repeats thicken a held edge). Draws only; changes nothing. */
+    compareOverlay?: CanvasOverlay | null;
+    /** F306.2: a comparison of two provenances drawn as a venn diagram (layout 'compare'). Draws only; changes nothing. */
+    compare?: CompareView | null;
     podMode?: boolean;
     /** When set/changed, the camera flies to center this node (review-item focus). */
     focusKey?: string | null;
@@ -380,7 +388,7 @@
 
   // Separate effect for layout/selection changes (nodes don't change, just anchors)
   $effect(() => {
-    layout; selected; timelineZoom; timelineCenter; timelineTimeSource; // reactive deps
+    layout; selected; timelineZoom; timelineCenter; timelineTimeSource; compare; // reactive deps
     reheat(); // anchors moved, so the nodes have somewhere new to go
     rebuildLayout();
   });
@@ -493,6 +501,24 @@
       scheduleStructuredFit2D(activeAnchors, 'map');
       anchorStrength = 0.90;
       nodeColorMap = new Map(); hubNodeKeys = [];
+    } else if (layout === 'compare' && compare) {
+      // F306.2: a venn diagram. Anchors are STATED positions (which side holds the claim), so
+      // markers are seeded at them like the map and hierarchy layouts rather than left to cool toward them.
+      activeAnchors = compareAnchorsFor(compare.model, nodes.map((n) => n.key));
+      for (const node of nodes) {
+        const anchor = activeAnchors.get(node.key);
+        if (!anchor) continue;
+        node.x = anchor.x; node.y = anchor.y; node.vx = 0; node.vy = 0;
+      }
+      scheduleStructuredFit2D(activeAnchors, 'compare');
+      anchorStrength = 0.85;
+      markerData = [
+        { key: 'cmp-a', label: compare.titleA, color: compare.colors.a, x: -VENN.OFFSET - 3, y: -VENN.RADIUS - 1.2 },
+        { key: 'cmp-b', label: compare.titleB, color: compare.colors.b, x: VENN.OFFSET + 3, y: -VENN.RADIUS - 1.2 },
+      ];
+      nodeColorMap = new Map();
+      for (const [k, c] of compare.model.entityCategory) nodeColorMap.set(k, compare.colors[c]);
+      hubNodeKeys = [];
     } else if (layout === 'hierarchy') {
       activeAnchors  = buildHierarchyAnchors(statements as Statement[], nodes, edges);
       // A tree is a stated structure, not a suggestion for a cooling force. Starting every node
@@ -952,7 +978,7 @@
    * fails in the safe direction: a new layout gets the offset by default rather than silently
    * missing out, which is how this gap happened in the first place.
    */
-  const STRUCTURED_FIT_LAYOUTS = new Set(['hub', 'hierarchy', 'map', 'source']);
+  const STRUCTURED_FIT_LAYOUTS = new Set(['hub', 'hierarchy', 'map', 'source', 'compare']);
 
   /**
    * A NEW LAYOUT IS A NEW PICTURE, so the old framing does not carry over.
@@ -982,7 +1008,7 @@
   let _rect = { left: 0, top: 0, width: 0, height: 0 };
 
   /** Frame structured anchors as a whole instead of cropping their outer clusters below overlays. */
-  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map' | 'source') {
+  function scheduleStructuredFit2D(anchors: Map<string, { x: number; y: number }>, expectedLayout: 'hub' | 'hierarchy' | 'map' | 'source' | 'compare') {
     requestAnimationFrame(() => {
       if (layout !== expectedLayout || activeAnchors !== anchors || anchors.size === 0) return;
       const width = canvasEl?.clientWidth ?? _rect.width;
@@ -1226,6 +1252,15 @@
       ctx2d.setLineDash([0.4, 0.4]);
       ctx2d.globalAlpha = 0.45 * baseAlpha; ctx2d.stroke();
       ctx2d.setLineDash([]);
+    } else if (layout === 'compare' && compare) {
+      // The two circles of the venn diagram: translucent fill, a firmer rim, in each side's colour.
+      // The lens where they overlap picks up both fills, so "in both" reads as a place, not a label.
+      for (const [cx, col] of [[-VENN.OFFSET, compare.colors.a], [VENN.OFFSET, compare.colors.b]] as const) {
+        ctx2d.beginPath(); ctx2d.arc(cx, 0, VENN.RADIUS, 0, Math.PI * 2);
+        ctx2d.fillStyle = col; ctx2d.globalAlpha = 0.07 * baseAlpha; ctx2d.fill();
+        ctx2d.strokeStyle = col; ctx2d.lineWidth = 0.06 / camScale * 40;
+        ctx2d.globalAlpha = 0.5 * baseAlpha; ctx2d.stroke();
+      }
     } else if (layout === 'timeline' && markerData.length > 0) {
       // Timeline: axis line + tick marks
       const axisY = markerData[0]?.y ?? -7.5;
@@ -1263,6 +1298,9 @@
       if (isEdgeHL) {
         ctx2d.strokeStyle = '#ffd23f';
         ctx2d.lineWidth = 0.10 / camScale * 40;
+      } else if (layout === 'compare' && compare && e.id && compare.model.statementCategory.has(e.id)) {
+        ctx2d.strokeStyle = compare.colors[compare.model.statementCategory.get(e.id)!];
+        ctx2d.lineWidth = (isSel ? 0.09 : 0.06) / camScale * 40;
       } else if (e.isSourceEdge) {
         ctx2d.strokeStyle = isSel ? 'rgba(96,165,250,0.45)' : isHov ? 'rgba(96,165,250,0.30)' : 'rgba(96,165,250,0.08)';
         ctx2d.lineWidth = (isSel ? 0.04 : 0.02) / camScale * 40;
@@ -1274,10 +1312,12 @@
       // is only as loud as its quieter endpoint: unless both ends survive the filter, the edge
       // is scenery — it shows you the graph's shape is still there without competing with the
       // thing you asked to see. Selection and hover always cut through.
+      // Compare layout: statements from neither side stay in the picture, quietly.
+      const cmpQuiet = layout === 'compare' && !!compare && !e.isSourceEdge && !(e.id && compare.model.statementCategory.has(e.id));
       const edgeLive =
-        !dimMode ||
+        !cmpQuiet && (!dimMode ||
         (highlightSet.has(e.a.key) && highlightSet.has(e.b.key)) ||
-        isSel || isHov;
+        isSel || isHov);
       // F223.10: a proposed edge is dashed in the house secondary colour; a question's edge is dashed
       // at half strength. Dimming multiplies on top, so a question never looks like a dimmed fact.
       const eSt = e.standing && !e.isSourceEdge && !isEdgeHL ? standingStyle(e.standing) : null;
@@ -1291,6 +1331,46 @@
       ctx2d.globalAlpha = (isEdgeHL ? 1 : edgeLive ? baseAlpha : GHOST_ALPHA * baseAlpha) * (eSt && eSt.colorVar ? Math.max(strength, 0.85) : strength);
       ctx2d.stroke();
       ctx2d.setLineDash([]);
+    }
+
+    // Compare on the canvas (F264.2): the incoming note over the person's own marks, in the ghost amber.
+    if (compareOverlay) {
+      const AMBER = '#f59e0b';
+      const lw = (v: number) => v / camScale * 40;
+      // A held statement that something repeats or reinforces is drawn thicker (one step per repeat).
+      for (const w of compareOverlay.weighted) {
+        for (const e of edges) {
+          if (!(((e.a.key === w.s && e.b.key === w.o) || (e.a.key === w.o && e.b.key === w.s)) && e.predicate === w.p)) continue;
+          ctx2d.beginPath(); ctx2d.moveTo(e.a.x, e.a.y); ctx2d.lineTo(e.b.x, e.b.y);
+          ctx2d.strokeStyle = AMBER; ctx2d.lineWidth = lw(0.035 + 0.05 * w.weight);
+          ctx2d.globalAlpha = 0.55 * baseAlpha; ctx2d.stroke();
+        }
+      }
+      // Ghosts fan out from the mark they attach to; unattached ones wait in a row at the top-left of it all.
+      const perAnchor = new Map<string, number>();
+      let loose = 0;
+      for (const g of compareOverlay.ghosts) {
+        const anchor = g.attachKey ? nodes.find((n) => n.key === g.attachKey) : null;
+        const idx = g.attachKey ? (perAnchor.get(g.attachKey) ?? 0) : loose++;
+        if (g.attachKey) perAnchor.set(g.attachKey, idx + 1);
+        const theta = -Math.PI / 4 + idx * 0.9;
+        const gx = anchor ? anchor.x + 2.6 * Math.cos(theta) : -8 + idx * 2;
+        const gy = anchor ? anchor.y + 2.6 * Math.sin(theta) : -8;
+        const r = 0.45;
+        const col = g.contradiction ? houseColor('--danger', '#e5484d') : AMBER;
+        if (anchor) {
+          ctx2d.beginPath(); ctx2d.moveTo(anchor.x, anchor.y); ctx2d.lineTo(gx, gy);
+          ctx2d.setLineDash([0.45, 0.3]); ctx2d.strokeStyle = col; ctx2d.lineWidth = lw(0.04);
+          ctx2d.globalAlpha = 0.7 * baseAlpha; ctx2d.stroke(); ctx2d.setLineDash([]);
+        }
+        ctx2d.beginPath(); ctx2d.arc(gx, gy, r, 0, Math.PI * 2);
+        ctx2d.fillStyle = AMBER; ctx2d.globalAlpha = GHOST_ALPHA * baseAlpha; ctx2d.fill();
+        ctx2d.strokeStyle = col; ctx2d.lineWidth = lw(0.05); ctx2d.globalAlpha = 0.85 * baseAlpha; ctx2d.stroke();
+        ctx2d.fillStyle = col; ctx2d.globalAlpha = 0.9 * baseAlpha;
+        ctx2d.font = `${r * 1.6}px sans-serif`; ctx2d.textAlign = 'center'; ctx2d.textBaseline = 'top';
+        ctx2d.fillText(g.label, gx, gy + r * 1.3);
+      }
+      ctx2d.globalAlpha = baseAlpha;
     }
 
     // Ghost graph preview — target KB rendered in the distance, fades in smoothly
@@ -1399,7 +1479,8 @@
       const isSel    = n.key === selected;
       const isHov    = n.key === hoveredKey;
       const isHL     = highlightSet.has(n.key);
-      const isDimmed = dimMode && !isHL && !isSel;
+      const outsideCompare = layout === 'compare' && !!compare && !n.key.startsWith('src:') && !compare.model.entityCategory.has(n.key);
+      const isDimmed = (dimMode && !isHL && !isSel) || outsideCompare;
       const typeDef  = tm.get(n.key);
       const overrideColor = nodeColorMap.get(n.key);
       const baseColor = overrideColor ?? typeDef?.color ?? (n.kind === 'literal' ? '#3d7cf5' : '#1a9b8e');

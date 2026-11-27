@@ -13,7 +13,7 @@
 
 rev:release rdf:type ktype:Concept ;
     rdfs:label "Review v0.2.8" ;
-    rdfs:comment "The visual tests of v0.2.8, in the order a person would review them. 1 of this release's 36 parts have a TestWorkflow (6 steps, each a screenshot and what the test checks); 35 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: functional." ;
+    rdfs:comment "The visual tests of v0.2.8, in the order a person would review them. 1 of this release's 36 parts have a TestWorkflow (6 steps, each a screenshot and what the test checks); 35 do not yet, and are listed under \"No visual test yet\" so the gap stays visible. Select a step, look at its picture, and set pass, fail or a note in the node panel. Generated from the roadmap and the Testing graph by scripts/offline/release-review-space.ts; edit those, not this file. Release status when generated: production." ;
     hnav:order "0"^^xsd:integer ;
     hnav:layer "0"^^xsd:integer ;
     p:has rev:wf-generated-assets, rev:gap .
@@ -170,11 +170,11 @@ rev:gap-f279 rdf:type ktype:Concept ;
 
 rev:gap-f74-7 rdf:type ktype:Concept ;
     rdfs:label "F74.7 Local panel — judgments handed to local models mid-session, only disagreements come back" ;
-    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/local-panel.test.ts, scripts/agent/__tests__/local-activity.test.ts, scripts/agent/__tests__/watch-render.test.ts, scripts/offline/__tests__/term-senses.test.ts, scripts/offline/lib/__tests__/ollama-stream.test.ts, scripts/offline/lib/__tests__/gpu-wait.test.ts, scripts/agent/__tests__/queue-chains.test.ts, scripts/agent/__tests__/session-gpu-pin.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/agent/__tests__/device-config.test.ts)." .
+    rdfs:comment "Status in the roadmap: functional. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/agent/__tests__/watch-restart.test.ts, scripts/agent/__tests__/device-config.test.ts, scripts/offline/__tests__/tracked-ttl-parses.test.ts, scripts/agent/__tests__/local-panel.test.ts, scripts/agent/__tests__/local-activity.test.ts, scripts/agent/__tests__/watch-render.test.ts, scripts/offline/__tests__/term-senses.test.ts, scripts/offline/lib/__tests__/ollama-stream.test.ts, scripts/offline/lib/__tests__/gpu-wait.test.ts, scripts/agent/__tests__/queue-chains.test.ts, scripts/agent/__tests__/session-gpu-pin.test.ts, scripts/agent/__tests__/session-queue.test.ts, scripts/agent/__tests__/space-channel.test.ts, scripts/agent/lib/__tests__/job-request.test.ts, scripts/agent/lib/__tests__/space-status.test.ts)." .
 
 rev:gap-f292 rdf:type ktype:Concept ;
     rdfs:label "F292 Built with Reckons.AI — a published website's own space tells, inside the app, how the site was made and why it can be trusted" ;
-    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts, src/lib/storage/__tests__/example-kbs.test.ts)." .
+    rdfs:comment "Status in the roadmap: in-progress. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/starter/__tests__/build-site-space.test.ts, tests/e2e/story-walk.test.ts, src/lib/stores/__tests__/story-prompt.test.ts, src/lib/storage/__tests__/example-kbs.test.ts, tests/e2e/about-story-link.test.ts, tests/e2e/site-story-full.test.ts)." .
 
 rev:gap-f292-1 rdf:type ktype:Concept ;
     rdfs:label "F292.1 F292.1 — the site space generator emits the 'how this site was made' story from the build" ;
@@ -230,5 +230,5 @@ rev:gap-f183-3 rdf:type ktype:Concept ;
 
 rev:gap-f58-9-19 rdf:type ktype:Concept ;
     rdfs:label "F58.9.19 F58.9.19 — multi-scan reconstruction: a splat of one place from several captures of it" ;
-    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-multi-lib.test.ts)." .
+    rdfs:comment "Status in the roadmap: scaffolded. No visual test yet: no TestWorkflow runs a test this part lists under kpred:tested-by (it lists scripts/content/__tests__/scan-multi-lib.test.ts, scripts/content/__tests__/synthetic-captures-lib.test.ts)." .
 

@@ -1,7 +1,7 @@
 ---
 title: "Scanning real objects and places, more carefully"
 slug: "scan-real-objects"
-order: 1046
+order: 1054
 section: "Features"
 parent: "room-scan"
 template: doc

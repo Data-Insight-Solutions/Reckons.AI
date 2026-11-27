@@ -95,6 +95,7 @@ async function isEmbedCached(model: string): Promise<boolean> {
  * "Download model?" dialog; only something the person clicked that needs a model may.
  */
 export async function isEmbedderReady(): Promise<boolean> {
+  if (testEmbedderOn()) return true;
   const model = resolveModel();
   if (extractor && loadedModel === model) return true;
   return isEmbedCached(model);
@@ -211,13 +212,44 @@ async function loadEmbedder(): Promise<FeatureExtractionPipeline> {
   return extractor;
 }
 
+/**
+ * TEST SEAM (F264.1). A browser test cannot download a 33 MB model, and the compare flow's semantic
+ * labels (near-duplicate, synonym, antonym) need vectors. Under the mock ingest build (only the
+ * Playwright config turns it on) AND an explicit `reckons-test-embedder` browser flag, letters are
+ * hashed into a fixed-size vector so similar spellings score close. It is never active in a real
+ * build or without the flag, and it says nothing about how well the real model performs.
+ */
+function testEmbedderOn(): boolean {
+  if (import.meta.env.VITE_INGEST_BACKEND !== 'mock') return false;
+  try { return typeof localStorage !== 'undefined' && localStorage.getItem('reckons-test-embedder') === '1'; }
+  catch { return false; }
+}
+
+/** Deterministic letter-triple hashing, unit length. Exported for its unit test only. */
+export function testEmbedding(text: string, dims = 512): Float32Array {
+  const v = new Float32Array(dims);
+  const t = ` ${text.toLowerCase()} `;
+  for (let i = 0; i + 3 <= t.length; i++) {
+    let h = 2166136261;
+    for (let j = i; j < i + 3; j++) h = Math.imul(h ^ t.charCodeAt(j), 16777619);
+    v[(h >>> 0) % dims] += 1;
+  }
+  let norm = 0;
+  for (const x of v) norm += x * x;
+  norm = Math.sqrt(norm) || 1;
+  for (let i = 0; i < dims; i++) v[i] /= norm;
+  return v;
+}
+
 export async function embed(text: string): Promise<Float32Array> {
+  if (testEmbedderOn()) return testEmbedding(text);
   const ex = await ensureEmbedder();
   const out = await ex(text, { pooling: 'mean', normalize: true });
   return new Float32Array(out.data as Float32Array);
 }
 
 export async function embedMany(texts: string[]): Promise<Float32Array[]> {
+  if (testEmbedderOn()) return texts.map((t) => testEmbedding(t));
   const ex = await ensureEmbedder();
   return Promise.all(
     texts.map(async (t) => {

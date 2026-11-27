@@ -1,7 +1,7 @@
 ---
 title: "Local jobs: the one queue, This device and the memory guard"
 slug: "local-jobs-on-this-device"
-order: 1029
+order: 1035
 section: "Features"
 parent: "local-jobs-mcp"
 template: doc

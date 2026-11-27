@@ -498,8 +498,9 @@ story:HowItWorks
     story:partOf        story:ReckonsPhilosophy ;
     story:order         "7" ;
     story:title         "The Workflow" ;
-    story:content       "Ingest a document. The LLM extracts facts as triples. You review and confirm them. Explore connections in your graph. Ask Shelly questions grounded in your knowledge. Export and share your .ttl file." ;
+    story:content       "Ingest a document. The LLM extracts facts as triples. You review and confirm them. Explore connections in your graph — the hubs filter keeps the guide's center and its most connected leaps to the subgraphs lit, while the rest recedes. Ask Shelly questions grounded in your knowledge. Export and share your .ttl file." ;
     story:highlight     arch:ReviewWorkflow ;
+    story:filter        "hubs" ;
     story:prompt        "Walk through each workflow step in detail." .
 
 story:GetStarted

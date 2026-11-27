@@ -1,7 +1,7 @@
 ---
 title: "Triple Check with your own search server"
 slug: "triple-check-local-search"
-order: 1058
+order: 1066
 section: "Features"
 parent: "triple-check"
 template: doc

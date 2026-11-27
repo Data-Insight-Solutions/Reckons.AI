@@ -1,7 +1,8 @@
-import { mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Parser } from 'n3';
 import { cacheKey, compileSchedules, defaultsPath, legacyWatchToTurtle, loadDeviceConfig, resolveThresholds } from '../device-config';
 import { DEFAULT_GPU_LIMITS, mergeGpuLimits } from '../session-gpu';
 import { DEFAULT_THRESHOLDS, mergeThresholds } from '../watch-render';
@@ -83,6 +84,24 @@ describe('cache keyed by mtime', () => {
     writeFileSync(process.env.RECKONS_DEVICE_TTL!, 'this is not turtle <<<');
     expect(loadDeviceConfig(dir, 'h').thresholds.gpuUtil).toEqual({ yellow: 85, red: 98 });
   });
+  it('a syntax error in schedules.ttl drops THAT file, names it, and keeps device.ttl', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mkdirSync(path.join(dir, 'reckons-workspace'));
+    const sched = path.join(dir, 'reckons-workspace', 'schedules.ttl');
+    writeFileSync(sched, HEAD + '<urn:x> rdfs:label "a "quoted" word" .\n');
+    writeFileSync(process.env.RECKONS_DEVICE_TTL!, HEAD + dev('h', 'h') + th('h', 'gpuUtil', 'kpred:yellow 33'));
+    expect(loadDeviceConfig(dir, 'h').thresholds.gpuUtil.yellow).toBe(33);
+    expect(err.mock.calls.map((c) => String(c[0])).join('\n')).toContain(sched);
+    expect(err.mock.calls.map((c) => String(c[0])).join('\n')).not.toContain('device.ttl');
+  });
+});
+
+describe('the tracked schedules graph', () => {
+  it('parses (a broken one silently drops every schedule)', () => {
+    const root = path.resolve(path.dirname(defaultsPath()), '..', '..', '..');
+    const ttl = readFileSync(path.join(root, 'reckons-workspace', 'schedules.ttl'), 'utf8');
+    expect(() => new Parser().parse(ttl)).not.toThrow();
+  });
 });
 
 describe('migration from watch.json', () => {
@@ -93,5 +112,32 @@ describe('migration from watch.json', () => {
     expect(r.vramPct).toEqual({ yellow: 85, red: 99 });
     expect(mergeGpuLimits(r).tempC).toBe(78);
     expect(resolveThresholds([defaults, ttl], 'other').gpuUtil.yellow).toBe(85);
+  });
+});
+
+describe('device capabilities reader (F269)', () => {
+  it('reads what the measurement script wrote, from the XDG state folder, and nothing when absent', async () => {
+    const { loadDeviceCapabilities } = await import('../device-config');
+    const { buildMeasuredSpaceText } = await import('../device-space-build');
+    const { measurementsToValues } = await import('../device-capabilities');
+    const { deviceMeasuredPath } = await import('../device-space-paths');
+    const state = mkdtempSync(path.join(os.tmpdir(), 'dev-caps-'));
+    const env = { XDG_STATE_HOME: state } as NodeJS.ProcessEnv;
+    expect(loadDeviceCapabilities(env)).toBeUndefined();
+    const m = measurementsToValues({ measuredAt: '2030-01-01T00:00:00.000Z', ramTotalBytes: 8 * 1024 ** 3, tools: { widget: true } });
+    mkdirSync(path.dirname(deviceMeasuredPath(env)), { recursive: true });
+    writeFileSync(deviceMeasuredPath(env), buildMeasuredSpaceText(m, '11111111-2222-4333-8444-555555555555', 0));
+    expect(loadDeviceCapabilities(env)).toEqual(m);
+    writeFileSync(deviceMeasuredPath(env), 'not turtle');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(loadDeviceCapabilities(env)).toBeUndefined();
+  });
+  it('the stable id is generated once and kept, and is not a host name', async () => {
+    const { deviceStableId } = await import('../device-space-paths');
+    const env = { XDG_STATE_HOME: mkdtempSync(path.join(os.tmpdir(), 'dev-id-')) } as NodeJS.ProcessEnv;
+    const a = deviceStableId(env);
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(deviceStableId(env)).toBe(a);
+    expect(a).not.toContain(os.hostname().toLowerCase());
   });
 });

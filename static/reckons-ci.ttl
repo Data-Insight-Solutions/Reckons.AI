@@ -161,6 +161,7 @@ ci:check-reckons-ai-graph-alignment-check rdf:type ktype:CiCheck ;
     kpred:runs-script "scripts/offline/vite-secret-guard.ts" ;
     kpred:runs-script "scripts/setup-reckons-workspace.sh" ;
     kpred:guards kb:derived-prose ;
+    kpred:guards kb:docs-video-embed ;
     kpred:guards kb:why-reckons-positioning ;
     skos:definition "Required by Main merge protection: a merge to main waits for it to pass." .
 

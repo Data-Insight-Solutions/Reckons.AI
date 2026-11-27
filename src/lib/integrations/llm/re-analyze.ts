@@ -1,5 +1,4 @@
 import { chatClaude, chatOpenAI, chatGemini, chatOllama, chatOpenRouter, chatReckons, chatChromeAI } from './providers';
-import { FALLBACK_OLLAMA_MODEL } from './model-for-task';
 import { chatWithWasm } from './wasm';
 import { BUILT_IN_TYPES } from '$lib/rdf/entity-types';
 import { ETHICS_PREAMBLE } from '$lib/safety/content-policy';
@@ -377,7 +376,7 @@ export async function reAnalyze(opts: ReAnalyzeOptions): Promise<ReAnalyzeRespon
   } else if (provider === 'gemini') {
     raw = await chatGemini(messages, systemPrompt, apiKey, model ?? DEFAULT_GEMINI, 2048);
   } else if (provider === 'ollama') {
-    raw = await chatOllama(messages, systemPrompt, model ?? FALLBACK_OLLAMA_MODEL, ollamaBaseUrl, 2048);
+    raw = await chatOllama(messages, systemPrompt, model, ollamaBaseUrl, 2048);
   } else if (provider === 'openrouter') {
     raw = await chatOpenRouter(messages, systemPrompt, apiKey, model ?? DEFAULT_OPENROUTER, 2048);
   } else if (provider === 'reckons') {

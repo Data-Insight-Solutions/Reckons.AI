@@ -15,6 +15,7 @@
  *   ANTHROPIC_API_KEY=... MISTRAL_API_KEY=... npm run test:visual  # with API tiers
  */
 
+import { E2E_BASE } from '../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { analyzePixels, analyzeDOMOverlaps, analyzeText, auditTouchTargets } from './vision-local';
 import {
@@ -25,7 +26,7 @@ import {
 } from './vision-analyze';
 
 const STORYBOOK = 'http://localhost:6006';
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 function storyUrl(id: string) {
   return `${STORYBOOK}/iframe.html?id=${id}&viewMode=story`;

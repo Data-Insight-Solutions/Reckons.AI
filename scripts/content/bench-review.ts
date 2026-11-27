@@ -102,7 +102,7 @@ const NOT_CODE = /vl|vision|embed|nuextract|moondream|granite|lfm|llama3\.2|phi|
 async function codeModels(): Promise<string[]> {
   if (arg('models')) return arg('models')!.split(',');
   const tags = (await (await fetch(`${OLLAMA}/api/tags`)).json()) as { models: { name: string }[] };
-  const order = ['qwen3-coder', 'devstral', 'qwen3.6', 'qwen3.8', 'qwen3:32b'];
+  const order = ['qwen3-coder', 'qwen3.8', 'qwen3:32b'];
   const names = tags.models.map((m) => m.name).filter((n) => CODE_HINTS.test(n) && !NOT_CODE.test(n));
   return names.sort((a, b) => (order.findIndex((o) => a.startsWith(o)) + 99) % 99 - (order.findIndex((o) => b.startsWith(o)) + 99) % 99).slice(0, 4);
 }

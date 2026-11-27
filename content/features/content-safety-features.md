@@ -1,7 +1,7 @@
 ---
 title: "Content Safety"
 slug: "content-safety-features"
-order: 1008
+order: 1011
 section: "Features"
 parent: "what-is-reckons-ai"
 template: doc

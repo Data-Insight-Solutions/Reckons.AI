@@ -1,7 +1,7 @@
 ---
 title: "Where a node's facts came from"
 slug: "node-sources"
-order: 1063
+order: 1071
 section: "Features"
 parent: "passage-grounding"
 template: doc

@@ -1,0 +1,36 @@
+{
+  "_about": "Synthetic notes for the compare flow (F264.1). The mock reader returns `mock` for any note containing `mockMatch` (src/lib/integrations/llm/corpus-fixture.ts). The second note, read against the first, yields exactly one repeat (reinforces), one near-duplicate, one contradiction (conflicts) and one new statement.",
+  "seed": {
+    "title": "Orchard seed",
+    "text": "The Larkspur Orchard cooperative presses cider on Thursdays and has forty members. The cider press shed stores apple crates.",
+    "mockMatch": "The Larkspur Orchard cooperative presses cider on Thursdays",
+    "mock": [
+      { "s": "larkspur-orchard-cooperative", "p": "press-day", "o": "Thursday", "literal": true },
+      { "s": "larkspur-orchard-cooperative", "p": "members", "o": "40", "literal": true, "excerpt": "The Larkspur Orchard cooperative presses cider on Thursdays and has forty members." },
+      { "s": "cider-press-shed", "p": "stores", "o": "apple-crates" }
+    ]
+  },
+  "change": {
+    "title": "Orchard meeting",
+    "text": "Notes from the orchard meeting: the cooperative still presses on Thursdays. Membership is now fifty-two. The Larkspur Orchard cooperative society keeps a stone cellar. The cider press shed has a slate roof.",
+    "mockMatch": "Notes from the orchard meeting: the cooperative still presses on Thursdays.",
+    "mock": [
+      { "s": "larkspur-orchard-cooperative", "p": "press-day", "o": "Thursday", "literal": true },
+      { "s": "larkspur-orchard-cooperative", "p": "members", "o": "52", "literal": true, "excerpt": "Membership is now fifty-two." },
+      { "s": "larkspur-orchard-cooperative-society", "p": "has-cellar", "o": "stone-cellar" },
+      { "s": "cider-press-shed", "p": "has-roof", "o": "slate", "literal": true }
+    ]
+  },
+  "quickstart": {
+    "_about": "The Quick-Start example's check-in note (F300.5). Read against the example's own project, it yields one repeat (reinforces), one near-duplicate, one contradiction (conflicts) and one new statement.",
+    "title": "Phoenix check-in",
+    "text": "Notes from the Phoenix check-in: Project Phoenix is still in progress. Its deadline has moved to 2026-10-31. The content based filter trial is running. Carol is writing the vendor FAQ.",
+    "mockMatch": "Notes from the Phoenix check-in: Project Phoenix is still in progress.",
+    "mock": [
+      { "s": "project-phoenix", "p": "status", "o": "in-progress", "literal": true },
+      { "s": "project-phoenix", "p": "deadline", "o": "2026-10-31", "literal": true, "excerpt": "Its deadline has moved to 2026-10-31." },
+      { "s": "content-based-filter", "p": "trial-status", "o": "running", "literal": true },
+      { "s": "carol", "p": "writes", "o": "vendor-faq" }
+    ]
+  }
+}

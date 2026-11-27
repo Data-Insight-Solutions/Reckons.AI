@@ -17,10 +17,11 @@
  * a test that lies. What IS observable is node RETENTION and node GHOSTING, which is the
  * substance of the fix, so that is what is asserted.
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { clearAllKbs, importKbFromTtl } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 /** The import helper lands on /ingest and reloads there; the graph lives on `/`. */
 async function openGraph(page: import('@playwright/test').Page) {

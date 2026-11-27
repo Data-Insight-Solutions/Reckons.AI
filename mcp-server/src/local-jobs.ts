@@ -35,9 +35,13 @@ export type JobCtx = {
   stateHome: string;
   /** Worker liveness; injectable for tests. */
   workerAlive?: (pid: number) => boolean;
+  /** $XDG_CONFIG_HOME/reckons: where the person's own device.ttl lives. Defaults from the environment. */
+  configHome?: string;
+  /** Host name used to scope device.ttl statements; injectable for tests. */
+  host?: string;
 };
 
-export type JobDef = { name: string; source: 'jobs graph' | 'schedule'; tier: string; desc: string; cmd: string };
+export type JobDef = { name: string; source: 'jobs graph' | 'schedule' | 'this device'; tier: string; desc: string; cmd: string };
 
 export function defaultCtx(): JobCtx {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -101,7 +105,66 @@ export function loadJobDefs(c: JobCtx): JobDef[] {
       defs.push({ name: `sched:${iri.split('/').pop()}`, source: 'schedule', tier: o.tier ?? 'agent', desc: o.description ?? o.label ?? '', cmd: o.command });
     }
   } catch { /* no schedules file */ }
+  defs.push(...deviceSchedules(c, defs.map((d) => d.name)));
   return defs;
+}
+
+/**
+ * What THIS DEVICE adds (F269): enabled schedules in the private device.ttl that apply to this host.
+ * Same rule as scripts/agent/device-config.ts (a statement scoped by kpred:device to a profile whose
+ * hostname is this host or "*"; unscoped statements apply), re-implemented because this package cannot
+ * import scripts/agent. A name already defined elsewhere is not listed twice. Missing file: nothing.
+ */
+export function deviceSchedules(c: JobCtx, taken: string[] = []): JobDef[] {
+  const file = path.join(c.configHome ?? path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'reckons'), 'device.ttl');
+  const host = (c.host ?? os.hostname()).toLowerCase();
+  const out: JobDef[] = [];
+  try {
+    const by = new Map<string, Record<string, string>>();
+    const hostOf = new Map<string, string>();
+    for (const q of new Parser().parse(readFileSync(file, 'utf8'))) {
+      const p = q.predicate.value;
+      if (p === `${KPRED}hostname`) hostOf.set(q.subject.value, q.object.value);
+      const key = p === RDF_TYPE ? 'type' : p === RDFS_LABEL ? 'label' : p.startsWith(KPRED) ? p.slice(KPRED.length) : '';
+      if (!key) continue;
+      const o = by.get(q.subject.value) ?? {};
+      o[key] = q.object.value;
+      by.set(q.subject.value, o);
+    }
+    for (const [iri, o] of by) {
+      if (o.type !== 'urn:kbase:type/Schedule' || !o.command || o.enabled === 'false') continue;
+      if (o.device !== undefined) { const h = hostOf.get(o.device); if (h === undefined || (h !== '*' && h.toLowerCase() !== host)) continue; }
+      const name = `sched:${iri.split('/').pop()}`;
+      if (taken.includes(name)) continue;
+      out.push({ name, source: 'this device', tier: o.tier ?? 'agent', desc: o.description ?? o.label ?? '', cmd: o.command });
+    }
+  } catch { /* no device.ttl, or it does not parse: the device adds nothing here */ }
+  return out;
+}
+
+/** The capability TERMS the device space measured, and when. Terms only: values are private. */
+export function deviceMeasuredNote(c: JobCtx): string | undefined {
+  try {
+    const ttl = readFileSync(path.join(c.stateHome, 'device', 'this-device.ttl'), 'utf8');
+    const terms = new Set<string>();
+    let at = '';
+    // The space file is an annotated export: each fact is a reified statement block.
+    const RDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    const blocks = new Map<string, Record<string, string>>();
+    for (const q of new Parser().parse(ttl)) {
+      const k = q.predicate.value;
+      if (k !== `${RDF}subject` && k !== `${RDF}predicate` && k !== `${RDF}object`) continue;
+      const o = blocks.get(q.subject.value) ?? {};
+      o[k.slice(RDF.length)] = q.object.value;
+      blocks.set(q.subject.value, o);
+    }
+    for (const b of blocks.values()) {
+      if (b.predicate === `${KPRED}capability` && b.object) terms.add(decodeURIComponent(b.object.replace('urn:kbase:capability/', '').replace('/', ':')));
+      if (b.subject === 'urn:kbase:concept/this-device' && b.predicate === `${KPRED}measured`) at = b.object ?? '';
+    }
+    const shown = [...terms].map((t) => (t.startsWith('model:') ? 'model:*' : t)).filter((t, i, a) => a.indexOf(t) === i).sort();
+    return `This device measured ${terms.size} capability term(s) at ${at || 'an unrecorded time'}: ${shown.join(', ')}.`;
+  } catch { return undefined; }
 }
 
 /**
@@ -198,6 +261,8 @@ export function jobList(c: JobCtx): string {
   const queued = new Set(readQueue(c).map((j) => j.name));
   const running = readWorker(c)?.job;
   const lines = [`${defs.length} job(s) defined. Queue one with kb_job_enqueue(name); check it with kb_job_status(name). Worker: ${workerNote(c)}.`, ''];
+  const note = deviceMeasuredNote(c);
+  if (note) lines.splice(1, 0, note);
   for (const d of defs) {
     const last = [...done].reverse().find((r) => r.name === d.name);
     const state = running === d.name ? 'running' : queued.has(d.name) ? 'queued' : 'idle';

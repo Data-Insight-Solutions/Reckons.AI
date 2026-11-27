@@ -2,10 +2,11 @@
  * User Story: Publishing settings tab (F69). The Semantic Web & LLM Search
  * export (JSON-LD + llms.txt) moved off the backends page into its own tab.
  */
+import { E2E_BASE } from '../../../scripts/lib/e2e-port';
 import { test, expect } from '@playwright/test';
 import { screenshotTo } from '../kb-seed';
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 
 test('Publishing tab hosts the Semantic Web & LLM Search export', async ({ page }) => {
   await page.goto(`${APP}/settings/publishing`);

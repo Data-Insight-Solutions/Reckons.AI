@@ -20,12 +20,10 @@
  */
 
 import type { Statement } from './types';
+import { readStoryQuads, type QuadLike, type UnifiedStep } from './story-steps';
 import { parsePageOffer, parseSettingOffer, type StoryOffer } from './story-offers';
 
 const STORY_NS = 'urn:reckons:story/';
-const STORY_TYPE = `${STORY_NS}Story`;
-const STEP_TYPE = `${STORY_NS}Step`;
-const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label';
 const RDF_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type';
 
 export interface StoryStep {
@@ -52,6 +50,17 @@ export interface StoryStep {
    * through and the renderer ignores it, which degrades to today's behaviour instead of throwing.
    */
   layout?: string;
+  /** The step's whole view as URL query parameters (story:view, F309): anything the UI can show. */
+  view?: string;
+  /**
+   * Filter names this step wants active (story:filter, repeatable). F304.
+   *
+   * PARSED PERMISSIVELY like story:layout — the values stay raw strings, because story.ts parses
+   * graphs that may be authored for a newer or older build than the one reading them. A step WITH
+   * story:filter applies exactly those filters (names this build does not know are dropped at use, in
+   * TurtleChatPanel); a step WITHOUT it leaves the filters as they are, the same rule as no layout.
+   */
+  filters?: string[];
   /** One-click settings and pages the step offers the reader (story:offerSetting, story:openPage; F261). */
   offers?: StoryOffer[];
 }
@@ -68,103 +77,58 @@ export interface Story {
   interaction?: 'generate-assets';
 }
 
-/** A step's offers, in authored order; anything off the allowlist is dropped (story-offers.ts). */
-function stepOffers(stmts: Statement[], stepIri: string): StoryOffer[] {
+/** Authored offers, in order; anything off the allowlist is dropped (story-offers.ts). */
+function stepOffers(raw: UnifiedStep['offers']): StoryOffer[] {
   const out: StoryOffer[] = [];
-  for (const st of stmts) {
-    if (st.s.kind !== 'iri' || st.s.value !== stepIri || st.o.kind !== 'literal') continue;
-    const offer = st.p.value === `${STORY_NS}offerSetting` ? parseSettingOffer(st.o.value)
-      : st.p.value === `${STORY_NS}openPage` ? parsePageOffer(st.o.value) : null;
+  for (const o of raw) {
+    const offer = o.kind === 'setting' ? parseSettingOffer(o.value) : parsePageOffer(o.value);
     if (offer) out.push(offer);
   }
   return out;
 }
 
+/** Statements as the quads the one reader takes (src/lib/rdf/story-steps.ts, F300.1). */
+function toQuads(stmts: Statement[]): QuadLike[] {
+  return stmts.map(s => ({
+    subject: { termType: s.s.kind === 'iri' ? 'NamedNode' : 'Literal', value: s.s.value },
+    predicate: { value: s.p.value },
+    object: { termType: s.o.kind === 'iri' ? 'NamedNode' : 'Literal', value: s.o.value },
+  }));
+}
+
 /**
  * Extract all stories defined in the KB from confirmed/refined statements.
+ * A thin adapter over readStoryQuads, which also reads legacy test workflows; those are not
+ * player stories, so only story:Story resources are kept here.
  */
 export function extractStories(stmts: Statement[]): Story[] {
   const confirmed = stmts.filter(
     s => s.status === 'confirmed' || s.status === 'refined' || s.status === 'pending'
   );
 
-  // Find story entities (match both IRI and literal type values)
-  const storyIris = new Set<string>();
-  for (const st of confirmed) {
-    if (st.p.value !== RDF_TYPE || st.s.kind !== 'iri') continue;
-    const val = st.o.value;
-    if (val === STORY_TYPE || val === 'Story') {
-      storyIris.add(st.s.value);
-    }
-  }
-
-  const stories: Story[] = [];
-
-  for (const storyIri of storyIris) {
-    const getLiteral = (pred: string): string | null => {
-      const st = confirmed.find(
-        s => s.s.kind === 'iri' && s.s.value === storyIri && s.p.value === pred
-      );
-      return st && st.o.kind === 'literal' ? st.o.value : null;
-    };
-
-    const label = getLiteral(RDFS_LABEL) ?? getLiteral(`${STORY_NS}title`) ?? storyIri.split('/').pop() ?? 'Untitled Story';
-    const description = getLiteral(`${STORY_NS}description`) ?? '';
-    const autoplay = getLiteral(`${STORY_NS}autoplay`) === 'true';
-    const pace = parseInt(getLiteral(`${STORY_NS}pace`) ?? '8', 10);
-    const interaction = getLiteral(`${STORY_NS}interaction`) === 'generate-assets' ? 'generate-assets' as const : undefined;
-
-    // Find steps linked to this story
-    const stepIris = new Set<string>();
-    for (const st of confirmed) {
-      if (
-        st.p.value === `${STORY_NS}partOf` &&
-        st.o.kind === 'iri' && st.o.value === storyIri &&
-        st.s.kind === 'iri'
-      ) {
-        stepIris.add(st.s.value);
-      }
-    }
-
-    const steps: StoryStep[] = [];
-    for (const stepIri of stepIris) {
-      const getStepLit = (pred: string): string | null => {
-        const st = confirmed.find(
-          s => s.s.kind === 'iri' && s.s.value === stepIri && s.p.value === pred
-        );
-        return st && st.o.kind === 'literal' ? st.o.value : null;
-      };
-
-      // Collect all highlights for this step
-      const highlights: string[] = [];
-      for (const st of confirmed) {
-        if (
-          st.s.kind === 'iri' && st.s.value === stepIri &&
-          st.p.value === `${STORY_NS}highlight` &&
-          st.o.kind === 'iri'
-        ) {
-          highlights.push(st.o.value);
-        }
-      }
-
-      steps.push({
-        id: stepIri,
-        order: parseInt(getStepLit(`${STORY_NS}order`) ?? '0', 10),
-        title: getStepLit(`${STORY_NS}title`) ?? getStepLit(RDFS_LABEL) ?? `Step`,
-        content: getStepLit(`${STORY_NS}content`) ?? '',
-        highlights,
-        prompt: getStepLit(`${STORY_NS}prompt`) ?? undefined,
-        question: getStepLit(`${STORY_NS}question`) ?? undefined,
-        layout: getStepLit(`${STORY_NS}layout`) ?? undefined,
-        offers: stepOffers(confirmed, stepIri),
-      });
-    }
-
-    // Sort by order
-    steps.sort((a, b) => a.order - b.order);
-
-    stories.push({ id: storyIri, label, description, steps, autoplay, pace, interaction });
-  }
+  const stories: Story[] = readStoryQuads(toQuads(confirmed))
+    .filter(u => u.origin === 'story')
+    .map(u => ({
+      id: u.iri,
+      label: u.label,
+      description: u.description,
+      autoplay: u.autoplay,
+      pace: u.pace,
+      interaction: u.interaction === 'generate-assets' ? 'generate-assets' as const : undefined,
+      steps: u.steps.map((t): StoryStep => ({
+        id: t.iri,
+        order: t.order,
+        title: t.title,
+        content: t.content,
+        highlights: t.highlights,
+        prompt: t.prompt,
+        question: t.question,
+        layout: t.layout,
+        filters: t.filters,
+        view: t.view,
+        offers: stepOffers(t.offers),
+      })),
+    }));
 
   // Previously imported Generated assets examples predate the story triples. Offer the same
   // built-in interaction without rewriting the person's graph or making them re-import it.

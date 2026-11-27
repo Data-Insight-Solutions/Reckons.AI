@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { clearStorage, waitForApp } from './helpers';
+import { finishJob, jobRequests } from './synthetic-runner';
 
 /**
  * Browser contract with a synthetic file-queue runner in OPFS. Actual GPU generation is a separate
@@ -46,47 +47,6 @@ async function openStory(page: Page) {
   });
   const reconnect = page.getByRole('button', { name: 'Reconnect runner', exact: true });
   if (await reconnect.isVisible()) await reconnect.click();
-}
-async function jobRequests(page: Page) {
-  return page.evaluate(async () => {
-    const root = await navigator.storage.getDirectory();
-    const jobs = await (await root.getDirectoryHandle('.reckons-generation')).getDirectoryHandle('jobs');
-    const results = [];
-    const entries = jobs as FileSystemDirectoryHandle & { values(): AsyncIterableIterator<FileSystemHandle> };
-    for await (const handle of entries.values()) {
-      if (handle.kind !== 'directory') continue;
-      try {
-        results.push(JSON.parse(await (await (await (handle as FileSystemDirectoryHandle).getFileHandle('request.json')).getFile()).text()));
-      } catch { /* an unsubmitted cancellation marker */ }
-    }
-    return results as { id: string; stage: string; parentId?: string; spaceId: string; prompt: string }[];
-  });
-}
-async function finishJob(page: Page, id: string, state: 'completed' | 'failed' = 'completed', corrupt = false) {
-  await page.evaluate(async ({ id, state, corrupt }) => {
-    const jobs = await (await (await navigator.storage.getDirectory()).getDirectoryHandle('.reckons-generation')).getDirectoryHandle('jobs');
-    const dir = await jobs.getDirectoryHandle(id);
-    const request = JSON.parse(await (await (await dir.getFileHandle('request.json')).getFile()).text());
-    const write = async (name: string, bytes: string | ArrayBuffer) => {
-      const writer = await (await dir.getFileHandle(name, { create: true })).createWritable();
-      await writer.write(bytes);
-      await writer.close();
-    };
-    if (state === 'failed') {
-      await write('status.json', JSON.stringify({ request, state, error: 'Synthetic generation failure' }));
-      return;
-    }
-    const filename = { image: 'image.webp', video: 'video.webm', splat: 'splat.ply' }[request.stage as 'image' | 'video' | 'splat'];
-    const fixture = await (await fetch('/generated/carved-turtle/receipt.json')).json();
-    const receipt = fixture.stages[request.stage];
-    const bytes = await (await fetch(`/generated/carved-turtle/${filename}`)).arrayBuffer();
-    const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map(b => b.toString(16).padStart(2, '0')).join('');
-    receipt.settings.seed = request.seed;
-    if (request.stage !== 'splat') receipt.input.prompt = request.prompt;
-    receipt.output = { file: filename, bytes: bytes.byteLength, sha256: corrupt ? '0'.repeat(64) : hash };
-    await write(filename, bytes);
-    await write('status.json', JSON.stringify({ request, state, receipt }));
-  }, { id, state, corrupt });
 }
 async function generatedCount(page: Page) {
   return page.evaluate(async () => {
@@ -142,6 +102,23 @@ test('Shelly waits for the image, offers derivations, and resumes without duplic
   await expect(page.getByRole('button', { name: 'Make a video', exact: true })).toBeVisible({ timeout: 15_000 });
   expect(await generatedCount(page)).toBe(3);
   expect((await jobRequests(page)).length).toBe(3);
+});
+
+test('a folder connected after the story opened is picked up at once; no connect button lingers for the next poll', async ({ page }) => {
+  // Regression (dev, 2026-11-13): the button stayed up to 2 s, then vanished under a click in progress.
+  await page.evaluate(async () => {
+    const path = '/src/lib/stores/shelly-bridge.svelte.ts';
+    const bridge = await import(/* @vite-ignore */ path);
+    bridge.startExplore();
+  });
+  await page.getByRole('button', { name: /Create an asset with Shelly/ }).click();
+  await expect(page.getByRole('heading', { name: 'Let’s create something' })).toBeVisible();
+  const reconnect = page.getByRole('button', { name: 'Reconnect runner', exact: true });
+  await expect(reconnect).toBeVisible();
+  await fixtureWorkspace(page);
+  // The story polls every 2 s; reacting to the folder must be faster than one poll.
+  await expect(reconnect).toHaveCount(0, { timeout: 1_500 });
+  await expect(page.getByRole('button', { name: 'Generate image', exact: true })).toBeVisible();
 });
 
 test('failed and cancelled images never unlock derivations; retry is a new job', async ({ page }) => {
@@ -234,6 +211,26 @@ test('Shelly queues a chain as ONE approval, and every job is a Job entity (F166
     const workspace = await import(/* @vite-ignore */ workspacePath);
     workspace.__linkHandleForTest(await navigator.storage.getDirectory());
   });
+  // The (app) layout remounts on this navigation and its onMount chain runs loadWorkspace() once,
+  // after loadAll() — i.e. after this canvas is up. A row-less test link has no DB row, so that
+  // one-shot resets state to 'none' (workspace.svelte.ts:200) and the store's connect gate, which
+  // needs state 'connected', never passes again. openStory() sidesteps the same race by re-linking
+  // after mount; do the same here, but keep re-linking until the link SURVIVES — the one-shot
+  // cannot land twice — and the store's 2 s poller turns it into capabilities.
+  await expect.poll(async () => {
+    await page.evaluate(async () => {
+      // Path in a variable, as this file does elsewhere: a literal would make TS try to resolve it.
+      const workspacePath = '/src/lib/stores/workspace.svelte.ts';
+      const m = await import(/* @vite-ignore */ workspacePath);
+      m.__linkHandleForTest(await navigator.storage.getDirectory());
+    });
+    await page.waitForTimeout(500);
+    return page.evaluate(async () => {
+      const generationPath = '/src/lib/stores/generation-jobs.svelte.ts';
+      const g = await import(/* @vite-ignore */ generationPath);
+      return g.generationJobs.capabilities !== null;
+    });
+  }, { timeout: 40_000 }).toBe(true);
   const queue = page.getByRole('button', { name: 'queue 4', exact: true });
   await expect(queue).toBeEnabled({ timeout: 40_000 });
   await expect(page.getByText('2. Gaussian splat from image 1')).toBeVisible();

@@ -6,6 +6,8 @@
 @prefix job:    <urn:reckons:job/> .
 @prefix jobset: <urn:reckons:jobset/> .
 @prefix hnav:   <urn:reckons:nav/> .
+@prefix kind:   <urn:reckons:jobkind/> .
+@prefix route:  <urn:reckons:route/> .
 
 ## ---------------------------------------------------------------------------
 ## THE SOURCE of the offline jobs (F216, 2026-10-27). Hand-edit this file.
@@ -26,6 +28,7 @@ job:aggregate-decisions rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "aggregate-decisions" ;
     skos:definition     "F139.1 agent tier: a local model proposes which facts ONE question would settle, and which decisions block which. DISABLED until its yield is measured — enabling a proposal job whose precision is unknown moves cost to triage rather than removing it (F74.3). Run it manually with --limit and read the rejection reasons before turning it on." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "classification-judgment" ;
     kpred:emits         "nothing" ;
     kpred:command       "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/aggregate-decisions.ts" ;
     kpred:job-enabled   "false" ;
@@ -204,7 +207,7 @@ job:dead-weight rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "script" ;
     kpred:emits         "question" ;
     kpred:command       "npx tsx scripts/offline/dead-weight.ts --pending" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          23 .
 
@@ -224,6 +227,7 @@ job:describe-entities rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "describe-entities" ;
     skos:definition     "Local model drafts kpred:description for entities graph-lint found incomplete, grounded in their own subgraph + linked files (needs OLLAMA_BASE_URL)" ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "prose-draft" ;
     kpred:emits         "claim" ;
     kpred:command       "npx tsx scripts/offline/describe-entities.ts" ;
     kpred:job-enabled   "true" ;
@@ -235,6 +239,7 @@ job:distill-decisions rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "distill-decisions" ;
     skos:definition     "Split prose-only decisions into the alternatives they already contain, so the review tree has options to weigh. Proposals only, gated by validateProposedOptions. DISABLED by default: needs OLLAMA_BASE_URL and its yield should be re-measured on a bigger sample before it runs unattended" ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "prose-draft" ;
     kpred:emits         "claim" ;
     kpred:command       "npx tsx scripts/offline/distill-decisions.ts --limit=8 --pending" ;
     kpred:job-enabled   "false" ;
@@ -257,6 +262,7 @@ job:docs-expand rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "docs-expand" ;
     skos:definition     "Drafts prose for docs entities too thin to be a page (under 45 words, the same threshold docs-pages.ts uses to decide what earns a URL). Grounded on the entity's own triples plus its parent and siblings, so the draft matches the register of the pages around it. PROPOSAL ONLY: emits suggestions to knowledge.pending.jsonl and never edits a TTL. Note this is NOT doc generation — scripts/docs-pages.ts renders the pages and stays deterministic, because md-align requires byte-identical regeneration." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "prose-draft" ;
     kpred:emits         "claim" ;
     kpred:command       "npx tsx scripts/offline/docs-expand.ts --limit=10" ;
     kpred:job-enabled   "true" ;
@@ -279,6 +285,7 @@ job:docs-review rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "docs-review" ;
     skos:definition     "Reads published pages and names ONE term each uses without explaining — the legibility failure a first-time reader hit twice. Grounded on terms the docs DO define, validated against the page text, aggregated by term so one gap is one proposal. Agent tier, proposals only." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "classification-judgment" ;
     kpred:emits         "finding" ;
     kpred:command       "npx tsx scripts/offline/docs-review.ts --limit=12" ;
     kpred:job-enabled   "true" ;
@@ -312,9 +319,10 @@ job:extraction-score rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "extraction-score" ;
     skos:definition     "Scores extraction ACCURACY against the hand-checked notes corpus — strict/loose recall, yield, invented vs misrouted requests, entity fragments. The gate for every 'extraction got better' claim (F146 phase 1; needs OLLAMA_BASE_URL). DEMOTED 2026-10-13 (Matt): the score is written to tests/bench/results/extraction-score_<stamp>.json and never queued for review (sample 0/10 actionable); --pending remains a manual opt-in only." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "extraction" ;
     kpred:emits         "nothing" ;
     kpred:command       "npx tsx scripts/offline/extraction-score.ts" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          16 ;
     kpred:job-queues    "false" .
@@ -385,6 +393,17 @@ job:host-health rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "false" ;
     hnav:order          55 .
 
+job:site-live rdf:type          ktype:OfflineJob ;
+    rdfs:label          "site-live" ;
+    skos:prefLabel      "site-live" ;
+    skos:definition     "F294.6: reads the published website over https and reports every page or file that does not answer 200 with the right kind of content (a host's fallback page standing in for a missing image counts as missing), whether the live build is the commit now on the site repository's main branch, and with --dns whether the site's mail records changed since a private baseline. No model. Exits 1 on a finding; things it cannot know are listed as unknown. Needs --site=<site repository>." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "finding" ;
+    kpred:command       "npx tsx scripts/offline/site-live.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          100 .
+
 job:fact-expiry rdf:type          ktype:OfflineJob ;
     rdfs:label          "fact-expiry" ;
     skos:prefLabel      "fact-expiry" ;
@@ -423,6 +442,7 @@ job:layer-classify rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "layer-classify" ;
     skos:definition     "F194 agent tier: propose claim/provenance/question for each unclassified predicate, biggest blast radius first. DISABLED as a routine job — it is a bulk one-off, and re-proposing the same 355 predicates every sweep would bury the queue it writes to. Run it by hand with --limit and read the provenance verdicts first: those are the ones that remove a human from the loop." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "classification-judgment" ;
     kpred:emits         "claim" ;
     kpred:command       "OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://localhost:11434} npx tsx scripts/offline/layer-classify.ts --limit=40" ;
     kpred:job-enabled   "false" ;
@@ -550,6 +570,17 @@ job:release-burndown rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "false" ;
     hnav:order          1 .
 
+job:site-space-check rdf:type          ktype:OfflineJob ;
+    rdfs:label          "site-space-check" ;
+    skos:prefLabel      "site-space-check" ;
+    skos:definition     "F274.7: fails when static/starter-data-insight-solutions.ttl differs from what the sibling Data Insight Solutions site repository now generates from its PUBLISHED pages. Report-only and exit 0 when that repository is not on this machine, so CI and other checkouts pass. Scheduled daily as sched:site-space-check; the repository is read through $HOME so no private path is stored." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "nothing" ;
+    kpred:command       "npx tsx scripts/starter/build-site-space.ts --site=\"$HOME/Github/DataInsightSolutions-website\" --check" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          99 .
+
 job:release-review-space rdf:type          ktype:OfflineJob ;
     rdfs:label          "release-review-space" ;
     skos:prefLabel      "release-review-space" ;
@@ -623,7 +654,7 @@ job:script-inventory rdf:type          ktype:OfflineJob ;
     kpred:job-tier      "script" ;
     kpred:emits         "finding" ;
     kpred:command       "npx tsx scripts/offline/script-inventory.ts --pending" ;
-    kpred:job-enabled   "true" ;
+    kpred:job-enabled   "false" ;
     kpred:job-blocking  "false" ;
     hnav:order          61 .
 
@@ -709,6 +740,7 @@ job:space-visual-gate rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "space-visual-gate" ;
     skos:definition     "F34.3. Space statement visual gate: Playwright screenshots of real space routes (/kb, /review, /ingest, /) at desktop + mobile viewports → VLM gate checks with qwen2.5vl:7b (local, ~$0/shots). Each gate asks whether content is visible, layout coherent, labels readable, status indicators present. Issues queued as pending questions for review." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind      "visual" ;
     kpred:emits         "finding" ;
     kpred:command       "OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/space-visual-gate.ts --base=http://localhost:5174" ;
     kpred:job-enabled   "true" ;
@@ -773,8 +805,9 @@ job:term-usage rdf:type          ktype:OfflineJob ;
 job:terminology-sweep rdf:type          ktype:OfflineJob ;
     rdfs:label          "terminology-sweep" ;
     skos:prefLabel      "terminology-sweep" ;
-    skos:definition     "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, devstral-small-2, gemma3:27b), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU." ;
+    skos:definition     "F203.6 weekly: term-senses for every ambiguous word, mixed models (qwen3-coder, mistral-small3.2:24b, gemma3:27b; devstral-small-2 was uninstalled 2026-11-13), only disagreements queued for review. Scheduled through reckons-workspace/schedules.ttl (session worker); disabled in the sweep because it takes minutes of GPU." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "classification-judgment" ;
     kpred:emits         "question" ;
     kpred:command       "npx tsx scripts/offline/terminology-sweep.ts --sample=30" ;
     kpred:job-enabled   "false" ;
@@ -819,6 +852,7 @@ job:ux-impression rdf:type          ktype:OfflineJob ;
     skos:prefLabel      "ux-impression" ;
     skos:definition     "Qualitative UX read of real screens by the local VLM: does this screen look crowded, is one thing clearly most important, does the text read comfortably. Asks only what no script can answer — touch targets, blank screens and contrast are measured deterministically by button-crawl and vision-local instead. Has NO golden set, so it is proposal-only and never blocking; run --calibrate first, which renders a deliberately terrible page and a deliberately clean one and refuses to report at all unless the model can tell them apart. Disabled by default: needs OLLAMA_BASE_URL and a reachable deploy." ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "visual" ;
     kpred:emits         "finding" ;
     kpred:command       "npx tsx scripts/offline/ux-impression.ts --url=${UX_IMPRESSION_URL:-https://reckons.ai} --width=${UX_IMPRESSION_WIDTH:-390} --height=${UX_IMPRESSION_HEIGHT:-844} --pending" ;
     kpred:job-enabled   "false" ;
@@ -836,11 +870,34 @@ job:version-align rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "true" ;
     hnav:order          8 .
 
+job:example-space-inventory rdf:type          ktype:OfflineJob ;
+    rdfs:label          "example-space-inventory" ;
+    skos:prefLabel      "example-space-inventory" ;
+    skos:definition     "F263 phase 1. Counts every bundled example space: statements, typed vs untyped entities, built-in entity types used against those available, people without a picture, hubs (the app's own hubNodeKeys rule) without a picture, splat or 3D model, assets with and without generation receipts, story and step counts, sources by review status. --pending writes ONE summary proposal per space naming its gaps, recomputed each run. It reports; it changes nothing." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "finding" ;
+    kpred:command       "npx tsx scripts/offline/example-space-inventory.ts --pending" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          101 .
+
+job:story-variety rdf:type          ktype:OfflineJob ;
+    rdfs:label          "story-variety" ;
+    skos:prefLabel      "story-variety" ;
+    skos:definition     "F300.6. Lists, for every story in the bundled example spaces, the features each uses — filters (story:filter), layouts (story:layout), highlights, offers (story:offerSetting, story:openPage), leaps (a highlighted entity carrying urn:reckons:leap) and media — read with the repository's own story reader, not regexes. Fails when a story uses no filter or two stories use the same feature set (kinds plus the filter and layout names). NOT BLOCKING YET: the bundled stories predate it and most use no filter; the F292.4 / F300.6 work gives every story its own mix, and the job graduates to blocking when the table is clean. It reports; it changes nothing." ;
+    kpred:job-tier      "script" ;
+    kpred:emits         "nothing" ;
+    kpred:command       "npx tsx scripts/offline/story-variety.ts" ;
+    kpred:job-enabled   "true" ;
+    kpred:job-blocking  "false" ;
+    hnav:order          102 .
+
 job:visual-diff rdf:type          ktype:OfflineJob ;
     rdfs:label          "visual-diff" ;
     skos:prefLabel      "visual-diff" ;
     skos:definition     "Local-VLM visual regression prod↔dev (needs OLLAMA_BASE_URL; set VISUAL_DIFF_BASE / VISUAL_DIFF_HEAD)" ;
     kpred:job-tier      "agent" ;
+    kpred:job-kind "visual" ;
     kpred:emits         "finding" ;
     kpred:command       "npx tsx scripts/offline/visual-diff.ts --base=${VISUAL_DIFF_BASE:-https://reckons.ai} --head=${VISUAL_DIFF_HEAD:-https://dev.reckons-ai.pages.dev}" ;
     kpred:job-enabled   "false" ;
@@ -858,6 +915,197 @@ job:visual-streams rdf:type          ktype:OfflineJob ;
     kpred:job-blocking  "false" ;
     hnav:order          2 .
 
+
+## ---------------------------------------------------------------------------
+## MODEL ROUTING (F74.6, kb:model-routing-ledger; 2026-11-13). Job KIND -> ordered candidate models.
+## Matt, 2026-11-13: "We need to do good routing to qwen coder, or specialized models anyway, using smaller models may not be a problem for many job types."
+## A job declares kpred:job-kind (a schedule or an offline job); scripts/agent/model-routing.ts picks the first
+## candidate that is installed AND fits the RAM gate (model size + floor). kpred:job-model is an explicit override.
+## Order = hnav:order. kpred:evidence-grade: measured (a bench or calibration cited in the evidence) or guess (to be measured).
+## INSTALLED SET after Matt's 2026-11-13 cleanup: qwen3.8 (+160k alias), qwen3-coder, mistral-small3.2:24b, gemma3:27b, qwen2.5vl:7b, nuextract, nomic-embed-text.
+## NO SMALL GENERAL MODEL REMAINS: the smallest general model is mistral-small3.2 at 15.2 GB, so "small first" applies only to vision (6 GB), extraction (nuextract, 2.2 GB, unmeasured) and embeddings.
+## WEAKNESS: only the extraction, visual and code rows rest on a head-to-head bench; the rest are "in use" or guesses.
+## ---------------------------------------------------------------------------
+
+kind:code-draft rdf:type ktype:JobKind ;
+    rdfs:label "code-draft" ;
+    skos:definition "Drafting or editing code a human or test will gate." ;
+    kpred:route-local "true" .
+
+route:code-draft-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "code-draft 1: qwen3-coder:latest" ;
+    kpred:route-kind kind:code-draft ;
+    kpred:model "qwen3-coder:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "18.6 GB. Benchmarked winner for code on the local coding bench (tests/bench/run-coding-bench.ts; MEMORY.md \"qwen3-coder (code)\"). The only code model left installed: devstral-small-2, its co-winner and 3 GB smaller, was uninstalled 2026-11-13, so the smaller-first option is gone. Wrong tool for prose: 39% on extraction, kb:extraction-scoring." ;
+    hnav:order 1 .
+
+kind:code-review rdf:type ktype:JobKind ;
+    rdfs:label "code-review" ;
+    skos:definition "Reviewing a diff for correctness." ;
+    kpred:route-local "false" ;
+    kpred:honest-note "No local route. Local code review was retired 2026-10-13 after 0 true findings in 49 (qwen3-coder and devstral-small-2 missed both real bugs in the trial); PR review is a Sonnet or Opus subagent. scripts/offline/code-review.ts stays for hand re-runs only." .
+
+kind:prose-draft rdf:type ktype:JobKind ;
+    rdfs:label "prose-draft" ;
+    skos:definition "Drafting a description, page or paragraph that a human gates." ;
+    kpred:route-local "true" .
+
+route:prose-draft-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 1: gemma3:27b" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "17.4 GB. The prose model of the kept set: first of six at reading prose (72% extraction recall, kb:extraction-scoring) but never benched at WRITING it, so the grade is a guess for drafting." ;
+    hnav:order 1 .
+
+route:prose-draft-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 2: qwen3.8:latest" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. The harness default (DEFAULT_REASONING_MODEL) that describe-entities and the docs jobs already run on; no head-to-head prose bench exists, so the grade means \"in use and gated by a human\", not \"best\"." ;
+    hnav:order 2 .
+
+route:prose-draft-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "prose-draft 3: mistral-small3.2:24b" ;
+    kpred:route-kind kind:prose-draft ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "15.2 GB. Smallest general model left. Unmeasured for drafting here." ;
+    hnav:order 3 .
+
+kind:extraction rdf:type ktype:JobKind ;
+    rdfs:label "extraction" ;
+    skos:definition "Pulling triples out of prose." ;
+    kpred:route-local "true" .
+
+route:extraction-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 1: gemma3:27b" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.4 GB. 72% strict recall, first of six (kb:extraction-scoring, 2026-09-04); 68% in the 48 GB-class rerun. The measured leader among installed models (qwen3:32b, 74%, is no longer installed)." ;
+    hnav:order 1 .
+
+route:extraction-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 2: mistral-small3.2:24b" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "15.2 GB. 53% strict recall, 68% loose, 0 invented (2026-09-04 48 GB-class run): 19 points under gemma3:27b and only 2 GB smaller, so a fallback when room is short by a little, not a small-model answer." ;
+    hnav:order 2 .
+
+route:extraction-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "extraction 3: nuextract:latest" ;
+    kpred:route-kind kind:extraction ;
+    kpred:model "nuextract:latest" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "2.2 GB. A model built for structured extraction and the only small model left, but NOT measured on this repository's extraction bench (a 5% figure for it sits in .env.example from an earlier, different setup). Highest-value measurement in this table: if it nears 53% on the current bench it becomes the first rung and extraction stops needing a 15 to 17 GB model." ;
+    hnav:order 3 .
+
+kind:classification-judgment rdf:type ktype:JobKind ;
+    rdfs:label "classification-judgment" ;
+    skos:definition "Choosing a label, sense or yes/no over many items, where a panel or a human re-checks the disagreements." ;
+    kpred:route-local "true" .
+
+route:classification-judgment-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 1: qwen3.8:latest" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. The local-panel default model (3 votes); the 2026-09-30 calibration measured its predecessor qwen3.6 at 13/13 unanimous-right on 30 hand-labelled sites (scripts/agent/local-panel.ts header). qwen3.8 has not been re-scored on that fixture, and qwen3.6 is no longer installed." ;
+    hnav:order 1 .
+
+route:classification-judgment-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 2: gemma3:27b" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "gemma3:27b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "17.4 GB. Larger-general-model rung named by the ledger decision for hard judgment; the mixed panel that included it did not beat one model voting thrice (local-panel.ts header)." ;
+    hnav:order 2 .
+
+route:classification-judgment-3 rdf:type ktype:ModelRoute ;
+    rdfs:label "classification-judgment 3: mistral-small3.2:24b" ;
+    kpred:route-kind kind:classification-judgment ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "15.2 GB. Different model family from qwen3.8, so its errors are less correlated; usable as a panel member. WEAKNESS: no small general model remains (llama3.2:3b, phi4:14b and lfm2.5 were uninstalled 2026-11-13), so no coarse-label rung under 15 GB exists to measure." ;
+    hnav:order 3 .
+
+kind:verification rdf:type ktype:JobKind ;
+    rdfs:label "verification" ;
+    skos:definition "A different model checking another model's answer or quote." ;
+    kpred:route-local "true" .
+
+route:verification-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "verification 1: mistral-small3.2:24b" ;
+    kpred:route-kind kind:verification ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "15.2 GB. DEFAULT_VERIFIER in presettle.ts: the only one of four models that refused an off-topic quote (2026-10-28, two cases, one run: a choice, not a measurement)." ;
+    hnav:order 1 .
+
+kind:visual rdf:type ktype:JobKind ;
+    rdfs:label "visual" ;
+    skos:definition "Reading a screenshot or image." ;
+    kpred:route-local "true" .
+
+route:visual-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "visual 1: qwen2.5vl:7b" ;
+    kpred:route-kind kind:visual ;
+    kpred:model "qwen2.5vl:7b" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "6.0 GB. Winner of the visual bench and the visual gate model (MEMORY.md \"Winners\"; scripts/offline/visual-diff.ts, space-visual-gate.ts). The only vision model installed." ;
+    hnav:order 1 .
+
+kind:summarize rdf:type ktype:JobKind ;
+    rdfs:label "summarize" ;
+    skos:definition "Compressing an entity subgraph or text into a short summary." ;
+    kpred:route-local "true" .
+
+route:summarize-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 1: qwen3.8:latest" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "qwen3.8:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB. Default for kb_local_summarize; in use, never benchmarked against a smaller model." ;
+    hnav:order 1 .
+
+route:summarize-2 rdf:type ktype:ModelRoute ;
+    rdfs:label "summarize 2: mistral-small3.2:24b" ;
+    kpred:route-kind kind:summarize ;
+    kpred:model "mistral-small3.2:24b" ;
+    kpred:evidence-grade "guess" ;
+    kpred:evidence "15.2 GB. The smallest general model left. WEAKNESS: the 5 to 9 GB small summarizers (phi4:14b, lfm2.5) that were candidates were uninstalled 2026-11-13 before being measured." ;
+    hnav:order 2 .
+
+kind:embed rdf:type ktype:JobKind ;
+    rdfs:label "embed" ;
+    skos:definition "Turning text into vectors." ;
+    kpred:route-local "true" .
+
+route:embed-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "embed 1: nomic-embed-text:latest" ;
+    kpred:route-kind kind:embed ;
+    kpred:model "nomic-embed-text:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "0.27 GB. The embedding model the local jobs already call; the app itself uses BGE-small in the browser (src/lib/embed.ts), a separate path." ;
+    hnav:order 1 .
+
+kind:agentic-deputy rdf:type ktype:JobKind ;
+    rdfs:label "agentic-deputy" ;
+    skos:definition "The local deputy: tool-using multi-step work in a worktree." ;
+    kpred:route-local "true" .
+
+route:agentic-deputy-1 rdf:type ktype:ModelRoute ;
+    rdfs:label "agentic-deputy 1: qwen3.8-160k:latest" ;
+    kpred:route-kind kind:agentic-deputy ;
+    kpred:model "qwen3.8-160k:latest" ;
+    kpred:evidence-grade "measured" ;
+    kpred:evidence "17.7 GB, 160k context. The deputy model (npm run claude:local, AGENTS.md rule 5) until the deputy benchmark (qwen3.8 vs mistral-small3.2:24b, overseer bench, 5 repeats) decides; no smaller installed model has a long enough context window." ;
+    hnav:order 1 .
+
 jobset:agent rdf:type      skos:Collection ;
     skos:prefLabel      "agent tier" ;
     skos:definition     "A local model inside a scripted harness — ground, prompt, validate, emit-proposal. Output is a PROPOSAL a human gates, never a write, because being wrong here has to be cheap." ;
@@ -866,9 +1114,9 @@ jobset:agent rdf:type      skos:Collection ;
 jobset:script rdf:type      skos:Collection ;
     skos:prefLabel      "script tier" ;
     skos:definition     "Deterministic, zero tokens, no model. Right by construction and runs in CI. The work-tiering ladder says to grow this tier in preference to the others, and it is the larger one." ;
-    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:space-size, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
+    skos:member         job:alignment-sweep, job:altitude-report, job:anchor-resolution, job:branch-ancestry, job:build-guard, job:button-crawl, job:ci-graph, job:claim-audit, job:code-sprawl, job:codebase-coverage, job:commit-trailers, job:competitor-scan, job:config-observer, job:context-composition, job:csp-origin-audit, job:dead-weight, job:dependency-health, job:docs-edits, job:docs-graph-registration, job:docs-staleness, job:example-space-inventory, job:extraction-chain, job:fact-expiry, job:gen-model-discover, job:graph-economics, job:graph-lint, job:history-lessons, job:host-health, job:landing-data, job:landing-data-align, job:layer-risk, job:model-inventory, job:naming-conventions, job:naming-ratchet, job:perf-crawl, job:prompt-audit, job:proposal-yield, job:published-graph-guard, job:queue-dedupe, job:queue-integrity, job:release-burndown, job:release-review-space, job:rename-pr, job:repo-hygiene, job:room-benchmark, job:safety-attestation, job:scope-check, job:script-inventory, job:server-health, job:set-complexity, job:set-integrity, job:set-pages, job:shacl-validate, job:shared-deps, job:site-live, job:site-space-check, job:space-size, job:story-variety, job:status-evidence, job:taxonomy-current, job:tenet-align, job:term-ratchet, job:term-usage, job:test-workflow-check, job:ui-terms, job:untested-options, job:version-align .
 
 jobset:all rdf:type          skos:Collection ;
     skos:prefLabel      "Offline jobs" ;
-    skos:definition     "Every job the offline sweep can run — 76 of them, 63 needing no model at all." ;
+    skos:definition     "Every job the offline sweep can run — 80 of them, 67 needing no model at all." ;
     skos:member         jobset:agent, jobset:script .

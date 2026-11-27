@@ -14,7 +14,7 @@ generated: "docs-kb"
 
 Every capability these docs describe, grouped by whether it works today. Nothing on this list is written by hand: each capability's status is read from the project roadmap when the site is built, so this page changes when the roadmap does. Where a capability has no page of its own, the link goes to the page that describes it.
 
-## Works today (50)
+## Works today (52)
 
 <p class="derived">Built and working. Production means also tested and in daily use.</p>
 
@@ -22,8 +22,8 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [3D captures on a node](../features/splats) · functional
 - [A background for a space](../features/space-background) · functional
 - [A reckoning — asking your graph what to do](../learn/reckoning) · production
+- [A showcase whose story plays from a link](../features/showcase-example) · functional
 - [A space file that carries its evidence](../features/space-file-passages) · functional
-- [Build a website from your notes](../features/site-builder) · functional
 - [Compare — finding out where two people actually disagree](../features/compare) · production
 - [Content Safety](../features/content-safety-features) · production
 - [Context Compression](../features/context-compression-features) · functional
@@ -32,6 +32,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Disambiguation](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
 - [Entity Normalization](../features/entity-normalization) · production
 - [Entity Type System](../guide/what-is-reckons-ai) · production — on the What Is Reckons.AI page
+- [Every example story shows something different](../features/story-variety) · functional
 - [Generation tools and setup](../features/generation-setup) · functional
 - [Getting started arrives already reviewed](../features/starter-reviewed) · functional
 - [Git Analysis](../features/git-analysis-features) · production
@@ -46,6 +47,7 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [MCP Workspace](../features/mcp-workspace) · production
 - [Model Cache Management](../features/llm-backends) · production — on the LLM Backends page
 - [Multi-Graph Management](../features/multi-kb) · production
+- [Open a .ttl file from a GitHub link](../features/open-from-github) · functional
 - [Open a fact's source at the exact words](../features/open-in-source) · functional
 - [Open questions answered from what you already decided](../features/question-presettle) · functional
 - [Passage Grounding](../features/passage-grounding) · production
@@ -69,14 +71,20 @@ Every capability these docs describe, grouped by whether it works today. Nothing
 - [Where a node's facts came from](../features/node-sources) · functional
 - [Whisper STT](../features/shelly) · production — on the Shelly (AI Assistant) page
 
-## Partly built (13)
+## Partly built (19)
 
 <p class="derived">Started, with parts missing. Expect gaps.</p>
 
+- [A person's check has a date, and goes stale](../features/human-recheck) · scaffolded
+- [Build a website from your notes](../features/site-builder) · scaffolded
+- [Compare two documents side by side as a Venn diagram](../features/compare-two-documents) · scaffolded
 - [Currents](../features/currents) · scaffolded
+- [Demo videos made from the same steps the tests play](../features/demo-videos) · scaffolded
+- [Detail levels: show the main entities first, the evidence last](../features/detail-levels) · scaffolded
 - [Generated media: checks, retries, settings and what it costs](../features/generation-quality) · scaffolded
 - [Local jobs through MCP](../features/local-jobs-mcp) · in-progress
 - [Local jobs: the one queue, This device and the memory guard](../features/local-jobs-on-this-device) · scaffolded
+- [Making assets: a part you can cut, a tool you can start, a check with a known answer](../features/making-assets) · scaffolded
 - [Physical scene simulator (early, command line only)](../features/physical-scene-simulator) · in-progress
 - [Pod View](../features/pod-view) · scaffolded
 - [Published Graph Site](../features/published-docs) · in-progress

@@ -10,6 +10,7 @@
  */
 
 import { GENERATION_PROVENANCE_PREDICATES as GEN, JOB_ATTRIBUTE_PREDICATES } from './types';
+import { RECKONING_PREDICATES } from './reckoning-entity';
 
 export type GeometryName =
   | 'sphere'
@@ -298,6 +299,18 @@ export const BUILT_IN_TYPES: EntityTypeDef[] = [
     description: 'A piece of work you asked your own computer to do, such as making a picture or a splat, with whether it is waiting, running, done or failed',
     icon2d: '⚙️',
     schemaPredicates: [...JOB_ATTRIBUTE_PREDICATES, GEN[1]],
+    builtIn: true
+  },
+  // F223.12.1: the situation someone chose to reckon with, kept so the choice survives a reload. It names
+  // the facts chosen and the sentence added; it is a record, not a task.
+  {
+    iri: 'urn:kbase:type/Reckoning',
+    label: 'Reckoning',
+    geometry: 'box', // no unused shape left (F58.9.5); told apart by color and the scales icon
+    color: '#f59e0b',
+    description: 'A situation you chose to reckon with: the statements you picked and the sentence you added',
+    icon2d: '⚖️',
+    schemaPredicates: [RECKONING_PREDICATES.situationStatement, RECKONING_PREDICATES.situationNote],
     builtIn: true
   },
   {

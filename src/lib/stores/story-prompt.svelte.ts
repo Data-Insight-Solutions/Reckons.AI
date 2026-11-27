@@ -108,14 +108,25 @@ export function promptStoryIfPresent(statements: readonly Statement[], graphId: 
  * Matt, 2026-10-27: "Story mode should be started from a query parameter." The one-time notice asks
  * the reader to find a button; a link that opens straight INTO the story skips that, which is what a
  * walkthrough opened from Settings or a shared link wants. Returns whether a story started.
+ *
+ * F304: `&autoplay=1` (or `true`) starts the story auto-advancing on its story:pace — the muted
+ * showcase walk. Anything else ('0', 'yes', absent) opens it stopped, as before. It flows through
+ * startStory → storyAutoPlayRequested() → TurtleChatPanel's ONE existing timer; this adds no
+ * second clock. Voice is unchanged: the player speaks only when the reader turned voice on.
  */
-export function startStoryFromLink(statements: readonly Statement[], param: string | null, stepParam: string | null = null): boolean {
+export function startStoryFromLink(
+  statements: readonly Statement[],
+  param: string | null,
+  stepParam: string | null = null,
+  autoplayParam: string | null = null,
+): boolean {
   if (param === null) return false;
   const stories = extractStories([...statements]);
   const story = (param && stories.find((s) => s.id === param)) || stories.find((s) => s.steps.length >= 2);
   if (!story) return false;
   const step = Number(stepParam);
-  startStory(story.id, false, Number.isInteger(step) && step >= 1 ? Math.min(step, story.steps.length) : 1);
+  const autoPlay = autoplayParam === '1' || autoplayParam === 'true';
+  startStory(story.id, autoPlay, Number.isInteger(step) && step >= 1 ? Math.min(step, story.steps.length) : 1);
   return true;
 }
 

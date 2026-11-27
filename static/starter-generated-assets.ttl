@@ -9,13 +9,14 @@
 @prefix p:     <urn:kbase:predicate/> .
 @prefix schema: <https://schema.org/> .
 @prefix story: <urn:reckons:story/> .
+@prefix kmeta: <urn:kbase:meta/> .
 
 ## ktype:Prompt, Image, Video, GaussianSplat and License are built-in entity types (F58.9.5); no type is defined here.
 
 kb:generated-assets rdf:type ktype:Concept ;
     rdfs:label "Generated on this machine" ;
     rdfs:comment "Pictures, clips and Gaussian splats made by local models from made-up prompts. Each one is linked to what it was made from, and carries the model, license and time its run recorded. A generated splat is invented from one picture: it is decoration, not a record of anything real." ;
-    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt, kb:gen-ornate-music-box-prompt .
+    p:has kb:gen-carved-turtle-prompt, kb:gen-lighthouse-island-prompt, kb:gen-ornate-music-box-prompt, kb:gen-cad-l-bracket-60-spec .
 
 story:create-generated-asset rdf:type story:Story ;
     rdfs:label "Create an asset with Shelly" ;
@@ -27,8 +28,9 @@ story:generate-image rdf:type story:Step ;
     story:partOf story:create-generated-asset ;
     story:order "1" ;
     story:title "Imagine an image" ;
-    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result." ;
-    story:question "What image would you like me to generate?" .
+    story:content "Shelly asks for your image prompt and waits for the local runner to produce a checked result. The confirmed filter keeps what this space already holds lit — the results made earlier and their receipts — while anything still awaiting a decision recedes." ;
+    story:question "What image would you like me to generate?" ;
+    story:filter "confirmed" .
 
 story:derive-asset rdf:type story:Step ;
     story:partOf story:create-generated-asset ;
@@ -36,6 +38,142 @@ story:derive-asset rdf:type story:Step ;
     story:title "Choose what happens next" ;
     story:content "Once the image is ready, choose an available derivation. Each output links back to its source image." ;
     story:question "Would you like a video, a Gaussian splat, or another image?" .
+
+## THE WALK (F300.5): a story inside this example. Hand-written in scripts/content/gen-assets-walk.ttl and copied in by exampleTtl,
+## because a story written straight into the generated file is deleted by the next regeneration. The browser test plays it
+## (tests/e2e/workflow-generated-assets.test.ts); the docs page and the demo video are made from it.
+
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix story: <urn:reckons:story/> .
+
+story:generated-assets-walk rdf:type story:Story ;
+    rdfs:label "Make pictures, clips and 3D splats on your own machine, and see them in a space" ;
+    story:shotsNote "## How these screenshots were made\n\n**What they show.** The pictures, clips and splats are the committed results of one run of `npm run gen:assets` on one machine with an NVIDIA RTX 3090 graphics card, on 2026-10-14. Every prompt is made up for this example.\n\n**What is not run here.** The browser test cannot run the models, because the machines that run the tests have no graphics card. For each result it checks that the file the app shows is byte for byte the one its receipt describes, that its check accepted it when it was made, and that the app shows it. Whether the models still produce good results is checked only when someone runs `npm run gen:assets` again." ;
+    story:narrator "hume:a623d3ed-612c-413b-b09f-e0a379a317f0" ;
+    story:autoplay "false" .
+
+story:generated-assets-walk-1 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "1" ;
+    story:stepId "open-example" ;
+    story:title "Open the Generated assets example as its own space" ;
+    story:shortLabel "Open the example" ;
+    story:page "/about" ;
+    story:pageName "the About page" ;
+    story:boxTarget "the Generated assets card under example data" ;
+    story:content "Welcome. We open the Generated assets example, and it arrives as a space of its own, so nothing touches your other work." ;
+    story:detail "Under example data on the About page (or from the welcome page), choose Generated assets. It opens as a new space of its own and shows its graph, so trying it never mixes into the space you were working in. Opening it again refreshes that same space rather than making a second one." ;
+    story:target "starter-card-generated-assets :: Generated assets" ;
+    story:action "{\"kind\":\"open-page\",\"path\":\"/about\"}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"starter-card-generated-assets\"}" ;
+    story:media "/workflows/generated-assets/01-open-example.webp" ;
+    story:assertion "The card offers to open the example as a space; choosing it lands on the graph of the new space, and the Spaces tab then shows Generated assets as the current space." .
+
+story:generated-assets-walk-2 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "2" ;
+    story:stepId "see-pipeline" ;
+    story:title "See the pipeline in the graph" ;
+    story:shortLabel "See the pipeline" ;
+    story:page "/" ;
+    story:pageName "the graph" ;
+    story:boxTarget "the graph, where each prompt links to its picture and the picture links to its clip and its splat" ;
+    story:content "Here is the whole chain on one graph: each prompt links to its picture, and each picture links to the clip and the 3D scene made from it. The hubs filter keeps the most-connected nodes lit — here, most of this walk's steps, the chain the story follows — while the assets they point to sit quiet among them." ;
+    story:question "Where did each of these files come from, and could you prove it?" ;
+    story:filter "hubs" ;
+    story:detail "Each result is a node, linked to what it was made from: a prompt to its picture, and the picture to its clip and its splat. Each node lists what its receipt recorded (the model, the seed, how long it took and when) under metadata in its details, not as extra nodes, and its license is a node of its own (MIT or Apache-2.0) that it links to. Turn on preview all to see every result on its node. A node with a splat is drawn inside its splat, which turns slowly." ;
+    story:action "{\"kind\":\"open-page\",\"path\":\"/\"}" ;
+    story:media "/workflows/generated-assets/02-see-pipeline.webp" ;
+    story:assertion "With previews on, at least three results show on their nodes (which ones are in view depends on where the layout puts them), and the 3D graph reports both node splats loaded and none failed." .
+
+story:generated-assets-walk-3 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "3" ;
+    story:stepId "picture" ;
+    story:title "The picture, made from a prompt" ;
+    story:shortLabel "Picture from a prompt" ;
+    story:page "/" ;
+    story:pageName "the graph" ;
+    story:boxTarget "the enlarged picture" ;
+    story:content "This picture came from a written prompt, made earlier on this computer with an open model. The app checks it against a saved record of how it was made." ;
+    story:question "Where was this picture actually made?" ;
+    story:detail "Z-Image-Turbo, run by stable-diffusion.cpp, turned the prompt into a 768×768 picture in eight steps. Find the picture's node (searching for its name works when it is out of view) and choose its preview to see it large. This picture is the starting point for the next two steps." ;
+    story:target "asset-image :: Made by Z-Image-Turbo" ;
+    story:action "{\"kind\":\"select\",\"entities\":[\"urn:kbase:concept/gen-carved-turtle-image\"]}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-open-gen-carved-turtle-image\"}" ;
+    story:expect "{\"kind\":\"receipt\",\"slug\":\"carved-turtle\",\"stage\":\"image\"}" ;
+    story:expect "{\"kind\":\"visible\",\"target\":\"asset-large\"}" ;
+    story:expect "{\"kind\":\"attr\",\"target\":\"asset-image\",\"name\":\"src\",\"value\":\"/generated/carved-turtle/image.webp\"}" ;
+    story:expect "{\"kind\":\"media\",\"target\":\"asset-image\",\"width\":768}" ;
+    story:media "/workflows/generated-assets/03-picture.webp" ;
+    story:assertion "The picture the app shows is byte for byte the file its receipt describes (same SHA-256), its check accepted it, its models are MIT or Apache-2.0 licensed, and it opens large at 768 pixels wide." .
+
+story:generated-assets-walk-4 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "4" ;
+    story:stepId "video" ;
+    story:title "The clip, made from the picture" ;
+    story:shortLabel "Clip from the picture" ;
+    story:page "/" ;
+    story:pageName "the graph" ;
+    story:boxTarget "the clip, paused part way through" ;
+    story:content "Next, a short clip made from that same picture. Its record measures how much it moves, so a clip where nothing happens would be flagged, not called fine." ;
+    story:question "How would you know a generated clip really moves?" ;
+    story:detail "Wan2.2 TI2V-5B, also run by stable-diffusion.cpp, started from the picture and a second prompt describing the motion, and made a 49-frame clip. The check measures how much the last frame differs from the first, because a video model can return a clip in which almost nothing moves. When that happens the receipt says so rather than calling the clip fine." ;
+    story:target "asset-video :: Made by Wan2.2" ;
+    story:action "{\"kind\":\"select\",\"entities\":[\"urn:kbase:concept/gen-carved-turtle-video\"]}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-open-gen-carved-turtle-video\"}" ;
+    story:expect "{\"kind\":\"receipt\",\"slug\":\"carved-turtle\",\"stage\":\"video\"}" ;
+    story:expect "{\"kind\":\"visible\",\"target\":\"asset-large\"}" ;
+    story:expect "{\"kind\":\"attr\",\"target\":\"asset-video\",\"name\":\"src\",\"value\":\"/generated/carved-turtle/video.webm\"}" ;
+    story:expect "{\"kind\":\"media\",\"target\":\"asset-video\",\"width\":512}" ;
+    story:media "/workflows/generated-assets/04-video.webp" ;
+    story:assertion "The clip the app shows matches its receipt, its check accepted it, and it loads in the viewer at 512 pixels wide. The screenshot shows a frame from the middle of the clip." .
+
+story:generated-assets-walk-5 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "5" ;
+    story:stepId "splat" ;
+    story:title "The splat, made from the picture" ;
+    story:shortLabel "Splat from the picture" ;
+    story:page "/" ;
+    story:pageName "the graph" ;
+    story:boxTarget "the splat viewer, which turns the splat slowly and can be dragged" ;
+    story:content "Now a 3D scene, also made from the picture. Drag it to look from any side, but remember the far side is only a guess from one picture." ;
+    story:question "And what about the side of the turtle the picture never showed?" ;
+    story:detail "TripoSplat turned the same picture into 32,768 Gaussians, writing a PLY file of about 2 MB. The first prompt asked for a flat carving seen from above, and TripoSplat made it as flat as a coin; asking for a three-quarter view with a domed shell gave it real depth. Choose the splat on its node to turn it and look at it from any side. Everything it shows on the far side of the turtle was guessed from one picture." ;
+    story:target "splat-viewer :: Made by TripoSplat" ;
+    story:action "{\"kind\":\"select\",\"entities\":[\"urn:kbase:concept/gen-carved-turtle-splat\"]}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-open-gen-carved-turtle-splat\"}" ;
+    story:expect "{\"kind\":\"receipt\",\"slug\":\"carved-turtle\",\"stage\":\"splat\"}" ;
+    story:expect "{\"kind\":\"visible\",\"target\":\"asset-large\"}" ;
+    story:expect "{\"kind\":\"attr\",\"target\":\"splat-viewer\",\"name\":\"data-splat-status\",\"value\":\"ready\"}" ;
+    story:media "/workflows/generated-assets/05-splat.webp" ;
+    story:assertion "The splat the app shows matches its receipt and its check accepted it, and the viewer reports that it has loaded. The renderer is Gaussian-Splat-Lite, which the app loads only when a splat is on screen." .
+
+story:generated-assets-walk-6 rdf:type story:Step ;
+    story:partOf story:generated-assets-walk ;
+    story:order "6" ;
+    story:stepId "background" ;
+    story:title "Set a splat as the background of the space" ;
+    story:shortLabel "Splat as the background" ;
+    story:page "/" ;
+    story:pageName "the graph" ;
+    story:boxTarget "the graph with the lighthouse island splat drawn behind it" ;
+    story:content "Finally, the scene can sit behind the whole graph as a slowly turning backdrop. All of it was made on one computer, and every file is checked against its record." ;
+    story:question "What if a scene could become the room your ideas live in?" ;
+    story:detail "Open the lighthouse island splat and choose Set as background. The island is then drawn large behind the graph, sized to the graph and turning very slowly, and it never gets in the way of choosing a node. The choice is saved with the space, so it travels with an export. Clear background removes it." ;
+    story:target "graph-canvas :: The island behind the graph" ;
+    story:action "{\"kind\":\"select\",\"entities\":[\"urn:kbase:concept/gen-lighthouse-island-splat\"]}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-open-gen-lighthouse-island-splat\"}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-bg-toggle\"}" ;
+    story:action "{\"kind\":\"click\",\"target\":\"asset-large-close\"}" ;
+    story:action "{\"kind\":\"press\",\"key\":\"Escape\"}" ;
+    story:expect "{\"kind\":\"receipt\",\"slug\":\"lighthouse-island\",\"stage\":\"splat\"}" ;
+    story:expect "{\"kind\":\"attr\",\"target\":\"graph-canvas\",\"name\":\"data-splats\",\"value\":\"3/0\"}" ;
+    story:media "/workflows/generated-assets/06-background.webp" ;
+    story:assertion "The island splat matches its receipt. After Set as background the same control offers Clear background, which shows the setting was saved to the space, and the 3D graph reports three splats loaded and none failed: the two on their nodes and the island. Where the island sits and how it looks is shown by the screenshot, not measured by the test." .
 
 kb:license-apache-2-0 rdf:type ktype:License ;
     rdfs:label "Apache-2.0" ;
@@ -148,3 +286,30 @@ kb:gen-ornate-music-box-splat rdf:type ktype:GaussianSplat ;
     p:generated-gaussians "262144" ;
     rdfs:comment "Invented from one picture by TripoSplat: the far side is a guess." ;
     p:generated-at "2026-10-21" .
+
+## CAD parts (F299, kb:cad-creation): modelled from parameters with build123d, checked against their spec.
+
+kb:gen-cad-l-bracket-60-spec rdf:type ktype:Concept ;
+    rdfs:label "Part spec: l-bracket-60" ;
+    rdfs:comment "A part described as numbers, in millimetres. The solid below was built from exactly these and its measured bounding box (60 x 35 x 40 mm) was checked against them within 0.1 mm." ;
+    p:part-kind "bracket" ;
+    p:param-depth-mm "35" ;
+    p:param-fillet-mm "6" ;
+    p:param-height-mm "40" ;
+    p:param-hole-count "2" ;
+    p:param-hole-diameter-mm "5" ;
+    p:param-thickness-mm "4" ;
+    p:param-width-mm "60" ;
+    p:spec-sha256 "ff435a88293dec8bbdaffad597887011c6eee12251e49cd76f01f065c525ec5d" ;
+    p:has kb:gen-cad-l-bracket-60-part .
+
+kb:gen-cad-l-bracket-60-part rdf:type ktype:Model3D ;
+    rdfs:label "Part: l-bracket-60" ;
+    kmeta:glbModel "/generated/cad-l-bracket-60/part.glb" ;
+    p:photo "/generated/cad-l-bracket-60/turntable-0.png" ;
+    p:made-from kb:gen-cad-l-bracket-60-spec ;
+    p:origin-label "modelled from parameters" ;
+    p:generated-with "build123d 0.13.0 (OpenCascade 8.0.1.1) and Blender 5.3.0" ;
+    p:volume-mm3 "17346.5" ;
+    rdfs:comment "Modelled from parameters: an exact solid, not a scan and not a picture-to-3D guess. STEP and STL files sit beside the GLB at /generated/cad-l-bracket-60/." ;
+    p:generated-at "2026-11-17" .

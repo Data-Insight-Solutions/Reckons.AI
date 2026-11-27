@@ -1,3 +1,4 @@
+import { E2E_BASE } from '../../scripts/lib/e2e-port';
 import { test, expect, type Page } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +19,7 @@ import { clearAllKbs, screenshotTo } from './kb-seed';
  * thumbnails, and capture the frames for a human to look at.
  */
 
-const APP = 'http://localhost:5174';
+const APP = E2E_BASE;
 const FIXTURE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/preview-collage.ttl');
 
 /** Bounding boxes of every preview thumbnail the browser actually painted. */

@@ -17,13 +17,14 @@
  *   ground    → the entity's own triples, its parent, and its siblings' definitions, so the draft
  *               sits in the same register as the pages around it. The graph IS the context.
  *   prompt    → one paragraph, in the house voice, from the grounding only
- *   validate  → reject empty, too short, hedging, invented IRIs, or a restatement of the label
+ *   validate  → reject empty, too short, hedging, invented IRIs, a restatement of the label,
+ *               unexplained jargon, or words the grounding never used (lib/docs-gates.ts)
  *   emit      → a pending SUGGESTION in knowledge.pending.jsonl, gated in the Review tab.
  *               It NEVER edits a TTL. A bad draft costs a click, not a commit.
  *
  * Usage:
  *   OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/docs-expand.ts \
- *     [--model=qwen3:32b] [--limit=10] [--entity=<iri>] [--min-words=45] [--dry-run]
+ *     [--model=<installed model>] [--limit=10] [--entity=<iri>] [--min-words=45] [--dry-run]
  */
 import { readFileSync, readdirSync } from 'fs';
 import path from 'path';
@@ -32,11 +33,13 @@ import { transactPendingQueue } from './pending-queue.js';
 import { readTextOr } from '../lib/read-file.js';
 import { ollamaStream } from './lib/ollama-stream.js';
 import { DEFAULT_REASONING_MODEL } from './lib/local-model.js';
+import { HOUSE_MIN_DOCS, MAX_UNSUPPORTED, groundingGate, houseVocabulary, readDocsJargon, shouldDraft, unexplainedJargon } from './lib/docs-gates.js';
 
 const raw = process.argv.slice(2);
 const flag = (n: string) => raw.find((a) => a.startsWith(`--${n}=`))?.split('=').slice(1).join('=');
 const DRY = raw.includes('--dry-run');
 const OLLAMA = process.env.OLLAMA_BASE_URL ?? process.env.VITE_OLLAMA_BASE_URL ?? '';
+// The model the queue routes for prose drafts: RECKONS_LOCAL_MODEL, else the shared default (lib/local-model.ts).
 const MODEL = flag('model') ?? process.env.DOCS_EXPAND_MODEL ?? DEFAULT_REASONING_MODEL;
 const LIMIT = Number(flag('limit') ?? 10);
 const ONLY = flag('entity');
@@ -101,7 +104,27 @@ const subjects = [...new Set(quads
   .filter(({ q }) => q.predicate.value === RDFS_LABEL)
   .map(({ q }) => q.subject.value))];
 
-let targets = subjects.filter((s) => proseWeight(s) < MIN_WORDS);
+/** The prose a reader reads on this entity's page today, as one string. */
+function existingProse(subject: string): string {
+  return quads
+    .filter(({ q }) => q.subject.value === subject && q.object.termType === 'Literal' && PROSE_PREDICATES.has(q.predicate.value))
+    .map(({ q }) => q.object.value).join(' ');
+}
+
+/** Jargon comes from the terminology graph, never from a list in this script (lib/docs-gates.ts). */
+const JARGON = readDocsJargon(readFileSync('static/reckons-terminology.ttl', 'utf8'));
+
+/** Ordinary words of this corpus (on many pages), which a draft may use without the grounding repeating them. */
+const HOUSE = houseVocabulary(subjects.map(existingProse), HOUSE_MIN_DOCS);
+
+/** Why each thin entity was or was not drafted, so a skipped one is explained rather than silent. */
+const skipped: Array<{ subject: string; reason: string }> = [];
+let targets = subjects.filter((s) => {
+  if (proseWeight(s) >= MIN_WORDS) return false;
+  const v = shouldDraft(existingProse(s), proseWeight(s), MIN_WORDS, JARGON, [labelOf(s)]);
+  if (!v.draft) skipped.push({ subject: s, reason: v.reason });
+  return v.draft;
+});
 if (ONLY) targets = targets.filter((s) => s === ONLY || s.endsWith(ONLY));
 
 // ── Grounding ────────────────────────────────────────────────────────────────
@@ -183,6 +206,19 @@ function rejectReason(text: string, subject: string): string | null {
   if (/urn:kbase:concept\/|\bkb:[a-z]/.test(t)) return 'leaked a project IRI into prose';
   const label = labelOf(subject).toLowerCase();
   if (t.toLowerCase().startsWith(`${label} is ${label}`)) return 'restates the label';
+  return gateReason(t, subject);
+}
+
+/**
+ * The two deterministic gates (lib/docs-gates.ts). Jargon the reader is not told the meaning of, and
+ * vocabulary the grounding never used, are thrown out here so a reviewer never reads them. The
+ * grounding the gate sees is exactly the grounding the prompt showed the model.
+ */
+function gateReason(t: string, subject: string): string | null {
+  const jargon = unexplainedJargon(t, JARGON, [labelOf(subject)]);
+  if (jargon.length) return `unexplained jargon: ${jargon.join(', ')}`;
+  const g = groundingGate(t, `${groundingFor(subject)}\n${labelOf(subject)}`, MAX_UNSUPPORTED, HOUSE);
+  if (!g.ok) return `${g.count} words the graph never used: ${g.unsupported.slice(0, 8).join(', ')}`;
   return null;
 }
 
@@ -209,6 +245,13 @@ const alreadyQueued = new Set(
 );
 
 async function main(): Promise<void> {
+  if (DRY && !OLLAMA) {
+    // A dry run with no model: show what would be drafted and what is skipped, and why. No call is made.
+    console.log(`Docs expand (plan only, no model) — ${targets.length} to draft, ${skipped.length} skipped`);
+    for (const k of skipped) console.log(`  - skip ${labelOf(k.subject)}: ${k.reason}`);
+    for (const t of targets.slice(0, LIMIT)) console.log(`  + draft ${labelOf(t)} (${proseWeight(t)} words today)`);
+    return;
+  }
   if (!OLLAMA) {
     console.error('OLLAMA_BASE_URL is not set — this is an AGENT-tier job and needs a local model.');
     console.error('  OLLAMA_BASE_URL=http://localhost:11434 npx tsx scripts/offline/docs-expand.ts');
@@ -273,4 +316,4 @@ if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1])))
   main().catch((e) => { console.error('docs-expand failed:', e); process.exit(1); });
 }
 
-export { proseWeight, rejectReason, promptFor, DOCS_GRAPHS, MIN_WORDS };
+export { HOUSE, subjects, proseWeight, rejectReason, gateReason, groundingFor, existingProse, labelOf, promptFor, DOCS_GRAPHS, MIN_WORDS };

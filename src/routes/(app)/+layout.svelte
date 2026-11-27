@@ -15,7 +15,7 @@
   import { loadTurtleSettings } from '$lib/stores/turtle-settings.svelte';
   import { startScheduler } from '$lib/stores/auto-analyze.svelte';
   import { initExtensionBridge } from '$lib/extension-bridge';
-  import { shellyChatOpen, setShellyChatOpen, shellyOpenMessage, clearShellyOpen, exploreOpen, stopExplore, activeStoryId, stopStory } from '$lib/stores/shelly-bridge.svelte';
+  import { shellyChatOpen, setShellyChatOpen, shellyOpenMessage, shellyOpenTab, clearShellyOpen, exploreOpen, stopExplore, activeStoryId, stopStory } from '$lib/stores/shelly-bridge.svelte';
   import { officialKbActive, deactivateOfficialKb } from '$lib/stores/official-kb.svelte';
   import { warmWasm } from '$lib/stores/wasm-status.svelte';
   import { settings } from '$lib/stores/settings.svelte';
@@ -33,6 +33,8 @@
   import DownloadConsentDialog from '$lib/components/DownloadConsentDialog.svelte';
   import ArchiveReferenceDialog from '$lib/components/ArchiveReferenceDialog.svelte';
   import FeedbackDialog from '$lib/components/FeedbackDialog.svelte';
+  import RunnerConnectDialog from '$lib/components/RunnerConnectDialog.svelte';
+  import { runnerPopup } from '$lib/stores/runner-popup.svelte';
   import { initDownloadConsent } from '$lib/stores/download-consent.svelte';
   import { initOllamaModelNotice } from '$lib/stores/ollama-model-notice';
   import { initViewport } from '$lib/stores/viewport.svelte';
@@ -118,8 +120,10 @@
       const { promptStoryIfPresent } = await import('$lib/stores/story-prompt.svelte');
       const { getCurrentKbId } = await import('$lib/storage/kb-registry');
       // ?story starts the story outright (F261); otherwise the one-time notice offers it.
+      // F304: &autoplay=1 (or true) also starts it advancing on its pace — the muted showcase walk.
       const { startStoryFromLink } = await import('$lib/stores/story-prompt.svelte');
-      if (!startStoryFromLink(statements(), new URL(window.location.href).searchParams.get('story'), new URL(window.location.href).searchParams.get('step'))) {
+      const linkParams = new URL(window.location.href).searchParams;
+      if (!startStoryFromLink(statements(), linkParams.get('story'), linkParams.get('step'), linkParams.get('autoplay'))) {
         promptStoryIfPresent(statements(), getCurrentKbId());
       }
       // Apply embedding model from settings
@@ -267,6 +271,7 @@
 <DownloadConsentDialog />
 <ArchiveReferenceDialog />
 <FeedbackDialog />
+<RunnerConnectDialog bind:open={runnerPopup.open} />
 
 {#if shellyChatOpen()}
   {#await import('$lib/components/TurtleChatPanel.svelte') then chatModule}
@@ -275,6 +280,7 @@
       initialMessage={shellyOpenMessage()}
       exploreMode={exploreOpen()}
       storyId={activeStoryId()}
+      openTab={shellyOpenTab()}
       onclose={() => { setShellyChatOpen(false); stopExplore(); stopStory(); clearShellyOpen(); }}
     />
   {/await}
